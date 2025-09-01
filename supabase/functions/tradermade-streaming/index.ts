@@ -140,53 +140,91 @@ class TradermadeConnectionManager {
     return TradermadeConnectionManager.instance;
   }
 
-  // Initialize Redis connections for pub/sub
+  // Initialize Redis connections for pub/sub with enhanced error handling
   private async initializeRedis(): Promise<void> {
-    try {
-      if (!redisUrl || !redisPassword) {
-        console.error('❌ Redis credentials not configured');
-        return;
+    let attempt = 0;
+    const maxAttempts = 3;
+    
+    while (attempt < maxAttempts) {
+      try {
+        if (!redisUrl || !redisPassword) {
+          console.error('❌ Redis credentials not configured');
+          return;
+        }
+
+        console.log(`🔌 Initializing Redis connections... (attempt ${attempt + 1}/${maxAttempts})`);
+        
+        // Parse Redis URL with validation
+        const parsedUrl = new URL(redisUrl!);
+        console.log(`🔍 Redis connection: ${parsedUrl.hostname}:${parsedUrl.port} (TLS: ${parsedUrl.protocol === 'rediss:'})`);
+        
+        const connectionConfig = {
+          hostname: parsedUrl.hostname,
+          port: parseInt(parsedUrl.port) || 6379,
+          username: parsedUrl.username || 'default',
+          password: redisPassword || parsedUrl.password,
+          tls: parsedUrl.protocol === 'rediss:',
+        };
+        
+        // Publisher connection for sending price updates to Redis
+        console.log('📤 Connecting Redis publisher...');
+        this.redisPublisher = await connect(connectionConfig);
+        
+        // Test publisher connection
+        await this.redisPublisher.ping();
+        console.log('✅ Redis publisher connected and tested');
+
+        // Subscriber connection for receiving price updates from Redis
+        console.log('📥 Connecting Redis subscriber...');
+        this.redisSubscriber = await connect(connectionConfig);
+        
+        // Test subscriber connection
+        await this.redisSubscriber.ping();
+        console.log('✅ Redis subscriber connected and tested');
+
+        console.log('✅ Redis connections established successfully');
+        
+        // Start leader election process
+        await this.startLeaderElection();
+        
+        // Subscribe to price updates channel
+        await this.subscribeToRedisChannel();
+        
+        return; // Success, exit retry loop
+        
+      } catch (error) {
+        attempt++;
+        console.error(`❌ Redis initialization attempt ${attempt} failed:`, error);
+        
+        if (attempt >= maxAttempts) {
+          console.error('❌ All Redis connection attempts failed, continuing without Redis');
+          // Continue without Redis - fall back to single instance mode
+          this.isLeader = true;
+          console.log('🔄 Falling back to single instance mode (no Redis)');
+          return;
+        }
+        
+        // Wait before retry
+        const delay = 2000 * attempt;
+        console.log(`⏱️ Retrying Redis connection in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-
-      console.log('🔌 Initializing Redis connections...');
-      
-      // Parse Redis URL (format: rediss://default:[password]@host:6379)
-      const parsedUrl = new URL(redisUrl!);
-      
-      // Publisher connection for sending price updates to Redis
-      this.redisPublisher = await connect({
-        hostname: parsedUrl.hostname,
-        port: parseInt(parsedUrl.port) || 6379,
-        username: parsedUrl.username || 'default',
-        password: redisPassword || parsedUrl.password,
-        tls: parsedUrl.protocol === 'rediss:',
-      });
-
-      // Subscriber connection for receiving price updates from Redis
-      this.redisSubscriber = await connect({
-        hostname: parsedUrl.hostname,
-        port: parseInt(parsedUrl.port) || 6379,
-        username: parsedUrl.username || 'default',
-        password: redisPassword || parsedUrl.password,
-        tls: parsedUrl.protocol === 'rediss:',
-      });
-
-      console.log('✅ Redis connections established');
-      
-      // Start leader election process
-      await this.startLeaderElection();
-      
-      // Subscribe to price updates channel
-      await this.subscribeToRedisChannel();
-      
-    } catch (error) {
-      console.error('❌ Failed to initialize Redis:', error);
     }
   }
 
-  // Leader election mechanism using Redis SETNX
+  // Enhanced leader election mechanism using Redis SETNX with validation
   private async startLeaderElection(): Promise<void> {
+    if (!this.redisPublisher) {
+      console.warn('⚠️ No Redis publisher available, assuming leader role');
+      this.isLeader = true;
+      await this.connectToTradermade();
+      return;
+    }
+
     try {
+      console.log(`🗳️ Starting leader election for instance ${this.instanceId}`);
+      
+      // Try to acquire leadership lock
       const result = await this.redisPublisher.set(
         LEADER_LOCK_KEY, 
         this.instanceId,
@@ -195,46 +233,93 @@ class TradermadeConnectionManager {
       );
 
       if (result === 'OK') {
-        console.log('👑 Became TraderMade connection leader');
+        console.log(`👑 Became TraderMade connection leader (instance: ${this.instanceId})`);
         this.isLeader = true;
-        await this.connectToTradermade();
+        
+        // Connect to TraderMade only if we have clients
+        const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+        if (authenticatedClients.length > 0) {
+          await this.connectToTradermade();
+        }
+        
         this.startLeaderHeartbeat();
       } else {
-        console.log('📡 Following leader for TraderMade connection');
+        // Check who is the current leader
+        const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
+        console.log(`📡 Following leader for TraderMade connection (current leader: ${currentLeader || 'unknown'})`);
         this.isLeader = false;
+        
         // Check leader status periodically
         setTimeout(() => this.checkLeaderStatus(), 5000);
       }
     } catch (error) {
       console.error('❌ Leader election failed:', error);
-      // Retry after delay
-      setTimeout(() => this.startLeaderElection(), 5000);
+      
+      // If Redis is unavailable, assume leadership to prevent service disruption
+      if (error.message?.includes('connection') || error.message?.includes('timeout')) {
+        console.warn('⚠️ Redis unavailable during leader election, assuming leader role');
+        this.isLeader = true;
+        await this.connectToTradermade();
+      } else {
+        // Retry after delay for other errors
+        setTimeout(() => this.startLeaderElection(), 5000);
+      }
     }
   }
 
-  // Maintain leadership with heartbeat
+  // Enhanced leadership heartbeat with health monitoring
   private startLeaderHeartbeat(): void {
     if (this.leaderHeartbeatInterval) {
       clearInterval(this.leaderHeartbeatInterval);
     }
 
     this.leaderHeartbeatInterval = setInterval(async () => {
-      if (!this.isLeader) return;
+      if (!this.isLeader || !this.redisPublisher) return;
 
       try {
         // Renew leadership lock
         const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
         if (currentLeader === this.instanceId) {
+          // Successfully renew lock
           await this.redisPublisher.expire(LEADER_LOCK_KEY, LEADER_LOCK_TTL);
+          
+          // Also publish a heartbeat to Redis for monitoring
+          await this.redisPublisher.set(
+            `leader:heartbeat:${this.instanceId}`, 
+            JSON.stringify({
+              timestamp: Date.now(),
+              connectedClients: this.clients.size,
+              authenticatedClients: Array.from(this.clients.values()).filter(c => c.isAuthenticated).length,
+              tradermadeStatus: this.connectionStatus,
+              pricesCached: this.priceCache.size
+            }),
+            'EX', 60 // 60 second TTL for heartbeat
+          );
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`💓 Leader heartbeat sent (clients: ${this.clients.size}, cached prices: ${this.priceCache.size})`);
+          }
         } else {
-          console.warn('⚠️ Lost leadership, stepping down');
+          console.warn(`⚠️ Lost leadership, stepping down (current leader: ${currentLeader || 'none'})`);
           this.isLeader = false;
           this.disconnectTradermade();
           clearInterval(this.leaderHeartbeatInterval);
           this.leaderHeartbeatInterval = null;
+          
+          // Try to become leader again if there's no leader
+          if (!currentLeader) {
+            setTimeout(() => this.startLeaderElection(), 2000);
+          }
         }
       } catch (error) {
         console.error('❌ Leader heartbeat failed:', error);
+        
+        // On heartbeat failure, step down and retry leader election
+        this.isLeader = false;
+        this.disconnectTradermade();
+        clearInterval(this.leaderHeartbeatInterval);
+        this.leaderHeartbeatInterval = null;
+        setTimeout(() => this.startLeaderElection(), 5000);
       }
     }, LEADER_HEARTBEAT_INTERVAL);
   }
@@ -275,12 +360,25 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Publish price update to Redis (leader only)
+  // Enhanced price publishing to Redis with consistency checks (leader only)
   private async publishPriceToRedis(priceUpdate: TradermadePriceData): Promise<void> {
     if (!this.isLeader || !this.redisPublisher) return;
 
     try {
+      // Publish to Redis channel for real-time distribution
       await this.redisPublisher.publish(REDIS_PRICE_CHANNEL, JSON.stringify(priceUpdate));
+      
+      // Also store in Redis cache with TTL for HTTP requests
+      const cacheKey = `price:${priceUpdate.symbol}`;
+      await this.redisPublisher.set(
+        cacheKey,
+        JSON.stringify(priceUpdate),
+        'EX', Math.floor(PRICE_CACHE_TTL_MS / 1000) // Convert to seconds
+      );
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📤 Published ${priceUpdate.symbol} = $${priceUpdate.price} to Redis (pub/sub + cache)`);
+      }
     } catch (error) {
       console.error('❌ Failed to publish price to Redis:', error);
     }
@@ -1047,7 +1145,7 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Enhanced POST handler for price fetching with guardrails
+  // Enhanced POST handler with Redis cache consistency
   async handlePostRequest(req: Request): Promise<Response> {
     try {
       const body = await req.json();
@@ -1107,17 +1205,57 @@ class TradermadeConnectionManager {
         }
       }
 
-      // Return cache-only results (no external REST calls)
+      // Get prices from both local cache and Redis cache for consistency
       const prices: Record<string, any> = {};
       
-      validSymbols.forEach(symbol => {
-        const cached = this.getCachedPrice(symbol);
-        prices[symbol] = {
-          ...cached,
-          served_from: 'redis_cache',
-          stale: cached ? !this.isPriceFresh(cached) : false
-        };
-      });
+      for (const symbol of validSymbols) {
+        let priceData = null;
+        let servedFrom = 'local_cache';
+        
+        // Try local cache first
+        const localCached = this.getCachedPrice(symbol);
+        if (localCached && this.isPriceFresh(localCached)) {
+          priceData = localCached;
+          servedFrom = 'local_cache';
+        } else if (this.redisPublisher) {
+          // Fallback to Redis cache if local cache is stale/missing
+          try {
+            const redisCached = await this.redisPublisher.get(`price:${symbol}`);
+            if (redisCached) {
+              const parsedPrice = JSON.parse(redisCached);
+              if (this.isPriceFresh(parsedPrice)) {
+                priceData = parsedPrice;
+                servedFrom = 'redis_cache';
+                // Update local cache
+                this.priceCache.set(symbol, parsedPrice);
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Failed to fetch ${symbol} from Redis cache:`, error);
+          }
+        }
+        
+        if (priceData) {
+          prices[symbol] = {
+            symbol: priceData.symbol,
+            price: priceData.price,
+            bid: priceData.bid,
+            ask: priceData.ask,
+            timestamp: priceData.timestamp,
+            change: priceData.change,
+            changePercent: priceData.changePercent,
+            cachedAt: priceData.cachedAt,
+            served_from: servedFrom,
+            stale: !this.isPriceFresh(priceData)
+          };
+        } else {
+          // No price available
+          prices[symbol] = {
+            served_from: 'not_available',
+            stale: true
+          };
+        }
+      }
 
       return new Response(JSON.stringify({
         success: true,

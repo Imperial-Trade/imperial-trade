@@ -57,82 +57,14 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, 'websocket' | 'websocket_institutional' | 'http'>>({});
   
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
-  const reconnectAttemptsRef = useRef(0);
-  const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
   const refCountsRef = useRef<Map<string, number>>(new Map());
-  const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
-  const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const httpPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isPollingRef = useRef(false);
   
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
-  const authStateListenerRef = useRef<(() => void) | null>(null);
-  const tokenRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Enhanced stability constants for improved USA30/NAS100 performance
-  const MAX_RECONNECT_ATTEMPTS = 10;
-  const RECONNECT_BASE_DELAY = 1000; // 1 second base delay
-  const MAX_RECONNECT_DELAY = 5000; // Cap at 5 seconds for fast recovery
-  const HEALTH_CHECK_INTERVAL = 10000; // 10 seconds watchdog
-  const STALE_DATA_THRESHOLD = 15000; // 15 seconds stale threshold
-  // Enhanced health check mechanism for connection stability
-  const healthCheckRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const startHealthCheck = useCallback(() => {
-    if (healthCheckRef.current) {
-      clearInterval(healthCheckRef.current);
-    }
-    
-    healthCheckRef.current = setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
-      
-      if (timeSinceLastMessage > STALE_DATA_THRESHOLD && connectionStatus === 'connected') {
-        console.warn('🚨 WebSocket connection appears stale, triggering reconnect...');
-        if (socketRef.current) {
-          socketRef.current.close();
-        }
-      }
-    }, HEALTH_CHECK_INTERVAL);
-  }, [connectionStatus]);
-
-  const stopHealthCheck = useCallback(() => {
-    if (healthCheckRef.current) {
-      clearInterval(healthCheckRef.current);
-      healthCheckRef.current = null;
-    }
-  }, []);
-
-  // US Market Hours detection for USA30/NAS100
-  const isUSMarketOpen = useCallback(() => {
-    const now = new Date();
-    const utc = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    const est = new Date(utc.getTime() + (-5 * 3600000)); // EST timezone
-    
-    const hour = est.getHours();
-    const day = est.getDay(); // 0 = Sunday, 6 = Saturday
-    
-    // Market closed on weekends
-    if (day === 0 || day === 6) return false;
-    
-    // Regular trading hours: 9:30 AM - 4:00 PM EST (Mon-Fri)
-    // Pre-market: 4:00 AM - 9:30 AM EST 
-    // After-market: 4:00 PM - 8:00 PM EST
-    return (hour >= 4 && hour < 20); // Extended hours 4 AM - 8 PM EST
-  }, []);
-
-  const flushPendingSubscriptions = useCallback(() => {
-    if (socketRef.current?.readyState !== WebSocket.OPEN) return;
-    const pending = Array.from(pendingSubscribeBatchRef.current);
-    if (pending.length === 0) return;
-    console.log('📤 Sending batched subscription for:', pending);
-    socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: pending }));
-    pendingSubscribeBatchRef.current.clear();
-    subscribeFlushTimerRef.current = null;
-  }, []);
+  // Price consistency state - single source of truth
+  const masterPricesRef = useRef<Record<string, PriceData>>({});
+  const lastPriceBroadcastRef = useRef<Record<string, number>>({});
 
   const normalizeSymbol = useCallback((s: string) => {
     const up = (s || '').toUpperCase().trim();
@@ -161,452 +93,226 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       default:
         // Enhanced composite label fallback matching
         if (compact.includes('USA30') || compact.includes('US30') || compact.includes('DOWJONES')) {
-          console.log(`🔄 WebSocket normalized composite '${s}' → 'USA30USD'`);
+          console.log(`🔄 Normalized composite '${s}' → 'USA30USD'`);
           return 'USA30USD';
         }
         if (compact.includes('NAS100') || compact.includes('NASDAQ100') || compact.includes('NASDAQ')) {
-          console.log(`🔄 WebSocket normalized composite '${s}' → 'NAS100USD'`);
+          console.log(`🔄 Normalized composite '${s}' → 'NAS100USD'`);
           return 'NAS100USD';
         }
         return compact;
     }
   }, []);
 
-  const getReconnectDelay = useCallback(() => {
-    // Enhanced exponential backoff with jitter for improved stability
-    const jitter = Math.random() * 1000; // Add 0-1s jitter to prevent thundering herd
-    const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttemptsRef.current) + jitter, MAX_RECONNECT_DELAY);
-    return delay;
+  // Enhanced HTTP polling with price consistency
+  const pollPricesHTTP = useCallback(async (symbols: string[]) => {
+    if (symbols.length === 0) return;
+
+    try {
+      console.log('📡 Polling prices via HTTP for:', symbols);
+      
+      const response = await supabase.functions.invoke('tradermade-streaming', {
+        body: { symbols }
+      });
+
+      if (response.data?.success && response.data?.prices) {
+        const newPrices: Record<string, PriceData> = {};
+        const updateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'> = {};
+        
+        // Process each price update with consistency checking
+        Object.entries(response.data.prices).forEach(([symbol, priceInfo]: [string, any]) => {
+          if (priceInfo && priceInfo.price && !isNaN(priceInfo.price) && priceInfo.price > 0) {
+            const normalizedSymbol = normalizeSymbol(symbol);
+            
+            // Calculate change if we have previous data
+            const prevPrice = masterPricesRef.current[normalizedSymbol]?.price || priceInfo.price;
+            const change = priceInfo.change ?? (priceInfo.price - prevPrice);
+            const changePercent = priceInfo.changePercent ?? (prevPrice > 0 ? (change / prevPrice) * 100 : 0);
+            
+            const newPriceData: PriceData = {
+              symbol: priceInfo.symbol || symbol,
+              price: priceInfo.price,
+              change,
+              changePercent,
+              timestamp: priceInfo.timestamp || new Date().toISOString(),
+              bid: priceInfo.bid || priceInfo.price,
+              ask: priceInfo.ask || priceInfo.price,
+              tick_timestamp: Date.now(),
+              is_institutional_tick: false,
+              is_ultra_fast_tick: false,
+              update_frequency: '5s'
+            };
+            
+            // Price consistency check - only update if price actually changed
+            const lastBroadcast = lastPriceBroadcastRef.current[normalizedSymbol];
+            if (!lastBroadcast || Math.abs(newPriceData.price - lastBroadcast) > 0.00001) {
+              newPrices[normalizedSymbol] = newPriceData;
+              updateSources[normalizedSymbol] = 'http';
+              lastPriceBroadcastRef.current[normalizedSymbol] = newPriceData.price;
+              
+              // Update master prices for consistency
+              masterPricesRef.current[normalizedSymbol] = newPriceData;
+              
+              console.log(`💰 Price consistency update: ${normalizedSymbol} = $${newPriceData.price} (served_from: ${priceInfo.served_from || 'cache'})`);
+            }
+          }
+        });
+        
+        // Batch update state for consistent prices across all components
+        if (Object.keys(newPrices).length > 0) {
+          setPrices(prev => ({ ...prev, ...newPrices }));
+          setPriceUpdateSources(prev => ({ ...prev, ...updateSources }));
+          setLastUpdated(new Date());
+          setConnectionStatus('connected');
+          setDataSource('tradermade');
+          
+          // Clear any errors
+          setErrors(prev => {
+            const cleaned = { ...prev };
+            Object.keys(newPrices).forEach(symbol => {
+              delete cleaned[symbol];
+            });
+            delete cleaned.global;
+            return cleaned;
+          });
+        }
+
+      } else {
+        console.warn('❌ HTTP polling failed or returned invalid data');
+        setConnectionStatus('error');
+      }
+    } catch (error) {
+      console.error('❌ HTTP polling error:', error);
+      setConnectionStatus('error');
+      setErrors(prev => ({ ...prev, global: 'Price polling failed' }));
+    }
+  }, [normalizeSymbol]);
+
+  // Start HTTP polling with consistent intervals
+  const startHttpPolling = useCallback((symbols: string[]) => {
+    if (isPollingRef.current) return;
+    
+    isPollingRef.current = true;
+    console.log('🔄 Starting HTTP polling for symbols:', symbols);
+    
+    // Initial poll
+    pollPricesHTTP(symbols);
+    
+    // Set up regular polling (5 second intervals for consistency)
+    httpPollingIntervalRef.current = setInterval(() => {
+      const currentSymbols = Array.from(subscribedSymbolsRef.current);
+      if (currentSymbols.length > 0) {
+        pollPricesHTTP(currentSymbols);
+      }
+    }, 5000);
+  }, [pollPricesHTTP]);
+
+  const stopHttpPolling = useCallback(() => {
+    if (httpPollingIntervalRef.current) {
+      clearInterval(httpPollingIntervalRef.current);
+      httpPollingIntervalRef.current = null;
+    }
+    isPollingRef.current = false;
+    console.log('⏹️ HTTP polling stopped');
   }, []);
 
   const connect = useCallback(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
-      return;
-    }
-
+    console.log('📡 Initializing HTTP-based price connection');
     setConnectionStatus('connecting');
+    setDataSource('tradermade');
     
-    try {
-      // Connect to Tradermade streaming WebSocket
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
-      console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
-      console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
-      
-      socketRef.current = new WebSocket(wsUrl);
-      console.log('🆕 Created new WebSocket instance');
-
-      socketRef.current.onopen = async () => {
-        console.log('✅ WebSocket connected to Tradermade streaming');
-        // Only set to connecting here, wait for auth_ok for full connection
-        setConnectionStatus('connecting');
-        
-        // Clear any connection errors
-        setErrors(prev => {
-          const { global, ...rest } = prev;
-          return global?.includes('WebSocket') ? rest : prev;
-        });
-        
-        // Authenticate with access token
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          socketRef.current?.send(JSON.stringify({
-            action: 'authenticate',
-            token: session.access_token
-          }));
-        } else {
-          console.error('❌ No access token available for authentication');
-          setErrors(prev => ({ ...prev, auth: 'Authentication required' }));
-        }
-      };
-
-      socketRef.current.onmessage = (event) => {
-        console.log('📨 Raw WebSocket message:', event.data);
-        
-        try {
-          const data = JSON.parse(event.data);
-          console.log('📊 Parsed message:', data);
-          // Any message indicates liveness; reset reconnect backoff
-          reconnectAttemptsRef.current = 0;
-          
-          if (data.type === 'auth_required') {
-            console.log('🔐 Authentication required');
-            setIsAuthenticated(false);
-            return;
-          }
-          
-          if (data.type === 'auth_ok' || data.type === 'auth_success') {
-            console.log('✅ Authentication successful');
-            setIsAuthenticated(true);
-            setConnectionStatus('connected'); // Only now mark as fully connected
-            setDataSource('tradermade');
-            reconnectAttemptsRef.current = 0;
-            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
-            
-            // Process any pending subscriptions
-            if (pendingSubscriptionsRef.current.size > 0) {
-              const symbols = Array.from(pendingSubscriptionsRef.current);
-              console.log('📡 Processing pending subscriptions:', symbols);
-              socketRef.current?.send(JSON.stringify({
-                action: 'subscribe',
-                symbols: symbols
-              }));
-              symbols.forEach(s => subscribedSymbolsRef.current.add(s));
-              pendingSubscriptionsRef.current.clear();
-            }
-            return;
-          }
-          
-          if (data.type === 'auth_error') {
-            console.error('❌ Authentication error:', data.message);
-            setErrors(prev => ({ ...prev, auth: data.message }));
-            setIsAuthenticated(false);
-            return;
-          }
-          
-          if (data.type === 'connection_status') {
-            console.log('🔗 Connection status update:', data.status);
-            const status = data.status === 'connected' ? 'connected' : 
-                          data.status === 'connecting' ? 'connecting' : 'disconnected';
-            setConnectionStatus(status);
-            setDataSource(data.dataSource || 'tradermade');
-            return;
-          }
-          
-          if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
-            const symbol = normalizeSymbol(data.symbol);
-            
-            // Business Plan: Enhanced ultra-fast institutional tick detection
-            const isInstitutionalTick = data.is_institutional_tick === true;
-            const isUltraFastTick = data.is_ultra_fast_tick === true;
-            const tickTimestamp = data.tick_timestamp || Date.now();
-            const updateFrequency = data.update_frequency || '100ms';
-            
-            if (isUltraFastTick) {
-              console.log(`⚡ BUSINESS PLAN ULTRA-FAST TICK: ${symbol} = $${data.price} [${updateFrequency}] @ ${new Date(tickTimestamp).toISOString()}`);
-            } else if (isInstitutionalTick) {
-              console.log(`💎 BUSINESS PLAN INSTITUTIONAL TICK: ${symbol} = $${data.price} [${updateFrequency}] @ ${new Date(tickTimestamp).toISOString()}`);
-            } else {
-              console.log(`🚀 BUSINESS PLAN PRICE UPDATE: ${symbol} = $${data.price} [${updateFrequency}]`);
-            }
-            
-            // Calculate percentage change if we have previous price
-            setPrices(prev => {
-              const prevPrice = prev[symbol]?.price || data.price;
-              const change = data.price - prevPrice;
-              const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-              return {
-                ...prev,
-                [symbol]: {
-                  symbol: data.symbol,
-                  price: data.price,
-                  change: data.change ?? change,
-                  changePercent: data.changePercent ?? changePercent,
-                  timestamp: data.timestamp || new Date().toISOString(),
-                  bid: data.bid,
-                  ask: data.ask,
-                  // Enhanced ultra-fast tick data
-                  tick_timestamp: tickTimestamp,
-                  is_institutional_tick: isInstitutionalTick,
-                  is_ultra_fast_tick: isUltraFastTick,
-                  update_frequency: data.update_frequency || '250ms'
-                }
-              };
-            });
-            
-            setPriceUpdateSources(prev => ({ 
-              ...prev, 
-              [symbol]: isUltraFastTick ? 'websocket_institutional' : isInstitutionalTick ? 'websocket_institutional' : 'websocket' 
-            }));
-            setLastUpdated(new Date());
-            websocketHealthRef.current.lastSuccessfulMessage = Date.now();
-            websocketHealthRef.current.isHealthy = true;
-            
-            // Clear any symbol-specific errors
-            setErrors(prev => {
-              const { [symbol]: removed, ...rest } = prev;
-              return rest;
-            });
-          } else if (data.type === 'price_batch' && Array.isArray(data.items)) {
-            const nowTs = data.tick_timestamp || Date.now();
-            const items = data.items as any[];
-            setPrices(prev => {
-              const next = { ...prev } as Record<string, PriceData>;
-              items.forEach((it) => {
-                const sym = normalizeSymbol(it.symbol);
-                const prevPrice = next[sym]?.price || it.price;
-                const change = it.price - prevPrice;
-                const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-                next[sym] = {
-                  symbol: it.symbol,
-                  price: it.price,
-                  change: it.change ?? change,
-                  changePercent: it.changePercent ?? changePercent,
-                  timestamp: it.timestamp || new Date().toISOString(),
-                  bid: it.bid,
-                  ask: it.ask,
-                  tick_timestamp: nowTs,
-                  is_institutional_tick: false,
-                  is_ultra_fast_tick: false,
-                  update_frequency: data.update_frequency || `${Math.max(1, Math.floor((nowTs - (websocketHealthRef.current.lastSuccessfulMessage || nowTs)) / 1000))}s`
-                };
-              });
-              return next;
-            });
-            setPriceUpdateSources(prev => {
-              const next = { ...prev } as Record<string, 'websocket' | 'websocket_institutional' | 'http'>;
-              items.forEach((it) => {
-                const sym = normalizeSymbol(it.symbol);
-                next[sym] = 'websocket';
-              });
-              return next;
-            });
-            setLastUpdated(new Date());
-            websocketHealthRef.current.lastSuccessfulMessage = Date.now();
-            websocketHealthRef.current.isHealthy = true;
-          } else if (data.type === 'error') {
-            console.error('❌ WebSocket error message:', data.message);
-            
-            if (data.code === 'max_subscriptions_exceeded') {
-              setErrors(prev => ({
-                ...prev,
-                subscription_limit: data.message
-              }));
-            } else {
-              setErrors(prev => ({
-                ...prev,
-                global: data.message || 'WebSocket connection error'
-              }));
-              setConnectionStatus('error');
-            }
-          } else {
-            console.log('ℹ️ Unhandled message type:', data.type, data);
-          }
-        } catch (error) {
-          console.error('❌ Error parsing WebSocket message:', error);
-        }
-      };
-
-      socketRef.current.onclose = (event) => {
-        console.log(`🔌 WebSocket disconnected: ${event.code} ${event.reason}`);
-        setConnectionStatus('disconnected');
-        websocketHealthRef.current.isHealthy = false;
-        
-        // Implement exponential backoff for reconnection
-        const delay = getReconnectDelay();
-        reconnectAttemptsRef.current++;
-        
-        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('🔄 Attempting reconnection...');
-          connect();
-        }, delay);
-      };
-
-      socketRef.current.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        setConnectionStatus('error');
-        websocketHealthRef.current.isHealthy = false;
-        reconnectAttemptsRef.current++;
-      };
-    } catch (error) {
-      console.error('❌ Failed to create WebSocket connection:', error);
-      setConnectionStatus('error');
-      setDataSource('unavailable');
+    // Process any pending subscriptions immediately
+    if (subscribedSymbolsRef.current.size > 0) {
+      const symbols = Array.from(subscribedSymbolsRef.current);
+      console.log('📡 Starting HTTP polling for existing subscriptions:', symbols);
+      startHttpPolling(symbols);
     }
-  }, [getReconnectDelay]);
+    
+    setConnectionStatus('connected');
+    console.log('✅ HTTP polling mode established');
+  }, [startHttpPolling]);
 
   const subscribe = useCallback((symbols: string[]) => {
-    console.log('📡 Subscribing request received for symbols:', symbols);
+    console.log('📡 Subscribe request received for symbols:', symbols);
 
-    // Normalize and validate symbols FIRST
+    // Normalize and validate symbols
     const normalized = symbols
       .map(normalizeSymbol)
       .filter(Boolean);
 
-    // Reference-counted subscriptions: only send to server when count transitions 0 -> 1
+    // Reference-counted subscriptions
     const toSubscribe: string[] = [];
     normalized.forEach(symbol => {
-      const prev = refCountsRef.current.get(symbol) || 0;
-      const next = prev + 1;
-      refCountsRef.current.set(symbol, next);
-      if (prev === 0) {
-        toSubscribe.push(symbol);
+      const currentCount = refCountsRef.current.get(symbol) || 0;
+      refCountsRef.current.set(symbol, currentCount + 1);
+      
+      if (currentCount === 0) {
+        // First subscription for this symbol
         subscribedSymbolsRef.current.add(symbol);
+        toSubscribe.push(symbol);
       }
     });
 
-    if (toSubscribe.length === 0) {
-      console.log('📡 All symbols already referenced, skipping network subscribe');
-      return;
+    if (toSubscribe.length > 0) {
+      console.log('📡 New symbols to subscribe:', toSubscribe);
+      
+      // Start polling if not already started
+      if (!isPollingRef.current) {
+        startHttpPolling(toSubscribe);
+      } else {
+        // Poll immediately for new symbols
+        pollPricesHTTP(toSubscribe);
+      }
     }
-
-    if (socketRef.current?.readyState !== WebSocket.OPEN) {
-      console.log('🔄 WebSocket not ready, attempting connection');
-      connect();
-      // Queue subscriptions until authenticated
-      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
-      return;
-    }
-
-    if (!isAuthenticated) {
-      console.log('🔐 Not authenticated, queueing subscriptions');
-      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
-      return;
-    }
-
-    // Enqueue for batched send
-    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
-
-    if (!subscribeFlushTimerRef.current) {
-      subscribeFlushTimerRef.current = setTimeout(() => {
-        flushPendingSubscriptions();
-      }, 10); // Business Plan: Ultra-fast 10ms batching
-    }
-  }, [connect, flushPendingSubscriptions]);
+  }, [normalizeSymbol, startHttpPolling, pollPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
-    // Normalize like subscribe
-    const normalized = symbols
-      .map(normalizeSymbol)
-      .filter(Boolean);
-
-    const toUnsubscribe: string[] = [];
+    const normalized = symbols.map(normalizeSymbol).filter(Boolean);
+    
     normalized.forEach(symbol => {
-      const prev = refCountsRef.current.get(symbol) || 0;
-      const next = Math.max(prev - 1, 0);
-      if (next === 0) {
+      const currentCount = refCountsRef.current.get(symbol) || 0;
+      if (currentCount <= 1) {
         refCountsRef.current.delete(symbol);
         subscribedSymbolsRef.current.delete(symbol);
-        toUnsubscribe.push(symbol);
       } else {
-        refCountsRef.current.set(symbol, next);
+        refCountsRef.current.set(symbol, currentCount - 1);
       }
     });
 
-    if (toUnsubscribe.length === 0) {
-      return;
+    // Stop polling if no subscriptions
+    if (subscribedSymbolsRef.current.size === 0) {
+      stopHttpPolling();
     }
-
-    // Clear errors for symbols we fully unsubscribed from
-    setErrors(prev => {
-      const newErrors = { ...prev } as Record<string, string>;
-      toUnsubscribe.forEach(symbol => {
-        delete newErrors[symbol];
-      });
-      return newErrors;
-    });
-
-    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticated) {
-      socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: toUnsubscribe }));
-    }
-  }, []);
-
-  const refreshPrice = useCallback((symbol: string) => {
-    const norm = normalizeSymbol(symbol);
-    // Clear any existing error for this symbol
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[norm];
-      return newErrors;
-    });
-    // Force re-subscription for this symbol
-    subscribe([norm]);
-  }, [subscribe, normalizeSymbol]);
+  }, [normalizeSymbol, stopHttpPolling]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {
-    const norm = normalizeSymbol(symbol);
-    return prices[norm] || null;
-  }, [prices, normalizeSymbol]);
+    const normalized = normalizeSymbol(symbol);
+    return masterPricesRef.current[normalized] || prices[normalized] || null;
+  }, [normalizeSymbol, prices]);
 
-  // Auto-connect on mount and add connection health monitoring
+  const refreshPrice = useCallback((symbol: string) => {
+    const normalized = normalizeSymbol(symbol);
+    console.log('🔄 Refreshing price for:', normalized);
+    pollPricesHTTP([normalized]);
+  }, [normalizeSymbol, pollPricesHTTP]);
+
+  // Initialize connection on mount
   useEffect(() => {
     connect();
     
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth state change:', event);
-      
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Debounce TOKEN_REFRESHED events to avoid bursts
-        if (event === 'TOKEN_REFRESHED') {
-          if (tokenRefreshTimerRef.current) {
-            clearTimeout(tokenRefreshTimerRef.current);
-          }
-          
-          tokenRefreshTimerRef.current = setTimeout(() => {
-            if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
-              console.log('🔄 Debounced re-authentication after TOKEN_REFRESHED...');
-              socketRef.current.send(JSON.stringify({
-                action: 'authenticate',
-                token: session.access_token
-              }));
-            }
-          }, 250); // 250ms debounce
-        } else {
-          // SIGNED_IN - immediate authentication
-          if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
-            console.log('🔄 Re-authenticating WebSocket after sign-in...');
-            socketRef.current.send(JSON.stringify({
-              action: 'authenticate',
-              token: session.access_token
-            }));
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👋 User signed out, resetting auth state but keeping pending subscriptions');
-        setIsAuthenticated(false);
-        setConnectionStatus('connecting');
-        // Keep pending subscriptions for when user signs back in
-      }
-    });
-    
-    // Store auth listener ref for cleanup
-    authStateListenerRef.current = authListener?.subscription?.unsubscribe;
-    const healthCheckInterval = setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
-      
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 15000) {
-        console.warn('🚨 Watchdog: no messages for >15s (watchdog_stale_15s). Reconnecting...');
-        socketRef.current.close();
-        connect();
-      } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
-        console.log('🔄 Watchdog: socket not open, attempting reconnection (watchdog_closed_state)...');
-        connect();
-      }
-    }, 10000); // Check every 10 seconds
-
     return () => {
-      clearInterval(healthCheckInterval);
-      
-      // Properly unsubscribe auth state listener
-      if (authStateListenerRef.current) {
-        authStateListenerRef.current();
-        authStateListenerRef.current = null;
-      }
-      
-      // Clear debounce timer
-      if (tokenRefreshTimerRef.current) {
-        clearTimeout(tokenRefreshTimerRef.current);
-        tokenRefreshTimerRef.current = null;
-      }
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (subscribeFlushTimerRef.current) {
-        clearTimeout(subscribeFlushTimerRef.current);
-      }
-      pendingSubscribeBatchRef.current.clear();
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
+      stopHttpPolling();
     };
-  }, [connect, isAuthenticated]);
+  }, [connect, stopHttpPolling]);
 
-  const value: WebSocketContextType = {
+  // Sync master prices with state
+  useEffect(() => {
+    Object.entries(prices).forEach(([symbol, priceData]) => {
+      masterPricesRef.current[symbol] = priceData;
+    });
+  }, [prices]);
+
+  const contextValue: WebSocketContextType = {
     prices,
     connectionStatus,
     dataSource,
@@ -616,11 +322,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     subscribe,
     unsubscribe,
     getPrice,
-    refreshPrice
+    refreshPrice,
   };
 
   return (
-    <WebSocketPriceContext.Provider value={value}>
+    <WebSocketPriceContext.Provider value={contextValue}>
       {children}
     </WebSocketPriceContext.Provider>
   );

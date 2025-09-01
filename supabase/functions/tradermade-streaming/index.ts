@@ -878,113 +878,21 @@ class TradermadeConnectionManager {
     }
   }
 
-  // REST fetch helper with all guardrails
-  private async fetchRestPrices(symbols: string[]): Promise<Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }>> {
+  // Cache-only price retrieval helper  
+  private getCachedPricesForSymbols(symbols: string[]): Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> {
     const results: Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> = {};
     
-    try {
-      // Circuit breaker check
-      if (this.isRestDisabled) {
-        symbols.forEach(symbol => {
-          const cached = this.getCachedPrice(symbol);
-          results[symbol] = { 
-            price: cached, 
-            served_from: 'cache', 
-            stale: cached ? !this.isPriceFresh(cached) : false 
-          };
-        });
-        return results;
-      }
-
-      // Call get-market-data function
-      const response = await supabase.functions.invoke('get-market-data', {
-        body: { symbols }
-      });
-
-      if (response.error) {
-        console.error('❌ REST fetch error:', response.error);
-        this.updateCircuitBreaker(true);
-        this.fallbackHttpTotal++;
-        
-        // Return cached prices
-        symbols.forEach(symbol => {
-          const cached = this.getCachedPrice(symbol);
-          results[symbol] = { 
-            price: cached, 
-            served_from: 'cache', 
-            stale: cached ? !this.isPriceFresh(cached) : false 
-          };
-        });
-        return results;
-      }
-
-      const data = response.data;
-      this.updateCircuitBreaker(false);
-      this.fallbackForceFetchTotal++;
-
-      // Process response and update cache
-      if (data?.prices && Array.isArray(data.prices)) {
-        data.prices.forEach((priceData: any) => {
-          if (priceData?.symbol && priceData?.price) {
-            const normalizedSymbol = this.normalizeClientSymbol(priceData.symbol);
-            if (normalizedSymbol) {
-              const now = Date.now();
-              const cacheData: TradermadePriceData = {
-                symbol: normalizedSymbol,
-                price: priceData.price,
-                bid: priceData.bid || priceData.price,
-                ask: priceData.ask || priceData.price,
-                timestamp: priceData.timestamp || new Date().toISOString(),
-                change: priceData.change || 0,
-                changePercent: priceData.changePercent || 0,
-                cachedAt: now
-              };
-              
-              this.priceCache.set(normalizedSymbol, cacheData);
-              this.lastRestFetchAt.set(normalizedSymbol, now);
-              this.httpUpdatesTotal++;
-              
-              results[normalizedSymbol] = { 
-                price: cacheData, 
-                served_from: 'rest', 
-                stale: false 
-              };
-            }
-          }
-        });
-      }
-
-      // Fill missing symbols with cache
-      symbols.forEach(symbol => {
-        if (!results[symbol]) {
-          const cached = this.getCachedPrice(symbol);
-          results[symbol] = { 
-            price: cached, 
-            served_from: 'cache', 
-            stale: cached ? !this.isPriceFresh(cached) : false 
-          };
-        }
-      });
-
-      return results;
-    } catch (error) {
-      console.error('❌ REST fetch exception:', error);
-      this.updateCircuitBreaker(true);
-      this.fallbackHttpTotal++;
-      
-      // Return cached prices
-      symbols.forEach(symbol => {
-        const cached = this.getCachedPrice(symbol);
-        results[symbol] = { 
-          price: cached, 
-          served_from: 'cache', 
-          stale: cached ? !this.isPriceFresh(cached) : false 
-        };
-      });
-      return results;
-    }
+    symbols.forEach(symbol => {
+      const cached = this.getCachedPrice(symbol);
+      results[symbol] = { 
+        price: cached, 
+        served_from: 'cache', 
+        stale: cached ? !this.isPriceFresh(cached) : false 
+      };
+    });
+    
+    return results;
   }
-
   // Enhanced POST handler for price fetching with guardrails
   async handlePostRequest(req: Request): Promise<Response> {
     try {

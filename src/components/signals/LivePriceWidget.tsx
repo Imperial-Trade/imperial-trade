@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePriceAnimations } from '@/hooks/usePriceAnimations';
 import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
@@ -609,13 +609,25 @@ const LivePriceWidgetComponent = ({
             {dataAge && (
               <>
                 <span className="text-gray-500">•</span>
-                <span className={`${
-                  dataAge === 'Live' ? 'text-green-400' : 
-                  dataAge === 'Stale' ? 'text-red-400' : 
-                  'text-yellow-400'
-                }`}>
-                  {dataAge}
-                </span>
+                {priceUpdateSource === 'websocket' && dataAge === 'Live' ? (
+                  <Badge variant="default" className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                    <Zap className="w-3 h-3 mr-1" />
+                    WS Live
+                  </Badge>
+                ) : priceUpdateSource === 'http' ? (
+                  <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
+                    <Database className="w-3 h-3 mr-1" />
+                    HTTP Cache{dataAge === 'Stale' && <span className="ml-1 text-amber-300">• Stale</span>}
+                  </Badge>
+                ) : (
+                  <span className={`${
+                    dataAge === 'Live' ? 'text-green-400' : 
+                    dataAge === 'Stale' ? 'text-red-400' : 
+                    'text-yellow-400'
+                  }`}>
+                    {dataAge}
+                  </span>
+                )}
               </>
             )}
           </div>

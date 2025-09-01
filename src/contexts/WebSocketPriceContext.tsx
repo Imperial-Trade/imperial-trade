@@ -127,12 +127,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         }
       });
 
+      console.log(`📊 HTTP response:`, {
+        success: response.data?.success,
+        pricesCount: Object.keys(response.data?.prices || {}).length,
+        prices: response.data?.prices
+      });
+
       if (response.data?.success && response.data?.prices) {
         const newPrices: Record<string, PriceData> = {};
         const updateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'> = {};
         
         // Process each price update with validation and staleness checks
         Object.entries(response.data.prices).forEach(([symbol, priceInfo]: [string, any]) => {
+          console.log(`🔍 Processing price for ${symbol}:`, priceInfo);
           if (priceInfo && priceInfo.price && !isNaN(priceInfo.price) && priceInfo.price > 0) {
             const normalizedSymbol = normalizeSymbol(symbol);
             
@@ -334,7 +341,14 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const connect = useCallback(() => {
     console.log('📡 Initializing Realtime-based price connection');
     setupRealtimeChannel();
-  }, [setupRealtimeChannel]);
+    
+    // Initial data fetch for subscribed symbols with force fetch
+    if (subscribedSymbolsRef.current.size > 0) {
+      const symbols = Array.from(subscribedSymbolsRef.current);
+      console.log('📡 Fetching initial data for subscribed symbols:', symbols);
+      pollPricesHTTP(symbols, true); // Force fetch on initialization
+    }
+  }, [setupRealtimeChannel, pollPricesHTTP]);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribe request received for symbols:', symbols);

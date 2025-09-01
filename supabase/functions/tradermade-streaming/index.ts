@@ -1231,6 +1231,14 @@ class TradermadeConnectionManager {
       const body = await req.json();
       const { symbols: requestedSymbols, forceFetch } = body;
       
+      console.log(`📊 POST request received:`, {
+        symbols: requestedSymbols,
+        forceFetch,
+        isLeader: this.isLeader,
+        redisConnected: !!this.redisPublisher,
+        cachedPrices: this.priceCache.size
+      });
+      
       // Symbol validation
       if (!Array.isArray(requestedSymbols)) {
         return new Response(JSON.stringify({ 
@@ -1328,10 +1336,12 @@ class TradermadeConnectionManager {
             served_from: servedFrom,
             stale: !this.isPriceFresh(priceData)
           };
-        } else if (body.forceFetch) {
+        } else if (forceFetch) {
           // If no cached data and forceFetch is true, try REST API (with cooldown)
+          console.log(`🔄 Force fetch requested for ${symbol}, attempting REST API...`);
           try {
             const restPrice = await this.fetchPriceFromRestApi(symbol);
+            console.log(`📈 REST API result for ${symbol}:`, restPrice ? 'SUCCESS' : 'FAILED');
             if (restPrice) {
               prices[symbol] = {
                 symbol: restPrice.symbol,
@@ -1349,16 +1359,18 @@ class TradermadeConnectionManager {
               this.priceCache.set(symbol, restPrice);
               await this.publishPriceToRedis(restPrice);
             } else {
+              console.log(`❌ REST API returned null for ${symbol}`);
               prices[symbol] = {
-                served_from: 'not_available',
+                served_from: 'rest_api_failed',
                 stale: true
               };
             }
           } catch (error) {
-            console.warn(`⚠️ REST fallback failed for ${symbol}:`, error);
+            console.error(`❌ REST fallback failed for ${symbol}:`, error);
             prices[symbol] = {
-              served_from: 'not_available',
-              stale: true
+              served_from: 'rest_api_error', 
+              stale: true,
+              error: error.message
             };
           }
         } else {

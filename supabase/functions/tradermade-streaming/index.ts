@@ -5,14 +5,21 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
 };
 
 // Configuration constants
 const WS_AUTH_TIMEOUT_MS = parseInt(Deno.env.get('WS_AUTH_TIMEOUT_MS') || '30000'); // 30 seconds
 const MAX_WS_SUBS_PER_CLIENT = parseInt(Deno.env.get('MAX_WS_SUBS_PER_CLIENT') || '20'); // Max subscriptions per client
-const IDLE_DISCONNECT_DELAY_MS = parseInt(Deno.env.get('IDLE_DISCONNECT_DELAY_MS') || '120000'); // 2 minutes
-const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '300000'); // 5 minutes
+const IDLE_DISCONNECT_DELAY_MS = parseInt(Deno.env.get('IDLE_DISCONNECT_DELAY_MS') || '600000'); // 10 minutes
+const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000'); // 45 seconds
+
+// New guardrail constants
+const FORCEFETCH_INTERNAL_KEY = Deno.env.get('FORCEFETCH_INTERNAL_KEY') || 'imperial-internal-2024';
+const REST_COOLDOWN_MS = parseInt(Deno.env.get('REST_COOLDOWN_MS') || '10000'); // 10 seconds per symbol
+const MAX_SYMBOLS_PER_POST = parseInt(Deno.env.get('MAX_SYMBOLS_PER_POST') || '5'); // Symbol cap
+const CIRCUIT_BREAKER_ERRORS = parseInt(Deno.env.get('CIRCUIT_BREAKER_ERRORS') || '3'); // Errors before disable
+const CIRCUIT_BREAKER_WINDOW_MS = parseInt(Deno.env.get('CIRCUIT_BREAKER_WINDOW_MS') || '60000'); // 1 minute window
 
 // Supabase client for JWT verification
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -75,6 +82,21 @@ class TradermadeConnectionManager {
   private idleDisconnectTimeout: number | null = null;
   private lastTickTime = 0;
   private isWarmingUp = false;
+
+  // ===== NEW GUARDRAILS & METRICS =====
+  // Rate limiting: symbol -> timestamp of last REST fetch
+  private lastRestFetchAt: Map<string, number> = new Map();
+
+  // Circuit breaker: track REST errors in time window
+  private restErrorTimestamps: number[] = [];
+  private isRestDisabled = false;
+
+  // Metrics counters (in-memory)
+  private fallbackHttpTotal = 0;
+  private fallbackForceFetchTotal = 0;
+  private wsFirstTickLatenciesMs: number[] = []; // Keep last 100 for percentiles
+  private wsUpdatesTotal = 0;
+  private httpUpdatesTotal = 0;
 
   private constructor() {}
 
@@ -422,6 +444,7 @@ class TradermadeConnectionManager {
     });
 
     if (broadcastCount > 0) {
+      this.wsUpdatesTotal++; // Track WebSocket updates
       this.logEvent('broadcast_summary', {
         symbol: priceUpdate.symbol,
         price: priceUpdate.price,
@@ -758,13 +781,348 @@ class TradermadeConnectionManager {
     });
   }
 
+  // ===== NEW GUARDRAILS METHODS =====
+
+  // Check if symbol is within REST cooldown period
+  private isSymbolInCooldown(symbol: string): number {
+    const lastFetch = this.lastRestFetchAt.get(symbol);
+    if (!lastFetch) return 0;
+    
+    const elapsed = Date.now() - lastFetch;
+    const remaining = REST_COOLDOWN_MS - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // Update circuit breaker state based on REST errors
+  private updateCircuitBreaker(isError: boolean): void {
+    const now = Date.now();
+    
+    if (isError) {
+      this.restErrorTimestamps.push(now);
+    }
+    
+    // Clean old timestamps outside the window
+    this.restErrorTimestamps = this.restErrorTimestamps.filter(
+      timestamp => now - timestamp < CIRCUIT_BREAKER_WINDOW_MS
+    );
+    
+    // Check if we should disable REST
+    const shouldDisable = this.restErrorTimestamps.length >= CIRCUIT_BREAKER_ERRORS;
+    if (shouldDisable && !this.isRestDisabled) {
+      this.isRestDisabled = true;
+      console.warn(`🚨 Circuit breaker activated: ${this.restErrorTimestamps.length} REST errors in ${CIRCUIT_BREAKER_WINDOW_MS/1000}s`);
+    } else if (!shouldDisable && this.isRestDisabled) {
+      this.isRestDisabled = false;
+      console.info('✅ Circuit breaker reset: REST errors below threshold');
+    }
+  }
+
+  // REST fetch helper with all guardrails
+  private async fetchRestPrices(symbols: string[]): Promise<Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }>> {
+    const results: Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> = {};
+    
+    try {
+      // Circuit breaker check
+      if (this.isRestDisabled) {
+        symbols.forEach(symbol => {
+          const cached = this.getCachedPrice(symbol);
+          results[symbol] = { 
+            price: cached, 
+            served_from: 'cache', 
+            stale: cached ? !this.isPriceFresh(cached) : false 
+          };
+        });
+        return results;
+      }
+
+      // Call get-market-data function
+      const response = await supabase.functions.invoke('get-market-data', {
+        body: { symbols }
+      });
+
+      if (response.error) {
+        console.error('❌ REST fetch error:', response.error);
+        this.updateCircuitBreaker(true);
+        this.fallbackHttpTotal++;
+        
+        // Return cached prices
+        symbols.forEach(symbol => {
+          const cached = this.getCachedPrice(symbol);
+          results[symbol] = { 
+            price: cached, 
+            served_from: 'cache', 
+            stale: cached ? !this.isPriceFresh(cached) : false 
+          };
+        });
+        return results;
+      }
+
+      const data = response.data;
+      this.updateCircuitBreaker(false);
+      this.fallbackForceFetchTotal++;
+
+      // Process response and update cache
+      if (data?.prices && Array.isArray(data.prices)) {
+        data.prices.forEach((priceData: any) => {
+          if (priceData?.symbol && priceData?.price) {
+            const normalizedSymbol = this.normalizeClientSymbol(priceData.symbol);
+            if (normalizedSymbol) {
+              const now = Date.now();
+              const cacheData: TradermadePriceData = {
+                symbol: normalizedSymbol,
+                price: priceData.price,
+                bid: priceData.bid || priceData.price,
+                ask: priceData.ask || priceData.price,
+                timestamp: priceData.timestamp || new Date().toISOString(),
+                change: priceData.change || 0,
+                changePercent: priceData.changePercent || 0,
+                cachedAt: now
+              };
+              
+              this.priceCache.set(normalizedSymbol, cacheData);
+              this.lastRestFetchAt.set(normalizedSymbol, now);
+              this.httpUpdatesTotal++;
+              
+              results[normalizedSymbol] = { 
+                price: cacheData, 
+                served_from: 'rest', 
+                stale: false 
+              };
+            }
+          }
+        });
+      }
+
+      // Fill missing symbols with cache
+      symbols.forEach(symbol => {
+        if (!results[symbol]) {
+          const cached = this.getCachedPrice(symbol);
+          results[symbol] = { 
+            price: cached, 
+            served_from: 'cache', 
+            stale: cached ? !this.isPriceFresh(cached) : false 
+          };
+        }
+      });
+
+      return results;
+    } catch (error) {
+      console.error('❌ REST fetch exception:', error);
+      this.updateCircuitBreaker(true);
+      this.fallbackHttpTotal++;
+      
+      // Return cached prices
+      symbols.forEach(symbol => {
+        const cached = this.getCachedPrice(symbol);
+        results[symbol] = { 
+          price: cached, 
+          served_from: 'cache', 
+          stale: cached ? !this.isPriceFresh(cached) : false 
+        };
+      });
+      return results;
+    }
+  }
+
+  // Enhanced POST handler for price fetching with guardrails
+  async handlePostRequest(req: Request): Promise<Response> {
+    try {
+      const body = await req.json();
+      const { symbols: requestedSymbols, forceFetch } = body;
+      
+      // Symbol validation
+      if (!Array.isArray(requestedSymbols)) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'symbols must be an array' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Symbol count cap
+      if (requestedSymbols.length > MAX_SYMBOLS_PER_POST) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Maximum ${MAX_SYMBOLS_PER_POST} symbols allowed per request` 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Normalize and validate symbols
+      const validSymbols: string[] = [];
+      const invalidSymbols: string[] = [];
+      
+      requestedSymbols.forEach((sym: string) => {
+        const normalized = this.normalizeClientSymbol(sym);
+        if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
+          validSymbols.push(normalized);
+        } else {
+          invalidSymbols.push(sym);
+        }
+      });
+
+      if (validSymbols.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'No valid symbols provided',
+          invalid_symbols: invalidSymbols
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Pre-warm connection if cold and no clients
+      const health = this.getHealthStatus();
+      if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
+        this.warmUpConnection();
+      }
+
+      // Handle forceFetch with auth and rate limiting
+      if (forceFetch) {
+        // Auth gate: require internal key or service role
+        const internalKey = req.headers.get('x-internal-key');
+        const authHeader = req.headers.get('authorization');
+        const isServiceRole = authHeader?.includes('service_role');
+        
+        if (!internalKey && !isServiceRole) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'forceFetch requires internal authentication' 
+          }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (internalKey && internalKey !== FORCEFETCH_INTERNAL_KEY) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Invalid internal key' 
+          }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Check rate limiting per symbol
+        const throttledSymbols: Array<{ symbol: string; cooldown_ms_remaining: number }> = [];
+        const fetchableSymbols: string[] = [];
+        
+        validSymbols.forEach(symbol => {
+          const cooldownMs = this.isSymbolInCooldown(symbol);
+          if (cooldownMs > 0) {
+            throttledSymbols.push({ symbol, cooldown_ms_remaining: cooldownMs });
+          } else {
+            fetchableSymbols.push(symbol);
+          }
+        });
+
+        // If all symbols are throttled, return 429
+        if (fetchableSymbols.length === 0) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'All symbols are within REST cooldown period',
+            throttled_symbols: throttledSymbols
+          }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Fetch REST prices for non-throttled symbols
+        const restResults = await this.fetchRestPrices(fetchableSymbols);
+        
+        // Combine with cached prices for throttled symbols
+        const allResults: Record<string, any> = {};
+        
+        // Add REST results
+        Object.entries(restResults).forEach(([symbol, result]) => {
+          allResults[symbol] = {
+            ...result.price,
+            served_from: result.served_from,
+            stale: result.stale
+          };
+        });
+        
+        // Add cached results for throttled symbols
+        throttledSymbols.forEach(({ symbol, cooldown_ms_remaining }) => {
+          const cached = this.getCachedPrice(symbol);
+          allResults[symbol] = {
+            ...cached,
+            served_from: 'cache',
+            stale: cached ? !this.isPriceFresh(cached) : false,
+            cooldown_ms_remaining
+          };
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          prices: allResults,
+          dataSource: 'enhanced_rest',
+          timestamp: new Date().toISOString(),
+          rest_disabled: this.isRestDisabled,
+          throttled_count: throttledSymbols.length
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Standard cache-only request
+      const prices: Record<string, any> = {};
+      
+      validSymbols.forEach(symbol => {
+        const cached = this.getCachedPrice(symbol);
+        prices[symbol] = {
+          ...cached,
+          served_from: 'cache',
+          stale: cached ? !this.isPriceFresh(cached) : false
+        };
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        prices,
+        dataSource: 'singleton_cache',
+        timestamp: new Date().toISOString(),
+        invalid_symbols: invalidSymbols.length > 0 ? invalidSymbols : undefined
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+      
+    } catch (error) {
+      console.error('❌ POST request error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Internal server error'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   // Get health status for diagnostics
   getHealthStatus(): any {
     const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
     const totalSubscriptions = Array.from(this.clients.values())
       .reduce((sum, client) => sum + client.subscriptions.size, 0);
 
+    // Calculate WS vs HTTP ratio
+    const totalUpdates = this.wsUpdatesTotal + this.httpUpdatesTotal;
+    const wsVsHttpRatio = totalUpdates > 0 ? (this.wsUpdatesTotal / totalUpdates) * 100 : 0;
+
+    // Calculate percentiles for WebSocket first tick latencies
+    const sortedLatencies = [...this.wsFirstTickLatenciesMs].sort((a, b) => a - b);
+    const p50 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.5)] : null;
+    const p95 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.95)] : null;
+
     return {
+      // Original health metrics
       tradermadeStatus: this.connectionStatus,
       connectedClients: this.clients.size,
       authenticatedClients: authenticatedClients.length,
@@ -775,6 +1133,29 @@ class TradermadeConnectionManager {
       upstreamConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
       reconnectAttempts: this.reconnectAttempts,
       isWarmingUp: this.isWarmingUp,
+      
+      // New metrics and guardrails
+      metrics: {
+        fallback_http_total: this.fallbackHttpTotal,
+        fallback_force_fetch_total: this.fallbackForceFetchTotal,
+        ws_updates_total: this.wsUpdatesTotal,
+        http_updates_total: this.httpUpdatesTotal,
+        ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
+        ws_first_tick_latency_p50_ms: p50,
+        ws_first_tick_latency_p95_ms: p95,
+        latency_samples: sortedLatencies.length
+      },
+      
+      // Guardrails status
+      guardrails: {
+        rest_disabled: this.isRestDisabled,
+        circuit_breaker_errors: this.restErrorTimestamps.length,
+        circuit_breaker_window_ms: CIRCUIT_BREAKER_WINDOW_MS,
+        rest_cooldown_ms: REST_COOLDOWN_MS,
+        max_symbols_per_post: MAX_SYMBOLS_PER_POST,
+        active_cooldowns: this.lastRestFetchAt.size
+      },
+      
       timestamp: Date.now()
     };
   }
@@ -804,54 +1185,8 @@ serve(async (req) => {
 
   // Handle HTTP POST requests for direct price fetching
   if (req.method === 'POST') {
-    try {
-      const { symbols: requestedSymbols } = await req.json();
-      
-      if (!Array.isArray(requestedSymbols)) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid symbols format' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      const manager = TradermadeConnectionManager.getInstance();
-      const prices: Record<string, TradermadePriceData | null> = {};
-      
-      // Pre-warm connection if cold and no clients
-      const health = manager.getHealthStatus();
-      if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
-        manager['warmUpConnection']();
-      }
-      
-      // Get cached prices with TTL check
-      requestedSymbols.forEach(symbol => {
-        const normalized = manager['normalizeClientSymbol'](symbol);
-        if (normalized) {
-          const cached = manager['getCachedPrice'](normalized);
-          prices[normalized] = cached || null;
-        }
-      });
-
-      return new Response(JSON.stringify({
-        success: true,
-        prices,
-        dataSource: 'singleton_cache',
-        timestamp: new Date().toISOString()
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Internal server error'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const manager = TradermadeConnectionManager.getInstance();
+    return await manager.handlePostRequest(req);
   }
 
   // Handle WebSocket connections

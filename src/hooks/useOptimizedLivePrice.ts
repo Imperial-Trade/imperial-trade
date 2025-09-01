@@ -100,27 +100,52 @@ export function useOptimizedLivePrice(
     }
   }, []);
 
-  // HTTP fallback for reliable price fetching - prioritize get-market-data
+  // HTTP fallback for reliable price fetching - prioritize tradermade-streaming with forceFetch
   const fetchLastPriceHTTP = useCallback(async (sym: string): Promise<{ price: number; timestamp: Date } | null> => {
     try {
-      console.log(`🔄 [${sym}] HTTP fallback - fetching last price via get-market-data...`);
+      console.log(`🔄 [${sym}] HTTP fallback - trying tradermade-streaming with forceFetch...`);
       
-      // First try get-market-data (anon, faster)
+      // First try: tradermade-streaming with forceFetch for fresh data
+      const tmResponse = await supabase.functions.invoke('tradermade-streaming', {
+        body: { 
+          symbols: [sym],
+          forceFetch: true 
+        },
+        headers: {
+          'x-internal-key': 'imperial-internal-2024' // Use internal key for forceFetch
+        }
+      });
+
+      if (tmResponse.data?.success && tmResponse.data?.prices?.[sym]) {
+        const price = tmResponse.data.prices[sym];
+        if (price && price.price && !isNaN(price.price) && price.price > 0) {
+          console.log(`⚡ [${sym}] tradermade-streaming forceFetch success:`, price.price, `(served_from: ${price.served_from})`);
+          setLocalPriceSource('http');
+          return {
+            price: price.price,
+            timestamp: new Date(price.timestamp || Date.now())
+          };
+        }
+      }
+
+      // Fallback: get-market-data if tradermade-streaming fails
+      console.log(`🔄 [${sym}] tradermade-streaming failed, trying get-market-data...`);
       const { data, error } = await supabase.functions.invoke('get-market-data', {
         body: { symbols: [sym] }
       });
       
-      if (!error && data?.prices?.[sym]?.price > 0) {
-        console.log(`✅ [${sym}] get-market-data success:`, data.prices[sym].price);
+      if (!error && data?.prices?.[0]?.price > 0) {
+        const priceData = data.prices[0];
+        console.log(`📡 [${sym}] get-market-data fallback success:`, priceData.price);
         setLocalPriceSource('http');
         return {
-          price: data.prices[sym].price,
-          timestamp: new Date(data.prices[sym].timestamp || Date.now())
+          price: priceData.price,
+          timestamp: new Date(priceData.timestamp || Date.now())
         };
       }
       
-      // Fallback to tradermade-streaming if get-market-data fails
-      console.log(`🔄 [${sym}] get-market-data failed, trying tradermade-streaming...`);
+      // Last resort: tradermade-streaming without forceFetch (cache only)
+      console.log(`🔄 [${sym}] get-market-data failed, trying tradermade-streaming cache...`);
       const fallbackResponse = await supabase.functions.invoke('tradermade-streaming', {
         body: { symbols: [sym] }
       });
@@ -128,7 +153,7 @@ export function useOptimizedLivePrice(
       if (!fallbackResponse.error) {
         const priceData = fallbackResponse.data?.prices?.[sym] || fallbackResponse.data?.prices?.[sym.toUpperCase()];
         if (priceData && priceData.price > 0) {
-          console.log(`✅ [${sym}] tradermade-streaming fallback success:`, priceData.price);
+          console.log(`💾 [${sym}] tradermade-streaming cache success:`, priceData.price);
           setLocalPriceSource('http');
           return {
             price: priceData.price,
@@ -167,7 +192,7 @@ export function useOptimizedLivePrice(
     // Check if user has session for fallback timing
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const fallbackDelay = session ? 700 : 0; // 0ms if no session, 700ms if authenticated
+      const fallbackDelay = session ? 2000 : 0; // 0ms if no session, 2000ms if authenticated
       
       httpFallbackTimeoutRef.current = setTimeout(async () => {
         if (lastProcessedPriceRef.current === 0) {

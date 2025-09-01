@@ -11,6 +11,8 @@ const corsHeaders = {
 // Configuration constants
 const WS_AUTH_TIMEOUT_MS = parseInt(Deno.env.get('WS_AUTH_TIMEOUT_MS') || '30000'); // 30 seconds
 const MAX_WS_SUBS_PER_CLIENT = parseInt(Deno.env.get('MAX_WS_SUBS_PER_CLIENT') || '20'); // Max subscriptions per client
+const IDLE_DISCONNECT_DELAY_MS = parseInt(Deno.env.get('IDLE_DISCONNECT_DELAY_MS') || '120000'); // 2 minutes
+const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '300000'); // 5 minutes
 
 // Supabase client for JWT verification
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -45,6 +47,7 @@ interface TradermadePriceData {
   timestamp: string;
   change: number;
   changePercent: number;
+  cachedAt?: number; // Unix timestamp for TTL tracking
 }
 
 interface ClientConnection {
@@ -69,6 +72,9 @@ class TradermadeConnectionManager {
   private maxReconnectAttempts = 10;
   private heartbeatInterval: number | null = null;
   private lastPingTime = 0;
+  private idleDisconnectTimeout: number | null = null;
+  private lastTickTime = 0;
+  private isWarmingUp = false;
 
   private constructor() {}
 
@@ -131,15 +137,15 @@ class TradermadeConnectionManager {
         remaining_clients: this.clients.size
       });
 
-      // If no clients remain, close TraderMade connection after delay
+      // If no clients remain, close TraderMade connection after extended delay
       if (this.clients.size === 0) {
-        console.log('⏱️ No clients remaining, scheduling TraderMade disconnect in 30s...');
-        setTimeout(() => {
+        console.info(`⏱️ No clients remaining, scheduling TraderMade disconnect in ${IDLE_DISCONNECT_DELAY_MS/1000}s...`);
+        this.idleDisconnectTimeout = setTimeout(() => {
           if (this.clients.size === 0) {
-            console.log('🔌 Disconnecting TraderMade connection (no clients)');
+            console.info('🔌 Disconnecting TraderMade connection (no clients)');
             this.disconnectTradermade();
           }
-        }, 30000); // 30 second grace period
+        }, IDLE_DISCONNECT_DELAY_MS);
       }
     }
   }
@@ -190,8 +196,8 @@ class TradermadeConnectionManager {
       if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
         client.subscriptions.add(normalized);
         
-        // Send cached price if available
-        const cached = this.priceCache.get(normalized);
+        // Send cached price if available and not expired
+        const cached = this.getCachedPrice(normalized);
         if (cached) {
           this.sendToClient(clientId, {
             type: 'price_update',
@@ -293,14 +299,18 @@ class TradermadeConnectionManager {
       };
 
       this.tradermadeSocket.onclose = (event) => {
-        console.warn(`🔌❌ TraderMade connection closed: ${event.code} - ${event.reason}`);
+        const logLevel = event.code === 1000 || event.code === 1005 ? 'info' : 'warn';
+        const closeReason = event.reason || 'No reason provided';
+        console[logLevel](`🔌❌ TraderMade connection closed: ${event.code} - ${closeReason}`);
         this.connectionStatus = 'disconnected';
         this.stopHeartbeat();
         
         this.broadcastToAllClients({
           type: 'connection_status',
           status: 'disconnected',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          closeCode: event.code,
+          closeReason
         });
 
         // Attempt reconnection if we have clients
@@ -371,6 +381,7 @@ class TradermadeConnectionManager {
       if (clientSymbol === 'USA30USD' && (price < 10000 || price > 100000)) return;
       if (clientSymbol === 'NAS100USD' && (price < 5000 || price > 50000)) return;
 
+      const now = Date.now();
       const priceUpdate: TradermadePriceData = {
         symbol: clientSymbol,
         price,
@@ -378,11 +389,13 @@ class TradermadeConnectionManager {
         ask: parsed.ask ? parseFloat(parsed.ask) : price,
         timestamp: new Date().toISOString(),
         change: 0,
-        changePercent: 0
+        changePercent: 0,
+        cachedAt: now
       };
 
-      // Cache the price
+      // Cache the price with TTL
       this.priceCache.set(clientSymbol, priceUpdate);
+      this.lastTickTime = now;
 
       // Broadcast to subscribed clients
       this.broadcastPriceUpdate(priceUpdate);
@@ -445,7 +458,10 @@ class TradermadeConnectionManager {
 
     const cachedPrices: TradermadePriceData[] = [];
     this.priceCache.forEach((priceData) => {
-      cachedPrices.push(priceData);
+      // Only send non-expired prices
+      if (this.isPriceFresh(priceData)) {
+        cachedPrices.push(priceData);
+      }
     });
 
     if (cachedPrices.length > 0) {
@@ -510,6 +526,11 @@ class TradermadeConnectionManager {
       this.reconnectTimeout = null;
     }
     
+    if (this.idleDisconnectTimeout) {
+      clearTimeout(this.idleDisconnectTimeout);
+      this.idleDisconnectTimeout = null;
+    }
+    
     this.stopHeartbeat();
     
     if (this.tradermadeSocket) {
@@ -518,7 +539,7 @@ class TradermadeConnectionManager {
     }
     
     this.connectionStatus = 'disconnected';
-    console.log('🔌❌ TraderMade connection closed');
+    console.info('🔌❌ TraderMade connection closed');
   }
 
   // Utility methods
@@ -601,6 +622,12 @@ class TradermadeConnectionManager {
         type: 'auth_success',
         message: 'Authentication successful'
       });
+
+      // Cancel any pending idle disconnect
+      if (this.idleDisconnectTimeout) {
+        clearTimeout(this.idleDisconnectTimeout);
+        this.idleDisconnectTimeout = null;
+      }
 
       // Now start TraderMade connection if this is the first authenticated client
       const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
@@ -697,6 +724,60 @@ class TradermadeConnectionManager {
     
     console.log(`📊 ${event}:`, JSON.stringify(sanitizedData));
   }
+
+  // Get cached price with TTL check
+  private getCachedPrice(symbol: string): TradermadePriceData | null {
+    const cached = this.priceCache.get(symbol);
+    if (!cached) return null;
+    
+    if (this.isPriceFresh(cached)) {
+      return cached;
+    } else {
+      // Remove expired price
+      this.priceCache.delete(symbol);
+      return null;
+    }
+  }
+
+  // Check if cached price is still fresh
+  private isPriceFresh(priceData: TradermadePriceData): boolean {
+    if (!priceData.cachedAt) return true; // Legacy prices without TTL
+    return (Date.now() - priceData.cachedAt) < PRICE_CACHE_TTL_MS;
+  }
+
+  // Non-blocking warm-up of TraderMade connection
+  private warmUpConnection(): void {
+    if (this.isWarmingUp || this.connectionStatus !== 'disconnected') return;
+    
+    this.isWarmingUp = true;
+    console.log('🔥 Pre-warming TraderMade connection...');
+    
+    // Don't await - non-blocking
+    this.connectToTradermade().finally(() => {
+      this.isWarmingUp = false;
+    });
+  }
+
+  // Get health status for diagnostics
+  getHealthStatus(): any {
+    const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+    const totalSubscriptions = Array.from(this.clients.values())
+      .reduce((sum, client) => sum + client.subscriptions.size, 0);
+
+    return {
+      tradermadeStatus: this.connectionStatus,
+      connectedClients: this.clients.size,
+      authenticatedClients: authenticatedClients.length,
+      totalSubscriptions,
+      cachedPrices: this.priceCache.size,
+      lastTickTime: this.lastTickTime,
+      timeSinceLastTick: this.lastTickTime ? Date.now() - this.lastTickTime : null,
+      upstreamConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
+      reconnectAttempts: this.reconnectAttempts,
+      isWarmingUp: this.isWarmingUp,
+      timestamp: Date.now()
+    };
+  }
 }
 
 // ========== EDGE FUNCTION HANDLER ==========
@@ -704,6 +785,21 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Handle GET requests for health status
+  if (req.method === 'GET') {
+    const manager = TradermadeConnectionManager.getInstance();
+    const health = manager.getHealthStatus();
+    
+    return new Response(JSON.stringify({
+      success: true,
+      health,
+      service: 'tradermade-streaming',
+      version: '2.0.0'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   // Handle HTTP POST requests for direct price fetching
@@ -724,11 +820,17 @@ serve(async (req) => {
       const manager = TradermadeConnectionManager.getInstance();
       const prices: Record<string, TradermadePriceData | null> = {};
       
-      // Get cached prices
+      // Pre-warm connection if cold and no clients
+      const health = manager.getHealthStatus();
+      if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
+        manager['warmUpConnection']();
+      }
+      
+      // Get cached prices with TTL check
       requestedSymbols.forEach(symbol => {
         const normalized = manager['normalizeClientSymbol'](symbol);
         if (normalized) {
-          const cached = manager['priceCache'].get(normalized);
+          const cached = manager['getCachedPrice'](normalized);
           prices[normalized] = cached || null;
         }
       });

@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { marketDataService, MarketDataPoint, MarketDataRequest } from '@/services/MarketDataService';
+import { supabase } from '@/integrations/supabase/client';
+import { MarketDataPoint, MarketDataRequest } from '@/types/marketData';
 
 interface UseMarketDataReturn {
   data: MarketDataPoint[];
@@ -23,21 +23,41 @@ export const useMarketData = (symbols: string[], enabled: boolean = true): UseMa
     setError(null);
 
     try {
-      const request: MarketDataRequest = {
-        symbols,
-        includeVolume: true
-      };
+      // Use tradermade-streaming for market data
+      const { data, error } = await supabase.functions.invoke('tradermade-streaming', {
+        body: { symbols }
+      });
 
-      const result = await marketDataService.getMarketData(request);
-      setData(result);
+      if (error) throw error;
+
+      // Convert tradermade response to MarketDataPoint format
+      const marketData: MarketDataPoint[] = [];
+      if (data?.success && data?.prices) {
+        Object.entries(data.prices).forEach(([symbol, priceData]: [string, any]) => {
+          if (priceData && priceData.price) {
+            marketData.push({
+              symbol,
+              price: priceData.price,
+              change: priceData.change || 0,
+              changePercent: priceData.changePercent || 0,
+              timestamp: priceData.timestamp || new Date().toISOString(),
+              dataSource: 'tradermade',
+              dataQuality: priceData.stale ? 'delayed' : 'real_time'
+            });
+          }
+        });
+      }
+
+      setData(marketData);
       setLastUpdated(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch market data');
-      console.error('useMarketData error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch market data';
+      setError(errorMessage);
+      console.error('Market data fetch error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [symbols, enabled]);
+  }, [enabled, symbols]);
 
   useEffect(() => {
     fetchData();

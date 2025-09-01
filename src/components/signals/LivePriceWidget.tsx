@@ -408,10 +408,11 @@ const LivePriceWidgetComponent = ({
     if (connectionStatus === 'connected') {
       switch (priceUpdateSource) {
         case 'websocket':
+        case 'websocket_institutional':
           return { 
             color: 'text-green-400', 
             icon: Wifi, 
-            text: '⚡ Real-time',
+            text: dataFreshness < 30 ? 'WS Live' : `WS ${dataAge}`,
             description: 'Live WebSocket updates active',
             animate: false
           };
@@ -419,7 +420,7 @@ const LivePriceWidgetComponent = ({
           return { 
             color: 'text-blue-400', 
             icon: RefreshCw, 
-            text: '🔄 HTTP Fallback',
+            text: dataFreshness < 30 ? 'HTTP Fallback' : `HTTP ${dataAge}`,
             description: 'Using HTTP API fallback mode',
             animate: false
           };
@@ -430,6 +431,14 @@ const LivePriceWidgetComponent = ({
               icon: Wifi, 
               text: 'Live',
               description: 'Real-time price updates active',
+              animate: false
+            };
+          } else if (dataFreshness < 120) {
+            return { 
+              color: 'text-yellow-400', 
+              icon: Clock, 
+              text: 'Stale',
+              description: 'Price data may be outdated',
               animate: false
             };
           }

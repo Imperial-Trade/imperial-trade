@@ -31,8 +31,21 @@ export function useOptimizedLivePrice(
     debounceMs = 100 // Business Plan: Ultra-fast 100ms debouncing for real-time performance
   } = options;
 
-  // Normalize symbol to ensure consistency
-  const normalizedSymbol = getStandardSymbol(symbol) || symbol.toUpperCase();
+  // Enhanced symbol normalization for BTC/XAU mapping consistency
+  const normalizedSymbol = (() => {
+    const standardSymbol = getStandardSymbol(symbol) || symbol.toUpperCase();
+    // Ensure BTC and XAU map properly to tradermade symbols
+    switch (standardSymbol) {
+      case 'BTC':
+      case 'BITCOIN':
+        return 'BTCUSD';
+      case 'XAU':
+      case 'GOLD':
+        return 'XAUUSD';
+      default:
+        return standardSymbol;
+    }
+  })();
 
   const {
     prices,
@@ -100,12 +113,12 @@ export function useOptimizedLivePrice(
     }
   }, []);
 
-  // HTTP fallback for reliable price fetching - prioritize tradermade-streaming then get-market-data
+  // HTTP fallback using only tradermade-streaming (no more mock data)
   const fetchLastPriceHTTP = useCallback(async (sym: string): Promise<{ price: number; timestamp: Date; served_from?: string; stale?: boolean } | null> => {
     try {
-      console.log(`🔄 [${sym}] HTTP fallback - trying tradermade-streaming...`);
+      console.log(`🔄 [${sym}] HTTP fallback - using tradermade-streaming only...`);
       
-      // First try: tradermade-streaming (cache only for unauthenticated requests)
+      // Use tradermade-streaming for HTTP fallback (cache-only for unauthenticated requests)
       const tmResponse = await supabase.functions.invoke('tradermade-streaming', {
         body: { symbols: [sym] }
       });
@@ -114,51 +127,27 @@ export function useOptimizedLivePrice(
         const price = tmResponse.data.prices[sym];
         if (price && price.price && !isNaN(price.price) && price.price > 0) {
           const isStale = price.stale === true;
-          console.log(`⚡ [${sym}] tradermade-streaming success:`, price.price, `(served_from: ${price.served_from}, stale: ${isStale})`);
+          const servedFrom = price.served_from || 'cache';
           
-          // Only use non-stale data or if we have no other option
-          if (!isStale || !price.served_from || price.served_from === 'cache') {
+          console.log(`⚡ [${sym}] tradermade-streaming response:`, price.price, `(served_from: ${servedFrom}, stale: ${isStale})`);
+          
+          // Strictly honor served_from/stale metadata contract
+          // Only accept fresh data, or stale as absolute last resort if no price exists
+          if (!isStale || lastProcessedPriceRef.current === 0) {
             setLocalPriceSource('http');
             return {
               price: price.price,
               timestamp: new Date(price.timestamp || Date.now()),
-              served_from: price.served_from,
+              served_from: servedFrom,
               stale: isStale
             };
+          } else {
+            console.log(`🚫 [${sym}] Rejecting stale data from tradermade-streaming`);
           }
         }
       }
 
-      // Fallback: get-market-data if tradermade-streaming fails or returns stale data
-      console.log(`🔄 [${sym}] tradermade-streaming failed/stale, trying get-market-data...`);
-      const { data, error } = await supabase.functions.invoke('get-market-data', {
-        body: { symbols: [sym] }
-      });
-      
-      if (!error && data?.prices?.[0]?.price > 0) {
-        const priceData = data.prices[0];
-        console.log(`📡 [${sym}] get-market-data fallback success:`, priceData.price);
-        setLocalPriceSource('http');
-        return {
-          price: priceData.price,
-          timestamp: new Date(priceData.timestamp || Date.now()),
-          served_from: 'get-market-data',
-          stale: false
-        };
-      }
-      
-      // Last resort: Accept stale tradermade-streaming data if available
-      if (tmResponse.data?.success && tmResponse.data?.prices?.[sym]?.price > 0) {
-        const price = tmResponse.data.prices[sym];
-        console.log(`💾 [${sym}] Using stale tradermade-streaming data as last resort:`, price.price);
-        setLocalPriceSource('http');
-        return {
-          price: price.price,
-          timestamp: new Date(price.timestamp || Date.now()),
-          served_from: price.served_from || 'cache',
-          stale: true
-        };
-      }
+      console.log(`❌ [${sym}] tradermade-streaming HTTP fallback unavailable`);
     } catch (error) {
       console.error(`❌ [${sym}] HTTP fallback failed:`, error);
     }

@@ -29,21 +29,37 @@ const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
-// Mapping between client-standard symbols and TraderMade upstream symbols
+// Enhanced client-to-server symbol mapping for BTC/XAU consistency
 const CLIENT_TO_UPSTREAM: Record<string, string> = {
+  // Core mappings
   XAUUSD: 'XAUUSD',
   BTCUSD: 'BTCUSD',
   EURUSD: 'EURUSD',
   USA30USD: 'US30',
   NAS100USD: 'NAS100',
+  
+  // Enhanced BTC/XAU normalization
+  BTC: 'BTCUSD',
+  'BTC/USD': 'BTCUSD',
+  BITCOIN: 'BTCUSD',
+  XAU: 'XAUUSD',
+  'XAU/USD': 'XAUUSD',
+  GOLD: 'XAUUSD',
+  
+  // Additional common variants
+  GBPUSD: 'GBPUSD',
+  USDJPY: 'USDJPY',
 };
 
+// Server-to-client symbol mapping for response normalization
 const UPSTREAM_TO_CLIENT: Record<string, string> = {
   XAUUSD: 'XAUUSD',
-  BTCUSD: 'BTCUSD',
+  BTCUSD: 'BTCUSD', 
   EURUSD: 'EURUSD',
   US30: 'USA30USD',
   NAS100: 'NAS100USD',
+  GBPUSD: 'GBPUSD',
+  USDJPY: 'USDJPY',
 };
 
 interface TradermadePriceData {

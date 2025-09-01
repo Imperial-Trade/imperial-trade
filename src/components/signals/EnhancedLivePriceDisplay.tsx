@@ -1,9 +1,21 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff, Timer } from 'lucide-react';
-import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
+import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  RefreshCw, 
+  TrendingUp, 
+  TrendingDown, 
+  Wifi, 
+  WifiOff, 
+  Clock,
+  AlertTriangle,
+  Zap,
+  Timer
+} from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
 import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
 
@@ -33,22 +45,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     error,
     lastUpdated,
     connectionStatus,
-    dataSource,
     priceUpdateSource,
     refreshPrice
-  } = useOptimizedLivePrice(apiSymbol, {
-    enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 100, // Business Plan: Ultra-fast 100ms for signal creation
-    pauseOnInput: false
+  } = useOptimizedLivePrice(symbol, {
+    debounceMs: 50, // Critical: Faster response for trading decisions
+    enableSmartPausing: false
   });
+
+  // Critical: Monitor price staleness for trading safety
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 15); // 15-second staleness threshold
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataAge, setDataAge] = useState<string>('');
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
-
-  // Performance monitoring in development
-  usePerformanceMonitor(`EnhancedLivePriceDisplay-${assetName}`, process.env.NODE_ENV === 'development');
 
   // Update data age every second
   useEffect(() => {
@@ -272,7 +282,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             </div>
             {priceUpdateSource === 'websocket_institutional' && (
               <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
-                ⚡ 250ms
+                ⚡ Ultra-Fast
               </div>
             )}
           </div>
@@ -379,7 +389,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       ))}
 
-      {/* Price Display - Always show last known price */}
+      {/* Main Price Display */}
       {(price > 0 || !isLoading) && (
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -398,7 +408,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             )}
           </div>
           
-          {!error && price > 0 && (
+          {!error && price > 0 && change !== undefined && changePercent !== undefined && (
             <div className={`flex items-center gap-1 ${priceChangeColor}`}>
               {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
               <div className="text-right">
@@ -414,7 +424,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Footer */}
+      {/* Enhanced Footer with Trading Safety */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -423,23 +433,42 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
           </div>
-          <ConnectionHealthBadge className="ml-2" />
+          {/* Critical: Price timestamp for trading safety */}
+          {stalenessStatus.ageInSeconds !== null && (
+            <Badge variant={stalenessStatus.ageInSeconds <= 5 ? "default" : stalenessStatus.ageInSeconds <= 15 ? "secondary" : "destructive"} className="text-xs px-1 py-0">
+              {stalenessStatus.ageInSeconds}s
+            </Badge>
+          )}
         </div>
         
-        {onUseCurrentPrice && (
+        <div className="flex items-center gap-1">
+          {/* Critical: Manual refresh button for trading decisions */}
           <Button
-            type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={() => onUseCurrentPrice(price)}
-            className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-            disabled={isRefreshing || !!error || price <= 0}
-            aria-disabled={isRefreshing || !!error || price <= 0}
-            title={price > 0 ? 'Use current price' : 'Price not available yet'}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-6 px-2 text-xs"
+            title="Refresh price data"
           >
-            Use Current Price
+            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''} mr-1`} />
+            Refresh
           </Button>
-        )}
+          {onUseCurrentPrice && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onUseCurrentPrice(price)}
+              className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
+              disabled={stalenessStatus.isStale || isRefreshing || !!error || price <= 0} // Disable if price is stale
+              aria-disabled={stalenessStatus.isStale || isRefreshing || !!error || price <= 0}
+              title={stalenessStatus.isStale ? "Price is stale - refresh first" : price > 0 ? 'Use current price' : 'Price not available yet'}
+            >
+              Use Price
+            </Button>
+          )}
+        </div>
       </div>
 
     </div>

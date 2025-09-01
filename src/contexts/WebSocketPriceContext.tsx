@@ -36,6 +36,10 @@ interface WebSocketContextType {
   // Enhanced price consistency methods
   subscribeToPriceUpdates: (callback: (symbol: string, priceData: PriceData) => void) => () => void;
   validatePriceConsistency: (symbol: string, reportedPrice: number) => { isConsistent: boolean; deviation?: number };
+  // Trading safety methods
+  getPriceAge: (symbol: string) => number | null; // Age in milliseconds
+  isPriceStale: (symbol: string, maxAgeSeconds?: number) => boolean;
+  getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null; stalePrices: string[] };
 }
 
 const WebSocketPriceContext = createContext<WebSocketContextType | null>(null);
@@ -109,7 +113,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, []);
 
-  // Enhanced HTTP polling with price consistency
+  // Enhanced HTTP polling with price validation and staleness detection
   const pollPricesHTTP = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
 
@@ -124,10 +128,21 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         const newPrices: Record<string, PriceData> = {};
         const updateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'> = {};
         
-        // Process each price update with consistency checking
+        // Process each price update with validation and staleness checks
         Object.entries(response.data.prices).forEach(([symbol, priceInfo]: [string, any]) => {
           if (priceInfo && priceInfo.price && !isNaN(priceInfo.price) && priceInfo.price > 0) {
             const normalizedSymbol = normalizeSymbol(symbol);
+            
+            // Critical: Validate price freshness (reject stale prices)
+            const priceTimestamp = new Date(priceInfo.timestamp || new Date()).getTime();
+            const currentTime = Date.now();
+            const priceAge = currentTime - priceTimestamp;
+            
+            if (priceAge > 10000) { // Reject prices older than 10 seconds
+              console.warn(`⚠️ Rejecting stale price for ${normalizedSymbol}: ${priceAge}ms old`);
+              setErrors(prev => ({ ...prev, [normalizedSymbol]: `Price data is ${Math.floor(priceAge/1000)}s old` }));
+              return;
+            }
             
             // Calculate change if we have previous data
             const prevPrice = masterPricesRef.current[normalizedSymbol]?.price || priceInfo.price;
@@ -142,10 +157,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               timestamp: priceInfo.timestamp || new Date().toISOString(),
               bid: priceInfo.bid || priceInfo.price,
               ask: priceInfo.ask || priceInfo.price,
-              tick_timestamp: Date.now(),
+              tick_timestamp: currentTime,
               is_institutional_tick: false,
-              is_ultra_fast_tick: false,
-              update_frequency: '5s'
+              is_ultra_fast_tick: true, // Mark as ultra-fast for 1-second polling
+              update_frequency: '1s'
             };
             
             // Price consistency check - only update if price actually changed
@@ -214,13 +229,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     // Initial poll
     pollPricesHTTP(symbols);
     
-    // Set up regular polling (5 second intervals for consistency)
+    // Set up regular polling (1 second intervals for critical trading)
     httpPollingIntervalRef.current = setInterval(() => {
       const currentSymbols = Array.from(subscribedSymbolsRef.current);
       if (currentSymbols.length > 0) {
         pollPricesHTTP(currentSymbols);
       }
-    }, 5000);
+    }, 1000); // Critical: 1-second polling for active signals
   }, [pollPricesHTTP]);
 
   const stopHttpPolling = useCallback(() => {
@@ -364,6 +379,41 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return { isConsistent, deviation: isConsistent ? undefined : deviation };
   }, [normalizeSymbol, prices]);
 
+  // Trading safety methods
+  const getPriceAge = useCallback((symbol: string): number | null => {
+    const normalized = normalizeSymbol(symbol);
+    const priceData = masterPricesRef.current[normalized] || prices[normalized];
+    if (!priceData || !priceData.tick_timestamp) return null;
+    
+    return Date.now() - priceData.tick_timestamp;
+  }, [normalizeSymbol, prices]);
+
+  const isPriceStale = useCallback((symbol: string, maxAgeSeconds: number = 30): boolean => {
+    const age = getPriceAge(symbol);
+    return age === null || age > (maxAgeSeconds * 1000);
+  }, [getPriceAge]);
+
+  const getConnectionHealth = useCallback(() => {
+    const stalePrices: string[] = [];
+    const currentTime = Date.now();
+    
+    // Check all subscribed symbols for staleness
+    Array.from(subscribedSymbolsRef.current).forEach(symbol => {
+      const priceData = masterPricesRef.current[symbol] || prices[symbol];
+      if (!priceData || !priceData.tick_timestamp || (currentTime - priceData.tick_timestamp) > 30000) {
+        stalePrices.push(symbol);
+      }
+    });
+    
+    const isHealthy = connectionStatus === 'connected' && stalePrices.length === 0 && lastUpdated && (currentTime - lastUpdated.getTime()) < 10000;
+    
+    return {
+      isHealthy,
+      lastUpdate: lastUpdated,
+      stalePrices
+    };
+  }, [connectionStatus, lastUpdated, prices]);
+
   // Initialize connection on mount
   useEffect(() => {
     connect();
@@ -393,6 +443,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     refreshPrice,
     subscribeToPriceUpdates,
     validatePriceConsistency,
+    getPriceAge,
+    isPriceStale,
+    getConnectionHealth,
   };
 
   return (

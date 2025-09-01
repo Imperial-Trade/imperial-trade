@@ -17,8 +17,8 @@ const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000
 // Redis pub/sub constants
 const REDIS_PRICE_CHANNEL = 'tradermade:price_updates';
 const LEADER_LOCK_KEY = 'tradermade:leader:lock';
-const LEADER_LOCK_TTL = 30; // 30 seconds
-const LEADER_HEARTBEAT_INTERVAL = 15000; // 15 seconds
+const LEADER_LOCK_TTL = 15; // 15 seconds (reduced for faster failover)
+const LEADER_HEARTBEAT_INTERVAL = 5000; // 5 seconds (critical: faster heartbeat)
 
 // New guardrail constants
 const FORCEFETCH_INTERNAL_KEY = Deno.env.get('FORCEFETCH_INTERNAL_KEY') || 'imperial-internal-2024';

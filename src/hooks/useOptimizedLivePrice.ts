@@ -172,80 +172,80 @@ export function useOptimizedLivePrice(
     }
   }, [normalizedSymbol, getStoredPrice]);
 
-  // Subscribe to symbol and price updates for enhanced consistency
-  useEffect(() => {
-    if (!normalizedSymbol) return;
+    // Critical: Faster HTTP fallback for active trading (reduced to 3 seconds)
+    useEffect(() => {
+      if (!normalizedSymbol) return;
 
-    subscribe([normalizedSymbol]);
+      subscribe([normalizedSymbol]);
 
-    // Subscribe to centralized price updates for consistency
-    const unsubscribeFromPriceUpdates = subscribeToPriceUpdates((symbol, priceData) => {
-      if (symbol === normalizedSymbol) {
-        console.log(`📡 [${normalizedSymbol}] Received centralized price update:`, priceData.price);
-        
-        // Validate price consistency
-        if (lastProcessedPriceRef.current > 0) {
-          const validation = validatePriceConsistency(symbol, priceData.price);
-          if (!validation.isConsistent) {
-            console.warn(`🚨 [${normalizedSymbol}] Price consistency warning: ${validation.deviation?.toFixed(3)}% deviation`);
+      // Subscribe to centralized price updates for consistency
+      const unsubscribeFromPriceUpdates = subscribeToPriceUpdates((symbol, priceData) => {
+        if (symbol === normalizedSymbol) {
+          console.log(`📡 [${normalizedSymbol}] Received centralized price update:`, priceData.price);
+          
+          // Validate price consistency
+          if (lastProcessedPriceRef.current > 0) {
+            const validation = validatePriceConsistency(symbol, priceData.price);
+            if (!validation.isConsistent) {
+              console.warn(`🚨 [${normalizedSymbol}] Price consistency warning: ${validation.deviation?.toFixed(3)}% deviation`);
+            }
+          }
+          
+          // Update immediately with centralized data to ensure consistency
+          setDebouncedPrice({
+            price: priceData.price,
+            change: priceData.change,
+            changePercent: priceData.changePercent
+          });
+          setLastUpdated(new Date(priceData.timestamp));
+          setLastNonZeroPrice(priceData.price);
+          lastProcessedPriceRef.current = priceData.price;
+          storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
+          
+          // Reset fallback trigger on fresh centralized data
+          fallbackTriggeredRef.current = null;
+        }
+      });
+
+      // Critical: Reduced fallback delay for active trading (3 seconds for ultra-fast response)
+      const fallbackDelay = 3000; // Critical: Reduced to 3s for active trading
+      
+      httpFallbackTimeoutRef.current = setTimeout(async () => {
+        if (lastProcessedPriceRef.current === 0) {
+          console.log(`⚡ [${normalizedSymbol}] Critical HTTP fallback triggered after ${fallbackDelay}ms...`);
+          const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+          if (fallbackPrice && lastProcessedPriceRef.current === 0) {
+            if (!fallbackPrice.stale || lastProcessedPriceRef.current === 0) {
+              setDebouncedPrice({
+                price: fallbackPrice.price,
+                change: 0,
+                changePercent: 0
+              });
+              setLastUpdated(fallbackPrice.timestamp);
+              setLastNonZeroPrice(fallbackPrice.price);
+              lastProcessedPriceRef.current = fallbackPrice.price;
+              storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+            }
           }
         }
-        
-        // Update immediately with centralized data to ensure consistency
-        setDebouncedPrice({
-          price: priceData.price,
-          change: priceData.change,
-          changePercent: priceData.changePercent
-        });
-        setLastUpdated(new Date(priceData.timestamp));
-        setLastNonZeroPrice(priceData.price);
-        lastProcessedPriceRef.current = priceData.price;
-        storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
-        
-        // Reset fallback trigger on fresh centralized data
-        fallbackTriggeredRef.current = null;
-      }
-    });
+      }, fallbackDelay);
 
-    // Minimal fallback delay for consistency
-    const fallbackDelay = 2000; // Fixed 2s delay for all users for consistency
-    
-    httpFallbackTimeoutRef.current = setTimeout(async () => {
-      if (lastProcessedPriceRef.current === 0) {
-        console.log(`⏱️ [${normalizedSymbol}] No centralized price after ${fallbackDelay}ms, trying HTTP fallback...`);
-        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-        if (fallbackPrice && lastProcessedPriceRef.current === 0) {
-          if (!fallbackPrice.stale || lastProcessedPriceRef.current === 0) {
-            setDebouncedPrice({
-              price: fallbackPrice.price,
-              change: 0,
-              changePercent: 0
-            });
-            setLastUpdated(fallbackPrice.timestamp);
-            setLastNonZeroPrice(fallbackPrice.price);
-            lastProcessedPriceRef.current = fallbackPrice.price;
-            storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
-          }
+      return () => {
+        unsubscribe([normalizedSymbol]);
+        unsubscribeFromPriceUpdates();
+        if (httpFallbackTimeoutRef.current) {
+          clearTimeout(httpFallbackTimeoutRef.current);
         }
-      }
-    }, fallbackDelay);
+        if (staleGuardTimeoutRef.current) {
+          clearTimeout(staleGuardTimeoutRef.current);
+        }
+      };
+    }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, validatePriceConsistency, fetchLastPriceHTTP, storePrice]);
 
-    return () => {
-      unsubscribe([normalizedSymbol]);
-      unsubscribeFromPriceUpdates();
-      if (httpFallbackTimeoutRef.current) {
-        clearTimeout(httpFallbackTimeoutRef.current);
-      }
-      if (staleGuardTimeoutRef.current) {
-        clearTimeout(staleGuardTimeoutRef.current);
-      }
-    };
-  }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, validatePriceConsistency, fetchLastPriceHTTP, storePrice]);
-
-  // One-shot HTTP fallback trigger with state-based suppression
+  // One-shot HTTP fallback trigger with enhanced staleness detection
   useEffect(() => {
     const dataAge = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
-    const isStale = dataAge > 15;
+    const isStale = dataAge > 10; // Critical: Reduced to 10 seconds for active trading
     const isDisconnected = connectionStatus === 'disconnected' || connectionStatus === 'error';
     
     // Create trigger state identifier
@@ -255,10 +255,10 @@ export function useOptimizedLivePrice(
     const shouldTrigger = (isStale || isDisconnected) && 
                          (!fallbackTriggeredRef.current || 
                           fallbackTriggeredRef.current.lastTrigger !== triggerState ||
-                          Date.now() - fallbackTriggeredRef.current.timestamp > 30000); // Reset after 30s
+                          Date.now() - fallbackTriggeredRef.current.timestamp > 15000); // Critical: Reset after 15s for faster recovery
     
     if (shouldTrigger) {
-      console.log(`🔄 [${normalizedSymbol}] One-shot HTTP fallback triggered:`, {
+      console.log(`⚡ [${normalizedSymbol}] Critical HTTP fallback triggered:`, {
         connectionStatus,
         dataAge: dataAge.toFixed(1) + 's',
         triggerState
@@ -338,7 +338,7 @@ export function useOptimizedLivePrice(
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Consistent 200ms debounce for all sources to ensure synchronization
+    // Consistent 100ms debounce for critical trading operations (ultra-fast)
     debounceTimeoutRef.current = setTimeout(() => {
       const latestPrice = getPrice(normalizedSymbol);
       if (!latestPrice || latestPrice.price === 0) return;
@@ -364,7 +364,7 @@ export function useOptimizedLivePrice(
       storePrice(normalizedSymbol, latestPrice.price, timestamp);
       
       console.log(`🎯 [${normalizedSymbol}] Consistent price update:`, latestPrice.price);
-    }, 200); // Fixed 200ms for consistency across all components
+    }, 100); // Critical: 100ms for ultra-fast trading consistency
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -398,19 +398,19 @@ export function useOptimizedLivePrice(
   // Get error for this specific symbol or global error
   const symbolError = errors[normalizedSymbol] || errors.global || null;
 
-  // Business Plan: Enhanced connection status with ultra-fast tolerance
+  // Critical: Stricter connection status for active trading
   const enhancedConnectionStatus = (() => {
-    // Business plan: Consider connection "effectively connected" with tighter freshness requirements
+    // Critical: Consider connection "effectively connected" based on fresh data
     const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    // Business plan: 15s tolerance for ultra-fast infrastructure
-    if (dataFreshness < 15 && hasValidPrice) {
+    // Critical: 10s tolerance for ultra-fast trading operations
+    if (dataFreshness < 10 && hasValidPrice) {
       return 'connected';
     }
     
-    // Fallback to 30s for regular connections
-    if (dataFreshness < 30 && hasValidPrice) {
+    // Fallback to 20s for regular connections (reduced from 30s)
+    if (dataFreshness < 20 && hasValidPrice) {
       return 'connected';
     }
     

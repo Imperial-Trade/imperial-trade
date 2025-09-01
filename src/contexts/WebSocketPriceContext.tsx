@@ -113,15 +113,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, []);
 
-  // HTTP fallback for initial data and refreshes
-  const pollPricesHTTP = useCallback(async (symbols: string[]) => {
+  // HTTP fallback for initial data and refreshes with forceFetch support
+  const pollPricesHTTP = useCallback(async (symbols: string[], forceFetch = false) => {
     if (symbols.length === 0) return;
 
+    console.log(`🔄 Polling prices via HTTP${forceFetch ? ' (force fetch)' : ''}:`, symbols);
+
     try {
-      console.log('📡 Polling prices via HTTP for:', symbols);
-      
       const response = await supabase.functions.invoke('tradermade-streaming', {
-        body: { symbols }
+        body: {
+          symbols: symbols,
+          forceFetch: forceFetch // Enable REST fallback when cache is empty
+        }
       });
 
       if (response.data?.success && response.data?.prices) {
@@ -364,8 +367,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         setupRealtimeChannel();
       }
       
-      // Optionally get initial price via HTTP for immediate feedback
-      pollPricesHTTP(toSubscribe);
+      // Optionally get initial price via HTTP for immediate feedback with force fetch
+      pollPricesHTTP(toSubscribe, true); // Force fetch on first subscription
     }
   }, [normalizeSymbol, setupRealtimeChannel, pollPricesHTTP]);
 

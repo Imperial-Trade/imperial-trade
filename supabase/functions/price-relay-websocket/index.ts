@@ -27,6 +27,13 @@ let connectionAttempts = 0;
 const maxReconnectAttempts = 10;
 const baseReconnectDelay = 1000;
 
+// Global Realtime channel for efficient broadcasting
+let globalRealtimeChannel: any = null;
+
+// REST fallback configuration
+let restFallbackInterval: number | null = null;
+const REST_FALLBACK_INTERVAL_MS = 2000; // 2 seconds for professional trading
+
 const connectToTraderMade = () => {
   if (isConnecting || tradermadeWs?.readyState === WebSocket.OPEN) {
     return;
@@ -56,6 +63,9 @@ const connectToTraderMade = () => {
       isConnecting = false;
       connectionAttempts = 0; // Reset on successful connection
       
+      // Stop REST fallback when WebSocket connects
+      stopRestFallback();
+      
       // Subscribe to all major currency pairs
       const symbols = [
         'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
@@ -84,9 +94,11 @@ const connectToTraderMade = () => {
             timestamp: new Date().toISOString()
           };
 
-          // Broadcast to Supabase Realtime channel
-          const channel = supabase.channel('prices:live');
-          await channel.send({
+          // Broadcast to global Realtime channel
+          if (!globalRealtimeChannel) {
+            globalRealtimeChannel = supabase.channel('prices:live');
+          }
+          await globalRealtimeChannel.send({
             type: 'broadcast',
             event: 'price_update',
             payload: priceData
@@ -126,12 +138,103 @@ const connectToTraderMade = () => {
         reconnectTimeout = setTimeout(() => {
           connectToTraderMade();
         }, delay);
+      } else {
+        // After max attempts, start REST fallback
+        console.log('🔄 Max WebSocket attempts reached, starting REST fallback');
+        startRestFallback();
       }
     };
 
   } catch (error) {
     console.error('❌ Error creating TraderMade WebSocket:', error);
     isConnecting = false;
+  }
+};
+
+// REST fallback to fetch prices from TraderMade API
+const fetchPricesViaRest = async () => {
+  if (!tradermadeApiKey) {
+    console.error('❌ TRADERMADE_API_KEY not found for REST fallback');
+    return;
+  }
+
+  const symbols = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
+    'EURGBP', 'EURJPY', 'GBPJPY', 'XAUUSD', 'XAGUSD', 'BTCUSD', 'ETHUSD'
+  ];
+
+  try {
+    console.log('🔄 Fetching prices via REST fallback...');
+    
+    for (const symbol of symbols) {
+      try {
+        const response = await fetch(
+          `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${tradermadeApiKey}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.quotes && data.quotes.length > 0) {
+            const quote = data.quotes[0];
+            const priceData: PriceData = {
+              symbol: quote.currency,
+              bid: parseFloat(quote.bid),
+              ask: parseFloat(quote.ask),
+              mid: (parseFloat(quote.bid) + parseFloat(quote.ask)) / 2,
+              timestamp: new Date().toISOString()
+            };
+
+            // Broadcast to global Realtime channel
+            if (!globalRealtimeChannel) {
+              globalRealtimeChannel = supabase.channel('prices:live');
+            }
+            await globalRealtimeChannel.send({
+              type: 'broadcast',
+              event: 'price_update',
+              payload: priceData
+            });
+
+            // Update database
+            await supabase.from('market_prices').upsert({
+              symbol: priceData.symbol,
+              bid: priceData.bid,
+              ask: priceData.ask,
+              mid: priceData.mid,
+              timestamp: priceData.timestamp
+            });
+
+            console.log(`📈 REST price update: ${priceData.symbol} - ${priceData.bid}/${priceData.ask}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ REST fetch error for ${symbol}:`, error);
+      }
+      
+      // Small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } catch (error) {
+    console.error('❌ REST fallback error:', error);
+  }
+};
+
+// Start REST fallback when WebSocket connection fails
+const startRestFallback = () => {
+  if (restFallbackInterval) return;
+  
+  console.log('🔄 Starting REST fallback polling...');
+  restFallbackInterval = setInterval(fetchPricesViaRest, REST_FALLBACK_INTERVAL_MS);
+  
+  // Fetch immediately
+  fetchPricesViaRest();
+};
+
+// Stop REST fallback when WebSocket reconnects
+const stopRestFallback = () => {
+  if (restFallbackInterval) {
+    clearInterval(restFallbackInterval);
+    restFallbackInterval = null;
+    console.log('⏹️ Stopped REST fallback polling');
   }
 };
 

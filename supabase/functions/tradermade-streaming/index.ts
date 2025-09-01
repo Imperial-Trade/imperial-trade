@@ -1109,6 +1109,86 @@ class TradermadeConnectionManager {
     });
   }
 
+  // ===== REST API FALLBACK METHOD =====
+  
+  // Fetch price from TraderMade REST API with cooldown protection
+  private async fetchPriceFromRestApi(symbol: string): Promise<TradermadePriceData | null> {
+    if (this.isRestDisabled) {
+      console.warn(`🚨 REST API disabled due to circuit breaker for ${symbol}`);
+      return null;
+    }
+
+    // Check cooldown
+    const cooldownRemaining = this.isSymbolInCooldown(symbol);
+    if (cooldownRemaining > 0) {
+      console.warn(`⏱️ ${symbol} in cooldown for ${cooldownRemaining}ms`);
+      return null;
+    }
+
+    const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+    if (!apiKey) {
+      console.error('❌ TRADERMADE_API_KEY not configured for REST fallback');
+      return null;
+    }
+
+    try {
+      console.log(`🔄 Fetching ${symbol} via REST API...`);
+      this.lastRestFetchAt.set(symbol, Date.now());
+
+      // Map client symbol to upstream symbol for REST API
+      const upstreamSymbol = CLIENT_TO_UPSTREAM[symbol] || symbol;
+      
+      const response = await fetch(
+        `https://marketdata.tradermade.com/api/v1/live?currency=${upstreamSymbol}&api_key=${apiKey}`,
+        { 
+          method: 'GET',
+          headers: { 'User-Agent': 'Imperial-Trading-Platform/3.0' }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.quotes && data.quotes.length > 0) {
+        const quote = data.quotes[0];
+        const bid = parseFloat(quote.bid);
+        const ask = parseFloat(quote.ask);
+        const price = (bid + ask) / 2;
+
+        if (isNaN(bid) || isNaN(ask) || price <= 0) {
+          throw new Error(`Invalid price data: bid=${bid}, ask=${ask}`);
+        }
+
+        const now = Date.now();
+        const priceData: TradermadePriceData = {
+          symbol,
+          price,
+          bid,
+          ask,
+          timestamp: new Date().toISOString(),
+          change: 0,
+          changePercent: 0,
+          cachedAt: now
+        };
+
+        this.updateCircuitBreaker(false); // Success
+        this.httpUpdatesTotal++;
+        
+        console.log(`✅ REST API success: ${symbol} = $${price} (${quote.bid}/${quote.ask})`);
+        return priceData;
+      } else {
+        throw new Error('No quotes in response');
+      }
+    } catch (error) {
+      console.error(`❌ REST API error for ${symbol}:`, error);
+      this.updateCircuitBreaker(true); // Error
+      return null;
+    }
+  }
+
   // ===== GUARDRAILS METHODS =====
 
   // Check if symbol is within REST cooldown period
@@ -1248,6 +1328,39 @@ class TradermadeConnectionManager {
             served_from: servedFrom,
             stale: !this.isPriceFresh(priceData)
           };
+        } else if (body.forceFetch) {
+          // If no cached data and forceFetch is true, try REST API (with cooldown)
+          try {
+            const restPrice = await this.fetchPriceFromRestApi(symbol);
+            if (restPrice) {
+              prices[symbol] = {
+                symbol: restPrice.symbol,
+                price: restPrice.price,
+                bid: restPrice.bid,
+                ask: restPrice.ask,
+                timestamp: restPrice.timestamp,
+                change: restPrice.change,
+                changePercent: restPrice.changePercent,
+                cachedAt: restPrice.cachedAt,
+                served_from: 'rest_api_fallback',
+                stale: false
+              };
+              // Cache the fresh data
+              this.priceCache.set(symbol, restPrice);
+              await this.publishPriceToRedis(restPrice);
+            } else {
+              prices[symbol] = {
+                served_from: 'not_available',
+                stale: true
+              };
+            }
+          } catch (error) {
+            console.warn(`⚠️ REST fallback failed for ${symbol}:`, error);
+            prices[symbol] = {
+              served_from: 'not_available',
+              stale: true
+            };
+          }
         } else {
           // No price available
           prices[symbol] = {

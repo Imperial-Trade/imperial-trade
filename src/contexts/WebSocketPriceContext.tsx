@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceData {
   symbol: string;
@@ -65,12 +66,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
+  const authStateListenerRef = useRef<(() => void) | null>(null);
+  const tokenRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Enhanced stability constants for improved USA30/NAS100 performance
   const MAX_RECONNECT_ATTEMPTS = 10;
-  const RECONNECT_BASE_DELAY = 2000; // 2 seconds base delay  
-  const MAX_RECONNECT_DELAY = 60000; // Max 60 seconds delay
-  const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds health check
-  const STALE_DATA_THRESHOLD = 10000; // 10 seconds stale threshold
+  const RECONNECT_BASE_DELAY = 1000; // 1 second base delay
+  const MAX_RECONNECT_DELAY = 5000; // Cap at 5 seconds for fast recovery
+  const HEALTH_CHECK_INTERVAL = 10000; // 10 seconds watchdog
+  const STALE_DATA_THRESHOLD = 15000; // 15 seconds stale threshold
   // Enhanced health check mechanism for connection stability
   const healthCheckRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -189,12 +196,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current = new WebSocket(wsUrl);
       console.log('🆕 Created new WebSocket instance');
 
-      socketRef.current.onopen = () => {
+      socketRef.current.onopen = async () => {
         console.log('✅ WebSocket connected to Tradermade streaming');
-        setConnectionStatus('connected');
-        setDataSource('tradermade');
-        reconnectAttemptsRef.current = 0;
-        websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+        // Only set to connecting here, wait for auth_ok for full connection
+        setConnectionStatus('connecting');
         
         // Clear any connection errors
         setErrors(prev => {
@@ -202,14 +207,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return global?.includes('WebSocket') ? rest : prev;
         });
         
-        // Immediately subscribe to any pending symbols
-        if (subscribedSymbolsRef.current.size > 0) {
-          const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('📡 Subscribing to symbols:', symbols);
+        // Authenticate with access token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
           socketRef.current?.send(JSON.stringify({
-            action: 'subscribe',
-            symbols: symbols
+            action: 'authenticate',
+            token: session.access_token
           }));
+        } else {
+          console.error('❌ No access token available for authentication');
+          setErrors(prev => ({ ...prev, auth: 'Authentication required' }));
         }
       };
 
@@ -219,6 +226,43 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         try {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
+          // Any message indicates liveness; reset reconnect backoff
+          reconnectAttemptsRef.current = 0;
+          
+          if (data.type === 'auth_required') {
+            console.log('🔐 Authentication required');
+            setIsAuthenticated(false);
+            return;
+          }
+          
+          if (data.type === 'auth_ok' || data.type === 'auth_success') {
+            console.log('✅ Authentication successful');
+            setIsAuthenticated(true);
+            setConnectionStatus('connected'); // Only now mark as fully connected
+            setDataSource('tradermade');
+            reconnectAttemptsRef.current = 0;
+            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+            
+            // Process any pending subscriptions
+            if (pendingSubscriptionsRef.current.size > 0) {
+              const symbols = Array.from(pendingSubscriptionsRef.current);
+              console.log('📡 Processing pending subscriptions:', symbols);
+              socketRef.current?.send(JSON.stringify({
+                action: 'subscribe',
+                symbols: symbols
+              }));
+              symbols.forEach(s => subscribedSymbolsRef.current.add(s));
+              pendingSubscriptionsRef.current.clear();
+            }
+            return;
+          }
+          
+          if (data.type === 'auth_error') {
+            console.error('❌ Authentication error:', data.message);
+            setErrors(prev => ({ ...prev, auth: data.message }));
+            setIsAuthenticated(false);
+            return;
+          }
           
           if (data.type === 'connection_status') {
             console.log('🔗 Connection status update:', data.status);
@@ -322,11 +366,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             websocketHealthRef.current.isHealthy = true;
           } else if (data.type === 'error') {
             console.error('❌ WebSocket error message:', data.message);
-            setErrors(prev => ({
-              ...prev,
-              global: data.message || 'WebSocket connection error'
-            }));
-            setConnectionStatus('error');
+            
+            if (data.code === 'max_subscriptions_exceeded') {
+              setErrors(prev => ({
+                ...prev,
+                subscription_limit: data.message
+              }));
+            } else {
+              setErrors(prev => ({
+                ...prev,
+                global: data.message || 'WebSocket connection error'
+              }));
+              setConnectionStatus('error');
+            }
           } else {
             console.log('ℹ️ Unhandled message type:', data.type, data);
           }
@@ -390,13 +442,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    // Enqueue for batched send
-    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
-
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
       console.log('🔄 WebSocket not ready, attempting connection');
       connect();
+      // Queue subscriptions until authenticated
+      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
+      return;
     }
+
+    if (!isAuthenticated) {
+      console.log('🔐 Not authenticated, queueing subscriptions');
+      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
+      return;
+    }
+
+    // Enqueue for batched send
+    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
 
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
@@ -437,7 +498,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       return newErrors;
     });
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticated) {
       socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: toUnsubscribe }));
     }
   }, []);
@@ -463,23 +524,75 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
-    // Health monitoring - check connection every 30 seconds and reconnect if needed
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state change:', event);
+      
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Debounce TOKEN_REFRESHED events to avoid bursts
+        if (event === 'TOKEN_REFRESHED') {
+          if (tokenRefreshTimerRef.current) {
+            clearTimeout(tokenRefreshTimerRef.current);
+          }
+          
+          tokenRefreshTimerRef.current = setTimeout(() => {
+            if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
+              console.log('🔄 Debounced re-authentication after TOKEN_REFRESHED...');
+              socketRef.current.send(JSON.stringify({
+                action: 'authenticate',
+                token: session.access_token
+              }));
+            }
+          }, 250); // 250ms debounce
+        } else {
+          // SIGNED_IN - immediate authentication
+          if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
+            console.log('🔄 Re-authenticating WebSocket after sign-in...');
+            socketRef.current.send(JSON.stringify({
+              action: 'authenticate',
+              token: session.access_token
+            }));
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out, resetting auth state but keeping pending subscriptions');
+        setIsAuthenticated(false);
+        setConnectionStatus('connecting');
+        // Keep pending subscriptions for when user signs back in
+      }
+    });
+    
+    // Store auth listener ref for cleanup
+    authStateListenerRef.current = authListener?.subscription?.unsubscribe;
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
-        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 15000) {
+        console.warn('🚨 Watchdog: no messages for >15s (watchdog_stale_15s). Reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
-        console.log('🔄 Connection lost, attempting reconnection...');
+        console.log('🔄 Watchdog: socket not open, attempting reconnection (watchdog_closed_state)...');
         connect();
       }
-    }, 30000); // Check every 30 seconds
+    }, 10000); // Check every 10 seconds
 
     return () => {
       clearInterval(healthCheckInterval);
+      
+      // Properly unsubscribe auth state listener
+      if (authStateListenerRef.current) {
+        authStateListenerRef.current();
+        authStateListenerRef.current = null;
+      }
+      
+      // Clear debounce timer
+      if (tokenRefreshTimerRef.current) {
+        clearTimeout(tokenRefreshTimerRef.current);
+        tokenRefreshTimerRef.current = null;
+      }
+      
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -491,7 +604,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         socketRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, isAuthenticated]);
 
   const value: WebSocketContextType = {
     prices,

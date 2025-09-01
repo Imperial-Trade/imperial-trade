@@ -275,6 +275,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               onTakeProfitHit={onTakeProfitHit}
               onStopLossHit={onStopLossHit}
               onOrderActivation={onOrderActivation}
+              allowAutomation={isCreator} // Only allow automation for signal creators
           />
         </div>
       )}

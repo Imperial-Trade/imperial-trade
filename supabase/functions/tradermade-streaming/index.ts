@@ -1,30 +1,65 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Configuration constants
+const WS_AUTH_TIMEOUT_MS = parseInt(Deno.env.get('WS_AUTH_TIMEOUT_MS') || '30000'); // 30 seconds
+const MAX_WS_SUBS_PER_CLIENT = parseInt(Deno.env.get('MAX_WS_SUBS_PER_CLIENT') || '20'); // Max subscriptions per client
+const IDLE_DISCONNECT_DELAY_MS = parseInt(Deno.env.get('IDLE_DISCONNECT_DELAY_MS') || '600000'); // 10 minutes
+const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000'); // 45 seconds
+
+// New guardrail constants
+const FORCEFETCH_INTERNAL_KEY = Deno.env.get('FORCEFETCH_INTERNAL_KEY') || 'imperial-internal-2024';
+const REST_COOLDOWN_MS = parseInt(Deno.env.get('REST_COOLDOWN_MS') || '10000'); // 10 seconds per symbol
+const MAX_SYMBOLS_PER_POST = parseInt(Deno.env.get('MAX_SYMBOLS_PER_POST') || '5'); // Symbol cap
+const CIRCUIT_BREAKER_ERRORS = parseInt(Deno.env.get('CIRCUIT_BREAKER_ERRORS') || '3'); // Errors before disable
+const CIRCUIT_BREAKER_WINDOW_MS = parseInt(Deno.env.get('CIRCUIT_BREAKER_WINDOW_MS') || '60000'); // 1 minute window
+
+// Supabase client for JWT verification
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
-// Mapping between client-standard symbols and TraderMade upstream symbols
+// Enhanced client-to-server symbol mapping for BTC/XAU consistency
 const CLIENT_TO_UPSTREAM: Record<string, string> = {
+  // Core mappings
   XAUUSD: 'XAUUSD',
   BTCUSD: 'BTCUSD',
   EURUSD: 'EURUSD',
   USA30USD: 'US30',
   NAS100USD: 'NAS100',
+  
+  // Enhanced BTC/XAU normalization
+  BTC: 'BTCUSD',
+  'BTC/USD': 'BTCUSD',
+  BITCOIN: 'BTCUSD',
+  XAU: 'XAUUSD',
+  'XAU/USD': 'XAUUSD',
+  GOLD: 'XAUUSD',
+  
+  // Additional common variants
+  GBPUSD: 'GBPUSD',
+  USDJPY: 'USDJPY',
 };
 
+// Server-to-client symbol mapping for response normalization
 const UPSTREAM_TO_CLIENT: Record<string, string> = {
   XAUUSD: 'XAUUSD',
-  BTCUSD: 'BTCUSD',
+  BTCUSD: 'BTCUSD', 
   EURUSD: 'EURUSD',
   US30: 'USA30USD',
   NAS100: 'NAS100USD',
+  GBPUSD: 'GBPUSD',
+  USDJPY: 'USDJPY',
 };
 
 interface TradermadePriceData {
@@ -35,12 +70,17 @@ interface TradermadePriceData {
   timestamp: string;
   change: number;
   changePercent: number;
+  cachedAt?: number; // Unix timestamp for TTL tracking
 }
 
 interface ClientConnection {
   socket: WebSocket;
   subscriptions: Set<string>;
   id: string;
+  isAuthenticated: boolean;
+  authTimer?: number;
+  userId?: string;
+  ipHash?: string;
 }
 
 // ========== SINGLETON CONNECTION MANAGER ==========
@@ -55,6 +95,28 @@ class TradermadeConnectionManager {
   private maxReconnectAttempts = 10;
   private heartbeatInterval: number | null = null;
   private lastPingTime = 0;
+  private idleDisconnectTimeout: number | null = null;
+  private lastTickTime = 0;
+  private isWarmingUp = false;
+
+  // ===== NEW GUARDRAILS & METRICS =====
+  // Rate limiting: symbol -> timestamp of last REST fetch
+  private lastRestFetchAt: Map<string, number> = new Map();
+
+  // Circuit breaker: track REST errors in time window
+  private restErrorTimestamps: number[] = [];
+  private isRestDisabled = false;
+
+  // Metrics counters (in-memory)
+  private fallbackHttpTotal = 0;
+  private fallbackForceFetchTotal = 0;
+  private wsFirstTickLatenciesMs: number[] = []; // Keep last 100 for percentiles
+  private wsUpdatesTotal = 0;
+  private httpUpdatesTotal = 0;
+  private upstreamIdleReconnects = 0;
+
+  // First-tick latency tracking: clientId -> subscription start time
+  private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
 
   private constructor() {}
 
@@ -66,31 +128,37 @@ class TradermadeConnectionManager {
   }
 
   // Add client connection
-  addClient(clientId: string, socket: WebSocket): void {
-    console.log(`📱 Client ${clientId} connected. Total clients: ${this.clients.size + 1}`);
+  addClient(clientId: string, socket: WebSocket, request: Request): void {
+    const ipHash = this.getIpHash(request);
     
     const client: ClientConnection = {
       socket,
       subscriptions: new Set(),
-      id: clientId
+      id: clientId,
+      isAuthenticated: false,
+      ipHash
     };
     
     this.clients.set(clientId, client);
-
-    // Start TraderMade connection if this is the first client
-    if (this.clients.size === 1 && this.connectionStatus === 'disconnected') {
-      console.log('🚀 First client connected, starting TraderMade connection...');
-      this.connectToTradermade();
-    }
-
-    // Send cached prices to new client
-    this.sendCachedPricesToClient(clientId);
     
-    // Send current connection status
+    // Set authentication timeout
+    client.authTimer = setTimeout(() => {
+      this.logEvent('unauth_timeout', { client_id: clientId, ip_hash: ipHash });
+      this.sendAuthError(clientId, 'Authentication timeout');
+      this.removeClient(clientId);
+    }, WS_AUTH_TIMEOUT_MS);
+    
+    this.logEvent('auth_required', { 
+      client_id: clientId, 
+      ip_hash: ipHash,
+      timeout_ms: WS_AUTH_TIMEOUT_MS,
+      total_clients: this.clients.size
+    });
+
+    // Send auth required message
     this.sendToClient(clientId, {
-      type: 'connection_status',
-      status: this.connectionStatus,
-      timestamp: new Date().toISOString()
+      type: 'auth_required',
+      message: 'Authentication required'
     });
   }
 
@@ -98,18 +166,31 @@ class TradermadeConnectionManager {
   removeClient(clientId: string): void {
     const client = this.clients.get(clientId);
     if (client) {
+      // Clear auth timer if exists
+      if (client.authTimer) {
+        clearTimeout(client.authTimer);
+      }
+      
+      // Clean up first-tick latency tracking
+      this.clientSubscriptionTimes.delete(clientId);
+      
       this.clients.delete(clientId);
-      console.log(`📱❌ Client ${clientId} disconnected. Remaining clients: ${this.clients.size}`);
+      this.logEvent('disconnect', { 
+        client_id: clientId, 
+        ip_hash: client.ipHash,
+        was_authenticated: client.isAuthenticated,
+        remaining_clients: this.clients.size
+      });
 
-      // If no clients remain, close TraderMade connection after delay
+      // If no clients remain, close TraderMade connection after extended delay
       if (this.clients.size === 0) {
-        console.log('⏱️ No clients remaining, scheduling TraderMade disconnect in 30s...');
-        setTimeout(() => {
+        console.info(`⏱️ No clients remaining, scheduling TraderMade disconnect in ${IDLE_DISCONNECT_DELAY_MS/1000}s...`);
+        this.idleDisconnectTimeout = setTimeout(() => {
           if (this.clients.size === 0) {
-            console.log('🔌 Disconnecting TraderMade connection (no clients)');
+            console.info('🔌 Disconnecting TraderMade connection (no clients)');
             this.disconnectTradermade();
           }
-        }, 30000); // 30 second grace period
+        }, IDLE_DISCONNECT_DELAY_MS);
       }
     }
   }
@@ -119,13 +200,55 @@ class TradermadeConnectionManager {
     const client = this.clients.get(clientId);
     if (!client) return;
 
+    if (!client.isAuthenticated) {
+      this.sendAuthError(clientId, 'Authentication required');
+      return;
+    }
+
+    // Check subscription limit
+    const newSymbols = symbols.filter(s => {
+      const normalized = this.normalizeClientSymbol(s);
+      return normalized && TRADERMADE_SYMBOLS.includes(normalized) && !client.subscriptions.has(normalized);
+    });
+
+    if (client.subscriptions.size + newSymbols.length > MAX_WS_SUBS_PER_CLIENT) {
+      const errorMsg = `Subscription limit exceeded (max: ${MAX_WS_SUBS_PER_CLIENT})`;
+      this.sendToClient(clientId, {
+        type: 'error',
+        code: 'max_subscriptions_exceeded',
+        message: errorMsg
+      });
+      
+      // Close after short delay to ensure error is received
+      setTimeout(() => {
+        client.socket.close();
+      }, 75);
+      
+      this.logEvent('subscribe', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: client.userId,
+        error: 'max_subscriptions_exceeded',
+        current_count: client.subscriptions.size,
+        requested_count: newSymbols.length,
+        max_allowed: MAX_WS_SUBS_PER_CLIENT
+      });
+      return;
+    }
+
     symbols.forEach(symbol => {
       const normalized = this.normalizeClientSymbol(symbol);
       if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
         client.subscriptions.add(normalized);
         
-        // Send cached price if available
-        const cached = this.priceCache.get(normalized);
+        // Track subscription start time for first-tick latency measurement
+        if (!this.clientSubscriptionTimes.has(clientId)) {
+          this.clientSubscriptionTimes.set(clientId, new Map());
+        }
+        this.clientSubscriptionTimes.get(clientId)!.set(normalized, Date.now());
+        
+        // Send cached price if available and not expired
+        const cached = this.getCachedPrice(normalized);
         if (cached) {
           this.sendToClient(clientId, {
             type: 'price_update',
@@ -135,13 +258,19 @@ class TradermadeConnectionManager {
       }
     });
 
-    console.log(`📊 Client ${clientId} subscribed to: ${Array.from(client.subscriptions).join(', ')}`);
+    this.logEvent('subscribe', { 
+      client_id: clientId,
+      ip_hash: client.ipHash,
+      user_id: client.userId,
+      symbols: symbols.length,
+      total_subscriptions: client.subscriptions.size
+    });
   }
 
   // Unsubscribe client from symbols
   unsubscribeClient(clientId: string, symbols: string[]): void {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client || !client.isAuthenticated) return;
 
     symbols.forEach(symbol => {
       const normalized = this.normalizeClientSymbol(symbol);
@@ -150,7 +279,13 @@ class TradermadeConnectionManager {
       }
     });
 
-    console.log(`📊❌ Client ${clientId} unsubscribed from: ${symbols.join(', ')}`);
+    this.logEvent('unsubscribe', { 
+      client_id: clientId,
+      ip_hash: client.ipHash,
+      user_id: client.userId,
+      symbols: symbols.length,
+      total_subscriptions: client.subscriptions.size
+    });
   }
 
   // Connect to TraderMade (SINGLETON - only one connection)
@@ -215,14 +350,18 @@ class TradermadeConnectionManager {
       };
 
       this.tradermadeSocket.onclose = (event) => {
-        console.warn(`🔌❌ TraderMade connection closed: ${event.code} - ${event.reason}`);
+        const logLevel = event.code === 1000 || event.code === 1005 ? 'info' : 'warn';
+        const closeReason = event.reason || 'No reason provided';
+        console[logLevel](`🔌❌ TraderMade connection closed: ${event.code} - ${closeReason}`);
         this.connectionStatus = 'disconnected';
         this.stopHeartbeat();
         
         this.broadcastToAllClients({
           type: 'connection_status',
           status: 'disconnected',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          closeCode: event.code,
+          closeReason
         });
 
         // Attempt reconnection if we have clients
@@ -293,6 +432,7 @@ class TradermadeConnectionManager {
       if (clientSymbol === 'USA30USD' && (price < 10000 || price > 100000)) return;
       if (clientSymbol === 'NAS100USD' && (price < 5000 || price > 50000)) return;
 
+      const now = Date.now();
       const priceUpdate: TradermadePriceData = {
         symbol: clientSymbol,
         price,
@@ -300,11 +440,13 @@ class TradermadeConnectionManager {
         ask: parsed.ask ? parseFloat(parsed.ask) : price,
         timestamp: new Date().toISOString(),
         change: 0,
-        changePercent: 0
+        changePercent: 0,
+        cachedAt: now
       };
 
-      // Cache the price
+      // Cache the price with TTL
       this.priceCache.set(clientSymbol, priceUpdate);
+      this.lastTickTime = now;
 
       // Broadcast to subscribed clients
       this.broadcastPriceUpdate(priceUpdate);
@@ -319,6 +461,7 @@ class TradermadeConnectionManager {
   // Broadcast price update to subscribed clients
   private broadcastPriceUpdate(priceUpdate: TradermadePriceData): void {
     let broadcastCount = 0;
+    const now = Date.now();
 
     this.clients.forEach((client, clientId) => {
       if (client.subscriptions.has(priceUpdate.symbol)) {
@@ -327,11 +470,36 @@ class TradermadeConnectionManager {
           ...priceUpdate
         });
         broadcastCount++;
+
+        // Track first-tick latency for this client/symbol combination
+        const clientTimes = this.clientSubscriptionTimes.get(clientId);
+        if (clientTimes?.has(priceUpdate.symbol)) {
+          const subscriptionStartTime = clientTimes.get(priceUpdate.symbol)!;
+          const firstTickLatency = now - subscriptionStartTime;
+          
+          // Store latency (keep last 100 samples)
+          this.wsFirstTickLatenciesMs.push(firstTickLatency);
+          if (this.wsFirstTickLatenciesMs.length > 100) {
+            this.wsFirstTickLatenciesMs.shift();
+          }
+          
+          // Remove tracking since we got the first tick
+          clientTimes.delete(priceUpdate.symbol);
+          if (clientTimes.size === 0) {
+            this.clientSubscriptionTimes.delete(clientId);
+          }
+        }
       }
     });
 
     if (broadcastCount > 0) {
-      console.log(`📡 Broadcasted ${priceUpdate.symbol} price to ${broadcastCount} clients`);
+      this.wsUpdatesTotal++; // Track WebSocket updates
+      this.logEvent('broadcast_summary', {
+        symbol: priceUpdate.symbol,
+        price: priceUpdate.price,
+        client_count: broadcastCount,
+        total_clients: this.clients.size
+      });
     }
   }
 
@@ -362,7 +530,10 @@ class TradermadeConnectionManager {
 
     const cachedPrices: TradermadePriceData[] = [];
     this.priceCache.forEach((priceData) => {
-      cachedPrices.push(priceData);
+      // Only send non-expired prices
+      if (this.isPriceFresh(priceData)) {
+        cachedPrices.push(priceData);
+      }
     });
 
     if (cachedPrices.length > 0) {
@@ -383,7 +554,8 @@ class TradermadeConnectionManager {
     this.heartbeatInterval = setInterval(() => {
       if (this.tradermadeSocket?.readyState === WebSocket.OPEN) {
         const now = Date.now();
-        if (now - this.lastPingTime >= 30000) { // 30 second intervals
+        // Send ping every 15s
+        if (now - this.lastPingTime >= 15000) {
           try {
             this.tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
             this.lastPingTime = now;
@@ -391,8 +563,19 @@ class TradermadeConnectionManager {
             console.error('❌ Heartbeat failed:', error);
           }
         }
+        
+        // Upstream idle watchdog: if no ticks for >12s, force reconnect
+        const sinceTick = this.lastTickTime ? now - this.lastTickTime : Infinity;
+        if (sinceTick > 12000) {
+          console.warn(`⏱️ Upstream idle >12s (${sinceTick}ms). Forcing reconnect...`);
+          this.upstreamIdleReconnects++;
+          this.disconnectTradermade();
+          if (this.clients.size > 0) {
+            this.connectToTradermade();
+          }
+        }
       }
-    }, 30000);
+    }, 15000);
   }
 
   // Stop heartbeat
@@ -427,6 +610,11 @@ class TradermadeConnectionManager {
       this.reconnectTimeout = null;
     }
     
+    if (this.idleDisconnectTimeout) {
+      clearTimeout(this.idleDisconnectTimeout);
+      this.idleDisconnectTimeout = null;
+    }
+    
     this.stopHeartbeat();
     
     if (this.tradermadeSocket) {
@@ -435,7 +623,7 @@ class TradermadeConnectionManager {
     }
     
     this.connectionStatus = 'disconnected';
-    console.log('🔌❌ TraderMade connection closed');
+    console.info('🔌❌ TraderMade connection closed');
   }
 
   // Utility methods
@@ -466,6 +654,477 @@ class TradermadeConnectionManager {
 
     return null;
   }
+
+  // Authenticate client with JWT
+  async authenticateClient(clientId: string, token: string): Promise<boolean> {
+    const client = this.clients.get(clientId);
+    if (!client) return false;
+
+    // Idempotent: already authenticated
+    if (client.isAuthenticated) {
+      this.logEvent('auth_ok', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: client.userId,
+        note: 'already_authenticated'
+      });
+      return true;
+    }
+
+    try {
+      // Verify JWT using Supabase
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        this.logEvent('auth_failed', { 
+          client_id: clientId,
+          ip_hash: client.ipHash,
+          error: 'invalid_token'
+        });
+        this.sendAuthError(clientId, 'Invalid authentication token');
+        return false;
+      }
+
+      // Clear auth timer
+      if (client.authTimer) {
+        clearTimeout(client.authTimer);
+        client.authTimer = undefined;
+      }
+
+      // Update client state
+      client.isAuthenticated = true;
+      client.userId = user.id;
+
+      this.logEvent('auth_ok', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: user.id
+      });
+
+      // Send auth success
+      this.sendToClient(clientId, {
+        type: 'auth_success',
+        message: 'Authentication successful'
+      });
+
+      // Cancel any pending idle disconnect
+      if (this.idleDisconnectTimeout) {
+        clearTimeout(this.idleDisconnectTimeout);
+        this.idleDisconnectTimeout = null;
+      }
+
+      // Now start TraderMade connection if this is the first authenticated client
+      const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+      if (authenticatedClients.length === 1 && this.connectionStatus === 'disconnected') {
+        console.log('🚀 First authenticated client, starting TraderMade connection...');
+        this.connectToTradermade();
+      }
+
+      // Send cached prices and connection status
+      this.sendCachedPricesToClient(clientId);
+      this.sendToClient(clientId, {
+        type: 'connection_status',
+        status: this.connectionStatus,
+        timestamp: new Date().toISOString()
+      });
+
+      return true;
+    } catch (error) {
+      this.logEvent('auth_failed', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        error: 'jwt_verification_error'
+      });
+      this.sendAuthError(clientId, 'Authentication failed');
+      return false;
+    }
+  }
+
+  // Handle client messages
+  async handleClientMessage(clientId: string, message: any): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    try {
+      const data = JSON.parse(message);
+
+      if (data.action === 'authenticate' && data.token) {
+        await this.authenticateClient(clientId, data.token);
+        return;
+      }
+
+      if (!client.isAuthenticated) {
+        this.sendAuthError(clientId, 'Authentication required');
+        return;
+      }
+
+      if (data.action === 'subscribe' && Array.isArray(data.symbols)) {
+        this.subscribeClient(clientId, data.symbols);
+      } else if (data.action === 'unsubscribe' && Array.isArray(data.symbols)) {
+        this.unsubscribeClient(clientId, data.symbols);
+      }
+    } catch (error) {
+      this.sendToClient(clientId, {
+        type: 'error',
+        message: 'Invalid message format'
+      });
+    }
+  }
+
+  // Send authentication error (never echo token)
+  private sendAuthError(clientId: string, message: string): void {
+    this.sendToClient(clientId, {
+      type: 'auth_error',
+      message
+    });
+  }
+
+  // Get IP hash with precedence: cf-connecting-ip → x-forwarded-for[0] → x-real-ip → client_id
+  private getIpHash(request: Request): string {
+    const headers = request.headers;
+    let ip = headers.get('cf-connecting-ip') || 
+             headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+             headers.get('x-real-ip') ||
+             'unknown';
+    
+    if (ip === 'unknown') {
+      return `fallback_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Create a simple hash (PII-safe)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(ip + 'salt_imperial_trading');
+    return Array.from(new Uint8Array(data.slice(0, 8)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  // Consistent logging with event names
+  private logEvent(event: string, data: any): void {
+    const sanitizedData = { ...data };
+    // Never log tokens or sensitive data
+    delete sanitizedData.token;
+    delete sanitizedData.access_token;
+    
+    console.log(`📊 ${event}:`, JSON.stringify(sanitizedData));
+  }
+
+  // Get cached price with TTL check
+  private getCachedPrice(symbol: string): TradermadePriceData | null {
+    const cached = this.priceCache.get(symbol);
+    if (!cached) return null;
+    
+    if (this.isPriceFresh(cached)) {
+      return cached;
+    } else {
+      // Remove expired price
+      this.priceCache.delete(symbol);
+      return null;
+    }
+  }
+
+  // Check if cached price is still fresh
+  private isPriceFresh(priceData: TradermadePriceData): boolean {
+    if (!priceData.cachedAt) return true; // Legacy prices without TTL
+    return (Date.now() - priceData.cachedAt) < PRICE_CACHE_TTL_MS;
+  }
+
+  // Non-blocking warm-up of TraderMade connection
+  private warmUpConnection(): void {
+    if (this.isWarmingUp || this.connectionStatus !== 'disconnected') return;
+    
+    this.isWarmingUp = true;
+    console.log('🔥 Pre-warming TraderMade connection...');
+    
+    // Don't await - non-blocking
+    this.connectToTradermade().finally(() => {
+      this.isWarmingUp = false;
+    });
+  }
+
+  // ===== NEW GUARDRAILS METHODS =====
+
+  // Check if symbol is within REST cooldown period
+  private isSymbolInCooldown(symbol: string): number {
+    const lastFetch = this.lastRestFetchAt.get(symbol);
+    if (!lastFetch) return 0;
+    
+    const elapsed = Date.now() - lastFetch;
+    const remaining = REST_COOLDOWN_MS - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // Update circuit breaker state based on REST errors
+  private updateCircuitBreaker(isError: boolean): void {
+    const now = Date.now();
+    
+    if (isError) {
+      this.restErrorTimestamps.push(now);
+    }
+    
+    // Clean old timestamps outside the window
+    this.restErrorTimestamps = this.restErrorTimestamps.filter(
+      timestamp => now - timestamp < CIRCUIT_BREAKER_WINDOW_MS
+    );
+    
+    // Check if we should disable REST
+    const shouldDisable = this.restErrorTimestamps.length >= CIRCUIT_BREAKER_ERRORS;
+    if (shouldDisable && !this.isRestDisabled) {
+      this.isRestDisabled = true;
+      console.warn(`🚨 Circuit breaker activated: ${this.restErrorTimestamps.length} REST errors in ${CIRCUIT_BREAKER_WINDOW_MS/1000}s`);
+    } else if (!shouldDisable && this.isRestDisabled) {
+      this.isRestDisabled = false;
+      console.info('✅ Circuit breaker reset: REST errors below threshold');
+    }
+  }
+
+  // Cache-only price retrieval helper  
+  private getCachedPricesForSymbols(symbols: string[]): Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> {
+    const results: Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> = {};
+    
+    symbols.forEach(symbol => {
+      const cached = this.getCachedPrice(symbol);
+      results[symbol] = { 
+        price: cached, 
+        served_from: 'cache', 
+        stale: cached ? !this.isPriceFresh(cached) : false 
+      };
+    });
+    
+    return results;
+  }
+  // Enhanced POST handler for price fetching with guardrails
+  async handlePostRequest(req: Request): Promise<Response> {
+    try {
+      const body = await req.json();
+      const { symbols: requestedSymbols, forceFetch } = body;
+      
+      // Symbol validation
+      if (!Array.isArray(requestedSymbols)) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'symbols must be an array' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Symbol count cap
+      if (requestedSymbols.length > MAX_SYMBOLS_PER_POST) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Maximum ${MAX_SYMBOLS_PER_POST} symbols allowed per request` 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Normalize and validate symbols
+      const validSymbols: string[] = [];
+      const invalidSymbols: string[] = [];
+      
+      requestedSymbols.forEach((sym: string) => {
+        const normalized = this.normalizeClientSymbol(sym);
+        if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
+          validSymbols.push(normalized);
+        } else {
+          invalidSymbols.push(sym);
+        }
+      });
+
+      if (validSymbols.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'No valid symbols provided',
+          invalid_symbols: invalidSymbols
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Pre-warm connection if cold and no clients
+      const health = this.getHealthStatus();
+      if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
+        this.warmUpConnection();
+      }
+
+      // Handle forceFetch with auth and rate limiting
+      if (forceFetch) {
+        // Auth gate: require internal key or service role
+        const internalKey = req.headers.get('x-internal-key');
+        const authHeader = req.headers.get('authorization');
+        const isServiceRole = authHeader?.includes('service_role');
+        
+        if (!internalKey && !isServiceRole) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'forceFetch requires internal authentication' 
+          }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (internalKey && internalKey !== FORCEFETCH_INTERNAL_KEY) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Invalid internal key' 
+          }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Check rate limiting per symbol
+        const throttledSymbols: Array<{ symbol: string; cooldown_ms_remaining: number }> = [];
+        const fetchableSymbols: string[] = [];
+        
+        validSymbols.forEach(symbol => {
+          const cooldownMs = this.isSymbolInCooldown(symbol);
+          if (cooldownMs > 0) {
+            throttledSymbols.push({ symbol, cooldown_ms_remaining: cooldownMs });
+          } else {
+            fetchableSymbols.push(symbol);
+          }
+        });
+
+        // If all symbols are throttled, return 429
+        if (fetchableSymbols.length === 0) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'All symbols are within REST cooldown period',
+            throttled_symbols: throttledSymbols
+          }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Cache-only mode for non-throttled symbols (no external REST calls)
+        const allResults: Record<string, any> = {};
+        fetchableSymbols.forEach((symbol) => {
+          const cached = this.getCachedPrice(symbol);
+          allResults[symbol] = {
+            ...cached,
+            served_from: 'cache',
+            stale: cached ? !this.isPriceFresh(cached) : false
+          };
+        });
+        
+        // Add cached results for throttled symbols
+        throttledSymbols.forEach(({ symbol, cooldown_ms_remaining }) => {
+          const cached = this.getCachedPrice(symbol);
+          allResults[symbol] = {
+            ...cached,
+            served_from: 'cache',
+            stale: cached ? !this.isPriceFresh(cached) : false,
+            cooldown_ms_remaining
+          };
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          prices: allResults,
+          dataSource: 'enhanced_rest',
+          timestamp: new Date().toISOString(),
+          rest_disabled: this.isRestDisabled,
+          throttled_count: throttledSymbols.length
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Standard cache-only request
+      const prices: Record<string, any> = {};
+      
+      validSymbols.forEach(symbol => {
+        const cached = this.getCachedPrice(symbol);
+        prices[symbol] = {
+          ...cached,
+          served_from: 'cache',
+          stale: cached ? !this.isPriceFresh(cached) : false
+        };
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        prices,
+        dataSource: 'singleton_cache',
+        timestamp: new Date().toISOString(),
+        invalid_symbols: invalidSymbols.length > 0 ? invalidSymbols : undefined
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+      
+    } catch (error) {
+      console.error('❌ POST request error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Internal server error'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  // Get health status for diagnostics
+  getHealthStatus(): any {
+    const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+    const totalSubscriptions = Array.from(this.clients.values())
+      .reduce((sum, client) => sum + client.subscriptions.size, 0);
+
+    // Calculate WS vs HTTP ratio
+    const totalUpdates = this.wsUpdatesTotal + this.httpUpdatesTotal;
+    const wsVsHttpRatio = totalUpdates > 0 ? (this.wsUpdatesTotal / totalUpdates) * 100 : 0;
+
+    // Calculate percentiles for WebSocket first tick latencies
+    const sortedLatencies = [...this.wsFirstTickLatenciesMs].sort((a, b) => a - b);
+    const p50 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.5)] : null;
+    const p95 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.95)] : null;
+
+    return {
+      // Original health metrics
+      tradermadeStatus: this.connectionStatus,
+      connectedClients: this.clients.size,
+      authenticatedClients: authenticatedClients.length,
+      totalSubscriptions,
+      cachedPrices: this.priceCache.size,
+      lastTickTime: this.lastTickTime,
+      timeSinceLastTick: this.lastTickTime ? Date.now() - this.lastTickTime : null,
+      upstreamConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
+      reconnectAttempts: this.reconnectAttempts,
+      isWarmingUp: this.isWarmingUp,
+      
+      // New metrics and guardrails
+      metrics: {
+        fallback_http_total: this.fallbackHttpTotal,
+        fallback_force_fetch_total: this.fallbackForceFetchTotal,
+        ws_updates_total: this.wsUpdatesTotal,
+        http_updates_total: this.httpUpdatesTotal,
+        ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
+        ws_first_tick_latency_p50_ms: p50,
+        ws_first_tick_latency_p95_ms: p95,
+        latency_samples: sortedLatencies.length,
+        upstream_idle_reconnects: this.upstreamIdleReconnects
+      },
+      
+      // Guardrails status
+      guardrails: {
+        rest_disabled: this.isRestDisabled,
+        circuit_breaker_errors: this.restErrorTimestamps.length,
+        circuit_breaker_window_ms: CIRCUIT_BREAKER_WINDOW_MS,
+        rest_cooldown_ms: REST_COOLDOWN_MS,
+        max_symbols_per_post: MAX_SYMBOLS_PER_POST,
+        active_cooldowns: this.lastRestFetchAt.size
+      },
+      
+      timestamp: Date.now()
+    };
+  }
 }
 
 // ========== EDGE FUNCTION HANDLER ==========
@@ -475,50 +1134,25 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle GET requests for health status
+  if (req.method === 'GET') {
+    const manager = TradermadeConnectionManager.getInstance();
+    const health = manager.getHealthStatus();
+    
+    return new Response(JSON.stringify({
+      success: true,
+      health,
+      service: 'tradermade-streaming',
+      version: '2.0.0'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   // Handle HTTP POST requests for direct price fetching
   if (req.method === 'POST') {
-    try {
-      const { symbols: requestedSymbols } = await req.json();
-      
-      if (!Array.isArray(requestedSymbols)) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid symbols format' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      const manager = TradermadeConnectionManager.getInstance();
-      const prices: Record<string, TradermadePriceData | null> = {};
-      
-      // Get cached prices
-      requestedSymbols.forEach(symbol => {
-        const normalized = manager['normalizeClientSymbol'](symbol);
-        if (normalized) {
-          const cached = manager['priceCache'].get(normalized);
-          prices[normalized] = cached || null;
-        }
-      });
-
-      return new Response(JSON.stringify({
-        success: true,
-        prices,
-        dataSource: 'singleton_cache',
-        timestamp: new Date().toISOString()
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch (error) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Internal server error'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const manager = TradermadeConnectionManager.getInstance();
+    return await manager.handlePostRequest(req);
   }
 
   // Handle WebSocket connections
@@ -537,26 +1171,11 @@ serve(async (req) => {
   const clientId = crypto.randomUUID();
 
   socket.onopen = () => {
-    manager.addClient(clientId, socket);
+    manager.addClient(clientId, socket, req);
   };
 
-  socket.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      
-      if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
-        manager.subscribeClient(clientId, message.symbols);
-      } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
-        manager.unsubscribeClient(clientId, message.symbols);
-      }
-    } catch (error) {
-      console.error(`❌ Invalid message from client ${clientId}:`, error);
-      socket.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid message format',
-        timestamp: new Date().toISOString()
-      }));
-    }
+  socket.onmessage = async (event) => {
+    await manager.handleClientMessage(clientId, event.data);
   };
 
   socket.onclose = () => {

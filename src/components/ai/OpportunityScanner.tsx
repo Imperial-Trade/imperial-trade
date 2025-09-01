@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { signalProcessingService, EducationalSignal } from '@/services/signalProcessingService';
-import { marketDataService, MarketDataPoint } from '@/services/MarketDataService';
+import { MarketDataPoint } from '@/types/marketData';
 
 export default function OpportunityScanner() {
   const { user } = useAuth();

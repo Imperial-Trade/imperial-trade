@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePriceAnimations } from '@/hooks/usePriceAnimations';
 import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
@@ -48,7 +48,8 @@ const LivePriceWidgetComponent = ({
   alert,
   onTakeProfitHit,
   onStopLossHit,
-  onOrderActivation
+  onOrderActivation,
+  allowAutomation = true
 }) => {
   // Use the optimized live price hook directly
   const {
@@ -82,7 +83,7 @@ const LivePriceWidgetComponent = ({
   const lastUpdateRef = useRef(0);
   const staleGuardRef = useRef(null);
 
-  // Update data age every second with stale-guard
+  // Update data age every 5 seconds to reduce UI flickering
   useEffect(() => {
     const updateAge = () => {
       if (!lastUpdated) {
@@ -105,27 +106,27 @@ const LivePriceWidgetComponent = ({
         setDataAge('Stale');
       }
 
-      // Stale-guard: Force refresh if no updates for 10+ seconds (reduced sensitivity)
-      if (diffSeconds >= 10) {
+      // Reduced stale-guard sensitivity
+      if (diffSeconds >= 15) {
         if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
         staleGuardRef.current = setTimeout(() => {
           console.log(`🔄 Stale-guard triggered for ${alert.tradermade_symbol}`);
           refreshPrice();
-        }, 2000); // Increased delay to reduce aggressive refreshing
+        }, 5000); // Increased delay to reduce aggressive refreshing
       }
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 1000);
+    const interval = setInterval(updateAge, 5000); // Reduced frequency from 1s to 5s
     return () => {
       clearInterval(interval);
       if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
     };
   }, [lastUpdated, refreshPrice, alert.tradermade_symbol]);
 
-  // Smart price animation effect with reduced noise
+  // Smart price animation effect - only for WebSocket ticks
   useEffect(() => {
-    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
+    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice && priceUpdateSource.startsWith('websocket')) {
       // Use smart animation that respects thresholds and cooldowns
       triggerPriceAnimation({
         symbol: alert.tradermade_symbol,
@@ -137,10 +138,13 @@ const LivePriceWidgetComponent = ({
     if (currentPrice > 0) {
       setPrevPrice(currentPrice);
     }
-  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation]);
+  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation, priceUpdateSource]);
   const processLevelHit = useCallback(async (hitType, data) => {
-    // Authorization check removed - let the backend handle it
-    // Frontend should trigger level hits for proper price tracking
+    // Skip automation if not allowed (for non-owners)
+    if (!allowAutomation) {
+      console.log(`[AUTOMATION SKIP] Level hit automation disabled for non-owner`);
+      return;
+    }
     
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
@@ -177,7 +181,7 @@ const LivePriceWidgetComponent = ({
     } finally {
       isProcessingRef.current = false;
     }
-  }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation]);
+  }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
   const checkLevels = useCallback(price => {
     // Optimized level checking with smart thresholds
     if (!price || price === lastProcessedPrice || isProcessingRef.current) {
@@ -404,10 +408,11 @@ const LivePriceWidgetComponent = ({
     if (connectionStatus === 'connected') {
       switch (priceUpdateSource) {
         case 'websocket':
+        case 'websocket_institutional':
           return { 
             color: 'text-green-400', 
             icon: Wifi, 
-            text: '⚡ Real-time',
+            text: dataFreshness < 30 ? 'WS Live' : `WS ${dataAge}`,
             description: 'Live WebSocket updates active',
             animate: false
           };
@@ -415,7 +420,7 @@ const LivePriceWidgetComponent = ({
           return { 
             color: 'text-blue-400', 
             icon: RefreshCw, 
-            text: '🔄 HTTP Fallback',
+            text: dataFreshness < 30 ? 'HTTP Fallback' : `HTTP ${dataAge}`,
             description: 'Using HTTP API fallback mode',
             animate: false
           };
@@ -426,6 +431,14 @@ const LivePriceWidgetComponent = ({
               icon: Wifi, 
               text: 'Live',
               description: 'Real-time price updates active',
+              animate: false
+            };
+          } else if (dataFreshness < 120) {
+            return { 
+              color: 'text-yellow-400', 
+              icon: Clock, 
+              text: 'Stale',
+              description: 'Price data may be outdated',
               animate: false
             };
           }
@@ -596,13 +609,25 @@ const LivePriceWidgetComponent = ({
             {dataAge && (
               <>
                 <span className="text-gray-500">•</span>
-                <span className={`${
-                  dataAge === 'Live' ? 'text-green-400' : 
-                  dataAge === 'Stale' ? 'text-red-400' : 
-                  'text-yellow-400'
-                }`}>
-                  {dataAge}
-                </span>
+                {priceUpdateSource === 'websocket' && dataAge === 'Live' ? (
+                  <Badge variant="default" className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                    <Zap className="w-3 h-3 mr-1" />
+                    WS Live
+                  </Badge>
+                ) : priceUpdateSource === 'http' ? (
+                  <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
+                    <Database className="w-3 h-3 mr-1" />
+                    HTTP Cache{dataAge === 'Stale' && <span className="ml-1 text-amber-300">• Stale</span>}
+                  </Badge>
+                ) : (
+                  <span className={`${
+                    dataAge === 'Live' ? 'text-green-400' : 
+                    dataAge === 'Stale' ? 'text-red-400' : 
+                    'text-yellow-400'
+                  }`}>
+                    {dataAge}
+                  </span>
+                )}
               </>
             )}
           </div>

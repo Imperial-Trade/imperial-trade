@@ -1,7 +1,35 @@
 # Imperial Trading Platform - Go-Live Execution Guide
 
 ## Overview
-This guide documents the staging validation and production readiness process for the account request system with email notifications.
+This guide documents the staging validation and production readiness process for the WebSocket authentication system and account request functionality with email notifications.
+
+## WebSocket Authentication System
+
+### Security Features Implemented
+- **JWT Authentication**: All WebSocket connections require valid Supabase access tokens
+- **Authentication Timeout**: Configurable timeout (default: 30s) via `WS_AUTH_TIMEOUT_MS`
+- **Subscription Limits**: Per-client subscription limits (default: 20) via `MAX_WS_SUBS_PER_CLIENT`
+- **PII-Safe Logging**: IP addresses are hashed for privacy-safe audit trails
+- **Idempotent Authentication**: Prevents duplicate auth attempts
+
+### IP Address Precedence (for logging/security)
+1. `cf-connecting-ip` (Cloudflare)
+2. `x-forwarded-for[0]` (first proxy)
+3. `x-real-ip` (direct proxy)
+4. Fallback to random client identifier
+
+### WebSocket Event Types
+- `auth_required` - Authentication needed
+- `auth_ok` - Authentication successful  
+- `auth_failed` - Authentication failed
+- `unauth_timeout` - Authentication timeout
+- `subscribe` - Subscription request
+- `unsubscribe` - Unsubscription request
+- `broadcast_summary` - Price broadcast metrics
+- `disconnect` - Client disconnection
+
+### Error Codes
+- `max_subscriptions_exceeded` - Subscription limit reached
 
 ## Test Suites
 
@@ -24,7 +52,18 @@ Tests actual email delivery (requires OneSignal API keys):
 - Delivery verification
 - Email monitoring
 
-### 3. Complete Artifact Collection
+### 3. WebSocket Authentication Tests
+```bash
+npx playwright test e2e/websocket-auth.spec.ts
+```
+Tests WebSocket authentication flow:
+- JWT verification
+- Authentication timeout handling
+- Subscription limit enforcement
+- IP logging precedence
+- Error handling
+
+### 4. Complete Artifact Collection
 ```bash
 npx playwright test e2e/go-live-runner.spec.ts
 ```
@@ -74,11 +113,59 @@ All test runs generate artifacts in `test-artifacts/go-live-{timestamp}/`:
     "event_type": "RATE_LIMIT_BLOCK", 
     "function": "account-request-rate-limit",
     "message": "🔴 Rate limit event - Hash: [HASH], Type: email, Allowed: false"
+  },
+  "websocket_auth_success": {
+    "event_type": "auth_ok",
+    "function": "tradermade-streaming",
+    "client_id": "uuid-client-id",
+    "ip_hash": "a1b2c3d4e5f67890",
+    "user_id": "uuid-user-id"
+  },
+  "websocket_subscription_limit": {
+    "event_type": "subscribe",
+    "function": "tradermade-streaming", 
+    "client_id": "uuid-client-id",
+    "ip_hash": "a1b2c3d4e5f67890",
+    "error": "max_subscriptions_exceeded",
+    "current_count": 20,
+    "requested_count": 5,
+    "max_allowed": 20
   }
 }
 ```
 
 ## Monitoring Queries
+
+### WebSocket Authentication Monitoring
+```sql
+-- Monitor authentication events
+SELECT 
+  DATE_TRUNC('hour', timestamp) as hour,
+  COUNT(*) FILTER (WHERE event_message LIKE '%auth_ok%') as successful_auths,
+  COUNT(*) FILTER (WHERE event_message LIKE '%auth_failed%') as failed_auths,
+  COUNT(*) FILTER (WHERE event_message LIKE '%unauth_timeout%') as timeouts,
+  COUNT(*) as total_auth_events
+FROM function_edge_logs 
+WHERE function_id IN (SELECT id FROM functions WHERE name = 'tradermade-streaming')
+AND event_message ~ 'auth_(ok|failed|required|timeout)'
+AND timestamp >= NOW() - INTERVAL '24 hours'
+GROUP BY DATE_TRUNC('hour', timestamp)
+ORDER BY hour DESC;
+```
+
+### Subscription Limit Monitoring  
+```sql
+-- Monitor subscription limit violations
+SELECT 
+  DATE_TRUNC('hour', timestamp) as hour,
+  COUNT(*) FILTER (WHERE event_message LIKE '%max_subscriptions_exceeded%') as limit_violations,
+  COUNT(*) FILTER (WHERE event_message LIKE '%subscribe%') as total_subscriptions
+FROM function_edge_logs 
+WHERE function_id IN (SELECT id FROM functions WHERE name = 'tradermade-streaming')
+AND timestamp >= NOW() - INTERVAL '24 hours'
+GROUP BY DATE_TRUNC('hour', timestamp)
+ORDER BY hour DESC;
+```
 
 ### Error Rate Monitoring
 ```sql
@@ -114,6 +201,9 @@ ORDER BY hour DESC;
 - **Block Rate**: Alert if > 20% 
 - **Email Failure Rate**: Alert if > 10%
 - **Request Volume**: Alert if > 100 requests/hour
+- **WebSocket Auth Failure Rate**: Alert if > 15%
+- **Subscription Limit Violations**: Alert if > 5 violations/hour
+- **WebSocket Connection Drops**: Alert if > 10 drops/hour
 
 ## Rollback Procedure
 
@@ -139,6 +229,10 @@ ORDER BY hour DESC;
 - Rate limiting configured and tested
 - Input validation implemented
 - Email suppression ready for production
+- WebSocket JWT authentication implemented
+- Subscription limits enforced (20 per client)
+- PII-safe IP hashing for audit trails
+- Authentication timeouts configured (30s default)
 
 ### Monitoring ✅ 
 - Edge function logs available
@@ -178,6 +272,9 @@ Due to authentication requirements, the following screenshots must be captured m
 - Email notifications: **Suppressed in prod, conditional in staging**
 - Password reset: **Always enabled**
 - User signup via form: **Disabled (admin approval required)**
+- WebSocket authentication: **Required for all connections**
+- WebSocket auth timeout: **30 seconds (WS_AUTH_TIMEOUT_MS)**
+- Max subscriptions per client: **20 (MAX_WS_SUBS_PER_CLIENT)**
 
 ### Security Guardrails Active
 - Row Level Security on `account_requests` table
@@ -185,3 +282,8 @@ Due to authentication requirements, the following screenshots must be captured m
 - Rate limit enforcement via `rate_limits` table
 - Input validation and sanitization
 - PII redaction in logs
+- WebSocket JWT authentication with Supabase verification
+- Per-client subscription limits with graceful error handling
+- IP address hashing for privacy-compliant audit logs
+- Configurable authentication timeouts with automatic cleanup
+- Idempotent authentication to prevent duplicate auth attempts

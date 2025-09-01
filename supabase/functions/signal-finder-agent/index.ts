@@ -201,8 +201,8 @@ async function fetchEnhancedMarketData(
   try {
     console.log("Fetching enhanced market data for 25+ instruments...");
 
-    // Request all available symbols for comprehensive analysis
-    const { data, error } = await supabase.functions.invoke("get-market-data", {
+    // Use tradermade-streaming for market data
+    const { data, error } = await supabase.functions.invoke("tradermade-streaming", {
       body: {
         symbols: [], // Empty array means get all default symbols
         includeVolume: true,

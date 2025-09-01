@@ -1,6 +1,6 @@
-
 import { useState, useCallback } from 'react';
-import { marketDataService, HistoricalDataPoint, HistoricalDataRequest } from '@/services/MarketDataService';
+import { supabase } from '@/integrations/supabase/client';
+import { HistoricalDataPoint, HistoricalDataRequest } from '@/types/marketData';
 
 interface UseHistoricalDataReturn {
   data: HistoricalDataPoint[];
@@ -17,13 +17,20 @@ export const useHistoricalData = (): UseHistoricalDataReturn => {
   const fetchHistoricalData = useCallback(async (request: HistoricalDataRequest) => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const result = await marketDataService.getHistoricalData(request);
-      setData(result);
+      // Use get-historical-data edge function for historical data
+      const { data, error } = await supabase.functions.invoke('get-historical-data', {
+        body: request
+      });
+
+      if (error) throw error;
+
+      setData(data?.historical || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch historical data');
-      console.error('useHistoricalData error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch historical data';
+      setError(errorMessage);
+      console.error('Historical data fetch error:', err);
     } finally {
       setIsLoading(false);
     }

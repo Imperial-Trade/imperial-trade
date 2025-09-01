@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 // Configuration constants
@@ -113,6 +113,7 @@ class TradermadeConnectionManager {
   private wsFirstTickLatenciesMs: number[] = []; // Keep last 100 for percentiles
   private wsUpdatesTotal = 0;
   private httpUpdatesTotal = 0;
+  private upstreamIdleReconnects = 0;
 
   // First-tick latency tracking: clientId -> subscription start time
   private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
@@ -553,7 +554,8 @@ class TradermadeConnectionManager {
     this.heartbeatInterval = setInterval(() => {
       if (this.tradermadeSocket?.readyState === WebSocket.OPEN) {
         const now = Date.now();
-        if (now - this.lastPingTime >= 30000) { // 30 second intervals
+        // Send ping every 15s
+        if (now - this.lastPingTime >= 15000) {
           try {
             this.tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
             this.lastPingTime = now;
@@ -561,8 +563,19 @@ class TradermadeConnectionManager {
             console.error('❌ Heartbeat failed:', error);
           }
         }
+        
+        // Upstream idle watchdog: if no ticks for >12s, force reconnect
+        const sinceTick = this.lastTickTime ? now - this.lastTickTime : Infinity;
+        if (sinceTick > 12000) {
+          console.warn(`⏱️ Upstream idle >12s (${sinceTick}ms). Forcing reconnect...`);
+          this.upstreamIdleReconnects++;
+          this.disconnectTradermade();
+          if (this.clients.size > 0) {
+            this.connectToTradermade();
+          }
+        }
       }
-    }, 30000);
+    }, 15000);
   }
 
   // Stop heartbeat
@@ -1082,18 +1095,14 @@ class TradermadeConnectionManager {
           });
         }
 
-        // Fetch REST prices for non-throttled symbols
-        const restResults = await this.fetchRestPrices(fetchableSymbols);
-        
-        // Combine with cached prices for throttled symbols
+        // Cache-only mode for non-throttled symbols (no external REST calls)
         const allResults: Record<string, any> = {};
-        
-        // Add REST results
-        Object.entries(restResults).forEach(([symbol, result]) => {
+        fetchableSymbols.forEach((symbol) => {
+          const cached = this.getCachedPrice(symbol);
           allResults[symbol] = {
-            ...result.price,
-            served_from: result.served_from,
-            stale: result.stale
+            ...cached,
+            served_from: 'cache',
+            stale: cached ? !this.isPriceFresh(cached) : false
           };
         });
         
@@ -1191,7 +1200,8 @@ class TradermadeConnectionManager {
         ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
         ws_first_tick_latency_p50_ms: p50,
         ws_first_tick_latency_p95_ms: p95,
-        latency_samples: sortedLatencies.length
+        latency_samples: sortedLatencies.length,
+        upstream_idle_reconnects: this.upstreamIdleReconnects
       },
       
       // Guardrails status

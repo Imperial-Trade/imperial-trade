@@ -74,10 +74,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   
   // Enhanced stability constants for improved USA30/NAS100 performance
   const MAX_RECONNECT_ATTEMPTS = 10;
-  const RECONNECT_BASE_DELAY = 2000; // 2 seconds base delay  
-  const MAX_RECONNECT_DELAY = 60000; // Max 60 seconds delay
-  const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds health check
-  const STALE_DATA_THRESHOLD = 10000; // 10 seconds stale threshold
+  const RECONNECT_BASE_DELAY = 1000; // 1 second base delay
+  const MAX_RECONNECT_DELAY = 5000; // Cap at 5 seconds for fast recovery
+  const HEALTH_CHECK_INTERVAL = 10000; // 10 seconds watchdog
+  const STALE_DATA_THRESHOLD = 15000; // 15 seconds stale threshold
   // Enhanced health check mechanism for connection stability
   const healthCheckRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -226,6 +226,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         try {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
+          // Any message indicates liveness; reset reconnect backoff
+          reconnectAttemptsRef.current = 0;
           
           if (data.type === 'auth_required') {
             console.log('🔐 Authentication required');
@@ -566,15 +568,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
-        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 15000) {
+        console.warn('🚨 Watchdog: no messages for >15s (watchdog_stale_15s). Reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
-        console.log('🔄 Connection lost, attempting reconnection...');
+        console.log('🔄 Watchdog: socket not open, attempting reconnection (watchdog_closed_state)...');
         connect();
       }
-    }, 30000); // Check every 30 seconds
+    }, 10000); // Check every 10 seconds
 
     return () => {
       clearInterval(healthCheckInterval);

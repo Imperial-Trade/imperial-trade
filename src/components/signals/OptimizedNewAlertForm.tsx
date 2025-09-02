@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -105,6 +104,9 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     // Clear all validation errors to avoid stale errors when switching assets
     setErrors({});
 
+    // Reset current price when switching assets
+    setCurrentPrice(0);
+    
     // Reset loading state after a short delay to allow the price component to initialize
     setTimeout(() => {
       setIsLoadingPriceData(false);
@@ -479,42 +481,31 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   return (
     <div className="w-full p-6 bg-card rounded-lg border border-border">
       <form onSubmit={handleSubmit} className="w-full space-y-4">
-        {/* Asset Selection - Compact Toggle */}
+        {/* Asset Selection - Dropdown */}
         <div className="space-y-2">
-          <div className="space-y-3">
-            <label className="text-sm font-medium">Select Asset</label>
-            <ToggleGroup 
-              type="single" 
-              value={selectedAsset?.symbol || ''} 
-              onValueChange={handleAssetSelection}
-              className="grid grid-cols-2 gap-2"
-            >
+          <label className="text-sm font-medium">Select Asset</label>
+          <Select 
+            value={selectedAsset?.symbol || ''} 
+            onValueChange={handleAssetSelection}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select an asset..." />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
               {ALLOWED_ASSETS.map((asset) => (
-                <ToggleGroupItem 
-                  key={asset.symbol}
-                  value={asset.symbol}
-                  className="flex flex-col items-center justify-center p-4 h-auto data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                >
-                  <div className="font-semibold text-sm mb-1">{asset.name}</div>
-                  <div className="text-xs opacity-70 mb-2">{asset.symbol}</div>
-                  <div className="text-xs">
-                    <EnhancedLivePriceDisplay 
-                      symbol={asset.symbol}
-                      assetName={asset.name}
-                      onPriceUpdate={selectedAsset?.symbol === asset.symbol ? setCurrentPrice : undefined}
-                    />
-                  </div>
-                </ToggleGroupItem>
+                <SelectItem key={asset.symbol} value={asset.symbol}>
+                  {asset.name} ({asset.symbol})
+                </SelectItem>
               ))}
-            </ToggleGroup>
-            {!selectedAsset && (
-              <p className="text-sm text-muted-foreground">Please select an asset to continue</p>
-            )}
-          </div>
+            </SelectContent>
+          </Select>
+          {!selectedAsset && (
+            <p className="text-sm text-muted-foreground">Please select an asset to continue</p>
+          )}
         </div>
 
         {/* Live Price Display */}
-        {selectedAsset && (
+        {selectedAsset ? (
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Live Price - {selectedAsset.name}
@@ -535,6 +526,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 Loading price data...
               </div>
             )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Live Price
+            </label>
+            <div className="p-4 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20">
+              <div className="text-center text-muted-foreground text-sm">
+                Select an asset to load live price.
+              </div>
+            </div>
           </div>
         )}
 

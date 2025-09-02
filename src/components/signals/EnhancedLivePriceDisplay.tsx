@@ -389,40 +389,40 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       ))}
 
-      {/* Main Price Display */}
-      {(price > 0 || !isLoading) && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {price > 0 ? (
-              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading || isRefreshing ? 'animate-pulse' : ''
-              } ${
-                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                'text-accent-green'
-              }`}>
-                ${formatPrice(price)}
-              </div>
-            ) : (
-              <div className="text-gray-500 font-mono text-xl">---.--</div>
-            )}
-          </div>
-          
-          {!error && price > 0 && change !== undefined && changePercent !== undefined && (
-            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
-              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
-              <div className="text-right">
-                <div className="text-sm font-medium">
-                  {change >= 0 ? '+' : ''}{change.toFixed(4)}
-                </div>
-                <div className="text-xs">
-                  ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-                </div>
-              </div>
+      {/* Main Price Display - Always visible */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {price > 0 ? (
+            <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+              isLoading || isRefreshing ? 'animate-pulse' : ''
+            } ${
+              priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+              priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+              'text-accent-green'
+            }`}>
+              ${formatPrice(price)}
+            </div>
+          ) : (
+            <div className={`text-gray-500 font-mono text-xl ${isLoading ? 'animate-pulse' : ''}`}>
+              {isLoading ? 'Loading...' : '---.--'}
             </div>
           )}
         </div>
-      )}
+        
+        {!error && price > 0 && change !== undefined && changePercent !== undefined && (
+          <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+            {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {change >= 0 ? '+' : ''}{change.toFixed(4)}
+              </div>
+              <div className="text-xs">
+                ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Enhanced Footer with Trading Safety */}
       <div className="flex items-center justify-between">

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -35,14 +36,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(ALLOWED_ASSETS[0]); // Default to Gold
+  const [selectedAsset, setSelectedAsset] = useState<typeof ALLOWED_ASSETS[0] | null>(null);
   const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   
   // Form state
   const [formData, setFormData] = useState({
-    asset_name: ALLOWED_ASSETS[0].name,
-    tradermade_symbol: ALLOWED_ASSETS[0].symbol,
+    asset_name: '',
+    tradermade_symbol: '',
     trade_type: 'buy' as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
     entry_price: '',
     stop_loss: '',
@@ -68,33 +69,41 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     tp5_pips: ''
   });
 
-  // Initialize with first allowed asset on mount
-  useEffect(() => {
-    const initAsset = ALLOWED_ASSETS[0];
-    setSelectedAsset(initAsset);
-    setFormData(prev => ({
-      ...prev,
-      asset_name: initAsset.name,
-      tradermade_symbol: initAsset.symbol
-    }));
-  }, []);
-
-  const handleAssetSelection = useCallback((asset: typeof ALLOWED_ASSETS[0]) => {
+  const handleAssetSelection = useCallback((symbol: string) => {
+    const asset = ALLOWED_ASSETS.find(a => a.symbol === symbol);
+    if (!asset) return;
+    
     setIsLoadingPriceData(true);
     setSelectedAsset(asset);
     setFormData(prev => ({
       ...prev,
       asset_name: asset.name,
-      tradermade_symbol: asset.symbol
+      tradermade_symbol: asset.symbol,
+      // Reset price-related fields when switching assets
+      entry_price: '',
+      stop_loss: '',
+      tp1: '',
+      tp2: '',
+      tp3: '',
+      tp4: '',
+      tp5: ''
     }));
     
-    // Clear asset-related errors
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors.asset_name;
-      delete newErrors.tradermade_symbol;
-      return newErrors;
+    // Reset take profits array
+    setTakeProfits(['']);
+    
+    // Reset pip inputs
+    setPipInputs({
+      stop_loss_pips: '',
+      tp1_pips: '',
+      tp2_pips: '',
+      tp3_pips: '',
+      tp4_pips: '',
+      tp5_pips: ''
     });
+    
+    // Clear all validation errors to avoid stale errors when switching assets
+    setErrors({});
 
     // Reset loading state after a short delay to allow the price component to initialize
     setTimeout(() => {
@@ -470,60 +479,64 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   return (
     <div className="w-full p-6 bg-card rounded-lg border border-border">
       <form onSubmit={handleSubmit} className="w-full space-y-4">
-        {/* Asset Selection Cards - No picker, just selection */}
+        {/* Asset Selection - Compact Toggle */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Select Asset
-          </label>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {ALLOWED_ASSETS.map((asset) => (
-              <div
-                key={asset.symbol}
-                onClick={() => handleAssetSelection(asset)}
-                className={`
-                  p-3 rounded-lg border cursor-pointer transition-all
-                  ${selectedAsset.symbol === asset.symbol 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border bg-card hover:bg-muted/50'
-                  }
-                `}
-              >
-                <div className="text-center">
-                  <div className="font-medium text-foreground">{asset.name}</div>
-                  <div className="text-sm text-muted-foreground">{asset.symbol}</div>
-                  <EnhancedLivePriceDisplay 
-                    symbol={asset.symbol}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Select Asset</label>
+            <ToggleGroup 
+              type="single" 
+              value={selectedAsset?.symbol || ''} 
+              onValueChange={handleAssetSelection}
+              className="grid grid-cols-2 gap-2"
+            >
+              {ALLOWED_ASSETS.map((asset) => (
+                <ToggleGroupItem 
+                  key={asset.symbol}
+                  value={asset.symbol}
+                  className="flex flex-col items-center justify-center p-4 h-auto data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  <div className="font-semibold text-sm mb-1">{asset.name}</div>
+                  <div className="text-xs opacity-70 mb-2">{asset.symbol}</div>
+                  <div className="text-xs">
+                    <EnhancedLivePriceDisplay 
+                      symbol={asset.symbol}
+                      assetName={asset.name}
+                      onPriceUpdate={selectedAsset?.symbol === asset.symbol ? setCurrentPrice : undefined}
+                    />
+                  </div>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {!selectedAsset && (
+              <p className="text-sm text-muted-foreground">Please select an asset to continue</p>
+            )}
           </div>
-          {errors.asset_name && (
-            <Alert variant="destructive" className="py-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-sm">{errors.asset_name}</AlertDescription>
-            </Alert>
-          )}
         </div>
 
         {/* Live Price Display */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Live Price Data
-          </label>
-          
-          <EnhancedLivePriceDisplay 
-            symbol={selectedAsset.symbol}
-          />
-          
-          {isLoadingPriceData && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading price data...
+        {selectedAsset && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Live Price - {selectedAsset.name}
+            </label>
+            
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <EnhancedLivePriceDisplay 
+                symbol={selectedAsset.symbol}
+                assetName={selectedAsset.name}
+                onPriceUpdate={setCurrentPrice}
+                onUseCurrentPrice={handleUseCurrentPrice}
+              />
             </div>
-          )}
-        </div>
+            
+            {isLoadingPriceData && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading price data...
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Trade Type Selection */}
         <div className="space-y-2">
@@ -721,18 +734,20 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
+          <Button 
+            type="submit" 
             className="flex-1"
+            disabled={isSubmitting || !selectedAsset}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating Signal...
               </>
-            ) : (
+            ) : selectedAsset ? (
               'Create Signal'
+            ) : (
+              'Select an asset to continue'
             )}
           </Button>
           

@@ -68,6 +68,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const refCountsRef = useRef<Map<string, number>>(new Map());
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 5;
   
   // Enhanced price consistency state - single source of truth
   const masterPricesRef = useRef<Record<string, PriceData>>({});
@@ -282,10 +285,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         }
       });
       
-      // Clear any errors for this symbol
+      // Clear any errors for this symbol and global errors on successful update
       setErrors(prev => {
         const cleaned = { ...prev };
         delete cleaned[normalizedSymbol];
+        delete cleaned.global; // Clear global errors on successful price updates
         return cleaned;
       });
       
@@ -293,13 +297,38 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, [normalizeSymbol]);
 
-  // Setup Realtime channel subscription
+  // Reconnection with exponential backoff
+  const attemptReconnection = useCallback(() => {
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('🔥 Max reconnection attempts reached, giving up');
+      setConnectionStatus('error');
+      setErrors(prev => ({ ...prev, global: 'Connection failed after multiple attempts' }));
+      return;
+    }
+
+    // Clear any existing timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000; // Exponential backoff
+    console.log(`🔄 Attempting reconnection in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current += 1;
+      cleanupRealtimeChannel();
+      setupRealtimeChannel();
+    }, delay);
+  }, []);
+
+  // Setup Realtime channel subscription with robust error handling
   const setupRealtimeChannel = useCallback(() => {
     if (realtimeChannelRef.current) {
       return; // Already connected
     }
 
-    console.log('📡 Setting up Realtime price channel...');
+    console.log(`📡 Setting up Realtime price channel (attempt ${reconnectAttemptsRef.current + 1})`);
     setConnectionStatus('connecting');
     
     const channel = supabase.channel('prices:live');
@@ -309,30 +338,69 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         processRealtimePriceUpdate(payload);
       })
       .subscribe((status) => {
-        console.log('📡 Realtime channel status:', status);
+        console.log(`📡 Realtime channel status: ${status}`);
         
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('connected');
-          setDataSource('tradermade');
-          console.log('✅ Connected to real-time price stream');
-          
-          // Trigger the relay to start if needed
-          // Removed: Legacy relay trigger - tradermade-streaming is the single dialer
-          
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionStatus('error');
-          setErrors(prev => ({ ...prev, global: 'Realtime connection failed' }));
+        switch (status) {
+          case 'SUBSCRIBED':
+            console.log('✅ Connected to real-time price stream');
+            setConnectionStatus('connected');
+            setDataSource('tradermade');
+            
+            // Reset reconnection attempts on successful connection
+            reconnectAttemptsRef.current = 0;
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current);
+              reconnectTimeoutRef.current = null;
+            }
+            
+            // Clear global errors on successful connection
+            setErrors(prev => {
+              const cleaned = { ...prev };
+              delete cleaned.global;
+              return cleaned;
+            });
+            break;
+            
+          case 'CHANNEL_ERROR':
+            console.error('❌ Channel error - attempting reconnection');
+            setConnectionStatus('error');
+            setErrors(prev => ({ ...prev, global: 'Realtime connection error' }));
+            attemptReconnection();
+            break;
+            
+          case 'TIMED_OUT':
+            console.error('⏰ Connection timed out - attempting reconnection');
+            setConnectionStatus('error');
+            setErrors(prev => ({ ...prev, global: 'Connection timed out' }));
+            attemptReconnection();
+            break;
+            
+          case 'CLOSED':
+            console.error('🔌 Connection closed - attempting reconnection');
+            setConnectionStatus('disconnected');
+            setErrors(prev => ({ ...prev, global: 'Connection closed' }));
+            attemptReconnection();
+            break;
+            
+          default:
+            console.log(`📡 Unhandled status: ${status}`);
         }
       });
     
     realtimeChannelRef.current = channel;
-  }, [processRealtimePriceUpdate]);
+  }, [processRealtimePriceUpdate, attemptReconnection]);
 
   const cleanupRealtimeChannel = useCallback(() => {
     if (realtimeChannelRef.current) {
       console.log('🔌 Cleaning up Realtime price channel');
       supabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
+    }
+    
+    // Clear reconnection timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
   }, []);
 

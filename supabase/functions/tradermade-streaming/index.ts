@@ -6,6 +6,7 @@ import { connect } from "https://deno.land/x/redis@v0.32.3/mod.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 // Configuration constants
@@ -41,7 +42,7 @@ console.log('🔐 SUPABASE_SERVICE_ROLE_KEY configured:', !!supabaseServiceKey &
 const redisUrl = Deno.env.get('UPSTASH_REDIS_URL');
 const redisPassword = Deno.env.get('UPSTASH_REDIS_PASSWORD');
 
-// Tradermade symbol configuration
+// Tradermade symbol configuration - ONLY tradermade-streaming connects to TraderMade
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
 // Enhanced client-to-server symbol mapping for BTC/XAU consistency
@@ -98,7 +99,7 @@ interface ClientConnection {
   ipHash?: string;
 }
 
-// ========== UNIFIED CONNECTION MANAGER WITH REDIS PUB/SUB ==========
+// ========== ENHANCED CONNECTION MANAGER WITH STABILIZED LEADERSHIP ==========
 class TradermadeConnectionManager {
   private static instance: TradermadeConnectionManager;
   private tradermadeSocket: WebSocket | null = null;
@@ -114,12 +115,17 @@ class TradermadeConnectionManager {
   private lastTickTime = 0;
   private isWarmingUp = false;
 
-  // Redis pub/sub integration
+  // Redis pub/sub integration with enhanced leadership stability
   private redisPublisher: any = null;
   private redisSubscriber: any = null;
   private isLeader = false;
   private leaderHeartbeatInterval: number | null = null;
   private instanceId: string;
+  
+  // Leadership stability enhancements
+  private leaderElectionInProgress = false;
+  private redisDegradedMode = false;
+  private leaderConflictCount = 0;
   
   // Always-on Realtime broadcasting
   private realtimeChannel: any = null;
@@ -134,7 +140,7 @@ class TradermadeConnectionManager {
   private broadcastErrorTimestamps: number[] = [];
   private safeModeUntilMs = 0;
 
-  // ===== GUARDRAILS & METRICS =====
+  // Enhanced diagnostics and observability
   private lastRestFetchAt: Map<string, number> = new Map();
   private restErrorTimestamps: number[] = [];
   private isRestDisabled = false;
@@ -145,6 +151,18 @@ class TradermadeConnectionManager {
   private httpUpdatesTotal = 0;
   private upstreamIdleReconnects = 0;
   private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
+
+  // Enhanced connection diagnostics
+  private lastUpstreamCloseCode: number | null = null;
+  private lastUpstreamCloseReason: string | null = null;
+  private lastUpstreamErrorMessage: string | null = null;
+  private lastConnectivityProbeAt: number = 0;
+  private lastConnectivityProbeError: string | null = null;
+  private connectGuardReason: string | null = null;
+
+  // Per-symbol tick tracking with 60-second windows (capped arrays)
+  private symbolTickTimes: Map<string, number[]> = new Map();
+  private symbolLatencies: Map<string, number[]> = new Map();
 
   private constructor() {
     this.instanceId = crypto.randomUUID();
@@ -165,17 +183,80 @@ class TradermadeConnectionManager {
     // Setup Realtime channel for broadcasting
     this.setupRealtimeChannel();
     
-    // Initialize Redis connections
+    // Initialize Redis connections with degraded mode fallback
     await this.initializeRedis();
     
-    // Start leader election
-    this.startLeaderElection();
+    // Start connectivity probe
+    this.startConnectivityProbe();
     
-    // Always connect to TraderMade immediately (always-on)
-    console.log('🎯 Starting always-on TraderMade connection...');
-    this.connectToTradermade();
+    // Start leader election (unless in degraded mode)
+    if (!this.redisDegradedMode) {
+      this.startLeaderElection();
+    }
+    
+    // Always-on: connect to TraderMade immediately if leader (no client-count gate)
+    console.log('🎯 Always-on mode: Connecting to TraderMade immediately');
+    if (this.isLeader) {
+      this.connectToTradermade();
+    }
     
     console.log('✅ Always-on service initialized');
+  }
+
+  // DNS/TLS-only connectivity probe (no API calls)
+  private async probeConnectivity(): Promise<void> {
+    try {
+      this.lastConnectivityProbeAt = Date.now();
+      this.lastConnectivityProbeError = null;
+      this.connectGuardReason = null;
+
+      // Check if API key is configured
+      const traderMadeKeyConfigured = !!Deno.env.get('TRADERMADE_API_KEY');
+      if (!traderMadeKeyConfigured) {
+        this.connectGuardReason = 'missing_api_key';
+        return;
+      }
+
+      // DNS resolution test
+      try {
+        await Deno.resolveDns('marketdata.tradermade.com', 'A');
+      } catch (error) {
+        this.connectGuardReason = 'dns_failed';
+        this.lastConnectivityProbeError = `DNS: ${error.message}`;
+        return;
+      }
+
+      // TLS connectivity test
+      try {
+        const conn = await Deno.connectTls({ 
+          hostname: 'marketdata.tradermade.com', 
+          port: 443 
+        });
+        conn.close();
+      } catch (error) {
+        this.connectGuardReason = 'tls_failed';
+        this.lastConnectivityProbeError = `TLS: ${error.message}`;
+        return;
+      }
+
+      // All checks passed
+      this.connectGuardReason = null;
+      
+    } catch (error) {
+      this.lastConnectivityProbeError = `Probe: ${error.message}`;
+      this.connectGuardReason = 'probe_failed';
+    }
+  }
+
+  // Start connectivity probe (runs every 60s)
+  private startConnectivityProbe(): void {
+    // Initial probe
+    this.probeConnectivity();
+    
+    // Periodic probe
+    setInterval(() => {
+      this.probeConnectivity();
+    }, 60000); // 60 seconds
   }
 
   // Setup Realtime channel for price broadcasting (idempotent)
@@ -270,7 +351,7 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Initialize Redis connections for pub/sub with enhanced error handling
+  // Initialize Redis connections with degraded mode fallback
   private async initializeRedis(): Promise<void> {
     let attempt = 0;
     const maxAttempts = 3;
@@ -279,6 +360,7 @@ class TradermadeConnectionManager {
       try {
         if (!redisUrl || !redisPassword) {
           console.error('❌ Redis credentials not configured');
+          this.enableRedisDegradedMode();
           return;
         }
 
@@ -314,9 +396,6 @@ class TradermadeConnectionManager {
 
         console.log('✅ Redis connections established successfully');
         
-        // Start leader election process
-        await this.startLeaderElection();
-        
         // Subscribe to price updates channel
         await this.subscribeToRedisChannel();
         
@@ -327,10 +406,8 @@ class TradermadeConnectionManager {
         console.error(`❌ Redis initialization attempt ${attempt} failed:`, error);
         
         if (attempt >= maxAttempts) {
-          console.error('❌ All Redis connection attempts failed, continuing without Redis');
-          // Continue without Redis - fall back to single instance mode
-          this.isLeader = true;
-          console.log('🔄 Falling back to single instance mode (no Redis)');
+          console.error('❌ All Redis connection attempts failed, entering degraded mode');
+          this.enableRedisDegradedMode();
           return;
         }
         
@@ -342,14 +419,34 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Enhanced leader election mechanism using Redis SETNX with validation
+  // Enable degraded single-instance mode
+  private enableRedisDegradedMode(): void {
+    console.warn('⚠️ Entering Redis degraded mode - single instance operation');
+    this.redisDegradedMode = true;
+    this.isLeader = true;
+    console.log('👑 Assumed leadership in degraded mode');
+  }
+
+  // Enhanced leader election with conflict guard
   private async startLeaderElection(): Promise<void> {
-    if (!this.redisPublisher) {
-      console.warn('⚠️ No Redis publisher available, assuming leader role');
-      this.isLeader = true;
-      await this.connectToTradermade();
+    if (this.leaderElectionInProgress) {
+      console.log('🗳️ Leader election already in progress, skipping');
       return;
     }
+
+    if (this.redisDegradedMode) {
+      console.log('🗳️ Skipping leader election (degraded mode)');
+      return;
+    }
+
+    if (!this.redisPublisher) {
+      console.warn('⚠️ No Redis publisher available, entering degraded mode');
+      this.enableRedisDegradedMode();
+      this.connectToTradermade();
+      return;
+    }
+
+    this.leaderElectionInProgress = true;
 
     try {
       console.log(`🗳️ Starting leader election for instance ${this.instanceId}`);
@@ -365,18 +462,11 @@ class TradermadeConnectionManager {
       if (result === 'OK') {
         console.log(`👑 Became TraderMade connection leader (instance: ${this.instanceId})`);
         this.isLeader = true;
+        this.leaderConflictCount = 0;
         
-        // Always connect to TraderMade in always-on mode (regardless of clients)
-        if (this.alwaysOnConnection) {
-          console.log('🎯 Always-on mode: Connecting to TraderMade immediately');
-          await this.connectToTradermade();
-        } else {
-          // Legacy: Connect only if we have clients
-          const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
-          if (authenticatedClients.length > 0) {
-            await this.connectToTradermade();
-          }
-        }
+        // Always-on mode: Connect to TraderMade immediately (no client-count gate)
+        console.log('🎯 Always-on mode: Connecting to TraderMade immediately');
+        this.connectToTradermade();
         
         this.startLeaderHeartbeat();
       } else {
@@ -391,37 +481,39 @@ class TradermadeConnectionManager {
     } catch (error) {
       console.error('❌ Leader election failed:', error);
       
-      // If Redis is unavailable, assume leadership to prevent service disruption
+      // If Redis is unavailable, enter degraded mode
       if (error.message?.includes('connection') || error.message?.includes('timeout')) {
-        console.warn('⚠️ Redis unavailable during leader election, assuming leader role');
-        this.isLeader = true;
-        await this.connectToTradermade();
+        console.warn('⚠️ Redis unavailable during leader election, entering degraded mode');
+        this.enableRedisDegradedMode();
+        this.connectToTradermade();
       } else {
         // Retry after delay for other errors
         setTimeout(() => this.startLeaderElection(), 5000);
       }
+    } finally {
+      this.leaderElectionInProgress = false;
     }
   }
 
-  // Enhanced leadership heartbeat with health monitoring
+  // Enhanced leadership heartbeat with conflict detection
   private startLeaderHeartbeat(): void {
     if (this.leaderHeartbeatInterval) {
       clearInterval(this.leaderHeartbeatInterval);
     }
 
     this.leaderHeartbeatInterval = setInterval(async () => {
-      if (!this.isLeader || !this.redisPublisher) return;
+      if (!this.isLeader || !this.redisPublisher || this.redisDegradedMode) return;
 
       try {
-        // Renew leadership lock
+        // Check current leader
         const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
         if (currentLeader === this.instanceId) {
           // Successfully renew lock
           await this.redisPublisher.expire(LEADER_LOCK_KEY, LEADER_LOCK_TTL);
           
-          // Also publish a heartbeat to Redis for monitoring
+          // Publish heartbeat to Redis for monitoring
           await this.redisPublisher.set(
-            `leader:heartbeat:${this.instanceId}`, 
+            `leader:heartbeat:${this.instanceId}`,
             JSON.stringify({
               timestamp: Date.now(),
               connectedClients: this.clients.size,
@@ -438,13 +530,16 @@ class TradermadeConnectionManager {
         } else {
           console.warn(`⚠️ Lost leadership, stepping down (current leader: ${currentLeader || 'none'})`);
           this.isLeader = false;
-          this.disconnectTradermade();
+          this.disconnectTradermade(); // Close WS immediately on step-down
           clearInterval(this.leaderHeartbeatInterval);
           this.leaderHeartbeatInterval = null;
           
+          // Increment conflict counter
+          this.leaderConflictCount++;
+          
           // Try to become leader again if there's no leader
           if (!currentLeader) {
-            setTimeout(() => this.startLeaderElection(), 2000);
+            setTimeout(() => this.startLeaderElection(), 2000 + (this.leaderConflictCount * 1000)); // Backoff on conflicts
           }
         }
       } catch (error) {
@@ -452,7 +547,7 @@ class TradermadeConnectionManager {
         
         // On heartbeat failure, step down and retry leader election
         this.isLeader = false;
-        this.disconnectTradermade();
+        this.disconnectTradermade(); // Close WS immediately on step-down
         clearInterval(this.leaderHeartbeatInterval);
         this.leaderHeartbeatInterval = null;
         setTimeout(() => this.startLeaderElection(), 5000);
@@ -462,6 +557,8 @@ class TradermadeConnectionManager {
 
   // Check if current leader is still alive
   private async checkLeaderStatus(): Promise<void> {
+    if (this.leaderElectionInProgress || this.redisDegradedMode) return;
+
     try {
       const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
       if (!currentLeader) {
@@ -576,16 +673,8 @@ class TradermadeConnectionManager {
         remaining_clients: this.clients.size
       });
 
-      // Leader manages TraderMade connection based on client count
-      if (this.isLeader && this.clients.size === 0) {
-        console.info(`⏱️ No clients remaining, scheduling TraderMade disconnect in ${IDLE_DISCONNECT_DELAY_MS/1000}s...`);
-        this.idleDisconnectTimeout = setTimeout(() => {
-          if (this.clients.size === 0) {
-            console.info('🔌 Disconnecting TraderMade connection (no clients)');
-            this.disconnectTradermade();
-          }
-        }, IDLE_DISCONNECT_DELAY_MS);
-      }
+      // NOTE: Always-on mode - no idle disconnects, leader keeps connection always
+      console.info(`🔌 Client disconnected. Remaining: ${this.clients.size}. Leader maintains always-on connection.`);
     }
   }
 
@@ -685,7 +774,7 @@ class TradermadeConnectionManager {
   // Connect to TraderMade (LEADER ONLY - single connection across all instances)
   private async connectToTradermade(): Promise<void> {
     if (!this.isLeader) {
-      console.log('📡 Not leader, skipping TraderMade connection');
+      console.log('📡 Only leader connects to TraderMade upstream');
       return;
     }
 
@@ -755,6 +844,11 @@ class TradermadeConnectionManager {
         const logLevel = event.code === 1000 || event.code === 1005 ? 'info' : 'warn';
         const closeReason = event.reason || 'No reason provided';
         console[logLevel](`🔌❌ TraderMade connection closed: ${event.code} - ${closeReason}`);
+        
+        // Store close diagnostics
+        this.lastUpstreamCloseCode = event.code;
+        this.lastUpstreamCloseReason = closeReason;
+        
         this.connectionStatus = 'disconnected';
         this.stopHeartbeat();
         
@@ -766,14 +860,16 @@ class TradermadeConnectionManager {
           closeReason
         });
 
-        // Attempt reconnection if we have clients and are still leader
-        if (this.isLeader && this.clients.size > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
+        // Always-on: Reconnect immediately if still leader (no client-count gate)
+        if (this.isLeader && this.reconnectAttempts < this.maxReconnectAttempts) {
+          console.log('🔄 Always-on reconnect (no client-count gate)');
           this.scheduleReconnect();
         }
       };
 
       this.tradermadeSocket.onerror = (error) => {
         console.error('❌ TraderMade WebSocket error:', error);
+        this.lastUpstreamErrorMessage = error.toString();
         this.connectionStatus = 'error';
         
         this.broadcastToAllClients({
@@ -852,6 +948,9 @@ class TradermadeConnectionManager {
       this.priceCache.set(clientSymbol, priceUpdate);
       this.lastTickTime = now;
 
+      // Track per-symbol ticks and latencies (capped arrays)
+      this.trackSymbolMetrics(clientSymbol, now);
+
       // ALWAYS: Broadcast to Realtime (always-on service)
       await this.broadcastPriceToRealtime(priceUpdate);
 
@@ -862,6 +961,35 @@ class TradermadeConnectionManager {
       if (data.startsWith('{')) {
         console.error('❌ Error parsing TraderMade message:', error);
       }
+    }
+  }
+
+  // Track per-symbol tick metrics with capped arrays
+  private trackSymbolMetrics(symbol: string, timestamp: number): void {
+    // Track tick times per symbol (last 60 seconds)
+    if (!this.symbolTickTimes.has(symbol)) {
+      this.symbolTickTimes.set(symbol, []);
+    }
+    const tickTimes = this.symbolTickTimes.get(symbol)!;
+    tickTimes.push(timestamp);
+    
+    // Cap to last 60 seconds
+    const cutoff = timestamp - 60000;
+    while (tickTimes.length > 0 && tickTimes[0] < cutoff) {
+      tickTimes.shift();
+    }
+
+    // Track latencies per symbol (last 30 minutes for p50/p95)
+    if (!this.symbolLatencies.has(symbol)) {
+      this.symbolLatencies.set(symbol, []);
+    }
+    const latencies = this.symbolLatencies.get(symbol)!;
+    latencies.push(timestamp); // Simplified latency tracking
+    
+    // Cap to last 30 minutes
+    const latencyCutoff = timestamp - 1800000; // 30 minutes
+    while (latencies.length > 0 && latencies[0] < latencyCutoff) {
+      latencies.shift();
     }
   }
 
@@ -973,15 +1101,14 @@ class TradermadeConnectionManager {
           }
         }
         
-        // Upstream idle watchdog: if no ticks for >12s, force reconnect
+        // Always-on: Force reconnect on idle upstream (no client-count gate)
         const sinceTick = this.lastTickTime ? now - this.lastTickTime : Infinity;
         if (sinceTick > 12000) {
-          console.warn(`⏱️ Upstream idle >12s (${sinceTick}ms). Forcing reconnect...`);
+          console.warn(`⏱️ Upstream idle >12s (${sinceTick}ms). Always-on reconnect...`);
           this.upstreamIdleReconnects++;
           this.disconnectTradermade();
-          if (this.clients.size > 0) {
-            this.connectToTradermade();
-          }
+          // Always-on mode: reconnect immediately
+          this.connectToTradermade();
         }
       }
     }, 15000);
@@ -995,22 +1122,22 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Schedule reconnection
+  // Schedule reconnection (idempotent)
   private scheduleReconnect(): void {
-    if (this.reconnectTimeout) return;
+    if (this.reconnectTimeout) return; // Already scheduled
 
-      this.reconnectAttempts++;
-      const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts), 60000);
-      
-      console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
-      
-      this.reconnectTimeout = setTimeout(() => {
-        this.reconnectTimeout = null;
-        // Always reconnect in always-on mode
-        if (this.alwaysOnConnection) {
-          this.connectToTradermade();
-        }
-      }, delay);
+    this.reconnectAttempts++;
+    const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts), 60000);
+    
+    console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
+      // Always-on mode: always reconnect
+      if (this.isLeader) {
+        this.connectToTradermade();
+      }
+    }, delay);
   }
 
   // Disconnect from TraderMade
@@ -1117,18 +1244,7 @@ class TradermadeConnectionManager {
         message: 'Authentication successful'
       });
 
-      // Cancel any pending idle disconnect
-      if (this.idleDisconnectTimeout) {
-        clearTimeout(this.idleDisconnectTimeout);
-        this.idleDisconnectTimeout = null;
-      }
-
-      // Leader starts TraderMade connection if this is the first authenticated client
-      const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
-      if (this.isLeader && authenticatedClients.length === 1 && this.connectionStatus === 'disconnected') {
-        console.log('🚀 First authenticated client, starting TraderMade connection... (LEADER)');
-        this.connectToTradermade();
-      }
+      // Always-on: Leader maintains connection regardless of client count
 
       // Send cached prices and connection status
       this.sendCachedPricesToClient(clientId);
@@ -1150,7 +1266,7 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Handle client messages
+  // Handle client messages with error catching
   async handleClientMessage(clientId: string, message: any): Promise<void> {
     const client = this.clients.get(clientId);
     if (!client) return;
@@ -1174,6 +1290,7 @@ class TradermadeConnectionManager {
         this.unsubscribeClient(clientId, data.symbols);
       }
     } catch (error) {
+      console.error(`❌ handleClientMessage error for ${clientId}:`, error);
       this.sendToClient(clientId, {
         type: 'error',
         message: 'Invalid message format'
@@ -1239,21 +1356,6 @@ class TradermadeConnectionManager {
     return (Date.now() - priceData.cachedAt) < PRICE_CACHE_TTL_MS;
   }
 
-  // Non-blocking warm-up of TraderMade connection
-  private warmUpConnection(): void {
-    if (this.isWarmingUp || this.connectionStatus !== 'disconnected' || !this.isLeader) return;
-    
-    this.isWarmingUp = true;
-    console.log('🔥 Pre-warming TraderMade connection... (LEADER)');
-    
-    // Don't await - non-blocking
-    this.connectToTradermade().finally(() => {
-      this.isWarmingUp = false;
-    });
-  }
-
-  // ===== REST API FALLBACK METHOD =====
-  
   // Fetch price from TraderMade REST API with cooldown protection
   private async fetchPriceFromRestApi(symbol: string): Promise<TradermadePriceData | null> {
     if (this.isRestDisabled) {
@@ -1331,8 +1433,6 @@ class TradermadeConnectionManager {
       return null;
     }
   }
-
-  // ===== GUARDRAILS METHODS =====
 
   // Check if symbol is within REST cooldown period
   private isSymbolInCooldown(symbol: string): number {
@@ -1428,14 +1528,6 @@ class TradermadeConnectionManager {
         });
       }
 
-      // Pre-warm connection if cold and no clients (leader only)
-      if (this.isLeader) {
-        const health = this.getHealthStatus();
-        if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
-          this.warmUpConnection();
-        }
-      }
-
       // Get prices from both local cache and Redis cache for consistency
       const prices: Record<string, any> = {};
       
@@ -1484,7 +1576,6 @@ class TradermadeConnectionManager {
           console.log(`🔄 Force fetch requested for ${symbol}, attempting REST API...`);
           try {
             const restPrice = await this.fetchPriceFromRestApi(symbol);
-            console.log(`📈 REST API result for ${symbol}:`, restPrice ? 'SUCCESS' : 'FAILED');
             if (restPrice) {
               prices[symbol] = {
                 symbol: restPrice.symbol,
@@ -1549,7 +1640,18 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Get health status for diagnostics
+  // Calculate percentiles for array
+  private calculatePercentiles(values: number[]): { p50: number | null, p95: number | null } {
+    if (values.length === 0) return { p50: null, p95: null };
+    
+    const sorted = [...values].sort((a, b) => a - b);
+    const p50 = sorted[Math.floor(sorted.length * 0.5)];
+    const p95 = sorted[Math.floor(sorted.length * 0.95)];
+    
+    return { p50, p95 };
+  }
+
+  // Enhanced health status with leader-aware diagnostics and connectivity probe
   getHealthStatus(): any {
     const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
     const totalSubscriptions = Array.from(this.clients.values())
@@ -1560,12 +1662,47 @@ class TradermadeConnectionManager {
     const wsVsHttpRatio = totalUpdates > 0 ? (this.wsUpdatesTotal / totalUpdates) * 100 : 0;
 
     // Calculate percentiles for WebSocket first tick latencies
-    const sortedLatencies = [...this.wsFirstTickLatenciesMs].sort((a, b) => a - b);
-    const p50 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.5)] : null;
-    const p95 = sortedLatencies.length > 0 ? sortedLatencies[Math.floor(sortedLatencies.length * 0.95)] : null;
+    const { p50: wsP50, p95: wsP95 } = this.calculatePercentiles(this.wsFirstTickLatenciesMs);
+
+    // Per-symbol metrics
+    const symbolMetrics: any = {};
+    const now = Date.now();
+    
+    for (const symbol of ['XAUUSD', 'BTCUSD']) {
+      const tickTimes = this.symbolTickTimes.get(symbol) || [];
+      const latencies = this.symbolLatencies.get(symbol) || [];
+      const lastBroadcast = this.lastSentAtMs.get(symbol);
+      
+      // Calculate ticks per second over last 60s
+      const ticksPerSec = tickTimes.length > 0 ? tickTimes.length / 60 : 0;
+      
+      // Calculate cache freshness
+      const cacheFreshnessMs = lastBroadcast ? now - lastBroadcast : null;
+      
+      // Calculate latency percentiles
+      const { p50: latencyP50, p95: latencyP95 } = this.calculatePercentiles(latencies);
+      
+      symbolMetrics[symbol] = {
+        ticks_per_sec: Math.round(ticksPerSec * 100) / 100,
+        cache_freshness_ms: cacheFreshnessMs,
+        ws_first_tick_latency_p50_ms: latencyP50,
+        ws_first_tick_latency_p95_ms: latencyP95,
+        last_broadcast_ts: lastBroadcast
+      };
+    }
+
+    // Connectivity probe results
+    const traderMadeKeyConfigured = !!Deno.env.get('TRADERMADE_API_KEY');
+    const dnsOk = this.connectGuardReason !== 'dns_failed';
+    const tlsOk = this.connectGuardReason !== 'tls_failed';
 
     return {
-      // Original health metrics
+      // Service identification
+      service: 'tradermade-streaming',
+      version: '5.0.0-enhanced-leadership',
+      mode: 'always_on_single_dialer',
+      
+      // Core health metrics
       tradermadeStatus: this.connectionStatus,
       connectedClients: this.clients.size,
       authenticatedClients: authenticatedClients.length,
@@ -1577,32 +1714,61 @@ class TradermadeConnectionManager {
       reconnectAttempts: this.reconnectAttempts,
       isWarmingUp: this.isWarmingUp,
       
-      // Redis and leader election status
-      redis: {
+      // Leader-aware diagnostics
+      leader: {
         is_leader: this.isLeader,
-        instance_id: this.instanceId,
-        publisher_connected: !!this.redisPublisher,
-        subscriber_connected: !!this.redisSubscriber,
+        leader_instance_id: this.isLeader ? this.instanceId : null, // Simplified - could query Redis
+        is_leader_response: this.isLeader,
+        from_instance_id: this.instanceId,
+        redis_degraded_mode: this.redisDegradedMode,
+        leader_election_in_progress: this.leaderElectionInProgress,
+        leader_conflict_count: this.leaderConflictCount
       },
       
-      // Enhanced metrics with new fields  
+      // Redis and distributed system status
+      redis: {
+        publisher_connected: !!this.redisPublisher,
+        subscriber_connected: !!this.redisSubscriber,
+        degraded_mode: this.redisDegradedMode
+      },
+      
+      // Upstream connection diagnostics
+      upstream: {
+        connected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
+        last_close_code: this.lastUpstreamCloseCode,
+        last_close_reason: this.lastUpstreamCloseReason,
+        last_error_message: this.lastUpstreamErrorMessage,
+        reconnect_attempts: this.reconnectAttempts
+      },
+      
+      // Connectivity probe results (DNS/TLS-only)
+      connectivity: {
+        tradermade_key_configured: traderMadeKeyConfigured,
+        dns_ok: dnsOk,
+        tls_ok: tlsOk,
+        connect_guard_reason: this.connectGuardReason,
+        last_probe_at: this.lastConnectivityProbeAt,
+        last_probe_error: this.lastConnectivityProbeError
+      },
+      
+      // Enhanced metrics with per-symbol breakdowns
       metrics: {
         fallback_http_total: this.fallbackHttpTotal,
         fallback_force_fetch_total: this.fallbackForceFetchTotal,
         ws_updates_total: this.wsUpdatesTotal,
         http_updates_total: this.httpUpdatesTotal,
         ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
-        ws_first_tick_latency_p50_ms: p50,
-        ws_first_tick_latency_p95_ms: p95,
-        latency_samples: sortedLatencies.length,
+        ws_first_tick_latency_p50_ms: wsP50,
+        ws_first_tick_latency_p95_ms: wsP95,
+        latency_samples: this.wsFirstTickLatenciesMs.length,
         upstream_idle_reconnects: this.upstreamIdleReconnects,
         duplicate_drop_count: this.duplicateDropCount,
         broadcast_error_window_5s: this.broadcastErrorTimestamps.length,
         safe_mode_active: Date.now() < this.safeModeUntilMs,
-        last_broadcast_ts_per_symbol: Object.fromEntries(this.lastSentAtMs.entries())
+        symbols: symbolMetrics
       },
       
-      // Always-on connection status with enhanced metrics
+      // Always-on connection status
       always_on: {
         mode: 'always_on',
         realtime_channel_ready: !!this.realtimeChannel,
@@ -1628,12 +1794,12 @@ class TradermadeConnectionManager {
 
 // ========== EDGE FUNCTION HANDLER ==========
 serve(async (req) => {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
-    }
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
-  // Handle GET requests for health status
+  // Handle GET requests for enhanced health status
   if (req.method === 'GET') {
     const manager = TradermadeConnectionManager.getInstance();
     const health = manager.getHealthStatus();
@@ -1642,10 +1808,14 @@ serve(async (req) => {
       success: true,
       health,
       service: 'tradermade-streaming',
-      version: '4.0.0-always-on-realtime',
-      mode: 'always_on_producer'
+      version: '5.0.0-enhanced-leadership',
+      mode: 'always_on_single_dialer'
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store' // Prevent health caching
+      }
     });
   }
 
@@ -1675,7 +1845,11 @@ serve(async (req) => {
   };
 
   socket.onmessage = async (event) => {
-    await manager.handleClientMessage(clientId, event.data);
+    try {
+      await manager.handleClientMessage(clientId, event.data);
+    } catch (error) {
+      console.error(`❌ Client message handler error for ${clientId}:`, error);
+    }
   };
 
   socket.onclose = () => {

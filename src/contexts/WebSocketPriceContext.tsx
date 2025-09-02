@@ -130,8 +130,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, []);
 
-  // HTTP fallback for initial data and refreshes with forceFetch support
-  const pollPricesHTTP = useCallback(async (symbols: string[], forceFetch = false) => {
+  // Enhanced HTTP fallback with bootstrap acceptance policy
+  const pollPricesHTTP = useCallback(async (symbols: string[], options: { bootstrap?: boolean; forceFetch?: boolean } = {}) => {
+    const { bootstrap = false, forceFetch = false } = options;
+    
     // ALLOWLIST: Filter symbols to only allowed ones
     const allowedSymbols = symbols.filter(s => {
       const normalized = normalizeSymbol(s);
@@ -139,44 +141,37 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     });
     
     if (allowedSymbols.length === 0) return;
-    if (allowedSymbols.length < symbols.length) {
-      console.warn('🚫 Filtered out non-allowed symbols:', symbols.filter(s => !allowedSymbols.includes(s)));
-    }
-
-    console.log(`🔄 Polling prices via HTTP${forceFetch ? ' (force fetch)' : ''}:`, allowedSymbols);
+    
+    console.log(`🔄 [Context] HTTP fallback ${bootstrap ? '(bootstrap)' : '(triggered)'}:`, allowedSymbols);
+    
+    // TELEMETRY: Count fallback attempts
+    fallbackTelemetryRef.current.fallbackCount++;
+    fallbackTelemetryRef.current.lastFallbackReason = bootstrap ? 'BOOTSTRAP' : 'TRIGGERED_FALLBACK';
 
     try {
       const response = await supabase.functions.invoke('tradermade-streaming', {
         body: {
           symbols: allowedSymbols,
-          forceFetch: forceFetch // Enable REST fallback when cache is empty
+          forceFetch: forceFetch
         }
-      });
-
-      console.log(`📊 HTTP response:`, {
-        success: response.data?.success,
-        pricesCount: Object.keys(response.data?.prices || {}).length,
-        prices: response.data?.prices
       });
 
       if (response.data?.success && response.data?.prices) {
         const newPrices: Record<string, PriceData> = {};
         const updateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'> = {};
         
-        // Process each price update with validation and staleness checks
         Object.entries(response.data.prices).forEach(([symbol, priceInfo]: [string, any]) => {
-          console.log(`🔍 Processing price for ${symbol}:`, priceInfo);
           if (priceInfo && priceInfo.price && !isNaN(priceInfo.price) && priceInfo.price > 0) {
             const normalizedSymbol = normalizeSymbol(symbol);
             
-            // Critical: Validate price freshness (reject stale prices)
+            // GUARDRAIL: Bootstrap acceptance policy - accept ≤60s old for bootstrap, ≤10s for regular
             const priceTimestamp = new Date(priceInfo.timestamp || new Date()).getTime();
             const currentTime = Date.now();
             const priceAge = currentTime - priceTimestamp;
+            const ageThreshold = bootstrap ? 60000 : 10000; // 60s for bootstrap, 10s for regular
             
-            if (priceAge > 10000) { // Reject prices older than 10 seconds
-              console.warn(`⚠️ Rejecting stale price for ${normalizedSymbol}: ${priceAge}ms old`);
-              setErrors(prev => ({ ...prev, [normalizedSymbol]: `Price data is ${Math.floor(priceAge/1000)}s old` }));
+            if (priceAge > ageThreshold) {
+              console.warn(`⚠️ [Context] Rejecting ${bootstrap ? 'bootstrap' : 'stale'} price for ${normalizedSymbol}: ${priceAge}ms old`);
               return;
             }
             
@@ -195,32 +190,29 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               ask: priceInfo.ask || priceInfo.price,
               tick_timestamp: currentTime,
               is_institutional_tick: false,
-              is_ultra_fast_tick: true,
-              update_frequency: 'http_fallback'
+              is_ultra_fast_tick: false,
+              update_frequency: bootstrap ? 'bootstrap' : 'http_fallback'
             };
             
-            // Price consistency check - only update if price actually changed
+            // Price consistency check
             const lastBroadcast = lastPriceBroadcastRef.current[normalizedSymbol];
             if (!lastBroadcast || Math.abs(newPriceData.price - lastBroadcast) > 0.00001) {
               newPrices[normalizedSymbol] = newPriceData;
               updateSources[normalizedSymbol] = 'http';
               lastPriceBroadcastRef.current[normalizedSymbol] = newPriceData.price;
-              
-              // Update master prices for consistency
               masterPricesRef.current[normalizedSymbol] = newPriceData;
               
-              console.log(`💰 HTTP price update: ${normalizedSymbol} = $${newPriceData.price}`);
+              console.log(`💰 [Context] HTTP ${bootstrap ? 'bootstrap' : 'fallback'}: ${normalizedSymbol} = $${newPriceData.price}`);
             }
           }
         });
         
-        // Batch update state for consistent prices across all components
         if (Object.keys(newPrices).length > 0) {
           setPrices(prev => ({ ...prev, ...newPrices }));
           setPriceUpdateSources(prev => ({ ...prev, ...updateSources }));
           setLastUpdated(new Date());
           
-          // Broadcast price updates to all subscribers for consistency
+          // Broadcast to subscribers
           Object.entries(newPrices).forEach(([symbol, priceData]) => {
             priceUpdateCallbacksRef.current.forEach(callback => {
               try {
@@ -231,23 +223,21 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             });
           });
           
-          // Clear any errors
+          // Clear errors on successful HTTP response
           setErrors(prev => {
             const cleaned = { ...prev };
-            Object.keys(newPrices).forEach(symbol => {
-              delete cleaned[symbol];
-            });
-            delete cleaned.global;
+            Object.keys(newPrices).forEach(symbol => delete cleaned[symbol]);
+            if (!bootstrap) delete cleaned.global; // Don't clear global errors on bootstrap
             return cleaned;
           });
         }
-
-      } else {
-        console.warn('❌ HTTP polling failed or returned invalid data');
       }
     } catch (error) {
-      console.error('❌ HTTP polling error:', error);
-      setErrors(prev => ({ ...prev, global: 'Price polling failed' }));
+      console.error('❌ [Context] HTTP fallback error:', error);
+      // GUARDRAIL: Only set global error for non-bootstrap failures
+      if (!bootstrap) {
+        setErrors(prev => ({ ...prev, global: 'Price polling failed' }));
+      }
     }
   }, [normalizeSymbol]);
 
@@ -489,7 +479,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (subscribedSymbolsRef.current.size > 0) {
       const symbols = Array.from(subscribedSymbolsRef.current);
       console.log('📡 Fetching initial data for subscribed symbols:', symbols);
-      pollPricesHTTP(symbols, true); // Force fetch on initialization
+      pollPricesHTTP(symbols, { forceFetch: true }); // Force fetch on initialization
     }
   }, [setupRealtimeChannel, pollPricesHTTP]);
 
@@ -531,7 +521,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
       
       // Optionally get initial price via HTTP for immediate feedback with force fetch
-      pollPricesHTTP(toSubscribe, true); // Force fetch on first subscription
+      pollPricesHTTP(toSubscribe, { bootstrap: true }); // Force fetch on first subscription
     }
   }, [normalizeSymbol, setupRealtimeChannel, pollPricesHTTP]);
 
@@ -560,7 +550,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const refreshPrice = useCallback((symbol: string) => {
     const normalized = normalizeSymbol(symbol);
     console.log('🔄 Refreshing price for:', normalized);
-    pollPricesHTTP([normalized]);
+    pollPricesHTTP([normalized], { forceFetch: true });
   }, [normalizeSymbol, pollPricesHTTP]);
 
   // Enhanced price consistency methods
@@ -650,7 +640,50 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     };
   }, [connectionStatus, lastUpdated, prices]);
 
-  // Initialize connection on mount
+  // GUARDRAIL: Enhanced staleness monitor and fallback trigger
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (subscribedSymbolsRef.current.size === 0) return;
+      
+      let hasStaleData = false;
+      let triggeredFallback = false;
+      
+      subscribedSymbolsRef.current.forEach(symbol => {
+        const priceData = masterPricesRef.current[symbol];
+        if (!priceData) return;
+        
+        const dataAge = (Date.now() - new Date(priceData.timestamp).getTime()) / 1000;
+        
+        // GUARDRAIL: Hard staleness cutoff at 25 seconds
+        if (dataAge > 25 && !triggeredFallback) {
+          console.log(`⚡ [Context] Hard staleness cutoff triggered for ${symbol}: ${dataAge.toFixed(1)}s`);
+          fallbackTelemetryRef.current.fallbackCount++;
+          fallbackTelemetryRef.current.lastFallbackReason = 'HARD_STALENESS_CUTOFF';
+          pollPricesHTTP([symbol], { forceFetch: true });
+          triggeredFallback = true;
+        } else if (dataAge > 15) {
+          hasStaleData = true;
+        }
+      });
+      
+      // GUARDRAIL: Don't surface connection errors if we have fresh data
+      if (hasStaleData && connectionStatus === 'error') {
+        const hasFreshData = Array.from(subscribedSymbolsRef.current).some(symbol => {
+          const priceData = masterPricesRef.current[symbol];
+          return priceData && (Date.now() - new Date(priceData.timestamp).getTime()) / 1000 < 15;
+        });
+        
+        if (hasFreshData) {
+          // Clear error state if we have fresh data
+          setConnectionStatus('connected');
+        }
+      }
+    }, 5000); // Check every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [connectionStatus, pollPricesHTTP]);
+
+  // Initialize connection on mount with auto-connect
   useEffect(() => {
     connect();
     

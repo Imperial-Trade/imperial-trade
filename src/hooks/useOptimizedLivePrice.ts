@@ -116,46 +116,7 @@ export function useOptimizedLivePrice(
     }
   }, []);
 
-  // HTTP fallback using only tradermade-streaming (no more mock data)
-  const fetchLastPriceHTTP = useCallback(async (sym: string): Promise<{ price: number; timestamp: Date; served_from?: string; stale?: boolean } | null> => {
-    try {
-      console.log(`🔄 [${sym}] HTTP fallback - using tradermade-streaming only...`);
-      
-      // Use tradermade-streaming for HTTP fallback (cache-only for unauthenticated requests)
-      const tmResponse = await supabase.functions.invoke('tradermade-streaming', {
-        body: { symbols: [sym] }
-      });
-
-      if (tmResponse.data?.success && tmResponse.data?.prices?.[sym]) {
-        const price = tmResponse.data.prices[sym];
-        if (price && price.price && !isNaN(price.price) && price.price > 0) {
-          const isStale = price.stale === true;
-          const servedFrom = price.served_from || 'cache';
-          
-          console.log(`⚡ [${sym}] tradermade-streaming response:`, price.price, `(served_from: ${servedFrom}, stale: ${isStale})`);
-          
-          // Strictly honor served_from/stale metadata contract
-          // Only accept fresh data, or stale as absolute last resort if no price exists
-          if (!isStale || lastProcessedPriceRef.current === 0) {
-            setLocalPriceSource('http');
-            return {
-              price: price.price,
-              timestamp: new Date(price.timestamp || Date.now()),
-              served_from: servedFrom,
-              stale: isStale
-            };
-          } else {
-            console.log(`🚫 [${sym}] Rejecting stale data from tradermade-streaming`);
-          }
-        }
-      }
-
-      console.log(`❌ [${sym}] tradermade-streaming HTTP fallback unavailable`);
-    } catch (error) {
-      console.error(`❌ [${sym}] HTTP fallback failed:`, error);
-    }
-    return null;
-  }, []);
+  // REMOVED: HTTP fallback logic moved to context for single source of truth
 
   // Initialize with stored price on mount
   useEffect(() => {
@@ -173,209 +134,39 @@ export function useOptimizedLivePrice(
     }
   }, [normalizedSymbol, getStoredPrice]);
 
-    // Critical: Faster HTTP fallback for active trading (reduced to 3 seconds)
-    useEffect(() => {
-      if (!normalizedSymbol) return;
-
-      subscribe([normalizedSymbol]);
-
-      // Subscribe to centralized price updates for consistency
-      const unsubscribeFromPriceUpdates = subscribeToPriceUpdates((symbol, priceData) => {
-        if (symbol === normalizedSymbol) {
-          console.log(`📡 [${normalizedSymbol}] Received centralized price update:`, priceData.price);
-          
-          // Validate price consistency
-          if (lastProcessedPriceRef.current > 0) {
-            const validation = validatePriceConsistency(symbol, priceData.price);
-            if (!validation.isConsistent) {
-              console.warn(`🚨 [${normalizedSymbol}] Price consistency warning: ${validation.deviation?.toFixed(3)}% deviation`);
-            }
-          }
-          
-          // Update immediately with centralized data to ensure consistency
-          setDebouncedPrice({
-            price: priceData.price,
-            change: priceData.change,
-            changePercent: priceData.changePercent
-          });
-          setLastUpdated(new Date(priceData.timestamp));
-          setLastNonZeroPrice(priceData.price);
-          lastProcessedPriceRef.current = priceData.price;
-          storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
-          
-          // Reset fallback trigger on fresh centralized data
-          fallbackTriggeredRef.current = null;
-        }
-      });
-
-      // Critical: Reduced fallback delay for active trading (3 seconds for ultra-fast response)
-      const fallbackDelay = 3000; // Critical: Reduced to 3s for active trading
-      
-      httpFallbackTimeoutRef.current = setTimeout(async () => {
-        if (lastProcessedPriceRef.current === 0) {
-          console.log(`⚡ [${normalizedSymbol}] Critical HTTP fallback triggered after ${fallbackDelay}ms...`);
-          const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-          if (fallbackPrice && lastProcessedPriceRef.current === 0) {
-            if (!fallbackPrice.stale || lastProcessedPriceRef.current === 0) {
-              setDebouncedPrice({
-                price: fallbackPrice.price,
-                change: 0,
-                changePercent: 0
-              });
-              setLastUpdated(fallbackPrice.timestamp);
-              setLastNonZeroPrice(fallbackPrice.price);
-              lastProcessedPriceRef.current = fallbackPrice.price;
-              storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
-            }
-          }
-        }
-      }, fallbackDelay);
-
-      return () => {
-        unsubscribe([normalizedSymbol]);
-        unsubscribeFromPriceUpdates();
-        if (httpFallbackTimeoutRef.current) {
-          clearTimeout(httpFallbackTimeoutRef.current);
-        }
-        if (staleGuardTimeoutRef.current) {
-          clearTimeout(staleGuardTimeoutRef.current);
-        }
-      };
-    }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, validatePriceConsistency, fetchLastPriceHTTP, storePrice]);
-
-  // Hard staleness cutoff and refined HTTP fallback trigger
+  // GUARDRAIL: Subscribe once with centralized updates only
   useEffect(() => {
-    const dataAge = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
-    const isHardStale = dataAge > 25; // Hard cutoff at 25 seconds
-    const isSoftStale = dataAge > 15; // Soft staleness at 15 seconds  
-    const isDisconnected = connectionStatus === 'disconnected' || connectionStatus === 'error';
-    const isConnectedButFresh = connectionStatus === 'connected' && dataAge < 15;
-    
-    // GUARDRAIL: Hard staleness cutoff - always trigger if > 25s regardless of status
-    // GUARDRAIL: Don't trigger if connected with fresh data (< 15s)
-    const shouldTrigger = (isHardStale || (isDisconnected && isSoftStale)) && 
-                         !isConnectedButFresh &&
-                         (!fallbackTriggeredRef.current || 
-                          Date.now() - fallbackTriggeredRef.current.timestamp > 20000); // 20s de-duplication
-    
-    if (shouldTrigger) {
-      const reason = isHardStale ? 'HARD_STALE_CUTOFF' : 'DISCONNECTED_SOFT_STALE';
-      console.log(`⚡ [${normalizedSymbol}] HTTP fallback triggered (${reason}):`, {
-        connectionStatus,
-        dataAge: dataAge.toFixed(1) + 's',
-        isHardStale,
-        isDisconnected,
-        isSoftStale
-      });
-      
-      // TELEMETRY: Mark as triggered with reason
-      fallbackTriggeredRef.current = {
-        lastTrigger: reason,
-        timestamp: Date.now()
-      };
-      
-      // Trigger fallback
-      const triggerFallback = async () => {
-        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-        if (fallbackPrice && (!fallbackPrice.stale || lastProcessedPriceRef.current === 0)) {
-          setDebouncedPrice({
-            price: fallbackPrice.price,
-            change: 0,
-            changePercent: 0
-          });
-          setLastUpdated(fallbackPrice.timestamp);
-          setLastNonZeroPrice(fallbackPrice.price);
-          lastProcessedPriceRef.current = fallbackPrice.price;
-          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
-        }
-      };
-      
-      triggerFallback();
-    }
-  }, [connectionStatus, lastUpdated, normalizedSymbol, fetchLastPriceHTTP, storePrice]);
+    if (!normalizedSymbol) return;
 
-  // Enhanced price updates with consistency validation (reduced reliance on debouncing)
-  useEffect(() => {
-    const currentPrice = getPrice(normalizedSymbol);
-    
-    // Skip if we're already getting centralized updates or no price data
-    if (!currentPrice || currentPrice.price === 0) {
-      return;
-    }
+    subscribe([normalizedSymbol]);
 
-    // Validate price consistency against centralized state
-    if (lastProcessedPriceRef.current > 0) {
-      const validation = validatePriceConsistency(normalizedSymbol, currentPrice.price);
-      if (!validation.isConsistent) {
-        console.warn(`🚨 [${normalizedSymbol}] Local price inconsistency: ${validation.deviation?.toFixed(3)}% deviation, preferring centralized data`);
-        return; // Skip this update, wait for centralized update
+    // Subscribe to centralized price updates - SINGLE SOURCE OF TRUTH
+    const unsubscribeFromPriceUpdates = subscribeToPriceUpdates((symbol, priceData) => {
+      if (symbol === normalizedSymbol) {
+        console.log(`📡 [${normalizedSymbol}] Hook received centralized update:`, priceData.price);
+        
+        // Update immediately with centralized data
+        setDebouncedPrice({
+          price: priceData.price,
+          change: priceData.change,
+          changePercent: priceData.changePercent
+        });
+        setLastUpdated(new Date(priceData.timestamp));
+        setLastNonZeroPrice(priceData.price);
+        lastProcessedPriceRef.current = priceData.price;
+        storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
       }
-    }
-
-    // Set WebSocket source when receiving real data
-    if (currentPrice.is_institutional_tick) {
-      setLocalPriceSource('websocket_institutional');
-    } else {
-      setLocalPriceSource('websocket');
-    }
-
-    // CRITICAL: Always commit the first non-zero price immediately
-    const isFirstValidPrice = lastProcessedPriceRef.current === 0 && currentPrice.price > 0;
-    
-    if (isFirstValidPrice) {
-      console.log(`✅ [${normalizedSymbol}] First valid price committed immediately:`, currentPrice.price);
-      const timestamp = new Date(currentPrice.timestamp);
-      setDebouncedPrice({
-        price: currentPrice.price,
-        change: currentPrice.change,
-        changePercent: currentPrice.changePercent
-      });
-      setLastUpdated(timestamp);
-      setLastNonZeroPrice(currentPrice.price);
-      lastProcessedPriceRef.current = currentPrice.price;
-      storePrice(normalizedSymbol, currentPrice.price, timestamp);
-      return;
-    }
-
-    // Minimal debouncing for consistency (reduced from business plan values)
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Consistent 100ms debounce for critical trading operations (ultra-fast)
-    debounceTimeoutRef.current = setTimeout(() => {
-      const latestPrice = getPrice(normalizedSymbol);
-      if (!latestPrice || latestPrice.price === 0) return;
-
-      // Final consistency check before committing
-      if (lastProcessedPriceRef.current > 0) {
-        const finalValidation = validatePriceConsistency(normalizedSymbol, latestPrice.price);
-        if (!finalValidation.isConsistent) {
-          console.warn(`🚨 [${normalizedSymbol}] Final consistency check failed, skipping update`);
-          return;
-        }
-      }
-
-      const timestamp = new Date(latestPrice.timestamp);
-      setDebouncedPrice({
-        price: latestPrice.price,
-        change: latestPrice.change,
-        changePercent: latestPrice.changePercent
-      });
-      setLastUpdated(timestamp);
-      setLastNonZeroPrice(latestPrice.price);
-      lastProcessedPriceRef.current = latestPrice.price;
-      storePrice(normalizedSymbol, latestPrice.price, timestamp);
-      
-      console.log(`🎯 [${normalizedSymbol}] Consistent price update:`, latestPrice.price);
-    }, 100); // Critical: 100ms for ultra-fast trading consistency
+    });
 
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
+      unsubscribe([normalizedSymbol]);
+      unsubscribeFromPriceUpdates();
     };
-  }, [normalizedSymbol, prices[normalizedSymbol]?.price, validatePriceConsistency, getPrice, storePrice]);
+  }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, storePrice]);
+
+  // REMOVED: Fallback logic moved to context - hook only receives centralized updates
+
+  // REMOVED: Direct price processing removed - hook only receives centralized updates
 
   // Guard against symbol changes causing stale updates
   useEffect(() => {
@@ -387,26 +178,9 @@ export function useOptimizedLivePrice(
   }, [normalizedSymbol]);
 
   const refreshPrice = useCallback(async () => {
-    // Try context refresh first
+    // GUARDRAIL: Single refresh through context only
     contextRefreshPrice(normalizedSymbol);
-    
-    // Also trigger HTTP fallback as backup
-    setTimeout(async () => {
-      const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-      if (fallbackPrice && (!fallbackPrice.stale || lastProcessedPriceRef.current === 0)) {
-        const timestamp = fallbackPrice.timestamp;
-        setDebouncedPrice({
-          price: fallbackPrice.price,
-          change: 0,
-          changePercent: 0
-        });
-        setLastUpdated(timestamp);
-        setLastNonZeroPrice(fallbackPrice.price);
-        lastProcessedPriceRef.current = fallbackPrice.price;
-        storePrice(normalizedSymbol, fallbackPrice.price, timestamp);
-      }
-    }, 500);
-  }, [contextRefreshPrice, normalizedSymbol, fetchLastPriceHTTP, storePrice]);
+  }, [contextRefreshPrice, normalizedSymbol]);
 
   // Get error for this specific symbol or global error
   const symbolError = errors[normalizedSymbol] || errors.global || null;

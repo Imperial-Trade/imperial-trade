@@ -165,13 +165,22 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // GUARDRAIL: Don't surface benign errors when data is fresh
-    if (error && !error.includes('timed out') && !error.includes('closed') && !error.includes('CHANNEL_ERROR')) {
+    // GUARDRAIL: Only surface real errors (network/auth), not benign ones
+    const isBenignError = error && (
+      error.includes('timed out') || 
+      error.includes('closed') || 
+      error.includes('CHANNEL_ERROR') ||
+      error.includes('TIMED_OUT') ||
+      error.includes('connection') ||
+      error.includes('Price data is')
+    );
+    
+    if (error && !isBenignError) {
       return { 
         color: 'text-red-400', 
         icon: AlertTriangle, 
         text: 'Error',
-        description: 'Failed to fetch price data',
+        description: error,
         animate: false
       };
     }
@@ -197,21 +206,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (dataFreshness >= 60 || price === 0) {
-      return { 
-        color: 'text-red-400', 
-        icon: WifiOff, 
-        text: 'Offline',
-        description: 'No recent price updates',
-        animate: false
-      };
-    }
-    
     return { 
-      color: 'text-gray-400', 
+      color: 'text-red-400', 
       icon: WifiOff, 
-      text: 'Unknown',
-      description: 'Connection status unknown',
+      text: 'Offline',
+      description: 'No recent price updates',
       animate: false
     };
   }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);
@@ -310,8 +309,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </Button>
       </div>
 
-      {/* Error State - GUARDRAIL: Only show non-benign errors */}
-      {error && !error.includes('Price data is') && !error.includes('timed out') && !error.includes('closed') && !error.includes('CHANNEL_ERROR') && (
+      {/* GUARDRAIL: Only show real errors, suppress benign ones */}
+      {error && !(
+        error.includes('Price data is') || 
+        error.includes('timed out') || 
+        error.includes('closed') || 
+        error.includes('CHANNEL_ERROR') ||
+        error.includes('TIMED_OUT') ||
+        error.includes('connection')
+      ) && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
           <div className="text-red-400 text-sm">

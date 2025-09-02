@@ -6,6 +6,7 @@ import ToolsShowcase from "@/components/landing/ToolsShowcase";
 import ToolsCarousel from "@/components/landing/ToolsCarousel";
 import FinalCTA from "@/components/landing/FinalCTA";
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
+import { PriceDebugWidget } from "@/components/debug/PriceDebugWidget";
 
 const Landing = () => {
   return (
@@ -17,6 +18,7 @@ const Landing = () => {
       <ToolsCarousel />
       <FinalCTA />
       <ComplianceFooter />
+      <PriceDebugWidget />
     </div>
   );
 };

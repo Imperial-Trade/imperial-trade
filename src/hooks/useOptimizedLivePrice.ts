@@ -190,8 +190,8 @@ export function useOptimizedLivePrice(
     const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    // GUARDRAIL: Show "connected" for 30s after last update (sticky-live)
-    if (dataFreshness < 30 && hasValidPrice) {
+    // GUARDRAIL: Show "connected" for 60s after last update (sticky-live)
+    if (dataFreshness < 60 && hasValidPrice) {
       return 'connected';
     }
     

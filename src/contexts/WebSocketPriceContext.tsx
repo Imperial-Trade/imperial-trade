@@ -497,9 +497,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         return Boolean(s);
       });
 
+    // Deduplication: Remove symbols that are already being subscribed to in this call
+    const uniqueNormalized = [...new Set(normalized)];
+
     // Reference-counted subscriptions
     const toSubscribe: string[] = [];
-    normalized.forEach(symbol => {
+    uniqueNormalized.forEach(symbol => {
       const currentCount = refCountsRef.current.get(symbol) || 0;
       refCountsRef.current.set(symbol, currentCount + 1);
       

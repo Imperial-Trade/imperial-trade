@@ -6,16 +6,30 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
-import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
 }) {
-  // Get live price from WebSocket for the current asset (PRIMARY SOURCE)
+  // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
-  const wsLivePrice = useWebSocketLivePrice(symbol);
-  const { prices, priceUpdateSources } = useWebSocketPrices();
+  const { prices, priceUpdateSources, getPrice } = useWebSocketPrices();
+  
+  // Subscribe to this symbol and get its price data
+  const wsLivePrice = useMemo(() => {
+    const priceData = getPrice(symbol);
+    if (!priceData) return null;
+    
+    return {
+      price: priceData.price,
+      change: priceData.change || 0,
+      changePercent: priceData.changePercent || 0,
+      isLoading: false,
+      error: null,
+      lastUpdated: priceData.tick_timestamp ? new Date(priceData.tick_timestamp) : null,
+      connectionStatus: 'connected' as const
+    };
+  }, [prices, symbol, getPrice]);
 
   // MIRROR LIVE PRICE STRATEGY: Use external price ONLY if it's more recent, otherwise use WebSocket
   const livePrice = useMemo(() => {

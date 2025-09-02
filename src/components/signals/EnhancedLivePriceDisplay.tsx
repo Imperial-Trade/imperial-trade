@@ -106,11 +106,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
-  // Debounce connection status changes to reduce flickering
+  // GUARDRAIL: Increased debounce to 2000ms to reduce flickering
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
       setDebouncedConnectionStatus(connectionStatus);
-    }, 1200);
+    }, 2000);
 
     return () => clearTimeout(debounceTimeout);
   }, [connectionStatus]);
@@ -165,7 +165,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (error) {
+    // GUARDRAIL: Don't surface benign errors when data is fresh
+    if (error && !error.includes('timed out') && !error.includes('closed') && !error.includes('CHANNEL_ERROR')) {
       return { 
         color: 'text-red-400', 
         icon: AlertTriangle, 
@@ -175,47 +176,28 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (debouncedConnectionStatus === 'connected') {
-      // Distinguish between real-time WebSocket and HTTP fallback
-      switch (priceUpdateSource) {
-        case 'websocket':
-          return { 
-            color: 'text-green-400', 
-            icon: Wifi, 
-            text: '⚡ Real-time',
-            description: 'Live WebSocket updates active',
-            animate: false
-          };
-        case 'http':
-          return { 
-            color: 'text-blue-400', 
-            icon: RefreshCw, 
-            text: '🔄 HTTP Fallback',
-            description: 'Using HTTP API fallback mode',
-            animate: false
-          };
-        default:
-          if (dataFreshness < 30) {
-            return { 
-              color: 'text-green-400', 
-              icon: Wifi, 
-              text: 'Live',
-              description: 'Real-time price updates active',
-              animate: false
-            };
-          } else if (dataFreshness < 60) {
-            return { 
-              color: 'text-yellow-400', 
-              icon: Wifi, 
-              text: 'Delayed',
-              description: 'Price data is slightly delayed',
-              animate: false
-            };
-          }
-      }
+    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 30s)
+    if (dataFreshness < 30 && price > 0) {
+      return { 
+        color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'Real-time price updates active',
+        animate: false
+      };
     }
     
-    if (debouncedConnectionStatus === 'disconnected' || dataFreshness >= 60) {
+    if (dataFreshness < 60 && price > 0) {
+      return { 
+        color: 'text-yellow-400', 
+        icon: Clock, 
+        text: 'Delayed',
+        description: 'Price data is slightly delayed',
+        animate: false
+      };
+    }
+    
+    if (dataFreshness >= 60 || price === 0) {
       return { 
         color: 'text-red-400', 
         icon: WifiOff, 
@@ -232,7 +214,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       description: 'Connection status unknown',
       animate: false
     };
-  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -328,8 +310,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </Button>
       </div>
 
-      {/* Error State */}
-      {error && !error.includes('Price data is') && (
+      {/* Error State - GUARDRAIL: Only show non-benign errors */}
+      {error && !error.includes('Price data is') && !error.includes('timed out') && !error.includes('closed') && !error.includes('CHANNEL_ERROR') && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
           <div className="text-red-400 text-sm">
@@ -484,10 +466,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       </div>
 
-      {/* Debug Panel */}
+      {/* Debug Panel - GUARDRAIL: Source details moved here only */}
       {showDebugPanel && (
         <div className="mt-3 p-2 bg-gray-800/50 border border-gray-600 rounded text-xs text-gray-300">
           <div className="font-semibold mb-1">🔍 Debug Info</div>
+          <div><strong>Source:</strong> {priceUpdateSource === 'websocket' ? '⚡ WebSocket' : priceUpdateSource === 'http' ? '🔄 HTTP' : '❓ Unknown'}</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>Status: {debouncedConnectionStatus}</div>
             <div>Source: {priceUpdateSource}</div>

@@ -59,7 +59,8 @@ export function useOptimizedLivePrice(
     getPrice,
     refreshPrice: contextRefreshPrice,
     subscribeToPriceUpdates,
-    validatePriceConsistency
+    validatePriceConsistency,
+    getFallbackTelemetry
   } = useWebSocketPrices();
 
   const [debouncedPrice, setDebouncedPrice] = useState({
@@ -242,31 +243,34 @@ export function useOptimizedLivePrice(
       };
     }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, validatePriceConsistency, fetchLastPriceHTTP, storePrice]);
 
-  // Refined HTTP fallback trigger - reduce flapping
+  // Hard staleness cutoff and refined HTTP fallback trigger
   useEffect(() => {
     const dataAge = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
-    const isStale = dataAge > 15; // Increased to 15 seconds to reduce flapping
+    const isHardStale = dataAge > 25; // Hard cutoff at 25 seconds
+    const isSoftStale = dataAge > 15; // Soft staleness at 15 seconds  
     const isDisconnected = connectionStatus === 'disconnected' || connectionStatus === 'error';
-    const lastSource = localPriceSource;
+    const isConnectedButFresh = connectionStatus === 'connected' && dataAge < 15;
     
-    // Only trigger fallback if:
-    // 1. Disconnected OR (stale data AND last source wasn't websocket in last 20s)
-    const shouldTrigger = (isDisconnected || (isStale && lastSource !== 'websocket')) && 
+    // GUARDRAIL: Hard staleness cutoff - always trigger if > 25s regardless of status
+    // GUARDRAIL: Don't trigger if connected with fresh data (< 15s)
+    const shouldTrigger = (isHardStale || (isDisconnected && isSoftStale)) && 
+                         !isConnectedButFresh &&
                          (!fallbackTriggeredRef.current || 
                           Date.now() - fallbackTriggeredRef.current.timestamp > 20000); // 20s de-duplication
     
     if (shouldTrigger) {
-      console.log(`⚡ [${normalizedSymbol}] HTTP fallback triggered:`, {
+      const reason = isHardStale ? 'HARD_STALE_CUTOFF' : 'DISCONNECTED_SOFT_STALE';
+      console.log(`⚡ [${normalizedSymbol}] HTTP fallback triggered (${reason}):`, {
         connectionStatus,
         dataAge: dataAge.toFixed(1) + 's',
-        lastSource,
+        isHardStale,
         isDisconnected,
-        isStale
+        isSoftStale
       });
       
-      // Mark as triggered to suppress repeats
+      // TELEMETRY: Mark as triggered with reason
       fallbackTriggeredRef.current = {
-        lastTrigger: `${connectionStatus}-${isStale}-${lastSource}`,
+        lastTrigger: reason,
         timestamp: Date.now()
       };
       
@@ -407,19 +411,13 @@ export function useOptimizedLivePrice(
   // Get error for this specific symbol or global error
   const symbolError = errors[normalizedSymbol] || errors.global || null;
 
-  // Critical: Stricter connection status for active trading
+  // GUARDRAIL: Enhanced connection status with 30s sticky-live
   const enhancedConnectionStatus = (() => {
-    // Critical: Consider connection "effectively connected" based on fresh data
     const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    // Critical: 10s tolerance for ultra-fast trading operations
-    if (dataFreshness < 10 && hasValidPrice) {
-      return 'connected';
-    }
-    
-    // Fallback to 20s for regular connections (reduced from 30s)
-    if (dataFreshness < 20 && hasValidPrice) {
+    // GUARDRAIL: Show "connected" for 30s after last update (sticky-live)
+    if (dataFreshness < 30 && hasValidPrice) {
       return 'connected';
     }
     

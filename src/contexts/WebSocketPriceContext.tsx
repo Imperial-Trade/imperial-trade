@@ -41,6 +41,8 @@ interface WebSocketContextType {
   getPriceAge: (symbol: string) => number | null; // Age in milliseconds
   isPriceStale: (symbol: string, maxAgeSeconds?: number) => boolean;
   getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null; stalePrices: string[] };
+  // Telemetry for debugging
+  getFallbackTelemetry: () => { fallbackCount: number; lastFallbackReason: string | null };
 }
 
 const WebSocketPriceContext = createContext<WebSocketContextType | null>(null);
@@ -80,6 +82,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const lastPriceBroadcastRef = useRef<Record<string, number>>({});
   const priceUpdateCallbacksRef = useRef<Set<(symbol: string, priceData: PriceData) => void>>(new Set());
   const priceDeviationLogRef = useRef<Record<string, { reportedPrice: number; actualPrice: number; timestamp: number }[]>>({});
+  
+  // Telemetry for debugging fallback behavior
+  const fallbackTelemetryRef = useRef<{ fallbackCount: number; lastFallbackReason: string | null }>({
+    fallbackCount: 0,
+    lastFallbackReason: null
+  });
+  
+  // Latched errors that should be cleared on successful reconnection or valid ticks
+  const latchedErrorsRef = useRef<Set<string>>(new Set());
 
   const normalizeSymbol = useCallback((s: string) => {
     const up = (s || '').toUpperCase().trim();
@@ -302,13 +313,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         }
       });
       
-      // Clear any errors for this symbol and global errors on successful update
-      setErrors(prev => {
-        const cleaned = { ...prev };
-        delete cleaned[normalizedSymbol];
-        delete cleaned.global; // Clear global errors on successful price updates
-        return cleaned;
-      });
+            // Clear any errors for this symbol and global errors on successful update
+            setErrors(prev => {
+              const cleaned = { ...prev };
+              delete cleaned[normalizedSymbol];
+              delete cleaned.global; // Clear global errors on successful price updates
+              
+              // Clear latched errors on valid tick
+              latchedErrorsRef.current.clear();
+              
+              return cleaned;
+            });
       
       console.log(`💰 Realtime price update: ${normalizedSymbol} = $${newPriceData.price}`);
     }
@@ -370,6 +385,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               reconnectTimeoutRef.current = null;
             }
             
+            // Clear latched errors on SUBSCRIBED
+            latchedErrorsRef.current.clear();
+            
             // Clear global errors on successful connection
             setErrors(prev => {
               const cleaned = { ...prev };
@@ -380,22 +398,58 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             
           case 'CHANNEL_ERROR':
             console.error('❌ Channel error - attempting reconnection');
-            setConnectionStatus('error');
-            setErrors(prev => ({ ...prev, global: 'Realtime connection error' }));
+            
+            // Check if we have fresh data - if so, don't surface error to UI
+            const hasFreshData = Object.values(masterPricesRef.current).some(price => {
+              const dataAge = (Date.now() - new Date(price.timestamp).getTime()) / 1000;
+              return dataAge < 30;
+            });
+            
+            if (!hasFreshData) {
+              setConnectionStatus('error');
+              setErrors(prev => ({ ...prev, global: 'Realtime connection error' }));
+              latchedErrorsRef.current.add('CHANNEL_ERROR');
+            }
+            
+            fallbackTelemetryRef.current.fallbackCount++;
+            fallbackTelemetryRef.current.lastFallbackReason = 'CHANNEL_ERROR';
             attemptReconnection();
             break;
             
           case 'TIMED_OUT':
             console.error('⏰ Connection timed out - attempting reconnection');
-            setConnectionStatus('error');
-            setErrors(prev => ({ ...prev, global: 'Connection timed out' }));
+            
+            // Check if we have fresh data - if so, don't surface error to UI
+            const hasRecentData = Object.values(masterPricesRef.current).some(price => {
+              const dataAge = (Date.now() - new Date(price.timestamp).getTime()) / 1000;
+              return dataAge < 30;
+            });
+            
+            if (!hasRecentData) {
+              setConnectionStatus('error');
+              setErrors(prev => ({ ...prev, global: 'Connection timed out' }));
+              latchedErrorsRef.current.add('TIMED_OUT');
+            }
+            
+            fallbackTelemetryRef.current.fallbackCount++;
+            fallbackTelemetryRef.current.lastFallbackReason = 'TIMED_OUT';
             attemptReconnection();
             break;
             
           case 'CLOSED':
             console.log('🔌 Connection closed');
             setConnectionStatus('disconnected');
-            setErrors(prev => ({ ...prev, global: 'Connection closed' }));
+            
+            // Don't surface "Connection closed" as error if we have fresh data
+            const hasActiveFreshData = Object.values(masterPricesRef.current).some(price => {
+              const dataAge = (Date.now() - new Date(price.timestamp).getTime()) / 1000;
+              return dataAge < 30;
+            });
+            
+            if (!hasActiveFreshData) {
+              setErrors(prev => ({ ...prev, global: 'Connection closed' }));
+            }
+            
             // Only attempt reconnection if we have active subscriptions
             if (subscribedSymbolsRef.current.size > 0) {
               console.log('🔄 Active subscriptions detected, attempting reconnection');
@@ -627,7 +681,28 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     validatePriceConsistency,
     getPriceAge,
     isPriceStale,
-    getConnectionHealth,
+    getConnectionHealth: (): { isHealthy: boolean; lastUpdate: Date | null; stalePrices: string[] } => {
+      const stalePrices: string[] = [];
+      const currentTime = Date.now();
+      
+      Object.entries(masterPricesRef.current).forEach(([symbol, priceData]) => {
+        const priceAge = currentTime - new Date(priceData.timestamp).getTime();
+        if (priceAge > 30000) { // 30 seconds
+          stalePrices.push(symbol);
+        }
+      });
+      
+      return {
+        isHealthy: connectionStatus === 'connected' && stalePrices.length === 0,
+        lastUpdate: lastUpdated,
+        stalePrices
+      };
+    },
+
+    getFallbackTelemetry: () => ({
+      fallbackCount: fallbackTelemetryRef.current.fallbackCount,
+      lastFallbackReason: fallbackTelemetryRef.current.lastFallbackReason
+    })
   };
 
   return (

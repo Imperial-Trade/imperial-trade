@@ -393,10 +393,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             break;
             
           case 'CLOSED':
-            console.error('🔌 Connection closed - attempting reconnection');
+            console.log('🔌 Connection closed');
             setConnectionStatus('disconnected');
             setErrors(prev => ({ ...prev, global: 'Connection closed' }));
-            attemptReconnection();
+            // Only attempt reconnection if we have active subscriptions
+            if (subscribedSymbolsRef.current.size > 0) {
+              console.log('🔄 Active subscriptions detected, attempting reconnection');
+              attemptReconnection();
+            } else {
+              console.log('🔄 No active subscriptions, skipping reconnection');
+            }
             break;
             
           default:

@@ -242,31 +242,31 @@ export function useOptimizedLivePrice(
       };
     }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, validatePriceConsistency, fetchLastPriceHTTP, storePrice]);
 
-  // One-shot HTTP fallback trigger with enhanced staleness detection
+  // Refined HTTP fallback trigger - reduce flapping
   useEffect(() => {
     const dataAge = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
-    const isStale = dataAge > 10; // Critical: Reduced to 10 seconds for active trading
+    const isStale = dataAge > 15; // Increased to 15 seconds to reduce flapping
     const isDisconnected = connectionStatus === 'disconnected' || connectionStatus === 'error';
+    const lastSource = localPriceSource;
     
-    // Create trigger state identifier
-    const triggerState = `${connectionStatus}-${isStale}`;
-    
-    // Check if we should trigger fallback
-    const shouldTrigger = (isStale || isDisconnected) && 
+    // Only trigger fallback if:
+    // 1. Disconnected OR (stale data AND last source wasn't websocket in last 20s)
+    const shouldTrigger = (isDisconnected || (isStale && lastSource !== 'websocket')) && 
                          (!fallbackTriggeredRef.current || 
-                          fallbackTriggeredRef.current.lastTrigger !== triggerState ||
-                          Date.now() - fallbackTriggeredRef.current.timestamp > 15000); // Critical: Reset after 15s for faster recovery
+                          Date.now() - fallbackTriggeredRef.current.timestamp > 20000); // 20s de-duplication
     
     if (shouldTrigger) {
-      console.log(`⚡ [${normalizedSymbol}] Critical HTTP fallback triggered:`, {
+      console.log(`⚡ [${normalizedSymbol}] HTTP fallback triggered:`, {
         connectionStatus,
         dataAge: dataAge.toFixed(1) + 's',
-        triggerState
+        lastSource,
+        isDisconnected,
+        isStale
       });
       
       // Mark as triggered to suppress repeats
       fallbackTriggeredRef.current = {
-        lastTrigger: triggerState,
+        lastTrigger: `${connectionStatus}-${isStale}-${lastSource}`,
         timestamp: Date.now()
       };
       
@@ -372,6 +372,15 @@ export function useOptimizedLivePrice(
       }
     };
   }, [normalizedSymbol, prices[normalizedSymbol]?.price, validatePriceConsistency, getPrice, storePrice]);
+
+  // Guard against symbol changes causing stale updates
+  useEffect(() => {
+    // Reset refs when symbol changes to prevent cross-symbol updates
+    lastProcessedPriceRef.current = 0;
+    if (fallbackTriggeredRef.current) {
+      fallbackTriggeredRef.current = null;
+    }
+  }, [normalizedSymbol]);
 
   const refreshPrice = useCallback(async () => {
     // Try context refresh first

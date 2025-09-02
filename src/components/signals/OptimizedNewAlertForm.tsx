@@ -483,7 +483,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       <form onSubmit={handleSubmit} className="w-full space-y-4">
         {/* Asset Selection - Dropdown */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Select Asset</label>
+          <label className="text-sm font-medium">Asset</label>
           <Select 
             value={selectedAsset?.symbol || ''} 
             onValueChange={handleAssetSelection}

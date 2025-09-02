@@ -59,6 +59,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [dataAge, setDataAge] = useState<string>('');
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
+  const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
   // Update data age every second
   useEffect(() => {
@@ -105,6 +106,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
+  // Debounce connection status changes to reduce flickering
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      setDebouncedConnectionStatus(connectionStatus);
+    }, 1200);
+
+    return () => clearTimeout(debounceTimeout);
+  }, [connectionStatus]);
+
   // Notify parent about price updates
   useEffect(() => {
     if (onPriceUpdate && price > 0) {
@@ -145,7 +155,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const connectionStatusInfo = useMemo(() => {
     const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
     
-    if (isLoading || connectionStatus === 'connecting') {
+    if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 
         color: 'text-yellow-400', 
         icon: RefreshCw, 
@@ -165,7 +175,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (connectionStatus === 'connected') {
+    if (debouncedConnectionStatus === 'connected') {
       // Distinguish between real-time WebSocket and HTTP fallback
       switch (priceUpdateSource) {
         case 'websocket':
@@ -205,7 +215,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       }
     }
     
-    if (connectionStatus === 'disconnected' || dataFreshness >= 60) {
+    if (debouncedConnectionStatus === 'disconnected' || dataFreshness >= 60) {
       return { 
         color: 'text-red-400', 
         icon: WifiOff, 
@@ -222,7 +232,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       description: 'Connection status unknown',
       animate: false
     };
-  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -267,10 +277,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
   if (!symbol) return null;
 
+  // Debug mode check
+  const showDebugPanel = typeof window !== 'undefined' && window.localStorage.getItem('LIVE_PRICE_DEBUG') === '1';
+
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
-      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
-      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
+    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm transition-all duration-500 ${
+      debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
+      debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
     } ${className}`}>
       {/* Header */}
@@ -286,10 +299,12 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               </div>
             )}
           </div>
-          {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
-            <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-              {dataAge && (
-                <span className={`${
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={`text-xs px-2 py-1 ${connectionStatusInfo.color}`}>
+                {connectionStatusInfo.text}
+              </Badge>
+              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && (
+                <span className={`text-xs ${
                   dataAge === 'Live' ? 'text-green-400' : 
                   dataAge === 'Stale' ? 'text-red-400' : 
                   'text-yellow-400'
@@ -298,7 +313,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
                 </span>
               )}
             </div>
-          )}
         </div>
         
         <Button
@@ -469,6 +483,19 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           )}
         </div>
       </div>
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="mt-3 p-2 bg-gray-800/50 border border-gray-600 rounded text-xs text-gray-300">
+          <div className="font-semibold mb-1">🔍 Debug Info</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>Status: {debouncedConnectionStatus}</div>
+            <div>Source: {priceUpdateSource}</div>
+            <div>Age: {dataAge || 'N/A'}</div>
+            <div>Price: {price > 0 ? `$${formatPrice(price)}` : 'N/A'}</div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

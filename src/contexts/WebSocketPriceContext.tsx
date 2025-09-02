@@ -317,9 +317,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           console.log('✅ Connected to real-time price stream');
           
           // Trigger the relay to start if needed
-          supabase.functions.invoke('price-relay-websocket', {
-            body: { action: 'connect' }
-          }).catch(err => console.warn('Relay trigger failed:', err));
+          // Removed: Legacy relay trigger - tradermade-streaming is the single dialer
           
         } else if (status === 'CHANNEL_ERROR') {
           setConnectionStatus('error');

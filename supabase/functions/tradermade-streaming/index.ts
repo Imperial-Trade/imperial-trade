@@ -17,7 +17,7 @@ const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000
 // Redis pub/sub constants
 const REDIS_PRICE_CHANNEL = 'tradermade:price_updates';
 const LEADER_LOCK_KEY = 'tradermade:leader:lock';
-const LEADER_LOCK_TTL = 15; // 15 seconds (reduced for faster failover)
+const LEADER_LOCK_TTL = 20; // 20 seconds (≥ 3× heartbeat interval for stability)
 const LEADER_HEARTBEAT_INTERVAL = 5000; // 5 seconds (critical: faster heartbeat)
 
 // New guardrail constants
@@ -123,7 +123,16 @@ class TradermadeConnectionManager {
   
   // Always-on Realtime broadcasting
   private realtimeChannel: any = null;
+  private realtimeChannelInitialized = false;
+  private realtimeChannelSubscribed = false;
   private alwaysOnConnection = true;
+  
+  // Light throttling and error guarding
+  private lastSentMid: Map<string, number> = new Map();
+  private lastSentAtMs: Map<string, number> = new Map();
+  private duplicateDropCount = 0;
+  private broadcastErrorTimestamps: number[] = [];
+  private safeModeUntilMs = 0;
 
   // ===== GUARDRAILS & METRICS =====
   private lastRestFetchAt: Map<string, number> = new Map();
@@ -169,11 +178,26 @@ class TradermadeConnectionManager {
     console.log('✅ Always-on service initialized');
   }
 
-  // Setup Realtime channel for price broadcasting
+  // Setup Realtime channel for price broadcasting (idempotent)
   private setupRealtimeChannel(): void {
+    if (this.realtimeChannelInitialized) {
+      return; // Already initialized
+    }
+
     try {
       if (supabaseServiceKey && supabaseServiceKey.length > 50) {
         this.realtimeChannel = supabaseService.channel('prices:live');
+        
+        // Subscribe to ensure readiness
+        this.realtimeChannel.subscribe((status: string) => {
+          console.log('📡 Realtime channel status:', status);
+          if (status === 'SUBSCRIBED') {
+            this.realtimeChannelSubscribed = true;
+            console.log('✅ Realtime channel SUBSCRIBED');
+          }
+        });
+        
+        this.realtimeChannelInitialized = true;
         console.log('📡 Realtime channel setup for price broadcasting');
       } else {
         console.error('❌ SUPABASE_SERVICE_ROLE_KEY not properly configured for Realtime');
@@ -183,26 +207,65 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Broadcast price to Realtime (always-on service)
+  // Broadcast price to Realtime (always-on service) with throttling
   private async broadcastPriceToRealtime(priceData: TradermadePriceData): Promise<void> {
+    if (!this.realtimeChannel || !supabaseServiceKey) return;
+
     try {
-      if (this.realtimeChannel && supabaseServiceKey) {
-        await this.realtimeChannel.send({
-          type: 'broadcast',
-          event: 'price_update',
-          payload: {
-            symbol: priceData.symbol,
-            price: priceData.price,
-            bid: priceData.bid,
-            ask: priceData.ask,
-            timestamp: priceData.timestamp,
-            change: priceData.change,
-            changePercent: priceData.changePercent,
-            source: 'tradermade_websocket_always_on'
-          }
-        });
+      // Compute mid server-side
+      const mid = priceData.bid && priceData.ask ? (priceData.bid + priceData.ask) / 2 : priceData.price;
+      const roundedMid = Math.round(mid * 1000000) / 1000000; // Round to 6 decimals for comparison
+      
+      const now = Date.now();
+      const symbol = priceData.symbol;
+      
+      // Light throttling: drop identical consecutive ticks
+      const lastMid = this.lastSentMid.get(symbol);
+      if (lastMid && Math.abs(roundedMid - lastMid) < 0.000001) {
+        this.duplicateDropCount++;
+        return;
       }
+      
+      // Safe mode: enforce minimum interval if errors are spiking
+      const isSafeMode = now < this.safeModeUntilMs;
+      if (isSafeMode) {
+        const lastSent = this.lastSentAtMs.get(symbol) || 0;
+        if (now - lastSent < 100) { // 100ms min interval in safe mode
+          return;
+        }
+      }
+      
+      // Broadcast minimal payload with only client-used fields
+      await this.realtimeChannel.send({
+        type: 'broadcast',
+        event: 'price_update',
+        payload: {
+          symbol: priceData.symbol,
+          bid: priceData.bid,
+          ask: priceData.ask,
+          mid: roundedMid,
+          timestamp: priceData.timestamp
+        }
+      });
+      
+      // Update tracking
+      this.lastSentMid.set(symbol, roundedMid);
+      this.lastSentAtMs.set(symbol, now);
+      
     } catch (error) {
+      // Track broadcast errors in sliding window
+      const now = Date.now();
+      this.broadcastErrorTimestamps.push(now);
+      
+      // Keep only errors from last 5 seconds
+      this.broadcastErrorTimestamps = this.broadcastErrorTimestamps.filter(ts => now - ts < 5000);
+      
+      // Enable safe mode if > 5 errors in 5 seconds
+      if (this.broadcastErrorTimestamps.length > 5) {
+        this.safeModeUntilMs = now + 10000; // 10 seconds of safe mode
+        console.warn('⚠️ Broadcast safe mode enabled due to error spike');
+      }
+      
       console.error('❌ Failed to broadcast price to Realtime:', error);
     }
   }
@@ -667,6 +730,7 @@ class TradermadeConnectionManager {
             userKey: apiKey,
             symbol: upstreamSymbols
           }));
+          console.log('📡 Auth symbols:', upstreamSymbols);
         }
 
         // Start heartbeat
@@ -682,7 +746,9 @@ class TradermadeConnectionManager {
       };
 
       this.tradermadeSocket.onmessage = (event) => {
-        this.handleTradermadeMessage(event.data);
+        this.handleTradermadeMessage(event.data).catch((err) => {
+          console.error('❌ handleTradermadeMessage error:', err);
+        });
       };
 
       this.tradermadeSocket.onclose = (event) => {
@@ -730,7 +796,7 @@ class TradermadeConnectionManager {
   }
 
   // Handle incoming TraderMade messages (LEADER ONLY)
-  private handleTradermadeMessage(data: string): void {
+  private async handleTradermadeMessage(data: string): Promise<void> {
     if (!this.isLeader) return;
 
     try {
@@ -1519,7 +1585,7 @@ class TradermadeConnectionManager {
         subscriber_connected: !!this.redisSubscriber,
       },
       
-      // Metrics
+      // Enhanced metrics with new fields  
       metrics: {
         fallback_http_total: this.fallbackHttpTotal,
         fallback_force_fetch_total: this.fallbackForceFetchTotal,
@@ -1527,16 +1593,20 @@ class TradermadeConnectionManager {
         http_updates_total: this.httpUpdatesTotal,
         ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
         ws_first_tick_latency_p50_ms: p50,
-        ws_first_tick_latency_p95_ms: p50,
         ws_first_tick_latency_p95_ms: p95,
         latency_samples: sortedLatencies.length,
-        upstream_idle_reconnects: this.upstreamIdleReconnects
+        upstream_idle_reconnects: this.upstreamIdleReconnects,
+        duplicate_drop_count: this.duplicateDropCount,
+        broadcast_error_window_5s: this.broadcastErrorTimestamps.length,
+        safe_mode_active: Date.now() < this.safeModeUntilMs,
+        last_broadcast_ts_per_symbol: Object.fromEntries(this.lastSentAtMs.entries())
       },
       
-      // Always-on connection status
+      // Always-on connection status with enhanced metrics
       always_on: {
         mode: 'always_on',
         realtime_channel_ready: !!this.realtimeChannel,
+        realtime_channel_subscribed: this.realtimeChannelSubscribed,
         supabase_service_key_configured: !!supabaseServiceKey && supabaseServiceKey.length > 50,
         always_on_enabled: this.alwaysOnConnection
       },

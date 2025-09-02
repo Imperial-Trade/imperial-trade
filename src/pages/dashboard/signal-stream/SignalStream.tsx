@@ -553,7 +553,7 @@ export default function SignalStream() {
                 <div className="space-y-5">
                   <div>
                     <h2 className="text-lg font-semibold text-accent-green mb-3 border-b border-accent-green/20 pb-1.5">
-                      Educational Market Patterns ({activeAlerts.length})
+                      Active Alerts ({activeAlerts.length})
                     </h2>
                     {activeAlerts.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">

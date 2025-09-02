@@ -114,11 +114,14 @@ export const PriceDebugWidget: React.FC = () => {
                   ) : (
                     <div className="space-y-1 mt-1">
                       <div><strong>Headers:</strong> {result.headers['X-Health-Source']} | {result.headers['X-Responder-Instance']}</div>
-                      <div><strong>Upstream:</strong> {String(result.metrics.upstreamConnected)} | WS Updates: {result.metrics.ws_updates_total}</div>
+                      <div><strong>Upstream:</strong> {String(result.metrics.upstreamConnected)} | WS: {result.metrics.ws_updates_total} | Broadcasts: {result.metrics.realtime_broadcasts_total}</div>
                       <div><strong>Redis:</strong> pub:{String(result.metrics.redis_publisher_connected)} sub:{String(result.metrics.redis_subscriber_connected)}</div>
                       <div><strong>XAUUSD:</strong> {result.metrics.xauusd_freshness}ms | {result.metrics.xauusd_ticks_per_sec}/s</div>
                       <div><strong>BTCUSD:</strong> {result.metrics.btcusd_freshness}ms | {result.metrics.btcusd_ticks_per_sec}/s</div>
                       <div><strong>Leader:</strong> {String(result.metrics.leader_is_leader)} | {result.metrics.leader_instance_id}</div>
+                      {result.metrics.snapshot_age_ms && (
+                        <div><strong>Snapshot Age:</strong> {result.metrics.snapshot_age_ms}ms</div>
+                      )}
                     </div>
                   )}
                 </div>

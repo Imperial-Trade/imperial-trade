@@ -15,8 +15,6 @@ enabled = true
 [functions.tradermade-streaming]
 verify_jwt = false
 
-[functions.price-relay-websocket]
-verify_jwt = false
 
 [functions.check-user-existence]
 verify_jwt = false

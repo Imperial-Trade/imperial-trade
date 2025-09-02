@@ -152,6 +152,7 @@ class TradermadeConnectionManager {
   private wsUpdatesTotal = 0;
   private httpUpdatesTotal = 0;
   private upstreamIdleReconnects = 0;
+  private realtimeBroadcastsTotal = 0;
   private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
 
   // Enhanced connection diagnostics
@@ -345,6 +346,7 @@ class TradermadeConnectionManager {
       // Update tracking
       this.lastSentMid.set(symbol, roundedMid);
       this.lastSentAtMs.set(symbol, now);
+      this.realtimeBroadcastsTotal++;
       
     } catch (error) {
       // Track broadcast errors in sliding window
@@ -702,6 +704,8 @@ class TradermadeConnectionManager {
         upstream_connected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
         redis_degraded_mode: this.redisDegradedMode,
         symbol_metrics: symbolMetrics,
+        ws_updates_total: this.wsUpdatesTotal,
+        realtime_broadcasts_total: this.realtimeBroadcastsTotal,
         alerting_thresholds: {
           time_since_last_tick_exceeded: this.lastTickTime ? (now - this.lastTickTime) > 15000 : true,
           leader_flips_last_10m: this.leaderFlips.length,
@@ -1979,6 +1983,13 @@ class TradermadeConnectionManager {
             // Symbol metrics from snapshot
             symbol_metrics: snapshot.symbol_metrics,
             
+            // Metrics from snapshot
+            metrics: {
+              ws_updates_total: snapshot.ws_updates_total,
+              realtime_broadcasts_total: snapshot.realtime_broadcasts_total,
+              symbols: snapshot.symbol_metrics
+            },
+            
             timestamp: now
           };
         }
@@ -2058,6 +2069,7 @@ class TradermadeConnectionManager {
         fallback_force_fetch_total: this.fallbackForceFetchTotal,
         ws_updates_total: this.wsUpdatesTotal,
         http_updates_total: this.httpUpdatesTotal,
+        realtime_broadcasts_total: this.realtimeBroadcastsTotal,
         ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
         ws_first_tick_latency_p50_ms: wsP50,
         ws_first_tick_latency_p95_ms: wsP95,

@@ -59,7 +59,10 @@ export const runLeaderHealthProbe = async () => {
         xauusd_freshness: health.health?.metrics?.symbols?.XAUUSD?.cache_freshness_ms,
         xauusd_ticks_per_sec: health.health?.metrics?.symbols?.XAUUSD?.ticks_per_sec,
         btcusd_freshness: health.health?.metrics?.symbols?.BTCUSD?.cache_freshness_ms,
-        btcusd_ticks_per_sec: health.health?.metrics?.symbols?.BTCUSD?.ticks_per_sec
+        btcusd_ticks_per_sec: health.health?.metrics?.symbols?.BTCUSD?.ticks_per_sec,
+        // Broadcast metrics
+        realtime_broadcasts_total: health.health?.metrics?.realtime_broadcasts_total,
+        snapshot_age_ms: health.health?.snapshot_age_ms
       };
       
       const result = {
@@ -73,7 +76,7 @@ export const runLeaderHealthProbe = async () => {
       results.push(result);
       
       // Log key info
-      console.log(`✅ Probe ${i}: upstreamConnected=${metrics.upstreamConnected}, ws_updates=${metrics.ws_updates_total}, XAUUSD_freshness=${metrics.xauusd_freshness}ms`);
+      console.log(`✅ Probe ${i}: upstreamConnected=${metrics.upstreamConnected}, ws_updates=${metrics.ws_updates_total}, broadcasts=${metrics.realtime_broadcasts_total}, XAUUSD_freshness=${metrics.xauusd_freshness}ms, snapshot_age=${metrics.snapshot_age_ms}ms`);
       
       // Wait 12 seconds between probes (except after the last one)
       if (i < 3) {

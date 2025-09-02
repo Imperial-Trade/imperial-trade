@@ -28,7 +28,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
     isUltraFast: boolean;
   }>>([]);
 
-  const testSymbols = ['XAUUSD', 'BTCUSD', 'EURUSD'];
+  const testSymbols = ['XAUUSD', 'BTCUSD'];
 
   useEffect(() => {
     if (isMonitoring) {

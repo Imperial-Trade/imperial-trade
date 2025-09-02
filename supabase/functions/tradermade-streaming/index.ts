@@ -43,7 +43,10 @@ const redisUrl = Deno.env.get('UPSTASH_REDIS_URL');
 const redisPassword = Deno.env.get('UPSTASH_REDIS_PASSWORD');
 
 // Tradermade symbol configuration - ONLY tradermade-streaming connects to TraderMade
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD'];
+
+// Client-side symbol allowlist for cost optimization
+const ALLOWED_CLIENT_SYMBOLS = new Set(['XAUUSD', 'BTCUSD']);
 
 // Enhanced client-to-server symbol mapping for BTC/XAU consistency
 const CLIENT_TO_UPSTREAM: Record<string, string> = {
@@ -178,7 +181,7 @@ class TradermadeConnectionManager {
     const healthSymbolsEnv = Deno.env.get('HEALTH_SNAPSHOT_SYMBOLS');
     this.configurableSymbols = healthSymbolsEnv 
       ? healthSymbolsEnv.split(',').map(s => s.trim())
-      : ['XAUUSD', 'BTCUSD', 'EURUSD'];
+      : ['XAUUSD', 'BTCUSD'];
       
     this.initializeAlwaysOnService();
   }
@@ -313,6 +316,11 @@ class TradermadeConnectionManager {
       
       const now = Date.now();
       const symbol = priceData.symbol;
+      
+      // DEFENSIVE FILTER: Only broadcast allowed symbols to Realtime
+      if (!ALLOWED_CLIENT_SYMBOLS.has(symbol)) {
+        return;
+      }
       
       // Light throttling: drop identical consecutive ticks
       const lastMid = this.lastSentMid.get(symbol);
@@ -1084,6 +1092,11 @@ class TradermadeConnectionManager {
       if (!upstreamSymbol) return;
 
       const clientSymbol = UPSTREAM_TO_CLIENT[upstreamSymbol] || upstreamSymbol;
+      
+      // DEFENSIVE FILTER: Only process allowed symbols for cost optimization
+      if (!ALLOWED_CLIENT_SYMBOLS.has(clientSymbol)) {
+        return;
+      }
       
       let price = parsed.mid || parsed.price;
       if (price === undefined && parsed.bid && parsed.ask) {

@@ -57,6 +57,9 @@ interface Props {
   children: React.ReactNode;
 }
 
+// Client-side symbol allowlist for cost optimization
+const ALLOWED_SYMBOLS = new Set(['XAUUSD', 'BTCUSD']);
+
 export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [connectionStatus, setConnectionStatus] = useState<WebSocketContextType['connectionStatus']>('disconnected');
@@ -118,14 +121,23 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   // HTTP fallback for initial data and refreshes with forceFetch support
   const pollPricesHTTP = useCallback(async (symbols: string[], forceFetch = false) => {
-    if (symbols.length === 0) return;
+    // ALLOWLIST: Filter symbols to only allowed ones
+    const allowedSymbols = symbols.filter(s => {
+      const normalized = normalizeSymbol(s);
+      return ALLOWED_SYMBOLS.has(normalized);
+    });
+    
+    if (allowedSymbols.length === 0) return;
+    if (allowedSymbols.length < symbols.length) {
+      console.warn('🚫 Filtered out non-allowed symbols:', symbols.filter(s => !allowedSymbols.includes(s)));
+    }
 
-    console.log(`🔄 Polling prices via HTTP${forceFetch ? ' (force fetch)' : ''}:`, symbols);
+    console.log(`🔄 Polling prices via HTTP${forceFetch ? ' (force fetch)' : ''}:`, allowedSymbols);
 
     try {
       const response = await supabase.functions.invoke('tradermade-streaming', {
         body: {
-          symbols: symbols,
+          symbols: allowedSymbols,
           forceFetch: forceFetch // Enable REST fallback when cache is empty
         }
       });
@@ -236,6 +248,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
 
     const normalizedSymbol = normalizeSymbol(payload.symbol);
+    
+    // ALLOWLIST: Only process allowed symbols
+    if (!ALLOWED_SYMBOLS.has(normalizedSymbol)) {
+      return;
+    }
     
     // Only process if we're subscribed to this symbol
     if (!subscribedSymbolsRef.current.has(normalizedSymbol)) {
@@ -419,10 +436,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribe request received for symbols:', symbols);
 
-    // Normalize and validate symbols
+    // ALLOWLIST: Filter and normalize symbols, warn if any are dropped
     const normalized = symbols
       .map(normalizeSymbol)
-      .filter(Boolean);
+      .filter(s => {
+        if (!ALLOWED_SYMBOLS.has(s)) {
+          console.warn(`🚫 Symbol ${s} not in allowlist, skipping`);
+          return false;
+        }
+        return Boolean(s);
+      });
 
     // Reference-counted subscriptions
     const toSubscribe: string[] = [];
@@ -465,10 +488,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
     });
 
-    // If no symbols are subscribed, we can optionally clean up the Realtime channel
-    if (subscribedSymbolsRef.current.size === 0) {
-      cleanupRealtimeChannel();
-    }
+    // Keep the Realtime channel always connected (no teardown on empty subscriptions)
+    // Channel will be cleaned up only on provider unmount
   }, [normalizeSymbol, cleanupRealtimeChannel]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {

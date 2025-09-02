@@ -17,7 +17,7 @@ export const LivePriceDebugDisplay: React.FC = () => {
     getPrice
   } = useWebSocketPrices();
 
-  const [testSymbols] = useState(['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD']);
+  const [testSymbols] = useState(['XAUUSD', 'BTCUSD']);
 
   useEffect(() => {
     console.log('LivePriceDebugDisplay - Subscribing to test symbols:', testSymbols);

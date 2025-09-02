@@ -168,10 +168,17 @@ class TradermadeConnectionManager {
 
   // Rate limiting for health endpoint (in-memory fallback)
   private healthRateLimitMap: Map<string, number[]> = new Map();
-  private configurableSymbols: string[] = ['XAUUSD', 'BTCUSD', 'EURUSD'];
+  private configurableSymbols: string[];
 
   private constructor() {
     this.instanceId = crypto.randomUUID();
+    
+    // Make health snapshot symbol list configurable
+    const healthSymbolsEnv = Deno.env.get('HEALTH_SNAPSHOT_SYMBOLS');
+    this.configurableSymbols = healthSymbolsEnv 
+      ? healthSymbolsEnv.split(',').map(s => s.trim())
+      : ['XAUUSD', 'BTCUSD', 'EURUSD'];
+      
     this.initializeAlwaysOnService();
   }
 
@@ -703,9 +710,9 @@ class TradermadeConnectionManager {
       };
       
       await this.redisPublisher.set(
-        'tradermade:leader:snapshot',
+        'tradermade:health:latest',
         JSON.stringify(snapshot),
-        'EX', 30 // 30 second TTL
+        'EX', 20 // 20 second TTL as specified
       );
       
     } catch (error) {
@@ -1899,17 +1906,19 @@ class TradermadeConnectionManager {
     let leaderInstanceId = this.isLeader ? this.instanceId : null;
     let respondedByInstanceId = this.instanceId;
     let responderInstanceId = this.instanceId;
+    let healthSource = 'direct'; // Track actual health source for headers
 
     // If prefer_leader=true and we're a follower, try to get leader snapshot
     if (preferLeader && !this.isLeader && this.redisPublisher && !this.redisDegradedMode) {
       try {
-        const leaderSnapshot = await this.redisPublisher.get('tradermade:leader:snapshot');
+        const leaderSnapshot = await this.redisPublisher.get('tradermade:health:latest');
         if (leaderSnapshot) {
           const snapshot = JSON.parse(leaderSnapshot);
           
           // Use leader's instance ID for consistency with Step-2 verification
           leaderInstanceId = snapshot.leader_instance_id;
           respondedByInstanceId = snapshot.leader_instance_id;
+          healthSource = 'leader_snapshot'; // Mark as leader snapshot response
           
           return {
             // Service identification
@@ -1921,6 +1930,7 @@ class TradermadeConnectionManager {
             responded_by_instance_id: respondedByInstanceId,
             responder_instance_id: responderInstanceId,
             leader_snapshot: true,
+            health_source: healthSource,
             snapshot_age_ms: now - snapshot.timestamp,
             
             // Core health metrics from leader snapshot
@@ -1988,6 +1998,7 @@ class TradermadeConnectionManager {
       responded_by_instance_id: respondedByInstanceId,
       responder_instance_id: responderInstanceId,
       leader_snapshot: false,
+      health_source: healthSource,
       
       // Core health metrics
       tradermadeStatus: this.connectionStatus,
@@ -2080,142 +2091,30 @@ class TradermadeConnectionManager {
       timestamp: now
     };
   }
-    const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
-    const totalSubscriptions = Array.from(this.clients.values())
-      .reduce((sum, client) => sum + client.subscriptions.size, 0);
 
-    // Calculate WS vs HTTP ratio
-    const totalUpdates = this.wsUpdatesTotal + this.httpUpdatesTotal;
-    const wsVsHttpRatio = totalUpdates > 0 ? (this.wsUpdatesTotal / totalUpdates) * 100 : 0;
-
-    // Calculate percentiles for WebSocket first tick latencies
-    const { p50: wsP50, p95: wsP95 } = this.calculatePercentiles(this.wsFirstTickLatenciesMs);
-
-    // Per-symbol metrics
-    const symbolMetrics: any = {};
-    const now = Date.now();
+  // Disconnect TraderMade WebSocket on leadership step-down
+  private disconnectTradermadeOnStepDown(): void {
+    console.log('🔌 Disconnecting TraderMade on leadership step-down...');
     
-    for (const symbol of ['XAUUSD', 'BTCUSD']) {
-      const tickTimes = this.symbolTickTimes.get(symbol) || [];
-      const latencies = this.symbolLatencies.get(symbol) || [];
-      const lastBroadcast = this.lastSentAtMs.get(symbol);
-      
-      // Calculate ticks per second over last 60s
-      const ticksPerSec = tickTimes.length > 0 ? tickTimes.length / 60 : 0;
-      
-      // Calculate cache freshness
-      const cacheFreshnessMs = lastBroadcast ? now - lastBroadcast : null;
-      
-      // Calculate latency percentiles
-      const { p50: latencyP50, p95: latencyP95 } = this.calculatePercentiles(latencies);
-      
-      symbolMetrics[symbol] = {
-        ticks_per_sec: Math.round(ticksPerSec * 100) / 100,
-        cache_freshness_ms: cacheFreshnessMs,
-        ws_first_tick_latency_p50_ms: latencyP50,
-        ws_first_tick_latency_p95_ms: latencyP95,
-        last_broadcast_ts: lastBroadcast
-      };
+    // Clear any active timeouts and intervals
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
-
-    // Connectivity probe results
-    const traderMadeKeyConfigured = !!Deno.env.get('TRADERMADE_API_KEY');
-    const dnsOk = this.connectGuardReason !== 'dns_failed';
-    const tlsOk = this.connectGuardReason !== 'tls_failed';
-
-    return {
-      // Service identification
-      service: 'tradermade-streaming',
-      version: '5.0.0-enhanced-leadership',
-      mode: 'always_on_single_dialer',
-      
-      // Core health metrics
-      tradermadeStatus: this.connectionStatus,
-      connectedClients: this.clients.size,
-      authenticatedClients: authenticatedClients.length,
-      totalSubscriptions,
-      cachedPrices: this.priceCache.size,
-      lastTickTime: this.lastTickTime,
-      timeSinceLastTick: this.lastTickTime ? Date.now() - this.lastTickTime : null,
-      upstreamConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
-      reconnectAttempts: this.reconnectAttempts,
-      isWarmingUp: this.isWarmingUp,
-      
-      // Leader-aware diagnostics
-      leader: {
-        is_leader: this.isLeader,
-        leader_instance_id: this.isLeader ? this.instanceId : null, // Simplified - could query Redis
-        is_leader_response: this.isLeader,
-        from_instance_id: this.instanceId,
-        redis_degraded_mode: this.redisDegradedMode,
-        leader_election_in_progress: this.leaderElectionInProgress,
-        leader_conflict_count: this.leaderConflictCount
-      },
-      
-      // Redis and distributed system status
-      redis: {
-        publisher_connected: !!this.redisPublisher,
-        subscriber_connected: !!this.redisSubscriber,
-        degraded_mode: this.redisDegradedMode
-      },
-      
-      // Upstream connection diagnostics
-      upstream: {
-        connected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
-        last_close_code: this.lastUpstreamCloseCode,
-        last_close_reason: this.lastUpstreamCloseReason,
-        last_error_message: this.lastUpstreamErrorMessage,
-        reconnect_attempts: this.reconnectAttempts
-      },
-      
-      // Connectivity probe results (DNS/TLS-only)
-      connectivity: {
-        tradermade_key_configured: traderMadeKeyConfigured,
-        dns_ok: dnsOk,
-        tls_ok: tlsOk,
-        connect_guard_reason: this.connectGuardReason,
-        last_probe_at: this.lastConnectivityProbeAt,
-        last_probe_error: this.lastConnectivityProbeError
-      },
-      
-      // Enhanced metrics with per-symbol breakdowns
-      metrics: {
-        fallback_http_total: this.fallbackHttpTotal,
-        fallback_force_fetch_total: this.fallbackForceFetchTotal,
-        ws_updates_total: this.wsUpdatesTotal,
-        http_updates_total: this.httpUpdatesTotal,
-        ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
-        ws_first_tick_latency_p50_ms: wsP50,
-        ws_first_tick_latency_p95_ms: wsP95,
-        latency_samples: this.wsFirstTickLatenciesMs.length,
-        upstream_idle_reconnects: this.upstreamIdleReconnects,
-        duplicate_drop_count: this.duplicateDropCount,
-        broadcast_error_window_5s: this.broadcastErrorTimestamps.length,
-        safe_mode_active: Date.now() < this.safeModeUntilMs,
-        symbols: symbolMetrics
-      },
-      
-      // Always-on connection status
-      always_on: {
-        mode: 'always_on',
-        realtime_channel_ready: !!this.realtimeChannel,
-        realtime_channel_subscribed: this.realtimeChannelSubscribed,
-        supabase_service_key_configured: !!supabaseServiceKey && supabaseServiceKey.length > 50,
-        always_on_enabled: this.alwaysOnConnection
-      },
-      
-      // Guardrails status
-      guardrails: {
-        rest_disabled: this.isRestDisabled,
-        circuit_breaker_errors: this.restErrorTimestamps.length,
-        circuit_breaker_window_ms: CIRCUIT_BREAKER_WINDOW_MS,
-        rest_cooldown_ms: REST_COOLDOWN_MS,
-        max_symbols_per_post: MAX_SYMBOLS_PER_POST,
-        active_cooldowns: this.lastRestFetchAt.size
-      },
-      
-      timestamp: Date.now()
-    };
+    
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
+    // Close WebSocket connection with stepping_down reason
+    if (this.tradermadeSocket && this.tradermadeSocket.readyState === WebSocket.OPEN) {
+      this.tradermadeSocket.close(1000, 'stepping_down');
+    }
+    
+    // Reset connection state
+    this.tradermadeSocket = null;
+    this.connectionStatus = 'disconnected';
   }
 }
 
@@ -2267,7 +2166,7 @@ serve(async (req) => {
         ...corsHeaders, 
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store, no-transform', // Prevent health caching and transformations
-        'X-Health-Source': preferLeader && !health.leader.is_leader ? 'leader_snapshot' : 'direct',
+        'X-Health-Source': health.health_source || 'direct',
         'X-Responder-Instance': health.responder_instance_id
       }
     });

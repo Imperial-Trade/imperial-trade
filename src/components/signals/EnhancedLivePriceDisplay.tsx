@@ -459,11 +459,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onUseCurrentPrice(price)}
+              onClick={() => onUseCurrentPrice(price > 0 ? price : 0)}
               className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-              disabled={stalenessStatus.isStale || isRefreshing || !!error || price <= 0} // Disable if price is stale
-              aria-disabled={stalenessStatus.isStale || isRefreshing || !!error || price <= 0}
-              title={stalenessStatus.isStale ? "Price is stale - refresh first" : price > 0 ? 'Use current price' : 'Price not available yet'}
+              disabled={false}
+              title="Use current price for signal"
             >
               Use Price
             </Button>

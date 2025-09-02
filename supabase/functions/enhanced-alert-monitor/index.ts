@@ -37,17 +37,16 @@ interface AlertHandlingResult {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚀 Enhanced Alert Monitor - Starting institutional-grade monitoring...');
+    console.log('🚀 Enhanced Alert Monitor - Starting institutional-grade monitoring via tradermade-streaming...');
 
     // Step 1: Get all active symbols from alert_monitoring
     const { data: activeSymbols, error: symbolsError } = await supabase
@@ -73,40 +72,49 @@ serve(async (req) => {
     const uniqueSymbols = [...new Set(activeSymbols.map(a => a.symbol))];
     console.log(`📊 Monitoring ${uniqueSymbols.length} symbols:`, uniqueSymbols);
 
-    // Step 2: Fetch precise bid/ask prices for all symbols
-    const pricePromises = uniqueSymbols.map(async (symbol): Promise<PriceData | null> => {
-      try {
-        const response = await fetch(
-          `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${tradermadeApiKey}`
-        );
-        
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch price for ${symbol}:`, response.status);
-          return null;
-        }
-        
-        const data = await response.json();
-        
-        if (data.quotes && data.quotes.length > 0) {
-          const quote = data.quotes[0];
-          return {
-            symbol,
-            bid: parseFloat(quote.bid),
-            ask: parseFloat(quote.ask),
-            mid: (parseFloat(quote.bid) + parseFloat(quote.ask)) / 2,
-            timestamp: new Date().toISOString()
-          };
-        }
-        
-        return null;
-      } catch (error) {
-        console.error(`❌ Error fetching price for ${symbol}:`, error);
-        return null;
-      }
-    });
+    // Step 2: Get current prices from market_prices table (populated by tradermade-streaming)
+    const { data: marketPrices, error: pricesError } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask, mid, timestamp')
+      .in('symbol', uniqueSymbols);
 
-    const priceResults = await Promise.all(pricePromises);
-    const validPrices = priceResults.filter(p => p !== null) as PriceData[];
+    if (pricesError) {
+      console.error('❌ Error fetching market prices:', pricesError);
+      throw pricesError;
+    }
+
+    // If no prices available, trigger tradermade-streaming to get fresh data
+    if (!marketPrices || marketPrices.length === 0) {
+      console.log('⚡ No market prices available, triggering tradermade-streaming...');
+      
+      try {
+        const { data: streamingResult, error: streamingError } = await supabase.functions.invoke('tradermade-streaming', {
+          body: { action: 'health' }
+        });
+        
+        if (streamingError) {
+          console.error('❌ Error triggering tradermade-streaming:', streamingError);
+        }
+      } catch (error) {
+        console.error('❌ Failed to invoke tradermade-streaming:', error);
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No current market prices available, triggered streaming service',
+        processed: 0 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const validPrices = marketPrices.map(p => ({
+      symbol: p.symbol,
+      bid: p.bid,
+      ask: p.ask,
+      mid: p.mid,
+      timestamp: p.timestamp
+    }));
 
     console.log(`📈 Successfully fetched ${validPrices.length} price updates`);
 

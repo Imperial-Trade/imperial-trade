@@ -1,25 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
-import { corsHeaders } from '../_shared/cors.ts'
 
-// Types for real-time processing
-interface PriceData {
-  symbol: string;
-  price: number;
-  bid: number;
-  ask: number;
-  timestamp: string;
-}
-
-interface AlertTrigger {
-  alert_id: string;
-  signal_id: string;
-  alert_type: string;
-  target_price: number;
-  triggered: boolean;
-  trade_direction: string;
-  signal_status: string;
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 interface ProcessedAlert {
   alert_id: string;
@@ -31,158 +16,40 @@ interface ProcessedAlert {
   reason?: string;
 }
 
-// Persistent WebSocket connection to TraderMade
-class TraderMadeStreamer {
-  private ws: WebSocket | null = null;
+// Realtime-only Alert Monitor
+class RealtimeAlertMonitor {
   private supabase: any;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
-  private reconnectDelay = 2000; // Start with 2 seconds
-  private connectionActive = false;
-  private symbols = new Set<string>();
-  private lastPriceUpdate: { [symbol: string]: number } = {};
-  private processingBatch = false;
+  private subscription: any;
+  private processingActive = false;
   
   constructor(supabase: any) {
     this.supabase = supabase;
   }
 
-  async connect(): Promise<void> {
-    try {
-      const tradermadeKey = Deno.env.get('TRADERMADE_API_KEY');
-      if (!tradermadeKey) {
-        console.error('❌ TRADERMADE_API_KEY not found');
-        return;
-      }
-
-      const wsUrl = `wss://marketdata.tradermade.com/feedadv?api_key=${tradermadeKey}`;
-      this.ws = new WebSocket(wsUrl);
-      
-      this.ws.onopen = async () => {
-        this.connectionActive = true;
-        this.reconnectAttempts = 0;
-        this.reconnectDelay = 2000;
-        
-        await this.refreshActiveSymbols();
-      };
-
-      this.ws.onmessage = async (event) => {
-        try {
-          // Handle text messages like "Connected" without trying to parse as JSON
-          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
-            if (event.data.toLowerCase().includes('connected')) {
-              console.log('✅ TraderMade connection confirmed');
-            }
-            return;
-          }
-          
-          const data = JSON.parse(event.data);
-          
-          if (data.symbol && data.mid) {
-            const priceData: PriceData = {
-              symbol: data.symbol,
-              price: parseFloat(data.mid),
-              bid: parseFloat(data.bid || data.mid),
-              ask: parseFloat(data.ask || data.mid),
-              timestamp: new Date().toISOString()
-            };
-            
-            // Process with reduced logging and batching
-            await this.processPriceTick(priceData);
-          }
-        } catch (error) {
-          // Only log parsing errors for actual JSON messages
-          if (event.data.startsWith('{')) {
-            console.error('❌ JSON parsing error:', error);
-          }
-        }
-      };
-
-      this.ws.onclose = () => {
-        this.connectionActive = false;
-        this.attemptReconnect();
-      };
-
-      this.ws.onerror = (error) => {
-        this.connectionActive = false;
-      };
-
-    } catch (error) {
-      console.error('❌ Connection failed:', error);
-      this.attemptReconnect();
-    }
-  }
-
-  private async attemptReconnect(): Promise<void> {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('🚨 Max reconnection attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1), 30000);
+  async initialize(): Promise<void> {
+    console.log('🚀 Initializing Realtime-only Alert Monitor...');
+    console.log('📡 Consuming live prices from tradermade-streaming via Supabase Realtime');
     
-    setTimeout(() => {
-      this.connect();
-    }, delay);
-  }
-
-  private async refreshActiveSymbols(): Promise<void> {
-    try {
-      const { data: activeSymbols, error } = await this.supabase
-        .from('alert_monitoring')
-        .select('symbol')
-        .eq('is_active', true);
-
-      if (error) {
-        console.error('❌ Error fetching symbols:', error);
-        return;
-      }
-
-      const newSymbols = new Set(activeSymbols?.map((s: any) => s.symbol) || []);
-      
-      // Subscribe to new symbols
-      for (const symbol of newSymbols) {
-        if (!this.symbols.has(symbol) && this.ws?.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify({
-            userKey: Deno.env.get('TRADERMADE_API_KEY'),
-            symbol: symbol
-          }));
+    // Subscribe to price updates from tradermade-streaming
+    this.subscription = this.supabase
+      .channel('prices:live')
+      .on('broadcast', { event: 'price_update' }, async (payload: any) => {
+        if (!this.processingActive && payload.payload) {
+          await this.handlePriceUpdate(payload.payload);
         }
-      }
-      
-      this.symbols = newSymbols;
-      
-    } catch (error) {
-      console.error('❌ Error refreshing symbols:', error);
-    }
+      })
+      .subscribe((status: string) => {
+        console.log('📡 Realtime subscription status:', status);
+      });
   }
 
-  private async processPriceTick(priceData: PriceData): Promise<void> {
+  private async handlePriceUpdate(priceData: any): Promise<void> {
+    if (this.processingActive) return;
+    
     try {
-      // Prevent duplicate processing and reduce overhead
-      if (this.lastPriceUpdate[priceData.symbol] === priceData.price || this.processingBatch) {
-        return;
-      }
+      this.processingActive = true;
       
-      this.processingBatch = true;
-      this.lastPriceUpdate[priceData.symbol] = priceData.price;
-
-      // Update market prices efficiently with enhanced function
-      const { error: upsertError } = await this.supabase
-        .rpc('upsert_market_price_enhanced', {
-          p_symbol: priceData.symbol,
-          p_bid: priceData.bid,
-          p_ask: priceData.ask,
-          p_mid: priceData.price,
-          p_timestamp: priceData.timestamp
-        });
-
-      if (upsertError) {
-        console.error('❌ Market price update error:', upsertError.message);
-      }
-
-      // Process alerts efficiently with enhanced bid/ask precision
+      // Process alerts using enhanced function with bid/ask precision
       const { data: triggeredAlerts, error: alertError } = await this.supabase
         .rpc('process_price_alerts_enhanced', {
           p_symbol: priceData.symbol,
@@ -192,7 +59,6 @@ class TraderMadeStreamer {
 
       if (alertError) {
         console.error('❌ Alert processing error:', alertError.message);
-        this.processingBatch = false;
         return;
       }
 
@@ -224,23 +90,21 @@ class TraderMadeStreamer {
           }
         }
 
-        // Batch notifications
+        // Send notifications for processed alerts
         if (processedAlerts.length > 0) {
           await this.broadcastAlertNotifications(processedAlerts, priceData);
         }
       }
 
-      this.processingBatch = false;
-
     } catch (error) {
-      console.error('❌ Processing error:', error);
-      this.processingBatch = false;
+      console.error('❌ Error processing price update:', error);
+    } finally {
+      this.processingActive = false;
     }
   }
 
-  private async broadcastAlertNotifications(alerts: ProcessedAlert[], priceData: PriceData): Promise<void> {
+  private async broadcastAlertNotifications(alerts: ProcessedAlert[], priceData: any): Promise<void> {
     try {
-      // Optimized notification broadcasting
       const notificationPayload = {
         notifications: alerts.map(alert => ({
           signal_id: alert.signal_id,
@@ -275,30 +139,29 @@ class TraderMadeStreamer {
     }
   }
 
-  async healthCheck(): Promise<{ status: string; symbols: number; connected: boolean }> {
+  async healthCheck(): Promise<{ status: string; mode: string; subscription: string }> {
     return {
-      status: this.connectionActive ? 'healthy' : 'disconnected',
-      symbols: this.symbols.size,
-      connected: this.connectionActive
+      status: 'operational',
+      mode: 'realtime-only',
+      subscription: this.subscription ? 'active' : 'inactive'
     };
   }
 
   disconnect(): void {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.subscription) {
+      this.supabase.removeChannel(this.subscription);
+      this.subscription = null;
     }
-    this.connectionActive = false;
   }
 }
 
-// Global streamer instance for persistent connection
-let streamer: TraderMadeStreamer | null = null;
+// Global monitor instance
+let monitor: RealtimeAlertMonitor | null = null;
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -311,10 +174,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Initialize streamer if not already running
-    if (!streamer) {
-      streamer = new TraderMadeStreamer(supabase);
-      await streamer.connect();
+    // Initialize monitor if not already running
+    if (!monitor) {
+      monitor = new RealtimeAlertMonitor(supabase);
+      await monitor.initialize();
     }
 
     const url = new URL(req.url);
@@ -322,41 +185,43 @@ serve(async (req) => {
 
     switch (action) {
       case 'status':
-        const health = await streamer.healthCheck();
+        const health = await monitor.healthCheck();
         return new Response(JSON.stringify({
           status: 'operational',
+          version: '3.0.0-realtime-only',
           monitor: health,
           timestamp: new Date().toISOString(),
-          message: 'Persistent alert monitoring active'
+          message: 'Realtime-only alert monitoring active - consuming from tradermade-streaming'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
       case 'restart':
-        if (streamer) {
-          streamer.disconnect();
+        if (monitor) {
+          monitor.disconnect();
         }
-        streamer = new TraderMadeStreamer(supabase);
-        await streamer.connect();
+        monitor = new RealtimeAlertMonitor(supabase);
+        await monitor.initialize();
         
         return new Response(JSON.stringify({
           status: 'restarted',
+          version: '3.0.0-realtime-only',
           timestamp: new Date().toISOString(),
-          message: 'Alert monitor restarted successfully'
+          message: 'Realtime alert monitor restarted successfully'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
       case 'stop':
-        if (streamer) {
-          streamer.disconnect();
-          streamer = null;
+        if (monitor) {
+          monitor.disconnect();
+          monitor = null;
         }
         
         return new Response(JSON.stringify({
           status: 'stopped',
           timestamp: new Date().toISOString(),
-          message: 'Alert monitor stopped'
+          message: 'Realtime alert monitor stopped'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -372,7 +237,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('❌ Error in persistent alert monitor:', error);
+    console.error('❌ Error in realtime alert monitor:', error);
     
     return new Response(JSON.stringify({
       error: 'Internal server error',

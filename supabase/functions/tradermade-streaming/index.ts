@@ -17,7 +17,7 @@ const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000
 // Redis pub/sub constants
 const REDIS_PRICE_CHANNEL = 'tradermade:price_updates';
 const LEADER_LOCK_KEY = 'tradermade:leader:lock';
-const LEADER_LOCK_TTL = 20; // 20 seconds (≥ 3× heartbeat interval for stability)
+const LEADER_LOCK_TTL = 30; // 30 seconds (≥ 3× heartbeat interval for stability)
 const LEADER_HEARTBEAT_INTERVAL = 5000; // 5 seconds (critical: faster heartbeat)
 
 // New guardrail constants
@@ -747,7 +747,7 @@ class TradermadeConnectionManager {
 
       this.tradermadeSocket.onmessage = (event) => {
         this.handleTradermadeMessage(event.data).catch((err) => {
-          console.error('❌ handleTradermadeMessage error:', err);
+          console.error('❌ handleTradermadeMessage error (non-blocking):', err.message);
         });
       };
 
@@ -1628,10 +1628,10 @@ class TradermadeConnectionManager {
 
 // ========== EDGE FUNCTION HANDLER ==========
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
 
   // Handle GET requests for health status
   if (req.method === 'GET') {

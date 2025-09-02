@@ -27,7 +27,7 @@ interface PriceData {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -102,8 +102,6 @@ serve(async (req) => {
     
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
 
     // Step 1: Fetch all pending limit orders
     console.log('📋 Fetching pending limit orders...');
@@ -136,49 +134,58 @@ serve(async (req) => {
       order.tradermade_symbol || order.asset_name
     ))];
 
-    console.log('💰 Fetching current prices for symbols:', symbols);
+    console.log('💰 Fetching current prices from market_prices table (fed by tradermade-streaming):', symbols);
 
-    // Step 3: Fetch current prices from TraderMade API
-    const pricePromises = symbols.map(async (symbol): Promise<PriceData | null> => {
+    // Step 3: Get current prices from market_prices table (populated by tradermade-streaming)
+    const { data: marketPrices, error: pricesError } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask, mid')
+      .in('symbol', symbols);
+
+    if (pricesError) {
+      console.error('❌ Error fetching market prices:', pricesError);
+      throw pricesError;
+    }
+
+    // If no prices available, ensure tradermade-streaming is healthy
+    if (!marketPrices || marketPrices.length === 0) {
+      console.log('⚡ No market prices available, checking tradermade-streaming health...');
+      
       try {
-        const response = await fetch(
-          `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${tradermadeApiKey}`
-        );
+        const { data: streamingResult, error: streamingError } = await supabase.functions.invoke('tradermade-streaming', {
+          body: { action: 'health' }
+        });
         
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch price for ${symbol}:`, response.status);
-          return null;
+        if (streamingError) {
+          console.error('❌ Error checking tradermade-streaming:', streamingError);
+        } else {
+          console.log('📡 tradermade-streaming status:', streamingResult);
         }
-        
-        const data = await response.json();
-        
-        if (data.quotes && data.quotes.length > 0) {
-          const quote = data.quotes[0];
-          return {
-            symbol,
-            bid: parseFloat(quote.bid),
-            ask: parseFloat(quote.ask),
-            price: (parseFloat(quote.bid) + parseFloat(quote.ask)) / 2
-          };
-        }
-        
-        return null;
       } catch (error) {
-        console.error(`❌ Error fetching price for ${symbol}:`, error);
-        return null;
+        console.error('❌ Failed to check tradermade-streaming:', error);
       }
-    });
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No current market prices available, checked streaming service',
+        processed: 0 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    const priceResults = await Promise.all(pricePromises);
     const priceMap = new Map<string, PriceData>();
     
-    priceResults.forEach(price => {
-      if (price) {
-        priceMap.set(price.symbol, price);
-      }
+    marketPrices.forEach(price => {
+      priceMap.set(price.symbol, {
+        symbol: price.symbol,
+        bid: price.bid,
+        ask: price.ask,
+        price: price.mid
+      });
     });
 
-    console.log(`📈 Successfully fetched prices for ${priceMap.size} symbols`);
+    console.log(`📈 Successfully retrieved prices for ${priceMap.size} symbols from market_prices table`);
 
     // Step 4: Check each order for triggering conditions
     const triggeredOrders: string[] = [];

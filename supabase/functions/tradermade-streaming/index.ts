@@ -27,10 +27,15 @@ const MAX_SYMBOLS_PER_POST = parseInt(Deno.env.get('MAX_SYMBOLS_PER_POST') || '5
 const CIRCUIT_BREAKER_ERRORS = parseInt(Deno.env.get('CIRCUIT_BREAKER_ERRORS') || '3'); // Errors before disable
 const CIRCUIT_BREAKER_WINDOW_MS = parseInt(Deno.env.get('CIRCUIT_BREAKER_WINDOW_MS') || '60000'); // 1 minute window
 
-// Supabase client for JWT verification
+// Supabase clients
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
 const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+const supabaseService = createClient(supabaseUrl!, supabaseServiceKey!);
+
+console.log('🔐 SUPABASE_SERVICE_ROLE_KEY configured:', !!supabaseServiceKey && supabaseServiceKey.length > 50);
 
 // Redis client setup
 const redisUrl = Deno.env.get('UPSTASH_REDIS_URL');
@@ -115,6 +120,10 @@ class TradermadeConnectionManager {
   private isLeader = false;
   private leaderHeartbeatInterval: number | null = null;
   private instanceId: string;
+  
+  // Always-on Realtime broadcasting
+  private realtimeChannel: any = null;
+  private alwaysOnConnection = true;
 
   // ===== GUARDRAILS & METRICS =====
   private lastRestFetchAt: Map<string, number> = new Map();
@@ -130,7 +139,7 @@ class TradermadeConnectionManager {
 
   private constructor() {
     this.instanceId = crypto.randomUUID();
-    this.initializeRedis();
+    this.initializeAlwaysOnService();
   }
 
   static getInstance(): TradermadeConnectionManager {
@@ -138,6 +147,64 @@ class TradermadeConnectionManager {
       TradermadeConnectionManager.instance = new TradermadeConnectionManager();
     }
     return TradermadeConnectionManager.instance;
+  }
+
+  // Initialize always-on service (Redis + Realtime + TraderMade)
+  private async initializeAlwaysOnService(): Promise<void> {
+    console.log('🚀 Initializing always-on TraderMade service...');
+    
+    // Setup Realtime channel for broadcasting
+    this.setupRealtimeChannel();
+    
+    // Initialize Redis connections
+    await this.initializeRedis();
+    
+    // Start leader election
+    this.startLeaderElection();
+    
+    // Always connect to TraderMade immediately (always-on)
+    console.log('🎯 Starting always-on TraderMade connection...');
+    this.connectToTradermade();
+    
+    console.log('✅ Always-on service initialized');
+  }
+
+  // Setup Realtime channel for price broadcasting
+  private setupRealtimeChannel(): void {
+    try {
+      if (supabaseServiceKey && supabaseServiceKey.length > 50) {
+        this.realtimeChannel = supabaseService.channel('prices:live');
+        console.log('📡 Realtime channel setup for price broadcasting');
+      } else {
+        console.error('❌ SUPABASE_SERVICE_ROLE_KEY not properly configured for Realtime');
+      }
+    } catch (error) {
+      console.error('❌ Failed to setup Realtime channel:', error);
+    }
+  }
+
+  // Broadcast price to Realtime (always-on service)
+  private async broadcastPriceToRealtime(priceData: TradermadePriceData): Promise<void> {
+    try {
+      if (this.realtimeChannel && supabaseServiceKey) {
+        await this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'price_update',
+          payload: {
+            symbol: priceData.symbol,
+            price: priceData.price,
+            bid: priceData.bid,
+            ask: priceData.ask,
+            timestamp: priceData.timestamp,
+            change: priceData.change,
+            changePercent: priceData.changePercent,
+            source: 'tradermade_websocket_always_on'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to broadcast price to Realtime:', error);
+    }
   }
 
   // Initialize Redis connections for pub/sub with enhanced error handling
@@ -236,10 +303,16 @@ class TradermadeConnectionManager {
         console.log(`👑 Became TraderMade connection leader (instance: ${this.instanceId})`);
         this.isLeader = true;
         
-        // Connect to TraderMade only if we have clients
-        const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
-        if (authenticatedClients.length > 0) {
+        // Always connect to TraderMade in always-on mode (regardless of clients)
+        if (this.alwaysOnConnection) {
+          console.log('🎯 Always-on mode: Connecting to TraderMade immediately');
           await this.connectToTradermade();
+        } else {
+          // Legacy: Connect only if we have clients
+          const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+          if (authenticatedClients.length > 0) {
+            await this.connectToTradermade();
+          }
         }
         
         this.startLeaderHeartbeat();
@@ -713,6 +786,9 @@ class TradermadeConnectionManager {
       this.priceCache.set(clientSymbol, priceUpdate);
       this.lastTickTime = now;
 
+      // ALWAYS: Broadcast to Realtime (always-on service)
+      await this.broadcastPriceToRealtime(priceUpdate);
+
       // LEADER: Publish to Redis for all instances
       this.publishPriceToRedis(priceUpdate);
 
@@ -857,17 +933,18 @@ class TradermadeConnectionManager {
   private scheduleReconnect(): void {
     if (this.reconnectTimeout) return;
 
-    this.reconnectAttempts++;
-    const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts), 60000);
-    
-    console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
-    
-    this.reconnectTimeout = setTimeout(() => {
-      this.reconnectTimeout = null;
-      if (this.isLeader && this.clients.size > 0) {
-        this.connectToTradermade();
-      }
-    }, delay);
+      this.reconnectAttempts++;
+      const delay = Math.min(2000 * Math.pow(1.5, this.reconnectAttempts), 60000);
+      
+      console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+      
+      this.reconnectTimeout = setTimeout(() => {
+        this.reconnectTimeout = null;
+        // Always reconnect in always-on mode
+        if (this.alwaysOnConnection) {
+          this.connectToTradermade();
+        }
+      }, delay);
   }
 
   // Disconnect from TraderMade
@@ -1450,9 +1527,18 @@ class TradermadeConnectionManager {
         http_updates_total: this.httpUpdatesTotal,
         ws_vs_http_ratio_percent: Math.round(wsVsHttpRatio * 100) / 100,
         ws_first_tick_latency_p50_ms: p50,
+        ws_first_tick_latency_p95_ms: p50,
         ws_first_tick_latency_p95_ms: p95,
         latency_samples: sortedLatencies.length,
         upstream_idle_reconnects: this.upstreamIdleReconnects
+      },
+      
+      // Always-on connection status
+      always_on: {
+        mode: 'always_on',
+        realtime_channel_ready: !!this.realtimeChannel,
+        supabase_service_key_configured: !!supabaseServiceKey && supabaseServiceKey.length > 50,
+        always_on_enabled: this.alwaysOnConnection
       },
       
       // Guardrails status
@@ -1486,7 +1572,8 @@ serve(async (req) => {
       success: true,
       health,
       service: 'tradermade-streaming',
-      version: '3.0.0-redis-pubsub'
+      version: '4.0.0-always-on-realtime',
+      mode: 'always_on_producer'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

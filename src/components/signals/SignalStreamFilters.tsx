@@ -130,7 +130,7 @@ export function SignalStreamFilters({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search signals..."
+              placeholder="Search Xeon alerts..."
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
               className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"

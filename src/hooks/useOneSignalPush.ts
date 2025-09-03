@@ -32,7 +32,7 @@ export const useOneSignalPush = () => {
 
     try {
       await window.OneSignal.init({
-        appId: 'YOUR_ONESIGNAL_APP_ID', // This will be replaced with actual ID
+        appId: 'c776609b-8750-4d5e-aa48-95d6ae6b9d68', // Production OneSignal App ID
         allowLocalhostAsSecureOrigin: true,
         autoRegister: false,
         autoResubscribe: false,
@@ -70,7 +70,7 @@ export const useOneSignalPush = () => {
             playerId: newPlayerId,
           }));
           
-          // Update user profile with OneSignal player ID
+          // Update user profile with OneSignal player ID and enable Xeon Stream
           if (user && newPlayerId) {
             await updateUserProfile(newPlayerId);
           }
@@ -103,6 +103,8 @@ export const useOneSignalPush = () => {
           onesignal_player_id: playerId,
           push_subscription_active: true,
           onesignal_subscription_status: 'subscribed',
+          xeon_stream_subscription: true,
+          xeon_stream_activated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 

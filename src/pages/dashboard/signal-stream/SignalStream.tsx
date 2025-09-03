@@ -554,8 +554,10 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-lg font-semibold text-muted-foreground mb-3 border-b border-border pb-1.5">
-                      Recent Educational Analysis ({closedAlerts.length})
+                    <h2 className="text-lg font-semibold mb-3 border-b border-border pb-1.5">
+                      <span className="text-imperial-platinum">Closed </span>
+                      <span className="bg-gradient-to-r from-indigo-600 via-gray-400 to-blue-500 bg-clip-text text-transparent">Alerts</span>
+                      <span className="text-imperial-platinum"> ({closedAlerts.length})</span>
                     </h2>
                     {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">

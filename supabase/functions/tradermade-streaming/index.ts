@@ -100,6 +100,17 @@ interface ClientConnection {
   authTimer?: number;
   userId?: string;
   ipHash?: string;
+  lastPingAt: number;
+  lastActivity: number;
+}
+
+interface WebSocketClientManager {
+  connections: Map<string, ClientConnection>;
+  addConnection: (connection: ClientConnection) => void;
+  removeConnection: (id: string) => void;
+  broadcastToSubscribers: (symbol: string, priceData: TradermadePriceData) => void;
+  getConnectionCount: () => number;
+  getSubscriberCount: (symbol: string) => number;
 }
 
 // ========== ENHANCED CONNECTION MANAGER WITH STABILIZED LEADERSHIP ==========
@@ -132,11 +143,20 @@ class TradermadeConnectionManager {
   private leaderFlips: number[] = [];
   private publishErrors: number[] = [];
   
-  // Always-on Realtime broadcasting
+  // Always-on Realtime broadcasting (kept as fallback)
   private realtimeChannel: any = null;
   private realtimeChannelInitialized = false;
   private realtimeChannelSubscribed = false;
   private alwaysOnConnection = true;
+
+  // Enhanced WebSocket client management
+  private wsClients: Map<string, ClientConnection> = new Map();
+  private wsConnectionCount = 0;
+  private wsMessagesSent = 0;
+  private wsLastBroadcastAt = 0;
+  private batchedUpdates: Map<string, TradermadePriceData> = new Map();
+  private batchTimeout: number | null = null;
+  private readonly BATCH_INTERVAL_MS = 50; // 50ms batching
   
   // Light throttling and error guarding
   private lastSentMid: Map<string, number> = new Map();
@@ -305,7 +325,173 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Broadcast price to Realtime (always-on service) with throttling
+  // Enhanced broadcasting: WebSocket clients first, Realtime as fallback
+  private async broadcastPriceUpdate(priceData: TradermadePriceData): Promise<void> {
+    // Primary: Direct WebSocket broadcasting with server-side filtering
+    await this.broadcastToWebSocketClients(priceData);
+    
+    // Fallback: Realtime broadcasting (for legacy clients)
+    await this.broadcastPriceToRealtime(priceData);
+  }
+
+  // Direct WebSocket broadcasting with server-side filtering
+  private async broadcastToWebSocketClients(priceData: TradermadePriceData): Promise<void> {
+    if (this.wsClients.size === 0) return;
+
+    const symbol = priceData.symbol;
+    const now = Date.now();
+
+    // Add to batch for subscribers
+    this.batchedUpdates.set(symbol, priceData);
+
+    // Immediate send for real-time critical updates or batch timeout
+    if (!this.batchTimeout) {
+      this.batchTimeout = setTimeout(() => {
+        this.flushBatchedUpdates();
+      }, this.BATCH_INTERVAL_MS);
+    }
+  }
+
+  // Flush batched updates to WebSocket clients
+  private flushBatchedUpdates(): void {
+    if (this.batchedUpdates.size === 0) return;
+
+    const updates = Array.from(this.batchedUpdates.entries());
+    this.batchedUpdates.clear();
+    this.batchTimeout = null;
+
+    // Send batched updates to each client based on their subscriptions
+    for (const [clientId, client] of this.wsClients) {
+      if (client.socket.readyState !== WebSocket.OPEN) {
+        this.removeWebSocketClient(clientId);
+        continue;
+      }
+
+      const clientUpdates: TradermadePriceData[] = [];
+      
+      for (const [symbol, priceData] of updates) {
+        if (client.subscriptions.has(symbol)) {
+          clientUpdates.push(priceData);
+        }
+      }
+
+      if (clientUpdates.length > 0) {
+        try {
+          client.socket.send(JSON.stringify({
+            type: 'price_batch',
+            updates: clientUpdates.map(data => ({
+              symbol: data.symbol,
+              bid: data.bid,
+              ask: data.ask,
+              mid: data.bid && data.ask ? (data.bid + data.ask) / 2 : data.price,
+              timestamp: data.timestamp,
+              change: data.change,
+              changePercent: data.changePercent
+            })),
+            timestamp: new Date().toISOString()
+          }));
+
+          client.lastActivity = Date.now();
+          this.wsMessagesSent++;
+        } catch (error) {
+          console.error(`❌ Failed to send to WebSocket client ${clientId}:`, error);
+          this.removeWebSocketClient(clientId);
+        }
+      }
+    }
+
+    this.wsLastBroadcastAt = Date.now();
+  }
+
+  // Add WebSocket client
+  private addWebSocketClient(connection: ClientConnection): void {
+    this.wsClients.set(connection.id, connection);
+    this.wsConnectionCount++;
+    console.log(`📱 WebSocket client connected: ${connection.id} (total: ${this.wsClients.size})`);
+  }
+
+  // Remove WebSocket client
+  private removeWebSocketClient(clientId: string): void {
+    const client = this.wsClients.get(clientId);
+    if (client) {
+      try {
+        if (client.socket.readyState === WebSocket.OPEN) {
+          client.socket.close();
+        }
+      } catch (error) {
+        console.warn(`Warning closing WebSocket for ${clientId}:`, error);
+      }
+      
+      this.wsClients.delete(clientId);
+      console.log(`📱 WebSocket client disconnected: ${clientId} (total: ${this.wsClients.size})`);
+    }
+  }
+
+  // Handle WebSocket client authentication
+  private async authenticateWebSocketClient(client: ClientConnection, token: string): Promise<boolean> {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        console.warn(`❌ WebSocket auth failed for ${client.id}: ${error?.message}`);
+        return false;
+      }
+
+      client.userId = user.id;
+      client.isAuthenticated = true;
+      console.log(`✅ WebSocket client authenticated: ${client.id} (user: ${user.id})`);
+      return true;
+    } catch (error) {
+      console.error(`❌ WebSocket authentication error for ${client.id}:`, error);
+      return false;
+    }
+  }
+
+  // Handle WebSocket client subscription
+  private handleWebSocketSubscription(client: ClientConnection, symbols: string[]): void {
+    // Validate and normalize symbols
+    const validSymbols = symbols
+      .map(s => s.toUpperCase().trim())
+      .filter(s => ALLOWED_CLIENT_SYMBOLS.has(s))
+      .slice(0, MAX_WS_SUBS_PER_CLIENT);
+
+    // Update client subscriptions
+    client.subscriptions.clear();
+    validSymbols.forEach(symbol => client.subscriptions.add(symbol));
+
+    console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}]`);
+
+    // Send current prices for subscribed symbols
+    const currentPrices: TradermadePriceData[] = [];
+    for (const symbol of client.subscriptions) {
+      const cached = this.priceCache.get(symbol);
+      if (cached) {
+        currentPrices.push(cached);
+      }
+    }
+
+    if (currentPrices.length > 0) {
+      try {
+        client.socket.send(JSON.stringify({
+          type: 'price_snapshot',
+          prices: currentPrices.map(data => ({
+            symbol: data.symbol,
+            bid: data.bid,
+            ask: data.ask,
+            mid: data.bid && data.ask ? (data.bid + data.ask) / 2 : data.price,
+            timestamp: data.timestamp,
+            change: data.change,
+            changePercent: data.changePercent
+          })),
+          timestamp: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.error(`❌ Failed to send snapshot to ${client.id}:`, error);
+      }
+    }
+  }
+
+  // Legacy Realtime broadcasting (kept as fallback)
   private async broadcastPriceToRealtime(priceData: TradermadePriceData): Promise<void> {
     if (!this.realtimeChannel || !supabaseServiceKey) return;
 

@@ -72,6 +72,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const refCountsRef = useRef<Map<string, number>>(new Map());
+  
+  // Enhanced WebSocket connection (primary)
+  const directWebSocketRef = useRef<WebSocket | null>(null);
+  const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wsReconnectAttemptsRef = useRef<number>(0);
+  const wsAuthenticatedRef = useRef<boolean>(false);
+  const wsClientIdRef = useRef<string | null>(null);
+  
+  // Supabase Realtime (fallback)
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
@@ -344,13 +353,236 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }, delay);
   }, []);
 
-  // Setup Realtime channel subscription with robust error handling
+  // Enhanced WebSocket connection setup (primary connection method)
+  const setupDirectWebSocket = useCallback(async () => {
+    if (directWebSocketRef.current?.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+
+    console.log(`🔗 Setting up direct WebSocket connection (attempt ${wsReconnectAttemptsRef.current + 1})`);
+    setConnectionStatus('connecting');
+
+    try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        console.warn('⚠️ No auth token available for WebSocket, using Realtime fallback');
+        setupRealtimeChannel();
+        return;
+      }
+
+      // Build WebSocket URL
+      const wsUrl = new URL(window.location.origin.replace(/^http/, 'ws'));
+      wsUrl.pathname = '/functions/v1/tradermade-streaming';
+      
+      console.log(`🔗 Connecting to WebSocket: ${wsUrl.toString()}`);
+      const ws = new WebSocket(wsUrl.toString());
+      
+      ws.onopen = () => {
+        console.log('✅ Direct WebSocket connection opened');
+        directWebSocketRef.current = ws;
+        wsReconnectAttemptsRef.current = 0;
+        
+        // Clear any fallback reconnection attempts
+        if (wsReconnectTimeoutRef.current) {
+          clearTimeout(wsReconnectTimeoutRef.current);
+          wsReconnectTimeoutRef.current = null;
+        }
+
+        // Send authentication
+        ws.send(JSON.stringify({
+          type: 'auth',
+          token: token,
+          timestamp: new Date().toISOString()
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch (error) {
+          console.warn('❌ Invalid WebSocket message:', event.data);
+          return;
+        }
+
+        switch (message.type) {
+          case 'welcome':
+            console.log(`🎉 WebSocket welcomed with client ID: ${message.clientId}`);
+            wsClientIdRef.current = message.clientId;
+            break;
+
+          case 'auth_response':
+            if (message.success) {
+              console.log('✅ WebSocket authenticated successfully');
+              wsAuthenticatedRef.current = true;
+              setConnectionStatus('connected');
+              setDataSource('tradermade');
+              
+              // Subscribe to current symbols
+              if (subscribedSymbolsRef.current.size > 0) {
+                ws.send(JSON.stringify({
+                  type: 'subscribe',
+                  symbols: Array.from(subscribedSymbolsRef.current),
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            } else {
+              console.error('❌ WebSocket authentication failed');
+              ws.close();
+            }
+            break;
+
+          case 'subscription_response':
+            if (message.success) {
+              console.log(`📋 WebSocket subscribed to: [${message.subscribedSymbols.join(', ')}]`);
+            }
+            break;
+
+          case 'price_batch':
+          case 'price_snapshot':
+            if (message.updates || message.prices) {
+              const updates = message.updates || message.prices;
+              const newPrices: Record<string, PriceData> = {};
+              const updateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'> = {};
+
+              updates.forEach((update: any) => {
+                const normalizedSymbol = normalizeSymbol(update.symbol);
+                if (!ALLOWED_SYMBOLS.has(normalizedSymbol)) return;
+
+                const price = update.mid || (update.bid + update.ask) / 2;
+                const prevPrice = masterPricesRef.current[normalizedSymbol]?.price || price;
+                const change = update.change || (price - prevPrice);
+                const changePercent = update.changePercent || (prevPrice > 0 ? (change / prevPrice) * 100 : 0);
+
+                const priceData: PriceData = {
+                  symbol: update.symbol,
+                  price,
+                  change,
+                  changePercent,
+                  timestamp: update.timestamp || new Date().toISOString(),
+                  bid: update.bid,
+                  ask: update.ask,
+                  tick_timestamp: Date.now(),
+                  is_institutional_tick: true,
+                  is_ultra_fast_tick: true,
+                  update_frequency: 'enhanced_websocket'
+                };
+
+                // Only update if price actually changed
+                const lastBroadcast = lastPriceBroadcastRef.current[normalizedSymbol];
+                if (!lastBroadcast || Math.abs(price - lastBroadcast) > 0.00001) {
+                  newPrices[normalizedSymbol] = priceData;
+                  updateSources[normalizedSymbol] = 'websocket';
+                  lastPriceBroadcastRef.current[normalizedSymbol] = price;
+                  masterPricesRef.current[normalizedSymbol] = priceData;
+                }
+              });
+
+              if (Object.keys(newPrices).length > 0) {
+                setPrices(prev => ({ ...prev, ...newPrices }));
+                setPriceUpdateSources(prev => ({ ...prev, ...updateSources }));
+                setLastUpdated(new Date());
+
+                // Broadcast to subscribers
+                Object.entries(newPrices).forEach(([symbol, priceData]) => {
+                  priceUpdateCallbacksRef.current.forEach(callback => {
+                    try {
+                      callback(symbol, priceData);
+                    } catch (error) {
+                      console.warn('Error in price update callback:', error);
+                    }
+                  });
+                });
+
+                // Clear errors on successful updates
+                setErrors(prev => {
+                  const cleaned = { ...prev };
+                  Object.keys(newPrices).forEach(symbol => delete cleaned[symbol]);
+                  delete cleaned.global;
+                  return cleaned;
+                });
+              }
+            }
+            break;
+
+          case 'pong':
+            // Heartbeat response
+            break;
+
+          case 'error':
+            console.error(`❌ WebSocket error: ${message.message}`);
+            break;
+
+          default:
+            console.warn(`❓ Unknown WebSocket message type: ${message.type}`);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log(`🔌 WebSocket connection closed (code: ${event.code})`);
+        directWebSocketRef.current = null;
+        wsAuthenticatedRef.current = false;
+        wsClientIdRef.current = null;
+
+        if (event.code !== 1000) { // Not a normal closure
+          setConnectionStatus('disconnected');
+          attemptWebSocketReconnection();
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setConnectionStatus('error');
+        setErrors(prev => ({ ...prev, global: 'WebSocket connection error' }));
+        
+        if (directWebSocketRef.current) {
+          directWebSocketRef.current = null;
+          wsAuthenticatedRef.current = false;
+          wsClientIdRef.current = null;
+        }
+        
+        attemptWebSocketReconnection();
+      };
+
+    } catch (error) {
+      console.error('❌ Failed to setup WebSocket:', error);
+      setConnectionStatus('error');
+      setErrors(prev => ({ ...prev, global: 'Failed to establish WebSocket connection' }));
+      attemptWebSocketReconnection();
+    }
+  }, [normalizeSymbol]);
+
+  // WebSocket reconnection logic
+  const attemptWebSocketReconnection = useCallback(() => {
+    if (wsReconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('🔥 Max WebSocket reconnection attempts reached, falling back to Realtime');
+      setupRealtimeChannel();
+      return;
+    }
+
+    if (wsReconnectTimeoutRef.current) {
+      clearTimeout(wsReconnectTimeoutRef.current);
+    }
+
+    const delay = Math.pow(2, wsReconnectAttemptsRef.current) * 1000;
+    console.log(`🔄 Attempting WebSocket reconnection in ${delay}ms (attempt ${wsReconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
+
+    wsReconnectTimeoutRef.current = setTimeout(() => {
+      wsReconnectAttemptsRef.current += 1;
+      setupDirectWebSocket();
+    }, delay);
+  }, [setupDirectWebSocket]);
+
+  // Fallback: Setup Realtime channel subscription
   const setupRealtimeChannel = useCallback(() => {
     if (realtimeChannelRef.current) {
       return; // Already connected
     }
 
-    console.log(`📡 Setting up Realtime price channel (attempt ${reconnectAttemptsRef.current + 1})`);
+    console.log(`📡 Setting up Realtime fallback channel (attempt ${reconnectAttemptsRef.current + 1})`);
     setConnectionStatus('connecting');
     
     const channel = supabase.channel('prices:live');

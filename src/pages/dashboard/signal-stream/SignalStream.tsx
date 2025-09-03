@@ -15,18 +15,27 @@ import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { StreamHealthPanel } from '@/components/signals/StreamHealthPanel';
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import { useToast } from '@/hooks/use-toast';
+import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 export default function SignalStream() {
   const {
     user,
     profile
   } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // State for filtering and modal
   const [filters, setFilters] = useState({
     search: '',
     status: '',
     tradeType: '',
     educator: ''
   });
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Use the optimized trading hook with real-time updates for all signals
   // Pass the actual user ID for proper authorization, even when showing all signals
@@ -35,6 +44,7 @@ export default function SignalStream() {
     isLoading,
     error,
     updateAlert,
+    createAlert,
     refreshAlerts,
     connectionStatus,
     lastUpdated,
@@ -209,6 +219,56 @@ export default function SignalStream() {
       }
     };
   }, [symbols, subscribe, unsubscribe]);
+  // Handle creating new signal
+  const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create educational patterns.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Convert form data to CreateTradeAlertDto
+      const createDto: CreateTradeAlertDto = {
+        assetName: data.asset_name,
+        tradermadeSymbol: data.tradermade_symbol,
+        tradeType: data.trade_type,
+        entryPrice: data.entry_price,
+        stopLoss: data.stop_loss,
+        tp1: data.tp1,
+        tp2: data.tp2,
+        tp3: data.tp3,
+        tp4: data.tp4,
+        tp5: data.tp5,
+        notes: data.notes
+      };
+
+      const result = await createAlert(createDto);
+      
+      if (result) {
+        toast({
+          title: "🚀 Educational Pattern Created!",
+          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
+        });
+        
+        setShowCreateModal(false);
+        // Refresh alerts will happen automatically via the query
+      } else {
+        throw new Error('Failed to create educational pattern');
+      }
+    } catch (error) {
+      console.error('Error creating trade alert:', error);
+      toast({
+        title: "Error Creating Educational Pattern",
+        description: "Failed to create educational analysis. Please check your inputs and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
   const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
@@ -511,7 +571,7 @@ export default function SignalStream() {
               
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true">
-                <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => navigate('/dashboard/new-signal')} />
+                <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
               </div>
               
               {isLoading || connectionStatus !== 'connected' && allAlerts.length === 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -609,6 +669,20 @@ export default function SignalStream() {
             </div>
           </div>
         </div>
+        
+        {/* Create Signal Modal */}
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Educational Pattern</DialogTitle>
+            </DialogHeader>
+            <OptimizedNewAlertForm 
+              onSubmit={handleCreateSignal}
+              onCancel={() => setShowCreateModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
-    </StreamErrorBoundary>;
+    </StreamErrorBoundary>
+  );
 }

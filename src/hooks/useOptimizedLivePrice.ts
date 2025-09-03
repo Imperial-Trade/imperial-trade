@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getStandardSymbol } from '@/types/assets';
 
@@ -12,7 +12,7 @@ interface OptimizedLivePriceData {
   error: string | null;
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
-  dataSource: 'tradermade' | 'unavailable';
+  dataSource: string;
   priceUpdateSource: 'websocket' | 'websocket_institutional' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
@@ -53,15 +53,11 @@ export function useOptimizedLivePrice(
     dataSource,
     lastUpdated: contextLastUpdated,
     errors,
-    priceUpdateSources,
     subscribe,
     unsubscribe,
     getPrice,
-    refreshPrice: contextRefreshPrice,
-    subscribeToPriceUpdates,
-    validatePriceConsistency,
-    getFallbackTelemetry
-  } = useWebSocketPrices();
+    refreshPrice: contextRefreshPrice
+  } = useHybridWebSocketPrices();
 
   const [debouncedPrice, setDebouncedPrice] = useState({
     price: 0,
@@ -134,35 +130,34 @@ export function useOptimizedLivePrice(
     }
   }, [normalizedSymbol, getStoredPrice]);
 
-  // GUARDRAIL: Subscribe once with centralized updates only
+  // Subscribe to price updates via hybrid system
   useEffect(() => {
     if (!normalizedSymbol) return;
 
     subscribe([normalizedSymbol]);
 
-    // Subscribe to centralized price updates - SINGLE SOURCE OF TRUTH
-    const unsubscribeFromPriceUpdates = subscribeToPriceUpdates((symbol, priceData) => {
-      if (symbol === normalizedSymbol) {
-        console.log(`📡 [${normalizedSymbol}] Hook received centralized update:`, priceData.price);
-        
-        // Update immediately with centralized data
-        setDebouncedPrice({
-          price: priceData.price,
-          change: priceData.change,
-          changePercent: priceData.changePercent
-        });
-        setLastUpdated(new Date(priceData.timestamp));
-        setLastNonZeroPrice(priceData.price);
-        lastProcessedPriceRef.current = priceData.price;
-        storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
-      }
-    });
-
     return () => {
       unsubscribe([normalizedSymbol]);
-      unsubscribeFromPriceUpdates();
     };
-  }, [normalizedSymbol, subscribe, unsubscribe, subscribeToPriceUpdates, storePrice]);
+  }, [normalizedSymbol, subscribe, unsubscribe]);
+
+  // Monitor price changes from hybrid context
+  useEffect(() => {
+    const priceData = prices[normalizedSymbol];
+    if (priceData && priceData.price > 0) {
+      console.log(`📡 [${normalizedSymbol}] Hook received price update:`, priceData.price);
+      
+      setDebouncedPrice({
+        price: priceData.price,
+        change: priceData.change,
+        changePercent: priceData.changePercent
+      });
+      setLastUpdated(new Date(priceData.timestamp));
+      setLastNonZeroPrice(priceData.price);
+      lastProcessedPriceRef.current = priceData.price;
+      storePrice(normalizedSymbol, priceData.price, new Date(priceData.timestamp));
+    }
+  }, [prices, normalizedSymbol, storePrice]);
 
   // REMOVED: Fallback logic moved to context - hook only receives centralized updates
 
@@ -207,7 +202,7 @@ export function useOptimizedLivePrice(
     lastUpdated: lastUpdated || contextLastUpdated,
     connectionStatus: enhancedConnectionStatus,
     dataSource,
-    priceUpdateSource: localPriceSource !== 'unknown' ? localPriceSource : (priceUpdateSources[normalizedSymbol] || 'unknown'),
+    priceUpdateSource: localPriceSource,
     refreshPrice
   };
 }

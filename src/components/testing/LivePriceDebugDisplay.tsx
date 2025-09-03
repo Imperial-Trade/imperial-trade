@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ export const LivePriceDebugDisplay: React.FC = () => {
     subscribe,
     unsubscribe,
     getPrice
-  } = useWebSocketPrices();
+  } = useHybridWebSocketPrices();
 
   const [testSymbols] = useState(['XAUUSD', 'BTCUSD']);
 

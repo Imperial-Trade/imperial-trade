@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useCallback, useRef } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 
 interface PriceFeedData {
   prices: Record<string, number>;
@@ -9,7 +9,7 @@ interface PriceFeedData {
 }
 
 export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
-  const { prices, connectionStatus, subscribe, unsubscribe } = useWebSocketPrices();
+  const { prices, connectionStatus, subscribe, unsubscribe } = useHybridWebSocketPrices();
 
   // Filter out empty or invalid symbols
   const validSymbols = useMemo(() => {

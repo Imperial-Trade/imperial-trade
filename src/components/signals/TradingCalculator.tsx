@@ -6,14 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
 }) {
   // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
-  const { prices, priceUpdateSources, getPrice } = useWebSocketPrices();
+  const { prices, getPrice } = useHybridWebSocketPrices();
   
   // Subscribe to this symbol and get its price data
   const wsLivePrice = useMemo(() => {
@@ -26,7 +26,7 @@ export default function TradingCalculator({
       changePercent: priceData.changePercent || 0,
       isLoading: false,
       error: null,
-      lastUpdated: priceData.tick_timestamp ? new Date(priceData.tick_timestamp) : null,
+      lastUpdated: priceData.timestamp ? new Date(priceData.timestamp) : null,
       connectionStatus: 'connected' as const
     };
   }, [prices, symbol, getPrice]);
@@ -47,12 +47,12 @@ export default function TradingCalculator({
     return externalLivePrice;
   }, [externalLivePrice, wsLivePrice]);
   
-  // Check if we're receiving ultra-fast institutional tick data
+  // Check if we're receiving price data
   const currentPriceData = prices[symbol];
-  const isUltraFastTick = currentPriceData?.is_ultra_fast_tick === true;
-  const isInstitutionalTick = currentPriceData?.is_institutional_tick === true;
-  const updateFrequency = currentPriceData?.update_frequency || '250ms';
-  const priceSource = priceUpdateSources[symbol] || 'unknown';
+  const isUltraFastTick = false; // Simplified for hybrid system
+  const isInstitutionalTick = false; // Simplified for hybrid system
+  const updateFrequency = '250ms'; // Default frequency
+  const priceSource = 'hybrid';
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   const [priceChangeFlash, setPriceChangeFlash] = useState(false);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 
 interface PriceStalenessStatus {
   isStale: boolean;
@@ -10,7 +10,7 @@ interface PriceStalenessStatus {
 }
 
 export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
-  const { getPriceAge, isPriceStale, getConnectionHealth, lastUpdated } = useWebSocketPrices();
+  const { getConnectionHealth, lastUpdated, prices } = useHybridWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,
@@ -24,15 +24,18 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
       const health = getConnectionHealth();
       
       if (symbol) {
-        const age = getPriceAge(symbol);
-        const isStale = isPriceStale(symbol, maxAgeSeconds);
+        const priceData = prices[symbol];
+        const now = Date.now();
+        const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
+        const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
+        const isStale = ageInSeconds ? ageInSeconds > maxAgeSeconds : true;
         
         setStalenessStatus({
           isStale,
-          ageInSeconds: age ? Math.floor(age / 1000) : null,
+          ageInSeconds,
           lastUpdate: lastUpdated,
           isHealthy: health.isHealthy,
-          stalePrices: health.stalePrices
+          stalePrices: [] // Simplified for hybrid system
         });
       } else {
         setStalenessStatus({
@@ -40,7 +43,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
           ageInSeconds: null,
           lastUpdate: health.lastUpdate,
           isHealthy: health.isHealthy,
-          stalePrices: health.stalePrices
+          stalePrices: [] // Simplified for hybrid system
         });
       }
     };
@@ -52,7 +55,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, getPriceAge, isPriceStale, getConnectionHealth, lastUpdated]);
+  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices]);
 
   return stalenessStatus;
 }

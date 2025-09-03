@@ -6,7 +6,7 @@ import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-reac
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -167,7 +167,7 @@ export default function SignalStream() {
     subscribe,
     unsubscribe,
     getPrice
-  } = useWebSocketPrices();
+  } = useHybridWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {

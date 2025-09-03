@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { testTradermadeHealth, runLeaderHealthProbe } from '@/test-tradermade-health';
 
 export const PriceDebugWidget: React.FC = () => {
-  const { prices, connectionStatus, dataSource, lastUpdated, errors, subscribe } = useWebSocketPrices();
+  const { prices, connectionStatus, dataSource, lastUpdated, errors, subscribe } = useHybridWebSocketPrices();
   const [healthData, setHealthData] = useState<any>(null);
   const [leaderProbeData, setLeaderProbeData] = useState<any>(null);
   const [loading, setLoading] = useState(false);

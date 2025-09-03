@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Activity, AlertTriangle } from 'lucide-react';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StreamStatus {
@@ -13,6 +14,7 @@ interface StreamStatus {
 }
 
 export function SignalStreamStatus() {
+  const { connectionStatus, dataSource, isUsingEnhancedSystem } = useHybridWebSocketPrices();
   const [status, setStatus] = useState<StreamStatus>({
     websocket: 'connecting',
     monitor: 'inactive', 
@@ -20,6 +22,15 @@ export function SignalStreamStatus() {
     alerts: 0
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Update websocket status from hybrid context
+  useEffect(() => {
+    setStatus(prev => ({
+      ...prev,
+      websocket: connectionStatus,
+      priceData: connectionStatus === 'connected' ? 'live' : 'cached'
+    }));
+  }, [connectionStatus]);
 
   const checkSystemStatus = async () => {
     try {
@@ -127,9 +138,19 @@ export function SignalStreamStatus() {
   const needsAction = status.monitor === 'inactive' || status.monitor === 'error';
 
   return (
-    <div className="space-y-4 hidden">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Xeon Stream Status</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-medium">Signal Stream Status</h3>
+          {isUsingEnhancedSystem && (
+            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+              Enhanced System
+            </Badge>
+          )}
+          <Badge className="bg-muted/20 text-muted-foreground border-border/30 text-xs">
+            {dataSource}
+          </Badge>
+        </div>
         <Button 
           variant="outline" 
           size="sm" 

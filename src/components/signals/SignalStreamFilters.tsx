@@ -195,42 +195,23 @@ export function SignalStreamFilters({
             </select>
           </div>
 
-          {/* Trade Type Filters */}
+          {/* Trade Type Filter */}
           <div className="space-y-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</span>
-            <div className="flex flex-wrap gap-1.5">
+            <select
+              value={filters.tradeType}
+              onChange={(e) => updateFilter('tradeType', e.target.value)}
+              className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+            >
               {tradeTypeOptions.map(option => {
                 const Icon = option.icon;
-                const isActive = filters.tradeType === option.value;
                 return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleTradeTypeClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.count})
+                  </option>
                 );
               })}
-            </div>
+            </select>
           </div>
 
           {/* Educator Filter */}
@@ -240,7 +221,7 @@ export function SignalStreamFilters({
               <select
                 value={filters.educator}
                 onChange={(e) => updateFilter('educator', e.target.value)}
-                className="w-full h-7 px-2.5 text-xs bg-background/50 border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors"
+                className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
               >
                 <option value="">All Educators ({educatorOptions.length})</option>
                 {educatorOptions.map(educator => (

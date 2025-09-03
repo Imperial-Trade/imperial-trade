@@ -149,25 +149,13 @@ export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProvider
     setUseEnhanced(enhanced);
   };
 
-  if (useEnhanced) {
-    return (
-      <OptimizedWebSocketPriceProvider>
-        <WebSocketPriceProvider>
-          <OptimizedHybridContextProvider onSystemSwitch={handleSystemSwitch}>
-            {children}
-          </OptimizedHybridContextProvider>
-        </WebSocketPriceProvider>
-      </OptimizedWebSocketPriceProvider>
-    );
-  }
-
-  // Legacy system (fallback or default)
+  // Always use optimized system now - remove legacy fallback
   return (
-    <WebSocketPriceProvider>
-      <LegacyHybridContextProvider>
+    <OptimizedWebSocketPriceProvider>
+      <OptimizedHybridContextProvider onSystemSwitch={handleSystemSwitch}>
         {children}
-      </LegacyHybridContextProvider>
-    </WebSocketPriceProvider>
+      </OptimizedHybridContextProvider>
+    </OptimizedWebSocketPriceProvider>
   );
 };
 

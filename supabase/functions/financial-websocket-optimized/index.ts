@@ -9,10 +9,10 @@ const redis = new Redis({
 // Constants for configuration
 const REDIS_SERVER_ID = crypto.randomUUID();
 const REDIS_PRICES_KEY = "financial:prices";
-const REDIS_LEADER_KEY = "financial:leader";
+const REDIS_LEADER_KEY = "financial:leader"; 
 const REDIS_PRICE_UPDATES_CHANNEL = "financial:price_updates";
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'];
-const BATCH_INTERVAL_MS = 500;
+const BATCH_INTERVAL_MS = 250; // Faster for realtime feel
 
 // TraderMade API setup
 const TRADERMADE_API_KEY = Deno.env.get("TRADERMADE_API_KEY") ?? "";
@@ -124,7 +124,17 @@ async function setupRedisSubscription() {
           // We're not the leader, poll for price updates
           const allPrices = await redis.hgetall(REDIS_PRICES_KEY);
           if (allPrices) {
-            for (const [symbol, dataStr] of Object.entries(allPrices)) {
+            // Handle both object and array responses from Redis REST API
+            const entries = Array.isArray(allPrices) 
+              ? allPrices.reduce((acc, item, index, arr) => {
+                  if (index % 2 === 0 && index + 1 < arr.length) {
+                    acc.push([item, arr[index + 1]]);
+                  }
+                  return acc;
+                }, [])
+              : Object.entries(allPrices);
+              
+            for (const [symbol, dataStr] of entries) {
               try {
                 const priceData = JSON.parse(dataStr as string);
                 const cached = priceCache[symbol];
@@ -143,7 +153,7 @@ async function setupRedisSubscription() {
       } catch (pollError) {
         console.error("❌ Error polling Redis for price updates:", pollError);
       }
-    }, 1000); // Poll every second for non-leader servers
+    }, 500); // Poll every 500ms for faster non-leader updates
     
   } catch (error) {
     console.error("❌ Error setting up Redis polling:", error);
@@ -197,11 +207,27 @@ function initializeBatching() {
 // Initialize server
 async function initialize() {
   try {
+    console.log("🔧 Initializing optimized financial WebSocket server...");
+    
     // Load initial prices from Redis
     const allPrices = await redis.hgetall(REDIS_PRICES_KEY);
     if (allPrices) {
-      for (const [symbol, dataStr] of Object.entries(allPrices)) {
-        priceCache[symbol] = JSON.parse(dataStr as string);
+      // Handle both object and array responses from Redis REST API
+      const entries = Array.isArray(allPrices) 
+        ? allPrices.reduce((acc, item, index, arr) => {
+            if (index % 2 === 0 && index + 1 < arr.length) {
+              acc.push([item, arr[index + 1]]);
+            }
+            return acc;
+          }, [])
+        : Object.entries(allPrices);
+        
+      for (const [symbol, dataStr] of entries) {
+        try {
+          priceCache[symbol] = JSON.parse(dataStr as string);
+        } catch (parseError) {
+          console.error(`❌ Error parsing cached price for ${symbol}:`, parseError);
+        }
       }
     }
     
@@ -225,7 +251,7 @@ async function initialize() {
 initialize();
 
 // Handle WebSocket connections - NO AUTHENTICATION REQUIRED
-Deno.serve({ port: 8000 }, async (req) => {
+Deno.serve(async (req) => {
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname === '/health') {
     return new Response(JSON.stringify({
@@ -309,8 +335,9 @@ Deno.serve({ port: 8000 }, async (req) => {
           if (Array.isArray(message.symbols)) {
             message.symbols.forEach(symbol => client.symbols.delete(symbol));
             
+            // Send acknowledgment (frontend will ignore unknown message types)
             socket.send(JSON.stringify({
-              type: "unsubscribed",
+              type: "unsubscribe_ack", 
               symbols: message.symbols,
               remaining: [...client.symbols]
             }));

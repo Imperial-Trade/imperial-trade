@@ -102,13 +102,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             // Health check response
             break;
             
-          case 'error':
+            case 'error':
             console.error('❌ WebSocket error:', data.message);
             setError(data.message);
             break;
             
+          case 'unsubscribe_ack':
+            // Silent acknowledgment - no logging needed
+            break;
+            
           default:
-            console.log('📦 Unknown message type:', data.type);
+            // Only log unknown message types that aren't expected
+            if (!['unsubscribed', 'unsubscribe_ack'].includes(data.type)) {
+              console.log('📦 Unknown message type:', data.type);
+            }
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);

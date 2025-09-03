@@ -53,8 +53,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       to: `${baseUrl}/dashboard/signal-stream`,
       icon: Bell,
       label: "Pattern Stream",
-      description: "Educational market analysis and pattern recognition",
-      features: ["Live Patterns", "Educational Indicators", "Analysis History"]
+      description: "Educational market analysis and pattern recognition"
     },
     {
       to: `${baseUrl}/dashboard/education`,
@@ -129,14 +128,16 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                           <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         </div>
-                        <div className="space-y-2">
-                          {item.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
+                         {item.features && item.features.length > 0 && (
+                           <div className="space-y-2">
+                             {item.features.map((feature, idx) => (
+                               <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                 <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                                 {feature}
+                               </div>
+                             ))}
+                           </div>
+                         )}
                         <Link to={item.to}>
                           <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                             Explore {item.label}

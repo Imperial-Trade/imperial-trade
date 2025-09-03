@@ -165,9 +165,10 @@ export function SignalStreamFilters({
             <select
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+              className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
               style={{ 
-                colorScheme: 'dark',
+                background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                colorScheme: 'light',
                 WebkitAppearance: 'none',
                 MozAppearance: 'none',
                 appearance: 'none'
@@ -177,10 +178,10 @@ export function SignalStreamFilters({
                 <option 
                   key={option.value} 
                   value={option.value} 
-                  className="!bg-indigo-900 !text-white !border-none"
+                  className="!text-black !border-none"
                   style={{ 
-                    backgroundColor: '#312e81 !important',
-                    color: 'white !important',
+                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
+                    color: 'black !important',
                     borderColor: 'transparent !important'
                   }}
                 >
@@ -193,9 +194,10 @@ export function SignalStreamFilters({
             <select
               value={filters.tradeType}
               onChange={(e) => updateFilter('tradeType', e.target.value)}
-              className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+              className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
               style={{ 
-                colorScheme: 'dark',
+                background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                colorScheme: 'light',
                 WebkitAppearance: 'none',
                 MozAppearance: 'none',
                 appearance: 'none'
@@ -205,10 +207,10 @@ export function SignalStreamFilters({
                 <option 
                   key={option.value} 
                   value={option.value} 
-                  className="!bg-indigo-900 !text-white !border-none"
+                  className="!text-black !border-none"
                   style={{ 
-                    backgroundColor: '#312e81 !important',
-                    color: 'white !important',
+                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
+                    color: 'black !important',
                     borderColor: 'transparent !important'
                   }}
                 >
@@ -222,9 +224,10 @@ export function SignalStreamFilters({
               <select
                 value={filters.educator}
                 onChange={(e) => updateFilter('educator', e.target.value)}
-                className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+                className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
                 style={{ 
-                  colorScheme: 'dark',
+                  background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                  colorScheme: 'light',
                   WebkitAppearance: 'none',
                   MozAppearance: 'none',
                   appearance: 'none'
@@ -232,10 +235,10 @@ export function SignalStreamFilters({
               >
                 <option 
                   value="" 
-                  className="!bg-indigo-900 !text-white !border-none"
+                  className="!text-black !border-none"
                   style={{ 
-                    backgroundColor: '#312e81 !important',
-                    color: 'white !important',
+                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
+                    color: 'black !important',
                     borderColor: 'transparent !important'
                   }}
                 >
@@ -245,10 +248,10 @@ export function SignalStreamFilters({
                   <option 
                     key={educator.id} 
                     value={educator.id} 
-                    className="!bg-indigo-900 !text-white !border-none"
+                    className="!text-black !border-none"
                     style={{ 
-                      backgroundColor: '#312e81 !important',
-                      color: 'white !important',
+                      background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
+                      color: 'black !important',
                       borderColor: 'transparent !important'
                     }}
                   >

@@ -149,7 +149,7 @@ export function SignalStreamFilters({
           </div>
 
           {/* Filter Dropdowns */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 justify-end">
             {/* Status Filter */}
             <select
               value={filters.status}

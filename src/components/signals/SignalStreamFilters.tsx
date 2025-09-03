@@ -182,7 +182,7 @@ export function SignalStreamFilters({
             <select
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="w-full h-7 px-2.5 text-xs bg-background border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors z-50"
+              className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
             >
               {statusOptions.map(option => {
                 const Icon = option.icon;

@@ -59,22 +59,36 @@ export const NotificationSettings: React.FC = () => {
             notification_preferences
           `)
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
 
-        const notificationPrefs = profile?.notification_preferences || {};
-        
-        setPreferences({
-          push_subscription_active: profile?.push_subscription_active || false,
-          email_notifications: profile?.email_notifications ?? true,
-          signal_notifications: notificationPrefs.signal_notifications ?? true,
-          tp_notifications: notificationPrefs.tp_notifications ?? true,
-          stop_loss_notifications: notificationPrefs.stop_loss_notifications ?? true,
-          market_alerts: notificationPrefs.market_alerts ?? true,
-          educational_updates: notificationPrefs.educational_updates ?? false,
-          system_notifications: notificationPrefs.system_notifications ?? true,
-        });
+        if (profile) {
+          const notificationPrefs = (profile.notification_preferences as Record<string, any>) || {};
+          
+          setPreferences({
+            push_subscription_active: profile.push_subscription_active || false,
+            email_notifications: profile.email_notifications ?? true,
+            signal_notifications: notificationPrefs.signal_notifications ?? true,
+            tp_notifications: notificationPrefs.tp_notifications ?? true,
+            stop_loss_notifications: notificationPrefs.stop_loss_notifications ?? true,
+            market_alerts: notificationPrefs.market_alerts ?? true,
+            educational_updates: notificationPrefs.educational_updates ?? false,
+            system_notifications: notificationPrefs.system_notifications ?? true,
+          });
+        } else {
+          // Set defaults if no profile data exists
+          setPreferences({
+            push_subscription_active: false,
+            email_notifications: true,
+            signal_notifications: true,
+            tp_notifications: true,
+            stop_loss_notifications: true,
+            market_alerts: true,
+            educational_updates: false,
+            system_notifications: true,
+          });
+        }
       } catch (error) {
         console.error('Failed to load notification preferences:', error);
         toast({

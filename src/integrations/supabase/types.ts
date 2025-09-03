@@ -1647,6 +1647,7 @@ export type Database = {
           created_at: string | null
           device_fingerprint: string | null
           display_name: string | null
+          email_notifications: boolean
           engagement_score: number | null
           id: string
           in_app_notifications_enabled: boolean | null
@@ -1696,6 +1697,7 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email_notifications?: boolean
           engagement_score?: number | null
           id: string
           in_app_notifications_enabled?: boolean | null
@@ -1745,6 +1747,7 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email_notifications?: boolean
           engagement_score?: number | null
           id?: string
           in_app_notifications_enabled?: boolean | null

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search, 
   Filter, 
@@ -13,7 +14,8 @@ import {
   Clock,
   CheckCircle,
   Users,
-  Plus
+  Plus,
+  ChevronDown
 } from 'lucide-react';
 
 interface FilterState {
@@ -174,100 +176,137 @@ export function SignalStreamFilters({
           </div>
         </div>
 
-        {/* Premium Filter Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Status Filters */}
-          <div className="space-y-2">
+        {/* Compact Filter Dropdowns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Status Filter Dropdown */}
+          <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
-            <div className="flex flex-wrap gap-1.5">
-              {statusOptions.map(option => {
-                const Icon = option.icon;
-                const isActive = filters.status === option.value;
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleStatusClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
+            <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
+              <SelectTrigger className="h-8 text-xs bg-background/50 border-border/60 hover:border-primary/50">
+                <SelectValue placeholder="All Status">
+                  <div className="flex items-center gap-2">
+                    {filters.status ? (
+                      <>
+                        {filters.status === 'active' && <Clock className="w-3 h-3" />}
+                        {filters.status === 'closed' && <CheckCircle className="w-3 h-3" />}
+                        <span>{statusOptions.find(o => o.value === filters.status)?.label}</span>
+                        <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                          {statusOptions.find(o => o.value === filters.status)?.count}
+                        </Badge>
+                      </>
+                    ) : (
+                      <>
+                        <Filter className="w-3 h-3" />
+                        <span>All Status</span>
+                        <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                          {signalCounts.total}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-popover border-border shadow-md">
+                {statusOptions.map(option => {
+                  const Icon = option.icon;
+                  return (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      <div className="flex items-center gap-2 w-full">
+                        <Icon className="w-3 h-3" />
+                        <span className="flex-1">{option.label}</span>
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                          {option.count}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Trade Type Filters */}
-          <div className="space-y-2">
+          {/* Trade Type Filter Dropdown */}
+          <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</span>
-            <div className="flex flex-wrap gap-1.5">
-              {tradeTypeOptions.map(option => {
-                const Icon = option.icon;
-                const isActive = filters.tradeType === option.value;
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleTradeTypeClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
+            <Select value={filters.tradeType} onValueChange={(value) => updateFilter('tradeType', value)}>
+              <SelectTrigger className="h-8 text-xs bg-background/50 border-border/60 hover:border-primary/50">
+                <SelectValue placeholder="All Types">
+                  <div className="flex items-center gap-2">
+                    {filters.tradeType ? (
+                      <>
+                        {filters.tradeType === 'buy' && <TrendingUp className="w-3 h-3" />}
+                        {filters.tradeType === 'sell' && <TrendingDown className="w-3 h-3" />}
+                        <span>{tradeTypeOptions.find(o => o.value === filters.tradeType)?.label}</span>
+                        <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                          {tradeTypeOptions.find(o => o.value === filters.tradeType)?.count}
+                        </Badge>
+                      </>
+                    ) : (
+                      <>
+                        <Filter className="w-3 h-3" />
+                        <span>All Types</span>
+                        <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-[10px]">
+                          {signalCounts.total}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-popover border-border shadow-md">
+                {tradeTypeOptions.map(option => {
+                  const Icon = option.icon;
+                  return (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      <div className="flex items-center gap-2 w-full">
+                        <Icon className="w-3 h-3" />
+                        <span className="flex-1">{option.label}</span>
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                          {option.count}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Educator Filter */}
+          {/* Educator Filter Dropdown */}
           {educatorOptions.length > 1 && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educator</span>
-              <select
-                value={filters.educator}
-                onChange={(e) => updateFilter('educator', e.target.value)}
-                className="w-full h-7 px-2.5 text-xs bg-background/50 border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors"
-              >
-                <option value="">All Educators ({educatorOptions.length})</option>
-                {educatorOptions.map(educator => (
-                  <option key={educator.id} value={educator.id}>
-                    {educator.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={filters.educator} onValueChange={(value) => updateFilter('educator', value)}>
+                <SelectTrigger className="h-8 text-xs bg-background/50 border-border/60 hover:border-primary/50">
+                  <SelectValue placeholder="All Educators">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-3 h-3" />
+                      <span>
+                        {filters.educator 
+                          ? educatorOptions.find(e => e.id === filters.educator)?.name 
+                          : `All Educators (${educatorOptions.length})`
+                        }
+                      </span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover border-border shadow-md">
+                  <SelectItem value="" className="text-xs">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-3 h-3" />
+                      <span>All Educators ({educatorOptions.length})</span>
+                    </div>
+                  </SelectItem>
+                  {educatorOptions.map(educator => (
+                    <SelectItem key={educator.id} value={educator.id} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-3 h-3" />
+                        <span>{educator.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

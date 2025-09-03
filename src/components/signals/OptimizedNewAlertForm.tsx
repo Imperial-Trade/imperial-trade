@@ -479,39 +479,39 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   };
 
   return (
-    <div className="w-full p-6 bg-card rounded-lg border border-border">
-      <form onSubmit={handleSubmit} className="w-full space-y-4">
+    <div className="w-full p-4 bg-card rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="w-full space-y-3">
         {/* Asset Selection - Dropdown */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Asset</label>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium">Asset</label>
           <Select 
             value={selectedAsset?.symbol || ''} 
             onValueChange={handleAssetSelection}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full h-8 text-sm">
               <SelectValue placeholder="Select an asset..." />
             </SelectTrigger>
             <SelectContent className="z-50 bg-popover">
               {ALLOWED_ASSETS.map((asset) => (
-                <SelectItem key={asset.symbol} value={asset.symbol}>
+                <SelectItem key={asset.symbol} value={asset.symbol} className="text-sm">
                   {asset.name} ({asset.symbol})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {!selectedAsset && (
-            <p className="text-sm text-muted-foreground">Please select an asset to continue</p>
+            <p className="text-xs text-muted-foreground">Please select an asset to continue</p>
           )}
         </div>
 
         {/* Live Price Display */}
         {selectedAsset ? (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
               Live Price - {selectedAsset.name}
             </label>
             
-            <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="p-3 bg-muted/30 rounded-lg">
               <EnhancedLivePriceDisplay 
                 symbol={selectedAsset.symbol}
                 assetName={selectedAsset.name}
@@ -521,19 +521,19 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             </div>
             
             {isLoadingPriceData && (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                <Loader2 className="h-3 w-3 animate-spin" />
                 Loading price data...
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">
               Live Price
             </label>
-            <div className="p-4 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20">
-              <div className="text-center text-muted-foreground text-sm">
+            <div className="p-3 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20">
+              <div className="text-center text-muted-foreground text-xs">
                 Select an asset to load live price.
               </div>
             </div>
@@ -541,8 +541,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         )}
 
         {/* Trade Type Selection */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">
             Trade Type
           </label>
           
@@ -550,21 +550,21 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={formData.trade_type} 
             onValueChange={(value) => handleInputChange('trade_type', value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="buy">Market Buy</SelectItem>
-              <SelectItem value="sell">Market Sell</SelectItem>
-              <SelectItem value="buy_limit">Buy Limit</SelectItem>
-              <SelectItem value="sell_limit">Sell Limit</SelectItem>
+              <SelectItem value="buy" className="text-sm">Market Buy</SelectItem>
+              <SelectItem value="sell" className="text-sm">Market Sell</SelectItem>
+              <SelectItem value="buy_limit" className="text-sm">Buy Limit</SelectItem>
+              <SelectItem value="sell_limit" className="text-sm">Sell Limit</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Entry Price */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">
             Entry Price *
           </label>
           
@@ -574,34 +574,34 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={formData.entry_price}
             onChange={(e) => handleInputChange('entry_price', e.target.value)}
             placeholder="Entry price"
-            className={errors.entry_price ? 'border-destructive' : ''}
+            className={`h-8 text-sm ${errors.entry_price ? 'border-destructive' : ''}`}
           />
           
           {errors.entry_price && (
-            <Alert variant="destructive" className="py-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-sm">{errors.entry_price}</AlertDescription>
+            <Alert variant="destructive" className="py-1.5">
+              <AlertTriangle className="h-3 w-3" />
+              <AlertDescription className="text-xs">{errors.entry_price}</AlertDescription>
             </Alert>
           )}
         </div>
 
         {/* Stop Loss */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
             Stop Loss *
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <Info className="h-3 w-3 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Risk management level. Trade closes if price reaches this level.</p>
+                  <p className="text-xs">Risk management level. Trade closes if price reaches this level.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </label>
           
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <div>
               <Input
                 type="number"
@@ -609,9 +609,9 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 value={formData.stop_loss}
                 onChange={(e) => handleStopLossChange(e.target.value)}
                 placeholder="Stop loss price"
-                className={errors.stop_loss ? 'border-destructive' : ''}
+                className={`h-8 text-sm ${errors.stop_loss ? 'border-destructive' : ''}`}
               />
-              <div className="text-xs text-muted-foreground mt-1">Price</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Price</div>
             </div>
             <div>
               <Input
@@ -620,32 +620,32 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 value={pipInputs.stop_loss_pips}
                 onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                 placeholder="Pips from entry"
-                className="text-right"
+                className="text-right h-8 text-sm"
               />
-              <div className="text-xs text-muted-foreground mt-1 text-right">Pips</div>
+              <div className="text-xs text-muted-foreground mt-0.5 text-right">Pips</div>
             </div>
           </div>
           
           {errors.stop_loss && (
-            <Alert variant="destructive" className="py-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-sm">{errors.stop_loss}</AlertDescription>
+            <Alert variant="destructive" className="py-1.5">
+              <AlertTriangle className="h-3 w-3" />
+              <AlertDescription className="text-xs">{errors.stop_loss}</AlertDescription>
             </Alert>
           )}
         </div>
 
         {/* Take Profits */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
               Take Profit Levels *
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Info className="h-4 w-4 text-muted-foreground" />
+                    <Info className="h-3 w-3 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Profit targets. At least TP1 is required.</p>
+                    <p className="text-xs">Profit targets. At least TP1 is required.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -657,23 +657,23 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={addTakeProfit}
-                className="text-xs"
+                className="text-xs h-6 px-2"
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className="h-2.5 w-2.5 mr-1" />
                 Add TP
               </Button>
             )}
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {takeProfits.map((tp, index) => (
               <div key={index} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs min-w-[40px]">
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className="text-xs min-w-[32px] h-6">
                     TP{index + 1}
                   </Badge>
                   
-                  <div className="grid grid-cols-2 gap-2 flex-1">
+                  <div className="grid grid-cols-2 gap-1.5 flex-1">
                     <div>
                       <Input
                         type="number"
@@ -681,7 +681,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         value={tp}
                         onChange={(e) => handleTakeProfitChange(index, e.target.value)}
                         placeholder={`TP${index + 1} price`}
-                        className={errors[`tp${index + 1}`] ? 'border-destructive' : ''}
+                        className={`h-8 text-sm ${errors[`tp${index + 1}`] ? 'border-destructive' : ''}`}
                       />
                     </div>
                     <div>
@@ -691,7 +691,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs]}
                         onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
                         placeholder="Pips"
-                        className="text-right"
+                        className="text-right h-8 text-sm"
                       />
                     </div>
                   </div>
@@ -702,17 +702,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeTakeProfit(index)}
-                      className="h-8 w-8 p-0"
+                      className="h-6 w-6 p-0"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
 
                 {errors[`tp${index + 1}`] && (
-                  <Alert variant="destructive" className="py-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-sm">{errors[`tp${index + 1}`]}</AlertDescription>
+                  <Alert variant="destructive" className="py-1.5">
+                    <AlertTriangle className="h-3 w-3" />
+                    <AlertDescription className="text-xs">{errors[`tp${index + 1}`]}</AlertDescription>
                   </Alert>
                 )}
               </div>
@@ -721,8 +721,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         </div>
 
         {/* Notes */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground">
             Notes (Optional)
           </label>
           
@@ -730,20 +730,21 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             placeholder="Add trade analysis, strategy, or notes..."
-            rows={3}
+            rows={2}
+            className="text-sm resize-none"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
+        <div className="flex gap-2 pt-3">
           <Button 
             type="submit" 
-            className="flex-1"
+            className="flex-1 h-8 text-sm"
             disabled={isSubmitting || !selectedAsset}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                 Creating Signal...
               </>
             ) : selectedAsset ? (
@@ -758,6 +759,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
+            className="h-8 text-sm"
           >
             Cancel
           </Button>

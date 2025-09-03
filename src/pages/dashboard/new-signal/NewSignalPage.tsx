@@ -110,16 +110,16 @@ const NewSignalPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">New Educational Pattern</h1>
-          <p className="text-muted-foreground mt-2">
+    <div className="container mx-auto px-3 py-6">
+      <div className="max-w-lg mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">New Educational Pattern</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Create a new educational market analysis pattern with reference price data
           </p>
         </div>
         
-        <div className="bg-card rounded-lg border border-border p-6">
+        <div className="bg-card rounded-lg border border-border p-4">
           <OptimizedNewAlertForm 
             onSubmit={handleSubmit}
             onCancel={handleCancel}

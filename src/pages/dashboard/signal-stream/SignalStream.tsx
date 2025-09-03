@@ -15,7 +15,6 @@ import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { StreamHealthPanel } from '@/components/signals/StreamHealthPanel';
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
-
 export default function SignalStream() {
   const {
     user,
@@ -138,15 +137,15 @@ export default function SignalStream() {
 
   // Check if we have pending limit orders for the monitor
   const hasPendingLimitOrders = useMemo(() => {
-    return activeAlerts.some(alert => 
-      alert.status === 'pending' && 
-      (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit')
-    );
+    return activeAlerts.some(alert => alert.status === 'pending' && (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit'));
   }, [activeAlerts]);
 
   // Throttled Order Monitor - only run for admin/educator users with pending limits
-  const { isRunning: isMonitorRunning } = useThrottledOrderMonitor({
-    enabled: canCreateSignals, // Only enabled for admin/educator users
+  const {
+    isRunning: isMonitorRunning
+  } = useThrottledOrderMonitor({
+    enabled: canCreateSignals,
+    // Only enabled for admin/educator users
     hasPendingLimits: hasPendingLimitOrders,
     intervalMs: 15000 // 15 seconds
   });
@@ -183,19 +182,16 @@ export default function SignalStream() {
   // Stable symbol subscription to prevent thrashing
   const symbolsRef = useRef<string[]>([]);
   const subscriptionActiveRef = useRef(false);
-
   useEffect(() => {
     // Compute diffs to avoid full unsubscribe/subscribe churn
     const prev = symbolsRef.current;
     const added = symbols.filter(s => !prev.includes(s));
     const removed = prev.filter(s => !symbols.includes(s));
-
     if (added.length > 0) {
       console.log('🔄 SignalStream - Subscribing (diff):', added);
       subscribe(added);
       subscriptionActiveRef.current = true;
     }
-
     if (removed.length > 0) {
       console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
       unsubscribe(removed);
@@ -203,7 +199,6 @@ export default function SignalStream() {
 
     // Update reference after applying diffs
     symbolsRef.current = [...symbols];
-
     return () => {
       // On unmount, clean up any remaining subscriptions
       if (symbolsRef.current.length > 0) {
@@ -223,7 +218,7 @@ export default function SignalStream() {
   useEffect(() => {
     const currentIds = new Set(alerts.map(alert => alert.id));
     const previousIds = prevAlertIdsRef.current;
-    
+
     // Find newly added alerts
     const newlyAdded = new Set<string>();
     for (const id of currentIds) {
@@ -231,7 +226,6 @@ export default function SignalStream() {
         newlyAdded.add(id);
       }
     }
-    
     if (newlyAdded.size > 0) {
       setJustAddedIds(newlyAdded);
       // Clear the highlight after 3 seconds
@@ -240,10 +234,8 @@ export default function SignalStream() {
       }, 3000);
       return () => clearTimeout(timeout);
     }
-    
     prevAlertIdsRef.current = currentIds;
   }, [alerts]);
-
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
       const update = () => {
@@ -479,9 +471,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  return (
-    <StreamErrorBoundary>
+  return <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <NotificationSystem />
         
@@ -490,15 +480,7 @@ export default function SignalStream() {
           <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                    Xeon <span className="bg-gradient-to-r from-indigo-500 via-slate-400 to-blue-900 bg-clip-text text-transparent">Alerts</span>
-                  </h1>
-                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
-                    <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
-                    <span className="truncate">Educational Contributors</span>
-                  </Badge>
-                </div>
+                
                 <p className="text-sm sm:text-base text-muted-foreground hidden">
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
@@ -529,124 +511,74 @@ export default function SignalStream() {
               
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true">
-                <SignalStreamFilters 
-                  filters={filters} 
-                  onFiltersChange={setFilters} 
-                  educatorOptions={educatorOptions} 
-                  signalCounts={signalCounts}
-                  canCreateSignals={canCreateSignals}
-                  onCreateSignal={() => navigate('/dashboard/new-signal')}
-                />
+                <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => navigate('/dashboard/new-signal')} />
               </div>
               
-              {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+              {isLoading || connectionStatus !== 'connected' && allAlerts.length === 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                  {Array.from({
+                length: 6
+              }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
                       <div className="h-4 w-1/3 bg-muted rounded mb-3" />
                       <div className="h-6 w-2/3 bg-muted rounded mb-4" />
                       <div className="h-24 w-full bg-muted rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-5">
+                    </div>)}
+                </div> : <div className="space-y-5">
                   <div>
                     <h2 className="text-lg font-semibold text-accent-green mb-3 border-b border-accent-green/20 pb-1.5">
                       Active Alerts ({activeAlerts.length})
                     </h2>
-                    {activeAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {activeAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={false} 
-                              creator={alert.creator} 
-                              justAdded={justAddedIds.has(alert.id)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
+                    {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
+                            <TradeAlertCard alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
+                          </div>)}
+                      </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                           <Shield className="w-8 h-8 text-muted-foreground/50" />
                         </div>
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
                         <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                   
                   <div>
                     <h2 className="text-lg font-semibold text-muted-foreground mb-3 border-b border-border pb-1.5">
                       Recent Educational Analysis ({closedAlerts.length})
                     </h2>
-                    {sortedClosedAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {sortedClosedAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={undefined} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={true} 
-                              creator={alert.creator} 
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
+                    {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
+                            <TradeAlertCard alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
+                          </div>)}
+                      </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                           <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                         </div>
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
                         <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                      </div>
-                    )}
+                      </div>}
                   </div>
-                </div>
-              )}
+                </div>}
             </div>
 
             {/* Economic Sidebar - Protected positioning */}
@@ -656,6 +588,5 @@ export default function SignalStream() {
           </div>
         </div>
       </div>
-    </StreamErrorBoundary>
-  );
+    </StreamErrorBoundary>;
 }

@@ -524,8 +524,10 @@ export default function SignalStream() {
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 className="text-lg font-semibold bg-gradient-to-r from-primary via-accent to-primary-glow bg-clip-text text-transparent mb-3 border-b border-accent-green/20 pb-1.5">
-                      Active Alerts ({activeAlerts.length})
+                    <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
+                      <span className="text-imperial-platinum">Active </span>
+                      <span className="bg-gradient-to-r from-indigo-600 via-gray-400 to-blue-500 bg-clip-text text-transparent">Alerts</span>
+                      <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
                     </h2>
                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">

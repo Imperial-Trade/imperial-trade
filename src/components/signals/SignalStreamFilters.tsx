@@ -128,34 +128,35 @@ export function SignalStreamFilters({
         {/* Compact Top Bar with Search and Clear */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
-            {/* Custom Search Label with Gradient */}
-            <div className="mb-1">
-              <span className="text-sm text-muted-foreground">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10" />
+            
+            {/* Gradient Placeholder Overlay */}
+            {!filters.search && (
+              <div className="absolute left-9 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
                 Search Xeon{' '}
                 <span className="bg-gradient-to-r from-indigo-500 via-slate-400 to-blue-900 bg-clip-text text-transparent font-medium">
                   alerts
                 </span>
-              </span>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                value={filters.search}
-                onChange={(e) => updateFilter('search', e.target.value)}
-                className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
-              />
-              {filters.search && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'search')}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
+                ...
+              </div>
+            )}
+            
+            <Input
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            />
+            {filters.search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => handleClearFilterClick(e, 'search')}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive z-10"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
           </div>
 
           {/* Filter Dropdowns */}

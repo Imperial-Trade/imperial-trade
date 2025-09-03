@@ -126,7 +126,7 @@ const LegacyHybridContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProviderProps> = ({ 
   children, 
-  enhancedRolloutPercentage = 10 // Default 10% rollout
+  enhancedRolloutPercentage = 90 // Default 90% rollout
 }) => {
   const [useEnhanced, setUseEnhanced] = useState(() => 
     shouldUseEnhancedSystem(enhancedRolloutPercentage)

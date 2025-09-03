@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.enhanced-websocket-streaming]
 verify_jwt = false
 
+[functions.websocket-load-balancer]
+verify_jwt = false
+
 
 [functions.check-user-existence]
 verify_jwt = false

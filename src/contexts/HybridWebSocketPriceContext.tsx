@@ -58,69 +58,64 @@ const shouldUseEnhancedSystem = (rolloutPercentage: number): boolean => {
   return userPercentile < rolloutPercentage;
 };
 
-const EnhancedSystemWrapper: React.FC<{ children: ReactNode; onFallback: () => void }> = ({ 
-  children, 
-  onFallback 
-}) => {
-  const [hasFailed, setHasFailed] = useState(false);
-
-  useEffect(() => {
-    const handleError = () => {
-      console.warn('🔄 Enhanced WebSocket failed, falling back to legacy system');
-      setHasFailed(true);
-      onFallback();
-    };
-
-    // Listen for enhanced system failures
-    window.addEventListener('enhanced-websocket-error', handleError);
-    return () => window.removeEventListener('enhanced-websocket-error', handleError);
-  }, [onFallback]);
-
-  if (hasFailed) {
-    return null; // Will trigger fallback in parent
-  }
-
-  return <>{children}</>;
-};
-
-const HybridContextProvider: React.FC<{ 
+const EnhancedHybridContextProvider: React.FC<{ 
   children: ReactNode; 
-  useEnhanced: boolean;
   onSystemSwitch: (enhanced: boolean) => void;
-}> = ({ children, useEnhanced, onSystemSwitch }) => {
-  const legacyContext = useWebSocketPrices();
+}> = ({ children, onSystemSwitch }) => {
   const enhancedContext = useEnhancedWebSocketPrices();
 
-  const activeContext = useEnhanced ? enhancedContext : legacyContext;
-
   const contextValue: HybridWebSocketContextType = {
-    prices: activeContext.prices,
-    connectionStatus: activeContext.connectionStatus,
-    dataSource: useEnhanced ? `Enhanced (${enhancedContext.dataSource})` : `Legacy (WebSocket)`,
-    lastUpdated: activeContext.lastUpdated,
-    errors: activeContext.errors,
-    subscribe: activeContext.subscribe,
-    unsubscribe: activeContext.unsubscribe,
-    getPrice: activeContext.getPrice,
-    refreshPrice: activeContext.refreshPrice,
+    prices: enhancedContext.prices,
+    connectionStatus: enhancedContext.connectionStatus,
+    dataSource: `Enhanced (${enhancedContext.dataSource})`,
+    lastUpdated: enhancedContext.lastUpdated,
+    errors: enhancedContext.errors,
+    subscribe: enhancedContext.subscribe,
+    unsubscribe: enhancedContext.unsubscribe,
+    getPrice: enhancedContext.getPrice,
+    refreshPrice: enhancedContext.refreshPrice,
     getConnectionHealth: () => {
-      const health = activeContext.getConnectionHealth();
-      return {
-        isHealthy: health.isHealthy,
-        lastUpdate: health.lastUpdate || (health as any).lastHeartbeat || activeContext.lastUpdated
-      };
+      const health = enhancedContext.getConnectionHealth();
+      return { isHealthy: health.isHealthy, lastUpdate: health.lastUpdate };
     },
-    getStats: useEnhanced ? enhancedContext.getStats : undefined,
-    isUsingEnhancedSystem: useEnhanced
+    getStats: enhancedContext.getStats,
+    isUsingEnhancedSystem: true
   };
 
-  // Monitor system health and switch if needed
   useEffect(() => {
-    if (useEnhanced && enhancedContext.connectionStatus === 'error') {
+    if (enhancedContext.connectionStatus === 'error') {
       console.warn('🔄 Enhanced system error detected, switching to legacy');
       onSystemSwitch(false);
     }
-  }, [useEnhanced, enhancedContext.connectionStatus, onSystemSwitch]);
+  }, [enhancedContext.connectionStatus, onSystemSwitch]);
+
+  return (
+    <HybridWebSocketContext.Provider value={contextValue}>
+      {children}
+    </HybridWebSocketContext.Provider>
+  );
+};
+
+const LegacyHybridContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const legacyContext = useWebSocketPrices();
+
+  const contextValue: HybridWebSocketContextType = {
+    prices: legacyContext.prices,
+    connectionStatus: legacyContext.connectionStatus,
+    dataSource: 'Legacy (WebSocket)',
+    lastUpdated: legacyContext.lastUpdated,
+    errors: legacyContext.errors,
+    subscribe: legacyContext.subscribe,
+    unsubscribe: legacyContext.unsubscribe,
+    getPrice: legacyContext.getPrice,
+    refreshPrice: legacyContext.refreshPrice,
+    getConnectionHealth: () => {
+      const health = legacyContext.getConnectionHealth();
+      return { isHealthy: health.isHealthy, lastUpdate: health.lastUpdate };
+    },
+    getStats: undefined,
+    isUsingEnhancedSystem: false
+  };
 
   return (
     <HybridWebSocketContext.Provider value={contextValue}>
@@ -136,37 +131,24 @@ export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProvider
   const [useEnhanced, setUseEnhanced] = useState(() => 
     shouldUseEnhancedSystem(enhancedRolloutPercentage)
   );
-  const [hasEnhancedFailed, setHasEnhancedFailed] = useState(false);
 
   useEffect(() => {
     const system = useEnhanced ? 'Enhanced' : 'Legacy';
     console.log(`🎯 WebSocket System: ${system} (${enhancedRolloutPercentage}% rollout)`);
   }, [useEnhanced, enhancedRolloutPercentage]);
 
-  const handleFallback = () => {
-    setHasEnhancedFailed(true);
-    setUseEnhanced(false);
-  };
-
   const handleSystemSwitch = (enhanced: boolean) => {
-    if (!enhanced || !hasEnhancedFailed) {
-      setUseEnhanced(enhanced);
-    }
+    setUseEnhanced(enhanced);
   };
 
-  if (useEnhanced && !hasEnhancedFailed) {
+  if (useEnhanced) {
     return (
       <EnhancedWebSocketPriceProvider>
-        <EnhancedSystemWrapper onFallback={handleFallback}>
-          <WebSocketPriceProvider>
-            <HybridContextProvider 
-              useEnhanced={true}
-              onSystemSwitch={handleSystemSwitch}
-            >
-              {children}
-            </HybridContextProvider>
-          </WebSocketPriceProvider>
-        </EnhancedSystemWrapper>
+        <WebSocketPriceProvider>
+          <EnhancedHybridContextProvider onSystemSwitch={handleSystemSwitch}>
+            {children}
+          </EnhancedHybridContextProvider>
+        </WebSocketPriceProvider>
       </EnhancedWebSocketPriceProvider>
     );
   }
@@ -174,12 +156,9 @@ export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProvider
   // Legacy system (fallback or default)
   return (
     <WebSocketPriceProvider>
-      <HybridContextProvider 
-        useEnhanced={false}
-        onSystemSwitch={handleSystemSwitch}
-      >
+      <LegacyHybridContextProvider>
         {children}
-      </HybridContextProvider>
+      </LegacyHybridContextProvider>
     </WebSocketPriceProvider>
   );
 };

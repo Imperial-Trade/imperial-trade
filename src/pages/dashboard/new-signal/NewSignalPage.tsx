@@ -110,19 +110,20 @@ const NewSignalPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">New Educational Pattern</h1>
-          <p className="text-muted-foreground mt-2">
+    <div className="container mx-auto px-4 py-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-foreground">New Educational Pattern</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Create a new educational market analysis pattern with reference price data
           </p>
         </div>
         
-        <div className="bg-card rounded-lg border border-border p-6">
+        <div className="bg-card rounded-lg border border-border max-h-[calc(100svh-140px)] overflow-y-auto overscroll-contain scrollbar-gutter-stable" style={{ overscrollBehavior: 'contain' }}>
           <OptimizedNewAlertForm 
             onSubmit={handleSubmit}
             onCancel={handleCancel}
+            isSubmitting={isSubmitting}
           />
         </div>
       </div>

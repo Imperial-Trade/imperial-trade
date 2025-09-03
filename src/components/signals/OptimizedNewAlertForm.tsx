@@ -27,13 +27,11 @@ const ALLOWED_ASSETS = [
 interface OptimizedNewAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void>;
   onCancel: () => void;
-  isSubmitting?: boolean;
 }
 
 const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   onSubmit,
-  onCancel,
-  isSubmitting: externalIsSubmitting = false
+  onCancel
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -480,264 +478,270 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     }
   };
 
-  const finalIsSubmitting = isSubmitting || externalIsSubmitting;
-
   return (
-    <div className="w-full">
-      <form onSubmit={handleSubmit} className="w-full">
-        <div className="p-6 space-y-4">
-          {/* Asset Selection & Trade Type Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-base font-medium">Asset</label>
-              <Select 
-                value={selectedAsset?.symbol || ''} 
-                onValueChange={handleAssetSelection}
-              >
-                <SelectTrigger className="w-full h-10">
-                  <SelectValue placeholder="Select an asset..." />
-                </SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {ALLOWED_ASSETS.map((asset) => (
-                    <SelectItem key={asset.symbol} value={asset.symbol}>
-                      {asset.name} ({asset.symbol})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="min-h-4 text-[11px] text-muted-foreground">
-                {!selectedAsset ? "Please select an asset to continue" : ""}
-              </div>
-            </div>
+    <div className="w-full p-6 bg-card rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="w-full space-y-4">
+        {/* Asset Selection - Dropdown */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Asset</label>
+          <Select 
+            value={selectedAsset?.symbol || ''} 
+            onValueChange={handleAssetSelection}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select an asset..." />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {ALLOWED_ASSETS.map((asset) => (
+                <SelectItem key={asset.symbol} value={asset.symbol}>
+                  {asset.name} ({asset.symbol})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!selectedAsset && (
+            <p className="text-sm text-muted-foreground">Please select an asset to continue</p>
+          )}
+        </div>
 
-            <div className="space-y-2">
-              <label className="text-base font-medium text-foreground">
-                Trade Type
-              </label>
-              <Select 
-                value={formData.trade_type} 
-                onValueChange={(value) => handleInputChange('trade_type', value)}
-              >
-                <SelectTrigger className="w-full h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="buy">Market Buy</SelectItem>
-                  <SelectItem value="sell">Market Sell</SelectItem>
-                  <SelectItem value="buy_limit">Buy Limit</SelectItem>
-                  <SelectItem value="sell_limit">Sell Limit</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="min-h-4 text-[11px]"></div>
-            </div>
-          </div>
-
-          {/* Live Price Display */}
+        {/* Live Price Display */}
+        {selectedAsset ? (
           <div className="space-y-2">
-            <label className="text-base font-medium text-foreground">
-              Live Price {selectedAsset ? `- ${selectedAsset.name}` : ''}
+            <label className="text-sm font-medium text-foreground">
+              Live Price - {selectedAsset.name}
             </label>
             
-            {selectedAsset ? (
-              <div className="p-3 bg-muted/30 rounded-lg min-h-[clamp(96px,12vh,140px)] overflow-hidden">
-                <EnhancedLivePriceDisplay 
-                  symbol={selectedAsset.symbol}
-                  assetName={selectedAsset.name}
-                  onPriceUpdate={setCurrentPrice}
-                  onUseCurrentPrice={handleUseCurrentPrice}
-                />
-              </div>
-            ) : (
-              <div className="p-3 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20 min-h-[clamp(96px,12vh,140px)] flex items-center justify-center">
-                <div className="text-center text-muted-foreground text-sm">
-                  Select an asset to load live price.
-                </div>
-              </div>
-            )}
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <EnhancedLivePriceDisplay 
+                symbol={selectedAsset.symbol}
+                assetName={selectedAsset.name}
+                onPriceUpdate={setCurrentPrice}
+                onUseCurrentPrice={handleUseCurrentPrice}
+              />
+            </div>
             
             {isLoadingPriceData && (
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading price data...
               </div>
             )}
-            <div className="min-h-4 text-[11px]"></div>
           </div>
-
-          {/* Entry Price */}
+        ) : (
           <div className="space-y-2">
-            <label className="text-base font-medium text-foreground">
-              Entry Price *
+            <label className="text-sm font-medium text-foreground">
+              Live Price
             </label>
-            
-            <Input
-              type="number"
-              step="0.00001"
-              value={formData.entry_price}
-              onChange={(e) => handleInputChange('entry_price', e.target.value)}
-              placeholder="Entry price"
-              className={`h-10 ${errors.entry_price ? 'border-destructive' : ''}`}
-            />
-            
-            <div className="min-h-4 text-[11px] text-destructive" aria-describedby="entry_price_error">
-              {errors.entry_price || ''}
+            <div className="p-4 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20">
+              <div className="text-center text-muted-foreground text-sm">
+                Select an asset to load live price.
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Stop Loss */}
-          <div className="space-y-2">
-            <label className="text-base font-medium text-foreground flex items-center gap-2">
-              Stop Loss *
+        {/* Trade Type Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            Trade Type
+          </label>
+          
+          <Select 
+            value={formData.trade_type} 
+            onValueChange={(value) => handleInputChange('trade_type', value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="buy">Market Buy</SelectItem>
+              <SelectItem value="sell">Market Sell</SelectItem>
+              <SelectItem value="buy_limit">Buy Limit</SelectItem>
+              <SelectItem value="sell_limit">Sell Limit</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Entry Price */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            Entry Price *
+          </label>
+          
+          <Input
+            type="number"
+            step="0.00001"
+            value={formData.entry_price}
+            onChange={(e) => handleInputChange('entry_price', e.target.value)}
+            placeholder="Entry price"
+            className={errors.entry_price ? 'border-destructive' : ''}
+          />
+          
+          {errors.entry_price && (
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">{errors.entry_price}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        {/* Stop Loss */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground flex items-center gap-2">
+            Stop Loss *
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Risk management level. Trade closes if price reaches this level.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </label>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Input
+                type="number"
+                step="0.00001"
+                value={formData.stop_loss}
+                onChange={(e) => handleStopLossChange(e.target.value)}
+                placeholder="Stop loss price"
+                className={errors.stop_loss ? 'border-destructive' : ''}
+              />
+              <div className="text-xs text-muted-foreground mt-1">Price</div>
+            </div>
+            <div>
+              <Input
+                type="number"
+                step="0.1"
+                value={pipInputs.stop_loss_pips}
+                onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
+                placeholder="Pips from entry"
+                className="text-right"
+              />
+              <div className="text-xs text-muted-foreground mt-1 text-right">Pips</div>
+            </div>
+          </div>
+          
+          {errors.stop_loss && (
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">{errors.stop_loss}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        {/* Take Profits */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              Take Profit Levels *
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Risk management level. Trade closes if price reaches this level.</p>
+                    <p>Profit targets. At least TP1 is required.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </label>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Input
-                  type="number"
-                  step="0.00001"
-                  value={formData.stop_loss}
-                  onChange={(e) => handleStopLossChange(e.target.value)}
-                  placeholder="Stop loss price"
-                  className={`h-10 ${errors.stop_loss ? 'border-destructive' : ''}`}
-                />
-                <div className="text-xs text-muted-foreground mt-1">Price</div>
-              </div>
-              <div>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={pipInputs.stop_loss_pips}
-                  onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
-                  placeholder="Pips from entry"
-                  className="text-right h-10"
-                />
-                <div className="text-xs text-muted-foreground mt-1 text-right">Pips</div>
-              </div>
-            </div>
-            
-            <div className="min-h-4 text-[11px] text-destructive" aria-describedby="stop_loss_error">
-              {errors.stop_loss || ''}
-            </div>
+            {takeProfits.length < 5 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTakeProfit}
+                className="text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add TP
+              </Button>
+            )}
           </div>
-
-          {/* Take Profits */}
+          
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-base font-medium text-foreground flex items-center gap-2">
-                Take Profit Levels *
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Profit targets. At least TP1 is required.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </label>
-              
-              {takeProfits.length < 5 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addTakeProfit}
-                  className="text-xs h-8"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add TP
-                </Button>
-              )}
-            </div>
-            
-            <div className="space-y-3">
-              {takeProfits.map((tp, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs min-w-[40px] shrink-0">
-                      TP{index + 1}
-                    </Badge>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1">
-                      <div>
-                        <Input
-                          type="number"
-                          step="0.00001"
-                          value={tp}
-                          onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                          placeholder={`TP${index + 1} price`}
-                          className={`h-10 ${errors[`tp${index + 1}`] ? 'border-destructive' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs]}
-                          onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
-                          placeholder="Pips"
-                          className="text-right h-10"
-                        />
-                      </div>
+            {takeProfits.map((tp, index) => (
+              <div key={index} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs min-w-[40px]">
+                    TP{index + 1}
+                  </Badge>
+                  
+                  <div className="grid grid-cols-2 gap-2 flex-1">
+                    <div>
+                      <Input
+                        type="number"
+                        step="0.00001"
+                        value={tp}
+                        onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                        placeholder={`TP${index + 1} price`}
+                        className={errors[`tp${index + 1}`] ? 'border-destructive' : ''}
+                      />
                     </div>
-                    
-                    {index > 0 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeTakeProfit(index)}
-                        className="h-10 w-10 p-0 shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <div>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs]}
+                        onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
+                        placeholder="Pips"
+                        className="text-right"
+                      />
+                    </div>
                   </div>
-
-                  <div className="min-h-4 text-[11px] text-destructive" aria-describedby={`tp${index + 1}_error`}>
-                    {errors[`tp${index + 1}`] || ''}
-                  </div>
+                  
+                  {index > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeTakeProfit(index)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <label className="text-base font-medium text-foreground">
-              Notes (Optional)
-            </label>
-            
-            <Textarea
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Add trade analysis, strategy, or notes..."
-              rows={3}
-              className="resize-none"
-            />
-            <div className="min-h-4 text-[11px]"></div>
+                {errors[`tp${index + 1}`] && (
+                  <Alert variant="destructive" className="py-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">{errors[`tp${index + 1}`]}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Sticky Action Bar */}
-        <div className="sticky bottom-0 z-10 bg-card border-t border-border p-4 flex gap-3">
+        {/* Notes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            Notes (Optional)
+          </label>
+          
+          <Textarea
+            value={formData.notes}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            placeholder="Add trade analysis, strategy, or notes..."
+            rows={3}
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4">
           <Button 
             type="submit" 
-            className="flex-1 h-10"
-            disabled={finalIsSubmitting || !selectedAsset}
+            className="flex-1"
+            disabled={isSubmitting || !selectedAsset}
           >
-            {finalIsSubmitting ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating Signal...
@@ -753,8 +757,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={finalIsSubmitting}
-            className="h-10"
+            disabled={isSubmitting}
           >
             Cancel
           </Button>

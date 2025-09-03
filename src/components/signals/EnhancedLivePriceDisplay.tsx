@@ -266,7 +266,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
-    } ${className}`} aria-live="off">
+    } ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

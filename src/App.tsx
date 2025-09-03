@@ -85,7 +85,7 @@ function App() {
               <WelcomeProvider>
                 <NavigationGuard>
                   <SignalRealtimeProvider>
-                    <HybridWebSocketPriceProvider enhancedRolloutPercentage={10}>
+                    <HybridWebSocketPriceProvider enhancedRolloutPercentage={90}>
                       <Routes>
                         {/* Landing Routes */}
                         <Route

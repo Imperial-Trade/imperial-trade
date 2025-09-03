@@ -531,7 +531,8 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  return <StreamErrorBoundary>
+  return (
+    <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <NotificationSystem />
         

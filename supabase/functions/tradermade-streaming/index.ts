@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
-import { connect } from "https://deno.land/x/redis@v0.32.3/mod.ts";
+import { Redis } from "https://esm.sh/@upstash/redis";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,8 +39,8 @@ const supabaseService = createClient(supabaseUrl!, supabaseServiceKey!);
 console.log('🔐 SUPABASE_SERVICE_ROLE_KEY configured:', !!supabaseServiceKey && supabaseServiceKey.length > 50);
 
 // Redis client setup
-const redisUrl = Deno.env.get('UPSTASH_REDIS_URL');
-const redisPassword = Deno.env.get('UPSTASH_REDIS_PASSWORD');
+const UPSTASH_REDIS_REST_URL = Deno.env.get('UPSTASH_REDIS_REST_URL');
+const UPSTASH_REDIS_REST_TOKEN = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
 
 // Tradermade symbol configuration - ONLY tradermade-streaming connects to TraderMade
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD'];
@@ -562,69 +562,37 @@ class TradermadeConnectionManager {
 
   // Initialize Redis connections with degraded mode fallback
   private async initializeRedis(): Promise<void> {
-    let attempt = 0;
-    const maxAttempts = 3;
-    
-    while (attempt < maxAttempts) {
-      try {
-        if (!redisUrl || !redisPassword) {
-          console.error('❌ Redis credentials not configured');
-          this.enableRedisDegradedMode();
-          return;
-        }
-
-        console.log(`🔌 Initializing Redis connections... (attempt ${attempt + 1}/${maxAttempts})`);
-        
-        // Parse Redis URL with validation
-        const parsedUrl = new URL(redisUrl!);
-        console.log(`🔍 Redis connection: ${parsedUrl.hostname}:${parsedUrl.port} (TLS: ${parsedUrl.protocol === 'rediss:'})`);
-        
-        const connectionConfig = {
-          hostname: parsedUrl.hostname,
-          port: parseInt(parsedUrl.port) || 6379,
-          username: parsedUrl.username || 'default',
-          password: redisPassword || parsedUrl.password,
-          tls: parsedUrl.protocol === 'rediss:',
-        };
-        
-        // Publisher connection for sending price updates to Redis
-        console.log('📤 Connecting Redis publisher...');
-        this.redisPublisher = await connect(connectionConfig);
-        
-        // Test publisher connection
-        await this.redisPublisher.ping();
-        console.log('✅ Redis publisher connected and tested');
-
-        // Subscriber connection for receiving price updates from Redis
-        console.log('📥 Connecting Redis subscriber...');
-        this.redisSubscriber = await connect(connectionConfig);
-        
-        // Test subscriber connection
-        await this.redisSubscriber.ping();
-        console.log('✅ Redis subscriber connected and tested');
-
-        console.log('✅ Redis connections established successfully');
-        
-        // Subscribe to price updates channel
-        await this.subscribeToRedisChannel();
-        
-        return; // Success, exit retry loop
-        
-      } catch (error) {
-        attempt++;
-        console.error(`❌ Redis initialization attempt ${attempt} failed:`, error);
-        
-        if (attempt >= maxAttempts) {
-          console.error('❌ All Redis connection attempts failed, entering degraded mode');
-          this.enableRedisDegradedMode();
-          return;
-        }
-        
-        // Wait before retry
-        const delay = 2000 * attempt;
-        console.log(`⏱️ Retrying Redis connection in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+    try {
+      if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
+        console.error('❌ Upstash Redis REST credentials not configured');
+        this.enableRedisDegradedMode();
+        return;
       }
+
+      console.log('🔌 Initializing Upstash Redis REST client...');
+      
+      // Initialize Upstash Redis client
+      this.redisPublisher = new Redis({
+        url: UPSTASH_REDIS_REST_URL,
+        token: UPSTASH_REDIS_REST_TOKEN,
+      });
+
+      // Use same client for subscriber (REST API doesn't need separate connections)
+      this.redisSubscriber = this.redisPublisher;
+      
+      // Test connection with a simple ping
+      await this.redisPublisher.ping();
+      console.log('✅ Upstash Redis REST client connected and tested');
+
+      console.log('✅ Redis connections established successfully');
+      
+      // Subscribe to price updates channel (for non-leader instances)
+      await this.subscribeToRedisChannel();
+      
+    } catch (error) {
+      console.error('❌ Upstash Redis initialization failed:', error);
+      console.error('❌ Entering degraded mode');
+      this.enableRedisDegradedMode();
     }
   }
 
@@ -664,8 +632,7 @@ class TradermadeConnectionManager {
       const result = await this.redisPublisher.set(
         LEADER_LOCK_KEY, 
         this.instanceId,
-        'EX', LEADER_LOCK_TTL,
-        'NX'
+        { ex: LEADER_LOCK_TTL, nx: true }
       );
 
       if (result === 'OK') {
@@ -730,7 +697,7 @@ class TradermadeConnectionManager {
               tradermadeStatus: this.connectionStatus,
               pricesCached: this.priceCache.size
             }),
-            'EX', 60 // 60 second TTL for heartbeat
+            { ex: 60 } // 60 second TTL for heartbeat
           );
           
           // Publish leader snapshot for follower health queries  
@@ -910,7 +877,7 @@ class TradermadeConnectionManager {
       await this.redisPublisher.set(
         'tradermade:health:latest',
         JSON.stringify(snapshot),
-        'EX', 20 // 20 second TTL as specified
+        { ex: 20 } // 20 second TTL as specified
       );
       
     } catch (error) {
@@ -934,23 +901,51 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Subscribe to Redis pub/sub channel for price updates
+  // Subscribe to Redis price updates (REST API uses polling instead of pub/sub)
   private async subscribeToRedisChannel(): Promise<void> {
+    if (this.isLeader) return; // Leaders don't need to poll, they generate the data
+    
     try {
-      await this.redisSubscriber.subscribe(REDIS_PRICE_CHANNEL, (channel: string, message: string) => {
+      // For Upstash REST API, we'll use polling instead of pub/sub
+      console.log('📡 Setting up Redis polling mechanism (REST API compatible)');
+      
+      // Poll for price updates every 500ms for non-leader instances
+      setInterval(async () => {
+        if (this.isLeader) return; // Stop polling if we become leader
+        
         try {
-          const priceUpdate: TradermadePriceData = JSON.parse(message);
-          // Update local cache
-          this.priceCache.set(priceUpdate.symbol, priceUpdate);
-          // Broadcast to connected clients (all instances do this)
-          this.broadcastPriceUpdate(priceUpdate);
-        } catch (error) {
-          console.error('❌ Failed to process Redis price update:', error);
+          // Get all price keys from Redis
+          const symbols = ['XAUUSD', 'BTCUSD']; // Add other symbols as needed
+          
+          for (const symbol of symbols) {
+            const cacheKey = `price:${symbol}`;
+            const cachedPrice = await this.redisSubscriber.get(cacheKey);
+            
+            if (cachedPrice) {
+              try {
+                const priceUpdate: TradermadePriceData = JSON.parse(cachedPrice);
+                // Only update if this is newer than our cached version
+                const existingPrice = this.priceCache.get(symbol);
+                if (!existingPrice || new Date(priceUpdate.timestamp).getTime() > new Date(existingPrice.timestamp).getTime()) {
+                  this.priceCache.set(symbol, priceUpdate);
+                  this.broadcastPriceUpdate(priceUpdate);
+                }
+              } catch (parseError) {
+                console.error(`❌ Error parsing cached price for ${symbol}:`, parseError);
+              }
+            }
+          }
+        } catch (pollError) {
+          // Don't log every polling error, just occasional ones
+          if (Math.random() < 0.01) { // 1% chance to log
+            console.warn('⚠️ Redis polling error:', pollError);
+          }
         }
-      });
-      console.log('📡 Subscribed to Redis price updates channel');
+      }, 500); // Poll every 500ms
+      
+      console.log('📡 Redis polling mechanism started');
     } catch (error) {
-      console.error('❌ Failed to subscribe to Redis channel:', error);
+      console.error('❌ Failed to setup Redis polling:', error);
     }
   }
 
@@ -959,19 +954,16 @@ class TradermadeConnectionManager {
     if (!this.isLeader || !this.redisPublisher) return;
 
     try {
-      // Publish to Redis channel for real-time distribution
-      await this.redisPublisher.publish(REDIS_PRICE_CHANNEL, JSON.stringify(priceUpdate));
-      
-      // Also store in Redis cache with TTL for HTTP requests
+      // Store in Redis cache with TTL for other instances to pick up
       const cacheKey = `price:${priceUpdate.symbol}`;
       await this.redisPublisher.set(
         cacheKey,
         JSON.stringify(priceUpdate),
-        'EX', Math.floor(PRICE_CACHE_TTL_MS / 1000) // Convert to seconds
+        { ex: Math.floor(PRICE_CACHE_TTL_MS / 1000) } // Convert to seconds
       );
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📤 Published ${priceUpdate.symbol} = $${priceUpdate.price} to Redis (pub/sub + cache)`);
+        console.log(`📤 Published ${priceUpdate.symbol} = $${priceUpdate.price} to Redis cache`);
       }
     } catch (error) {
       this.trackPublishError();
@@ -2330,7 +2322,7 @@ class TradermadeConnectionManager {
 }
 
 // ========== EDGE FUNCTION HANDLER ==========
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });

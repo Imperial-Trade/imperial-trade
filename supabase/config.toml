@@ -21,9 +21,6 @@ verify_jwt = false
 [functions.websocket-load-balancer]
 verify_jwt = false
 
-[functions.financial-websocket-optimized]
-verify_jwt = false
-
 
 [functions.check-user-existence]
 verify_jwt = false

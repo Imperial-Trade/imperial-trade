@@ -165,7 +165,7 @@ export function SignalStreamFilters({
             <select
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+              className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -178,7 +178,7 @@ export function SignalStreamFilters({
             <select
               value={filters.tradeType}
               onChange={(e) => updateFilter('tradeType', e.target.value)}
-              className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+              className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
             >
               {tradeTypeOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -192,7 +192,7 @@ export function SignalStreamFilters({
               <select
                 value={filters.educator}
                 onChange={(e) => updateFilter('educator', e.target.value)}
-                className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+                className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
               >
                 <option value="">All Educators ({educatorOptions.length})</option>
                 {educatorOptions.map(educator => (

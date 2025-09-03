@@ -233,6 +233,7 @@ async function fetchEnhancedMarketData(
   } catch (error) {
     console.error("Failed to fetch enhanced market data:", error);
     return [];
+  }
 }
 
 function getAssetClass(symbol: string): "stocks" | "crypto" | "forex" | "commodities" | "etfs" {

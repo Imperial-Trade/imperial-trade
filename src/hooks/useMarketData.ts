@@ -23,26 +23,27 @@ export const useMarketData = (symbols: string[], enabled: boolean = true): UseMa
     setError(null);
 
     try {
-      // Use tradermade-streaming for market data
-      const { data, error } = await supabase.functions.invoke('tradermade-streaming', {
-        body: { symbols }
-      });
+      // Use market_prices table for market data
+      const { data, error } = await supabase
+        .from('market_prices')
+        .select('symbol, bid, ask, mid, timestamp')
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      // Convert tradermade response to MarketDataPoint format
+      // Convert market_prices response to MarketDataPoint format
       const marketData: MarketDataPoint[] = [];
-      if (data?.success && data?.prices) {
-        Object.entries(data.prices).forEach(([symbol, priceData]: [string, any]) => {
-          if (priceData && priceData.price) {
+      if (data && data.length > 0) {
+        data.forEach((priceData: any) => {
+          if (priceData && priceData.symbol) {
             marketData.push({
-              symbol,
-              price: priceData.price,
-              change: priceData.change || 0,
-              changePercent: priceData.changePercent || 0,
+              symbol: priceData.symbol,
+              price: priceData.mid || ((priceData.bid + priceData.ask) / 2),
+              change: 0, // Not available from market_prices
+              changePercent: 0, // Not available from market_prices  
               timestamp: priceData.timestamp || new Date().toISOString(),
-              dataSource: 'tradermade',
-              dataQuality: priceData.stale ? 'delayed' : 'real_time'
+              dataSource: 'supabase',
+              dataQuality: 'real_time'
             });
           }
         });

@@ -6,7 +6,7 @@ export interface MarketDataPoint {
   changePercent: number;
   volume?: number;
   timestamp: string;
-  dataSource?: 'tradermade' | 'mock';
+  dataSource?: 'tradermade' | 'mock' | 'supabase';
   dataQuality?: 'real_time' | 'delayed' | 'simulated';
 }
 

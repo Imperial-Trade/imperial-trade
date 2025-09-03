@@ -46,7 +46,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚀 Enhanced Alert Monitor - Starting institutional-grade monitoring via tradermade-streaming...');
+    console.log('🚀 Enhanced Alert Monitor - Starting institutional-grade monitoring via enhanced-websocket-streaming...');
 
     // Step 1: Get all active symbols from alert_monitoring
     const { data: activeSymbols, error: symbolsError } = await supabase
@@ -72,7 +72,7 @@ serve(async (req) => {
     const uniqueSymbols = [...new Set(activeSymbols.map(a => a.symbol))];
     console.log(`📊 Monitoring ${uniqueSymbols.length} symbols:`, uniqueSymbols);
 
-    // Step 2: Get current prices from market_prices table (populated by tradermade-streaming)
+    // Step 2: Get current prices from market_prices table (populated by enhanced-websocket-streaming)
     const { data: marketPrices, error: pricesError } = await supabase
       .from('market_prices')
       .select('symbol, bid, ask, mid, timestamp')
@@ -83,25 +83,13 @@ serve(async (req) => {
       throw pricesError;
     }
 
-    // If no prices available, trigger tradermade-streaming to get fresh data
+    // If no prices available, skip processing
     if (!marketPrices || marketPrices.length === 0) {
-      console.log('⚡ No market prices available, triggering tradermade-streaming...');
-      
-      try {
-        const { data: streamingResult, error: streamingError } = await supabase.functions.invoke('tradermade-streaming', {
-          body: { action: 'health' }
-        });
-        
-        if (streamingError) {
-          console.error('❌ Error triggering tradermade-streaming:', streamingError);
-        }
-      } catch (error) {
-        console.error('❌ Failed to invoke tradermade-streaming:', error);
-      }
+      console.log('⚡ No market prices available, skipping alert processing...');
       
       return new Response(JSON.stringify({ 
         success: true, 
-        message: 'No current market prices available, triggered streaming service',
+        message: 'No current market prices available',
         processed: 0 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

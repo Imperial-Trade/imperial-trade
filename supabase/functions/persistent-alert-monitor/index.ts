@@ -28,9 +28,9 @@ class RealtimeAlertMonitor {
 
   async initialize(): Promise<void> {
     console.log('🚀 Initializing Realtime-only Alert Monitor...');
-    console.log('📡 Consuming live prices from tradermade-streaming via Supabase Realtime');
+    console.log('📡 Consuming live prices from enhanced-websocket-streaming via Supabase Realtime');
     
-    // Subscribe to price updates from tradermade-streaming
+    // Subscribe to price updates from enhanced-websocket-streaming
     this.subscription = this.supabase
       .channel('prices:live')
       .on('broadcast', { event: 'price_update' }, async (payload: any) => {
@@ -191,7 +191,7 @@ serve(async (req) => {
           version: '3.0.0-realtime-only',
           monitor: health,
           timestamp: new Date().toISOString(),
-          message: 'Realtime-only alert monitoring active - consuming from tradermade-streaming'
+          message: 'Realtime-only alert monitoring active - consuming from enhanced-websocket-streaming'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

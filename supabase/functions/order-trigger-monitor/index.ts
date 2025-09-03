@@ -134,9 +134,9 @@ serve(async (req) => {
       order.tradermade_symbol || order.asset_name
     ))];
 
-    console.log('💰 Fetching current prices from market_prices table (fed by tradermade-streaming):', symbols);
+    console.log('💰 Fetching current prices from market_prices table (fed by enhanced-websocket-streaming):', symbols);
 
-    // Step 3: Get current prices from market_prices table (populated by tradermade-streaming)
+    // Step 3: Get current prices from market_prices table (populated by enhanced-websocket-streaming)
     const { data: marketPrices, error: pricesError } = await supabase
       .from('market_prices')
       .select('symbol, bid, ask, mid')
@@ -147,27 +147,13 @@ serve(async (req) => {
       throw pricesError;
     }
 
-    // If no prices available, ensure tradermade-streaming is healthy
+    // If no prices available, skip processing
     if (!marketPrices || marketPrices.length === 0) {
-      console.log('⚡ No market prices available, checking tradermade-streaming health...');
-      
-      try {
-        const { data: streamingResult, error: streamingError } = await supabase.functions.invoke('tradermade-streaming', {
-          body: { action: 'health' }
-        });
-        
-        if (streamingError) {
-          console.error('❌ Error checking tradermade-streaming:', streamingError);
-        } else {
-          console.log('📡 tradermade-streaming status:', streamingResult);
-        }
-      } catch (error) {
-        console.error('❌ Failed to check tradermade-streaming:', error);
-      }
+      console.log('⚡ No market prices available, skipping order processing...');
       
       return new Response(JSON.stringify({ 
         success: true, 
-        message: 'No current market prices available, checked streaming service',
+        message: 'No current market prices available',
         processed: 0 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

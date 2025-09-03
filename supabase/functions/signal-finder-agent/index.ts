@@ -17,7 +17,7 @@ interface EnhancedMarketDataPoint {
   changePercent: number;
   volume?: number;
   timestamp: string;
-  dataSource: "twelve_data" | "alpha_vantage" | "yahoo_finance" | "mock";
+  dataSource: "mock" | "supabase",
   dataQuality: "real_time" | "delayed" | "simulated";
   technicalIndicators?: {
     rsi?: number;
@@ -201,31 +201,54 @@ async function fetchEnhancedMarketData(
   try {
     console.log("Fetching enhanced market data for 25+ instruments...");
 
-    // Use tradermade-streaming for market data
-    const { data, error } = await supabase.functions.invoke("tradermade-streaming", {
-      body: {
-        symbols: [], // Empty array means get all default symbols
-        includeVolume: true,
-        includeTechnicals: true,
-      },
-    });
+    // Use market_prices table for market data
+    const { data, error } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask, mid, timestamp')
+      .order('updated_at', { ascending: false });
 
     if (error) {
       console.error("Enhanced market data fetch error:", error);
       return [];
     }
 
-    const marketData = data?.prices || [];
+    const marketData = data || [];
     console.log(`Fetched enhanced data for ${marketData.length} instruments`);
-    console.log(
-      `Data quality: ${data?.dataQuality}, Market hours: ${data?.marketHours}`
-    );
 
-    return marketData;
+    return marketData.map(priceData => ({
+      symbol: priceData.symbol,
+      price: priceData.mid || ((priceData.bid + priceData.ask) / 2),
+      change: 0,
+      changePercent: 0,
+      timestamp: priceData.timestamp || new Date().toISOString(),
+      dataSource: "mock" as const,
+      dataQuality: "real_time" as const,
+      marketContext: {
+        trend: "sideways" as const,
+        volatility: "medium" as const,
+        volume_profile: "normal" as const,
+        assetClass: getAssetClass(priceData.symbol)
+      }
+    }));
   } catch (error) {
     console.error("Failed to fetch enhanced market data:", error);
     return [];
+}
+
+function getAssetClass(symbol: string): "stocks" | "crypto" | "forex" | "commodities" | "etfs" {
+  if (symbol.includes('USD') || symbol.includes('EUR') || symbol.includes('GBP') || symbol.includes('JPY')) {
+    return "forex";
   }
+  if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('crypto')) {
+    return "crypto";
+  }
+  if (symbol.includes('XAU') || symbol.includes('GOLD') || symbol.includes('OIL') || symbol.includes('SILVER')) {
+    return "commodities";
+  }
+  if (symbol.includes('SPY') || symbol.includes('QQQ') || symbol.includes('ETF')) {
+    return "etfs";
+  }
+  return "stocks";
 }
 
 serve(async (req) => {

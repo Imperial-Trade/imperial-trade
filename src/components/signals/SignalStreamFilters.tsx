@@ -176,42 +176,23 @@ export function SignalStreamFilters({
 
         {/* Premium Filter Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Status Filters */}
+          {/* Status Filter */}
           <div className="space-y-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
-            <div className="flex flex-wrap gap-1.5">
+            <select
+              value={filters.status}
+              onChange={(e) => updateFilter('status', e.target.value)}
+              className="w-full h-7 px-2.5 text-xs bg-background border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors z-50"
+            >
               {statusOptions.map(option => {
                 const Icon = option.icon;
-                const isActive = filters.status === option.value;
                 return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleStatusClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.count})
+                  </option>
                 );
               })}
-            </div>
+            </select>
           </div>
 
           {/* Trade Type Filters */}

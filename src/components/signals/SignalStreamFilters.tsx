@@ -177,8 +177,7 @@ export function SignalStreamFilters({
         {/* Premium Filter Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Status Filter */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+          <div>
             <select
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
@@ -196,8 +195,7 @@ export function SignalStreamFilters({
           </div>
 
           {/* Trade Type Filter */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</span>
+          <div>
             <select
               value={filters.tradeType}
               onChange={(e) => updateFilter('tradeType', e.target.value)}

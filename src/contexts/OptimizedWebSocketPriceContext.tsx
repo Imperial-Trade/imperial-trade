@@ -48,8 +48,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const reconnectAttempts = useRef<number>(0);
   const isAuthenticatedRef = useRef<boolean>(false);
 
-  // Optimized WebSocket URL - direct to our new edge function
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming';
+  // Zero-pause: Direct connection to enhanced-websocket-streaming (not tradermade-streaming)
+  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
 
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -213,12 +213,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🔌 WebSocket connection closed:', event.code, event.reason);
       setConnectionStatus('disconnected');
       
-      // Automatic reconnection with simple backoff
+      // Zero-pause: Immediate reconnection for critical disconnections
       if (event.code !== 1000) { // Not a normal closure
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        // Zero-pause: Faster reconnection with reduced backoff
+        const delay = Math.min(500 * Math.pow(1.5, reconnectAttempts.current), 5000); // Max 5s delay
         reconnectAttempts.current++;
         
-        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
+        console.log(`🔄 Zero-pause reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
         reconnectTimeoutRef.current = window.setTimeout(connect, delay);
       }
     };
@@ -285,12 +286,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   useEffect(() => {
     connect();
     
-    // Health check ping every 30 seconds
+    // Zero-pause: Faster health check ping every 15 seconds (vs 30s)
     const pingInterval = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
         socketRef.current.send(JSON.stringify({ type: 'ping' }));
       }
-    }, 30000);
+    }, 15000);
     
     return () => {
       clearInterval(pingInterval);

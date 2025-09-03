@@ -12,8 +12,8 @@ enabled = true
 [edge_functions]
 enabled = true
 
-[functions.tradermade-streaming]
-verify_jwt = false
+# [functions.tradermade-streaming]
+# verify_jwt = false
 
 [functions.enhanced-websocket-streaming]
 verify_jwt = false

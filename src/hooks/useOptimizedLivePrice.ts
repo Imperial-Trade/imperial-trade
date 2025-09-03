@@ -28,7 +28,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 100 // Business Plan: Ultra-fast 100ms debouncing for real-time performance
+    debounceMs = 50 // Zero-pause: Ultra-fast 50ms debouncing (reduced from 100ms)
   } = options;
 
   // Enhanced symbol normalization for BTC/XAU mapping consistency
@@ -87,8 +87,8 @@ export function useOptimizedLivePrice(
         const now = new Date();
         const ageMinutes = (now.getTime() - storedTime.getTime()) / (1000 * 60);
         
-        // Only use stored price if less than 10 minutes old
-        if (ageMinutes < 10) {
+        // Zero-pause: Use cached price if less than 5 minutes old (reduced from 10)
+        if (ageMinutes < 5) {
           return { price: Number(price), timestamp: storedTime };
         } else {
           // Remove stale price
@@ -185,8 +185,8 @@ export function useOptimizedLivePrice(
     const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    // GUARDRAIL: Show "connected" for 60s after last update (sticky-live)
-    if (dataFreshness < 60 && hasValidPrice) {
+    // Zero-pause: Show "connected" for 30s after last update (reduced from 60s for faster feedback)
+    if (dataFreshness < 30 && hasValidPrice) {
       return 'connected';
     }
     

@@ -9,13 +9,15 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-// Enhanced configuration for cost optimization
-const WS_AUTH_TIMEOUT_MS = 30000;
+// Zero-Pause Optimized Configuration
+const WS_AUTH_TIMEOUT_MS = 15000; // Faster auth timeout
 const MAX_WS_SUBS_PER_CLIENT = 10; // Reduced from 20
-const BATCH_INTERVAL_MS = 100; // 100ms batching
-const HEARTBEAT_INTERVAL_MS = 30000; // 30s heartbeat
+const BATCH_INTERVAL_MS = 50; // Ultra-fast 50ms batching
+const HEARTBEAT_INTERVAL_MS = 10000; // Faster 10s heartbeat for quick detection
 const MAX_CLIENTS = 1000; // Connection limit
-const IDLE_TIMEOUT_MS = 300000; // 5 minutes idle timeout
+const IDLE_TIMEOUT_MS = 180000; // 3 minutes idle timeout
+const RECONNECT_DELAY_MS = 2000; // Fast reconnection
+const PRICE_CACHE_TTL_MS = 5000; // 5-second cache for instant delivery
 
 // Supabase clients
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -206,9 +208,10 @@ class EnhancedWebSocketStreaming {
         this.handleTradermadeMessage(event.data);
       };
 
-      this.tradermadeSocket.onclose = () => {
-        console.log('🔌 TraderMade connection closed, reconnecting...');
-        setTimeout(() => this.connectToTradermade(), 5000);
+      this.tradermadeSocket.onclose = (event) => {
+        console.log(`🔌 TraderMade connection closed (code: ${event.code}), fast reconnecting...`);
+        // Zero-pause: Immediate reconnection attempt
+        setTimeout(() => this.connectToTradermade(), RECONNECT_DELAY_MS);
       };
 
       this.tradermadeSocket.onerror = (error) => {
@@ -256,29 +259,40 @@ class EnhancedWebSocketStreaming {
           changePercent: message.changePercent ? parseFloat(message.changePercent) : 0
         };
 
-        // Cache the price
-        this.priceCache.set(priceData.symbol, priceData);
+        // Cache the price with TTL for instant delivery
+        const cachedPrice = { ...priceData, cachedAt: Date.now() };
+        this.priceCache.set(priceData.symbol, cachedPrice);
         
         // Publish to Redis for followers
         if (this.redisPublisher && this.isLeader) {
           await this.redisPublisher.publish('websocket:prices', JSON.stringify(priceData));
         }
         
-        // Add to batch for WebSocket clients
-        this.addToBatch(priceData);
+        // Zero-pause: Immediate priority updates for critical symbols
+        if (priceData.symbol === 'XAUUSD' || priceData.symbol === 'BTCUSD') {
+          this.addToBatch(priceData, true); // Priority flag
+        } else {
+          this.addToBatch(priceData);
+        }
       }
     } catch (error) {
       console.error('❌ Failed to handle TraderMade message:', error);
     }
   }
 
-  private addToBatch(priceData: PriceData): void {
+  private addToBatch(priceData: PriceData, priority: boolean = false): void {
     this.batchedUpdates.set(priceData.symbol, priceData);
     
-    if (!this.batchTimeout) {
+    // Zero-pause: Priority updates get immediate delivery
+    if (priority || !this.batchTimeout) {
+      if (this.batchTimeout) {
+        clearTimeout(this.batchTimeout);
+      }
+      
+      const delay = priority ? 10 : BATCH_INTERVAL_MS; // 10ms for priority, 50ms for normal
       this.batchTimeout = setTimeout(() => {
         this.flushBatch();
-      }, BATCH_INTERVAL_MS);
+      }, delay);
     }
   }
 
@@ -376,9 +390,16 @@ class EnhancedWebSocketStreaming {
 
     console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}]`);
 
-    // Send current prices
+    // Zero-pause: Send cached prices immediately for seamless experience
     const currentPrices = Array.from(client.subscriptions)
-      .map(symbol => this.priceCache.get(symbol))
+      .map(symbol => {
+        const cached = this.priceCache.get(symbol);
+        // Check cache freshness (5-second TTL for instant delivery)
+        if (cached && cached.cachedAt && (Date.now() - cached.cachedAt) < PRICE_CACHE_TTL_MS) {
+          return cached;
+        }
+        return cached; // Return even stale data for zero-pause experience
+      })
       .filter(Boolean);
 
     if (currentPrices.length > 0) {
@@ -386,8 +407,10 @@ class EnhancedWebSocketStreaming {
         client.socket.send(JSON.stringify({
           type: 'price_snapshot',
           prices: currentPrices,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          cached: true // Indicate this is cached data
         }));
+        console.log(`📸 Sent cached snapshot to ${client.id}: ${currentPrices.length} prices`);
       } catch (error) {
         console.error(`❌ Failed to send snapshot to ${client.id}:`, error);
       }
@@ -399,20 +422,29 @@ class EnhancedWebSocketStreaming {
       const now = Date.now();
       
       for (const [clientId, client] of this.clients) {
-        // Send ping to active clients
+        // Zero-pause: Faster connection health detection
         if (client.socket.readyState === WebSocket.OPEN) {
           try {
             client.socket.send(JSON.stringify({
               type: 'ping',
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              server_time: now
             }));
+            client.lastPing = now;
           } catch (error) {
             console.error(`❌ Failed to ping client ${clientId}:`, error);
             this.removeClient(clientId);
           }
         } else {
+          console.log(`🔌 Removing client with closed connection: ${clientId}`);
           this.removeClient(clientId);
         }
+      }
+      
+      // Zero-pause: Monitor TraderMade connection health
+      if (this.isLeader && (!this.tradermadeSocket || this.tradermadeSocket.readyState !== WebSocket.OPEN)) {
+        console.log('🔄 TraderMade connection unhealthy, attempting reconnection...');
+        this.connectToTradermade();
       }
     }, HEARTBEAT_INTERVAL_MS);
   }
@@ -432,6 +464,10 @@ class EnhancedWebSocketStreaming {
   }
 
   public getStats() {
+    const now = Date.now();
+    const cacheAges = Array.from(this.priceCache.values())
+      .map(price => price.cachedAt ? now - price.cachedAt : 0);
+    
     return {
       clients: this.clients.size,
       authenticatedClients: Array.from(this.clients.values()).filter(c => c.isAuthenticated).length,
@@ -439,7 +475,12 @@ class EnhancedWebSocketStreaming {
       messagesSent: this.wsMessagesSent,
       lastBroadcast: this.lastBroadcastAt,
       isLeader: this.isLeader,
-      tradermadeConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN
+      tradermadeConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
+      tradermadeStatus: this.tradermadeSocket?.readyState === WebSocket.OPEN ? 'connected' : 'disconnected',
+      avgCacheAge: cacheAges.length > 0 ? Math.round(cacheAges.reduce((a, b) => a + b, 0) / cacheAges.length) : 0,
+      maxCacheAge: cacheAges.length > 0 ? Math.max(...cacheAges) : 0,
+      uptime: now - this.wsMessagesSent, // Rough uptime estimate
+      version: '2.0-zero-pause'
     };
   }
 }

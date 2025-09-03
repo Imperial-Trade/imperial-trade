@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
-import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
+import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
@@ -85,7 +85,7 @@ function App() {
               <WelcomeProvider>
                 <NavigationGuard>
                   <SignalRealtimeProvider>
-                    <WebSocketPriceProvider>
+                    <HybridWebSocketPriceProvider enhancedRolloutPercentage={10}>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -279,7 +279,7 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                    </WebSocketPriceProvider>
+                    </HybridWebSocketPriceProvider>
                   </SignalRealtimeProvider>
                 </NavigationGuard>
               </WelcomeProvider>

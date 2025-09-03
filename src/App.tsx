@@ -12,6 +12,7 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
+import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -93,34 +94,34 @@ function App() {
                           element={<LandingLayout />}
                           errorElement={<RouteErrorBoundary />}
                         >
-                          <Route index element={<Landing />} />
-                          <Route path="about" element={<About />} />
-                          <Route path="features" element={<Features />} />
+                          <Route index element={<AuthenticatedRedirect><Landing /></AuthenticatedRedirect>} />
+                          <Route path="about" element={<AuthenticatedRedirect><About /></AuthenticatedRedirect>} />
+                          <Route path="features" element={<AuthenticatedRedirect><Features /></AuthenticatedRedirect>} />
                           <Route
                             path="advanced-tools"
-                            element={<AdvancedToolsPage />}
+                            element={<AuthenticatedRedirect><AdvancedToolsPage /></AuthenticatedRedirect>}
                           />
-                          <Route path="signals" element={<SignalsPage />} />
-                          <Route path="education" element={<EducationPage />} />
+                          <Route path="signals" element={<AuthenticatedRedirect><SignalsPage /></AuthenticatedRedirect>} />
+                          <Route path="education" element={<AuthenticatedRedirect><EducationPage /></AuthenticatedRedirect>} />
                           <Route
                             path="live-sessions"
-                            element={<LiveSessionsPage />}
+                            element={<AuthenticatedRedirect><LiveSessionsPage /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="community-forum"
-                            element={<CommunityForumPage />}
+                            element={<AuthenticatedRedirect><CommunityForumPage /></AuthenticatedRedirect>}
                           />
 <Route
                             path="ib-partnership"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="ib-partnership-new"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="imperial-partnership"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />

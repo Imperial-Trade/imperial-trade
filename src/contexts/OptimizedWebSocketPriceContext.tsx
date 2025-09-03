@@ -70,15 +70,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       reconnectAttempts.current = 0;
       isAuthenticatedRef.current = false;
 
-      // Send authentication message first
+      // Send authentication message first (support both legacy and new schemas)
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         
+        // Primary: legacy-compatible schema
         socket.send(JSON.stringify({
-          action: 'auth',
+          type: 'auth',
           token: token || null
         }));
+        
+        // Compatibility: also send newer action-based schema if server expects it
+        try {
+          socket.send(JSON.stringify({ action: 'auth', token: token || null }));
+        } catch {}
       } catch (error) {
         console.error('❌ Authentication error:', error);
         setError('Authentication failed');
@@ -91,21 +97,31 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         const data = JSON.parse(event.data);
         
         switch (data.type) {
+          case 'welcome':
+            console.log('🎉 WebSocket welcomed:', data.clientId || data.client_id);
+            break;
+          
           case 'connection_status':
             console.log('📡 Connection status:', data.status);
             break;
             
           case 'auth_success':
-            console.log('🔑 Authentication successful');
-            setConnectionStatus('connected');
-            isAuthenticatedRef.current = true;
-            
-            // Re-subscribe to any previous subscriptions after authentication
-            if (subscriptionsRef.current.size > 0) {
-              socket.send(JSON.stringify({
-                action: 'subscribe',
-                symbols: Array.from(subscriptionsRef.current)
-              }));
+          case 'auth_response':
+            if (data.success === false) {
+              console.error('❌ Authentication failed:', data.message);
+              setError(data.message || 'Authentication failed');
+              setConnectionStatus('error');
+            } else {
+              console.log('🔑 Authentication successful');
+              setConnectionStatus('connected');
+              isAuthenticatedRef.current = true;
+              // Re-subscribe to any previous subscriptions after authentication
+              if (subscriptionsRef.current.size > 0) {
+                const symbols = Array.from(subscriptionsRef.current);
+                socket.send(JSON.stringify({ type: 'subscribe', symbols }));
+                // Compatibility: also support action schema
+                try { socket.send(JSON.stringify({ action: 'subscribe', symbols })); } catch {}
+              }
             }
             break;
             
@@ -115,13 +131,39 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setConnectionStatus('error');
             break;
             
-          case 'price_batch':
-            // Batch price updates from cache
-            if (data.prices) {
-              setPrices(prev => ({ ...prev, ...data.prices }));
-              console.log('📈 Batch price update:', Object.keys(data.prices).length, 'symbols');
+          case 'subscription_ack':
+          case 'subscription_response':
+            console.log('✅ Subscription confirmed:', data.symbols || data.subscribedSymbols);
+            break;
+            
+          case 'price_snapshot':
+          case 'price_batch': {
+            // Batch price updates from cache or snapshot
+            const updates = data.updates || data.prices;
+            if (Array.isArray(updates)) {
+              const merged: Record<string, PriceData> = {};
+              for (const u of updates) {
+                const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
+                if (u.symbol && price !== undefined) {
+                  merged[u.symbol] = {
+                    symbol: u.symbol,
+                    price,
+                    change: u.change || 0,
+                    changePercent: u.changePercent || 0,
+                    timestamp: u.timestamp || new Date().toISOString()
+                  };
+                }
+              }
+              if (Object.keys(merged).length > 0) {
+                setPrices(prev => ({ ...prev, ...merged }));
+                console.log('📈 Batch price update:', Object.keys(merged).length, 'symbols');
+              }
+            } else if (updates && typeof updates === 'object') {
+              setPrices(prev => ({ ...prev, ...updates }));
+              console.log('📈 Batch price update:', Object.keys(updates).length, 'symbols');
             }
             break;
+          }
             
           case 'price_update':
             // Individual real-time price update
@@ -134,6 +176,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 timestamp: data.timestamp || new Date().toISOString()
               };
               setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
+            } else if (data.update) {
+              const u = data.update;
+              const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
+              if (u.symbol && price !== undefined) {
+                const priceData: PriceData = {
+                  symbol: u.symbol,
+                  price,
+                  change: u.change || 0,
+                  changePercent: u.changePercent || 0,
+                  timestamp: u.timestamp || new Date().toISOString()
+                };
+                setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+              }
             }
             break;
             
@@ -144,10 +199,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           case 'error':
             console.error('❌ WebSocket error:', data.message);
             setError(data.message);
-            break;
-            
-          case 'subscription_ack':
-            console.log('✅ Subscription confirmed:', data.symbols);
             break;
             
           default:
@@ -199,10 +250,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Send subscription message if connected and authenticated
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      socketRef.current.send(JSON.stringify({
-        action: 'subscribe',
-        symbols
-      }));
+      // Primary: legacy-compatible schema
+      socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols }));
+      // Compatibility: also support action-based schema
+      try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols })); } catch {}
     }
   }, []);
 
@@ -212,10 +263,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Send unsubscription message if connected and authenticated
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      socketRef.current.send(JSON.stringify({
-        action: 'unsubscribe',
-        symbols
-      }));
+      // Primary: legacy-compatible schema
+      socketRef.current.send(JSON.stringify({ type: 'unsubscribe', symbols }));
+      // Compatibility: also support action-based schema
+      try { socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols })); } catch {}
     }
     
     // Remove prices for unsubscribed symbols
@@ -237,7 +288,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Health check ping every 30 seconds
     const pingInterval = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-        socketRef.current.send(JSON.stringify({ action: 'ping' }));
+        socketRef.current.send(JSON.stringify({ type: 'ping' }));
       }
     }, 30000);
     

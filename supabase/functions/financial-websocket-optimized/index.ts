@@ -1,9 +1,9 @@
 import { Redis } from "npm:@upstash/redis@1.20.6";
 
-// Initialize Redis client
+// Initialize Redis client with REST API (Deno compatible)
 const redis = new Redis({
-  url: Deno.env.get("UPSTASH_REDIS_URL") ?? "",
-  token: Deno.env.get("UPSTASH_REDIS_PASSWORD") ?? "",
+  url: Deno.env.get("UPSTASH_REDIS_REST_URL") ?? "",
+  token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN") ?? "",
 });
 
 // Constants for configuration
@@ -83,11 +83,10 @@ async function connectToTraderMade() {
             priceCache[data.symbol] = priceData;
             batchedUpdates[data.symbol] = priceData;
             
-            // Store in Redis with simple key pattern
+            // Store in Redis with simple key pattern (REST API)
             await redis.hset(REDIS_PRICES_KEY, data.symbol, JSON.stringify(priceData));
             
-            // Publish to other servers with simple channel
-            await redis.publish(REDIS_PRICE_UPDATES_CHANNEL, JSON.stringify({ [data.symbol]: priceData }));
+            // Note: REST API doesn't support PUBLISH, so followers will poll for updates
           }
         } catch (error) {
           console.error("❌ Error processing TraderMade message:", error);
@@ -111,27 +110,43 @@ async function connectToTraderMade() {
   }
 }
 
-// Simple Redis subscription for price updates
+// Simple Redis subscription for price updates (REST API compatible)
 async function setupRedisSubscription() {
   try {
-    console.log("🔔 Setting up Redis subscription");
+    console.log("🔔 Setting up Redis polling mechanism (REST API compatible)");
     
-    // Subscribe to price updates from the leader server
-    redis.subscribe(REDIS_PRICE_UPDATES_CHANNEL, (message) => {
+    // Since REST API doesn't support pub/sub, we'll use a polling mechanism
+    // for non-leader servers to get price updates from Redis
+    setInterval(async () => {
       try {
-        const updates = JSON.parse(message);
-        
-        // Update local cache
-        for (const [symbol, data] of Object.entries(updates)) {
-          priceCache[symbol] = data;
-          batchedUpdates[symbol] = data;
+        const currentLeader = await redis.get(REDIS_LEADER_KEY);
+        if (currentLeader !== REDIS_SERVER_ID) {
+          // We're not the leader, poll for price updates
+          const allPrices = await redis.hgetall(REDIS_PRICES_KEY);
+          if (allPrices) {
+            for (const [symbol, dataStr] of Object.entries(allPrices)) {
+              try {
+                const priceData = JSON.parse(dataStr as string);
+                const cached = priceCache[symbol];
+                
+                // Only update if this is newer data
+                if (!cached || new Date(priceData.timestamp) > new Date(cached.timestamp)) {
+                  priceCache[symbol] = priceData;
+                  batchedUpdates[symbol] = priceData;
+                }
+              } catch (parseError) {
+                console.error(`❌ Error parsing price data for ${symbol}:`, parseError);
+              }
+            }
+          }
         }
-      } catch (error) {
-        console.error("❌ Error processing Redis message:", error);
+      } catch (pollError) {
+        console.error("❌ Error polling Redis for price updates:", pollError);
       }
-    });
+    }, 1000); // Poll every second for non-leader servers
+    
   } catch (error) {
-    console.error("❌ Error setting up Redis subscription:", error);
+    console.error("❌ Error setting up Redis polling:", error);
     setTimeout(setupRedisSubscription, 5000);
   }
 }

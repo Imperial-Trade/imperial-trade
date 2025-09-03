@@ -526,7 +526,16 @@ export default function SignalStream() {
                   <div>
                     <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
                       <span className="text-imperial-platinum">Active </span>
-                      <span className="bg-gradient-to-r from-indigo-600 via-gray-400 to-blue-500 bg-clip-text text-transparent">Alerts</span>
+                      <span 
+                        className="bg-clip-text text-transparent font-medium"
+                        style={{ 
+                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}
+                      >
+                        Alerts
+                      </span>
                       <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
                     </h2>
                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -556,7 +565,16 @@ export default function SignalStream() {
                   <div>
                     <h2 className="text-lg font-semibold mb-3 border-b border-border pb-1.5">
                       <span className="text-imperial-platinum">Closed </span>
-                      <span className="bg-gradient-to-r from-indigo-600 via-gray-400 to-blue-500 bg-clip-text text-transparent">Alerts</span>
+                      <span 
+                        className="bg-clip-text text-transparent font-medium"
+                        style={{ 
+                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}
+                      >
+                        Alerts
+                      </span>
                       <span className="text-imperial-platinum"> ({closedAlerts.length})</span>
                     </h2>
                     {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">

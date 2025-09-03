@@ -147,8 +147,53 @@ export function SignalStreamFilters({
               </Button>
             )}
           </div>
+
+          {/* Filter Dropdowns */}
+          <div className="flex items-center gap-2">
+            {/* Status Filter */}
+            <select
+              value={filters.status}
+              onChange={(e) => updateFilter('status', e.target.value)}
+              className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+            >
+              {statusOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.count})
+                </option>
+              ))}
+            </select>
+
+            {/* Trade Type Filter */}
+            <select
+              value={filters.tradeType}
+              onChange={(e) => updateFilter('tradeType', e.target.value)}
+              className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+            >
+              {tradeTypeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.count})
+                </option>
+              ))}
+            </select>
+
+            {/* Educator Filter */}
+            {educatorOptions.length > 1 && (
+              <select
+                value={filters.educator}
+                onChange={(e) => updateFilter('educator', e.target.value)}
+                className="h-8 px-3 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
+              >
+                <option value="">All Educators ({educatorOptions.length})</option>
+                {educatorOptions.map(educator => (
+                  <option key={educator.id} value={educator.id}>
+                    {educator.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2">
             {hasActiveFilters && (
               <Button
                 type="button"
@@ -172,64 +217,6 @@ export function SignalStreamFilters({
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Premium Filter Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Status Filter */}
-          <div>
-            <select
-              value={filters.status}
-              onChange={(e) => updateFilter('status', e.target.value)}
-              className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
-            >
-              {statusOptions.map(option => {
-                const Icon = option.icon;
-                return (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.count})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Trade Type Filter */}
-          <div>
-            <select
-              value={filters.tradeType}
-              onChange={(e) => updateFilter('tradeType', e.target.value)}
-              className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
-            >
-              {tradeTypeOptions.map(option => {
-                const Icon = option.icon;
-                return (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.count})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Educator Filter */}
-          {educatorOptions.length > 1 && (
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educator</span>
-              <select
-                value={filters.educator}
-                onChange={(e) => updateFilter('educator', e.target.value)}
-                className="w-1/3 h-7 px-2.5 text-xs bg-primary/90 border border-primary/20 rounded-md focus:border-primary/50 focus:outline-none transition-all duration-200 shadow-sm shadow-primary/20 text-primary-foreground hover:border-primary/30 z-50"
-              >
-                <option value="">All Educators ({educatorOptions.length})</option>
-                {educatorOptions.map(educator => (
-                  <option key={educator.id} value={educator.id}>
-                    {educator.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Minimal Active Filter Summary */}

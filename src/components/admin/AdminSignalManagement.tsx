@@ -482,8 +482,24 @@ export function AdminSignalManagement() {
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
-          <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</TabsTrigger>
-          <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
+          <TabsTrigger 
+            value="active"
+            className="text-black"
+            style={{ 
+              background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))'
+            }}
+          >
+            Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="closed"
+            className="text-black"
+            style={{ 
+              background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))'
+            }}
+          >
+            Closed ({filteredAlerts.filter(a => a.status === 'closed').length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">

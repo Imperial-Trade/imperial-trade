@@ -124,7 +124,7 @@ export function SignalStreamFilters({
       onPointerDown={(e) => e.stopPropagation()}
       onPointerMove={(e) => e.stopPropagation()}
     >
-      <CardContent className="p-3 space-y-3">
+      <CardContent className="p-3 space-y-3 flex flex-col items-center">
         {/* Compact Top Bar with Search and Clear */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">

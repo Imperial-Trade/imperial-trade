@@ -166,9 +166,24 @@ export function SignalStreamFilters({
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
               className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+              style={{ 
+                colorScheme: 'dark',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
             >
               {statusOptions.map(option => (
-                <option key={option.value} value={option.value} className="bg-indigo-900 text-white">
+                <option 
+                  key={option.value} 
+                  value={option.value} 
+                  className="!bg-indigo-900 !text-white !border-none"
+                  style={{ 
+                    backgroundColor: '#312e81 !important',
+                    color: 'white !important',
+                    borderColor: 'transparent !important'
+                  }}
+                >
                   {option.label} ({option.count})
                 </option>
               ))}
@@ -179,9 +194,24 @@ export function SignalStreamFilters({
               value={filters.tradeType}
               onChange={(e) => updateFilter('tradeType', e.target.value)}
               className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+              style={{ 
+                colorScheme: 'dark',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
             >
               {tradeTypeOptions.map(option => (
-                <option key={option.value} value={option.value} className="bg-indigo-900 text-white">
+                <option 
+                  key={option.value} 
+                  value={option.value} 
+                  className="!bg-indigo-900 !text-white !border-none"
+                  style={{ 
+                    backgroundColor: '#312e81 !important',
+                    color: 'white !important',
+                    borderColor: 'transparent !important'
+                  }}
+                >
                   {option.label} ({option.count})
                 </option>
               ))}
@@ -193,10 +223,35 @@ export function SignalStreamFilters({
                 value={filters.educator}
                 onChange={(e) => updateFilter('educator', e.target.value)}
                 className="h-8 px-3 text-xs bg-indigo-900 text-white border border-indigo-700 rounded-md focus:border-indigo-600 focus:outline-none transition-all duration-200 shadow-sm shadow-indigo-900/20 hover:bg-indigo-800 hover:border-indigo-600 z-50"
+                style={{ 
+                  colorScheme: 'dark',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none'
+                }}
               >
-                <option value="" className="bg-indigo-900 text-white">All Educators ({educatorOptions.length})</option>
+                <option 
+                  value="" 
+                  className="!bg-indigo-900 !text-white !border-none"
+                  style={{ 
+                    backgroundColor: '#312e81 !important',
+                    color: 'white !important',
+                    borderColor: 'transparent !important'
+                  }}
+                >
+                  All Educators ({educatorOptions.length})
+                </option>
                 {educatorOptions.map(educator => (
-                  <option key={educator.id} value={educator.id} className="bg-indigo-900 text-white">
+                  <option 
+                    key={educator.id} 
+                    value={educator.id} 
+                    className="!bg-indigo-900 !text-white !border-none"
+                    style={{ 
+                      backgroundColor: '#312e81 !important',
+                      color: 'white !important',
+                      borderColor: 'transparent !important'
+                    }}
+                  >
                     {educator.name}
                   </option>
                 ))}

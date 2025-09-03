@@ -27,7 +27,7 @@ export function StreamHealthPanel() {
   const fetchHealth = async () => {
     try {
       const response = await fetch(
-        'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming',
+        'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming?action=health',
         {
           method: 'GET',
           headers: {

@@ -63,6 +63,7 @@ const OptimizedHybridContextProvider: React.FC<{
   onSystemSwitch: (enhanced: boolean) => void;
 }> = ({ children, onSystemSwitch }) => {
   const optimizedContext = useOptimizedWebSocketPrices();
+  const [connectionTimeout, setConnectionTimeout] = useState<number | null>(null);
 
   const contextValue: HybridWebSocketContextType = {
     prices: optimizedContext.prices,
@@ -96,6 +97,30 @@ const OptimizedHybridContextProvider: React.FC<{
       onSystemSwitch(false);
     }
   }, [optimizedContext.connectionStatus, onSystemSwitch]);
+
+  // Set 5-second timeout for connection establishment
+  useEffect(() => {
+    if (optimizedContext.connectionStatus === 'connecting') {
+      const timeout = window.setTimeout(() => {
+        if (optimizedContext.connectionStatus !== 'connected') {
+          console.warn('🕒 Optimized system timeout (5s), switching to legacy');
+          onSystemSwitch(false);
+        }
+      }, 5000);
+      setConnectionTimeout(timeout);
+    } else if (optimizedContext.connectionStatus === 'connected') {
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+        setConnectionTimeout(null);
+      }
+    }
+
+    return () => {
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
+    };
+  }, [optimizedContext.connectionStatus, onSystemSwitch, connectionTimeout]);
 
   return (
     <HybridWebSocketContext.Provider value={contextValue}>
@@ -149,14 +174,24 @@ export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProvider
     setUseEnhanced(enhanced);
   };
 
-  // Always use optimized system now - remove legacy fallback
-  return (
-    <OptimizedWebSocketPriceProvider>
-      <OptimizedHybridContextProvider onSystemSwitch={handleSystemSwitch}>
-        {children}
-      </OptimizedHybridContextProvider>
-    </OptimizedWebSocketPriceProvider>
-  );
+  // Use optimized system with legacy fallback
+  if (useEnhanced) {
+    return (
+      <OptimizedWebSocketPriceProvider>
+        <OptimizedHybridContextProvider onSystemSwitch={handleSystemSwitch}>
+          {children}
+        </OptimizedHybridContextProvider>
+      </OptimizedWebSocketPriceProvider>
+    );
+  } else {
+    return (
+      <WebSocketPriceProvider>
+        <LegacyHybridContextProvider>
+          {children}
+        </LegacyHybridContextProvider>
+      </WebSocketPriceProvider>
+    );
+  }
 };
 
 export default HybridWebSocketPriceProvider;

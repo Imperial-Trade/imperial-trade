@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Simple price data interface
 interface PriceData {
@@ -45,6 +46,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const reconnectTimeoutRef = useRef<number | null>(null);
   const subscriptionsRef = useRef<Set<string>>(new Set());
   const reconnectAttempts = useRef<number>(0);
+  const isAuthenticatedRef = useRef<boolean>(false);
 
   // Optimized WebSocket URL - direct to our new edge function
   const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming';
@@ -61,19 +63,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     const socket = new WebSocket(WEBSOCKET_URL);
     socketRef.current = socket;
 
-    socket.onopen = () => {
-      console.log('✅ Connected to optimized WebSocket');
-      setConnectionStatus('connected');
+    socket.onopen = async () => {
+      console.log('✅ WebSocket opened, authenticating...');
+      setConnectionStatus('connecting');
       setError(null);
       reconnectAttempts.current = 0;
+      isAuthenticatedRef.current = false;
 
-      // Re-subscribe to any previous subscriptions
-      if (subscriptionsRef.current.size > 0) {
+      // Send authentication message first
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
         socket.send(JSON.stringify({
-          type: 'subscribe',
-          symbols: Array.from(subscriptionsRef.current),
-          clearPrevious: true
+          action: 'auth',
+          token: token || null
         }));
+      } catch (error) {
+        console.error('❌ Authentication error:', error);
+        setError('Authentication failed');
+        setConnectionStatus('error');
       }
     };
 
@@ -82,40 +91,67 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         const data = JSON.parse(event.data);
         
         switch (data.type) {
-          case 'connected':
-            console.log('📡 WebSocket connection established');
+          case 'connection_status':
+            console.log('📡 Connection status:', data.status);
             break;
             
-          case 'subscribed':
-            console.log('📈 Subscribed to symbols:', data.symbols);
-            if (data.prices) {
-              setPrices(prev => ({ ...prev, ...data.prices }));
+          case 'auth_success':
+            console.log('🔑 Authentication successful');
+            setConnectionStatus('connected');
+            isAuthenticatedRef.current = true;
+            
+            // Re-subscribe to any previous subscriptions after authentication
+            if (subscriptionsRef.current.size > 0) {
+              socket.send(JSON.stringify({
+                action: 'subscribe',
+                symbols: Array.from(subscriptionsRef.current)
+              }));
             }
             break;
             
-          case 'price_updates':
-            // Fast price updates - directly update state
-            setPrices(prev => ({ ...prev, ...data.updates }));
+          case 'auth_error':
+            console.error('❌ Authentication failed:', data.message);
+            setError(data.message);
+            setConnectionStatus('error');
+            break;
+            
+          case 'price_batch':
+            // Batch price updates from cache
+            if (data.prices) {
+              setPrices(prev => ({ ...prev, ...data.prices }));
+              console.log('📈 Batch price update:', Object.keys(data.prices).length, 'symbols');
+            }
+            break;
+            
+          case 'price_update':
+            // Individual real-time price update
+            if (data.symbol && data.price !== undefined) {
+              const priceData: PriceData = {
+                symbol: data.symbol,
+                price: data.price,
+                change: data.change || 0,
+                changePercent: data.changePercent || 0,
+                timestamp: data.timestamp || new Date().toISOString()
+              };
+              setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
+            }
             break;
             
           case 'pong':
             // Health check response
             break;
             
-            case 'error':
+          case 'error':
             console.error('❌ WebSocket error:', data.message);
             setError(data.message);
             break;
             
-          case 'unsubscribe_ack':
-            // Silent acknowledgment - no logging needed
+          case 'subscription_ack':
+            console.log('✅ Subscription confirmed:', data.symbols);
             break;
             
           default:
-            // Only log unknown message types that aren't expected
-            if (!['unsubscribed', 'unsubscribe_ack'].includes(data.type)) {
-              console.log('📦 Unknown message type:', data.type);
-            }
+            console.log('📦 Unknown message type:', data.type, data);
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);
@@ -161,12 +197,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Add to local subscription tracking
     symbols.forEach(symbol => subscriptionsRef.current.add(symbol));
     
-    // Send subscription message if connected
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    // Send subscription message if connected and authenticated
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
       socketRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        symbols,
-        clearPrevious: false
+        action: 'subscribe',
+        symbols
       }));
     }
   }, []);
@@ -175,10 +210,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Remove from local subscription tracking
     symbols.forEach(symbol => subscriptionsRef.current.delete(symbol));
     
-    // Send unsubscription message if connected
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    // Send unsubscription message if connected and authenticated
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
       socketRef.current.send(JSON.stringify({
-        type: 'unsubscribe',
+        action: 'unsubscribe',
         symbols
       }));
     }
@@ -201,8 +236,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Health check ping every 30 seconds
     const pingInterval = setInterval(() => {
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ type: 'ping' }));
+      if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
+        socketRef.current.send(JSON.stringify({ action: 'ping' }));
       }
     }, 30000);
     

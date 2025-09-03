@@ -16,31 +16,126 @@ interface ProcessedAlert {
   reason?: string;
 }
 
-// Realtime-only Alert Monitor
-class RealtimeAlertMonitor {
+// Direct WebSocket Alert Monitor - Optimized for low Realtime usage
+class DirectWebSocketAlertMonitor {
   private supabase: any;
-  private subscription: any;
+  private websocket: WebSocket | null = null;
   private processingActive = false;
+  private reconnectTimeout: number | null = null;
+  private isConnecting = false;
   
   constructor(supabase: any) {
     this.supabase = supabase;
   }
 
   async initialize(): Promise<void> {
-    console.log('🚀 Initializing Realtime-only Alert Monitor...');
-    console.log('📡 Consuming live prices from enhanced-websocket-streaming via Supabase Realtime');
+    console.log('🚀 Initializing Direct WebSocket Alert Monitor...');
+    console.log('🔌 Connecting directly to enhanced-websocket-streaming service');
     
-    // Subscribe to price updates from enhanced-websocket-streaming
-    this.subscription = this.supabase
-      .channel('prices:live')
-      .on('broadcast', { event: 'price_update' }, async (payload: any) => {
-        if (!this.processingActive && payload.payload) {
-          await this.handlePriceUpdate(payload.payload);
+    await this.connectToEnhancedService();
+  }
+
+  private async connectToEnhancedService(): Promise<void> {
+    if (this.isConnecting || this.websocket?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      this.isConnecting = true;
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+      
+      console.log('🔌 Connecting to enhanced WebSocket service...');
+      this.websocket = new WebSocket(wsUrl);
+
+      this.websocket.onopen = () => {
+        console.log('✅ Connected to enhanced WebSocket service');
+        this.isConnecting = false;
+        
+        // Authenticate with the service
+        this.websocket?.send(JSON.stringify({
+          type: 'authenticate',
+          token: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        }));
+      };
+
+      this.websocket.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'price_update' && !this.processingActive) {
+            await this.handlePriceUpdate(data.payload);
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message:', error);
         }
-      })
-      .subscribe((status: string) => {
-        console.log('📡 Realtime subscription status:', status);
-      });
+      };
+
+      this.websocket.onclose = () => {
+        console.log('🔌 WebSocket connection closed, scheduling reconnect...');
+        this.isConnecting = false;
+        this.websocket = null;
+        
+        // Reconnect after 5 seconds
+        this.reconnectTimeout = setTimeout(() => {
+          this.connectToEnhancedService();
+        }, 5000);
+      };
+
+      this.websocket.onerror = (error) => {
+        console.error('❌ WebSocket connection error:', error);
+        this.isConnecting = false;
+      };
+
+    } catch (error) {
+      console.error('❌ Failed to connect to enhanced service:', error);
+      this.isConnecting = false;
+      
+      // Fallback to polling approach
+      await this.startPollingMode();
+    }
+  }
+
+  private async startPollingMode(): Promise<void> {
+    console.log('🔄 Starting polling mode as fallback...');
+    
+    // Poll for alerts every 2 seconds using RPC
+    setInterval(async () => {
+      if (this.processingActive) return;
+      
+      try {
+        // Get active symbols from alert monitoring
+        const { data: activeAlerts } = await this.supabase
+          .from('alert_monitoring')
+          .select('symbol, target_price, alert_type')
+          .eq('is_active', true);
+          
+        if (!activeAlerts || activeAlerts.length === 0) return;
+        
+        // Get unique symbols
+        const symbols = [...new Set(activeAlerts.map((alert: any) => alert.symbol))];
+        
+        // Check current prices for these symbols
+        for (const symbol of symbols) {
+          const { data: priceData } = await this.supabase
+            .from('market_prices')
+            .select('*')
+            .eq('symbol', symbol)
+            .single();
+            
+          if (priceData) {
+            await this.handlePriceUpdate({
+              symbol: priceData.symbol,
+              bid: priceData.bid,
+              ask: priceData.ask,
+              price: priceData.mid,
+              timestamp: priceData.timestamp
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Polling mode error:', error);
+      }
+    }, 2000);
   }
 
   private async handlePriceUpdate(priceData: any): Promise<void> {
@@ -139,24 +234,29 @@ class RealtimeAlertMonitor {
     }
   }
 
-  async healthCheck(): Promise<{ status: string; mode: string; subscription: string }> {
+  async healthCheck(): Promise<{ status: string; mode: string; connection: string }> {
     return {
       status: 'operational',
-      mode: 'realtime-only',
-      subscription: this.subscription ? 'active' : 'inactive'
+      mode: 'direct-websocket',
+      connection: this.websocket?.readyState === WebSocket.OPEN ? 'active' : 'inactive'
     };
   }
 
   disconnect(): void {
-    if (this.subscription) {
-      this.supabase.removeChannel(this.subscription);
-      this.subscription = null;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    if (this.websocket) {
+      this.websocket.close();
+      this.websocket = null;
     }
   }
 }
 
 // Global monitor instance
-let monitor: RealtimeAlertMonitor | null = null;
+let monitor: DirectWebSocketAlertMonitor | null = null;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -176,7 +276,7 @@ serve(async (req) => {
 
     // Initialize monitor if not already running
     if (!monitor) {
-      monitor = new RealtimeAlertMonitor(supabase);
+      monitor = new DirectWebSocketAlertMonitor(supabase);
       await monitor.initialize();
     }
 
@@ -188,10 +288,10 @@ serve(async (req) => {
         const health = await monitor.healthCheck();
         return new Response(JSON.stringify({
           status: 'operational',
-          version: '3.0.0-realtime-only',
+          version: '4.0.0-direct-websocket',
           monitor: health,
           timestamp: new Date().toISOString(),
-          message: 'Realtime-only alert monitoring active - consuming from enhanced-websocket-streaming'
+          message: 'Direct WebSocket alert monitoring active - optimized for low Realtime usage'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -200,14 +300,14 @@ serve(async (req) => {
         if (monitor) {
           monitor.disconnect();
         }
-        monitor = new RealtimeAlertMonitor(supabase);
+        monitor = new DirectWebSocketAlertMonitor(supabase);
         await monitor.initialize();
         
         return new Response(JSON.stringify({
           status: 'restarted',
-          version: '3.0.0-realtime-only',
+          version: '4.0.0-direct-websocket',
           timestamp: new Date().toISOString(),
-          message: 'Realtime alert monitor restarted successfully'
+          message: 'Direct WebSocket alert monitor restarted successfully'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

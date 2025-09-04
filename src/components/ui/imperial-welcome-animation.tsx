@@ -51,9 +51,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       // After exactly 3 cycles (2 seconds), start dashboard fade immediately
       if (currentCycle >= 3 && elapsedTime >= 2000) {
         setShowDashboardFade(true);
+        // Call onComplete immediately so dashboard content can start fading in
+        onComplete?.();
+        // Remove overlay only after the full 5-second fade completes
         setTimeout(() => {
           setIsVisible(false);
-          onComplete?.();
         }, 5000); // 5 second dashboard fade duration
         return;
       }

@@ -32,7 +32,7 @@ export const useOneSignalPush = () => {
 
     try {
       await window.OneSignal.init({
-        appId: 'c776609b-8750-4d5e-aa48-95d6ae6b9d68', // Production OneSignal App ID
+        appId: 'c6d5466e-9ca7-40b2-90db-57ec42d385ef', // Production OneSignal App ID
         allowLocalhostAsSecureOrigin: true,
         autoRegister: false,
         autoResubscribe: false,

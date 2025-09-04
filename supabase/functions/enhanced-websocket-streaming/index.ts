@@ -10,14 +10,17 @@ const corsHeaders = {
 };
 
 // Zero-Pause Optimized Configuration
-const WS_AUTH_TIMEOUT_MS = 15000; // Faster auth timeout
+const WS_AUTH_TIMEOUT_MS = 10000; // Faster auth timeout
 const MAX_WS_SUBS_PER_CLIENT = 10; // Reduced from 20
 const BATCH_INTERVAL_MS = 50; // Ultra-fast 50ms batching
 const HEARTBEAT_INTERVAL_MS = 10000; // Faster 10s heartbeat for quick detection
 const MAX_CLIENTS = 1000; // Connection limit
 const IDLE_TIMEOUT_MS = 180000; // 3 minutes idle timeout
-const RECONNECT_DELAY_MS = 2000; // Fast reconnection
+const RECONNECT_DELAY_MS = 1000; // Fast reconnection - reduced from 2000ms
 const PRICE_CACHE_TTL_MS = 5000; // 5-second cache for instant delivery
+const LEADER_ELECTION_TTL = 45; // Reduced TTL for faster leader election
+const FOLLOWER_PROMOTION_INTERVAL = 15000; // Check leader status every 15s
+const LEADER_HEARTBEAT_INTERVAL = 20000; // Leader heartbeat every 20s
 
 // Supabase clients
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -148,7 +151,7 @@ class EnhancedWebSocketStreaming {
       const result = await this.redisPublisher.set(
         'websocket:leader',
         this.instanceId,
-        { ex: 60, nx: true } // 60 second TTL, only if not exists
+        { ex: LEADER_ELECTION_TTL, nx: true } // Reduced TTL for faster failover
       );
 
       if (result === 'OK') {
@@ -156,32 +159,40 @@ class EnhancedWebSocketStreaming {
         this.isLeader = true;
         this.connectToTradermade();
         
-        // Maintain leadership
+        // Maintain leadership with leader heartbeat
         setInterval(async () => {
           try {
-            await this.redisPublisher!.expire('websocket:leader', 60);
+            await this.redisPublisher!.set('leader:heartbeat', Date.now().toString(), { ex: LEADER_ELECTION_TTL });
+            await this.redisPublisher!.expire('websocket:leader', LEADER_ELECTION_TTL);
           } catch (error) {
             console.error('❌ Failed to maintain leadership:', error);
           }
-        }, 30000);
+        }, LEADER_HEARTBEAT_INTERVAL);
       } else {
         console.log('📡 Running as follower instance');
         this.isLeader = false;
         this.subscribeToRedisUpdates();
 
-        // Periodically attempt re-election in case the leader goes down
+        // More aggressive leader promotion attempts
         setInterval(async () => {
           try {
-            const res = await this.redisPublisher!.set('websocket:leader', this.instanceId, { ex: 60, nx: true });
-            if (res === 'OK') {
-              console.log(`👑 Promoted to leader: ${this.instanceId}`);
-              this.isLeader = true;
-              this.connectToTradermade();
+            // Check if current leader is still active
+            const leaderHeartbeat = await this.redisPublisher!.get('leader:heartbeat');
+            const now = Date.now();
+            
+            if (!leaderHeartbeat || (now - parseInt(leaderHeartbeat)) > LEADER_HEARTBEAT_INTERVAL * 2) {
+              console.log('🎯 Leader appears inactive, attempting promotion...');
+              const res = await this.redisPublisher!.set('websocket:leader', this.instanceId, { ex: LEADER_ELECTION_TTL, nx: true });
+              if (res === 'OK') {
+                console.log(`👑 Promoted to leader: ${this.instanceId}`);
+                this.isLeader = true;
+                this.connectToTradermade();
+              }
             }
           } catch (e) {
             // ignore errors, will try again next interval
           }
-        }, 30000);
+        }, FOLLOWER_PROMOTION_INTERVAL);
       }
     } catch (error) {
       console.error('❌ Leader election failed:', error);

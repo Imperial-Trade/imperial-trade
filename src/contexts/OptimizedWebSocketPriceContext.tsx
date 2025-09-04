@@ -51,7 +51,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // Zero-pause: Direct connection to enhanced-websocket-streaming (not tradermade-streaming)
   const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -60,37 +60,55 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     setConnectionStatus('connecting');
     setError(null);
 
-    const socket = new WebSocket(WEBSOCKET_URL);
-    socketRef.current = socket;
-
-    socket.onopen = async () => {
-      console.log('✅ WebSocket opened, authenticating...');
-      setConnectionStatus('connecting');
-      setError(null);
-      reconnectAttempts.current = 0;
-      isAuthenticatedRef.current = false;
-
-      // Send authentication message first (support both legacy and new schemas)
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+    try {
+      // Get authentication session with retry logic
+      let session = null;
+      let authAttempts = 0;
+      const maxAuthAttempts = 3;
+      
+      while (!session && authAttempts < maxAuthAttempts) {
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
         
-        // Primary: legacy-compatible schema
-        socket.send(JSON.stringify({
-          type: 'auth',
-          token: token || null
-        }));
-        
-        // Compatibility: also send newer action-based schema if server expects it
-        try {
-          socket.send(JSON.stringify({ action: 'auth', token: token || null }));
-        } catch {}
-      } catch (error) {
-        console.error('❌ Authentication error:', error);
-        setError('Authentication failed');
-        setConnectionStatus('error');
+        if (!session) {
+          authAttempts++;
+          console.log(`🔐 Auth attempt ${authAttempts}/${maxAuthAttempts} - waiting for session...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-    };
+
+      const socket = new WebSocket(WEBSOCKET_URL);
+      socketRef.current = socket;
+
+      socket.onopen = async () => {
+        console.log('✅ WebSocket opened, authenticating...');
+        setConnectionStatus('connecting');
+        setError(null);
+        reconnectAttempts.current = 0;
+        isAuthenticatedRef.current = false;
+
+        // Send authentication message first (support both legacy and new schemas)
+        try {
+          const token = session?.access_token;
+          
+          // Primary: legacy-compatible schema
+          socket.send(JSON.stringify({
+            type: 'auth',
+            token: token || null
+          }));
+          
+          // Compatibility: also send newer action-based schema if server expects it
+          try {
+            socket.send(JSON.stringify({ action: 'auth', token: token || null }));
+          } catch {}
+          
+          console.log('🔐 Authentication message sent');
+        } catch (error) {
+          console.error('❌ Authentication error:', error);
+          setError('Authentication failed - please refresh and try again');
+          setConnectionStatus('error');
+        }
+      };
 
     socket.onmessage = (event) => {
       try {
@@ -234,9 +252,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     socket.onerror = (error) => {
       console.error('❌ WebSocket error:', error);
       setConnectionStatus('error');
-      setError('Connection failed');
+      setError('WebSocket connection failed - TraderMade may be disconnected');
     };
-  }, [WEBSOCKET_URL]);
+  } catch (error) {
+    console.error('❌ Connection setup failed:', error);
+    setConnectionStatus('error');
+    setError('Failed to establish connection - please check your network');
+    
+    // Retry connection after delay
+    const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current), 8000);
+    reconnectAttempts.current++;
+    reconnectTimeoutRef.current = window.setTimeout(connect, delay);
+  }
+}, [WEBSOCKET_URL]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

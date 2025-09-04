@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, X, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { toast } from '@/hooks/use-toast';
 
@@ -25,11 +24,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     subscribeToPush 
   } = useOneSignalPush();
 
-  const [formState, setFormState] = useState({
-    receiveAlerts: false,
-    privacyPolicy: false,
-    termsOfUse: false,
-  });
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,45 +35,14 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     setTimeout(() => setShowMessage(false), 3000);
   };
 
-  const handleCheckboxChange = (field: keyof typeof formState) => {
-    setFormState(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-
-  const validateForm = () => {
-    if (!formState.receiveAlerts) {
-      showToastMessage('Please check "Receive Trade Alerts" to subscribe.');
-      return false;
-    }
-    if (!formState.privacyPolicy) {
-      showToastMessage('You must agree to the Privacy Policy.');
-      return false;
-    }
-    if (!formState.termsOfUse) {
-      showToastMessage('You must agree to the Terms of Use.');
-      return false;
-    }
-    return true;
-  };
-
   const handleActivate = async () => {
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
     try {
       const success = await subscribeToPush();
       if (success) {
         toast({
-          title: "🎉 Push Notifications Activated!",
+          title: "🔔 Alerts Activated!",
           description: "You'll now receive instant trade alerts and market opportunities.",
-        });
-        // Reset form and close
-        setFormState({
-          receiveAlerts: false,
-          privacyPolicy: false,
-          termsOfUse: false,
         });
         onClose();
       }
@@ -92,8 +55,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   };
 
   const handleNotNow = () => {
-    showToastMessage('You can enable notifications anytime in your settings.');
-    setTimeout(() => onClose(), 1000);
+    onClose();
   };
 
   // Add shake animation after 10 seconds of no interaction
@@ -201,67 +163,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                   </div>
                 </div>
 
-                {/* Form Checkboxes */}
-                <div className="space-y-4 border-t border-border pt-4">
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="receive-alerts"
-                      checked={formState.receiveAlerts}
-                      onCheckedChange={() => handleCheckboxChange('receiveAlerts')}
-                      className="mt-0.5"
-                    />
-                    <label 
-                      htmlFor="receive-alerts" 
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      Receive Trade Alerts
-                    </label>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="privacy-policy"
-                      checked={formState.privacyPolicy}
-                      onCheckedChange={() => handleCheckboxChange('privacyPolicy')}
-                      className="mt-0.5"
-                    />
-                    <label 
-                      htmlFor="privacy-policy" 
-                      className="text-sm cursor-pointer"
-                    >
-                      I agree to the{' '}
-                      <a 
-                        href="/legal/privacy" 
-                        target="_blank"
-                        className="text-imperial-gold hover:text-imperial-gold-light underline"
-                      >
-                        Privacy Policy
-                      </a>
-                    </label>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="terms-of-use"
-                      checked={formState.termsOfUse}
-                      onCheckedChange={() => handleCheckboxChange('termsOfUse')}
-                      className="mt-0.5"
-                    />
-                    <label 
-                      htmlFor="terms-of-use" 
-                      className="text-sm cursor-pointer"
-                    >
-                      I agree to the{' '}
-                      <a 
-                        href="/legal/terms" 
-                        target="_blank"
-                        className="text-imperial-gold hover:text-imperial-gold-light underline"
-                      >
-                        Terms of Use
-                      </a>
-                    </label>
-                  </div>
-                </div>
 
                 {/* Action Buttons */}
                 <div className="space-y-3 pt-2">
@@ -281,7 +182,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                         <span>Already Activated</span>
                       </div>
                     ) : (
-                      'Activate'
+                      'Receive Alerts 🔔'
                     )}
                   </Button>
 
@@ -290,7 +191,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                     variant="outline"
                     className="w-full py-3 rounded-full"
                   >
-                    Not Now
+                    No Alerts
                   </Button>
                 </div>
 

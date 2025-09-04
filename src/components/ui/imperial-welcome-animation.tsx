@@ -1,4 +1,5 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
+import { TypewriterText } from './typewriter-text';
 
 interface ImperialWelcomeAnimationProps {
   onComplete?: () => void;
@@ -9,6 +10,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const startTimeRef = useRef<number>();
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
+  const [typingComplete, setTypingComplete] = useState(false);
 
   const tagline = "the imperial experience awaits.";
 
@@ -19,21 +21,30 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     
     const elapsedTime = currentTime - startTimeRef.current;
     
-    // Update active dot every 600ms
-    const cycleTime = elapsedTime % 2400; // 4 dots * 600ms
-    const newActiveDot = Math.floor(cycleTime / 600);
-    setActiveDot(newActiveDot);
-    
-    // Show for 3 seconds then complete
-    if (elapsedTime >= 3000) {
-      setTimeout(() => {
-        setIsVisible(false);
-        onComplete?.();
-      }, 100);
-      return;
+    // Only animate dots after typing is complete
+    if (typingComplete) {
+      // Update active dot every 600ms
+      const cycleTime = elapsedTime % 1800; // 3 dots * 600ms
+      const newActiveDot = Math.floor(cycleTime / 600);
+      setActiveDot(newActiveDot);
+      
+      // Show for 2 seconds after typing completes
+      if (elapsedTime >= 2000) {
+        setTimeout(() => {
+          setIsVisible(false);
+          onComplete?.();
+        }, 100);
+        return;
+      }
     }
     
     animationRef.current = requestAnimationFrame(animate);
+  };
+
+  const handleTypingComplete = () => {
+    setTypingComplete(true);
+    // Reset the start time for dot animation
+    startTimeRef.current = performance.now();
   };
 
   useLayoutEffect(() => {
@@ -189,19 +200,26 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     >
       <div className="text-center px-4 max-w-4xl mx-auto">
         <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
-          {tagline}
+          <TypewriterText 
+            text={tagline}
+            speed={100}
+            onComplete={handleTypingComplete}
+            className="text-white/90"
+          />
         </h1>
         
-        <div className="flex items-center justify-center gap-3 sm:gap-5">
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
-                activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
-              }`}
-            />
-          ))}
-        </div>
+        {typingComplete && (
+          <div className="flex items-center justify-center gap-3 sm:gap-5 animate-fade-in">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
+                  activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

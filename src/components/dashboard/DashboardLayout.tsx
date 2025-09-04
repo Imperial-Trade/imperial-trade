@@ -19,10 +19,17 @@ export const DashboardLayout: React.FC = () => {
       </div>
 
       {/* Top Navigation - Hidden during welcome animation */}
-      {hasSeenWelcome && <DashboardNav />}
+      {hasSeenWelcome && (
+        <div className="animate-fade-in">
+          <DashboardNav />
+        </div>
+      )}
       
       {/* Main Content with Dynamic Top Padding */}
-      <main className="relative" style={{ paddingTop: 'var(--header-height, 4rem)' }}>
+      <main 
+        className={`relative ${hasSeenWelcome ? 'animate-fade-in' : ''}`} 
+        style={{ paddingTop: 'var(--header-height, 4rem)' }}
+      >
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/5 to-transparent pointer-events-none"></div>
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />

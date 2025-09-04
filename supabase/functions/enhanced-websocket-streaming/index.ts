@@ -261,10 +261,19 @@ class EnhancedWebSocketStreaming {
         const nowIso = new Date().toISOString();
 
         if (Array.isArray(values)) {
-          values.forEach((val: string | null, idx: number) => {
+          values.forEach((val: string | object | null, idx: number) => {
             if (!val) return;
             try {
-              const parsed = JSON.parse(val) as PriceData;
+              // Handle both string (needs parsing) and object (already parsed by Upstash client)
+              let parsed: PriceData;
+              if (typeof val === 'string') {
+                parsed = JSON.parse(val) as PriceData;
+              } else if (typeof val === 'object') {
+                parsed = val as PriceData;
+              } else {
+                console.warn(`⚠️ Unexpected Redis value type: ${typeof val}, value:`, val);
+                return;
+              }
               const symbol = symbols[idx];
               const price = parsed.price ?? parsed.mid ?? ((parsed.bid !== undefined && parsed.ask !== undefined) ? (Number(parsed.bid) + Number(parsed.ask)) / 2 : undefined);
               if (!symbol || price === undefined) return;

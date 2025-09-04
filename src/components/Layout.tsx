@@ -49,7 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const isMobile = useIsMobile()
-  const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome()
+  const { hasSeenWelcome, isReady, markWelcomeAsSeen } = useWelcome()
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
@@ -72,12 +72,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
         {/* Welcome Animation - renders above everything when needed */}
-        {!hasSeenWelcome && (
+        {isReady && !hasSeenWelcome && (
           <ImperialWelcomeAnimation onComplete={markWelcomeAsSeen} />
         )}
         
         {/* Only render header when welcome animation is complete */}
-        {hasSeenWelcome && (
+        {isReady && hasSeenWelcome && (
           <ErrorBoundary componentName="Header">
             <SharedHeader />
           </ErrorBoundary>

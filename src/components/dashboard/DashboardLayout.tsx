@@ -3,8 +3,11 @@ import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { useWelcome } from '@/contexts/WelcomeContext';
 
 export const DashboardLayout: React.FC = () => {
+  const { hasSeenWelcome, isReady } = useWelcome();
+  
   return (
     <div className="min-h-screen bg-background">
       {/* Sophisticated Background Effects */}
@@ -15,8 +18,8 @@ export const DashboardLayout: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-radial from-accent/8 to-transparent rounded-full blur-3xl"></div>
       </div>
 
-      {/* Top Navigation */}
-      <DashboardNav />
+      {/* Top Navigation - only show after welcome animation */}
+      {isReady && hasSeenWelcome && <DashboardNav />}
       
       {/* Main Content with Dynamic Top Padding */}
       <main className="relative" style={{ paddingTop: 'var(--header-height, 4rem)' }}>

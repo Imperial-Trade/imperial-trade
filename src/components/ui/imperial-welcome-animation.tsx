@@ -55,32 +55,38 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   // Typewriter effect for tagline
   const drawTypewriter = (ctx: CanvasRenderingContext2D, progress: number) => {
+    const logicalWidth = window.innerWidth;
+    const logicalHeight = window.innerHeight;
+    
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     
     const charsToShow = Math.floor(tagline.length * progress);
     const displayText = tagline.substring(0, charsToShow);
     
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
+    ctx.font = `300 ${Math.min(logicalWidth * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    ctx.fillText(displayText, ctx.canvas.width / 2, ctx.canvas.height / 2);
+    ctx.fillText(displayText, logicalWidth / 2, logicalHeight / 2);
     
     // Cursor effect
     if (progress < 1) {
       const cursorOpacity = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
       ctx.fillStyle = `rgba(255, 255, 255, ${cursorOpacity})`;
       const textWidth = ctx.measureText(displayText).width;
-      ctx.fillRect(ctx.canvas.width / 2 + textWidth / 2 + 5, ctx.canvas.height / 2 - 20, 3, 40);
+      ctx.fillRect(logicalWidth / 2 + textWidth / 2 + 5, logicalHeight / 2 - 20, 3, 40);
     }
   };
 
   // Pause phase with animated dots - properly centered
   const drawPause = (ctx: CanvasRenderingContext2D, elapsedTime: number) => {
+    const logicalWidth = window.innerWidth;
+    const logicalHeight = window.innerHeight;
+    
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     
     // Calculate center position for text + dots block
     const dotSpacing = 20;
@@ -89,16 +95,16 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     const totalBlockHeight = textDotsGap + dotsHeight;
     
     // Position text higher to center the entire text+dots block
-    const textY = (ctx.canvas.height - totalBlockHeight) / 2;
+    const textY = (logicalHeight - totalBlockHeight) / 2;
     const dotY = textY + textDotsGap + (dotsHeight / 2);
     
     // Main text
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
+    ctx.font = `300 ${Math.min(logicalWidth * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    ctx.fillText(tagline, ctx.canvas.width / 2, textY);
+    ctx.fillText(tagline, logicalWidth / 2, textY);
     
     // Animated dots below the text
     const dotSize = 8;
@@ -110,7 +116,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     
     // Draw 4 dots
     for (let i = 0; i < 4; i++) {
-      const dotX = ctx.canvas.width / 2 - (1.5 * dotSpacing) + (i * dotSpacing);
+      const dotX = logicalWidth / 2 - (1.5 * dotSpacing) + (i * dotSpacing);
       const isActive = i === activeDot;
       
       ctx.beginPath();
@@ -123,18 +129,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   // Opening effect - dramatic fade out with scale
   const drawOpening = (ctx: CanvasRenderingContext2D, progress: number) => {
     const easedProgress = easeInOutCubic(progress);
+    const logicalWidth = window.innerWidth;
+    const logicalHeight = window.innerHeight;
     
     // Create expanding circle effect
-    const maxRadius = Math.sqrt(Math.pow(ctx.canvas.width, 2) + Math.pow(ctx.canvas.height, 2));
+    const maxRadius = Math.sqrt(Math.pow(logicalWidth, 2) + Math.pow(logicalHeight, 2));
     const currentRadius = maxRadius * easedProgress;
     
     // Fill background
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     
     // Show text with fade out
     const textOpacity = 1 - easedProgress;
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
+    ctx.font = `300 ${Math.min(logicalWidth * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = `rgba(255, 255, 255, ${textOpacity * 0.9})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -142,7 +150,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     // Scale text slightly
     ctx.save();
     const scale = 1 + (easedProgress * 0.1);
-    ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+    ctx.translate(logicalWidth / 2, logicalHeight / 2);
     ctx.scale(scale, scale);
     ctx.fillText(tagline, 0, 0);
     ctx.restore();
@@ -156,7 +164,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       ctx.save();
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
-      ctx.arc(ctx.canvas.width / 2, ctx.canvas.height / 2, openingRadius, 0, Math.PI * 2);
+      ctx.arc(logicalWidth / 2, logicalHeight / 2, openingRadius, 0, Math.PI * 2);
       ctx.fillStyle = 'white';
       ctx.fill();
       ctx.restore();

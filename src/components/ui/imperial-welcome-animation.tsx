@@ -54,7 +54,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         setTimeout(() => {
           setIsVisible(false);
           onComplete?.();
-        }, 3000); // 3 second dashboard fade duration
+        }, 5000); // 5 second dashboard fade duration
         return;
       }
     }
@@ -215,7 +215,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   return (
     <div 
-      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-3000 ${
+      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-5000 ${
         showDashboardFade ? 'bg-black/0' : 'bg-black'
       }`}
       style={{ minHeight: '100dvh' }}
@@ -234,11 +234,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
           </h1>
           
           {typingComplete && (
-            <div className="flex items-center justify-center gap-3 sm:gap-5 animate-fade-in">
-              {[0, 1, 2].map((index) => (
+            <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
                 <div
                   key={index}
-                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
+                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
                     activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
                   }`}
                 />

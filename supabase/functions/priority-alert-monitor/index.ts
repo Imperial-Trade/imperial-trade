@@ -73,61 +73,71 @@ function setCachedPrice(symbol: string, data: PriceUpdate, priority: 'critical' 
   });
 }
 
-async function fetchEnhancedPrice(symbol: string): Promise<PriceUpdate | null> {
-  const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
-  if (!apiKey) {
-    console.error('❌ TWELVE_DATA_API_KEY not configured');
-    return null;
-  }
+async function fetchEnhancedPrice(symbol: string, supabase: any, redis: any): Promise<PriceUpdate | null> {
+  const priority = getPriorityLevel(symbol);
+  console.log(`🔍 ${priority.toUpperCase()} priority fetch for ${symbol} from Redis/Database`);
 
   try {
-    let apiSymbol = symbol;
-    if (symbol === 'GOLD' || symbol === 'XAU/USD') {
-      apiSymbol = 'XAU/USD';
-    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD' || symbol === 'BTC') {
-      apiSymbol = 'BTC/USD';
+    // Try Redis first (same source as WebSocket live feed)
+    if (redis) {
+      try {
+        const redisKey = `price:${symbol}`;
+        const cachedPrice = await redis.get(redisKey);
+        if (cachedPrice) {
+          const priceData = JSON.parse(cachedPrice);
+          console.log(`✅ Redis hit: ${symbol} Bid: $${priceData.bid?.toFixed(5)} Ask: $${priceData.ask?.toFixed(5)} (TraderMade source)`);
+          
+          return {
+            symbol,
+            price: priceData.mid || priceData.price,
+            bid: priceData.bid,
+            ask: priceData.ask,
+            change: priceData.change || 0,
+            changePercent: priceData.changePercent || 0,
+            timestamp: priceData.timestamp || new Date().toISOString()
+          };
+        }
+      } catch (redisError) {
+        console.log(`⚠️ Redis miss for ${symbol}, falling back to database`);
+      }
     }
 
-    const priority = getPriorityLevel(symbol);
-    console.log(`🚀 ${priority.toUpperCase()} priority fetch for ${symbol} -> ${apiSymbol}`);
-    
-    const url = `https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`;
-    const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(8000)
-    });
+    // Fallback to database market_prices table
+    const { data: dbPrice, error } = await supabase
+      .from('market_prices')
+      .select('*')
+      .eq('symbol', symbol)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
 
-    if (!response.ok) {
-      console.error(`❌ API error for ${symbol}: ${response.status}`);
+    if (error || !dbPrice) {
+      console.log(`❌ No database price for ${symbol}:`, error?.message);
       return null;
     }
 
-    const data = await response.json();
-    
-    if (data.status === 'error' || !data.close) {
-      console.error(`❌ No price data for ${symbol}:`, data);
+    // Check if database price is too stale (older than 30 seconds)
+    const priceAge = Date.now() - new Date(dbPrice.timestamp).getTime();
+    if (priceAge > 30000) {
+      console.log(`⚠️ Stale database price for ${symbol} (${Math.round(priceAge/1000)}s old), skipping`);
       return null;
     }
 
-    // Enhanced price update with bid/ask simulation for precise exit execution
-    const midPrice = parseFloat(data.close);
-    const spread = midPrice * 0.0001; // Simulate realistic spread
-    
     const priceUpdate: PriceUpdate = {
       symbol,
-      price: midPrice,
-      bid: midPrice - (spread / 2),
-      ask: midPrice + (spread / 2),
-      change: parseFloat(data.change) || 0,
-      changePercent: parseFloat(data.percent_change) || 0,
-      timestamp: new Date().toISOString()
+      price: dbPrice.mid,
+      bid: dbPrice.bid,
+      ask: dbPrice.ask,
+      change: 0, // Database doesn't store change data
+      changePercent: 0,
+      timestamp: dbPrice.timestamp
     };
 
-    console.log(`✅ ${priority.toUpperCase()}: ${symbol} Bid: $${priceUpdate.bid.toFixed(5)} Ask: $${priceUpdate.ask.toFixed(5)} (${priceUpdate.changePercent >= 0 ? '+' : ''}${priceUpdate.changePercent}%)`);
+    console.log(`✅ Database hit: ${symbol} Bid: $${priceUpdate.bid?.toFixed(5)} Ask: $${priceUpdate.ask?.toFixed(5)} (TraderMade source)`);
     return priceUpdate;
 
   } catch (error) {
-    console.error(`❌ Exception fetching ${symbol}:`, error);
+    console.error(`❌ Exception fetching ${symbol} from Redis/Database:`, error);
     return null;
   }
 }
@@ -268,6 +278,26 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Initialize Redis for reading cached prices (same source as WebSocket)
+    let redis = null;
+    try {
+      const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+      const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+      if (redisUrl && redisToken) {
+        redis = {
+          async get(key: string) {
+            const response = await fetch(`${redisUrl}/get/${key}`, {
+              headers: { 'Authorization': `Bearer ${redisToken}` }
+            });
+            const data = await response.json();
+            return data.result;
+          }
+        };
+      }
+    } catch (error) {
+      console.log('⚠️ Redis unavailable, using database only:', error.message);
+    }
+
     await refreshActiveSymbols(supabase);
 
     const { symbols = [], force_refresh = false } = await req.json();
@@ -313,7 +343,7 @@ serve(async (req) => {
         }
       }
 
-      const priceData = await fetchEnhancedPrice(symbol);
+      const priceData = await fetchEnhancedPrice(symbol, supabase, redis);
       if (priceData) {
         setCachedPrice(symbol, priceData, priorityLevel);
         results.push(priceData);

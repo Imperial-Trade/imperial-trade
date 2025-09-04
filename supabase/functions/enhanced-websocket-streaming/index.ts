@@ -268,13 +268,23 @@ class EnhancedWebSocketStreaming {
         const cachedPrice = { ...priceData, cachedAt: Date.now() };
         this.priceCache.set(priceData.symbol, cachedPrice);
         
-        // Publish to Redis for followers (store in a simple key for now)
+        // Store in Redis for followers + Database for alert system consistency
         if (this.redisPublisher && this.isLeader) {
           try {
-            // Use simple key-value storage instead of pub-sub for REST API
+            // Store in Redis for fast access by priority-alert-monitor
             await this.redisPublisher.set(`price:${priceData.symbol}`, JSON.stringify(priceData), { ex: 60 });
+            
+            // CRITICAL: Store in database to trigger alert processing via enhanced RPC
+            await this.supabaseService.rpc('upsert_market_price_enhanced', {
+              p_symbol: priceData.symbol,
+              p_bid: priceData.bid,
+              p_ask: priceData.ask,
+              p_mid: priceData.mid,
+              p_timestamp: new Date().toISOString()
+            });
+            
           } catch (error) {
-            console.error('❌ Failed to store price in Redis:', error);
+            console.error('❌ Failed to store price in Redis/Database:', error);
           }
         }
         

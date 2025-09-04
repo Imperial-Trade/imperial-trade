@@ -9,7 +9,6 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
 import { SharedHeader } from "@/components/shared/SharedHeader"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
-import { useWelcome } from "@/contexts/WelcomeContext"
 
 // DashboardHeader replaced with SharedHeader component
 
@@ -48,8 +47,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const isMobile = useIsMobile()
-  const { hasSeenWelcome, isReady } = useWelcome()
-  const showChrome = isReady && hasSeenWelcome
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
@@ -72,22 +69,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
         <ErrorBoundary componentName="Header">
-          {showChrome && <SharedHeader />}
+          <SharedHeader />
         </ErrorBoundary>
 
         {/* Mobile: Use existing Sheet-based sidebar */}
-        {isMobile && showChrome && (
+        {isMobile && (
           <ErrorBoundary componentName="Mobile Sidebar">
             <AppSidebar />
           </ErrorBoundary>
         )}
 
         {/* Tablet & Desktop: Use custom overlay sidebar */}
-        {showChrome && (
-          <ErrorBoundary componentName="Sidebar Overlay">
-            <SidebarOverlay />
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary componentName="Sidebar Overlay">
+          <SidebarOverlay />
+        </ErrorBoundary>
 
         {/* Main content - centered, no left margin */}
         <main className="w-full min-h-screen pt-20 bg-background/20 backdrop-blur-sm border-l border-border/10">
@@ -97,13 +92,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </main>
         
         {/* Trading Arsenal Sidebar - Floating overlay */}
-        {showChrome && (
-          <ErrorBoundary componentName="Trading Arsenal Sidebar">
-            <WidgetSidebar />
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary componentName="Trading Arsenal Sidebar">
+          <WidgetSidebar />
+        </ErrorBoundary>
         
-        {showChrome && <ComplianceFooter />}
+        {/* Compliance Footer */}
+        <ComplianceFooter />
       </div>
     </SidebarProvider>
   )

@@ -3,7 +3,6 @@ import { useAuth } from './AuthContext';
 
 interface WelcomeContextType {
   hasSeenWelcome: boolean;
-  isReady: boolean;
   markWelcomeAsSeen: () => void;
   resetWelcomeForNewSession: () => void;
 }
@@ -20,18 +19,20 @@ export const useWelcome = () => {
 
 export const WelcomeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default to true to prevent flash
 
   useEffect(() => {
     if (user?.id) {
       const welcomeKey = `imperial_welcome_session_${user.id}`;
       const storedValue = localStorage.getItem(welcomeKey);
-      setHasSeenWelcome(storedValue === 'true');
-      setIsReady(true);
+      
+      if (storedValue === 'true') {
+        setHasSeenWelcome(true);
+      } else {
+        setHasSeenWelcome(false);
+      }
     } else {
       setHasSeenWelcome(true); // No user, don't show welcome
-      setIsReady(true);
     }
   }, [user?.id]);
 
@@ -54,7 +55,6 @@ export const WelcomeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <WelcomeContext.Provider value={{
       hasSeenWelcome,
-      isReady,
       markWelcomeAsSeen,
       resetWelcomeForNewSession
     }}>

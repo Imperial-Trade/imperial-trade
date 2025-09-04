@@ -40,8 +40,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+      }
     }
   };
 
@@ -185,118 +188,23 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   useEffect(() => {
-    // Definitive scroll lock with !important CSS and comprehensive event prevention
-    const html = document.documentElement;
-    const body = document.body;
-
-    // Helper to apply CSS with !important
-    const setImportant = (el: HTMLElement, prop: string, val: string) => {
-      el.style.setProperty(prop, val, 'important');
-    };
-
-    // Store ALL original styles for perfect restoration
-    const originalStyles = {
-      html: {
-        overscrollBehavior: html.style.overscrollBehavior,
-        height: html.style.height,
-      },
-      body: {
-        overflow: body.style.overflow,
-        position: body.style.position,
-        top: body.style.top,
-        left: body.style.left,
-        right: body.style.right,
-        width: body.style.width,
-        height: body.style.height,
-        overscrollBehavior: body.style.overscrollBehavior,
-        touchAction: body.style.touchAction,
-      }
-    };
-
-    const scrollY = window.scrollY || window.pageYOffset || 0;
-
-    // Apply definitive scroll lock with !important
-    setImportant(html, 'overscroll-behavior', 'none');
-    setImportant(html, 'height', '100%');
-    setImportant(body, 'overflow', 'hidden');
-    setImportant(body, 'position', 'fixed');
-    setImportant(body, 'top', `-${scrollY}px`);
-    setImportant(body, 'left', '0');
-    setImportant(body, 'right', '0');
-    setImportant(body, 'width', '100%');
-    setImportant(body, 'height', '100%');
-    setImportant(body, 'overscroll-behavior', 'none');
-    setImportant(body, 'touch-action', 'none');
-
-    // Comprehensive scroll prevention
-    const preventScroll = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const preventKeys = (e: KeyboardEvent) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
-        preventScroll(e as unknown as Event);
-      }
-    };
-
-    const lockScrollPos = () => {
-      window.scrollTo(0, scrollY);
-    };
-
-    // Add all event listeners in capture phase for maximum effectiveness
-    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-    window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
-    window.addEventListener('scroll', lockScrollPos, { passive: true });
-
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-
+    
     animationRef.current = requestAnimationFrame(animate);
-
+    
     return () => {
-      // Remove all event listeners
-      window.removeEventListener('wheel', preventScroll);
-      window.removeEventListener('touchmove', preventScroll);
-      window.removeEventListener('keydown', preventKeys);
-      window.removeEventListener('scroll', lockScrollPos);
       window.removeEventListener('resize', resizeCanvas);
-      
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      
-      // Restore ALL original styles exactly
-      Object.entries(originalStyles.html).forEach(([prop, value]) => {
-        if (value) {
-          html.style.setProperty(prop, value);
-        } else {
-          html.style.removeProperty(prop);
-        }
-      });
-      
-      Object.entries(originalStyles.body).forEach(([prop, value]) => {
-        if (value) {
-          body.style.setProperty(prop, value);
-        } else {
-          body.style.removeProperty(prop);
-        }
-      });
-      
-      // Restore scroll position
-      window.scrollTo(0, scrollY);
     };
   }, []);
 
   if (!isVisible) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black overscroll-none touch-none"
-      onWheel={(e) => e.preventDefault()}
-      onTouchMove={(e) => e.preventDefault()}
-    >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
       <canvas
         ref={canvasRef}
         className="w-full h-full"

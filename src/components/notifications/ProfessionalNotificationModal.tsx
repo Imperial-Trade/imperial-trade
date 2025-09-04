@@ -141,8 +141,8 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
               x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
             }}
             className={`fixed z-[101] ${
-              isMobile 
-                ? 'inset-4 max-h-[90vh]' 
+              (isMobile || isTablet)
+                ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md max-h-[90vh]'
                 : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md'
             }`}
           >

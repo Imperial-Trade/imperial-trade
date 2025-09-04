@@ -12,13 +12,13 @@ const corsHeaders = {
 // Zero-Pause Optimized Configuration
 const WS_AUTH_TIMEOUT_MS = 10000; // Faster auth timeout
 const MAX_WS_SUBS_PER_CLIENT = 10; // Reduced from 20
-const BATCH_INTERVAL_MS = 50; // Ultra-fast 50ms batching
+const BATCH_INTERVAL_MS = 200; // Cost-optimized: 200ms batching for ultra-fast UX with cost control
 const HEARTBEAT_INTERVAL_MS = 10000; // Faster 10s heartbeat for quick detection
 const MAX_CLIENTS = 1000; // Connection limit
 const IDLE_TIMEOUT_MS = 180000; // 3 minutes idle timeout
 const RECONNECT_DELAY_MS = 1000; // Fast reconnection - reduced from 2000ms
 const PRICE_CACHE_TTL_MS = 5000; // 5-second cache for instant delivery
-const LEADER_ELECTION_TTL = 45; // Reduced TTL for faster leader election
+const LEADER_ELECTION_TTL = 15; // Cost-optimized: 15s TTL for faster, efficient leader election
 const FOLLOWER_PROMOTION_INTERVAL = 15000; // Check leader status every 15s
 const LEADER_HEARTBEAT_INTERVAL = 20000; // Leader heartbeat every 20s
 
@@ -330,8 +330,8 @@ class EnhancedWebSocketStreaming {
       }
     };
 
-    // Poll periodically (every 3s to keep UI fresh without overloading)
-    setInterval(pollForUpdates, 3000);
+    // Cost-optimized follower polling: 500ms for ultra-fast UX with cost control
+    setInterval(pollForUpdates, 500);
   }
 
   private async handleTradermadeMessage(data: string): Promise<void> {
@@ -402,7 +402,7 @@ class EnhancedWebSocketStreaming {
         clearTimeout(this.batchTimeout);
       }
       
-      const delay = priority ? 10 : BATCH_INTERVAL_MS; // 10ms for priority, 50ms for normal
+      const delay = priority ? 10 : BATCH_INTERVAL_MS; // 10ms for priority, 200ms for normal (cost-optimized)
       this.batchTimeout = setTimeout(() => {
         this.flushBatch();
       }, delay);

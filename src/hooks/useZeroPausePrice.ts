@@ -58,8 +58,8 @@ export function useZeroPausePrice(symbol: string): ZeroPausePriceData {
           const { price, change, changePercent, timestamp } = JSON.parse(cached);
           const cacheAge = Date.now() - timestamp;
           
-          // Use cache if less than 3 minutes old
-          if (cacheAge < 3 * 60 * 1000) {
+          // Extended cache: Use if less than 5 minutes old (cost optimization)
+          if (cacheAge < 5 * 60 * 1000) {
             setCachedPrice(price);
             setCachedChange(change);
             setCachedChangePercent(changePercent);
@@ -139,8 +139,8 @@ export function useZeroPausePrice(symbol: string): ZeroPausePriceData {
       const now = Date.now();
       const timeSinceLastUpdate = now - lastPrice.timestamp;
       
-      // If no update for more than 2 seconds, start interpolation
-      if (timeSinceLastUpdate > 2000 && timeSinceLastUpdate < 10000) {
+      // Ultra-fast interpolation: Start after 1 second gap (cost-optimized)
+      if (timeSinceLastUpdate > 1000 && timeSinceLastUpdate < 8000) {
         const trend = history.length >= 3 ? 
           (history[history.length - 1].price - history[history.length - 3].price) / 2 : 0;
         

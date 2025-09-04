@@ -168,6 +168,20 @@ class EnhancedWebSocketStreaming {
         console.log('📡 Running as follower instance');
         this.isLeader = false;
         this.subscribeToRedisUpdates();
+
+        // Periodically attempt re-election in case the leader goes down
+        setInterval(async () => {
+          try {
+            const res = await this.redisPublisher!.set('websocket:leader', this.instanceId, { ex: 60, nx: true });
+            if (res === 'OK') {
+              console.log(`👑 Promoted to leader: ${this.instanceId}`);
+              this.isLeader = true;
+              this.connectToTradermade();
+            }
+          } catch (e) {
+            // ignore errors, will try again next interval
+          }
+        }, 30000);
       }
     } catch (error) {
       console.error('❌ Leader election failed:', error);
@@ -224,27 +238,80 @@ class EnhancedWebSocketStreaming {
 
     console.log('📡 Starting Redis price polling for follower instance');
     
-    // Since Upstash Redis REST API doesn't support streaming subscriptions,
-    // we'll poll for price updates at a reasonable interval
+    // Poll for the latest prices for known symbols and rebroadcast to clients
     const pollForUpdates = async () => {
       try {
-        // Try to get the latest price data from Redis (if leader publishes it)
-        // For now, we'll implement a simple mechanism where followers can still
-        // serve cached data, but won't receive real-time updates
-        // This could be enhanced later with a pub-sub queue system
-        
-        console.log('🔍 Follower instance: checking for cached price data');
-        
-        // In a production environment, you might implement a more sophisticated
-        // approach using Redis lists or pub-sub queues that work with REST API
-        
+        const symbols = TRADERMADE_SYMBOLS;
+        const keys = symbols.map(s => `price:${s}`);
+        // Upstash REST client supports mget
+        // @ts-ignore - types for spread tuple
+        const values = await (this.redisClient as any).mget<string[]>(...keys);
+        const updates: PriceData[] = [];
+        const nowIso = new Date().toISOString();
+
+        if (Array.isArray(values)) {
+          values.forEach((val: string | null, idx: number) => {
+            if (!val) return;
+            try {
+              const parsed = JSON.parse(val) as PriceData;
+              const symbol = symbols[idx];
+              const price = parsed.price ?? parsed.mid ?? ((parsed.bid !== undefined && parsed.ask !== undefined) ? (Number(parsed.bid) + Number(parsed.ask)) / 2 : undefined);
+              if (!symbol || price === undefined) return;
+
+              const priceData: PriceData = {
+                symbol,
+                bid: Number((parsed as any).bid ?? 0),
+                ask: Number((parsed as any).ask ?? 0),
+                mid: Number((parsed as any).mid ?? price),
+                price: Number(price),
+                timestamp: (parsed as any).timestamp || nowIso,
+                change: (parsed as any).change,
+                changePercent: (parsed as any).changePercent,
+              };
+
+              // Update local cache with freshness marker
+              const cachedPrice = { ...priceData, cachedAt: Date.now() } as any;
+              this.priceCache.set(symbol, cachedPrice);
+              updates.push(priceData);
+            } catch (e) {
+              console.warn('⚠️ Failed to parse Redis price value', e);
+            }
+          });
+        }
+
+        if (updates.length === 0) return;
+
+        // Broadcast only relevant symbols per client
+        for (const [clientId, client] of this.clients) {
+          if (client.socket.readyState !== WebSocket.OPEN) {
+            this.removeClient(clientId);
+            continue;
+          }
+          const relevant = updates.filter(u => client.subscriptions.has(u.symbol));
+          if (relevant.length === 0) continue;
+
+          try {
+            client.socket.send(JSON.stringify({
+              type: 'price_batch',
+              updates: relevant,
+              timestamp: nowIso,
+              cached: true
+            }));
+            client.lastActivity = Date.now();
+            client.messageCount++;
+            this.wsMessagesSent++;
+          } catch (err) {
+            console.error(`❌ Failed to send follower update to ${clientId}:`, err);
+            this.removeClient(clientId);
+          }
+        }
       } catch (error) {
         console.error('❌ Failed to poll Redis for updates:', error);
       }
     };
 
-    // Poll periodically (less frequent than real-time to reduce API calls)
-    setInterval(pollForUpdates, 10000); // Every 10 seconds
+    // Poll periodically (every 3s to keep UI fresh without overloading)
+    setInterval(pollForUpdates, 3000);
   }
 
   private async handleTradermadeMessage(data: string): Promise<void> {
@@ -498,6 +565,7 @@ class EnhancedWebSocketStreaming {
       clients: this.clients.size,
       authenticatedClients: Array.from(this.clients.values()).filter(c => c.isAuthenticated).length,
       cachedPrices: this.priceCache.size,
+      active_symbols: Array.from(this.priceCache.keys()),
       messagesSent: this.wsMessagesSent,
       lastBroadcast: this.lastBroadcastAt,
       isLeader: this.isLeader,
@@ -554,7 +622,9 @@ async function handleWebSocketUpgrade(req: Request): Promise<Response> {
         const message = JSON.parse(event.data);
         connection.lastActivity = Date.now();
 
-        switch (message.type) {
+        const msgType = message.type || message.action;
+
+        switch (msgType) {
           case 'auth':
             if (message.token) {
               const authenticated = await manager.authenticateClient(connection, message.token);
@@ -562,7 +632,6 @@ async function handleWebSocketUpgrade(req: Request): Promise<Response> {
                 clearTimeout(authTimer);
                 authTimer = null;
               }
-              
               socket.send(JSON.stringify({
                 type: 'auth_response',
                 success: authenticated,
@@ -575,6 +644,18 @@ async function handleWebSocketUpgrade(req: Request): Promise<Response> {
             if (connection.isAuthenticated && message.symbols) {
               manager.handleSubscription(connection, message.symbols);
             }
+            break;
+
+          case 'unsubscribe':
+            if (connection.isAuthenticated && message.symbols) {
+              // Remove only the specified symbols from the client's subscriptions
+              message.symbols.forEach((s: string) => connection.subscriptions.delete(String(s).toUpperCase()));
+            }
+            break;
+
+          case 'ping':
+            // Respond to client health check
+            socket.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
             break;
 
           case 'pong':

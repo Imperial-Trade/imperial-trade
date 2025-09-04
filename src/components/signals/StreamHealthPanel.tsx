@@ -43,16 +43,17 @@ export function StreamHealthPanel() {
       const data = await response.json();
       
       // Map the optimized response to expected format
+      const stats = data.stats || {};
       const mappedMetrics: HealthMetrics = {
-        tradermadeStatus: data.cached_symbols?.length > 0 ? 'connected' : 'disconnected',
-        connectedClients: data.connections || 0,
-        totalSubscriptions: data.connections || 0, // Simplified
+        tradermadeStatus: stats.tradermadeStatus || (stats.isLeader ? 'connected' : 'disconnected'),
+        connectedClients: stats.clients || 0,
+        totalSubscriptions: stats.authenticatedClients || stats.clients || 0,
         ws_vs_http_ratio_percent: 95, // Optimized system is primarily WebSocket
         ws_first_tick_latency_p95_ms: 200, // Optimized latency
         ws_first_tick_latency_p50_ms: 100, 
         upstream_idle_reconnects: 0, // Simplified for optimized system
         cache_hit_rate_percent: 85, // Good cache performance
-        active_symbols: data.cached_symbols || [],
+        active_symbols: stats.active_symbols || [],
         last_tick_age_seconds: null
       };
       

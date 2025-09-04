@@ -196,6 +196,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             // Health check response
             break;
             
+          case 'ping':
+            // Respond to server heartbeat
+            try {
+              socketRef.current?.send(JSON.stringify({ type: 'pong' }));
+            } catch {}
+            break;
+            
           case 'error':
             console.error('❌ WebSocket error:', data.message);
             setError(data.message);

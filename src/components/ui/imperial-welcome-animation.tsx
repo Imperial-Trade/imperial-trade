@@ -151,20 +151,21 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   return (
     <div 
-      className="fixed inset-0 z-[2147483646] flex flex-col items-center justify-center bg-black overscroll-none touch-none"
+      className="fixed inset-0 z-[2147483646] flex items-center justify-center bg-black overscroll-none touch-none"
+      style={{ minHeight: '100dvh' }}
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
-      <div className="text-center">
-        <h1 className="text-white/90 text-4xl md:text-6xl font-light tracking-wide mb-10">
+      <div className="text-center px-4 max-w-4xl mx-auto">
+        <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
           {tagline}
         </h1>
         
-        <div className="flex items-center justify-center gap-5">
+        <div className="flex items-center justify-center gap-3 sm:gap-5">
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className={`w-4 h-4 rounded-full transition-opacity duration-300 ${
+              className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
                 activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
               }`}
             />

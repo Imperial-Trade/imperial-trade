@@ -1,7 +1,9 @@
 import { createRoot } from "react-dom/client";
+import React from "react";
 import App from "./App.tsx";
 import "./index.css";
 import { PostHogProvider } from "posthog-js/react";
+import { RootErrorBoundary } from "./components/error-boundary/RootErrorBoundary";
 
 // Service Worker Registration for PWA
 if ('serviceWorker' in navigator) {
@@ -43,8 +45,14 @@ const options = {
   capture_pageview: false,
 };
 
+// Debug React version
+console.log('🔍 React version:', React.version);
+console.log('🔍 React-DOM loaded:', !!document.getElementById("root"));
+
 createRoot(document.getElementById("root")!).render(
-  <PostHogProvider apiKey={POSTHOG_KEY} options={options}>
-    <App />
-  </PostHogProvider>
+  <RootErrorBoundary>
+    <PostHogProvider apiKey={POSTHOG_KEY} options={options}>
+      <App />
+    </PostHogProvider>
+  </RootErrorBoundary>
 );

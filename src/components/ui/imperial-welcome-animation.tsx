@@ -185,21 +185,59 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   useEffect(() => {
-    // Prevent body scrolling during animation
-    document.body.style.overflow = 'hidden';
-    
+    // Robust scroll lock on html and body during animation
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prev = {
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+    };
+
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+
+    html.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false });
+    window.addEventListener('touchmove', preventScroll, { passive: false });
+
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    
+
     animationRef.current = requestAnimationFrame(animate);
-    
+
     return () => {
-      // Restore body scrolling
-      document.body.style.overflow = '';
+      window.removeEventListener('wheel', preventScroll as any);
+      window.removeEventListener('touchmove', preventScroll as any);
       window.removeEventListener('resize', resizeCanvas);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+      // Restore styles
+      html.style.overscrollBehavior = prev.htmlOverscroll;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.left = prev.bodyLeft;
+      body.style.right = prev.bodyRight;
+      body.style.width = prev.bodyWidth;
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
     };
   }, []);
 

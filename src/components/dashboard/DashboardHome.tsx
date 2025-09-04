@@ -66,7 +66,7 @@ export const DashboardHome: React.FC = () => {
 
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
-    }, 1500); // 1.5 seconds delay for immediate visibility
+    }, 3000); // 3 seconds delay
 
     return () => clearTimeout(timer);
   }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt]);

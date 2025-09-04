@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, X, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shouldShake, setShouldShake] = useState(false);
 
   const showToastMessage = (message: string) => {
     setMessageText(message);
@@ -97,18 +96,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     setTimeout(() => onClose(), 1000);
   };
 
-  // Add shake animation after 10 seconds of no interaction
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const shakeTimer = setTimeout(() => {
-      setShouldShake(true);
-      setTimeout(() => setShouldShake(false), 1000);
-    }, 10000);
-    
-    return () => clearTimeout(shakeTimer);
-  }, [isOpen]);
-
   if (!isInitialized) return null;
 
   return (
@@ -120,32 +107,23 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
             onClick={onClose}
           />
 
           {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 50 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1, 
-              y: 0,
-              x: shouldShake ? [0, -10, 10, -10, 10, 0] : 0
-            }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 50 }}
-            transition={{ 
-              type: "spring", 
-              duration: 0.5,
-              x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
-            }}
+            transition={{ type: "spring", duration: 0.5 }}
             className={`fixed z-[101] ${
               isMobile 
                 ? 'inset-4 max-h-[90vh]' 
                 : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md'
             }`}
           >
-            <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]">
+            <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden">
               {/* Header with Crown Logo */}
               <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-8 text-center">
                 <div className="absolute top-4 right-4">

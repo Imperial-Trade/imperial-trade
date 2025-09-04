@@ -24,9 +24,9 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     
     // Only animate dots after typing is complete
     if (typingCompleteRef.current) {
-      // Update active dot every 600ms
-      const cycleTime = elapsedTime % 1800; // 3 dots * 600ms
-      const newActiveDot = Math.floor(cycleTime / 600);
+      // Update active dot every 300ms (50% faster)
+      const cycleTime = elapsedTime % 900; // 3 dots * 300ms
+      const newActiveDot = Math.floor(cycleTime / 300);
       setActiveDot(newActiveDot);
       
       // Show for 2 seconds after typing completes

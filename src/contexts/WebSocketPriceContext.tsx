@@ -158,7 +158,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     fallbackTelemetryRef.current.lastFallbackReason = bootstrap ? 'BOOTSTRAP' : 'TRIGGERED_FALLBACK';
 
     try {
-      const response = await supabase.functions.invoke('tradermade-streaming', {
+      const response = await supabase.functions.invoke('enhanced-websocket-streaming', {
         body: {
           symbols: allowedSymbols,
           forceFetch: forceFetch
@@ -375,7 +375,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
       // Build WebSocket URL
       const wsUrl = new URL(window.location.origin.replace(/^http/, 'ws'));
-      wsUrl.pathname = '/functions/v1/tradermade-streaming';
+      wsUrl.pathname = '/functions/v1/enhanced-websocket-streaming';
       
       console.log(`🔗 Connecting to WebSocket: ${wsUrl.toString()}`);
       const ws = new WebSocket(wsUrl.toString());

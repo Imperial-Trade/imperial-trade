@@ -201,6 +201,12 @@ class EnhancedWebSocketStreaming {
     }
   }
 
+  // Enhanced TraderMade connection with exponential backoff
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private baseReconnectDelay = 2000; // Start at 2 seconds
+  private maxReconnectDelay = 300000; // Max 5 minutes
+
   private async connectToTradermade(): Promise<void> {
     if (!this.isLeader) return;
 
@@ -211,11 +217,20 @@ class EnhancedWebSocketStreaming {
     }
 
     try {
-      console.log('🔌 Connecting to TraderMade WebSocket...');
+      console.log(`🔌 Connecting to TraderMade WebSocket... (attempt ${this.reconnectAttempts + 1})`);
       this.tradermadeSocket = new WebSocket('wss://marketdata.tradermade.com/feedadv');
+
+      let connectionTimeout = setTimeout(() => {
+        if (this.tradermadeSocket?.readyState === WebSocket.CONNECTING) {
+          console.warn('⏰ TraderMade connection timeout, closing...');
+          this.tradermadeSocket?.close();
+        }
+      }, 15000); // 15 second connection timeout
 
       this.tradermadeSocket.onopen = () => {
         console.log('✅ Connected to TraderMade');
+        clearTimeout(connectionTimeout);
+        this.reconnectAttempts = 0; // Reset on successful connection
         
         // Authenticate and subscribe
         this.tradermadeSocket!.send(JSON.stringify({
@@ -229,19 +244,51 @@ class EnhancedWebSocketStreaming {
       };
 
       this.tradermadeSocket.onclose = (event) => {
-        console.log(`🔌 TraderMade connection closed (code: ${event.code}), fast reconnecting...`);
-        // Zero-pause: Immediate reconnection attempt
-        setTimeout(() => this.connectToTradermade(), RECONNECT_DELAY_MS);
+        clearTimeout(connectionTimeout);
+        console.log(`🔌 TraderMade connection closed (code: ${event.code})`);
+        
+        // Handle rate limiting specifically
+        if (event.code === 1000) {
+          console.warn('🚫 Possible rate limit or connection limit reached');
+        }
+        
+        this.scheduleReconnect();
       };
 
       this.tradermadeSocket.onerror = (error) => {
-        console.error('❌ TraderMade error:', error);
+        clearTimeout(connectionTimeout);
+        console.error('❌ TraderMade connection error:', error);
+        this.scheduleReconnect();
       };
 
     } catch (error) {
-      console.error('❌ Failed to connect to TraderMade:', error);
-      setTimeout(() => this.connectToTradermade(), 10000);
+      console.error('❌ Failed to create TraderMade connection:', error);
+      this.scheduleReconnect();
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.isLeader) return;
+    
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping TraderMade reconnection.`);
+      return;
+    }
+
+    // Exponential backoff: 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 300s (max)
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+
+    this.reconnectAttempts++;
+    console.log(`🔄 Scheduling TraderMade reconnection in ${delay / 1000}s (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    setTimeout(() => {
+      if (this.isLeader) { // Double-check leadership before reconnecting
+        this.connectToTradermade();
+      }
+    }, delay);
   }
 
   private async subscribeToRedisUpdates(): Promise<void> {
@@ -339,6 +386,13 @@ class EnhancedWebSocketStreaming {
       // Skip non-JSON messages like "Connected" from TraderMade
       if (!data.startsWith('{')) {
         console.log('📡 TraderMade info message:', data);
+        
+        // Handle rate limiting messages
+        if (data.includes('User Key Used to many times') || data.includes('rate limit')) {
+          console.error('🚫 TraderMade rate limit exceeded, scheduling backoff reconnection');
+          this.tradermadeSocket?.close(1008, 'Rate limited');
+          return;
+        }
         return;
       }
       

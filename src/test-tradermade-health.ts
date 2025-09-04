@@ -1,6 +1,6 @@
 // Enhanced TraderMade Health Test Utility
 export const testTradermadeHealth = async () => {
-  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming';
+  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
   
   try {
     // Test basic health check
@@ -26,7 +26,7 @@ export const testTradermadeHealth = async () => {
 
 // Leader Health Probe - calls /health?prefer_leader=true three times
 export const runLeaderHealthProbe = async () => {
-  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming';
+  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
   const results = [];
   
   console.log('🔍 Starting Leader Health Probe...');

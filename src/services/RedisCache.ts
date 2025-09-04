@@ -209,7 +209,7 @@ class RedisCache {
     try {
       // Use edge function as Redis proxy since we can't directly connect from browser
       // The Redis integration happens at the edge function level
-      console.log('📡 Redis integration handled by tradermade-streaming Edge Function');
+      console.log('📡 Redis integration handled by enhanced-websocket-streaming Edge Function');
       this.isRedisConnected = true;
     } catch (error) {
       console.error('❌ Failed to initialize Redis:', error);
@@ -223,7 +223,7 @@ class RedisCache {
       this.pubSubSubscriptions.add(channel);
       console.log(`📡 Subscribed to channel: ${channel}`);
       
-      // In browser environment, we rely on WebSocket connection to tradermade-streaming
+      // In browser environment, we rely on WebSocket connection to enhanced-websocket-streaming
       // which handles Redis pub/sub internally and sends updates via WebSocket
     }
   }

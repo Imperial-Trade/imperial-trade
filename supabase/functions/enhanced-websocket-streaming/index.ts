@@ -633,12 +633,17 @@ serve(async (req) => {
     return handleWebSocketUpgrade(req);
   }
 
-  // Health endpoint
-  if (url.pathname === '/health') {
+  // Health endpoint - handle both /health and default path
+  if (url.pathname === '/health' || url.searchParams.has('action')) {
     return handleHealthRequest();
   }
 
-  return new Response('Enhanced WebSocket Streaming Service', {
-    headers: corsHeaders
+  // Default response should also be JSON for consistency
+  return new Response(JSON.stringify({
+    service: 'enhanced-websocket-streaming',
+    status: 'ready',
+    message: 'Enhanced WebSocket Streaming Service'
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
   });
 });

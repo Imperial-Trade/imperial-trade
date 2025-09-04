@@ -78,10 +78,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
             <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
@@ -146,9 +145,11 @@ function App() {
                           path="/dashboard"
                           element={
                             <ProtectedRoute>
-                              <Layout>
-                                <div></div>
-                              </Layout>
+                              <TooltipProvider>
+                                <Layout>
+                                  <div></div>
+                                </Layout>
+                              </TooltipProvider>
                             </ProtectedRoute>
                           }
                           errorElement={<RouteErrorBoundary />}
@@ -292,7 +293,6 @@ function App() {
               </WelcomeProvider>
             </AuthProvider>
           </BrowserRouter>
-        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

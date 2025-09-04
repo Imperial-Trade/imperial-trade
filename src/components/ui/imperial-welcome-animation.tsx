@@ -40,11 +40,9 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
-      }
+      // Use full viewport dimensions for proper centering
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
   };
 

@@ -9,6 +9,8 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
 import { SharedHeader } from "@/components/shared/SharedHeader"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
+import { useWelcome } from "@/contexts/WelcomeContext"
+import { ImperialWelcomeAnimation } from "@/components/ui/imperial-welcome-animation"
 
 // DashboardHeader replaced with SharedHeader component
 
@@ -47,6 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const isMobile = useIsMobile()
+  const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome()
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
@@ -68,9 +71,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
-        <ErrorBoundary componentName="Header">
-          <SharedHeader />
-        </ErrorBoundary>
+        {/* Welcome Animation - renders above everything when needed */}
+        {!hasSeenWelcome && (
+          <ImperialWelcomeAnimation onComplete={markWelcomeAsSeen} />
+        )}
+        
+        {/* Only render header when welcome animation is complete */}
+        {hasSeenWelcome && (
+          <ErrorBoundary componentName="Header">
+            <SharedHeader />
+          </ErrorBoundary>
+        )}
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && (

@@ -114,18 +114,12 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
     } else {
       document.body.style.overflow = 'unset';
-      document.body.style.position = 'unset';
-      document.body.style.width = 'unset';
     }
     
     return () => {
       document.body.style.overflow = 'unset';
-      document.body.style.position = 'unset';
-      document.body.style.width = 'unset';
     };
   }, [isOpen]);
 
@@ -135,34 +129,37 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Modal Container - Flexbox Centered */}
+          {/* Modal Container - Grid Centered */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998] flex items-center justify-center p-4 pointer-events-none"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998] grid place-items-center min-h-screen min-h-[100dvh] p-4"
+            onClick={onClose}
           >
             {/* Modal Content */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ 
                 opacity: 1, 
                 scale: 1, 
                 y: 0,
                 x: shouldShake ? [0, -10, 10, -10, 10, 0] : 0
               }}
-              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ 
                 type: "spring", 
-                duration: 0.5,
+                stiffness: 300,
+                damping: 30,
                 x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
               }}
-              className="w-full max-w-md pointer-events-auto"
+              className="w-full max-w-md max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]">
+              <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden shadow-[0_0_30px_rgba(212,175,55,0.3)]">
                 {/* Header with Crown Logo */}
-                <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-8 text-center">
-                  <div className="absolute top-4 right-4">
+                <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-6 sm:p-8 text-center">
+                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -175,11 +172,11 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
 
                   {/* Crown Icon with Gradient */}
                   <div className="relative mx-auto mb-4">
-                    <Crown className="h-16 w-16 mx-auto text-imperial-white drop-shadow-lg" />
+                    <Crown className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-imperial-white drop-shadow-lg" />
                     <div className="absolute inset-0 bg-gradient-to-t from-imperial-gold to-imperial-white opacity-30 rounded-full blur-xl"></div>
                   </div>
 
-                  <h1 className="text-2xl font-bold text-imperial-white mb-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-imperial-white mb-2">
                     Manage Notifications
                   </h1>
                   <p className="text-imperial-white/90 text-sm">
@@ -188,7 +185,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                 </div>
 
                 {/* Content */}
-                <div className="p-6 space-y-6">
+                <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
                   {/* Description */}
                   <p className="text-muted-foreground text-center">
                     Get instant notifications for price alerts, signal updates, and market opportunities

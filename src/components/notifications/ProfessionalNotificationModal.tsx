@@ -5,7 +5,6 @@ import { Crown, X, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'luc
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
-import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { toast } from '@/hooks/use-toast';
 
 interface ProfessionalNotificationModalProps {
@@ -19,7 +18,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   onClose,
   userName = 'Trader'
 }) => {
-  const { isMobile, isTablet } = useDeviceDetection();
   const { 
     isInitialized, 
     isPushEnabled, 
@@ -127,26 +125,28 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 50 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1, 
-              y: 0,
-              x: shouldShake ? [0, -10, 10, -10, 10, 0] : 0
-            }}
-            exit={{ opacity: 0, scale: 0.9, y: 50 }}
-            transition={{ 
-              type: "spring", 
-              duration: 0.5,
-              x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
-            }}
-            className={`fixed z-[101] ${
-              isMobile 
-                ? 'inset-4 max-h-[90vh]' 
-                : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md'
-            }`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[101] grid place-items-center p-4 sm:p-6 pointer-events-none"
           >
-            <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: 0,
+                x: shouldShake ? [0, -10, 10, -10, 10, 0] : 0
+              }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ 
+                type: "spring", 
+                duration: 0.45,
+                x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
+              }}
+              className="pointer-events-auto w-full max-w-md max-h-[min(90dvh,600px)] overflow-y-auto bg-background rounded-2xl shadow-2xl border border-border animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]"
+              style={{ willChange: 'transform' }}
+            >
               {/* Header with Crown Logo */}
               <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-8 text-center">
                 <div className="absolute top-4 right-4">
@@ -306,7 +306,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                   <span className="text-xs text-muted-foreground">Professional</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
 
           {/* Message Toast */}

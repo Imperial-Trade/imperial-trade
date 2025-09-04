@@ -38,9 +38,16 @@ serve(async (req) => {
     console.log('📨 Enhanced Signal Notification Dispatcher received:', JSON.stringify(payload, null, 2))
 
     const oneSignalApiKey = Deno.env.get('ONESIGNAL_API_KEY')
+    const oneSignalAppId = Deno.env.get('ONESIGNAL_APP_ID')
+    
     if (!oneSignalApiKey) {
       console.error('❌ ONESIGNAL_API_KEY not configured')
       throw new Error('OneSignal API key not configured')
+    }
+    
+    if (!oneSignalAppId) {
+      console.error('❌ ONESIGNAL_APP_ID not configured')
+      throw new Error('OneSignal App ID not configured')
     }
 
     let totalNotificationsSent = 0
@@ -124,7 +131,7 @@ serve(async (req) => {
 
       // Send OneSignal notification
       const oneSignalPayload = {
-        app_id: 'c776609b-8750-4d5e-aa48-95d6ae6b9d68',
+        app_id: oneSignalAppId,
         include_player_ids: playerIds,
         headings: { en: title },
         contents: { en: message },

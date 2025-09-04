@@ -62,8 +62,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     if (showWelcomeMessage && welcomeStartTimeRef.current) {
       const welcomeElapsed = currentTime - welcomeStartTimeRef.current;
       
-      // Show welcome message for 2.5 seconds, then fade to dashboard
-      if (welcomeElapsed >= 2500) {
+      // Show welcome message for 1.5 seconds, then fade to dashboard
+      if (welcomeElapsed >= 1500) {
         setShowDashboardFade(true);
         setTimeout(() => {
           setIsVisible(false);

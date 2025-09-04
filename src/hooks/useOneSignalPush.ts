@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -32,50 +32,74 @@ export const useOneSignalPush = () => {
     console.log('🔔 Initializing OneSignal...');
     
     try {
-      // Load OneSignal SDK dynamically if not loaded
-      if (!window.OneSignalDeferred && !window.OneSignal) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-        script.defer = true;
-        document.head.appendChild(script);
-        
-        // Initialize deferred queue
+      // OneSignal is already initialized via CDN script in index.html
+      // We just need to wait for it to be ready
+      if (!window.OneSignalDeferred) {
+        console.warn('⚠️ OneSignal SDK not loaded yet, initializing deferred queue...');
         window.OneSignalDeferred = [];
       }
 
-      // Wait for SDK to be ready
-      const initOneSignal = (OneSignal: any) => {
-        // Check if already initialized to prevent multiple init calls
-        if (OneSignal && typeof OneSignal.init === 'function') {
-          OneSignal.init({
-            appId: 'c6d5466e-9ca7-40b2-90db-57ec42d385ef',
-            allowLocalhostAsSecureOrigin: true,
-            autoResubscribe: true,
-            safari_web_id: 'web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98',
-            notifyButton: { enable: false }
-          }).then(() => {
-            console.log('✅ OneSignal SDK initialized successfully');
-            setState(prev => ({ ...prev, isInitialized: true }));
-            
-            // Set up listeners after initialization
-            setupOneSignalListeners(OneSignal);
-          }).catch((error: any) => {
-            console.error('❌ OneSignal initialization failed:', error);
-          });
-        } else {
-          // OneSignal is ready, update our state
-          setState(prev => ({ ...prev, isInitialized: true }));
-          setupOneSignalListeners(OneSignal);
+      window.OneSignalDeferred.push(async function(OneSignal: any) {
+        // OneSignal is ready, update our state
+        setState(prev => ({ ...prev, isInitialized: true }));
+
+        // Check current permission status
+        const permission = await OneSignal.Notifications.permission;
+        console.log('📋 Current OneSignal permission:', permission);
+        
+        if (permission === 'granted') {
+          const playerId = await OneSignal.User.PushSubscription.id;
+          console.log('✅ User already subscribed with Player ID:', playerId);
+          
+          setState(prev => ({ 
+            ...prev, 
+            isPushEnabled: true,
+            playerId: playerId || null
+          }));
+          
+          // Update user profile with OneSignal info
+          if (playerId && user) {
+            await updateUserProfile(playerId);
+          }
         }
-      };
 
-      if (window.OneSignal) {
-        initOneSignal(window.OneSignal);
-      } else if (window.OneSignalDeferred) {
-        window.OneSignalDeferred.push(initOneSignal);
-      }
+        // Set up listeners for permission and subscription changes
+        OneSignal.Notifications.addEventListener('permissionChange', function(event: any) {
+          console.log('🔄 OneSignal permission changed:', event);
+          if (event.to === 'granted') {
+            setState(prev => ({ ...prev, isPushEnabled: true }));
+          } else {
+            setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+          }
+        });
 
-      console.log('✅ OneSignal initialized successfully');
+        OneSignal.User.PushSubscription.addEventListener('change', function(event: any) {
+          console.log('🔄 OneSignal subscription changed:', event);
+          const playerId = event.current.id;
+          if (playerId) {
+            setState(prev => ({ ...prev, playerId, isPushEnabled: true }));
+            if (user) {
+              updateUserProfile(playerId);
+            }
+          } else {
+            setState(prev => ({ ...prev, playerId: null, isPushEnabled: false }));
+            if (user) {
+              // Update profile to remove OneSignal info
+              supabase
+                .from('profiles')
+                .update({ 
+                  onesignal_player_id: null,
+                  push_subscription_active: false,
+                  onesignal_subscription_status: 'unsubscribed'
+                })
+                .eq('id', user.id);
+            }
+          }
+        });
+
+        console.log('✅ OneSignal initialized successfully');
+      });
+
     } catch (error) {
       console.error('❌ Failed to initialize OneSignal:', error);
       toast({
@@ -85,67 +109,6 @@ export const useOneSignalPush = () => {
       });
     }
   }, [user]);
-
-  const setupOneSignalListeners = (OneSignal: any) => {
-    // Check current permission status
-    if (OneSignal.Notifications) {
-
-      OneSignal.Notifications.permission.then((permission: string) => {
-        console.log('📋 Current OneSignal permission:', permission);
-        
-        if (permission === 'granted') {
-          OneSignal.User.PushSubscription.id.then((playerId: string) => {
-            console.log('✅ User already subscribed with Player ID:', playerId);
-            
-            setState(prev => ({ 
-              ...prev, 
-              isPushEnabled: true,
-              playerId: playerId || null
-            }));
-            
-            // Update user profile with OneSignal info
-            if (playerId && user) {
-              updateUserProfile(playerId);
-            }
-          });
-        }
-      });
-
-      // Set up listeners for permission and subscription changes
-      OneSignal.Notifications.addEventListener('permissionChange', function(event: any) {
-        console.log('🔄 OneSignal permission changed:', event);
-        if (event.to === 'granted') {
-          setState(prev => ({ ...prev, isPushEnabled: true }));
-        } else {
-          setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
-        }
-      });
-
-      OneSignal.User.PushSubscription.addEventListener('change', function(event: any) {
-        console.log('🔄 OneSignal subscription changed:', event);
-        const playerId = event.current.id;
-        if (playerId) {
-          setState(prev => ({ ...prev, playerId, isPushEnabled: true }));
-          if (user) {
-            updateUserProfile(playerId);
-          }
-        } else {
-          setState(prev => ({ ...prev, playerId: null, isPushEnabled: false }));
-          if (user) {
-            // Update profile to remove OneSignal info
-            supabase
-              .from('profiles')
-              .update({ 
-                onesignal_player_id: null,
-                push_subscription_active: false,
-                onesignal_subscription_status: 'unsubscribed'
-              })
-              .eq('id', user.id);
-          }
-        }
-      });
-    }
-  };
 
   const updateUserProfile = async (playerId: string) => {
     if (!user) return;

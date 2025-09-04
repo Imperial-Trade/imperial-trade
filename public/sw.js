@@ -1,6 +1,3 @@
-// Import OneSignal SDK for push notifications
-importScripts('https://cdn.onesignal.com/sdks/OneSignalSDK.js');
-
 // Trade Imperial - Service Worker for PWA and Push Notifications
 // Version: 1.0.0
 
@@ -13,6 +10,9 @@ const STATIC_CACHE_URLS = [
   '/favicon-16x16.png',
   '/favicon-32x32.png'
 ];
+
+// Import OneSignal SDK for push notifications
+importScripts('https://cdn.onesignal.com/sdks/OneSignalSDK.js');
 
 // Install Event - Cache essential resources
 self.addEventListener('install', (event) => {

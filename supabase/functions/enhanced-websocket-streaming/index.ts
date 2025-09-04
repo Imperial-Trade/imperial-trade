@@ -40,6 +40,7 @@ interface PriceData {
   bid: number;
   ask: number;
   mid: number;
+  price: number; // CRITICAL: Add price field for frontend compatibility
   timestamp: string;
   change?: number;
   changePercent?: number;
@@ -251,11 +252,13 @@ class EnhancedWebSocketStreaming {
       const message = JSON.parse(data);
       
       if (message.symbol && message.bid && message.ask) {
+        const midPrice = (parseFloat(message.bid) + parseFloat(message.ask)) / 2;
         const priceData: PriceData = {
           symbol: message.symbol,
           bid: parseFloat(message.bid),
           ask: parseFloat(message.ask),
-          mid: (parseFloat(message.bid) + parseFloat(message.ask)) / 2,
+          mid: midPrice,
+          price: midPrice, // CRITICAL: Add price field for frontend compatibility
           timestamp: new Date().toISOString(),
           change: message.change ? parseFloat(message.change) : 0,
           changePercent: message.changePercent ? parseFloat(message.changePercent) : 0

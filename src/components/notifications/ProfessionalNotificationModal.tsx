@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, X, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { toast } from '@/hooks/use-toast';
@@ -82,7 +82,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100]"
-            onClick={onClose}
           />
 
           {/* Modal */}
@@ -106,21 +105,11 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                 duration: 0.45,
                 x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
               }}
-              className="pointer-events-auto w-full max-w-md max-h-[min(90dvh,600px)] overflow-y-auto bg-background rounded-2xl shadow-2xl border border-border animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]"
+              className="pointer-events-auto w-full max-w-md h-auto bg-background rounded-2xl shadow-2xl border border-border animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]"
               style={{ willChange: 'transform' }}
             >
               {/* Header with Crown Logo */}
               <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-8 text-center">
-                <div className="absolute top-4 right-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onClose}
-                    className="h-8 w-8 p-0 text-imperial-white hover:bg-imperial-white/20"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
 
                 {/* Crown Icon with Gradient */}
                 <div className="relative mx-auto mb-4">

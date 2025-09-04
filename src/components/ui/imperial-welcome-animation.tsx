@@ -37,19 +37,19 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     
     // Only animate dots after typing is complete
     if (typingCompleteRef.current && !showDashboardFade) {
-      // 3 cycles in 2 seconds = 667ms per cycle
-      const cycleTime = elapsedTime % 667;
-      const newActiveDot = Math.floor(cycleTime / 222); // 667ms / 3 dots
+      // 3 cycles in 3 seconds = 1000ms per cycle
+      const cycleTime = elapsedTime % 1000;
+      const newActiveDot = Math.floor(cycleTime / 250); // 1000ms / 4 dots
       setActiveDot(newActiveDot);
       
       // Count complete cycles
-      const currentCycle = Math.floor(elapsedTime / 667);
+      const currentCycle = Math.floor(elapsedTime / 1000);
       if (currentCycle > dotCycleCountRef.current) {
         dotCycleCountRef.current = currentCycle;
       }
       
-      // After exactly 3 cycles (2 seconds), start dashboard fade immediately
-      if (currentCycle >= 3 && elapsedTime >= 2000) {
+      // After exactly 3 cycles (3 seconds), start dashboard fade immediately
+      if (currentCycle >= 3 && elapsedTime >= 3000) {
         setShowDashboardFade(true);
         // Call onComplete immediately so dashboard content can start fading in
         onComplete?.();
@@ -237,7 +237,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
           
           {typingComplete && (
             <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
+              {[0, 1, 2, 3].map((index) => (
                 <div
                   key={index}
                   className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${

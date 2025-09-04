@@ -21,12 +21,14 @@ verify_jwt = false
 [functions.websocket-load-balancer]
 verify_jwt = false
 
-
 [functions.check-user-existence]
 verify_jwt = false
 
 [functions.order-trigger-monitor]
 verify_jwt = true
+
+[functions.enhanced-signal-notification-dispatcher]
+verify_jwt = false
 
 [functions.hello]
 verify_jwt = false

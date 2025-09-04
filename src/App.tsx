@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
+import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -84,9 +85,10 @@ function App() {
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>
-                <NavigationGuard>
-                  <SignalRealtimeProvider>
-                    <HybridWebSocketPriceProvider>
+                <NotificationPromptProvider>
+                  <NavigationGuard>
+                    <SignalRealtimeProvider>
+                      <HybridWebSocketPriceProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -280,9 +282,10 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                    </HybridWebSocketPriceProvider>
-                  </SignalRealtimeProvider>
-                </NavigationGuard>
+                      </HybridWebSocketPriceProvider>
+                    </SignalRealtimeProvider>
+                  </NavigationGuard>
+                </NotificationPromptProvider>
               </WelcomeProvider>
             </AuthProvider>
           </BrowserRouter>

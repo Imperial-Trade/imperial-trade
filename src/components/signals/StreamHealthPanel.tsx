@@ -27,7 +27,7 @@ export function StreamHealthPanel() {
   const fetchHealth = async () => {
     try {
       const response = await fetch(
-        'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming?action=health',
+        'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/health',
         {
           method: 'GET',
           headers: {
@@ -92,5 +92,92 @@ export function StreamHealthPanel() {
     }
   };
 
-  return null;
+  if (isLoading) {
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Activity className="w-4 h-4 animate-pulse" />
+            Stream Health - Loading...
+          </CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="mb-4 border-destructive/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-destructive">
+            <AlertCircle className="w-4 h-4" />
+            Stream Health - Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <p className="text-xs text-muted-foreground">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!metrics) return null;
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getStatusIcon(metrics.tradermadeStatus)}
+            <span className={cn("capitalize", getStatusColor(metrics.tradermadeStatus))}>
+              TraderMade: {metrics.tradermadeStatus}
+            </span>
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="h-6 w-6 p-0"
+          >
+            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </Button>
+        </div>
+      </CardHeader>
+      
+      {isExpanded && (
+        <CardContent className="pt-2 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2">
+              <Zap className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Clients:</span>
+              <Badge variant="secondary" className="text-xs">
+                {metrics.connectedClients}
+              </Badge>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Database className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Symbols:</span>
+              <Badge variant="secondary" className="text-xs">
+                {metrics.active_symbols.length}
+              </Badge>
+            </div>
+          </div>
+          
+          {metrics.active_symbols.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Active Symbols:</p>
+              <div className="flex flex-wrap gap-1">
+                {metrics.active_symbols.map((symbol) => (
+                  <Badge key={symbol} variant="outline" className="text-xs">
+                    {symbol}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
 }

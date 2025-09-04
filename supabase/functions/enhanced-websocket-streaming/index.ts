@@ -249,6 +249,12 @@ class EnhancedWebSocketStreaming {
 
   private async handleTradermadeMessage(data: string): Promise<void> {
     try {
+      // Skip non-JSON messages like "Connected" from TraderMade
+      if (!data.startsWith('{')) {
+        console.log('📡 TraderMade info message:', data);
+        return;
+      }
+      
       const message = JSON.parse(data);
       
       if (message.symbol && message.bid && message.ask) {
@@ -275,7 +281,7 @@ class EnhancedWebSocketStreaming {
             await this.redisPublisher.set(`price:${priceData.symbol}`, JSON.stringify(priceData), { ex: 60 });
             
             // CRITICAL: Store in database to trigger alert processing via enhanced RPC
-            await this.supabaseService.rpc('upsert_market_price_enhanced', {
+            await supabaseService.rpc('upsert_market_price_enhanced', {
               p_symbol: priceData.symbol,
               p_bid: priceData.bid,
               p_ask: priceData.ask,

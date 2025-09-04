@@ -40,10 +40,15 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
       }
     }
   };
@@ -72,10 +77,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
   };
 
-  // Pause phase with animated dots
+  // Pause phase with animated dots - properly centered
   const drawPause = (ctx: CanvasRenderingContext2D, elapsedTime: number) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    // Calculate center position for text + dots block
+    const dotSpacing = 20;
+    const dotsHeight = 16; // dot size + some padding
+    const textDotsGap = 40;
+    const totalBlockHeight = textDotsGap + dotsHeight;
+    
+    // Position text higher to center the entire text+dots block
+    const textY = (ctx.canvas.height - totalBlockHeight) / 2;
+    const dotY = textY + textDotsGap + (dotsHeight / 2);
     
     // Main text
     ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
@@ -83,12 +98,10 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    ctx.fillText(tagline, ctx.canvas.width / 2, ctx.canvas.height / 2);
+    ctx.fillText(tagline, ctx.canvas.width / 2, textY);
     
     // Animated dots below the text
-    const dotStartY = ctx.canvas.height / 2 + 60;
     const dotSize = 8;
-    const dotSpacing = 20;
     const animationSpeed = 800; // milliseconds per cycle
     
     // Calculate which dot should be active based on time
@@ -101,7 +114,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       const isActive = i === activeDot;
       
       ctx.beginPath();
-      ctx.arc(dotX, dotStartY, dotSize, 0, Math.PI * 2);
+      ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
       ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.3)';
       ctx.fill();
     }
@@ -188,27 +201,137 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   useEffect(() => {
+    // Store original styles and scroll position
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    
+    // Store original inline styles
+    const originalStyles = {
+      html: {
+        overscrollBehavior: htmlEl.style.overscrollBehavior,
+        height: htmlEl.style.height
+      },
+      body: {
+        overflow: bodyEl.style.overflow,
+        position: bodyEl.style.position,
+        top: bodyEl.style.top,
+        left: bodyEl.style.left,
+        right: bodyEl.style.right,
+        width: bodyEl.style.width,
+        height: bodyEl.style.height,
+        overscrollBehavior: bodyEl.style.overscrollBehavior,
+        touchAction: bodyEl.style.touchAction
+      }
+    };
+
+    // Helper function to set CSS with !important
+    const setImportant = (el: HTMLElement, prop: string, val: string) => {
+      el.style.setProperty(prop, val, 'important');
+    };
+
+    // Apply scroll lock with !important
+    setImportant(htmlEl, 'overscroll-behavior', 'none');
+    setImportant(htmlEl, 'height', '100%');
+    setImportant(bodyEl, 'overflow', 'hidden');
+    setImportant(bodyEl, 'position', 'fixed');
+    setImportant(bodyEl, 'top', `-${scrollY}px`);
+    setImportant(bodyEl, 'left', '0');
+    setImportant(bodyEl, 'right', '0');
+    setImportant(bodyEl, 'width', '100%');
+    setImportant(bodyEl, 'height', '100%');
+    setImportant(bodyEl, 'overscroll-behavior', 'none');
+    setImportant(bodyEl, 'touch-action', 'none');
+
+    // Event handlers to prevent scrolling
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const preventKeys = (e: KeyboardEvent) => {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
+        preventScroll(e as unknown as Event);
+      }
+    };
+
+    const lockScrollPos = () => {
+      window.scrollTo(0, scrollY);
+    };
+
+    // Add event listeners with capture for maximum effectiveness
+    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+    window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
+    window.addEventListener('scroll', lockScrollPos, { passive: true });
+
+    // Setup canvas
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     
     animationRef.current = requestAnimationFrame(animate);
     
     return () => {
+      // Remove event listeners
+      window.removeEventListener('wheel', preventScroll);
+      window.removeEventListener('touchmove', preventScroll);
+      window.removeEventListener('keydown', preventKeys);
+      window.removeEventListener('scroll', lockScrollPos);
       window.removeEventListener('resize', resizeCanvas);
+      
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+
+      // Restore original styles exactly
+      Object.entries(originalStyles.html).forEach(([prop, value]) => {
+        if (value) {
+          htmlEl.style.setProperty(prop, value);
+        } else {
+          htmlEl.style.removeProperty(prop);
+        }
+      });
+
+      Object.entries(originalStyles.body).forEach(([prop, value]) => {
+        if (value) {
+          bodyEl.style.setProperty(prop, value);
+        } else {
+          bodyEl.style.removeProperty(prop);
+        }
+      });
+
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
   if (!isVisible) return null;
 
+  // Additional event handlers for the overlay
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black overscroll-none touch-none"
+      onWheel={handleWheel}
+      onTouchMove={handleTouchMove}
+    >
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ display: 'block' }}
+        style={{ 
+          display: 'block',
+          width: '100vw',
+          height: '100vh'
+        }}
       />
     </div>
   );

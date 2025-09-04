@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TypewriterText } from "@/components/ui/typewriter-text";
-import { ImperialWelcomeAnimation } from "@/components/ui/imperial-welcome-animation";
 import {
   TrendingUp,
   TrendingDown,
@@ -37,7 +36,7 @@ import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 
 export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
-  const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome();
+  const { hasSeenWelcome } = useWelcome();
   const { 
     hasSeenNotificationPrompt, 
     markNotificationPromptAsSeen,
@@ -48,28 +47,20 @@ export const DashboardHome: React.FC = () => {
   
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
-  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(false);
 
-  // Show animation only if user hasn't seen it
-  useEffect(() => {
-    if (!hasSeenWelcome) {
-      setShowWelcomeAnimation(true);
-    }
-  }, [hasSeenWelcome]);
-
-  // Show notification modal 3 seconds after welcome animation completes or after login
+  // Show notification modal after welcome animation completes or after login
   useEffect(() => {
     if (!user || !isInitialized) return;
     
     // Don't show if user has already seen prompt, already has push enabled, or welcome animation is showing
-    if (hasSeenNotificationPrompt || isPushEnabled || showWelcomeAnimation) return;
+    if (hasSeenNotificationPrompt || isPushEnabled || !hasSeenWelcome) return;
 
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
     }, 1500); // 1.5 seconds delay for immediate visibility
 
     return () => clearTimeout(timer);
-  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt]);
+  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
 
   const handleNotificationModalClose = () => {
     setShouldShowNotificationPrompt(false);
@@ -94,16 +85,6 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div className="relative min-h-screen">
-      {/* Welcome Animation (only on first login) */}
-      {showWelcomeAnimation && !hasSeenWelcome && (
-        <ImperialWelcomeAnimation
-          onComplete={() => {
-            setShowWelcomeAnimation(false);
-            markWelcomeAsSeen();
-          }}
-        />
-      )}
-
       {/* Video Background */}
       <VideoBackground />
 

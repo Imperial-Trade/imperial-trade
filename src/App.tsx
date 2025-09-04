@@ -14,6 +14,7 @@ import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBounda
 import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
+import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -286,6 +287,8 @@ function App() {
                     </SignalRealtimeProvider>
                   </NavigationGuard>
                 </NotificationPromptProvider>
+                {/* Global Welcome Animation - renders outside all layouts */}
+                <GlobalWelcomeOverlay />
               </WelcomeProvider>
             </AuthProvider>
           </BrowserRouter>

@@ -14,10 +14,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
   const [typingComplete, setTypingComplete] = useState(false);
-  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
   const typingCompleteRef = useRef(false);
-  const welcomeStartTimeRef = useRef<number>();
 
   const tagline = "the imperial experience awaits.";
   
@@ -38,7 +36,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     const elapsedTime = currentTime - startTimeRef.current;
     
     // Only animate dots after typing is complete
-    if (typingCompleteRef.current && !showWelcomeMessage) {
+    if (typingCompleteRef.current && !showDashboardFade) {
       // 3 cycles in 2 seconds = 667ms per cycle
       const cycleTime = elapsedTime % 667;
       const newActiveDot = Math.floor(cycleTime / 222); // 667ms / 3 dots
@@ -50,25 +48,13 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         dotCycleCountRef.current = currentCycle;
       }
       
-      // After exactly 3 cycles (2 seconds), show welcome message
+      // After exactly 3 cycles (2 seconds), start dashboard fade immediately
       if (currentCycle >= 3 && elapsedTime >= 2000) {
-        setShowWelcomeMessage(true);
-        welcomeStartTimeRef.current = currentTime;
-        return;
-      }
-    }
-    
-    // Handle welcome message phase
-    if (showWelcomeMessage && welcomeStartTimeRef.current) {
-      const welcomeElapsed = currentTime - welcomeStartTimeRef.current;
-      
-      // Show welcome message for 1.5 seconds, then fade to dashboard
-      if (welcomeElapsed >= 1500) {
         setShowDashboardFade(true);
         setTimeout(() => {
           setIsVisible(false);
           onComplete?.();
-        }, 1200); // Match dashboard fade-in duration
+        }, 3000); // 3 second dashboard fade duration
         return;
       }
     }
@@ -229,7 +215,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   return (
     <div 
-      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-1200 ${
+      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-3000 ${
         showDashboardFade ? 'bg-black/0' : 'bg-black'
       }`}
       style={{ minHeight: '100dvh' }}
@@ -237,42 +223,29 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       onTouchMove={handleTouchMove}
     >
       <div className="text-center px-4 max-w-4xl mx-auto">
-        {!showWelcomeMessage ? (
-          <>
-            <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
-              <TypewriterText 
-                text={tagline}
-                speed={100}
-                onComplete={handleTypingComplete}
-                className="text-white/90"
-              />
-            </h1>
-            
-            {typingComplete && (
-              <div className="flex items-center justify-center gap-3 sm:gap-5 animate-fade-in">
-                {[0, 1, 2].map((index) => (
-                  <div
-                    key={index}
-                    className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
-                      activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className={`animate-fade-in ${showDashboardFade ? 'animate-fade-out' : ''}`}>
-            <h1 className="text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light tracking-wide leading-tight">
-              <TypewriterText 
-                text={`Welcome to Imperial ${getUserName()}`}
-                speed={80}
-                className="text-white"
-                showCursor={false}
-              />
-            </h1>
-          </div>
-        )}
+        <>
+          <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
+            <TypewriterText 
+              text={tagline}
+              speed={100}
+              onComplete={handleTypingComplete}
+              className="text-white/90"
+            />
+          </h1>
+          
+          {typingComplete && (
+            <div className="flex items-center justify-center gap-3 sm:gap-5 animate-fade-in">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-opacity duration-300 ${
+                    activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </>
       </div>
     </div>
   );

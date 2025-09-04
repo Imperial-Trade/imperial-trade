@@ -949,7 +949,7 @@
 }
 
 .animate-dashboard-fade-in {
-  animation: dashboardFadeIn 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: dashboardFadeIn 3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes fadeIn {

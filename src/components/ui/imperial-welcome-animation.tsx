@@ -11,6 +11,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
   const [typingComplete, setTypingComplete] = useState(false);
+  const typingCompleteRef = useRef(false);
 
   const tagline = "the imperial experience awaits.";
 
@@ -22,7 +23,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     const elapsedTime = currentTime - startTimeRef.current;
     
     // Only animate dots after typing is complete
-    if (typingComplete) {
+    if (typingCompleteRef.current) {
       // Update active dot every 600ms
       const cycleTime = elapsedTime % 1800; // 3 dots * 600ms
       const newActiveDot = Math.floor(cycleTime / 600);
@@ -42,6 +43,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   const handleTypingComplete = () => {
+    typingCompleteRef.current = true;
     setTypingComplete(true);
     // Reset the start time for dot animation
     startTimeRef.current = performance.now();

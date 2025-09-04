@@ -40,11 +40,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
-      }
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
   };
 
@@ -188,12 +185,17 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   useEffect(() => {
+    // Prevent body scrolling during animation
+    document.body.style.overflow = 'hidden';
+    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     
     animationRef.current = requestAnimationFrame(animate);
     
     return () => {
+      // Restore body scrolling
+      document.body.style.overflow = '';
       window.removeEventListener('resize', resizeCanvas);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);

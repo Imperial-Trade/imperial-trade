@@ -110,6 +110,25 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     return () => clearTimeout(shakeTimer);
   }, [isOpen]);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.style.position = 'unset';
+      document.body.style.width = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.style.position = 'unset';
+      document.body.style.width = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isInitialized) return null;
 
   return createPortal(
@@ -121,8 +140,15 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100]"
-            onClick={onClose}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998]"
+            style={{ 
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              overflow: 'hidden'
+            }}
           />
 
           {/* Modal */}
@@ -140,11 +166,15 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
               duration: 0.5,
               x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
             }}
-            className={`fixed z-[101] ${
+            className={`fixed z-[9999] ${
               (isMobile || isTablet)
                 ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md max-h-[90vh]'
                 : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md'
             }`}
+            style={{
+              position: 'fixed',
+              pointerEvents: 'auto'
+            }}
           >
             <div className="bg-background rounded-2xl shadow-2xl border border-border overflow-hidden animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]">
               {/* Header with Crown Logo */}
@@ -316,7 +346,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[102] bg-muted text-muted-foreground px-4 py-3 rounded-xl shadow-xl max-w-sm text-center text-sm"
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10000] bg-muted text-muted-foreground px-4 py-3 rounded-xl shadow-xl max-w-sm text-center text-sm"
               >
                 {messageText}
               </motion.div>

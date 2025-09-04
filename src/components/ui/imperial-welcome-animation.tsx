@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useLayoutEffect, useRef } from 'react';
 
 interface ImperialWelcomeAnimationProps {
   onComplete?: () => void;
@@ -36,28 +36,33 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     animationRef.current = requestAnimationFrame(animate);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Prevent StrictMode double-invocation issues
+    let isCleanedUp = false;
+    
     // Store original styles and scroll position
     const htmlEl = document.documentElement;
     const bodyEl = document.body;
     const scrollY = window.scrollY || window.pageYOffset || 0;
     
-    // Store original inline styles
+    // Store original inline styles with kebab-case properties
     const originalStyles = {
       html: {
-        overscrollBehavior: htmlEl.style.overscrollBehavior,
-        height: htmlEl.style.height
+        'overflow': htmlEl.style.overflow,
+        'overscroll-behavior': htmlEl.style.overscrollBehavior,
+        'touch-action': htmlEl.style.touchAction,
+        'height': htmlEl.style.height
       },
       body: {
-        overflow: bodyEl.style.overflow,
-        position: bodyEl.style.position,
-        top: bodyEl.style.top,
-        left: bodyEl.style.left,
-        right: bodyEl.style.right,
-        width: bodyEl.style.width,
-        height: bodyEl.style.height,
-        overscrollBehavior: bodyEl.style.overscrollBehavior,
-        touchAction: bodyEl.style.touchAction
+        'overflow': bodyEl.style.overflow,
+        'position': bodyEl.style.position,
+        'top': bodyEl.style.top,
+        'left': bodyEl.style.left,
+        'right': bodyEl.style.right,
+        'width': bodyEl.style.width,
+        'height': bodyEl.style.height,
+        'overscroll-behavior': bodyEl.style.overscrollBehavior,
+        'touch-action': bodyEl.style.touchAction
       }
     };
 
@@ -66,9 +71,12 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       el.style.setProperty(prop, val, 'important');
     };
 
-    // Apply scroll lock with !important
+    // Apply comprehensive scroll lock to both html and body
+    setImportant(htmlEl, 'overflow', 'hidden');
     setImportant(htmlEl, 'overscroll-behavior', 'none');
+    setImportant(htmlEl, 'touch-action', 'none');
     setImportant(htmlEl, 'height', '100%');
+    
     setImportant(bodyEl, 'overflow', 'hidden');
     setImportant(bodyEl, 'position', 'fixed');
     setImportant(bodyEl, 'top', `-${scrollY}px`);
@@ -92,29 +100,50 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     };
 
     const lockScrollPos = () => {
-      window.scrollTo(0, scrollY);
+      if (!isCleanedUp) {
+        window.scrollTo(0, scrollY);
+      }
     };
 
-    // Add event listeners with capture for maximum effectiveness
-    window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-    window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-    window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
-    window.addEventListener('scroll', lockScrollPos, { passive: true });
-    
-    animationRef.current = requestAnimationFrame(animate);
-    
-    return () => {
-      // Remove event listeners
+    // Add event listeners to both window and document for maximum coverage
+    const addEventListeners = () => {
+      // Window events with capture and non-passive
+      window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+      window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+      window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
+      window.addEventListener('scroll', lockScrollPos, { passive: true });
+      
+      // Document events for additional coverage
+      document.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+      document.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+      document.addEventListener('keydown', preventKeys, { passive: false, capture: true });
+    };
+
+    const removeEventListeners = () => {
+      // Remove window events
       window.removeEventListener('wheel', preventScroll);
       window.removeEventListener('touchmove', preventScroll);
       window.removeEventListener('keydown', preventKeys);
       window.removeEventListener('scroll', lockScrollPos);
       
+      // Remove document events
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('keydown', preventKeys);
+    };
+
+    addEventListeners();
+    animationRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      isCleanedUp = true;
+      removeEventListeners();
+      
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
 
-      // Restore original styles exactly
+      // Restore original styles exactly using kebab-case
       Object.entries(originalStyles.html).forEach(([prop, value]) => {
         if (value) {
           htmlEl.style.setProperty(prop, value);
@@ -131,8 +160,10 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         }
       });
 
-      // Restore scroll position
-      window.scrollTo(0, scrollY);
+      // Restore scroll position after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        window.scrollTo(0, scrollY);
+      }, 0);
     };
   }, []);
 

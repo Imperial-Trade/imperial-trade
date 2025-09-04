@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface ProfessionalNotificationModalProps {
   isOpen: boolean;
-  onClose: (isPermanent?: boolean) => void;
+  onClose: () => void;
   userName?: string;
 }
 
@@ -44,7 +44,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
           title: "🔔 Alerts Activated!",
           description: "You'll now receive instant trade alerts and market opportunities.",
         });
-        onClose(true); // Permanent dismissal - user chose to receive alerts
+        onClose();
       }
     } catch (error) {
       console.error('Activation failed:', error);
@@ -55,7 +55,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   };
 
   const handleNotNow = () => {
-    onClose(false); // Session dismissal only - user chose "No Alerts"
+    onClose();
   };
 
   // Add shake animation after 10 seconds of no interaction

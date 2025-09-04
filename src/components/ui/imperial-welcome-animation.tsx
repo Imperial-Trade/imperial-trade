@@ -40,9 +40,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      // Use full viewport dimensions for proper centering
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const parent = canvas.parentElement;
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+      }
     }
   };
 
@@ -54,7 +56,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     const charsToShow = Math.floor(tagline.length * progress);
     const displayText = tagline.substring(0, charsToShow);
     
-    ctx.font = 'bold 48px Arial, sans-serif';
+    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -75,8 +77,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
-    // Main text - perfectly centered
-    ctx.font = 'bold 48px Arial, sans-serif';
+    // Main text
+    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -119,7 +121,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     
     // Show text with fade out
     const textOpacity = 1 - easedProgress;
-    ctx.font = 'bold 48px Arial, sans-serif';
+    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = `rgba(255, 255, 255, ${textOpacity * 0.9})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

@@ -1,9 +1,16 @@
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TypewriterText } from "@/components/ui/typewriter-text";
+import { ImperialWelcomeAnimation } from "@/components/ui/imperial-welcome-animation";
 import {
   TrendingUp,
   TrendingDown,
@@ -34,7 +41,6 @@ export const DashboardHome: React.FC = () => {
   const { 
     hasSeenNotificationPrompt, 
     markNotificationPromptAsSeen,
-    markNotificationPromptAsSessionDismissed,
     shouldShowNotificationPrompt,
     setShouldShowNotificationPrompt 
   } = useNotificationPrompt();
@@ -43,7 +49,6 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(false);
-  const [isDashboardInteractive, setIsDashboardInteractive] = useState(false);
 
   // Show animation only if user hasn't seen it
   useEffect(() => {
@@ -56,30 +61,19 @@ export const DashboardHome: React.FC = () => {
   useEffect(() => {
     if (!user || !isInitialized) return;
     
-    // If user already has push enabled, make dashboard interactive immediately
-    if (isPushEnabled && hasSeenWelcome) {
-      setIsDashboardInteractive(true);
-      return;
-    }
-    
     // Don't show if user has already seen prompt, already has push enabled, or welcome animation is showing
     if (hasSeenNotificationPrompt || isPushEnabled || showWelcomeAnimation) return;
 
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
-    }, 3000); // 3 seconds delay as specified
+    }, 1500); // 1.5 seconds delay for immediate visibility
 
     return () => clearTimeout(timer);
-  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt, hasSeenWelcome]);
+  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt]);
 
-  const handleNotificationModalClose = (isPermanent = false) => {
+  const handleNotificationModalClose = () => {
     setShouldShowNotificationPrompt(false);
-    setIsDashboardInteractive(true);
-    if (isPermanent) {
-      markNotificationPromptAsSeen(); // Permanent dismissal for "Receive Alerts"
-    } else {
-      markNotificationPromptAsSessionDismissed(); // Session dismissal for "No Alerts"
-    }
+    markNotificationPromptAsSeen();
   };
 
   // Get user's full name for the typewriter effect
@@ -100,6 +94,16 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div className="relative min-h-screen">
+      {/* Welcome Animation (only on first login) */}
+      {showWelcomeAnimation && !hasSeenWelcome && (
+        <ImperialWelcomeAnimation
+          onComplete={() => {
+            setShowWelcomeAnimation(false);
+            markWelcomeAsSeen();
+          }}
+        />
+      )}
+
       {/* Video Background */}
       <VideoBackground />
 
@@ -135,13 +139,6 @@ export const DashboardHome: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Dashboard Interaction Overlay */}
-      {!isDashboardInteractive && !showWelcomeAnimation && hasSeenWelcome && (
-        <div className="fixed inset-0 z-30 bg-transparent pointer-events-none">
-          <div className="absolute inset-0 pointer-events-auto cursor-not-allowed" />
-        </div>
-      )}
 
       {/* Advanced Trading Hub */}
       <div className="relative z-20 container mx-auto px-6 mb-12">

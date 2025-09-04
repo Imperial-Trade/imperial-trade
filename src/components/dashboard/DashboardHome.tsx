@@ -41,6 +41,7 @@ export const DashboardHome: React.FC = () => {
   const { 
     hasSeenNotificationPrompt, 
     markNotificationPromptAsSeen,
+    markNotificationPromptAsSessionDismissed,
     shouldShowNotificationPrompt,
     setShouldShowNotificationPrompt 
   } = useNotificationPrompt();
@@ -49,6 +50,7 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(false);
+  const [isDashboardInteractive, setIsDashboardInteractive] = useState(false);
 
   // Show animation only if user hasn't seen it
   useEffect(() => {
@@ -61,19 +63,30 @@ export const DashboardHome: React.FC = () => {
   useEffect(() => {
     if (!user || !isInitialized) return;
     
+    // If user already has push enabled, make dashboard interactive immediately
+    if (isPushEnabled && hasSeenWelcome) {
+      setIsDashboardInteractive(true);
+      return;
+    }
+    
     // Don't show if user has already seen prompt, already has push enabled, or welcome animation is showing
     if (hasSeenNotificationPrompt || isPushEnabled || showWelcomeAnimation) return;
 
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
-    }, 1500); // 1.5 seconds delay for immediate visibility
+    }, 3000); // 3 seconds delay as specified
 
     return () => clearTimeout(timer);
-  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt]);
+  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, showWelcomeAnimation, setShouldShowNotificationPrompt, hasSeenWelcome]);
 
-  const handleNotificationModalClose = () => {
+  const handleNotificationModalClose = (isPermanent = false) => {
     setShouldShowNotificationPrompt(false);
-    markNotificationPromptAsSeen();
+    setIsDashboardInteractive(true);
+    if (isPermanent) {
+      markNotificationPromptAsSeen(); // Permanent dismissal for "Receive Alerts"
+    } else {
+      markNotificationPromptAsSessionDismissed(); // Session dismissal for "No Alerts"
+    }
   };
 
   // Get user's full name for the typewriter effect
@@ -139,6 +152,13 @@ export const DashboardHome: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Dashboard Interaction Overlay */}
+      {!isDashboardInteractive && !showWelcomeAnimation && hasSeenWelcome && (
+        <div className="fixed inset-0 z-30 bg-transparent pointer-events-none">
+          <div className="absolute inset-0 pointer-events-auto cursor-not-allowed" />
+        </div>
+      )}
 
       {/* Advanced Trading Hub */}
       <div className="relative z-20 container mx-auto px-6 mb-12">

@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 interface NotificationPromptContextType {
   hasSeenNotificationPrompt: boolean;
   markNotificationPromptAsSeen: () => void;
+  markNotificationPromptAsSessionDismissed: () => void;
   resetNotificationPromptForNewSession: () => void;
   shouldShowNotificationPrompt: boolean;
   setShouldShowNotificationPrompt: (show: boolean) => void;
@@ -26,10 +27,13 @@ export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }>
 
   useEffect(() => {
     if (user?.id) {
-      const promptKey = `imperial_notification_prompt_${user.id}`;
-      const storedValue = localStorage.getItem(promptKey);
+      const permanentKey = `imperial_notification_permanent_${user.id}`;
+      const sessionKey = `imperial_notification_session_${user.id}`;
       
-      if (storedValue === 'true') {
+      const isPermanentlyDismissed = localStorage.getItem(permanentKey) === 'true';
+      const isSessionDismissed = localStorage.getItem(sessionKey) === 'true';
+      
+      if (isPermanentlyDismissed || isSessionDismissed) {
         setHasSeenNotificationPrompt(true);
       } else {
         setHasSeenNotificationPrompt(false);
@@ -41,8 +45,17 @@ export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }>
 
   const markNotificationPromptAsSeen = () => {
     if (user?.id) {
-      const promptKey = `imperial_notification_prompt_${user.id}`;
-      localStorage.setItem(promptKey, 'true');
+      const permanentKey = `imperial_notification_permanent_${user.id}`;
+      localStorage.setItem(permanentKey, 'true');
+      setHasSeenNotificationPrompt(true);
+      setShouldShowNotificationPrompt(false);
+    }
+  };
+
+  const markNotificationPromptAsSessionDismissed = () => {
+    if (user?.id) {
+      const sessionKey = `imperial_notification_session_${user.id}`;
+      localStorage.setItem(sessionKey, 'true');
       setHasSeenNotificationPrompt(true);
       setShouldShowNotificationPrompt(false);
     }
@@ -50,9 +63,14 @@ export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }>
 
   const resetNotificationPromptForNewSession = () => {
     if (user?.id) {
-      const promptKey = `imperial_notification_prompt_${user.id}`;
-      localStorage.removeItem(promptKey);
-      setHasSeenNotificationPrompt(false);
+      const sessionKey = `imperial_notification_session_${user.id}`;
+      localStorage.removeItem(sessionKey);
+      // Only reset if not permanently dismissed
+      const permanentKey = `imperial_notification_permanent_${user.id}`;
+      const isPermanentlyDismissed = localStorage.getItem(permanentKey) === 'true';
+      if (!isPermanentlyDismissed) {
+        setHasSeenNotificationPrompt(false);
+      }
     }
   };
 
@@ -60,6 +78,7 @@ export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }>
     <NotificationPromptContext.Provider value={{
       hasSeenNotificationPrompt,
       markNotificationPromptAsSeen,
+      markNotificationPromptAsSessionDismissed,
       resetNotificationPromptForNewSession,
       shouldShowNotificationPrompt,
       setShouldShowNotificationPrompt

@@ -11,7 +11,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   
   const [isVisible, setIsVisible] = useState(true);
 
-  const tagline = "THE IMPERIAL EXPERIENCE AWAITS";
+  const tagline = "the imperial experience awaits.";
 
   // Updated timeline with longer pause and dots animation
   const timeline = {

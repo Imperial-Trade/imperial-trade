@@ -380,7 +380,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
   return (
     <div className="bg-card rounded-lg border border-border">
-      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <form onSubmit={handleSubmit} className="p-3 space-y-3">
         {/* Asset Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Asset</label>
@@ -388,7 +388,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={selectedAsset?.symbol || ''} 
             onValueChange={handleAssetSelection}
           >
-            <SelectTrigger className="w-full h-10 bg-input border-border">
+            <SelectTrigger className="w-full h-9 bg-input border-border">
               <SelectValue placeholder="Select asset to analyze" />
             </SelectTrigger>
             <SelectContent>
@@ -440,20 +440,20 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               value={formData.trade_type} 
               onValueChange={(value) => handleInputChange('trade_type', value)}
             >
-              <SelectTrigger className="h-10 bg-input border-border">
+              <SelectTrigger className="h-9 bg-input border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="buy">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-accent-green" />
-                    <span>Buy / Market</span>
+                    <span>Buy Market</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="sell">
                   <div className="flex items-center gap-2">
                     <TrendingDown className="w-4 h-4 text-destructive" />
-                    <span>Sell / Market</span>
+                    <span>Sell Market</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="buy_limit">
@@ -481,7 +481,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               value={formData.entry_price}
               onChange={(e) => handleInputChange('entry_price', e.target.value)}
               placeholder="0.00000"
-              className="h-10 text-right font-mono bg-input border-border"
+              className="h-9 text-right font-mono bg-input border-border"
             />
             {errors.entry_price && (
               <p className="text-sm text-destructive flex items-center gap-1">
@@ -494,16 +494,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Price Levels with Tabs */}
         {selectedAsset && formData.entry_price && (
-          <div className="space-y-3">
-            <h3 className="text-base font-medium">Price Levels</h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-medium">Price Levels</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+              >
+                Auto-Sync
+              </Button>
+            </div>
             
             <Tabs defaultValue="direct" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-9">
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-8">
                 <TabsTrigger value="direct" className="data-[state=active]:bg-background text-sm">Direct Entry</TabsTrigger>
                 <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background text-sm">Pip Calculator</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="direct" className="space-y-4 mt-4">
+              <TabsContent value="direct" className="space-y-3 mt-3">
                 {/* Stop Loss */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-destructive">Stop Loss *</label>
@@ -527,7 +537,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         value={pipInputs.stop_loss_pips}
                         onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                         placeholder="0.0"
-                        className="h-9 font-mono text-right bg-input border-border"
+                        className="h-8 font-mono text-right bg-input border-border"
                       />
                     </div>
                   </div>
@@ -582,7 +592,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                              value={tp}
                              onChange={(e) => handleTakeProfitChange(index, e.target.value)}
                              placeholder="0.00000"
-                             className="h-9 font-mono text-right bg-input border-border"
+                              className="h-8 font-mono text-right bg-input border-border"
                            />
                          </div>
                          <div className="space-y-1">
@@ -593,7 +603,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                              value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
                              onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
                              placeholder="0.0"
-                             className="h-9 font-mono text-right bg-input border-border"
+                              className="h-8 font-mono text-right bg-input border-border"
                            />
                          </div>
                        </div>
@@ -717,7 +727,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             placeholder="Share your technical analysis, market context, and educational insights..."
-            className="min-h-[80px] resize-none bg-input border-border"
+            className="min-h-[60px] resize-none bg-input border-border"
           />
         </div>
 
@@ -728,14 +738,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 h-9"
+            className="px-4 h-8"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 h-9 bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
+            className="px-4 h-8 bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
           >
             {isSubmitting ? (
               <>

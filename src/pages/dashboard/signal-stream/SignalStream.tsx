@@ -20,7 +20,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
-import { XeonStreamSubscriptionToggle } from '@/components/signals/XeonStreamSubscriptionToggle';
+
 export default function SignalStream() {
   const {
     user,
@@ -569,10 +569,6 @@ export default function SignalStream() {
                 <SignalStreamStatus />
               </div>
 
-              {/* Xeon Stream Subscription Toggle */}
-              <div className="mb-4" data-prevent-widget-open="true">
-                <XeonStreamSubscriptionToggle />
-              </div>
 
               <div className="mb-6" />
               

@@ -616,15 +616,15 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-3 h-8 text-sm bg-gradient-to-br from-gray-900 via-black to-gray-800 hover:from-gray-800 hover:via-gray-900 hover:to-black text-white border border-amber-700/60 hover:border-amber-600/80 transition-all duration-500 ease-out rounded-lg shadow-inner shadow-black/40 hover:shadow-lg hover:shadow-amber-600/30 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02] [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/15 before:via-amber-800/20 before:to-transparent before:opacity-70 hover:before:opacity-90 before:transition-all before:duration-500 before:ease-out after:absolute after:inset-0 after:bg-gradient-to-br after:from-amber-700/40 after:via-yellow-800/50 after:to-amber-900/60 after:opacity-0 hover:after:opacity-100 after:transition-all after:duration-500 after:ease-out"
+            className="px-3 h-8 text-sm font-bold bg-gradient-to-br from-gray-900 via-black to-gray-800 hover:from-gray-800 hover:via-gray-900 hover:to-black text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8),_0_0_16px_rgba(255,255,0,0.6),_0_0_24px_rgba(255,255,0,0.4)] border border-amber-700/60 hover:border-amber-600/80 transition-all duration-500 ease-out rounded-lg shadow-inner shadow-black/40 hover:shadow-lg hover:shadow-amber-600/30 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02]"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3 h-3 mr-2 animate-spin relative z-10" />
-                <span className="relative z-10">Creating...</span>
+                <Loader2 className="w-3 h-3 mr-2 animate-spin relative z-20 text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8)]" />
+                <span className="relative z-20">Creating...</span>
               </>
             ) : (
-              <span className="relative z-10">Post Signal</span>
+              <span className="relative z-20">Post Signal</span>
             )}
           </Button>
         </div>

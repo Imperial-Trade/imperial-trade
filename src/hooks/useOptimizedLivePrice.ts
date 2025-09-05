@@ -32,15 +32,16 @@ export function useOptimizedLivePrice(
     debounceMs = 50 // Zero-pause: Ultra-fast 50ms debouncing (reduced from 100ms)
   } = options;
 
-  // FIXED: Enhanced symbol normalization with strict validation
+  // Enhanced symbol normalization with strict validation (reduced logging)
   const normalizedSymbol = (() => {
     const standardSymbol = getStandardSymbol(symbol) || symbol.toUpperCase();
     
-    console.log(`🔍 [${symbol}] Symbol normalization:`, {
-      input: symbol,
-      standardSymbol,
-      finalMapping: standardSymbol
-    });
+    // Only log once per symbol per session to reduce noise
+    const logKey = `symbol_${symbol}`;
+    if (!sessionStorage.getItem(logKey)) {
+      console.log(`🔍 [${symbol}] Symbol mapped to: ${standardSymbol}`);
+      sessionStorage.setItem(logKey, 'logged');
+    }
     
     // Direct mapping - no additional transformations to prevent cross-contamination
     return standardSymbol;
@@ -75,6 +76,21 @@ export function useOptimizedLivePrice(
   const httpFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountTimeRef = useRef<Date>(new Date());
   const fallbackTriggeredRef = useRef<{ lastTrigger: string; timestamp: number } | null>(null);
+
+  // Clear all localStorage cache on first mount to eliminate cross-contamination
+  useEffect(() => {
+    const clearKey = 'priceCache_cleared_v2';
+    if (!sessionStorage.getItem(clearKey)) {
+      // Clear all price-related localStorage entries
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('live_price_') || key.includes('price') && key.includes('_timestamp')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.setItem(clearKey, 'true');
+      console.log('🧹 Cleared all price cache to prevent symbol contamination');
+    }
+  }, []);
 
   // Enhanced localStorage utilities with market-aware TTL and plausibility checks
   const getStoredPrice = useCallback((sym: string) => {

@@ -49,18 +49,27 @@ export function isPricePlausibleForSymbol(price: number, symbol: string): boolea
   const normalizedSymbol = symbol.toUpperCase().trim();
   const range = ASSET_PRICE_RANGES[normalizedSymbol];
   
+  // Enhanced cross-contamination detection
   if (!range) {
-    // If we don't have a range defined, be permissive but log it
-    console.warn(`⚠️ No price range defined for symbol: ${symbol}`);
-    return true;
+    console.warn(`⚠️ No price range defined for symbol: ${normalizedSymbol}`);
+    return true; // Allow unknown symbols but warn
   }
-
+  
   const isPlausible = price >= range.min && price <= range.max;
   
+  // Log implausible prices for debugging
   if (!isPlausible) {
-    console.error(`🚫 PRICE GUARD: Implausible price for ${range.name} (${symbol}): ${price}. Expected range: ${range.min} - ${range.max}`);
+    console.error(`❌ Implausible price detected: ${normalizedSymbol} = ${price} (expected: ${range.min}-${range.max})`);
+    
+    // Special case: detect Gold/Bitcoin cross-contamination
+    if (normalizedSymbol.includes('XAU') && price > 10000) {
+      console.error(`🚨 CRITICAL: Gold showing Bitcoin-range price! ${price}`);
+    }
+    if (normalizedSymbol.includes('BTC') && price < 10000) {
+      console.error(`🚨 CRITICAL: Bitcoin showing Gold-range price! ${price}`);
+    }
   }
-
+  
   return isPlausible;
 }
 

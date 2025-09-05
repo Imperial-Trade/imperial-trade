@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
-import { PriceDebugPanel } from './PriceDebugPanel';
+
 import { useToast } from '@/hooks/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { 
@@ -441,8 +441,6 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 onUseCurrentPrice={handleUseCurrentPrice}
               />
             </div>
-            {/* TEMPORARY: Debug Panel */}
-            <PriceDebugPanel selectedAsset={selectedAsset} />
           </>
         )}
 

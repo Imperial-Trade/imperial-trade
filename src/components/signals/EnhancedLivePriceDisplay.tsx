@@ -38,20 +38,23 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // Use standardized symbol mapping
   const apiSymbol = getStandardSymbol(symbol) || symbol;
   
-  const {
-    price,
-    change,
-    changePercent,
-    isLoading,
-    error,
-    lastUpdated,
-    connectionStatus,
-    priceUpdateSource,
-    refreshPrice
-  } = useOptimizedLivePrice(symbol, {
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice } = useOptimizedLivePrice(symbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
     enableSmartPausing: false
   });
+
+  // Defensive check: Prevent showing implausible prices for closed markets
+  const displayPrice = useMemo(() => {
+    if (!price || price === 0) return 0;
+    
+    // Check price plausibility
+    if (!isPricePlausibleForSymbol(price, symbol)) {
+      console.error(`🚨 UI Guard: Blocked implausible price display for ${symbol}: ${price}`);
+      return 0; // Don't show implausible prices
+    }
+    
+    return price;
+  }, [price, symbol]);
 
   // Critical: Monitor price staleness for trading safety
   const stalenessStatus = usePriceStalenessMonitor(symbol, 15); // 15-second staleness threshold
@@ -116,12 +119,12 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return () => clearTimeout(debounceTimeout);
   }, [connectionStatus]);
 
-  // Notify parent about price updates
+  // Price update effect with validation
   useEffect(() => {
-    if (onPriceUpdate && price > 0) {
-      onPriceUpdate(price);
+    if (onPriceUpdate && displayPrice > 0) {
+      onPriceUpdate(displayPrice);
     }
-  }, [price, onPriceUpdate]);
+  }, [displayPrice, onPriceUpdate]);
 
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude
@@ -395,7 +398,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Main Price Display - Always visible */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          {price > 0 && isPricePlausibleForSymbol(price, apiSymbol) ? (
+          {displayPrice > 0 ? (
             <div className={`font-mono text-xl font-bold transition-all duration-300 ${
               isLoading || isRefreshing ? 'animate-pulse' : ''
             } ${
@@ -403,14 +406,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
               'text-accent-green'
             }`}>
-              ${formatPrice(price)}
+              ${formatPrice(displayPrice)}
             </div>
-          ) : price > 0 ? (
+          ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
             <div className="text-amber-500 font-mono text-xl">
               <div className="flex items-center gap-2">
-                <span>Market Closed</span>
+                <span>Invalid Price</span>
                 <span className="text-xs text-gray-400">
-                  (Last: ${formatPrice(price)})
+                  (Market Closed)
                 </span>
               </div>
             </div>
@@ -421,7 +424,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           )}
         </div>
         
-        {!error && price > 0 && change !== undefined && changePercent !== undefined && (
+        {!error && displayPrice > 0 && change !== undefined && changePercent !== undefined && (
           <div className={`flex items-center gap-1 ${priceChangeColor}`}>
             {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
             <div className="text-right">
@@ -466,14 +469,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''} mr-1`} />
             Refresh
           </Button>
-          {onUseCurrentPrice && (
+          {onUseCurrentPrice && displayPrice > 0 && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onUseCurrentPrice(price > 0 ? price : 0)}
+              onClick={() => onUseCurrentPrice(displayPrice)}
               className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-              disabled={false}
+              disabled={displayPrice <= 0}
               title="Use current price for signal"
             >
               Use Price

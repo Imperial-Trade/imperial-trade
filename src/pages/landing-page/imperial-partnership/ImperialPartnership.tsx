@@ -113,7 +113,7 @@ function SEOHead() {
 export default function ImperialPartnership() {
   // Earnings calculator state
   const [referrals, setReferrals] = useState(25); // new active clients per month
-  const [avgRevenue, setAvgRevenue] = useState(100000); // average lot size per client
+  const [avgRevenue, setAvgRevenue] = useState(75); // average lot size per client
   const [royaltyRate, setRoyaltyRate] = useState(5); // royalty per lot in dollars
 
   const monthly = useMemo(() => {
@@ -203,8 +203,8 @@ export default function ImperialPartnership() {
                   <div>
                     <label className="text-sm text-muted-foreground">Average lot size (per active client)</label>
                     <div className="mt-2">
-                      <Slider value={[avgRevenue]} min={0} max={500000} step={1000} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" step="1000" value={avgRevenue} onChange={(e) => setAvgRevenue(parseFloat(e.target.value || "0"))} />
+                      <Slider value={[avgRevenue]} min={0} max={100} step={1} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="1" max="100" value={avgRevenue} onChange={(e) => setAvgRevenue(parseFloat(e.target.value || "0"))} />
                     </div>
                   </div>
                   <div>

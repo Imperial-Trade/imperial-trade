@@ -36,8 +36,8 @@ export function SignalStreamStatus() {
     try {
       setIsRefreshing(true);
       
-      // Check persistent monitor health
-      const monitorResponse = await supabase.functions.invoke('persistent-alert-monitor', {
+      // Check enhanced alert monitor health
+      const monitorResponse = await supabase.functions.invoke('enhanced-alert-monitor', {
         body: { action: 'health' }
       });
       
@@ -67,7 +67,7 @@ export function SignalStreamStatus() {
       setIsRefreshing(true);
       console.log('🚀 Initializing persistent monitor...');
       
-      const response = await supabase.functions.invoke('persistent-alert-monitor', {
+      const response = await supabase.functions.invoke('enhanced-alert-monitor', {
         body: { action: 'start' }
       });
       

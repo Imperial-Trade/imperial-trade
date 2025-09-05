@@ -675,7 +675,7 @@ export default function SignalStream() {
          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
              <DialogHeader>
-               <DialogTitle className="bg-gradient-to-r from-violet-600 to-blue-600 bg-clip-text text-transparent text-xl font-semibold">Create Educational Pattern</DialogTitle>
+               <DialogTitle className="text-white text-xl font-semibold">Create Alert</DialogTitle>
              </DialogHeader>
              <OptimizedNewAlertForm 
                onSubmit={handleCreateSignal}

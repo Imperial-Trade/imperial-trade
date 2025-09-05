@@ -58,11 +58,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         setTimeout(() => {
           setDoorwayFade(true);
           
-          // After 2s doorway fade, call onComplete and remove overlay
+          // After 2.8s doorway fade, call onComplete and remove overlay
           setTimeout(() => {
             onComplete?.();
             setIsVisible(false);
-          }, 2000); // 2 second doorway fade duration
+          }, 2800); // 2.8 second doorway fade duration
         }, 500); // 0.5 second fade to black duration
         return;
       }
@@ -229,7 +229,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         doorwayFade ? 'bg-black' : 
         'bg-black'
       }`}
-      style={{ minHeight: '100dvh' }}
+      style={{ 
+        minHeight: '100dvh',
+        ...(doorwayFade ? {
+          WebkitMaskImage: 'radial-gradient(circle at 50% 50%, transparent calc(var(--portal-radius) - 1px), black var(--portal-radius))',
+          maskImage: 'radial-gradient(circle at 50% 50%, transparent calc(var(--portal-radius) - 1px), black var(--portal-radius))',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+          WebkitMaskSize: 'cover',
+          maskSize: 'cover',
+          animation: 'portal-mask-open 2.8s ease-in-out forwards'
+        } : {})
+      }}
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
@@ -245,19 +258,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
                 linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
               `,
               backgroundSize: '20px 20px',
-              animation: 'grid-dissolve 2s ease-out forwards'
+              animation: 'grid-dissolve 2.8s ease-in-out forwards'
             }}
           />
           
-          {/* Portal opening with hexagonal clip-path */}
-          <div 
-            className="absolute inset-0 bg-black"
-            style={{
-              clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
-              transform: 'scale(0)',
-              animation: 'digital-portal-open 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
-            }}
-          />
+          {/* Mask handles center reveal; hex rim below adds style */}
           
           {/* Portal glow effect */}
           <div 
@@ -266,7 +271,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
               background: 'radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(59, 130, 246, 0.3) 45%, rgba(234, 179, 8, 0.2) 50%, transparent 55%)',
               clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
               transform: 'scale(0)',
-              animation: 'portal-glow 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+              animation: 'portal-glow 2.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
             }}
           />
         </>

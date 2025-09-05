@@ -22,8 +22,11 @@ export class ContextErrorBoundary extends Component<Props, State> {
   public static getDerivedStateFromError(error: Error): State {
     // Check if this is a context-related error
     if (error.message.includes('useSignalRealtime') || 
+        error.message.includes('useHybridWebSocketPrices') ||
+        error.message.includes('useOptimizedWebSocketPrices') ||
         error.message.includes('useState') ||
-        error.message.includes('Provider')) {
+        error.message.includes('Provider') ||
+        error.message.includes('must be used within')) {
       return { hasError: true, error };
     }
     // Re-throw non-context errors
@@ -32,6 +35,8 @@ export class ContextErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ContextErrorBoundary caught an error:', error, errorInfo);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
     
     if (this.props.onError) {
       this.props.onError(error, errorInfo);

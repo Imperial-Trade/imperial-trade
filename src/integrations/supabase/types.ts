@@ -3300,6 +3300,10 @@ export type Database = {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
       }
+      cleanup_inactive_symbol_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_cron_logs: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -3349,6 +3353,10 @@ export type Database = {
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_active_alert_symbols: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
       }
       get_active_users_for_broadcasting: {
         Args: Record<PropertyKey, never>

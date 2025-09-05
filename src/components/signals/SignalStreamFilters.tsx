@@ -269,7 +269,7 @@ export function SignalStreamFilters({
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-medium bg-gradient-to-br from-violet-600 via-purple-600 to-blue-600 hover:from-violet-500 hover:via-purple-500 hover:to-blue-500 text-white border border-violet-500/30 hover:border-violet-400/50 transition-all duration-300 rounded-lg shadow-lg hover:shadow-violet-500/30 backdrop-blur-sm min-w-[120px] relative overflow-hidden group before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300"
+                  className="h-10 px-4 text-sm font-medium bg-gradient-to-br from-white via-gray-800 to-black hover:from-gray-100 hover:via-gray-700 hover:to-gray-900 text-white border border-amber-800/40 hover:border-amber-700/60 transition-all duration-300 rounded-lg shadow-lg hover:shadow-amber-800/40 backdrop-blur-sm min-w-[120px] relative overflow-hidden group before:absolute before:inset-0 before:bg-gradient-to-r before:from-amber-900/20 before:via-yellow-800/30 before:to-amber-700/40 before:opacity-60 hover:before:opacity-80 before:transition-opacity before:duration-300 after:absolute after:inset-0 after:bg-gradient-to-r after:from-amber-800/30 after:via-yellow-700/40 after:to-amber-600/50 after:opacity-0 hover:after:opacity-100 after:transition-opacity after:duration-300"
                 >
                   <Plus className="w-4 h-4 mr-2 relative z-10" />
                   <span className="relative z-10">Create Pattern</span>

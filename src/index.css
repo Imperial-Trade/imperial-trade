@@ -459,74 +459,21 @@
   }
 }
 
-/* Doorway gradient custom properties */
-@property --door-top {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 0%;
-}
-
-@property --door-center {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 50%;
-}
-
-@property --door-bottom {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 100%;
-}
-
-/* Doorway opening animation - vertical doors parting from center */
-@keyframes doorway-open {
-  0% {
-    --door-top: 0%;
-    --door-center: 50%;
-    --door-bottom: 100%;
+/* Professional fade animation */
+@keyframes professional-fade-out {
+  from { 
+    opacity: 1; 
+    transform: scale(1); 
   }
-  100% {
-    --door-top: -10%;
-    --door-center: 50%;
-    --door-bottom: 110%;
+  to { 
+    opacity: 0; 
+    transform: scale(0.98); 
   }
 }
 
-@keyframes digital-portal-open {
-  0% {
-    transform: scale(200);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0);
-    opacity: 0;
-  }
-}
-
-@keyframes grid-dissolve {
-  0% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes portal-glow {
-  0% {
-    transform: scale(200);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(0);
-    opacity: 0;
-  }
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.7s ease-in-out;
 }
 
 .animate-parallax-float {

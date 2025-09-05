@@ -58,11 +58,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         setTimeout(() => {
           setDoorwayFade(true);
           
-          // After 3s doorway fade, call onComplete and remove overlay
+          // After 2s simple fade, call onComplete and remove overlay
           setTimeout(() => {
             onComplete?.();
             setIsVisible(false);
-          }, 3000); // 3 second doorway fade duration
+          }, 2000); // 2 second elegant fade duration
         }, 500); // 0.5 second fade to black duration
         return;
       }
@@ -226,55 +226,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     <div 
       className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all ${
         fadeToBlack ? 'bg-black duration-500' : 
-        doorwayFade ? 'bg-black' : 
+        doorwayFade ? 'bg-black animate-fade-out' : 
         'bg-black'
       }`}
       style={{ 
         minHeight: '100dvh',
         ...(doorwayFade ? {
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black var(--door-top), transparent var(--door-center), black var(--door-bottom), black 100%)',
-          maskImage: 'linear-gradient(to bottom, black 0%, black var(--door-top), transparent var(--door-center), black var(--door-bottom), black 100%)',
-          WebkitMaskRepeat: 'no-repeat',
-          maskRepeat: 'no-repeat',
-          WebkitMaskPosition: 'center',
-          maskPosition: 'center',
-          WebkitMaskSize: 'cover',
-          maskSize: 'cover',
-          animation: 'doorway-open 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+          opacity: 0,
+          animation: 'professional-fade-out 2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards'
         } : {})
       }}
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
-      {/* Digital Portal doorway effect */}
-      {doorwayFade && (
-        <>
-          {/* Digital grid overlay */}
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: '20px 20px',
-              animation: 'grid-dissolve 3s ease-in-out forwards'
-            }}
-          />
-          
-          {/* Mask handles center reveal; hex rim below adds style */}
-          
-          {/* Subtle edge lighting for doorway effect */}
-          <div 
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.2) 0%, transparent 20%, transparent 80%, rgba(234, 179, 8, 0.2) 100%)',
-              opacity: 0,
-              animation: 'fadeIn 3s ease-in-out forwards'
-            }}
-          />
-        </>
-      )}
+      {/* Simple elegant fade - no complex effects */}
 
       <div className={`text-center px-4 max-w-4xl mx-auto transition-opacity duration-500 ${
         fadeToBlack ? 'opacity-0' : 'opacity-100'

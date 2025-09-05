@@ -442,65 +442,68 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           </div>
         )}
 
-        {/* Trade Type */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-2">
-            Trade Type
-            <Info className="w-4 h-4 text-muted-foreground" />
-          </label>
-          <Select 
-            value={formData.trade_type} 
-            onValueChange={(value) => handleInputChange('trade_type', value)}
-          >
-            <SelectTrigger className="h-12 bg-input border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="buy">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-accent-green" />
-                  <span>Buy / Market</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="sell">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-destructive" />
-                  <span>Sell / Market</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="buy_limit">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-accent-green" />
-                  <span>Buy Limit</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="sell_limit">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-destructive" />
-                  <span>Sell Limit</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Trade Type and Entry Price - Side by Side */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Trade Type */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              Trade Type
+              <Info className="w-4 h-4 text-muted-foreground" />
+            </label>
+            <Select 
+              value={formData.trade_type} 
+              onValueChange={(value) => handleInputChange('trade_type', value)}
+            >
+              <SelectTrigger className="h-10 bg-input border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buy">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-accent-green" />
+                    <span>Buy / Market</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-destructive" />
+                    <span>Sell / Market</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="buy_limit">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-accent-green" />
+                    <span>Buy Limit</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell_limit">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-destructive" />
+                    <span>Sell Limit</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Entry Price */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Entry Price</label>
-          <Input
-            type="number"
-            step="0.00001"
-            value={formData.entry_price}
-            onChange={(e) => handleInputChange('entry_price', e.target.value)}
-            placeholder="0.00000"
-            className="h-12 text-right font-mono bg-input border-border"
-          />
-          {errors.entry_price && (
-            <p className="text-sm text-destructive flex items-center gap-1">
-              <AlertTriangle className="w-4 h-4" />
-              {errors.entry_price}
-            </p>
-          )}
+          {/* Entry Price */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Entry Price</label>
+            <Input
+              type="number"
+              step="0.00001"
+              value={formData.entry_price}
+              onChange={(e) => handleInputChange('entry_price', e.target.value)}
+              placeholder="0.00000"
+              className="h-10 text-right font-mono bg-input border-border"
+            />
+            {errors.entry_price && (
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertTriangle className="w-4 h-4" />
+                {errors.entry_price}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Price Levels with Tabs */}

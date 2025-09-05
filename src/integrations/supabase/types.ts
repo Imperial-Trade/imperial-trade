@@ -1416,19 +1416,22 @@ export type Database = {
       notification_read_receipts: {
         Row: {
           created_at: string
-          notification_id: string
+          event_id: string
+          event_type: string
           read_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          notification_id: string
+          event_id: string
+          event_type: string
           read_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          notification_id?: string
+          event_id?: string
+          event_type?: string
           read_at?: string
           user_id?: string
         }
@@ -1464,6 +1467,36 @@ export type Database = {
           resubmissions?: boolean
           updated_at?: string
           weekly_report?: boolean
+        }
+        Relationships: []
+      }
+      notification_ui_telemetry: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          metric: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          metric: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          metric?: string
+          user_id?: string
+          value?: number | null
         }
         Relationships: []
       }
@@ -3300,11 +3333,19 @@ export type Database = {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
       }
+      cleanup_old_cron_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_economic_events: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
       cleanup_old_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_rate_limits_optimized: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -3329,6 +3370,10 @@ export type Database = {
       delete_post_cascade: {
         Args: { p_post_id: string }
         Returns: number
+      }
+      disable_economic_events_processing: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
@@ -3360,6 +3405,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_unread_notification_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_user_access_level: {
         Args: { user_id_param?: string }
         Returns: string
@@ -3371,6 +3420,22 @@ export type Database = {
           device_info: Json
           last_seen_at: string
           onesignal_player_id: string
+        }[]
+      }
+      get_user_notifications: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_event_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_id: string
+          event_type: string
+          post_id: string
+          post_title: string
+          unread: boolean
         }[]
       }
       get_user_role: {
@@ -3430,6 +3495,14 @@ export type Database = {
       is_system_operation: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      mark_notifications_cleared: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      mark_notifications_read: {
+        Args: { p_event_ids: string[]; p_event_type: string }
+        Returns: number
       }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }

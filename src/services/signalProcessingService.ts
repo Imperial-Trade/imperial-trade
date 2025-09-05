@@ -65,42 +65,10 @@ export interface EnhancedSignalFinderResponse {
 class SignalProcessingService {
   async scanForEducationalOpportunities(userId: string): Promise<EducationalSignal[]> {
     try {
-      console.log('Calling enhanced signal-finder-agent for multi-asset AI patterns...');
-      
-      const { data, error } = await supabase.functions.invoke('signal-finder-agent', {
-        body: { user_id: userId }
-      });
-
-      if (error) {
-        console.error('Enhanced signal-finder-agent error:', error);
-        return this.getEnhancedFallbackSignals();
-      }
-
-      const response = data?.reply as EnhancedSignalFinderResponse;
-      
-      if (!response) {
-        console.log('No response from enhanced signal finder');
-        return this.getEnhancedFallbackSignals();
-      }
-
-      if (response.status === 'NoMatch' || response.status === 'NoMarketData') {
-        console.log('No AI patterns found, using enhanced fallback signals');
-        return this.getEnhancedFallbackSignals();
-      }
-
-      if (response.status === 'MultipleMatches' && response.signals) {
-        console.log(`Processing ${response.signals.length} AI-generated signals`);
-        return this.transformMultipleAISignalsToEducational(response);
-      }
-
-      // Legacy single signal support
-      if (response.status === 'MatchFound') {
-        return this.transformSingleAISignalToEducational(response as any);
-      }
-
+      console.log('Signal Finder Agent disabled to reduce AI API costs');
       return this.getEnhancedFallbackSignals();
     } catch (error) {
-      console.error('Error in enhanced signal processing service:', error);
+      console.error('Error in signal processing service:', error);
       return this.getEnhancedFallbackSignals();
     }
   }

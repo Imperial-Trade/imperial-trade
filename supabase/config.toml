@@ -30,6 +30,9 @@ verify_jwt = true
 [functions.enhanced-signal-notification-dispatcher]
 verify_jwt = false
 
+[functions.cleanup-old-data]
+verify_jwt = false
+
 [functions.hello]
 verify_jwt = false
 

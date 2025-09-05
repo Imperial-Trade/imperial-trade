@@ -39,7 +39,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     if (typingCompleteRef.current && !showDashboardFade) {
       // 3 cycles in 3 seconds = 1000ms per cycle
       const cycleTime = elapsedTime % 1000;
-      const newActiveDot = Math.floor(cycleTime / 333); // 1000ms / 3 dots
+      const newActiveDot = Math.floor(cycleTime / 250); // 1000ms / 4 dots
       setActiveDot(newActiveDot);
       
       // Count complete cycles
@@ -237,7 +237,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
           
           {typingComplete && (
             <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
-              {[0, 1, 2].map((index) => (
+              {[0, 1, 2, 3].map((index) => (
                 <div
                   key={index}
                   className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${

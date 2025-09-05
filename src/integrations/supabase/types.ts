@@ -185,39 +185,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_outputs: {
-        Row: {
-          agent_name: string
-          created_at: string
-          id: string
-          metadata: Json | null
-          output_text: string
-          updated_at: string
-          user_id: string
-          user_readable_text: string | null
-        }
-        Insert: {
-          agent_name: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          output_text: string
-          updated_at?: string
-          user_id: string
-          user_readable_text?: string | null
-        }
-        Update: {
-          agent_name?: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          output_text?: string
-          updated_at?: string
-          user_id?: string
-          user_readable_text?: string | null
-        }
-        Relationships: []
-      }
       ai_coach_feedback: {
         Row: {
           coaching_analysis: Json
@@ -3337,6 +3304,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_old_cron_logs_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_economic_events: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -3347,7 +3318,7 @@ export type Database = {
       }
       cleanup_old_rate_limits_optimized: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: number
       }
       create_smart_notification_batch: {
         Args: {
@@ -3378,6 +3349,14 @@ export type Database = {
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_active_users_for_broadcasting: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          last_activity: string
+          onesignal_player_id: string
+          user_id: string
+        }[]
       }
       get_anonymized_rate_limits: {
         Args: Record<PropertyKey, never>

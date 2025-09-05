@@ -61,16 +61,17 @@ serve(async (req) => {
       if (notification.user_ids && notification.user_ids.length > 0) {
         targetUsers = notification.user_ids
       } else {
-        // Get all users with Xeon Stream enabled
-        const { data: xeonUsers, error: usersError } = await supabase
-          .rpc('get_xeon_stream_subscribers')
+        // COST OPTIMIZED: Get only active users (24hr window)
+        const { data: activeUsers, error: usersError } = await supabase
+          .rpc('get_active_users_for_broadcasting')
 
         if (usersError) {
-          console.error('❌ Error fetching Xeon Stream users:', usersError)
+          console.error('❌ Error fetching active users:', usersError)
           continue
         }
 
-        targetUsers = xeonUsers?.map((user: any) => user.user_id) || []
+        targetUsers = activeUsers?.map((user: any) => user.user_id) || []
+        console.log(`🎯 COST OPTIMIZED: Targeting ${targetUsers.length} active users (vs all users)`)
       }
 
       if (!notification.include_creator) {

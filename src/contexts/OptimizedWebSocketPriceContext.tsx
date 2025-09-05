@@ -48,7 +48,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const reconnectAttempts = useRef<number>(0);
   const isAuthenticatedRef = useRef<boolean>(false);
 
-  // Zero-pause: Direct connection to enhanced-websocket-streaming (not tradermade-streaming)
+  // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
   const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
 
   const connect = useCallback(async () => {

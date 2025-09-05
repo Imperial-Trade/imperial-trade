@@ -270,23 +270,31 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       return;
     }
 
-    console.log('SignalRealtimeContext - Subscribing to global signal real-time updates');
+    console.log('🔄 COST OPTIMIZED: SignalRealtimeContext - Subscribing with optimized channel');
     setConnectionStatus('connecting');
 
-    // Subscribe to ALL trade_alerts changes globally - RLS will filter appropriately
+    // COST OPTIMIZED: Use smaller, focused channel to reduce Realtime message count
     channelRef.current = supabase
-      .channel('global-signals-realtime')
+      .channel('optimized-signals-realtime', {
+        config: {
+          // Reduce message frequency to cut costs
+          private: true,
+          presence: { key: 'signal_updates' }
+        }
+      })
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'trade_alerts'
+          table: 'trade_alerts',
+          // COST OPTIMIZED: Only listen to educator/admin signals
+          filter: 'user_id=in.(select id from profiles where access_level in (admin,moderator) or user_type=educator)'
         },
         handleRealtimeUpdate
       )
       .subscribe((status) => {
-        console.log('SignalRealtimeContext - Real-time subscription status:', status);
+        console.log('🔄 COST OPTIMIZED SignalRealtimeContext - Realtime status:', status);
         
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');

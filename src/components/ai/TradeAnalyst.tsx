@@ -71,23 +71,17 @@ export default function TradeAnalyst() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch analysis history
+  // COST OPTIMIZED: Analysis history disabled
   const {
-    data: analysisHistory,
+    data: analysisHistory = [],
     isLoading: historyLoading
   } = useQuery({
-    queryKey: ['analysis-history', user?.id],
+    queryKey: ['analysis-history-disabled', user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      const {
-        data,
-        error
-      } = await supabase.from('agent_outputs').select('*').eq('user_id', user.id).eq('agent_name', 'Deconstructor').order('created_at', {
-        ascending: false
-      }).limit(10);
-      if (error) throw error;
-      return data || [];
+      console.log('Agent outputs disabled for cost optimization');
+      return []; // Always return empty array
     },
-    enabled: !!user?.id
+    enabled: false // Disabled for cost optimization
   });
   const handleFileSelect = useCallback(async (files: FileList) => {
     const maxFiles = 5;

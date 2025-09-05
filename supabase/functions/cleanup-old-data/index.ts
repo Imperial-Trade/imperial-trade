@@ -20,27 +20,28 @@ Deno.serve(async (req) => {
 
     let totalCleaned = 0;
 
-    // Clean old cron job logs (7 days instead of 30)
-    console.log('Cleaning old cron job logs...');
+    // Clean old cron job logs (3 days instead of unlimited - COST OPTIMIZED)
+    console.log('🧹 Cleaning old cron job logs (3-day retention)...');
     const { data: cronResult, error: cronError } = await supabase
-      .rpc('cleanup_old_cron_logs');
+      .rpc('cleanup_old_cron_logs_optimized');
     
     if (cronError) {
       console.error('Error cleaning cron logs:', cronError);
     } else {
       totalCleaned += cronResult || 0;
-      console.log(`Cleaned ${cronResult || 0} old cron job logs`);
+      console.log(`✅ Cleaned ${cronResult || 0} old cron job logs`);
     }
 
-    // Clean old rate limits with optimized timing
-    console.log('Cleaning old rate limits...');
-    const { error: rateLimitError } = await supabase
+    // Clean old rate limits (optimized timing - COST OPTIMIZED)
+    console.log('🧹 Cleaning old rate limits...');
+    const { data: rateResult, error: rateLimitError } = await supabase
       .rpc('cleanup_old_rate_limits_optimized');
     
     if (rateLimitError) {
       console.error('Error cleaning rate limits:', rateLimitError);
     } else {
-      console.log('Rate limits cleaned successfully');
+      totalCleaned += rateResult || 0;
+      console.log(`✅ Cleaned ${rateResult || 0} rate limit records`);
     }
 
     // Clean old notification logs (older than 14 days)

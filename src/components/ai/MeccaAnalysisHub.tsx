@@ -64,23 +64,14 @@ const MeccaAnalysisHub: React.FC = () => {
   const { user } = useAuth();
   const { data: tradingMetrics } = useTradingMetrics();
 
-  // Fetch analysis history
+  // COST OPTIMIZED: Agent outputs disabled - Analysis history disabled
   const { data: analysisHistory = [] } = useQuery({
-    queryKey: ['analysis-history', user?.id],
+    queryKey: ['analysis-history-disabled', user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from('agent_outputs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('agent_name', 'Deconstructor')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data as AgentOutput[];
+      console.log('Analysis history disabled for cost optimization');
+      return []; // Always return empty array
     },
-    enabled: !!user?.id,
+    enabled: false, // Disabled for cost optimization
   });
 
   const addInsight = useCallback((insight: string) => {
@@ -701,10 +692,10 @@ const MeccaAnalysisHub: React.FC = () => {
                       onClick={async () => {
                         if (user?.id) {
                           try {
-                            await supabase.from('agent_outputs').delete().eq('user_id', user.id);
+                            // COST OPTIMIZED: agent_outputs table removed
                             await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
                             await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
-                            toast({ title: "Data cleared", description: "Your analysis history has been reset." });
+                            toast({ title: "Data cleared", description: "Your analysis history has been reset (agent outputs disabled for cost optimization)." });
                             window.location.reload();
                           } catch (error) {
                             toast({ title: "Error", description: "Failed to clear data.", variant: "destructive" });

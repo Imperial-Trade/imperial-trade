@@ -124,167 +124,166 @@ export function SignalStreamFilters({
       onPointerDown={(e) => e.stopPropagation()}
       onPointerMove={(e) => e.stopPropagation()}
     >
-      <CardContent className="p-3 space-y-3 flex flex-col items-center">
-        {/* Compact Top Bar with Search and Clear */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10" />
-            
-            {/* Gradient Placeholder Overlay */}
-            {!filters.search && (
-              <div className="absolute left-9 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
-                Search Xeon{' '}
-                <span className="bg-gradient-to-r from-indigo-500 via-slate-400 to-blue-900 bg-clip-text text-transparent font-medium">
-                  alerts
-                </span>
-                ...
-              </div>
-            )}
-            
-            <Input
-              value={filters.search}
-              onChange={(e) => updateFilter('search', e.target.value)}
-              className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
-            />
-            {filters.search && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => handleClearFilterClick(e, 'search')}
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive z-10"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            )}
+      <CardContent className="p-4 sm:p-3 space-y-4 sm:space-y-3">
+        {/* Enhanced Responsive Layout */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-3">
+          
+          {/* Search Section - Full width on mobile, flex-grow on desktop */}
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
+              
+              {/* Enhanced Gradient Placeholder */}
+              {!filters.search && (
+                <div className="absolute left-10 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
+                  Search{' '}
+                  <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
+                    Xeon alerts
+                  </span>
+                  <span className="animate-pulse">...</span>
+                </div>
+              )}
+              
+              <Input
+                value={filters.search}
+                onChange={(e) => updateFilter('search', e.target.value)}
+                className="pl-10 pr-10 h-10 sm:h-8 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+              />
+              
+              {filters.search && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleClearFilterClick(e, 'search')}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
+                >
+                  <X className="w-4 h-4 sm:w-3 sm:h-3" />
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Filter Dropdowns */}
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            {/* Status Filter */}
-            <select
-              value={filters.status}
-              onChange={(e) => updateFilter('status', e.target.value)}
-              className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
-              style={{ 
-                background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                colorScheme: 'light',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                appearance: 'none'
-              }}
-            >
-              {statusOptions.map(option => (
-                <option 
-                  key={option.value} 
-                  value={option.value} 
-                  className="!text-black !border-none"
+          {/* Filters Section - Responsive grid layout */}
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 sm:gap-2 lg:min-w-fit">
+            
+            {/* Filter Controls Row */}
+            <div className="flex flex-col xs:flex-row gap-2 xs:gap-2 sm:gap-2 flex-1 sm:flex-none">
+              {/* Status Filter */}
+              <div className="flex-1 xs:flex-none">
+                <select
+                  value={filters.status}
+                  onChange={(e) => updateFilter('status', e.target.value)}
+                  className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
                   style={{ 
-                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
-                    color: 'black !important',
-                    borderColor: 'transparent !important'
+                    background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
+                    colorScheme: 'light',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
                   }}
                 >
-                  {option.label} ({option.count})
-                </option>
-              ))}
-            </select>
+                  {statusOptions.map(option => (
+                    <option 
+                      key={option.value} 
+                      value={option.value} 
+                      className="text-black bg-background"
+                    >
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Trade Type Filter */}
-            <select
-              value={filters.tradeType}
-              onChange={(e) => updateFilter('tradeType', e.target.value)}
-              className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
-              style={{ 
-                background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                colorScheme: 'light',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                appearance: 'none'
-              }}
-            >
-              {tradeTypeOptions.map(option => (
-                <option 
-                  key={option.value} 
-                  value={option.value} 
-                  className="!text-black !border-none"
+              {/* Trade Type Filter */}
+              <div className="flex-1 xs:flex-none">
+                <select
+                  value={filters.tradeType}
+                  onChange={(e) => updateFilter('tradeType', e.target.value)}
+                  className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
                   style={{ 
-                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
-                    color: 'black !important',
-                    borderColor: 'transparent !important'
+                    background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
+                    colorScheme: 'light',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
                   }}
                 >
-                  {option.label} ({option.count})
-                </option>
-              ))}
-            </select>
+                  {tradeTypeOptions.map(option => (
+                    <option 
+                      key={option.value} 
+                      value={option.value} 
+                      className="text-black bg-background"
+                    >
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Educator Filter */}
-            {educatorOptions.length > 1 && (
-              <select
-                value={filters.educator}
-                onChange={(e) => updateFilter('educator', e.target.value)}
-                className="h-8 px-3 text-xs text-black border border-yellow-600 rounded-md focus:border-yellow-500 focus:outline-none transition-all duration-200 shadow-sm shadow-yellow-700/20 hover:border-yellow-500 z-50"
-                style={{ 
-                  background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                  colorScheme: 'light',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  appearance: 'none'
-                }}
-              >
-                <option 
-                  value="" 
-                  className="!text-black !border-none"
-                  style={{ 
-                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
-                    color: 'black !important',
-                    borderColor: 'transparent !important'
-                  }}
-                >
-                  All Educators ({educatorOptions.length})
-                </option>
-                {educatorOptions.map(educator => (
-                  <option 
-                    key={educator.id} 
-                    value={educator.id} 
-                    className="!text-black !border-none"
+              {/* Educator Filter */}
+              {educatorOptions.length > 1 && (
+                <div className="flex-1 xs:flex-none">
+                  <select
+                    value={filters.educator}
+                    onChange={(e) => updateFilter('educator', e.target.value)}
+                    className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
                     style={{ 
-                      background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%)) !important',
-                      color: 'black !important',
-                      borderColor: 'transparent !important'
+                      background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
+                      colorScheme: 'light',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none'
                     }}
                   >
-                    {educator.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleClearAllClick}
-                className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Clear All
-              </Button>
-            )}
-            {canCreateSignals && (
-              <Button 
-                type="button"
-                onClick={handleCreateSignalClick}
-                className="h-8 px-3 text-xs bg-foreground text-background hover:bg-foreground/90 border border-border"
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Create Pattern
-              </Button>
-            )}
+                    <option 
+                      value="" 
+                      className="text-black bg-background"
+                    >
+                      All Educators ({educatorOptions.length})
+                    </option>
+                    {educatorOptions.map(educator => (
+                      <option 
+                        key={educator.id} 
+                        value={educator.id} 
+                        className="text-black bg-background"
+                      >
+                        {educator.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            
+            {/* Action Buttons Row */}
+            <div className="flex items-center gap-2 justify-end sm:justify-start">
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllClick}
+                  className="h-10 sm:h-8 px-4 sm:px-3 text-sm sm:text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm"
+                >
+                  <X className="w-4 h-4 sm:w-3 sm:h-3 mr-2 sm:mr-1" />
+                  <span className="hidden xs:inline">Clear All</span>
+                  <span className="xs:hidden">Clear</span>
+                </Button>
+              )}
+              
+              {canCreateSignals && (
+                <Button 
+                  type="button"
+                  onClick={handleCreateSignalClick}
+                  className="h-10 sm:h-8 px-4 sm:px-3 text-sm sm:text-xs font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground border border-primary/20 hover:border-primary/30 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md backdrop-blur-sm"
+                >
+                  <Plus className="w-4 h-4 sm:w-3 sm:h-3 mr-2 sm:mr-1" />
+                  <span className="hidden sm:inline">Create Pattern</span>
+                  <span className="sm:hidden">Create</span>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

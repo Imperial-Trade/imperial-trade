@@ -29,6 +29,17 @@ export const useOneSignalPush = () => {
   });
 
   const initializeOneSignal = useCallback(async () => {
+    // Check if we're on a non-production domain - don't initialize OneSignal
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isDev = import.meta.env.DEV;
+    
+    if (!isProduction || isDev) {
+      console.log('🔔 OneSignal skipped - not on production domain');
+      setState(prev => ({ ...prev, isInitialized: true }));
+      return;
+    }
+
     console.log('🔔 Initializing OneSignal...');
     
     try {
@@ -40,68 +51,73 @@ export const useOneSignalPush = () => {
       }
 
       window.OneSignalDeferred.push(async function(OneSignal: any) {
-        // OneSignal is ready, update our state
-        setState(prev => ({ ...prev, isInitialized: true }));
+        try {
+          // OneSignal is ready, update our state
+          setState(prev => ({ ...prev, isInitialized: true }));
 
-        // Check current permission status
-        const permission = await OneSignal.Notifications.permission;
-        console.log('📋 Current OneSignal permission:', permission);
-        
-        if (permission === 'granted') {
-          const playerId = await OneSignal.User.PushSubscription.id;
-          console.log('✅ User already subscribed with Player ID:', playerId);
+          // Check current permission status
+          const permission = await OneSignal.Notifications.permission;
+          console.log('📋 Current OneSignal permission:', permission);
           
-          setState(prev => ({ 
-            ...prev, 
-            isPushEnabled: true,
-            playerId: playerId || null
-          }));
-          
-          // Update user profile with OneSignal info
-          if (playerId && user) {
-            await updateUserProfile(playerId);
+          if (permission === 'granted') {
+            const playerId = await OneSignal.User.PushSubscription.id;
+            console.log('✅ User already subscribed with Player ID:', playerId);
+            
+            setState(prev => ({ 
+              ...prev, 
+              isPushEnabled: true,
+              playerId: playerId || null
+            }));
+            
+            // Update user profile with OneSignal info
+            if (playerId && user) {
+              await updateUserProfile(playerId);
+            }
           }
+
+          // Set up listeners for permission and subscription changes
+          OneSignal.Notifications.addEventListener('permissionChange', function(event: any) {
+            console.log('🔄 OneSignal permission changed:', event);
+            if (event.to === 'granted') {
+              setState(prev => ({ ...prev, isPushEnabled: true }));
+            } else {
+              setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+            }
+          });
+
+          OneSignal.User.PushSubscription.addEventListener('change', function(event: any) {
+            console.log('🔄 OneSignal subscription changed:', event);
+            const playerId = event.current.id;
+            if (playerId) {
+              setState(prev => ({ ...prev, playerId, isPushEnabled: true }));
+              if (user) {
+                updateUserProfile(playerId);
+              }
+            } else {
+              setState(prev => ({ ...prev, playerId: null, isPushEnabled: false }));
+              if (user) {
+                // Update profile to remove OneSignal info
+                supabase
+                  .from('profiles')
+                  .update({ 
+                    onesignal_player_id: null,
+                    push_subscription_active: false,
+                    onesignal_subscription_status: 'unsubscribed'
+                  })
+                  .eq('id', user.id);
+              }
+            }
+          });
+
+          console.log('✅ OneSignal initialized successfully');
+        } catch (error) {
+          console.error('❌ OneSignal callback error:', error);
         }
-
-        // Set up listeners for permission and subscription changes
-        OneSignal.Notifications.addEventListener('permissionChange', function(event: any) {
-          console.log('🔄 OneSignal permission changed:', event);
-          if (event.to === 'granted') {
-            setState(prev => ({ ...prev, isPushEnabled: true }));
-          } else {
-            setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
-          }
-        });
-
-        OneSignal.User.PushSubscription.addEventListener('change', function(event: any) {
-          console.log('🔄 OneSignal subscription changed:', event);
-          const playerId = event.current.id;
-          if (playerId) {
-            setState(prev => ({ ...prev, playerId, isPushEnabled: true }));
-            if (user) {
-              updateUserProfile(playerId);
-            }
-          } else {
-            setState(prev => ({ ...prev, playerId: null, isPushEnabled: false }));
-            if (user) {
-              // Update profile to remove OneSignal info
-              supabase
-                .from('profiles')
-                .update({ 
-                  onesignal_player_id: null,
-                  push_subscription_active: false,
-                  onesignal_subscription_status: 'unsubscribed'
-                })
-                .eq('id', user.id);
-            }
-          }
-        });
-
-        console.log('✅ OneSignal initialized successfully');
       });
 
     } catch (error) {
       console.error('❌ Failed to initialize OneSignal:', error);
+      setState(prev => ({ ...prev, isInitialized: true })); // Set as initialized to avoid infinite retries
       toast({
         title: "Push Notification Setup Failed",
         description: "Unable to initialize push notifications. Please try again later.",
@@ -135,6 +151,16 @@ export const useOneSignalPush = () => {
   };
 
   const requestPermission = useCallback(async () => {
+    // Check production domain before proceeding
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isDev = import.meta.env.DEV;
+    
+    if (!isProduction || isDev) {
+      console.log('🔔 Push notifications only available on production domain');
+      return false;
+    }
+
     if (!state.isInitialized) return false;
 
     setState(prev => ({ ...prev, isSubscriptionLoading: true, hasPrompted: true }));
@@ -167,6 +193,16 @@ export const useOneSignalPush = () => {
   }, [state.isInitialized]);
 
   const subscribeToPush = useCallback(async () => {
+    // Check production domain before proceeding
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isDev = import.meta.env.DEV;
+    
+    if (!isProduction || isDev) {
+      console.log('🔔 Push notifications only available on production domain');
+      return false;
+    }
+
     if (!state.isInitialized) return false;
 
     setState(prev => ({ ...prev, isSubscriptionLoading: true }));
@@ -234,6 +270,16 @@ export const useOneSignalPush = () => {
   }, [state.isInitialized, user]);
 
   const unsubscribeFromPush = useCallback(async () => {
+    // Check production domain before proceeding
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isDev = import.meta.env.DEV;
+    
+    if (!isProduction || isDev) {
+      console.log('🔔 Push notifications only available on production domain');
+      return false;
+    }
+
     if (!state.isInitialized) return false;
 
     setState(prev => ({ ...prev, isSubscriptionLoading: true }));

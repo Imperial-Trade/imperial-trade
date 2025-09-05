@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputWithSuffix } from '@/components/ui/input-with-suffix';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { 
   calculatePipsFromPrice, 
@@ -380,7 +381,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
   return (
     <div className="bg-card rounded-lg border border-border">
-      <form onSubmit={handleSubmit} className="p-3 space-y-3">
+      <form onSubmit={handleSubmit} className="p-3 space-y-2">
         {/* Asset Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Asset</label>
@@ -496,24 +497,24 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         {selectedAsset && formData.entry_price && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium">Price Levels</h3>
+              <h3 className="text-sm font-medium">Price Levels</h3>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className="h-6 px-2 text-xs"
               >
                 Auto-Sync
               </Button>
             </div>
             
             <Tabs defaultValue="direct" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-8">
-                <TabsTrigger value="direct" className="data-[state=active]:bg-background text-sm">Direct Entry</TabsTrigger>
-                <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background text-sm">Pip Calculator</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-7">
+                <TabsTrigger value="direct" className="data-[state=active]:bg-background text-xs">Direct Entry</TabsTrigger>
+                <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background text-xs">Pip Calculator</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="direct" className="space-y-3 mt-3">
+              <TabsContent value="direct" className="space-y-2 mt-2">
                 {/* Stop Loss */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-destructive">Stop Loss *</label>
@@ -531,12 +532,13 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Pips</span>
-                      <Input
+                      <InputWithSuffix
                         type="number"
                         step="0.1"
                         value={pipInputs.stop_loss_pips}
                         onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                         placeholder="0.0"
+                        suffix="Pips"
                         className="h-8 font-mono text-right bg-input border-border"
                       />
                     </div>
@@ -550,16 +552,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 </div>
 
                 {/* Take Profits */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-accent-green">Take Profits</label>
+                    <label className="text-xs font-medium text-accent-green">Take Profits</label>
                     {takeProfits.length < 5 && (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={addTakeProfit}
-                        className="h-7 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
+                        className="h-6 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         Add TP
@@ -568,16 +570,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                   </div>
                   
                   {takeProfits.map((tp, index) => (
-                    <div key={index} className="space-y-2">
+                    <div key={index} className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">TP{index + 1}</span>
+                        <span className="text-xs font-medium">TP{index + 1}</span>
                         {index > 0 && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => removeTakeProfit(index)}
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
                           >
                             <X className="w-3 h-3" />
                           </Button>
@@ -597,18 +599,19 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                          </div>
                          <div className="space-y-1">
                            <span className="text-xs text-muted-foreground">Pips</span>
-                           <Input
+                           <InputWithSuffix
                              type="number"
                              step="0.1"
                              value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
                              onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
                              placeholder="0.0"
+                             suffix="Pips"
                               className="h-8 font-mono text-right bg-input border-border"
                            />
                          </div>
                        </div>
                       {index === 0 && errors.tp1 && (
-                        <p className="text-sm text-destructive flex items-center gap-1">
+                        <p className="text-xs text-destructive flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           {errors.tp1}
                         </p>
@@ -618,25 +621,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 </div>
               </TabsContent>
               
-              <TabsContent value="pip-calculator" className="space-y-6 mt-6">
-                <div className="bg-muted/20 p-4 rounded-lg border border-border">
-                  <p className="text-sm text-muted-foreground mb-4">
+              <TabsContent value="pip-calculator" className="space-y-3 mt-2">
+                <div className="bg-muted/20 p-3 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground mb-3">
                     Calculate precise price levels using pip distances from your entry price.
                   </p>
                   
                   {/* Stop Loss */}
-                  <div className="space-y-3 mb-6">
-                    <label className="text-sm font-medium text-destructive">Stop Loss Distance</label>
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2 mb-4">
+                    <label className="text-xs font-medium text-destructive">Stop Loss Distance</label>
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <span className="text-xs text-muted-foreground">Pips Distance</span>
-                        <Input
+                        <InputWithSuffix
                           type="number"
                           step="0.1"
                           value={pipInputs.stop_loss_pips}
                           onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                           placeholder="Enter pips"
-                          className="font-mono text-right bg-input border-border"
+                          suffix="Pips"
+                          className="h-8 font-mono text-right bg-input border-border"
                         />
                       </div>
                       <div className="space-y-1">
@@ -654,16 +658,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                   </div>
 
                   {/* Take Profits */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-accent-green">Take Profit Distances</label>
+                      <label className="text-xs font-medium text-accent-green">Take Profit Distances</label>
                       {takeProfits.length < 5 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={addTakeProfit}
-                          className="h-8 px-3 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
+                          className="h-6 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
                         >
                           <Plus className="w-3 h-3 mr-1" />
                           Add TP
@@ -672,31 +676,32 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                     </div>
                     
                     {takeProfits.map((tp, index) => (
-                      <div key={index} className="space-y-2">
+                      <div key={index} className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">TP{index + 1} Distance</span>
+                          <span className="text-xs font-medium">TP{index + 1} Distance</span>
                           {index > 0 && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => removeTakeProfit(index)}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                              className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
                             >
                               <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <span className="text-xs text-muted-foreground">Pips Distance</span>
-                            <Input
+                            <InputWithSuffix
                               type="number"
                               step="0.1"
                               value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
                               onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
                               placeholder="Enter pips"
-                              className="font-mono text-right bg-input border-border"
+                              suffix="Pips"
+                              className="h-8 font-mono text-right bg-input border-border"
                             />
                           </div>
                           <div className="space-y-1">
@@ -722,34 +727,34 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Educational Notes */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Notes</label>
+          <label className="text-xs font-medium">Notes</label>
           <Textarea
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             placeholder="Share your technical analysis, market context, and educational insights..."
-            className="min-h-[60px] resize-none bg-input border-border"
+            className="min-h-[44px] resize-none bg-input border-border text-sm p-2"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-3 border-t border-border">
+        <div className="flex items-center justify-between pt-2 border-t border-border">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 h-8"
+            className="px-3 h-8 text-sm"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 h-8 bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
+            className="px-3 h-8 text-sm bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
                 Creating...
               </>
             ) : (

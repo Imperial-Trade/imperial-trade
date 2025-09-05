@@ -66,86 +66,75 @@ async function getActiveSubscribers(): Promise<string[]> {
   }
 }
 
-// COST OPTIMIZED: Batch price fetching with longer intervals
-async function fetchPricesFromTraderMade(symbols: string[]): Promise<PriceData[]> {
+// REDIS-ONLY: Pure Redis subscriber (NO TraderMade calls)
+async function fetchPricesFromRedis(symbols: string[]): Promise<PriceData[]> {
   if (Date.now() - lastPriceFetch < config.BATCH_INTERVAL) {
-    return []; // Rate limit to prevent TraderMade overuse
+    return []; // Rate limit Redis polling
   }
 
   lastPriceFetch = Date.now();
   
-  const apiKey = Deno.env.get('TRADERMADE_API_KEY');
-  if (!apiKey) {
-    throw new Error('TRADERMADE_API_KEY not configured');
+  const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+  const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+  
+  if (!redisUrl || !redisToken) {
+    console.warn('⚠️ Redis not configured - using cache only');
+    return symbols.map(symbol => priceCache.get(symbol)).filter(Boolean) as PriceData[];
   }
 
-  const symbolsString = symbols.join(',');
-  const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbolsString}&api_key=${apiKey}`;
-
   try {
-    console.log(`📊 Fetching batch prices for ${symbols.length} symbols (cost optimized)`);
+    console.log(`📡 Fetching Redis prices for ${symbols.length} symbols (Redis-only mode)`);
     
-    const response = await fetch(url, { 
-      method: 'GET',
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.warn('⚠️ TraderMade rate limit hit - using cached prices');
-        return []; // Return empty, use cache
-      }
-      throw new Error(`TraderMade API error: ${response.status}`);
-    }
-
-    const data = await response.json();
     const prices: PriceData[] = [];
+    
+    // Fetch prices from Redis keys
+    for (const symbol of symbols) {
+      try {
+        const response = await fetch(`${redisUrl}/get/price:${symbol}`, {
+          headers: {
+            'Authorization': `Bearer ${redisToken}`,
+          },
+          signal: AbortSignal.timeout(3000)
+        });
 
-    if (data.quotes && Array.isArray(data.quotes)) {
-      for (const quote of data.quotes) {
-        const priceData: PriceData = {
-          symbol: quote.instrument,
-          price: quote.mid || ((quote.bid + quote.ask) / 2),
-          bid: quote.bid,
-          ask: quote.ask,
-          mid: quote.mid,
-          change: 0, // TraderMade doesn't provide this reliably
-          changePercent: 0,
-          timestamp: new Date().toISOString()
-        };
-        
-        prices.push(priceData);
-        priceCache.set(quote.instrument, priceData); // Cache for rate limit fallback
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result) {
+            const priceData = JSON.parse(data.result);
+            prices.push({
+              symbol: priceData.symbol,
+              price: priceData.price || priceData.mid,
+              bid: priceData.bid,
+              ask: priceData.ask,
+              mid: priceData.mid,
+              change: priceData.change || 0,
+              changePercent: priceData.changePercent || 0,
+              timestamp: priceData.timestamp || new Date().toISOString()
+            });
+            
+            // Update cache
+            priceCache.set(symbol, prices[prices.length - 1]);
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to fetch Redis price for ${symbol}:`, error.message);
       }
     }
 
     return prices;
   } catch (error) {
-    console.error('❌ TraderMade fetch failed:', error);
+    console.error('❌ Redis fetch failed:', error);
     
-    // COST OPTIMIZED: Use cache during failures
+    // Fallback to cache
     return symbols.map(symbol => priceCache.get(symbol)).filter(Boolean) as PriceData[];
   }
 }
 
-// COST OPTIMIZED: Store prices in Supabase for alert monitoring
-async function updateMarketPrices(prices: PriceData[]): Promise<void> {
-  if (prices.length === 0) return;
-
-  try {
-    for (const price of prices) {
-      await supabase.rpc('upsert_market_price_enhanced', {
-        p_symbol: price.symbol,
-        p_bid: price.bid || price.price,
-        p_ask: price.ask || price.price,
-        p_mid: price.mid || price.price,
-        p_timestamp: price.timestamp
-      });
-    }
-    console.log(`💾 Updated ${prices.length} market prices in database`);
-  } catch (error) {
-    console.error('❌ Failed to update market prices:', error);
-  }
+// REDIS-ONLY: No database writes (UI-only function)
+async function skipDatabaseWrites(prices: PriceData[]): Promise<void> {
+  // COST OPTIMIZATION: This function is UI-only, no database writes
+  // Database writes are handled by enhanced-websocket-streaming (single source)
+  console.log(`🚀 Redis-only mode: Serving ${prices.length} prices to UI (no DB writes)`);
 }
 
 // COST OPTIMIZED: Batch broadcasting with smart targeting
@@ -208,11 +197,11 @@ async function startPriceStreaming(): Promise<void> {
       const symbolsArray = Array.from(allSymbols);
       console.log(`🔄 Processing ${symbolsArray.length} symbols for ${clients.size} clients`);
 
-      // Fetch and broadcast prices
-      const prices = await fetchPricesFromTraderMade(symbolsArray);
+      // Fetch from Redis and broadcast to clients (NO TraderMade, NO DB writes)
+      const prices = await fetchPricesFromRedis(symbolsArray);
       
       if (prices.length > 0) {
-        await updateMarketPrices(prices);
+        await skipDatabaseWrites(prices); // No-op for cost optimization
         broadcastPricesToClients(prices);
       }
 
@@ -398,7 +387,8 @@ serve(async (req) => {
   return response;
 });
 
-// Start the optimized streaming loop
-console.log('🚀 Starting Enhanced WebSocket Streaming (Cost Optimized)');
+// Start the Redis-only streaming loop (NO TraderMade connection)
+console.log('🚀 Starting Redis-Only WebSocket Streaming (UI Distribution)');
 console.log(`⚙️ Config: ${config.MAX_CLIENTS} max clients, ${config.BATCH_INTERVAL}ms batch interval`);
+console.log('📡 Mode: Redis subscriber only - TraderMade handled by enhanced-websocket-streaming');
 startPriceStreaming();

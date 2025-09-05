@@ -421,14 +421,23 @@ class EnhancedWebSocketStreaming {
             // Store in Redis for fast access by priority-alert-monitor
             await this.redisPublisher.set(`price:${priceData.symbol}`, JSON.stringify(priceData), { ex: 60 });
             
-            // CRITICAL: Store in database to trigger alert processing via enhanced RPC
-            await supabaseService.rpc('upsert_market_price_enhanced', {
-              p_symbol: priceData.symbol,
-              p_bid: priceData.bid,
-              p_ask: priceData.ask,
-              p_mid: priceData.mid,
-              p_timestamp: new Date().toISOString()
-            });
+            // SMART DB WRITES: Only when alerts exist for this symbol
+            const { data: hasAlerts } = await supabaseService
+              .from('alert_monitoring')
+              .select('id')
+              .eq('symbol', priceData.symbol)
+              .eq('is_active', true)
+              .limit(1);
+              
+            if (hasAlerts && hasAlerts.length > 0) {
+              await supabaseService.rpc('upsert_market_price_enhanced', {
+                p_symbol: priceData.symbol,
+                p_bid: priceData.bid,
+                p_ask: priceData.ask,
+                p_mid: priceData.mid,
+                p_timestamp: new Date().toISOString()
+              });
+            }
             
           } catch (error) {
             console.error('❌ Failed to store price in Redis/Database:', error);

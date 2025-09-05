@@ -5,6 +5,38 @@ import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useInstantAlerts } from '@/hooks/useInstantAlerts';
 
+// COST OPTIMIZATION: Cache educator user IDs to avoid expensive OR queries
+let educatorUserIdsCache: string[] = [];
+let educatorCacheExpiry = 0;
+const EDUCATOR_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getEducatorUserIds(): Promise<string[]> {
+  const now = Date.now();
+  
+  // Return cached IDs if still valid
+  if (educatorUserIdsCache.length > 0 && now < educatorCacheExpiry) {
+    return educatorUserIdsCache;
+  }
+
+  try {
+    const { data: educators, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .or('access_level.eq.admin,access_level.eq.moderator,user_type.eq.educator');
+
+    if (error) throw error;
+
+    educatorUserIdsCache = educators?.map(e => e.id) || [];
+    educatorCacheExpiry = now + EDUCATOR_CACHE_TTL;
+    
+    console.log(`📊 Cached ${educatorUserIdsCache.length} educator user IDs`);
+    return educatorUserIdsCache;
+  } catch (error) {
+    console.error('❌ Failed to fetch educator user IDs:', error);
+    return educatorUserIdsCache; // Return stale cache if available
+  }
+}
+
 interface SignalRealtimeContextType {
   signals: TradeAlertWithProfile[];
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -38,32 +70,34 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   const refreshSignals = useCallback(async () => {
     try {
-      console.log('SignalRealtimeContext - Starting signal refresh with new RLS policies...');
+      console.log('SignalRealtimeContext - Starting signal refresh with cost optimization...');
       
-      // Fetch ALL alerts - RLS policies will handle filtering to only show educator/admin alerts
+      // COST OPTIMIZED: Use simple user array filter instead of expensive OR join
+      const educatorUserIds = await getEducatorUserIds();
+      
+      // First get alerts from educator users
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .in('user_id', educatorUserIds)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (alertsError) {
         console.error('SignalRealtimeContext - Error fetching alerts:', alertsError);
         throw alertsError;
       }
 
-      console.log('SignalRealtimeContext - Fetched alerts (filtered by RLS):', alertsData?.length || 0);
+      console.log('SignalRealtimeContext - Fetched educator alerts:', alertsData?.length || 0);
 
       if (!alertsData || alertsData.length === 0) {
-        console.log('SignalRealtimeContext - No alerts found, setting empty array');
+        console.log('SignalRealtimeContext - No educator alerts found');
         setSignals([]);
         return;
       }
 
-      // Get ALL unique user IDs from alerts
+      // Get profiles for these alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
-      console.log('SignalRealtimeContext - Unique user IDs from alerts:', userIds);
-
-      // Fetch ALL profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -73,28 +107,19 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         console.error('SignalRealtimeContext - Error fetching profiles:', profilesError);
       }
 
-      console.log('SignalRealtimeContext - Fetched profiles:', profilesData?.length || 0);
-      
-      // Create profile map for quick lookup
+      // Create profile map
       const profilesMap = new Map();
       if (profilesData) {
         profilesData.forEach(profile => {
           profilesMap.set(profile.id, profile);
-          console.log('SignalRealtimeContext - Profile in map:', {
-            id: profile.id,
-            displayName: profile.display_name,
-            role: profile.role,
-            userType: profile.user_type,
-            accessLevel: profile.access_level
-          });
         });
       }
 
-      // Map ALL alerts with their profiles - RLS already filtered to educator/admin signals
+      // Map alerts with their profiles
       const allAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
         const profile = profilesMap.get(alert.user_id);
         
-        const mappedAlert = {
+        return {
           id: alert.id,
           userId: alert.user_id,
           assetName: alert.asset_name,
@@ -129,25 +154,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             access_level: null
           }
         };
-        
-        return mappedAlert;
       });
 
-      console.log('SignalRealtimeContext - Final signals from RLS-filtered data:', allAlertsWithProfiles.length);
-      console.log('SignalRealtimeContext - Signal details:', allAlertsWithProfiles.map(s => ({
-        id: s.id,
-        asset: s.assetName,
-        creator: s.creator?.display_name,
-        role: s.creator?.role,
-        userType: s.creator?.user_type,
-        accessLevel: s.creator?.access_level
-      })));
-
+      console.log('SignalRealtimeContext - Final educator signals:', allAlertsWithProfiles.length);
       setSignals(allAlertsWithProfiles);
       setLastUpdated(new Date());
       setError(null);
-      
-      console.log('SignalRealtimeContext - Successfully set signals:', allAlertsWithProfiles.length);
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
@@ -264,51 +276,54 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, []);
 
-  const subscribe = useCallback(() => {
+  const subscribe = useCallback(async () => {
     if (channelRef.current) {
       console.log('SignalRealtimeContext - Already subscribed to real-time');
       return;
     }
 
-    console.log('🔄 COST OPTIMIZED: SignalRealtimeContext - Subscribing with optimized channel');
+    console.log('🔄 COST OPTIMIZED: SignalRealtimeContext - Subscribing with educator filter');
     setConnectionStatus('connecting');
 
-    // COST OPTIMIZED: Use smaller, focused channel to reduce Realtime message count
-    channelRef.current = supabase
-      .channel('optimized-signals-realtime', {
-        config: {
-          // Reduce message frequency to cut costs
-          private: true,
-          presence: { key: 'signal_updates' }
-        }
-      })
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'trade_alerts',
-          // COST OPTIMIZED: Only listen to educator/admin signals
-          filter: 'user_id=in.(select id from profiles where access_level in (admin,moderator) or user_type=educator)'
-        },
-        handleRealtimeUpdate
-      )
-      .subscribe((status) => {
-        console.log('🔄 COST OPTIMIZED SignalRealtimeContext - Realtime status:', status);
+    try {
+      // COST OPTIMIZATION: Use educator user ID filter to reduce Realtime traffic
+      const educatorUserIds = await getEducatorUserIds();
+      
+      const channel = supabase
+        .channel('trade_alerts_realtime_optimized')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trade_alerts',
+            filter: `user_id=in.(${educatorUserIds.join(',')})`
+          },
+          handleRealtimeUpdate
+        )
+        .subscribe((status) => {
+          console.log('🔄 COST OPTIMIZED SignalRealtimeContext - Realtime status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            setConnectionStatus('connected');
+            setError(null);
+            setNextRetryAt(null);
+            reconnectAttempts.current = 0;
+            // Initial data load after successful connection
+            refreshSignals();
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setConnectionStatus('connecting');
+            setError(null);
+            attemptReconnect();
+          }
+        });
         
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('connected');
-          setError(null);
-          setNextRetryAt(null);
-          reconnectAttempts.current = 0;
-          // Initial data load after successful connection
-          refreshSignals();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          setConnectionStatus('connecting');
-          setError(null);
-          attemptReconnect();
-        }
-      });
+      channelRef.current = channel;
+    } catch (error) {
+      console.error('❌ Failed to get educator user IDs:', error);
+      setError('Failed to initialize realtime connection');
+      setConnectionStatus('error');
+    }
   }, [handleRealtimeUpdate, refreshSignals]);
 
   const unsubscribe = useCallback(() => {

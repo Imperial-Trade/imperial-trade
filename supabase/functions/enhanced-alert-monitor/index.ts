@@ -112,20 +112,10 @@ serve(async (req) => {
     // Step 3: Process each symbol with enhanced bid/ask precision
     for (const priceData of validPrices) {
       try {
-        // Update market prices with bid/ask precision
-        const { error: upsertError } = await supabase
-          .rpc('upsert_market_price_enhanced', {
-            p_symbol: priceData.symbol,
-            p_bid: priceData.bid,
-            p_ask: priceData.ask,
-            p_mid: priceData.mid,
-            p_timestamp: priceData.timestamp
-          });
-
-        if (upsertError) {
-          console.error(`❌ Error updating price for ${priceData.symbol}:`, upsertError);
-          continue;
-        }
+        // SKIP REDUNDANT PRICE UPDATES: enhanced-websocket-streaming handles this
+        console.log(`📈 Processing alerts for ${priceData.symbol} (price: ${priceData.mid})`);
+        
+        // No database price update needed - data is already fresh from enhanced-websocket-streaming
 
         // Process alerts using enhanced function with SL priority
         const { data: triggeredAlerts, error: alertError } = await supabase

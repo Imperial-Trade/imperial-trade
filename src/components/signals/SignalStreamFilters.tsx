@@ -124,11 +124,11 @@ export function SignalStreamFilters({
       onPointerDown={(e) => e.stopPropagation()}
       onPointerMove={(e) => e.stopPropagation()}
     >
-      <CardContent className="p-4 sm:p-3 space-y-4 sm:space-y-3">
-        {/* Enhanced Responsive Layout */}
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-3">
+      <CardContent className="p-4 space-y-4">
+        {/* Enhanced Uniform Layout */}
+        <div className="flex flex-col lg:flex-row gap-4">
           
-          {/* Search Section - Full width on mobile, flex-grow on desktop */}
+          {/* Search Section - Consistent sizing */}
           <div className="flex-1 min-w-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
@@ -147,7 +147,7 @@ export function SignalStreamFilters({
               <Input
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className="pl-10 pr-10 h-10 sm:h-8 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+                className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
               />
               
               {filters.search && (
@@ -156,28 +156,26 @@ export function SignalStreamFilters({
                   variant="ghost"
                   size="sm"
                   onClick={(e) => handleClearFilterClick(e, 'search')}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 sm:h-6 sm:w-6 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
                 >
-                  <X className="w-4 h-4 sm:w-3 sm:h-3" />
+                  <X className="w-4 h-4" />
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Filters Section - Responsive grid layout */}
-          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 sm:gap-2 lg:min-w-fit">
+          {/* Filters Section - Uniform grid layout */}
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch gap-3 lg:min-w-fit">
             
-            {/* Filter Controls Row */}
-            <div className="flex flex-col xs:flex-row gap-2 xs:gap-2 sm:gap-2 flex-1 sm:flex-none">
+            {/* Filter Controls - All same height */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
               {/* Status Filter */}
-              <div className="flex-1 xs:flex-none">
+              <div className="min-w-0 sm:min-w-[140px]">
                 <select
                   value={filters.status}
                   onChange={(e) => updateFilter('status', e.target.value)}
-                  className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
+                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
                   style={{ 
-                    background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
-                    colorScheme: 'light',
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',
                     appearance: 'none'
@@ -187,7 +185,7 @@ export function SignalStreamFilters({
                     <option 
                       key={option.value} 
                       value={option.value} 
-                      className="text-black bg-background"
+                      className="text-foreground bg-background"
                     >
                       {option.label} ({option.count})
                     </option>
@@ -196,14 +194,12 @@ export function SignalStreamFilters({
               </div>
 
               {/* Trade Type Filter */}
-              <div className="flex-1 xs:flex-none">
+              <div className="min-w-0 sm:min-w-[140px]">
                 <select
                   value={filters.tradeType}
                   onChange={(e) => updateFilter('tradeType', e.target.value)}
-                  className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
+                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
                   style={{ 
-                    background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
-                    colorScheme: 'light',
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',
                     appearance: 'none'
@@ -213,7 +209,7 @@ export function SignalStreamFilters({
                     <option 
                       key={option.value} 
                       value={option.value} 
-                      className="text-black bg-background"
+                      className="text-foreground bg-background"
                     >
                       {option.label} ({option.count})
                     </option>
@@ -223,14 +219,12 @@ export function SignalStreamFilters({
 
               {/* Educator Filter */}
               {educatorOptions.length > 1 && (
-                <div className="flex-1 xs:flex-none">
+                <div className="min-w-0 sm:min-w-[140px]">
                   <select
                     value={filters.educator}
                     onChange={(e) => updateFilter('educator', e.target.value)}
-                    className="w-full xs:w-auto h-10 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs font-medium text-black border border-primary/30 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm backdrop-blur-sm z-50"
+                    className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
                     style={{ 
-                      background: 'linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1), hsl(var(--primary) / 0.05))',
-                      colorScheme: 'light',
                       WebkitAppearance: 'none',
                       MozAppearance: 'none',
                       appearance: 'none'
@@ -238,7 +232,7 @@ export function SignalStreamFilters({
                   >
                     <option 
                       value="" 
-                      className="text-black bg-background"
+                      className="text-foreground bg-background"
                     >
                       All Educators ({educatorOptions.length})
                     </option>
@@ -246,7 +240,7 @@ export function SignalStreamFilters({
                       <option 
                         key={educator.id} 
                         value={educator.id} 
-                        className="text-black bg-background"
+                        className="text-foreground bg-background"
                       >
                         {educator.name}
                       </option>
@@ -256,19 +250,18 @@ export function SignalStreamFilters({
               )}
             </div>
             
-            {/* Action Buttons Row */}
-            <div className="flex items-center gap-2 justify-end sm:justify-start">
+            {/* Action Buttons - Same height as filters */}
+            <div className="flex items-center gap-3 justify-end sm:justify-start">
               {hasActiveFilters && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleClearAllClick}
-                  className="h-10 sm:h-8 px-4 sm:px-3 text-sm sm:text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm"
+                  className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm min-w-[100px]"
                 >
-                  <X className="w-4 h-4 sm:w-3 sm:h-3 mr-2 sm:mr-1" />
-                  <span className="hidden xs:inline">Clear All</span>
-                  <span className="xs:hidden">Clear</span>
+                  <X className="w-4 h-4 mr-2" />
+                  Clear All
                 </Button>
               )}
               
@@ -276,11 +269,10 @@ export function SignalStreamFilters({
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 sm:h-8 px-4 sm:px-3 text-sm sm:text-xs font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground border border-primary/20 hover:border-primary/30 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md backdrop-blur-sm"
+                  className="h-10 px-4 text-sm font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground border border-primary/20 hover:border-primary/30 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md backdrop-blur-sm min-w-[120px]"
                 >
-                  <Plus className="w-4 h-4 sm:w-3 sm:h-3 mr-2 sm:mr-1" />
-                  <span className="hidden sm:inline">Create Pattern</span>
-                  <span className="sm:hidden">Create</span>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Pattern
                 </Button>
               )}
             </div>

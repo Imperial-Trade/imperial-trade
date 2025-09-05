@@ -380,20 +380,6 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
   return (
     <div className="bg-card rounded-lg border border-border">
-      {/* Modal Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h2 className="text-lg font-semibold">Create Educational Pattern</h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          className="h-8 w-8 p-0 hover:bg-muted"
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
         {/* Asset Selection */}
         <div className="space-y-2">

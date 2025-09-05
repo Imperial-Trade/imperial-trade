@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
+import { isPricePlausibleForSymbol } from '@/utils/priceGuards';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -394,7 +395,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Main Price Display - Always visible */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          {price > 0 ? (
+          {price > 0 && isPricePlausibleForSymbol(price, apiSymbol) ? (
             <div className={`font-mono text-xl font-bold transition-all duration-300 ${
               isLoading || isRefreshing ? 'animate-pulse' : ''
             } ${
@@ -403,6 +404,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               'text-accent-green'
             }`}>
               ${formatPrice(price)}
+            </div>
+          ) : price > 0 ? (
+            <div className="text-amber-500 font-mono text-xl">
+              <div className="flex items-center gap-2">
+                <span>Market Closed</span>
+                <span className="text-xs text-gray-400">
+                  (Last: ${formatPrice(price)})
+                </span>
+              </div>
             </div>
           ) : (
             <div className={`text-gray-500 font-mono text-xl ${isLoading ? 'animate-pulse' : ''}`}>

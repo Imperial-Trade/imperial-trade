@@ -110,12 +110,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     // Reset current price when switching assets to ensure clean state
     setCurrentPrice(0);
     
-    // Clear any localStorage cache for the new symbol to force fresh data
+    // Smart cache cleaning: only remove invalid entries, preserve valid ones
     try {
-      localStorage.removeItem(`lastPrice:${asset.symbol}`);
-      console.log(`🧹 [${asset.symbol}] Cleared localStorage cache for fresh data`);
+      import('@/utils/priceGuards').then(({ cleanInvalidPriceCache }) => {
+        cleanInvalidPriceCache([asset.symbol]); // Only clean this symbol's cache if invalid
+        console.log(`🧹 [${asset.symbol}] Smart cache validation completed`);
+      }).catch((e) => {
+        console.warn('Failed to validate cache:', e);
+      });
     } catch (e) {
-      console.warn('Failed to clear localStorage:', e);
+      console.warn('Failed to import cache validator:', e);
     }
     
     // Reset loading state after a short delay to allow the price component to initialize

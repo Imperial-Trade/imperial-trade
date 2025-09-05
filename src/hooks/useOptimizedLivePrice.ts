@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getStandardSymbol } from '@/types/assets';
+import { isPricePlausibleForSymbol, isCachedPriceValid, cleanInvalidPriceCache } from '@/utils/priceGuards';
 
 interface OptimizedLivePriceData {
   price: number;
@@ -75,22 +76,22 @@ export function useOptimizedLivePrice(
   const mountTimeRef = useRef<Date>(new Date());
   const fallbackTriggeredRef = useRef<{ lastTrigger: string; timestamp: number } | null>(null);
 
-  // localStorage utilities for price persistence with 10-minute TTL
+  // Enhanced localStorage utilities with market-aware TTL and plausibility checks
   const getStoredPrice = useCallback((sym: string) => {
     try {
       const stored = localStorage.getItem(`lastPrice:${sym}`);
       if (stored) {
         const { price, timestamp } = JSON.parse(stored);
         const storedTime = new Date(timestamp);
-        const now = new Date();
-        const ageMinutes = (now.getTime() - storedTime.getTime()) / (1000 * 60);
         
-        // Zero-pause: Use cached price if less than 5 minutes old (reduced from 10)
-        if (ageMinutes < 5) {
+        // Validate using price guards
+        if (isCachedPriceValid(sym, { price: Number(price), timestamp: storedTime.getTime() })) {
+          console.log(`✅ Valid cache restored for ${sym}: ${price}`);
           return { price: Number(price), timestamp: storedTime };
         } else {
-          // Remove stale price
+          // Remove invalid cache
           localStorage.removeItem(`lastPrice:${sym}`);
+          console.log(`🗑️ Removed invalid cache for ${sym}`);
         }
       }
     } catch (e) {
@@ -101,10 +102,16 @@ export function useOptimizedLivePrice(
 
   const storePrice = useCallback((sym: string, price: number, timestamp: Date) => {
     try {
-      localStorage.setItem(`lastPrice:${sym}`, JSON.stringify({
-        price,
-        timestamp: timestamp.toISOString()
-      }));
+      // Only store plausible prices
+      if (isPricePlausibleForSymbol(price, sym)) {
+        localStorage.setItem(`lastPrice:${sym}`, JSON.stringify({
+          price,
+          timestamp: timestamp.toISOString()
+        }));
+        console.log(`💾 Stored valid price for ${sym}: ${price}`);
+      } else {
+        console.warn(`🚫 Refused to store implausible price for ${sym}: ${price}`);
+      }
     } catch (e) {
       console.warn('Failed to store price:', e);
     }
@@ -112,11 +119,17 @@ export function useOptimizedLivePrice(
 
   // REMOVED: HTTP fallback logic moved to context for single source of truth
 
-  // Initialize with stored price on mount
+  // Combined initialization effect: cache restore + subscription
   useEffect(() => {
+    console.log(`🔍 [${normalizedSymbol}] Initializing with cache validation and subscription`);
+    
+    // Step 1: Clean invalid cache entries globally first
+    cleanInvalidPriceCache();
+    
+    // Step 2: Try to restore valid cached price for this symbol
     const stored = getStoredPrice(normalizedSymbol);
     if (stored && stored.price > 0) {
-      console.log(`💾 [${normalizedSymbol}] Restored from storage:`, stored.price);
+      console.log(`💾 [${normalizedSymbol}] Restored valid cache:`, stored.price);
       setLastNonZeroPrice(stored.price);
       setDebouncedPrice({
         price: stored.price,
@@ -126,20 +139,8 @@ export function useOptimizedLivePrice(
       setLastUpdated(stored.timestamp);
       lastProcessedPriceRef.current = stored.price;
     }
-  }, [normalizedSymbol, getStoredPrice]);
-
-  // FIXED: Initialize with cache clearing and debug logging
-  useEffect(() => {
-    console.log(`🔍 [${normalizedSymbol}] Initializing subscription and clearing cache`);
     
-    // Clear any existing cache for this symbol to prevent cross-contamination
-    try {
-      localStorage.removeItem(`lastPrice:${normalizedSymbol}`);
-      console.log(`🧹 [${normalizedSymbol}] Cleared localStorage cache`);
-    } catch (e) {
-      console.warn('Cache clear failed:', e);
-    }
-
+    // Step 3: Subscribe to live updates
     subscribe([normalizedSymbol]);
     console.log(`📡 [${normalizedSymbol}] Subscription requested`);
 
@@ -147,9 +148,9 @@ export function useOptimizedLivePrice(
       console.log(`🔌 [${normalizedSymbol}] Unsubscribing`);
       unsubscribe([normalizedSymbol]);
     };
-  }, [normalizedSymbol, subscribe, unsubscribe]);
+  }, [normalizedSymbol, subscribe, unsubscribe, getStoredPrice]);
 
-  // FIXED: Monitor price changes with strict symbol validation
+  // Enhanced price monitoring with symbol validation and plausibility checks
   useEffect(() => {
     const priceData = prices[normalizedSymbol];
     if (priceData && priceData.price > 0) {
@@ -159,7 +160,13 @@ export function useOptimizedLivePrice(
         return; // Prevent cross-contamination
       }
       
-      console.log(`📡 [${normalizedSymbol}] ✅ Correct symbol price update:`, priceData.price);
+      // CRITICAL: Validate price plausibility before accepting
+      if (!isPricePlausibleForSymbol(priceData.price, normalizedSymbol)) {
+        console.error(`🚫 [${normalizedSymbol}] IMPLAUSIBLE PRICE REJECTED: ${priceData.price}`);
+        return; // Prevent implausible price updates
+      }
+      
+      console.log(`📡 [${normalizedSymbol}] ✅ Valid price update:`, priceData.price);
       
       setDebouncedPrice({
         price: priceData.price,

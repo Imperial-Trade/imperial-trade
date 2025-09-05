@@ -154,64 +154,119 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             console.log('✅ Subscription confirmed:', data.symbols || data.subscribedSymbols);
             break;
             
-          case 'price_snapshot':
-          case 'price_batch': {
-            // FIXED: Batch price updates with symbol validation and detailed logging
-            const updates = data.updates || data.prices;
-            if (Array.isArray(updates)) {
-              const merged: Record<string, PriceData> = {};
-              for (const u of updates) {
-                const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
-                if (u.symbol && price !== undefined) {
-                  console.log(`📊 [${u.symbol}] Batch price: ${price}`);
-                  merged[u.symbol] = {
-                    symbol: u.symbol,
-                    price,
-                    change: u.change || 0,
-                    changePercent: u.changePercent || 0,
-                    timestamp: u.timestamp || new Date().toISOString()
-                  };
-                }
-              }
-              if (Object.keys(merged).length > 0) {
-                console.log('📈 Batch price update for symbols:', Object.keys(merged).join(', '));
-                setPrices(prev => ({ ...prev, ...merged }));
-              }
-            } else if (updates && typeof updates === 'object') {
-              console.log('📈 Object batch price update for symbols:', Object.keys(updates).join(', '));
-              setPrices(prev => ({ ...prev, ...updates }));
-            }
-            break;
-          }
+           case 'price_snapshot':
+           case 'price_batch': {
+             // Enhanced batch price updates with plausibility validation
+             const updates = data.updates || data.prices;
+             if (Array.isArray(updates)) {
+               // Process synchronously first to avoid async issues with merged object
+               const validUpdates = updates.filter(u => {
+                 const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
+                 return u.symbol && price !== undefined;
+               });
+               
+               // Apply validation and update prices
+               validUpdates.forEach(u => {
+                 const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
+                 
+                 import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
+                   if (isPricePlausibleForSymbol(price, u.symbol)) {
+                     console.log(`✅ [${u.symbol}] Valid batch price: ${price}`);
+                     const priceData: PriceData = {
+                       symbol: u.symbol,
+                       price,
+                       change: u.change || 0,
+                       changePercent: u.changePercent || 0,
+                       timestamp: u.timestamp || new Date().toISOString()
+                     };
+                     setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                   } else {
+                     console.warn(`🚫 [${u.symbol}] Rejected implausible batch price: ${price}`);
+                   }
+                 }).catch(() => {
+                   // Fallback if import fails - accept price
+                   console.log(`📊 [${u.symbol}] Batch price (validation bypassed): ${price}`);
+                   const priceData: PriceData = {
+                     symbol: u.symbol, 
+                     price,
+                     change: u.change || 0,
+                     changePercent: u.changePercent || 0,
+                     timestamp: u.timestamp || new Date().toISOString()
+                   };
+                   setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                 });
+               });
+               
+               console.log('📈 Processing batch price update for symbols:', validUpdates.map(u => u.symbol).join(', '));
+             } else if (updates && typeof updates === 'object') {
+               console.log('📈 Object batch price update for symbols:', Object.keys(updates).join(', '));
+               setPrices(prev => ({ ...prev, ...updates }));
+             }
+             break;
+           }
             
-          case 'price_update':
-            // FIXED: Individual real-time price update with symbol validation
-            if (data.symbol && data.price !== undefined) {
-              console.log(`📈 [${data.symbol}] Direct price update: ${data.price}`);
-              const priceData: PriceData = {
-                symbol: data.symbol,
-                price: data.price,
-                change: data.change || 0,
-                changePercent: data.changePercent || 0,
-                timestamp: data.timestamp || new Date().toISOString()
-              };
-              setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
-            } else if (data.update) {
-              const u = data.update;
-              const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
-              if (u.symbol && price !== undefined) {
-                console.log(`📈 [${u.symbol}] Nested price update: ${price}`);
-                const priceData: PriceData = {
-                  symbol: u.symbol,
-                  price,
-                  change: u.change || 0,
-                  changePercent: u.changePercent || 0,
-                  timestamp: u.timestamp || new Date().toISOString()
-                };
-                setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
-              }
-            }
-            break;
+           case 'price_update':
+             // Enhanced individual real-time price update with plausibility validation
+             if (data.symbol && data.price !== undefined) {
+               import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
+                 if (isPricePlausibleForSymbol(data.price, data.symbol)) {
+                   console.log(`✅ [${data.symbol}] Valid direct price update: ${data.price}`);
+                   const priceData: PriceData = {
+                     symbol: data.symbol,
+                     price: data.price,
+                     change: data.change || 0,
+                     changePercent: data.changePercent || 0,
+                     timestamp: data.timestamp || new Date().toISOString()
+                   };
+                   setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
+                 } else {
+                   console.warn(`🚫 [${data.symbol}] Rejected implausible direct price: ${data.price}`);
+                 }
+               }).catch(() => {
+                 // Fallback if import fails
+                 console.log(`📈 [${data.symbol}] Direct price update (validation failed): ${data.price}`);
+                 const priceData: PriceData = {
+                   symbol: data.symbol,
+                   price: data.price,
+                   change: data.change || 0,
+                   changePercent: data.changePercent || 0,
+                   timestamp: data.timestamp || new Date().toISOString()
+                 };
+                 setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
+               });
+             } else if (data.update) {
+               const u = data.update;
+               const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
+               if (u.symbol && price !== undefined) {
+                 import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
+                   if (isPricePlausibleForSymbol(price, u.symbol)) {
+                     console.log(`✅ [${u.symbol}] Valid nested price update: ${price}`);
+                     const priceData: PriceData = {
+                       symbol: u.symbol,
+                       price,
+                       change: u.change || 0,
+                       changePercent: u.changePercent || 0,
+                       timestamp: u.timestamp || new Date().toISOString()
+                     };
+                     setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                   } else {
+                     console.warn(`🚫 [${u.symbol}] Rejected implausible nested price: ${price}`);
+                   }
+                 }).catch(() => {
+                   // Fallback if import fails
+                   console.log(`📈 [${u.symbol}] Nested price update (validation failed): ${price}`);
+                   const priceData: PriceData = {
+                     symbol: u.symbol,
+                     price,
+                     change: u.change || 0,
+                     changePercent: u.changePercent || 0,
+                     timestamp: u.timestamp || new Date().toISOString()
+                   };
+                   setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                 });
+               }
+             }
+             break;
             
           case 'pong':
             // Health check response

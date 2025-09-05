@@ -1,30 +1,21 @@
 import { useEffect } from 'react';
+import { cleanInvalidPriceCache } from '@/utils/priceGuards';
 
 /**
- * Cache cleaner hook to ensure fresh price data
- * Clears localStorage prices that might be cross-contaminated
+ * Smart cache cleaner hook that only removes invalid/stale price data
+ * Uses price guards to determine validity instead of blanket clearing
  */
 export function useCacheCleaner() {
   useEffect(() => {
-    const clearPriceCache = () => {
-      try {
-        const keys = Object.keys(localStorage);
-        const priceKeys = keys.filter(key => key.startsWith('lastPrice:'));
-        
-        if (priceKeys.length > 0) {
-          console.log('🧹 Clearing stale price cache:', priceKeys);
-          priceKeys.forEach(key => localStorage.removeItem(key));
-        }
-      } catch (e) {
-        console.warn('Failed to clear price cache:', e);
-      }
-    };
-
-    // Clear on mount to ensure fresh session
-    clearPriceCache();
+    // Clean invalid cache entries on mount using price guards
+    console.log('🧹 Smart cache cleaning: validating price entries...');
+    cleanInvalidPriceCache();
     
-    // Optional: Clear every 5 minutes to prevent stale data accumulation
-    const interval = setInterval(clearPriceCache, 5 * 60 * 1000);
+    // Periodic cleanup every 10 minutes (reduced frequency since we're smarter)
+    const interval = setInterval(() => {
+      console.log('🧹 Periodic smart cache validation...');
+      cleanInvalidPriceCache();
+    }, 10 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, []);

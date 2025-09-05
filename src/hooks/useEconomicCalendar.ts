@@ -59,13 +59,13 @@ export function useEconomicCalendar(
 
   const { toast } = useToast();
 
-  // Feature temporarily disabled
+  // Feature disabled to reduce costs
   const fetchEvents = useCallback(async () => {
     setIsLoading(false);
-    setError(null);
+    setError(new Error('Economic Calendar is disabled to optimize costs'));
     setEvents([]);
     setLastUpdated(new Date());
-    console.log('Economic Calendar feature is coming soon!');
+    console.log('Economic Calendar is disabled to reduce infrastructure costs');
   }, []);
 
   // Auto-refresh disabled for coming soon state

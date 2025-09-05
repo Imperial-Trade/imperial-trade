@@ -26,8 +26,8 @@ class EconomicCalendarService {
   private cacheTTL = 300000; // 5 minutes cache for economic events
 
   async getEconomicEvents(request: EconomicCalendarRequest = {}): Promise<EconomicEvent[]> {
-    // Feature temporarily disabled - returning empty array
-    console.log('Economic Calendar feature is coming soon!');
+    // Feature disabled to reduce infrastructure costs
+    console.log('Economic Calendar is disabled to optimize costs');
     return [];
   }
 

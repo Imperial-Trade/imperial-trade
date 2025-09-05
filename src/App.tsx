@@ -11,6 +11,7 @@ import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceCon
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
+import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
@@ -87,8 +88,9 @@ function App() {
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
-                    <SignalRealtimeProvider>
-                      <HybridWebSocketPriceProvider>
+                    <HybridWebSocketPriceProvider>
+                      <ContextErrorBoundary>
+                        <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -284,8 +286,9 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                      </HybridWebSocketPriceProvider>
-                    </SignalRealtimeProvider>
+                        </SignalRealtimeProvider>
+                      </ContextErrorBoundary>
+                    </HybridWebSocketPriceProvider>
                   </NavigationGuard>
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}

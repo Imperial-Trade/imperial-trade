@@ -269,7 +269,7 @@ export function SignalStreamFilters({
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground border border-primary/20 hover:border-primary/30 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md backdrop-blur-sm min-w-[120px]"
+                  className="h-10 px-4 text-sm font-medium bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white border border-accent-green/30 hover:border-accent-green/50 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md hover:shadow-accent-green/20 backdrop-blur-sm min-w-[120px] glow-effect-green"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Pattern

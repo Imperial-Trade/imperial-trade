@@ -616,15 +616,15 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-3 h-8 text-sm bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
+            className="px-3 h-8 text-sm bg-gradient-to-br from-violet-600 via-purple-600 to-blue-600 hover:from-violet-500 hover:via-purple-500 hover:to-blue-500 text-white border border-violet-500/30 hover:border-violet-400/50 transition-all duration-300 rounded-lg shadow-lg hover:shadow-violet-500/30 backdrop-blur-sm relative overflow-hidden group before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                Creating...
+                <Loader2 className="w-3 h-3 mr-2 animate-spin relative z-10" />
+                <span className="relative z-10">Creating...</span>
               </>
             ) : (
-              'Post Signal'
+              <span className="relative z-10">Post Signal</span>
             )}
           </Button>
         </div>

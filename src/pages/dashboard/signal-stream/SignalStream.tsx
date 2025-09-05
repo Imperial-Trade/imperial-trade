@@ -672,17 +672,17 @@ export default function SignalStream() {
         </div>
         
         {/* Create Signal Modal */}
-        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Educational Pattern</DialogTitle>
-            </DialogHeader>
-            <OptimizedNewAlertForm 
-              onSubmit={handleCreateSignal}
-              onCancel={() => setShowCreateModal(false)}
-            />
-          </DialogContent>
-        </Dialog>
+         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
+             <DialogHeader>
+               <DialogTitle className="bg-gradient-to-r from-violet-600 to-blue-600 bg-clip-text text-transparent text-xl font-semibold">Create Educational Pattern</DialogTitle>
+             </DialogHeader>
+             <OptimizedNewAlertForm 
+               onSubmit={handleCreateSignal}
+               onCancel={() => setShowCreateModal(false)}
+             />
+           </DialogContent>
+         </Dialog>
       </div>
     </StreamErrorBoundary>
   );

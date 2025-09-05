@@ -265,14 +265,14 @@ export function SignalStreamFilters({
                 </Button>
               )}
               
-              {canCreateSignals && (
+               {canCreateSignals && (
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-medium bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white border border-accent-green/30 hover:border-accent-green/50 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md hover:shadow-accent-green/20 backdrop-blur-sm min-w-[120px] glow-effect-green"
+                  className="h-10 px-4 text-sm font-medium bg-gradient-to-br from-violet-600 via-purple-600 to-blue-600 hover:from-violet-500 hover:via-purple-500 hover:to-blue-500 text-white border border-violet-500/30 hover:border-violet-400/50 transition-all duration-300 rounded-lg shadow-lg hover:shadow-violet-500/30 backdrop-blur-sm min-w-[120px] relative overflow-hidden group before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/20 before:to-transparent before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Pattern
+                  <Plus className="w-4 h-4 mr-2 relative z-10" />
+                  <span className="relative z-10">Create Pattern</span>
                 </Button>
               )}
             </div>

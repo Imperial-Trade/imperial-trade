@@ -269,7 +269,7 @@ export function SignalStreamFilters({
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent hover:from-yellow-200 hover:via-yellow-300 hover:to-yellow-500 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
+                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
                 >
                   <Plus className="w-4 h-4 mr-2 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent" />
                   <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Create Alert</span>

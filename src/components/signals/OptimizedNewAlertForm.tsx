@@ -724,15 +724,15 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-3 h-8 text-sm font-bold bg-gradient-to-br from-gray-900 via-black to-gray-800 hover:from-gray-800 hover:via-gray-900 hover:to-black text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8),_0_0_16px_rgba(255,255,0,0.6),_0_0_24px_rgba(255,255,0,0.4)] border border-amber-700/60 hover:border-amber-600/80 transition-all duration-500 ease-out rounded-lg shadow-inner shadow-black/40 hover:shadow-lg hover:shadow-amber-600/30 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02]"
+            className="px-3 h-8 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg hover:scale-[1.02] shadow-sm hover:shadow-md disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3 h-3 mr-2 animate-spin relative z-20 text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8)]" />
-                <span className="relative z-20">Creating...</span>
+                <Loader2 className="w-3 h-3 mr-2 animate-spin bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent" />
+                <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Creating...</span>
               </>
             ) : (
-              <span className="relative z-20">Post Signal</span>
+              <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Post Signal</span>
             )}
           </Button>
         </div>

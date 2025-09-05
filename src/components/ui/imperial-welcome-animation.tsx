@@ -8,15 +8,18 @@ interface ImperialWelcomeAnimationProps {
 
 export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> = ({ onComplete }) => {
   const { user } = useAuth();
-  const animationRef = useRef<number>();
-  const startTimeRef = useRef<number>();
-  const dotCycleCountRef = useRef(0);
+  // Timer/interval refs to avoid rAF throttling in preview environments
+  const dotIntervalRef = useRef<number | null>(null);
+  const fadeTimeoutRef = useRef<number | null>(null);
+  const removeTimeoutRef = useRef<number | null>(null);
+  const safetyTimeoutRef = useRef<number | null>(null);
+  const completedOnceRef = useRef(false);
+
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
   const [typingComplete, setTypingComplete] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
   const typingCompleteRef = useRef(false);
-
   const tagline = "the imperial experience awaits.";
   
   // Get user name with fallback logic
@@ -28,49 +31,33 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
            (user.email ? user.email.split('@')[0] : "Trader");
   };
 
-  const animate = (currentTime: number) => {
-    if (!startTimeRef.current) {
-      startTimeRef.current = currentTime;
-    }
-    
-    const elapsedTime = currentTime - startTimeRef.current;
-    
-    // Only animate dots after typing is complete
-    if (typingCompleteRef.current && !showDashboardFade) {
-      // 3 cycles in 3 seconds = 1000ms per cycle
-      const cycleTime = elapsedTime % 1000;
-      const newActiveDot = Math.min(2, Math.floor(cycleTime / 333)); // clamp to [0..2]
-      setActiveDot(newActiveDot);
-      
-      // Count complete cycles
-      const currentCycle = Math.floor(elapsedTime / 1000);
-      if (currentCycle > dotCycleCountRef.current) {
-        dotCycleCountRef.current = currentCycle;
-      }
-      
-      // After exactly 3 cycles (3 seconds), start dashboard fade immediately
-      if (currentCycle >= 3 && elapsedTime >= 3000) {
-        setShowDashboardFade(true);
-        // Call onComplete immediately so dashboard content can start fading in
-        onComplete?.();
-        // Remove overlay only after the full 5-second fade completes
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 5000); // 5 second dashboard fade duration
-        return;
-      }
-    }
-    
-    animationRef.current = requestAnimationFrame(animate);
+  // Begin the dashboard fade and schedule overlay removal (runs once)
+  const startFade = (reason: 'timer' | 'safety') => {
+    if (completedOnceRef.current) return;
+    completedOnceRef.current = true;
+    console.info(`[Welcome] Starting dashboard fade (${reason})`);
+    setShowDashboardFade(true);
+    // Allow dashboard to initialize underneath
+    onComplete?.();
+    // Remove overlay after the full 5s fade
+    removeTimeoutRef.current = window.setTimeout(() => {
+      setIsVisible(false);
+    }, 5000);
   };
-
   const handleTypingComplete = () => {
     typingCompleteRef.current = true;
     setTypingComplete(true);
-    // Reset the start time for dot animation
-    startTimeRef.current = performance.now();
+    console.info('[Welcome] Typing complete');
+    // Start deterministic dot animation (0,1,2 cycling)
+    let dot = 0;
+    setActiveDot(0);
+    dotIntervalRef.current = window.setInterval(() => {
+      dot = (dot + 1) % 3;
+      setActiveDot(dot);
+    }, 333);
+    // After 3 seconds of dots, start the dashboard fade
+    fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 3000);
   };
-
   useLayoutEffect(() => {
     // Prevent StrictMode double-invocation issues
     let isCleanedUp = false;
@@ -168,14 +155,33 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     };
 
     addEventListeners();
-    animationRef.current = requestAnimationFrame(animate);
-    
+    // Safety fallback: force-complete if animation is throttled
+    safetyTimeoutRef.current = window.setTimeout(() => {
+      if (!completedOnceRef.current) {
+        console.warn('[Welcome] Safety timeout triggered');
+        startFade('safety');
+      }
+    }, 10000);
+
     return () => {
       isCleanedUp = true;
       removeEventListeners();
       
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (dotIntervalRef.current) {
+        clearInterval(dotIntervalRef.current);
+        dotIntervalRef.current = null;
+      }
+      if (fadeTimeoutRef.current) {
+        clearTimeout(fadeTimeoutRef.current);
+        fadeTimeoutRef.current = null;
+      }
+      if (removeTimeoutRef.current) {
+        clearTimeout(removeTimeoutRef.current);
+        removeTimeoutRef.current = null;
+      }
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
       }
 
       // Restore original styles exactly using kebab-case
@@ -217,7 +223,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   return (
     <div 
-      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-5000 ${
+      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-[5000ms] ${
         showDashboardFade ? 'bg-black/0' : 'bg-black'
       }`}
       style={{ minHeight: '100dvh' }}

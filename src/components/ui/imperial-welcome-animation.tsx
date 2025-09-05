@@ -39,7 +39,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     if (typingCompleteRef.current && !showDashboardFade) {
       // 3 cycles in 3 seconds = 1000ms per cycle
       const cycleTime = elapsedTime % 1000;
-      const newActiveDot = Math.floor(cycleTime / 333); // 1000ms / 3 dots
+      const newActiveDot = Math.min(2, Math.floor(cycleTime / 333)); // clamp to [0..2]
       setActiveDot(newActiveDot);
       
       // Count complete cycles

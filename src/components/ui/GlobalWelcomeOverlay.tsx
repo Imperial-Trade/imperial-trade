@@ -11,6 +11,8 @@ export const GlobalWelcomeOverlay: React.FC = () => {
   const location = useLocation();
 
   const [isPlaying, setIsPlaying] = useState(false);
+  
+  console.info('[GlobalWelcome] State:', { hasSeenWelcome, isPlaying, userId: user?.id });
 
   // Don't show on public pages or if user not authenticated
   const isPublicPage = location.pathname === '/' || 
@@ -21,7 +23,16 @@ export const GlobalWelcomeOverlay: React.FC = () => {
   // Once the overlay starts playing, keep it mounted until it finishes its own fade
   useEffect(() => {
     if (user && !isPublicPage && !hasSeenWelcome) {
+      console.info('[GlobalWelcome] Starting welcome animation');
       setIsPlaying(true);
+      
+      // Failsafe: ensure overlay stops playing after 10s max
+      const failsafe = setTimeout(() => {
+        console.warn('[GlobalWelcome] Failsafe triggered, stopping overlay');
+        setIsPlaying(false);
+      }, 10000);
+      
+      return () => clearTimeout(failsafe);
     }
   }, [user, isPublicPage, hasSeenWelcome]);
 
@@ -35,10 +46,14 @@ export const GlobalWelcomeOverlay: React.FC = () => {
   return createPortal(
     <ImperialWelcomeAnimation
       onComplete={() => {
+        console.info('[GlobalWelcome] Animation completed, marking as seen');
         // Mark as seen immediately so dashboard can begin initializing underneath
         markWelcomeAsSeen();
         // But keep the overlay mounted to allow its 5s fade to complete in preview/prod
-        setTimeout(() => setIsPlaying(false), 5100);
+        setTimeout(() => {
+          console.info('[GlobalWelcome] Stopping overlay playback');
+          setIsPlaying(false);
+        }, 5100);
       }}
     />,
     document.body

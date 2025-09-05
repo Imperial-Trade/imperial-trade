@@ -8,19 +8,23 @@ interface ImperialWelcomeAnimationProps {
 
 export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> = ({ onComplete }) => {
   const { user } = useAuth();
-  // Timer/interval refs to avoid rAF throttling in preview environments
+  // Timer/interval refs for deterministic behavior (avoid rAF throttling)
   const dotIntervalRef = useRef<number | null>(null);
   const fadeTimeoutRef = useRef<number | null>(null);
   const removeTimeoutRef = useRef<number | null>(null);
   const safetyTimeoutRef = useRef<number | null>(null);
   const completedOnceRef = useRef(false);
+  const dotCountRef = useRef(0);
 
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
   const [typingComplete, setTypingComplete] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
+  const [fadeStarted, setFadeStarted] = useState(false);
   const typingCompleteRef = useRef(false);
   const tagline = "the imperial experience awaits.";
+  
+  console.info('[Welcome v2-gold] Component mounted');
   
   // Get user name with fallback logic
   const getUserName = () => {
@@ -32,31 +36,43 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   // Begin the dashboard fade and schedule overlay removal (runs once)
-  const startFade = (reason: 'timer' | 'safety') => {
+  const startFade = (reason: 'timer' | 'dots' | 'safety') => {
     if (completedOnceRef.current) return;
     completedOnceRef.current = true;
-    console.info(`[Welcome] Starting dashboard fade (${reason})`);
+    console.info(`[Welcome v2-gold] Starting dashboard fade (${reason})`);
     setShowDashboardFade(true);
+    setFadeStarted(true);
     // Allow dashboard to initialize underneath
     onComplete?.();
     // Remove overlay after the full 5s fade
     removeTimeoutRef.current = window.setTimeout(() => {
+      console.info('[Welcome v2-gold] Overlay removed');
       setIsVisible(false);
     }, 5000);
   };
   const handleTypingComplete = () => {
     typingCompleteRef.current = true;
     setTypingComplete(true);
-    console.info('[Welcome] Typing complete');
-    // Start deterministic dot animation (0,1,2 cycling)
+    console.info('[Welcome v2-gold] Typing complete, starting dots');
+    
+    // Start deterministic dot animation with dot counting
     let dot = 0;
+    dotCountRef.current = 0;
     setActiveDot(0);
+    
     dotIntervalRef.current = window.setInterval(() => {
       dot = (dot + 1) % 3;
+      dotCountRef.current++;
       setActiveDot(dot);
+      
+      // Trigger fade after 9 dot transitions (~3 cycles)
+      if (dotCountRef.current >= 9) {
+        startFade('dots');
+      }
     }, 333);
-    // After 3 seconds of dots, start the dashboard fade
-    fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 3000);
+    
+    // Also trigger by timer as backup (6s from mount)
+    fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 6000);
   };
   useLayoutEffect(() => {
     // Prevent StrictMode double-invocation issues
@@ -158,7 +174,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     // Safety fallback: force-complete if animation is throttled
     safetyTimeoutRef.current = window.setTimeout(() => {
       if (!completedOnceRef.current) {
-        console.warn('[Welcome] Safety timeout triggered');
+        console.warn('[Welcome v2-gold] Safety timeout triggered');
         startFade('safety');
       }
     }, 10000);
@@ -225,8 +241,9 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     <div 
       className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-[5000ms] ${
         showDashboardFade ? 'bg-black/0' : 'bg-black'
-      }`}
+      } ${fadeStarted ? 'pointer-events-none' : ''}`}
       style={{ minHeight: '100dvh' }}
+      data-version="v2-gold"
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >

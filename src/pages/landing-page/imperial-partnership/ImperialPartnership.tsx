@@ -196,8 +196,8 @@ export default function ImperialPartnership() {
                   <div>
                     <label className="text-sm text-muted-foreground">New active clients / month</label>
                     <div className="mt-2">
-                      <Slider value={[referrals]} min={0} max={10000} step={1} onValueChange={(v) => setReferrals(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" value={referrals} onChange={(e) => setReferrals(parseInt(e.target.value || "0"))} />
+                      <Slider value={[referrals]} min={0} max={1000} step={1} onValueChange={(v) => setReferrals(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" max="1000" value={referrals} onChange={(e) => setReferrals(parseInt(e.target.value || "0"))} />
                     </div>
                   </div>
                   <div>
@@ -210,8 +210,8 @@ export default function ImperialPartnership() {
                   <div>
                     <label className="text-sm text-muted-foreground">Royalty per lot ($)</label>
                     <div className="mt-2">
-                      <Slider value={[royaltyRate]} min={0} max={25} step={0.1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" step="0.1" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseFloat(e.target.value || "0"))} />
+                      <Slider value={[royaltyRate]} min={0} max={25} step={1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="1" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseInt(e.target.value || "0"))} />
                     </div>
                   </div>
                 </div>

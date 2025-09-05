@@ -1,7 +1,7 @@
 // Trade Imperial - Service Worker for PWA and Push Notifications
-// Version: 1.1.0
+// Version: 1.0.0
 
-const CACHE_NAME = 'trade-imperial-v2';
+const CACHE_NAME = 'trade-imperial-v1';
 const STATIC_CACHE_URLS = [
   '/',
   '/offline.html',

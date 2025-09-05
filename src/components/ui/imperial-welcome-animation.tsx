@@ -1,4 +1,5 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
+import { TypewriterText } from './typewriter-text';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ImperialWelcomeAnimationProps {
@@ -7,20 +8,19 @@ interface ImperialWelcomeAnimationProps {
 
 export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> = ({ onComplete }) => {
   const { user } = useAuth();
-  // Timer/interval refs for deterministic behavior (avoid rAF throttling)
+  // Timer/interval refs to avoid rAF throttling in preview environments
   const dotIntervalRef = useRef<number | null>(null);
   const fadeTimeoutRef = useRef<number | null>(null);
   const removeTimeoutRef = useRef<number | null>(null);
   const safetyTimeoutRef = useRef<number | null>(null);
   const completedOnceRef = useRef(false);
-  const dotCountRef = useRef(0);
 
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
+  const [typingComplete, setTypingComplete] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
-  const [fadeStarted, setFadeStarted] = useState(false);
-  
-  console.info('[Welcome v2-gold] Component mounted');
+  const typingCompleteRef = useRef(false);
+  const tagline = "the imperial experience awaits.";
   
   // Get user name with fallback logic
   const getUserName = () => {
@@ -32,42 +32,30 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   // Begin the dashboard fade and schedule overlay removal (runs once)
-  const startFade = (reason: 'timer' | 'dots' | 'safety') => {
+  const startFade = (reason: 'timer' | 'safety') => {
     if (completedOnceRef.current) return;
     completedOnceRef.current = true;
-    console.info(`[Welcome v2-gold] Starting dashboard fade (${reason})`);
+    console.info(`[Welcome] Starting dashboard fade (${reason})`);
     setShowDashboardFade(true);
-    setFadeStarted(true);
     // Allow dashboard to initialize underneath
     onComplete?.();
     // Remove overlay after the full 5s fade
     removeTimeoutRef.current = window.setTimeout(() => {
-      console.info('[Welcome v2-gold] Overlay removed');
       setIsVisible(false);
     }, 5000);
   };
-
-  // Start dot animation immediately
-  const startDotAnimation = () => {
-    console.info('[Welcome v2-gold] Starting dots animation');
-    
-    // Start deterministic dot animation with dot counting
+  const handleTypingComplete = () => {
+    typingCompleteRef.current = true;
+    setTypingComplete(true);
+    console.info('[Welcome] Typing complete');
+    // Start deterministic dot animation (0,1,2 cycling)
     let dot = 0;
-    dotCountRef.current = 0;
     setActiveDot(0);
-    
     dotIntervalRef.current = window.setInterval(() => {
       dot = (dot + 1) % 3;
-      dotCountRef.current++;
       setActiveDot(dot);
-      
-      // Trigger fade after 9 dot transitions (~3 cycles)
-      if (dotCountRef.current >= 9) {
-        startFade('dots');
-      }
     }, 333);
-    
-    // Also trigger by timer as backup (3s from start)
+    // After 3 seconds of dots, start the dashboard fade
     fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 3000);
   };
   useLayoutEffect(() => {
@@ -167,14 +155,10 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     };
 
     addEventListeners();
-    
-    // Start dot animation immediately
-    startDotAnimation();
-    
     // Safety fallback: force-complete if animation is throttled
     safetyTimeoutRef.current = window.setTimeout(() => {
       if (!completedOnceRef.current) {
-        console.warn('[Welcome v2-gold] Safety timeout triggered');
+        console.warn('[Welcome] Safety timeout triggered');
         startFade('safety');
       }
     }, 10000);
@@ -241,23 +225,35 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     <div 
       className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-[5000ms] ${
         showDashboardFade ? 'bg-black/0' : 'bg-black'
-      } ${fadeStarted ? 'pointer-events-none' : ''}`}
+      }`}
       style={{ minHeight: '100dvh' }}
-      data-version="v2-gold"
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
       <div className="text-center px-4 max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
-                activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
-              }`}
+        <>
+          <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
+            <TypewriterText 
+              text={tagline}
+              speed={100}
+              onComplete={handleTypingComplete}
+              className="text-white/90"
             />
-          ))}
-        </div>
+          </h1>
+          
+          {typingComplete && (
+            <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
+                    activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </>
       </div>
     </div>
   );

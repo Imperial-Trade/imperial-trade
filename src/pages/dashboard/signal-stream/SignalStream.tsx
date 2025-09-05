@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
@@ -26,7 +26,7 @@ export default function SignalStream() {
     user,
     profile
   } = useAuth();
-  const navigate = useNavigate();
+  const { navigate, isNavigationAvailable, navigationError } = useSafeNavigation();
   const { toast } = useToast();
   
   // State for filtering and modal

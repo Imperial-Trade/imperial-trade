@@ -381,8 +381,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   return (
     <div className="bg-card rounded-lg border border-border">
       {/* Modal Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border">
-        <h2 className="text-xl font-semibold">Create Educational Pattern</h2>
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h2 className="text-lg font-semibold">Create Educational Pattern</h2>
         <Button
           type="button"
           variant="ghost"
@@ -394,7 +394,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4">
         {/* Asset Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Asset</label>
@@ -402,7 +402,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={selectedAsset?.symbol || ''} 
             onValueChange={handleAssetSelection}
           >
-            <SelectTrigger className="w-full h-12 bg-input border-border">
+            <SelectTrigger className="w-full h-10 bg-input border-border">
               <SelectValue placeholder="Select asset to analyze" />
             </SelectTrigger>
             <SelectContent>
@@ -426,13 +426,13 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Live Price Display */}
         {!selectedAsset ? (
-          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+          <div className="p-3 bg-muted/30 rounded-lg border border-border">
             <p className="text-sm text-muted-foreground text-center">
               Select an asset above to view live pricing and real-time price data
             </p>
           </div>
         ) : (
-          <div className="p-4 bg-muted/30 rounded-lg border border-border">
+          <div className="p-3 bg-muted/30 rounded-lg border border-border">
             <EnhancedLivePriceDisplay
               symbol={selectedAsset.symbol}
               assetName={selectedAsset.name}
@@ -508,20 +508,20 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Price Levels with Tabs */}
         {selectedAsset && formData.entry_price && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Price Levels</h3>
+          <div className="space-y-3">
+            <h3 className="text-base font-medium">Price Levels</h3>
             
             <Tabs defaultValue="direct" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-                <TabsTrigger value="direct" className="data-[state=active]:bg-background">Direct Entry</TabsTrigger>
-                <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background">Pip Calculator</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-9">
+                <TabsTrigger value="direct" className="data-[state=active]:bg-background text-sm">Direct Entry</TabsTrigger>
+                <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background text-sm">Pip Calculator</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="direct" className="space-y-6 mt-6">
+              <TabsContent value="direct" className="space-y-4 mt-4">
                 {/* Stop Loss */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-sm font-medium text-destructive">Stop Loss *</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Price</span>
                       <Input
@@ -530,7 +530,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         value={formData.stop_loss}
                         onChange={(e) => handleStopLossChange(e.target.value)}
                         placeholder="0.00000"
-                        className="font-mono text-right bg-input border-border"
+                        className="h-9 font-mono text-right bg-input border-border"
                       />
                     </div>
                     <div className="space-y-1">
@@ -541,7 +541,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         value={pipInputs.stop_loss_pips}
                         onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                         placeholder="0.0"
-                        className="font-mono text-right bg-input border-border"
+                        className="h-9 font-mono text-right bg-input border-border"
                       />
                     </div>
                   </div>
@@ -554,7 +554,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 </div>
 
                 {/* Take Profits */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-accent-green">Take Profits</label>
                     {takeProfits.length < 5 && (
@@ -563,7 +563,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                         variant="outline"
                         size="sm"
                         onClick={addTakeProfit}
-                        className="h-8 px-3 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
+                        className="h-7 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         Add TP
@@ -587,30 +587,30 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="text-xs text-muted-foreground">Price</span>
-                          <Input
-                            type="number"
-                            step="0.00001"
-                            value={tp}
-                            onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                            placeholder="0.00000"
-                            className="font-mono text-right bg-input border-border"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-xs text-muted-foreground">Pips</span>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
-                            onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
-                            placeholder="0.0"
-                            className="font-mono text-right bg-input border-border"
-                          />
-                        </div>
-                      </div>
+                       <div className="grid grid-cols-2 gap-2">
+                         <div className="space-y-1">
+                           <span className="text-xs text-muted-foreground">Price</span>
+                           <Input
+                             type="number"
+                             step="0.00001"
+                             value={tp}
+                             onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                             placeholder="0.00000"
+                             className="h-9 font-mono text-right bg-input border-border"
+                           />
+                         </div>
+                         <div className="space-y-1">
+                           <span className="text-xs text-muted-foreground">Pips</span>
+                           <Input
+                             type="number"
+                             step="0.1"
+                             value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
+                             onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
+                             placeholder="0.0"
+                             className="h-9 font-mono text-right bg-input border-border"
+                           />
+                         </div>
+                       </div>
                       {index === 0 && errors.tp1 && (
                         <p className="text-sm text-destructive flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
@@ -731,25 +731,25 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             placeholder="Share your technical analysis, market context, and educational insights..."
-            className="min-h-[100px] resize-none bg-input border-border"
+            className="min-h-[80px] resize-none bg-input border-border"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-6"
+            className="px-4 h-9"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
+            className="px-4 h-9 bg-gradient-to-r from-accent-green to-accent-forest hover:from-feature-green hover:to-accent-forest text-white"
           >
             {isSubmitting ? (
               <>

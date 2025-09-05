@@ -233,13 +233,13 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
-      {/* Doorway fade effect */}
+      {/* Dramatic gradient fade effect */}
       {doorwayFade && (
         <div 
-          className="absolute inset-0 bg-transparent"
+          className="absolute inset-0"
           style={{
-            clipPath: 'circle(0% at 50% 50%)',
-            animation: 'doorway-expand 2s ease-out forwards'
+            background: 'radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 0%)',
+            animation: 'gradient-fade 2s ease-out forwards'
           }}
         />
       )}

@@ -459,12 +459,12 @@
   }
 }
 
-@keyframes doorway-expand {
+@keyframes gradient-fade {
   0% {
-    clip-path: circle(0% at 50% 50%);
+    background: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 100%);
   }
   100% {
-    clip-path: circle(150% at 50% 50%);
+    background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100%);
   }
 }
 

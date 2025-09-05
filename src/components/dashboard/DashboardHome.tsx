@@ -81,6 +81,8 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
 
+  const welcomeText = `Welcome to Imperial\n${getUserFullName()}`;
+
   return (
     <div className="relative min-h-screen">
       {/* Video Background */}
@@ -90,6 +92,28 @@ export const DashboardHome: React.FC = () => {
       <div className="relative z-20 min-h-screen flex items-center justify-center">
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-6xl mx-auto space-y-8">
+            {/* Welcome Message with Typewriter Effect */}
+            <div className="space-y-8">
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
+              </div>
+
+              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+                <TypewriterText
+                  text={welcomeText}
+                  speed={80}
+                  showCursor={false}
+                  cursorBlinkSpeed={500}
+                  className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
+                />
+              </h1>
+
+              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
+                You've taken the brave step into the world of trading education. Every
+                successful trader was once a beginner, and every champion was once a
+                student who refused to give up.
+              </p>
+            </div>
 
             {/* Large spacer to push content below viewport */}
             <div className="pt-32"></div>

@@ -9,18 +9,22 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-// Zero-Pause Optimized Configuration
+// Direct WebSocket Optimized Configuration - Cost Optimized for 2000+ Users
 const WS_AUTH_TIMEOUT_MS = 10000; // Faster auth timeout
-const MAX_WS_SUBS_PER_CLIENT = 10; // Reduced from 20
-const BATCH_INTERVAL_MS = 200; // Cost-optimized: 200ms batching for ultra-fast UX with cost control
-const HEARTBEAT_INTERVAL_MS = 10000; // Faster 10s heartbeat for quick detection
-const MAX_CLIENTS = 1000; // Connection limit
-const IDLE_TIMEOUT_MS = 180000; // 3 minutes idle timeout
-const RECONNECT_DELAY_MS = 1000; // Fast reconnection - reduced from 2000ms
+const MAX_WS_SUBS_PER_CLIENT = 20; // Increased back for better UX
+const BATCH_INTERVAL_MS = 200; // Balanced: 200ms batching for cost control + speed
+const PRIORITY_BATCH_INTERVAL_MS = 10; // Priority symbols get 10ms updates (XAUUSD, BTCUSD)
+const HEARTBEAT_INTERVAL_MS = 15000; // Optimized heartbeat
+const MAX_CLIENTS = 2500; // Increased for direct WebSocket scaling (no Redis overhead)
+const IDLE_TIMEOUT_MS = 300000; // 5 minutes idle timeout
+const RECONNECT_DELAY_MS = 1000; // Fast reconnection
 const PRICE_CACHE_TTL_MS = 5000; // 5-second cache for instant delivery
-const LEADER_ELECTION_TTL = 15; // Cost-optimized: 15s TTL for faster, efficient leader election
-const FOLLOWER_PROMOTION_INTERVAL = 15000; // Check leader status every 15s
+const LEADER_ELECTION_TTL = 15; // Redis still used for alert coordination
+const FOLLOWER_PROMOTION_INTERVAL = 15000; // Check leader status every 15s  
 const LEADER_HEARTBEAT_INTERVAL = 20000; // Leader heartbeat every 20s
+
+// Priority symbols for 10ms updates (highest value trading pairs)
+const PRIORITY_SYMBOLS = new Set(['XAUUSD', 'BTCUSD']);
 
 // Supabase clients
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -34,8 +38,8 @@ const supabaseService = createClient(supabaseUrl!, supabaseServiceKey!);
 const redisRestUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
 const redisRestToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
 
-// Trading symbols (only high-value pairs)
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD'];
+// Trading symbols (optimized high-value pairs for direct broadcasting)
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD'];
 const ALLOWED_CLIENT_SYMBOLS = new Set(TRADERMADE_SYMBOLS);
 
 interface PriceData {
@@ -65,21 +69,28 @@ class EnhancedWebSocketStreaming {
   private clients: Map<string, ClientConnection> = new Map();
   private priceCache: Map<string, PriceData> = new Map();
   private batchedUpdates: Map<string, PriceData> = new Map();
+  private priorityBatchedUpdates: Map<string, PriceData> = new Map();
   private batchTimeout: number | null = null;
+  private priorityBatchTimeout: number | null = null;
   
-  // TraderMade connection
+  // TraderMade connection (SINGLE connection for ALL users)
   private tradermadeSocket: WebSocket | null = null;
   private isLeader = false;
   private instanceId: string;
   
-  // Redis connections
+  // Redis connections (ONLY for alert coordination, NOT UI broadcasting)
   private redisPublisher: Redis | null = null;
   private redisClient: Redis | null = null;
   
-  // Metrics
+  // Direct WebSocket Broadcasting Metrics
   private wsMessagesSent = 0;
   private wsClientsConnected = 0;
   private lastBroadcastAt = 0;
+  private totalEgressBytes = 0;
+  private compressionEnabled = true;
+  
+  // Symbol subscription tracking (smart filtering)
+  private activeSymbols: Set<string> = new Set();
   
   // Heartbeat and cleanup
   private heartbeatInterval: number | null = null;
@@ -557,38 +568,102 @@ class EnhancedWebSocketStreaming {
   }
 
   public handleSubscription(client: ClientConnection, symbols: string[]): void {
+    // Smart subscription with symbol filtering and TraderMade optimization
     const validSymbols = symbols
       .filter(s => ALLOWED_CLIENT_SYMBOLS.has(s.toUpperCase()))
       .slice(0, MAX_WS_SUBS_PER_CLIENT);
 
-    client.subscriptions.clear();
-    validSymbols.forEach(symbol => client.subscriptions.add(symbol.toUpperCase()));
+    // Track new subscriptions for optimization
+    let newSymbols = 0;
+    validSymbols.forEach(symbol => {
+      const upperSymbol = symbol.toUpperCase();
+      if (!client.subscriptions.has(upperSymbol)) {
+        client.subscriptions.add(upperSymbol);
+        this.activeSymbols.add(upperSymbol);
+        newSymbols++;
+      }
+    });
 
-    console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}]`);
+    // Update TraderMade subscription if we're leader and have new symbols
+    if (this.isLeader && newSymbols > 0) {
+      this.updateTradermadeSubscription();
+    }
 
-    // Zero-pause: Send cached prices immediately for seamless experience
-    const currentPrices = Array.from(client.subscriptions)
-      .map(symbol => {
-        const cached = this.priceCache.get(symbol);
-        // Check cache freshness (5-second TTL for instant delivery)
-        if (cached && cached.cachedAt && (Date.now() - cached.cachedAt) < PRICE_CACHE_TTL_MS) {
-          return cached;
-        }
-        return cached; // Return even stale data for zero-pause experience
-      })
-      .filter(Boolean);
+    console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}] (${newSymbols} new)`);
 
-    if (currentPrices.length > 0) {
+    // Send cached prices immediately for instant UX (zero-pause experience)
+    this.sendCachedPrices(client, Array.from(client.subscriptions));
+  }
+
+  public handleUnsubscription(client: ClientConnection, symbols: string[]): void {
+    symbols.forEach(symbol => {
+      const upperSymbol = symbol.toUpperCase();
+      client.subscriptions.delete(upperSymbol);
+      
+      // Remove from active symbols if no other clients are subscribed
+      const stillSubscribed = Array.from(this.clients.values())
+        .some(c => c.id !== client.id && c.subscriptions.has(upperSymbol));
+      
+      if (!stillSubscribed) {
+        this.activeSymbols.delete(upperSymbol);
+      }
+    });
+
+    // Update TraderMade subscription if we're leader
+    if (this.isLeader) {
+      this.updateTradermadeSubscription();
+    }
+
+    console.log(`🔕 Client ${client.id} unsubscribed from: [${symbols.join(', ')}]`);
+  }
+
+  private updateTradermadeSubscription(): void {
+    if (!this.tradermadeSocket || this.tradermadeSocket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    // Only subscribe to symbols that clients actually want
+    const symbolsToSubscribe = Array.from(this.activeSymbols).filter(symbol => 
+      TRADERMADE_SYMBOLS.includes(symbol)
+    );
+
+    if (symbolsToSubscribe.length > 0) {
       try {
-        client.socket.send(JSON.stringify({
-          type: 'price_snapshot',
-          prices: currentPrices,
-          timestamp: new Date().toISOString(),
-          cached: true // Indicate this is cached data
+        this.tradermadeSocket.send(JSON.stringify({
+          userKey: Deno.env.get('TRADERMADE_API_KEY'),
+          symbol: symbolsToSubscribe.join(',')
         }));
-        console.log(`📸 Sent cached snapshot to ${client.id}: ${currentPrices.length} prices`);
+        console.log(`📡 Updated TraderMade subscription: ${symbolsToSubscribe.join(', ')}`);
       } catch (error) {
-        console.error(`❌ Failed to send snapshot to ${client.id}:`, error);
+        console.error('❌ Failed to update TraderMade subscription:', error);
+      }
+    }
+  }
+
+  private sendCachedPrices(client: ClientConnection, symbols?: string[]): void {
+    const targetSymbols = symbols || Array.from(client.subscriptions);
+    const cachedPrices: PriceData[] = [];
+
+    targetSymbols.forEach(symbol => {
+      const cachedPrice = this.priceCache.get(symbol);
+      if (cachedPrice && (Date.now() - (cachedPrice.cachedAt || 0)) < PRICE_CACHE_TTL_MS) {
+        cachedPrices.push(cachedPrice);
+      }
+    });
+
+    if (cachedPrices.length > 0 && client.socket.readyState === WebSocket.OPEN) {
+      try {
+        const message = JSON.stringify({
+          type: 'cached_prices',
+          data: cachedPrices,
+          timestamp: new Date().toISOString()
+        });
+
+        client.socket.send(message);
+        this.totalEgressBytes += message.length;
+        console.log(`💨 Sent ${cachedPrices.length} cached prices to ${client.id}`);
+      } catch (error) {
+        console.error(`❌ Failed to send cached prices to ${client.id}:`, error);
       }
     }
   }
@@ -644,20 +719,43 @@ class EnhancedWebSocketStreaming {
     const cacheAges = Array.from(this.priceCache.values())
       .map(price => price.cachedAt ? now - price.cachedAt : 0);
     
+    const activeSubscriptions = Array.from(this.clients.values())
+      .reduce((total, client) => total + client.subscriptions.size, 0);
+    
     return {
+      // Connection stats
       clients: this.clients.size,
+      maxClients: MAX_CLIENTS,
       authenticatedClients: Array.from(this.clients.values()).filter(c => c.isAuthenticated).length,
+      activeSubscriptions,
+      
+      // Price data stats
       cachedPrices: this.priceCache.size,
-      active_symbols: Array.from(this.priceCache.keys()),
+      active_symbols: Array.from(this.activeSymbols),
+      priority_symbols: Array.from(PRIORITY_SYMBOLS),
+      
+      // Performance metrics
       messagesSent: this.wsMessagesSent,
+      totalEgressBytes: this.totalEgressBytes,
+      avgEgressPerMessage: this.wsMessagesSent > 0 ? Math.round(this.totalEgressBytes / this.wsMessagesSent) : 0,
       lastBroadcast: this.lastBroadcastAt,
+      
+      // System status
       isLeader: this.isLeader,
       tradermadeConnected: this.tradermadeSocket?.readyState === WebSocket.OPEN,
       tradermadeStatus: this.tradermadeSocket?.readyState === WebSocket.OPEN ? 'connected' : 'disconnected',
+      
+      // Cache performance
       avgCacheAge: cacheAges.length > 0 ? Math.round(cacheAges.reduce((a, b) => a + b, 0) / cacheAges.length) : 0,
       maxCacheAge: cacheAges.length > 0 ? Math.max(...cacheAges) : 0,
+      
+      // Configuration
+      batchInterval: BATCH_INTERVAL_MS,
+      priorityBatchInterval: PRIORITY_BATCH_INTERVAL_MS,
+      compressionEnabled: this.compressionEnabled,
+      
       uptime: now - this.wsMessagesSent, // Rough uptime estimate
-      version: '2.0-zero-pause'
+      version: '3.0-direct-websocket-optimized'
     };
   }
 }
@@ -731,8 +829,7 @@ async function handleWebSocketUpgrade(req: Request): Promise<Response> {
 
           case 'unsubscribe':
             if (connection.isAuthenticated && message.symbols) {
-              // Remove only the specified symbols from the client's subscriptions
-              message.symbols.forEach((s: string) => connection.subscriptions.delete(String(s).toUpperCase()));
+              manager.handleUnsubscription(connection, message.symbols);
             }
             break;
 

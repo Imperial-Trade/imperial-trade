@@ -684,9 +684,23 @@ const LivePriceWidgetComponent = ({
                 }`}>
                   ${formatPrice(currentPrice)}
                 </span>
+                {marketStatus.isClosed && (
+                  <span className="ml-2 text-xs text-amber-400 font-normal">
+                    (Last Price)
+                  </span>
+                )}
               </div>
             ) : (
-              <div className="text-gray-500 font-mono text-lg">---.--</div>
+              <div className="text-muted-foreground font-mono text-lg">
+                {marketStatus.isClosed ? (
+                  <div className="flex items-center gap-2">
+                    <span>Market Closed</span>
+                    <Clock className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <span>Loading...</span>
+                )}
+              </div>
             )}
           </div>
           

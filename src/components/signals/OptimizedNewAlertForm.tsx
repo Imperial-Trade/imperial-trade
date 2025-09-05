@@ -168,13 +168,13 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   }, [errors, selectedAsset, formData.trade_type, pipInputs, takeProfits]);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
-    setFormData(prev => ({ ...prev, entry_price: price.toString() }));
+    handleInputChange('entry_price', price.toString());
     
     toast({
-      title: "Price Updated",
+      title: "Price Updated", 
       description: `Entry price set to $${price.toFixed(2)}`,
     });
-  }, [toast]);
+  }, [handleInputChange, toast]);
 
   const addTakeProfit = () => {
     if (takeProfits.length < 5) {

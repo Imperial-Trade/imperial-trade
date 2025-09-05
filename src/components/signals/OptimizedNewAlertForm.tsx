@@ -128,6 +128,47 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     }, 1500);
   }, []);
 
+  // Centralized helper to recalculate SL/TP prices from pip inputs
+  const recalcTargetsFromPips = useCallback((
+    entryPrice: number,
+    tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
+    assetSymbol: string,
+    currentPipInputs: typeof pipInputs,
+    currentTakeProfits: string[]
+  ) => {
+    if (!entryPrice || isNaN(entryPrice) || entryPrice <= 0) return { stopLoss: '', takeProfits: currentTakeProfits };
+
+    let newStopLoss = '';
+    const newTakeProfits = [...currentTakeProfits];
+    const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+    const decimals = getDecimalPlaces(assetSymbol);
+
+    // Recalculate stop loss if stop loss pips exist
+    if (currentPipInputs.stop_loss_pips) {
+      const stopLossPips = parseFloat(currentPipInputs.stop_loss_pips);
+      if (!isNaN(stopLossPips) && stopLossPips > 0) {
+        const direction = getDirectionFromTradeType(tradeType, 'stop_loss');
+        const calculatedStopLoss = calculatePriceFromPips(entryPrice, stopLossPips, assetSymbol, direction);
+        newStopLoss = calculatedStopLoss.toFixed(decimals);
+      }
+    }
+
+    // Recalculate take profits if take profit pips exist
+    ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'].forEach((pipField, index) => {
+      const pipValue = currentPipInputs[pipField as keyof typeof currentPipInputs];
+      if (pipValue && index < currentTakeProfits.length) {
+        const tpPips = parseFloat(pipValue);
+        if (!isNaN(tpPips) && tpPips > 0) {
+          const direction = getDirectionFromTradeType(tradeType, 'take_profit');
+          const calculatedPrice = calculatePriceFromPips(entryPrice, tpPips, assetSymbol, direction);
+          newTakeProfits[index] = calculatedPrice.toFixed(decimals);
+        }
+      }
+    });
+
+    return { stopLoss: newStopLoss, takeProfits: newTakeProfits };
+  }, []);
+
   const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -135,38 +176,59 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     if (field === 'entry_price' && value && selectedAsset) {
       const newEntryPrice = parseFloat(value.toString());
       if (!isNaN(newEntryPrice)) {
+        const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
+          newEntryPrice, 
+          formData.trade_type, 
+          selectedAsset.symbol, 
+          pipInputs, 
+          takeProfits
+        );
         
-        // Recalculate stop loss if stop loss pips exist
-        if (pipInputs.stop_loss_pips) {
-          const stopLossPips = parseFloat(pipInputs.stop_loss_pips);
-          if (!isNaN(stopLossPips) && stopLossPips > 0) {
-            const direction = getDirectionFromTradeType(formData.trade_type, 'stop_loss');
-            const calculatedStopLoss = calculatePriceFromPips(newEntryPrice, stopLossPips, selectedAsset.symbol, direction);
-            setFormData(prev => ({ ...prev, stop_loss: calculatedStopLoss.toFixed(5) }));
-          }
+        if (stopLoss) {
+          setFormData(prev => ({ ...prev, stop_loss: stopLoss }));
         }
         
-        // Recalculate take profits if take profit pips exist
-        ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'].forEach((pipField, index) => {
-          const pipValue = pipInputs[pipField as keyof typeof pipInputs];
-          if (pipValue) {
-            const tpPips = parseFloat(pipValue);
-            if (!isNaN(tpPips) && tpPips > 0 && index < takeProfits.length) {
-              const direction = getDirectionFromTradeType(formData.trade_type, 'take_profit');
-              const calculatedPrice = calculatePriceFromPips(newEntryPrice, tpPips, selectedAsset.symbol, direction);
-              
-              const newTPs = [...takeProfits];
-              newTPs[index] = calculatedPrice.toFixed(5);
-              setTakeProfits(newTPs);
-              
-              const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
-              setFormData(prev => ({
-                ...prev,
-                [tpKeys[index]]: calculatedPrice.toFixed(5)
-              }));
+        if (newTPs.some(tp => tp !== '')) {
+          setTakeProfits(newTPs);
+          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+          const updates: Record<string, string> = {};
+          newTPs.forEach((tp, index) => {
+            if (tp && index < tpKeys.length) {
+              updates[tpKeys[index]] = tp;
             }
-          }
-        });
+          });
+          setFormData(prev => ({ ...prev, ...updates }));
+        }
+      }
+    }
+
+    // If trade type changes, recalculate all targets from pips
+    if (field === 'trade_type' && formData.entry_price && selectedAsset) {
+      const entryPrice = parseFloat(formData.entry_price);
+      if (!isNaN(entryPrice)) {
+        const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
+          entryPrice, 
+          value as 'buy' | 'sell' | 'buy_limit' | 'sell_limit', 
+          selectedAsset.symbol, 
+          pipInputs, 
+          takeProfits
+        );
+        
+        if (stopLoss) {
+          setFormData(prev => ({ ...prev, stop_loss: stopLoss }));
+        }
+        
+        if (newTPs.some(tp => tp !== '')) {
+          setTakeProfits(newTPs);
+          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+          const updates: Record<string, string> = {};
+          newTPs.forEach((tp, index) => {
+            if (tp && index < tpKeys.length) {
+              updates[tpKeys[index]] = tp;
+            }
+          });
+          setFormData(prev => ({ ...prev, ...updates }));
+        }
       }
     }
     
@@ -178,16 +240,44 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         return newErrors;
       });
     }
-  }, [errors, selectedAsset, formData.trade_type, pipInputs, takeProfits]);
+  }, [errors, selectedAsset, formData.trade_type, formData.entry_price, pipInputs, takeProfits, recalcTargetsFromPips]);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
-    handleInputChange('entry_price', price.toString());
+    const priceStr = price.toString();
+    setFormData(prev => ({ ...prev, entry_price: priceStr }));
+    
+    // Immediately recalculate targets if we have pip inputs and selected asset
+    if (selectedAsset) {
+      const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
+        price, 
+        formData.trade_type, 
+        selectedAsset.symbol, 
+        pipInputs, 
+        takeProfits
+      );
+      
+      if (stopLoss) {
+        setFormData(prev => ({ ...prev, stop_loss: stopLoss }));
+      }
+      
+      if (newTPs.some(tp => tp !== '')) {
+        setTakeProfits(newTPs);
+        const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+        const updates: Record<string, string> = {};
+        newTPs.forEach((tp, index) => {
+          if (tp && index < tpKeys.length) {
+            updates[tpKeys[index]] = tp;
+          }
+        });
+        setFormData(prev => ({ ...prev, ...updates }));
+      }
+    }
     
     toast({
       title: "Price Updated", 
       description: `Entry price set to $${price.toFixed(2)}`,
     });
-  }, [handleInputChange, toast]);
+  }, [selectedAsset, formData.trade_type, pipInputs, takeProfits, recalcTargetsFromPips, toast]);
 
   const addTakeProfit = () => {
     if (takeProfits.length < 5) {
@@ -244,6 +334,9 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       const pipValue = parseFloat(pips);
       
       if (!isNaN(entryPrice) && !isNaN(pipValue) && pipValue > 0) {
+        const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+        const decimals = getDecimalPlaces(selectedAsset.symbol);
+        
         let direction: 'up' | 'down' = 'up';
         let targetType: 'stop_loss' | 'take_profit' = 'take_profit';
         
@@ -255,18 +348,18 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         const calculatedPrice = calculatePriceFromPips(entryPrice, pipValue, selectedAsset.symbol, direction);
         
         if (field === 'stop_loss_pips') {
-          setFormData(prev => ({ ...prev, stop_loss: calculatedPrice.toFixed(5) }));
+          setFormData(prev => ({ ...prev, stop_loss: calculatedPrice.toFixed(decimals) }));
         } else {
           const tpIndex = parseInt(field.replace('tp', '').replace('_pips', '')) - 1;
           if (tpIndex >= 0 && tpIndex < takeProfits.length) {
             const newTPs = [...takeProfits];
-            newTPs[tpIndex] = calculatedPrice.toFixed(5);
+            newTPs[tpIndex] = calculatedPrice.toFixed(decimals);
             setTakeProfits(newTPs);
             
             const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
             setFormData(prev => ({
               ...prev,
-              [tpKeys[tpIndex]]: calculatedPrice.toFixed(5)
+              [tpKeys[tpIndex]]: calculatedPrice.toFixed(decimals)
             }));
           }
         }

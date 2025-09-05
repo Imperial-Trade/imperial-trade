@@ -1,5 +1,4 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
-import { TypewriterText } from './typewriter-text';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ImperialWelcomeAnimationProps {
@@ -18,11 +17,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
-  const [typingComplete, setTypingComplete] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
   const [fadeStarted, setFadeStarted] = useState(false);
-  const typingCompleteRef = useRef(false);
-  const tagline = "the imperial experience awaits.";
   
   console.info('[Welcome v2-gold] Component mounted');
   
@@ -50,10 +46,10 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       setIsVisible(false);
     }, 5000);
   };
-  const handleTypingComplete = () => {
-    typingCompleteRef.current = true;
-    setTypingComplete(true);
-    console.info('[Welcome v2-gold] Typing complete, starting dots');
+
+  // Start dot animation immediately
+  const startDotAnimation = () => {
+    console.info('[Welcome v2-gold] Starting dots animation');
     
     // Start deterministic dot animation with dot counting
     let dot = 0;
@@ -71,8 +67,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       }
     }, 333);
     
-    // Also trigger by timer as backup (6s from mount)
-    fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 6000);
+    // Also trigger by timer as backup (3s from start)
+    fadeTimeoutRef.current = window.setTimeout(() => startFade('timer'), 3000);
   };
   useLayoutEffect(() => {
     // Prevent StrictMode double-invocation issues
@@ -171,6 +167,10 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     };
 
     addEventListeners();
+    
+    // Start dot animation immediately
+    startDotAnimation();
+    
     // Safety fallback: force-complete if animation is throttled
     safetyTimeoutRef.current = window.setTimeout(() => {
       if (!completedOnceRef.current) {
@@ -248,29 +248,16 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       onTouchMove={handleTouchMove}
     >
       <div className="text-center px-4 max-w-4xl mx-auto">
-        <>
-          <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
-            <TypewriterText 
-              text={tagline}
-              speed={100}
-              onComplete={handleTypingComplete}
-              className="text-white/90"
+        <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
+                activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+              }`}
             />
-          </h1>
-          
-          {typingComplete && (
-            <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
-              {[0, 1, 2].map((index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
-                    activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
-import { StreamHealthPanel } from '@/components/signals/StreamHealthPanel';
+
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
@@ -561,8 +561,6 @@ export default function SignalStream() {
         <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
           <div className="max-w-none w-full">
             <div className="w-full">
-              {/* Stream Health Panel */}
-              <StreamHealthPanel />
               
               {/* System Status */}
               <div data-prevent-widget-open="true">

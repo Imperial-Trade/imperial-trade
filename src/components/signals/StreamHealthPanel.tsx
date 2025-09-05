@@ -126,7 +126,7 @@ export function StreamHealthPanel() {
 
   return (
     <Card className="mb-4">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             {getStatusIcon(metrics.tradermadeStatus)}

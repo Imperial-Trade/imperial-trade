@@ -14,6 +14,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const [isVisible, setIsVisible] = useState(true);
   const [activeDot, setActiveDot] = useState(0);
   const [typingComplete, setTypingComplete] = useState(false);
+  const [fadeToBlack, setFadeToBlack] = useState(false);
+  const [doorwayFade, setDoorwayFade] = useState(false);
   const [showDashboardFade, setShowDashboardFade] = useState(false);
   const typingCompleteRef = useRef(false);
 
@@ -36,7 +38,7 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     const elapsedTime = currentTime - startTimeRef.current;
     
     // Only animate dots after typing is complete
-    if (typingCompleteRef.current && !showDashboardFade) {
+    if (typingCompleteRef.current && !fadeToBlack && !doorwayFade && !showDashboardFade) {
       // 3 cycles in 3 seconds = 1000ms per cycle
       const cycleTime = elapsedTime % 1000;
       const newActiveDot = Math.floor(cycleTime / 250); // 1000ms / 4 dots
@@ -48,15 +50,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         dotCycleCountRef.current = currentCycle;
       }
       
-      // After exactly 3 cycles (3 seconds), start dashboard fade immediately
+      // After exactly 3 cycles (3 seconds), start fade to black
       if (currentCycle >= 3 && elapsedTime >= 3000) {
-        setShowDashboardFade(true);
-        // Call onComplete immediately so dashboard content can start fading in
-        onComplete?.();
-        // Remove overlay only after the full 5-second fade completes
+        setFadeToBlack(true);
+        
+        // After 0.5s fade to black, start doorway fade
         setTimeout(() => {
-          setIsVisible(false);
-        }, 5000); // 5 second dashboard fade duration
+          setDoorwayFade(true);
+          
+          // After 2s doorway fade, call onComplete and remove overlay
+          setTimeout(() => {
+            onComplete?.();
+            setIsVisible(false);
+          }, 2000); // 2 second doorway fade duration
+        }, 500); // 0.5 second fade to black duration
         return;
       }
     }
@@ -217,37 +224,54 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   return (
     <div 
-      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all duration-5000 ${
-        showDashboardFade ? 'bg-black/0' : 'bg-black'
+      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all ${
+        fadeToBlack ? 'bg-black duration-500' : 
+        doorwayFade ? 'bg-black' : 
+        'bg-black'
       }`}
       style={{ minHeight: '100dvh' }}
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
-      <div className="text-center px-4 max-w-4xl mx-auto">
-        <>
-          <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
-            <TypewriterText 
-              text={tagline}
-              speed={100}
-              onComplete={handleTypingComplete}
-              className="text-white/90"
-            />
-          </h1>
-          
-          {typingComplete && (
-            <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
-              {[0, 1, 2, 3].map((index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
-                    activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </>
+      {/* Doorway fade effect */}
+      {doorwayFade && (
+        <div 
+          className="absolute inset-0 bg-transparent"
+          style={{
+            clipPath: 'circle(0% at 50% 50%)',
+            animation: 'doorway-expand 2s ease-out forwards'
+          }}
+        />
+      )}
+
+      <div className={`text-center px-4 max-w-4xl mx-auto transition-opacity duration-500 ${
+        fadeToBlack ? 'opacity-0' : 'opacity-100'
+      }`}>
+        {!doorwayFade && (
+          <>
+            <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
+              <TypewriterText 
+                text={tagline}
+                speed={100}
+                onComplete={handleTypingComplete}
+                className="text-white/90"
+              />
+            </h1>
+            
+            {typingComplete && !fadeToBlack && (
+              <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
+                {[0, 1, 2, 3].map((index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
+                      activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

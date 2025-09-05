@@ -459,6 +459,15 @@
   }
 }
 
+@keyframes doorway-expand {
+  0% {
+    clip-path: circle(0% at 50% 50%);
+  }
+  100% {
+    clip-path: circle(150% at 50% 50%);
+  }
+}
+
 .animate-parallax-float {
   animation: parallaxFloat 20s ease-in-out infinite;
 }

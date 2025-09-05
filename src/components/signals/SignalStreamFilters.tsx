@@ -269,10 +269,10 @@ export function SignalStreamFilters({
                 <Button 
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-bold bg-gradient-to-br from-gray-900 via-black to-gray-800 hover:from-gray-800 hover:via-gray-900 hover:to-black text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8),_0_0_16px_rgba(255,255,0,0.6),_0_0_24px_rgba(255,255,0,0.4)] border border-amber-700/60 hover:border-amber-600/80 transition-all duration-500 ease-out rounded-lg shadow-inner shadow-black/40 hover:shadow-lg hover:shadow-amber-600/30 backdrop-blur-sm min-w-[120px] relative overflow-hidden group hover:scale-[1.02]"
+                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent hover:from-yellow-200 hover:via-yellow-300 hover:to-yellow-500 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
                 >
-                  <Plus className="w-4 h-4 mr-2 relative z-20 text-black [text-shadow:_0_0_8px_rgba(255,255,0,0.8)]" />
-                  <span className="relative z-20">Create Alert</span>
+                  <Plus className="w-4 h-4 mr-2 bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent" />
+                  <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Create Alert</span>
                 </Button>
               )}
             </div>

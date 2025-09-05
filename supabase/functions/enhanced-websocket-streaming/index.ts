@@ -157,6 +157,7 @@ class EnhancedWebSocketStreaming {
 
   private async initializeLeaderElection(): Promise<void> {
     if (!this.redisClient) {
+      console.log('🔥 No Redis - forcing leader mode');
       this.isLeader = true;
       this.connectToTradermade();
       return;
@@ -164,26 +165,57 @@ class EnhancedWebSocketStreaming {
 
     const leaderKey = 'websocket_leader';
     try {
+      // First check if a leader exists
+      const existingLeader = await this.redisClient.get(leaderKey);
+      console.log(`🔍 Current leader check: ${existingLeader ? 'Leader exists' : 'No leader found'}`);
+      
+      // Always try to become leader if none exists, or force after timeout
       const result = await this.redisClient.set(leaderKey, this.instanceId, {
-        nx: true,
+        nx: existingLeader ? false : true, // Only set if no leader OR force override
         ex: LEADER_ELECTION_TTL
       });
 
-      if (result === 'OK') {
+      // Force leadership if no active leader for 30+ seconds
+      if (!existingLeader || result === 'OK') {
         this.isLeader = true;
-        console.log(`👑 Promoted to leader: ${this.instanceId}`);
+        console.log(`👑 BECAME LEADER: ${this.instanceId} (forced: ${!existingLeader})`);
+        console.log(`📊 Connecting to TraderMade for LIVE PRICE FLOW`);
         this.connectToTradermade();
         this.startLeaderHeartbeat();
       } else {
         this.isLeader = false;
-        console.log('📡 Running as follower instance');
+        console.log(`📡 Running as follower instance (leader: ${existingLeader})`);
         this.subscribeToRedisUpdates();
         this.checkLeaderStatus();
+        // Force promotion attempt after 45 seconds if no price updates
+        setTimeout(() => this.forceLeaderPromotion(), 45000);
       }
     } catch (error) {
       console.error('❌ Leader election failed:', error);
+      console.log('🔥 FORCING LEADER MODE due to Redis error');
       this.isLeader = true;
       this.connectToTradermade();
+    }
+  }
+
+  private async forceLeaderPromotion(): Promise<void> {
+    if (this.isLeader) return;
+    
+    try {
+      // Check if we've received any price updates recently
+      const hasRecentPrices = Array.from(this.priceCache.values())
+        .some(price => Date.now() - (price.cachedAt || 0) < 30000);
+      
+      if (!hasRecentPrices) {
+        console.log('⚡ NO RECENT PRICES - FORCING LEADER PROMOTION');
+        const leaderKey = 'websocket_leader';
+        await this.redisClient?.set(leaderKey, this.instanceId, { ex: LEADER_ELECTION_TTL });
+        this.isLeader = true;
+        this.connectToTradermade();
+        this.startLeaderHeartbeat();
+      }
+    } catch (error) {
+      console.error('❌ Force promotion failed:', error);
     }
   }
 
@@ -241,14 +273,17 @@ class EnhancedWebSocketStreaming {
 
     try {
       const wsUrl = `wss://marketdata.tradermade.com/feedadv?api_key=${apiKey}`;
+      console.log(`🔗 LEADER CONNECTING TO TRADERMADE: ${wsUrl.substring(0, 50)}...`);
       this.tradermadeSocket = new WebSocket(wsUrl);
       
       this.tradermadeSocket.onopen = () => {
-        console.log('✅ Connected to TraderMade');
+        console.log('✅ 🎯 TRADERMADE CONNECTED - LIVE PRICE FLOW STARTING');
+        console.log(`📊 Leader ${this.instanceId} established TraderMade connection`);
         this.updateTradermadeSubscription();
       };
 
       this.tradermadeSocket.onmessage = (event) => {
+        console.log(`💰 PRICE DATA RECEIVED: ${event.data.substring(0, 100)}...`);
         this.handleTradermadeMessage(event.data);
       };
 
@@ -257,11 +292,13 @@ class EnhancedWebSocketStreaming {
         if (event.code === 1000) {
           console.log('🚫 Possible rate limit or connection limit reached');
         }
+        console.log('⚡ PRICE FLOW STOPPED - Scheduling reconnection...');
         this.scheduleReconnect();
       };
 
       this.tradermadeSocket.onerror = (error) => {
         console.error('❌ TraderMade connection error:', error);
+        console.log('⚡ PRICE FLOW ERROR - Will attempt reconnection');
       };
 
     } catch (error) {
@@ -458,6 +495,8 @@ class EnhancedWebSocketStreaming {
       const message = JSON.parse(data);
       
       if (message.symbol && message.bid && message.ask) {
+        console.log(`💰 LIVE PRICE: ${message.symbol} = ${message.bid}/${message.ask} (mid: ${((parseFloat(message.bid) + parseFloat(message.ask)) / 2).toFixed(5)})`);
+        
         const midPrice = (parseFloat(message.bid) + parseFloat(message.ask)) / 2;
         const priceData: PriceData = {
           symbol: message.symbol,
@@ -469,6 +508,8 @@ class EnhancedWebSocketStreaming {
           change: message.change ? parseFloat(message.change) : 0,
           changePercent: message.changePercent ? parseFloat(message.changePercent) : 0
         };
+
+        console.log(`📊 BROADCASTING ${priceData.symbol}: ${priceData.price} to ${this.clients.size} clients`);
 
         // PHASE 2D: Tiered caching strategy
         const cachedPrice = { ...priceData, cachedAt: Date.now() };
@@ -482,6 +523,7 @@ class EnhancedWebSocketStreaming {
           try {
             const ttl = this.hotSymbols.has(priceData.symbol) ? 60 : 30; // Hot symbols cached longer
             await this.redisPublisher.set(`price:${priceData.symbol}`, JSON.stringify(priceData), { ex: ttl });
+            console.log(`🔄 Stored ${priceData.symbol} price in Redis for followers`);
           } catch (error) {
             console.error('❌ Failed to store price in Redis:', error);
           }
@@ -489,6 +531,7 @@ class EnhancedWebSocketStreaming {
         
         // Priority batching for instant delivery
         if (PRIORITY_SYMBOLS.has(priceData.symbol)) {
+          console.log(`⚡ PRIORITY SYMBOL ${priceData.symbol} - Immediate broadcast`);
           this.addToBatch(priceData, true);
         } else {
           this.addToBatch(priceData);
@@ -612,11 +655,14 @@ class EnhancedWebSocketStreaming {
       }
     });
 
-    if (this.isLeader && newSymbols > 0) {
+    console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}] (${newSymbols} new)`);
+    
+    // Always update TraderMade subscription when new symbols are added
+    if (this.isLeader && (newSymbols > 0 || this.activeSymbols.has('XAUUSD') || this.activeSymbols.has('BTCUSD'))) {
+      console.log(`🎯 Updating TraderMade subscription (leader: ${this.isLeader})`);
       this.updateTradermadeSubscription();
     }
 
-    console.log(`📋 Client ${client.id} subscribed to: [${Array.from(client.subscriptions).join(', ')}] (${newSymbols} new)`);
     this.sendCachedPrices(client, Array.from(client.subscriptions));
   }
 
@@ -642,20 +688,29 @@ class EnhancedWebSocketStreaming {
 
   private updateTradermadeSubscription(): void {
     if (!this.tradermadeSocket || this.tradermadeSocket.readyState !== WebSocket.OPEN) {
+      console.log('⚠️ Cannot update subscription - TraderMade not connected');
       return;
     }
 
-    const symbolsToSubscribe = Array.from(this.activeSymbols).filter(symbol => 
-      TRADERMADE_SYMBOLS.includes(symbol)
+    // Always subscribe to XAUUSD and BTCUSD for live price flow
+    const symbolsToSubscribe = ['XAUUSD', 'BTCUSD'];
+    
+    // Add any additional symbols that clients are requesting
+    const clientSymbols = Array.from(this.activeSymbols).filter(symbol => 
+      TRADERMADE_SYMBOLS.includes(symbol) && !symbolsToSubscribe.includes(symbol)
     );
+    symbolsToSubscribe.push(...clientSymbols);
 
     if (symbolsToSubscribe.length > 0) {
       try {
-        this.tradermadeSocket.send(JSON.stringify({
+        const subscriptionMessage = {
           userKey: Deno.env.get('TRADERMADE_API_KEY'),
           symbol: symbolsToSubscribe.join(',')
-        }));
-        console.log(`📡 Updated TraderMade subscription: ${symbolsToSubscribe.join(', ')}`);
+        };
+        
+        console.log(`📡 🎯 SUBSCRIBING TO TRADERMADE: ${symbolsToSubscribe.join(', ')}`);
+        this.tradermadeSocket.send(JSON.stringify(subscriptionMessage));
+        console.log(`✅ TraderMade subscription updated: ${symbolsToSubscribe.join(', ')}`);
       } catch (error) {
         console.error('❌ Failed to update TraderMade subscription:', error);
       }

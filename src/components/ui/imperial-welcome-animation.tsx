@@ -233,15 +233,43 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       onWheel={handleWheel}
       onTouchMove={handleTouchMove}
     >
-      {/* Dramatic gradient fade effect */}
+      {/* Digital Portal doorway effect */}
       {doorwayFade && (
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: 'radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 0%)',
-            animation: 'gradient-fade 2s ease-out forwards'
-          }}
-        />
+        <>
+          {/* Digital grid overlay */}
+          <div 
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '20px 20px',
+              animation: 'grid-dissolve 2s ease-out forwards'
+            }}
+          />
+          
+          {/* Portal opening with hexagonal clip-path */}
+          <div 
+            className="absolute inset-0 bg-black"
+            style={{
+              clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+              transform: 'scale(0)',
+              animation: 'digital-portal-open 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+            }}
+          />
+          
+          {/* Portal glow effect */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(59, 130, 246, 0.3) 45%, rgba(234, 179, 8, 0.2) 50%, transparent 55%)',
+              clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+              transform: 'scale(0)',
+              animation: 'portal-glow 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+            }}
+          />
+        </>
       )}
 
       <div className={`text-center px-4 max-w-4xl mx-auto transition-opacity duration-500 ${

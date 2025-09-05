@@ -459,12 +459,40 @@
   }
 }
 
-@keyframes gradient-fade {
+@keyframes digital-portal-open {
   0% {
-    background: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 100%);
+    transform: scale(200);
+    opacity: 1;
   }
   100% {
-    background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100%);
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes grid-dissolve {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes portal-glow {
+  0% {
+    transform: scale(200);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
   }
 }
 

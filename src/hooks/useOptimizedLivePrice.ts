@@ -31,20 +31,18 @@ export function useOptimizedLivePrice(
     debounceMs = 50 // Zero-pause: Ultra-fast 50ms debouncing (reduced from 100ms)
   } = options;
 
-  // Enhanced symbol normalization for BTC/XAU mapping consistency
+  // FIXED: Enhanced symbol normalization with strict validation
   const normalizedSymbol = (() => {
     const standardSymbol = getStandardSymbol(symbol) || symbol.toUpperCase();
-    // Ensure BTC and XAU map properly to tradermade symbols
-    switch (standardSymbol) {
-      case 'BTC':
-      case 'BITCOIN':
-        return 'BTCUSD';
-      case 'XAU':
-      case 'GOLD':
-        return 'XAUUSD';
-      default:
-        return standardSymbol;
-    }
+    
+    console.log(`🔍 [${symbol}] Symbol normalization:`, {
+      input: symbol,
+      standardSymbol,
+      finalMapping: standardSymbol
+    });
+    
+    // Direct mapping - no additional transformations to prevent cross-contamination
+    return standardSymbol;
   })();
 
   const {
@@ -130,22 +128,38 @@ export function useOptimizedLivePrice(
     }
   }, [normalizedSymbol, getStoredPrice]);
 
-  // Subscribe to price updates via hybrid system
+  // FIXED: Initialize with cache clearing and debug logging
   useEffect(() => {
-    if (!normalizedSymbol) return;
+    console.log(`🔍 [${normalizedSymbol}] Initializing subscription and clearing cache`);
+    
+    // Clear any existing cache for this symbol to prevent cross-contamination
+    try {
+      localStorage.removeItem(`lastPrice:${normalizedSymbol}`);
+      console.log(`🧹 [${normalizedSymbol}] Cleared localStorage cache`);
+    } catch (e) {
+      console.warn('Cache clear failed:', e);
+    }
 
     subscribe([normalizedSymbol]);
+    console.log(`📡 [${normalizedSymbol}] Subscription requested`);
 
     return () => {
+      console.log(`🔌 [${normalizedSymbol}] Unsubscribing`);
       unsubscribe([normalizedSymbol]);
     };
   }, [normalizedSymbol, subscribe, unsubscribe]);
 
-  // Monitor price changes from hybrid context
+  // FIXED: Monitor price changes with strict symbol validation
   useEffect(() => {
     const priceData = prices[normalizedSymbol];
     if (priceData && priceData.price > 0) {
-      console.log(`📡 [${normalizedSymbol}] Hook received price update:`, priceData.price);
+      // CRITICAL: Validate that the received price is for the correct symbol
+      if (priceData.symbol !== normalizedSymbol) {
+        console.error(`🚫 [${normalizedSymbol}] SYMBOL MISMATCH! Requested: ${normalizedSymbol}, Received: ${priceData.symbol} with price: ${priceData.price}`);
+        return; // Prevent cross-contamination
+      }
+      
+      console.log(`📡 [${normalizedSymbol}] ✅ Correct symbol price update:`, priceData.price);
       
       setDebouncedPrice({
         price: priceData.price,

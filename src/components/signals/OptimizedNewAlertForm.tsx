@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
+import { PriceDebugPanel } from './PriceDebugPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { 
@@ -106,8 +107,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     // Clear all validation errors to avoid stale errors when switching assets
     setErrors({});
 
-    // Reset current price when switching assets
+    // Reset current price when switching assets to ensure clean state
     setCurrentPrice(0);
+    
+    // Clear any localStorage cache for the new symbol to force fresh data
+    try {
+      localStorage.removeItem(`lastPrice:${asset.symbol}`);
+      console.log(`🧹 [${asset.symbol}] Cleared localStorage cache for fresh data`);
+    } catch (e) {
+      console.warn('Failed to clear localStorage:', e);
+    }
     
     // Reset loading state after a short delay to allow the price component to initialize
     setTimeout(() => {
@@ -419,14 +428,18 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             </p>
           </div>
         ) : (
-          <div className="p-3 bg-muted/30 rounded-lg border border-border">
-            <EnhancedLivePriceDisplay
-              symbol={selectedAsset.symbol}
-              assetName={selectedAsset.name}
-              onPriceUpdate={setCurrentPrice}
-              onUseCurrentPrice={handleUseCurrentPrice}
-            />
-          </div>
+          <>
+            <div className="p-3 bg-muted/30 rounded-lg border border-border">
+              <EnhancedLivePriceDisplay
+                symbol={selectedAsset.symbol}
+                assetName={selectedAsset.name}
+                onPriceUpdate={setCurrentPrice}
+                onUseCurrentPrice={handleUseCurrentPrice}
+              />
+            </div>
+            {/* TEMPORARY: Debug Panel */}
+            <PriceDebugPanel selectedAsset={selectedAsset} />
+          </>
         )}
 
         {/* Trade Type and Entry Price - Side by Side */}

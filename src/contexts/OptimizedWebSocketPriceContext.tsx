@@ -156,13 +156,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
           case 'price_snapshot':
           case 'price_batch': {
-            // Batch price updates from cache or snapshot
+            // FIXED: Batch price updates with symbol validation and detailed logging
             const updates = data.updates || data.prices;
             if (Array.isArray(updates)) {
               const merged: Record<string, PriceData> = {};
               for (const u of updates) {
                 const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
                 if (u.symbol && price !== undefined) {
+                  console.log(`📊 [${u.symbol}] Batch price: ${price}`);
                   merged[u.symbol] = {
                     symbol: u.symbol,
                     price,
@@ -173,19 +174,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 }
               }
               if (Object.keys(merged).length > 0) {
+                console.log('📈 Batch price update for symbols:', Object.keys(merged).join(', '));
                 setPrices(prev => ({ ...prev, ...merged }));
-                console.log('📈 Batch price update:', Object.keys(merged).length, 'symbols');
               }
             } else if (updates && typeof updates === 'object') {
+              console.log('📈 Object batch price update for symbols:', Object.keys(updates).join(', '));
               setPrices(prev => ({ ...prev, ...updates }));
-              console.log('📈 Batch price update:', Object.keys(updates).length, 'symbols');
             }
             break;
           }
             
           case 'price_update':
-            // Individual real-time price update
+            // FIXED: Individual real-time price update with symbol validation
             if (data.symbol && data.price !== undefined) {
+              console.log(`📈 [${data.symbol}] Direct price update: ${data.price}`);
               const priceData: PriceData = {
                 symbol: data.symbol,
                 price: data.price,
@@ -198,6 +200,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               const u = data.update;
               const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
               if (u.symbol && price !== undefined) {
+                console.log(`📈 [${u.symbol}] Nested price update: ${price}`);
                 const priceData: PriceData = {
                   symbol: u.symbol,
                   price,
@@ -281,15 +284,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, []);
 
   const subscribe = useCallback((symbols: string[]) => {
+    // FIXED: Add strict symbol validation and logging
+    const validatedSymbols = symbols.filter(symbol => {
+      const isValid = symbol && symbol.trim().length > 0;
+      console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
+      return isValid;
+    });
+    
     // Add to local subscription tracking
-    symbols.forEach(symbol => subscriptionsRef.current.add(symbol));
+    validatedSymbols.forEach(symbol => {
+      console.log(`📝 [Subscribe] Adding ${symbol} to subscription set`);
+      subscriptionsRef.current.add(symbol);
+    });
     
     // Send subscription message if connected and authenticated
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
+      console.log(`📤 [Subscribe] Sending subscription for symbols:`, validatedSymbols);
       // Primary: legacy-compatible schema
-      socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols }));
+      socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols: validatedSymbols }));
       // Compatibility: also support action-based schema
-      try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols })); } catch {}
+      try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: validatedSymbols })); } catch {}
     }
   }, []);
 

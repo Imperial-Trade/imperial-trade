@@ -202,17 +202,35 @@ class EnhancedWebSocketStreaming {
     if (this.isLeader) return;
     
     try {
-      // Check if we've received any price updates recently
+      // FIXED: Enhanced check for critical symbol price freshness
+      const criticalSymbols = ['XAUUSD', 'BTCUSD'];
+      let needsLeaderPromotion = false;
+      
+      // Check if we've received any price updates recently for critical symbols
       const hasRecentPrices = Array.from(this.priceCache.values())
         .some(price => Date.now() - (price.cachedAt || 0) < 30000);
+        
+      // Check critical symbol availability
+      const criticalSymbolCount = criticalSymbols.filter(symbol => 
+        this.priceCache.has(symbol) && 
+        this.priceCache.get(symbol)!.price > 0
+      ).length;
       
-      if (!hasRecentPrices) {
-        console.log('⚡ NO RECENT PRICES - FORCING LEADER PROMOTION');
+      if (!hasRecentPrices || criticalSymbolCount < 2) {
+        console.log(`⚡ CRITICAL: Missing price data (recent: ${hasRecentPrices}, critical symbols: ${criticalSymbolCount}/2) - FORCING LEADER PROMOTION`);
+        needsLeaderPromotion = true;
+      }
+      
+      if (needsLeaderPromotion) {
         const leaderKey = 'websocket_leader';
         await this.redisClient?.set(leaderKey, this.instanceId, { ex: LEADER_ELECTION_TTL });
         this.isLeader = true;
         this.connectToTradermade();
         this.startLeaderHeartbeat();
+        
+        // Clear stale price cache to force fresh data
+        console.log('🧹 Clearing stale price cache for fresh data');
+        this.priceCache.clear();
       }
     } catch (error) {
       console.error('❌ Force promotion failed:', error);
@@ -277,8 +295,23 @@ class EnhancedWebSocketStreaming {
       this.tradermadeSocket = new WebSocket(wsUrl);
       
       this.tradermadeSocket.onopen = () => {
+        // FIXED: Always subscribe to critical symbols immediately
         console.log('✅ 🎯 TRADERMADE CONNECTED - LIVE PRICE FLOW STARTING');
         console.log(`📊 Leader ${this.instanceId} established TraderMade connection`);
+        
+        // Immediately subscribe to critical symbols
+        const criticalSymbols = ['XAUUSD', 'BTCUSD'];
+        try {
+          const subscriptionMessage = {
+            userKey: Deno.env.get('TRADERMADE_API_KEY'),
+            symbol: criticalSymbols.join(',')
+          };
+          console.log(`🎯 IMMEDIATE CRITICAL SUBSCRIPTION: ${criticalSymbols.join(', ')}`);
+          this.tradermadeSocket!.send(JSON.stringify(subscriptionMessage));
+        } catch (error) {
+          console.error('❌ Failed to subscribe to critical symbols:', error);
+        }
+        
         this.updateTradermadeSubscription();
       };
 

@@ -58,11 +58,11 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         setTimeout(() => {
           setDoorwayFade(true);
           
-          // After 2.8s doorway fade, call onComplete and remove overlay
+          // After 3s doorway fade, call onComplete and remove overlay
           setTimeout(() => {
             onComplete?.();
             setIsVisible(false);
-          }, 2800); // 2.8 second doorway fade duration
+          }, 3000); // 3 second doorway fade duration
         }, 500); // 0.5 second fade to black duration
         return;
       }
@@ -232,15 +232,15 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       style={{ 
         minHeight: '100dvh',
         ...(doorwayFade ? {
-          WebkitMaskImage: 'radial-gradient(circle at 50% 50%, transparent calc(var(--portal-radius) - 1px), black var(--portal-radius))',
-          maskImage: 'radial-gradient(circle at 50% 50%, transparent calc(var(--portal-radius) - 1px), black var(--portal-radius))',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black var(--door-top), transparent var(--door-center), black var(--door-bottom), black 100%)',
+          maskImage: 'linear-gradient(to bottom, black 0%, black var(--door-top), transparent var(--door-center), black var(--door-bottom), black 100%)',
           WebkitMaskRepeat: 'no-repeat',
           maskRepeat: 'no-repeat',
           WebkitMaskPosition: 'center',
           maskPosition: 'center',
           WebkitMaskSize: 'cover',
           maskSize: 'cover',
-          animation: 'portal-mask-open 2.8s ease-in-out forwards'
+          animation: 'doorway-open 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
         } : {})
       }}
       onWheel={handleWheel}
@@ -258,20 +258,19 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
                 linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)
               `,
               backgroundSize: '20px 20px',
-              animation: 'grid-dissolve 2.8s ease-in-out forwards'
+              animation: 'grid-dissolve 3s ease-in-out forwards'
             }}
           />
           
           {/* Mask handles center reveal; hex rim below adds style */}
           
-          {/* Portal glow effect */}
+          {/* Subtle edge lighting for doorway effect */}
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(59, 130, 246, 0.3) 45%, rgba(234, 179, 8, 0.2) 50%, transparent 55%)',
-              clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
-              transform: 'scale(0)',
-              animation: 'portal-glow 2.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+              background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.2) 0%, transparent 20%, transparent 80%, rgba(234, 179, 8, 0.2) 100%)',
+              opacity: 0,
+              animation: 'fadeIn 3s ease-in-out forwards'
             }}
           />
         </>

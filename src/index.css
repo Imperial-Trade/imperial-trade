@@ -459,17 +459,37 @@
   }
 }
 
-/* Portal mask radius custom property */
-@property --portal-radius {
-  syntax: '<length>';
+/* Doorway gradient custom properties */
+@property --door-top {
+  syntax: '<percentage>';
   inherits: false;
-  initial-value: 0px;
+  initial-value: 0%;
 }
 
-/* Portal mask animation - grows transparent hole from center */
-@keyframes portal-mask-open {
-  from { --portal-radius: 0px; }
-  to { --portal-radius: 200vmax; }
+@property --door-center {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+
+@property --door-bottom {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 100%;
+}
+
+/* Doorway opening animation - vertical doors parting from center */
+@keyframes doorway-open {
+  0% {
+    --door-top: 0%;
+    --door-center: 50%;
+    --door-bottom: 100%;
+  }
+  100% {
+    --door-top: -10%;
+    --door-center: 50%;
+    --door-bottom: 110%;
+  }
 }
 
 @keyframes digital-portal-open {

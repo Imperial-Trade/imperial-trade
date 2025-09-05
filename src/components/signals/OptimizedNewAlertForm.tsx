@@ -493,235 +493,101 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           </div>
         </div>
 
-        {/* Price Levels with Tabs */}
-        {selectedAsset && formData.entry_price && (
+        {/* Stop Loss and Take Profits */}
+        {selectedAsset && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Price Levels</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 px-2 text-xs"
-              >
-                Auto-Sync
-              </Button>
+            {/* Stop Loss */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-destructive">Stop Loss *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  step="0.00001"
+                  value={formData.stop_loss}
+                  onChange={(e) => handleStopLossChange(e.target.value)}
+                  placeholder="Price"
+                  className="h-7 font-mono text-right bg-input border-border"
+                />
+                <InputWithSuffix
+                  type="number"
+                  step="0.1"
+                  value={pipInputs.stop_loss_pips}
+                  onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
+                  placeholder="0.0"
+                  suffix="Pips"
+                  className="h-7 font-mono text-right bg-input border-border"
+                />
+              </div>
+              {errors.stop_loss && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {errors.stop_loss}
+                </p>
+              )}
             </div>
-            
-            <Tabs defaultValue="direct" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50 h-7">
-                <TabsTrigger value="direct" className="data-[state=active]:bg-background text-xs">Direct Entry</TabsTrigger>
-                <TabsTrigger value="pip-calculator" className="data-[state=active]:bg-background text-xs">Pip Calculator</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="direct" className="space-y-2 mt-2">
-                {/* Stop Loss */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-destructive">Stop Loss *</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Price</span>
-                      <Input
-                        type="number"
-                        step="0.00001"
-                        value={formData.stop_loss}
-                        onChange={(e) => handleStopLossChange(e.target.value)}
-                        placeholder="0.00000"
-                        className="h-9 font-mono text-right bg-input border-border"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Pips</span>
-                      <InputWithSuffix
-                        type="number"
-                        step="0.1"
-                        value={pipInputs.stop_loss_pips}
-                        onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
-                        placeholder="0.0"
-                        suffix="Pips"
-                        className="h-8 font-mono text-right bg-input border-border"
-                      />
-                    </div>
-                  </div>
-                  {errors.stop_loss && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertTriangle className="w-4 h-4" />
-                      {errors.stop_loss}
-                    </p>
-                  )}
-                </div>
 
-                {/* Take Profits */}
-                <div className="space-y-2">
+            {/* Take Profits */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-accent-green">Take Profits</label>
+                {takeProfits.length < 5 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addTakeProfit}
+                    className="h-6 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add TP
+                  </Button>
+                )}
+              </div>
+              
+              {takeProfits.map((tp, index) => (
+                <div key={index} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-accent-green">Take Profits</label>
-                    {takeProfits.length < 5 && (
+                    <span className="text-sm font-medium">TP{index + 1}</span>
+                    {index > 0 && (
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={addTakeProfit}
-                        className="h-6 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
+                        onClick={() => removeTakeProfit(index)}
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
                       >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Add TP
+                        <X className="w-3 h-3" />
                       </Button>
                     )}
                   </div>
-                  
-                  {takeProfits.map((tp, index) => (
-                    <div key={index} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium">TP{index + 1}</span>
-                        {index > 0 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeTakeProfit(index)}
-                            className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                       <div className="grid grid-cols-2 gap-2">
-                         <div className="space-y-1">
-                           <span className="text-xs text-muted-foreground">Price</span>
-                           <Input
-                             type="number"
-                             step="0.00001"
-                             value={tp}
-                             onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                             placeholder="0.00000"
-                              className="h-8 font-mono text-right bg-input border-border"
-                           />
-                         </div>
-                         <div className="space-y-1">
-                           <span className="text-xs text-muted-foreground">Pips</span>
-                           <InputWithSuffix
-                             type="number"
-                             step="0.1"
-                             value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
-                             onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
-                             placeholder="0.0"
-                             suffix="Pips"
-                              className="h-8 font-mono text-right bg-input border-border"
-                           />
-                         </div>
-                       </div>
-                      {index === 0 && errors.tp1 && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          {errors.tp1}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="pip-calculator" className="space-y-3 mt-2">
-                <div className="bg-muted/20 p-3 rounded-lg border border-border">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Calculate precise price levels using pip distances from your entry price.
-                  </p>
-                  
-                  {/* Stop Loss */}
-                  <div className="space-y-2 mb-4">
-                    <label className="text-xs font-medium text-destructive">Stop Loss Distance</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Pips Distance</span>
-                        <InputWithSuffix
-                          type="number"
-                          step="0.1"
-                          value={pipInputs.stop_loss_pips}
-                          onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
-                          placeholder="Enter pips"
-                          suffix="Pips"
-                          className="h-8 font-mono text-right bg-input border-border"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Calculated Price</span>
-                        <Input
-                          type="number"
-                          step="0.00001"
-                          value={formData.stop_loss}
-                          placeholder="Auto-calculated"
-                          className="font-mono text-right bg-muted/50 border-border"
-                          readOnly
-                        />
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      step="0.00001"
+                      value={tp}
+                      onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                      placeholder="Price"
+                      className="h-7 font-mono text-right bg-input border-border"
+                    />
+                    <InputWithSuffix
+                      type="number"
+                      step="0.1"
+                      value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
+                      onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
+                      placeholder="0.0"
+                      suffix="Pips"
+                      className="h-7 font-mono text-right bg-input border-border"
+                    />
                   </div>
-
-                  {/* Take Profits */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-accent-green">Take Profit Distances</label>
-                      {takeProfits.length < 5 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addTakeProfit}
-                          className="h-6 px-2 text-xs border-accent-green/30 text-accent-green hover:bg-accent-green/10"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add TP
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {takeProfits.map((tp, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium">TP{index + 1} Distance</span>
-                          {index > 0 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTakeProfit(index)}
-                              className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <span className="text-xs text-muted-foreground">Pips Distance</span>
-                            <InputWithSuffix
-                              type="number"
-                              step="0.1"
-                              value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
-                              onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
-                              placeholder="Enter pips"
-                              suffix="Pips"
-                              className="h-8 font-mono text-right bg-input border-border"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-xs text-muted-foreground">Calculated Price</span>
-                            <Input
-                              type="number"
-                              step="0.00001"
-                              value={tp}
-                              placeholder="Auto-calculated"
-                              className="font-mono text-right bg-muted/50 border-border"
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {index === 0 && errors.tp1 && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      {errors.tp1}
+                    </p>
+                  )}
                 </div>
-              </TabsContent>
-            </Tabs>
+              ))}
+            </div>
           </div>
         )}
 

@@ -64,13 +64,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setError('Market is currently closed - connections blocked for cost optimization');
       
       // Schedule connection attempt for when market opens
-      import('@/utils/marketHours').then(({ getMarketStatus }) => {
-        const status = getMarketStatus();
-      // ULTRA-SMART: Block all WebSocket connections during market closure (50% cost reduction)
-      // Schedule reconnection when market reopens (simplified)
-      console.log('⏰ ULTRA-COST: Scheduling connection check in 1 hour');
-      setTimeout(connect, 3600000); // Check again in 1 hour
-      });
+      const status = getMarketStatus();
+      if (status.nextOpenTime) {
+        const timeUntilOpen = status.nextOpenTime.getTime() - Date.now();
+        console.log(`⏰ ULTRA-COST: Scheduling connection check in ${Math.round(timeUntilOpen/1000/60)} minutes`);
+        setTimeout(connect, Math.min(timeUntilOpen, 3600000)); // Check when market opens or in 1 hour max
+      } else {
+        console.log('⏰ ULTRA-COST: Scheduling connection check in 1 hour');
+        setTimeout(connect, 3600000); // Check again in 1 hour
+      }
       return;
     }
 
@@ -411,9 +413,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return prices[symbol] || null;
   }, [prices]);
 
-  // Initialize connection on mount
+  // Initialize connection on mount - but only if market is open
   useEffect(() => {
-    connect();
+    // ULTRA-COST: Only attempt connection if market is open
+    if (!isMarketClosed()) {
+      connect();
+    } else {
+      console.log('📴 ULTRA-COST: Market closed on mount - skipping initial connection');
+      setConnectionStatus('disconnected');
+      setError('Market is currently closed - connection blocked for cost optimization');
+      
+      // Schedule connection attempt for when market opens
+      const status = getMarketStatus();
+      if (status.nextOpenTime) {
+        const timeUntilOpen = status.nextOpenTime.getTime() - Date.now();
+        console.log(`⏰ ULTRA-COST: Scheduling initial connection in ${Math.round(timeUntilOpen/1000/60)} minutes`);
+        setTimeout(connect, Math.min(timeUntilOpen, 3600000));
+      }
+    }
     
     // Zero-pause: Faster health check ping every 15 seconds (vs 30s)
     const pingInterval = setInterval(() => {

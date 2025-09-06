@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getMarketStatus, isMarketClosed } from '@/utils/marketHours';
 
 // Simple price data interface
 interface PriceData {
@@ -53,6 +54,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    // Check if market is closed before attempting connection
+    if (isMarketClosed()) {
+      console.log('📴 Market closed - skipping connection attempt');
+      setConnectionStatus('disconnected');
+      setError('Market is currently closed');
       return;
     }
 
@@ -296,14 +305,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🔌 WebSocket connection closed:', event.code, event.reason);
       setConnectionStatus('disconnected');
       
-      // Zero-pause: Immediate reconnection for critical disconnections
-      if (event.code !== 1000) { // Not a normal closure
+      // Check if market is closed before attempting reconnection
+      const marketClosed = isMarketClosed();
+      
+      // Zero-pause: Immediate reconnection for critical disconnections (but not during market close)
+      if (event.code !== 1000 && !marketClosed) { // Not a normal closure and market is open
         // Zero-pause: Faster reconnection with reduced backoff
         const delay = Math.min(500 * Math.pow(1.5, reconnectAttempts.current), 5000); // Max 5s delay
         reconnectAttempts.current++;
         
         console.log(`🔄 Zero-pause reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
         reconnectTimeoutRef.current = window.setTimeout(connect, delay);
+      } else if (marketClosed) {
+        console.log('📴 Market closed - stopping reconnection attempts');
+        setConnectionStatus('disconnected');
+        setError('Market is currently closed');
       }
     };
 

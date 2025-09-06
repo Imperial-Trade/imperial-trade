@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { usePostHog } from "posthog-js/react";
+import posthog from "posthog-js";
 
 const PostHogPageViewTracker = () => {
-  const posthog = usePostHog();
   const location = useLocation();
 
   useEffect(() => {
-    if (posthog) {
-      posthog.capture("$pageview");
+    try {
+      posthog?.capture?.("$pageview");
+    } catch (e) {
+      // noop: PostHog not ready
     }
-  }, [location, posthog]);
+  }, [location]);
 
   return null;
 };

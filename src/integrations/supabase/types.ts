@@ -3390,6 +3390,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_stale_market_prices: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       create_smart_notification_batch: {
         Args: {
           p_asset_symbol?: string
@@ -3449,6 +3453,15 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      get_market_data_freshness: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          hours_old: number
+          is_stale: boolean
+          last_update: string
+          symbol: string
+        }[]
       }
       get_market_session: {
         Args: Record<PropertyKey, never>

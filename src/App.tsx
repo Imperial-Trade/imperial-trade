@@ -8,7 +8,7 @@ import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceContext";
-import { useCacheCleaner } from "@/hooks/useCacheCleaner";
+import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
@@ -77,12 +77,10 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Clear price cache on app start to prevent cross-contamination
-  useCacheCleaner();
-  
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <CacheCleanerMount />
         <Toaster />
         <Sonner />
         <BrowserRouter>

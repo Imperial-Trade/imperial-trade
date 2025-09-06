@@ -108,32 +108,35 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         reconnectAttempts.current = 0;
         isAuthenticatedRef.current = false;
 
-        // Send authentication message first (support both legacy and new schemas)
+        // PHASE 2: Simplified authentication with timeout
+        const authTimeout = setTimeout(() => {
+          if (!isAuthenticatedRef.current) {
+            console.error('❌ PHASE 2: Authentication timeout after 10s');
+            setError('Authentication timeout - please refresh and try again');
+            setConnectionStatus('error');
+            socket.close(1000, 'Auth timeout');
+          }
+        }, 10000);
+
         try {
           const token = session?.access_token;
           
-          // Primary: legacy-compatible schema
-        // PHASE 2B: Enhanced authentication with user context
+          // PHASE 2: Simplified auth message - only send one format
           const authMessage = {
             type: 'auth',
             token: token || null,
             user_id: session?.user?.id || null,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            clientId: crypto.randomUUID()
           };
           
           socket.send(JSON.stringify(authMessage));
+          console.log('🔐 PHASE 2: Simplified authentication sent');
           
-          // Compatibility: also send newer action-based schema if server expects it
-          try {
-            socket.send(JSON.stringify({ 
-              action: 'auth', 
-              token: token || null,
-              user_id: session?.user?.id || null
-            }));
-          } catch {}
-          
-          console.log('🔐 PHASE 2B: Enhanced authentication message sent with user context');
+          // Store timeout reference for cleanup
+          (socket as any)._authTimeout = authTimeout;
         } catch (error) {
+          clearTimeout(authTimeout);
           console.error('❌ Authentication error:', error);
           setError('Authentication failed - please refresh and try again');
           setConnectionStatus('error');
@@ -155,26 +158,29 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
           case 'auth_success':
           case 'auth_response':
+            // PHASE 2: Clear auth timeout on any auth response
+            if ((socketRef.current as any)?._authTimeout) {
+              clearTimeout((socketRef.current as any)._authTimeout);
+            }
+            
             if (data.success === false) {
               console.error('❌ Authentication failed:', data.message);
               setError(data.message || 'Authentication failed');
               setConnectionStatus('error');
             } else {
-              console.log('🔑 PHASE 2B: Authentication successful - connection established');
+              console.log('🔑 PHASE 2: Authentication successful - connection established');
               setConnectionStatus('connected');
               setError(null);
               isAuthenticatedRef.current = true;
               
-              // PHASE 2B: Re-subscribe to any previous subscriptions after authentication
+              // PHASE 2: Re-subscribe immediately after authentication
               if (subscriptionsRef.current.size > 0) {
                 const symbols = Array.from(subscriptionsRef.current);
                 const supportedSymbols = symbols.filter(s => ['BTCUSD', 'XAUUSD'].includes(s.toUpperCase()));
                 
                 if (supportedSymbols.length > 0) {
-                  console.log('🔄 PHASE 2B: Re-subscribing to supported symbols:', supportedSymbols);
+                  console.log('🔄 PHASE 2: Re-subscribing to symbols:', supportedSymbols);
                   socket.send(JSON.stringify({ type: 'subscribe', symbols: supportedSymbols }));
-                  // Compatibility: also support action schema
-                  try { socket.send(JSON.stringify({ action: 'subscribe', symbols: supportedSymbols })); } catch {}
                 }
               }
             }
@@ -355,7 +361,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     socket.onerror = (error) => {
       console.error('❌ WebSocket error:', error);
       setConnectionStatus('error');
-      setError('WebSocket connection failed - TraderMade may be disconnected');
+      
+      // PHASE 2: Clear auth timeout on error
+      if ((socket as any)?._authTimeout) {
+        clearTimeout((socket as any)._authTimeout);
+      }
+      
+      // PHASE 2: More specific error messages
+      if (reconnectAttempts.current > 3) {
+        setError('WebSocket connection failed - TraderMade API may be experiencing issues');
+      } else {
+        setError('WebSocket connection failed - attempting to reconnect...');
+      }
     };
   } catch (error) {
     console.error('❌ Connection setup failed:', error);

@@ -1,17 +1,15 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-function useSafeLocation() {
+export function ScrollToTop() {
+  let location = null;
+  
   try {
-    return useLocation();
+    location = useLocation();
   } catch (error) {
     console.warn('ScrollToTop: Router context not available, skipping scroll-to-top functionality');
     return null;
   }
-}
-
-export function ScrollToTop() {
-  const location = useSafeLocation();
 
   useEffect(() => {
     if (location) {

@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
+import { getMarketStatus, formatCountdown, MarketStatus } from '@/utils/marketStatus';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -77,10 +77,27 @@ const LivePriceWidgetComponent = ({
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
 
-  // Market status check - memoized to prevent unnecessary recalculations
-  const marketStatus = useMemo(() => {
-    if (!alert.tradermade_symbol) return { isClosed: false, label: null };
-    return getMarketStatus(alert.tradermade_symbol);
+  // Market status check - isolated from price updates with separate effect
+  const [marketStatus, setMarketStatus] = useState<MarketStatus>({ isClosed: false, label: null });
+  
+  useEffect(() => {
+    if (!alert.tradermade_symbol) {
+      setMarketStatus({ isClosed: false, label: null });
+      return;
+    }
+    
+    const updateMarketStatus = () => {
+      const status = getMarketStatus(alert.tradermade_symbol);
+      setMarketStatus(status);
+    };
+    
+    // Update immediately
+    updateMarketStatus();
+    
+    // Update every 30 seconds to keep countdown fresh
+    const interval = setInterval(updateMarketStatus, 30000);
+    
+    return () => clearInterval(interval);
   }, [alert.tradermade_symbol]);
 
   // Countdown component for market reopening - prevents parent re-renders

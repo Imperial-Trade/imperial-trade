@@ -22,9 +22,21 @@ export interface MarketStatus {
   };
 }
 
+// Cache for market status to prevent repeated calculations
+const marketStatusCache = new Map<string, { status: MarketStatus; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
 export function getMarketStatus(symbol: string): MarketStatus {
   const sym = symbol.toUpperCase();
   const now = new Date();
+  
+  // Check cache first (prevent stale market status from being cached with price data)
+  const statusCacheKey = `${sym}_${Math.floor(now.getTime() / CACHE_TTL)}`;
+  const cached = marketStatusCache.get(statusCacheKey);
+  
+  if (cached && (now.getTime() - cached.timestamp) < CACHE_TTL) {
+    return cached.status;
+  }
 
   // Convert current time to ET for US markets
   const etNow = toZonedTime(now, 'America/New_York');
@@ -68,7 +80,19 @@ export function getMarketStatus(symbol: string): MarketStatus {
   }
 
   // Default fallback - treat as forex
-  return getForexStatus(now, sym, 'Market');
+  const status = getForexStatus(now, sym, 'Market');
+  
+  // Cache the result to prevent recalculation
+  const resultCacheKey = `${sym}_${Math.floor(now.getTime() / CACHE_TTL)}`;
+  marketStatusCache.set(resultCacheKey, { status, timestamp: now.getTime() });
+  
+  // Clean old cache entries (keep only last 10 entries)
+  if (marketStatusCache.size > 10) {
+    const oldestKey = marketStatusCache.keys().next().value;
+    marketStatusCache.delete(oldestKey);
+  }
+  
+  return status;
 }
 
 function getUSIndicesStatus(etNow: Date, etDay: number, etHour: number, etMinute: number, etTimeMinutes: number): MarketStatus {

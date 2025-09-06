@@ -77,18 +77,44 @@ export function useOptimizedLivePrice(
   const mountTimeRef = useRef<Date>(new Date());
   const fallbackTriggeredRef = useRef<{ lastTrigger: string; timestamp: number } | null>(null);
 
-  // Clear all localStorage cache on first mount to eliminate cross-contamination
+  // Aggressive cache clearing with versioning to prevent old edit display
   useEffect(() => {
-    const clearKey = 'priceCache_cleared_v2';
-    if (!sessionStorage.getItem(clearKey)) {
-      // Clear all price-related localStorage entries
+    const CACHE_VERSION = 'v3.2'; // Increment this when market status logic changes
+    const clearKey = `priceCache_cleared_${CACHE_VERSION}`;
+    const lastClearTime = sessionStorage.getItem('lastCacheClear');
+    const now = Date.now();
+    
+    // Force clear cache if version changed or if it's been more than 1 hour
+    const shouldClear = !sessionStorage.getItem(clearKey) || 
+                       !lastClearTime || 
+                       (now - parseInt(lastClearTime)) > 3600000; // 1 hour
+    
+    if (shouldClear) {
+      console.log('🧹 Aggressive cache clearing - preventing old edit display');
+      
+      // Clear ALL localStorage entries that could contain stale data
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('live_price_') || key.includes('price') && key.includes('_timestamp')) {
+        if (key.includes('price') || 
+            key.includes('market') || 
+            key.includes('countdown') ||
+            key.includes('status') ||
+            key.startsWith('lastPrice:') ||
+            key.includes('_timestamp')) {
           localStorage.removeItem(key);
+          console.log(`🗑️ Cleared cache key: ${key}`);
         }
       });
+      
+      // Clear session storage of old version flags
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('priceCache_cleared_') && key !== clearKey) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
       sessionStorage.setItem(clearKey, 'true');
-      console.log('🧹 Cleared all price cache to prevent symbol contamination');
+      sessionStorage.setItem('lastCacheClear', now.toString());
+      console.log('✅ Cache cleared with version:', CACHE_VERSION);
     }
   }, []);
 
@@ -97,12 +123,28 @@ export function useOptimizedLivePrice(
     try {
       const stored = localStorage.getItem(`lastPrice:${sym}`);
       if (stored) {
-        const { price, timestamp } = JSON.parse(stored);
+        const data = JSON.parse(stored);
+        const { price, timestamp, version, symbol } = data;
+        
+        // Reject old cache versions to prevent old edit display
+        if (version !== 'v3.2') {
+          localStorage.removeItem(`lastPrice:${sym}`);
+          console.log(`🗑️ Removed outdated cache version for ${sym}: ${version || 'no version'}`);
+          return null;
+        }
+        
+        // Double-check symbol integrity
+        if (symbol !== sym) {
+          localStorage.removeItem(`lastPrice:${sym}`);
+          console.log(`🗑️ Removed mismatched symbol cache for ${sym}: expected ${sym}, got ${symbol}`);
+          return null;
+        }
+        
         const storedTime = new Date(timestamp);
         
         // Validate using price guards
         if (isCachedPriceValid(sym, { price: Number(price), timestamp: storedTime.getTime() })) {
-          console.log(`✅ Valid cache restored for ${sym}: ${price}`);
+          console.log(`✅ Valid versioned cache restored for ${sym}: ${price} (${version})`);
           return { price: Number(price), timestamp: storedTime };
         } else {
           // Remove invalid cache
@@ -112,19 +154,24 @@ export function useOptimizedLivePrice(
       }
     } catch (e) {
       console.warn('Failed to read stored price:', e);
+      // If parsing fails, it's likely old format - remove it
+      localStorage.removeItem(`lastPrice:${sym}`);
     }
     return null;
   }, []);
 
   const storePrice = useCallback((sym: string, price: number, timestamp: Date) => {
     try {
-      // Only store plausible prices
+      // Only store plausible prices with version stamping
       if (isPricePlausibleForSymbol(price, sym)) {
-        localStorage.setItem(`lastPrice:${sym}`, JSON.stringify({
+        const cacheData = {
           price,
-          timestamp: timestamp.toISOString()
-        }));
-        console.log(`💾 Stored valid price for ${sym}: ${price}`);
+          timestamp: timestamp.toISOString(),
+          version: 'v3.2', // Prevents old data from being restored
+          symbol: sym // Double-check symbol integrity
+        };
+        localStorage.setItem(`lastPrice:${sym}`, JSON.stringify(cacheData));
+        console.log(`💾 Stored versioned price for ${sym}: ${price} (v3.2)`);
       } else {
         console.warn(`🚫 Refused to store implausible price for ${sym}: ${price}`);
       }

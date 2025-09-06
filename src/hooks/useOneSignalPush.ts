@@ -212,26 +212,59 @@ export const useOneSignalPush = () => {
     
     if (!isProduction || isDev) {
       console.log('🔔 Development Mode: Mock push subscription');
-      setState(prev => ({ ...prev, isPushEnabled: true, playerId: 'dev_mock_player_id' }));
       
       if (user) {
-        // Update profile for development with mock player ID
-        await supabase
-          .from('profiles')
-          .update({ 
-            onesignal_player_id: 'dev_mock_player_id',
-            push_subscription_active: true,
-            onesignal_subscription_status: 'subscribed_dev',
-            xeon_stream_subscription: true,
-            xeon_stream_activated_at: new Date().toISOString(),
-            onesignal_last_sync_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-        
-        toast({
-          title: "Development Mode",
-          description: "Mock push notifications enabled! You'll see in-app notifications instead.",
-        });
+        try {
+          // Update profile for development with mock player ID
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              onesignal_player_id: 'dev_mock_player_id',
+              push_subscription_active: true,
+              onesignal_subscription_status: 'subscribed_dev',
+              xeon_stream_subscription: true,
+              xeon_stream_activated_at: new Date().toISOString(),
+              onesignal_last_sync_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+          
+          if (error) {
+            console.error('❌ Failed to update profile in dev mode:', error);
+            toast({
+              title: "Profile Update Failed",
+              description: "Failed to save subscription status.",
+              variant: "destructive",
+            });
+            return false;
+          }
+          
+          // Update local state after successful database update
+          setState(prev => ({ 
+            ...prev, 
+            isPushEnabled: true, 
+            playerId: 'dev_mock_player_id' 
+          }));
+          
+          toast({
+            title: "Development Mode",
+            description: "Mock push notifications enabled! You'll see in-app notifications instead.",
+          });
+        } catch (error) {
+          console.error('❌ Error in dev mode subscription:', error);
+          toast({
+            title: "Subscription Failed",
+            description: "Unable to enable notifications in development mode.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      } else {
+        // Just update state if no user (shouldn't happen normally)
+        setState(prev => ({ 
+          ...prev, 
+          isPushEnabled: true, 
+          playerId: 'dev_mock_player_id' 
+        }));
       }
       return true;
     }
@@ -274,11 +307,30 @@ export const useOneSignalPush = () => {
             console.log('✅ Successfully subscribed with Player ID:', playerId);
             
             if (user && playerId) {
-              await updateUserProfile(playerId);
-              toast({
-                title: "Push Notifications Enabled",
-                description: "You'll now receive instant trade alerts!",
-              });
+              try {
+                await updateUserProfile(playerId);
+                
+                // Update local state after successful database update
+                setState(prev => ({ 
+                  ...prev, 
+                  isPushEnabled: true,
+                  playerId: playerId
+                }));
+                
+                toast({
+                  title: "Push Notifications Enabled",
+                  description: "You'll now receive instant trade alerts!",
+                });
+              } catch (error) {
+                console.error('❌ Failed to update profile after subscription:', error);
+                toast({
+                  title: "Profile Update Failed",
+                  description: "Subscription succeeded but profile update failed. Please try again.",
+                  variant: "destructive",
+                });
+                resolve(false);
+                return;
+              }
             }
             
             resolve(true);

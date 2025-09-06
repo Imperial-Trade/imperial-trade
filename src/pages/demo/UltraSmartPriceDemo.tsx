@@ -35,8 +35,8 @@ export default function UltraSmartPriceDemo() {
         </div>
       </div>
 
-      {/* Live Price Displays */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Live Price Displays - BTCUSD & XAUUSD Only */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         <UltraFastPriceDisplay 
           symbol="BTCUSD" 
           showDiagnostics={true}
@@ -44,11 +44,6 @@ export default function UltraSmartPriceDemo() {
         />
         <UltraFastPriceDisplay 
           symbol="XAUUSD" 
-          showDiagnostics={true}
-          className="h-full"
-        />
-        <UltraFastPriceDisplay 
-          symbol="EURUSD" 
           showDiagnostics={true}
           className="h-full"
         />

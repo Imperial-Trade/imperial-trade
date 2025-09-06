@@ -20,7 +20,7 @@ interface ConnectionMetrics {
 
 export function UltraSmartConnectionDiagnostics() {
   const { connectionStatus, prices, lastUpdated, subscribe, getStats, isUsingEnhancedSystem } = useHybridWebSocketPrices();
-  const [testSymbols] = useState(['XAUUSD', 'BTCUSD', 'EURUSD']);
+  const [testSymbols] = useState(['BTCUSD', 'XAUUSD']);
   const [metrics, setMetrics] = useState<ConnectionMetrics>({
     messagesReceived: 0,
     reconnections: 0,

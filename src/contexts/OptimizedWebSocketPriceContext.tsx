@@ -368,24 +368,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, []);
 
   const subscribe = useCallback((symbols: string[]) => {
-    // ULTRA-SMART: Add strict symbol validation and streaming policy check
-    const validatedSymbols = symbols.filter(symbol => {
-      const isValid = symbol && symbol.trim().length > 0;
-      console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
-      return isValid;
-    });
+    console.log('🎯 ULTRA-SMART: Subscribe request for symbols:', symbols);
     
-    if (validatedSymbols.length === 0) {
-      console.log('⚠️ No valid symbols provided for subscription');
+    // 🎯 Filter to only BTCUSD and XAUUSD immediately
+    const supportedSymbols = symbols.filter(symbol => 
+      symbol && ['BTCUSD', 'XAUUSD'].includes(symbol.toUpperCase())
+    );
+    
+    if (supportedSymbols.length === 0) {
+      console.log('🚫 No supported symbols (only BTCUSD and XAUUSD allowed)');
       return;
     }
 
-    // ULTRA-SMART: Check streaming policy for each symbol
-    const streamingCheck = canStreamAnySymbol(validatedSymbols);
+    console.log('✅ Supported symbols found:', supportedSymbols);
+
+    // ULTRA-SMART: Check streaming policy for supported symbols only
+    const streamingCheck = canStreamAnySymbol(supportedSymbols);
     console.log('🎯 ULTRA-SMART Streaming Policy:', streamingCheck);
     
-    // Add to local subscription tracking (track all requested symbols)
-    validatedSymbols.forEach(symbol => {
+    // Add to local subscription tracking (only supported symbols)
+    supportedSymbols.forEach(symbol => {
       const policy = getSymbolStreamingPolicy(symbol);
       console.log(`📝 [Subscribe] Adding ${symbol} to subscription set (${policy.reason})`);
       subscriptionsRef.current.add(symbol);
@@ -410,7 +412,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setError(`No symbols available for streaming: ${streamingCheck.reason}`);
       
       // Schedule retry for when markets might be open
-      const retryTime = getNextReconnectionTime(validatedSymbols);
+      const retryTime = getNextReconnectionTime(supportedSymbols);
       setTimeout(() => connect(false), retryTime);
     }
   }, [connect]);

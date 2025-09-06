@@ -31,38 +31,27 @@ export function getSymbolStreamingPolicy(symbol: string): StreamingPolicy {
 
   const sym = symbol.toUpperCase();
   
-  // 🚀 CRYPTO: 24/7 STREAMING ENABLED
-  if (isCryptoSymbol(sym)) {
+  // 🎯 ULTRA-FOCUSED: Only BTCUSD and XAUUSD allowed
+  if (sym === 'BTCUSD') {
     return {
       allowStreaming: true,
-      reason: '24/7 Crypto Market - Always Available'
+      reason: 'BTCUSD - 24/7 Crypto Priority Asset'
     };
   }
 
-  // 🕒 FOREX/GOLD: Market Hours Based
-  if (isForexSymbol(sym) || isGoldSymbol(sym)) {
+  if (sym === 'XAUUSD') {
     const forexStatus = getForexMarketStatus();
     return {
       allowStreaming: forexStatus.isOpen,
-      reason: forexStatus.isOpen ? 'Forex Market Open' : 'Forex Market Closed - Cost Optimization',
+      reason: forexStatus.isOpen ? 'XAUUSD Gold Market Open' : 'XAUUSD Gold Market Closed - Cost Optimization',
       nextCheck: forexStatus.nextOpenTime
     };
   }
 
-  // 📈 US MARKETS: Market Hours Based  
-  if (isUSMarketSymbol(sym)) {
-    const usStatus = getUSMarketStatus();
-    return {
-      allowStreaming: usStatus.isOpen,
-      reason: usStatus.isOpen ? 'US Market Open' : 'US Market Closed - Cost Optimization',
-      nextCheck: usStatus.nextOpenTime
-    };
-  }
-
-  // Default: Allow streaming (unknown assets default to available)
+  // 🚫 Block all other symbols for cost optimization
   return {
-    allowStreaming: true,
-    reason: 'Unknown asset type - Default streaming enabled'
+    allowStreaming: false,
+    reason: `Only BTCUSD and XAUUSD supported - ${sym} blocked for cost optimization`
   };
 }
 
@@ -75,10 +64,23 @@ export function canStreamAnySymbol(symbols: string[]): { canStream: boolean; all
     return { canStream: false, allowedSymbols: [], reason: 'No symbols provided' };
   }
 
+  // 🎯 Filter to only supported symbols first
+  const supportedSymbols = symbols.filter(symbol => 
+    ['BTCUSD', 'XAUUSD'].includes(symbol.toUpperCase())
+  );
+
+  if (supportedSymbols.length === 0) {
+    return { 
+      canStream: false, 
+      allowedSymbols: [], 
+      reason: 'Only BTCUSD and XAUUSD are supported for cost optimization' 
+    };
+  }
+
   const allowedSymbols: string[] = [];
   const reasons: string[] = [];
 
-  for (const symbol of symbols) {
+  for (const symbol of supportedSymbols) {
     const policy = getSymbolStreamingPolicy(symbol);
     if (policy.allowStreaming) {
       allowedSymbols.push(symbol);

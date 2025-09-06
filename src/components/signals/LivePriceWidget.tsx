@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePriceAnimations } from '@/hooks/usePriceAnimations';
-import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
+// Market status imports removed
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -472,20 +472,7 @@ const LivePriceWidgetComponent = ({
     return change >= 0 ? TrendingUp : TrendingDown;
   }, [change]);
 
-  // Enhanced market status with countdown timer
-  const [marketStatus, setMarketStatus] = useState(() => getMarketStatus(alert.tradermade_symbol || ''));
-  
-  useEffect(() => {
-    const updateMarketStatus = () => {
-      setMarketStatus(getMarketStatus(alert.tradermade_symbol || ''));
-    };
-
-    // Update market status immediately and then every second
-    updateMarketStatus();
-    const interval = setInterval(updateMarketStatus, 1000);
-    
-    return () => clearInterval(interval);
-  }, [alert.tradermade_symbol]);
+  // Market status logic removed to eliminate blinking
 
   const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
@@ -657,7 +644,7 @@ const LivePriceWidgetComponent = ({
       )}
 
       {/* Loading State for Initial Load */}
-      {isLoading && currentPrice === 0 && !marketStatus.isClosed && (
+      {isLoading && currentPrice === 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -684,11 +671,6 @@ const LivePriceWidgetComponent = ({
                 }`}>
                   ${formatPrice(currentPrice)}
                 </span>
-                {marketStatus.isClosed && (
-                  <span className="ml-2 text-xs text-amber-400 font-normal">
-                    (Last Price)
-                  </span>
-                )}
               </div>
             ) : (
               <div className="text-muted-foreground font-mono text-lg">

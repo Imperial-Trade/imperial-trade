@@ -18,7 +18,7 @@ import {
   Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
-import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
+// Market status imports removed
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -238,19 +238,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, [change]);
 
   // Enhanced market status with countdown timer
-  const [marketStatus, setMarketStatus] = useState(() => getMarketStatus(apiSymbol));
-  
-  useEffect(() => {
-    const updateMarketStatus = () => {
-      setMarketStatus(getMarketStatus(apiSymbol));
-    };
-
-    // Update market status immediately and then every second
-    updateMarketStatus();
-    const interval = setInterval(updateMarketStatus, 1000);
-    
-    return () => clearInterval(interval);
-  }, [apiSymbol]);
+  // Market status logic removed to eliminate blinking
 
   // Check if current symbol is a Forex pair or related asset
   const isForexAsset = useMemo(() => {
@@ -347,53 +335,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Market Status Banner - Show for closed markets or non-Forex assets */}
-      {marketStatus.isClosed ? (
-        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4 text-amber-400" />
-              <div className="text-amber-400 text-sm font-medium">Market Closed</div>
-            </div>
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <div className="text-amber-400 text-sm font-mono font-bold">
-                {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            {isForexAsset ? (
-              <>Weekend Closure: Forex market closes Fridays at 5:00 PM EST, reopens Sundays at 5:00 PM EST</>
-            ) : (
-              marketStatus.label
-            )}
-          </div>
-          {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-            <div className="text-xs text-gray-400 mt-1">
-              Opens in {formatCountdown(marketStatus.countdown)}
-            </div>
-          )}
-        </div>
-      ) : (!isForexAsset && marketStatus.currentSession && (
-        <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
-            </div>
-            {marketStatus.sessionDetails?.nextSession && marketStatus.countdown && (
-              <div className="text-green-300 text-xs">
-                {marketStatus.sessionDetails.nextSession} in {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          {marketStatus.sessionDetails?.name && (
-            <div className="text-xs text-gray-400 mt-1">
-              {marketStatus.sessionDetails.name}
-            </div>
-          )}
-        </div>
-      ))}
+      {/* Market Status Banner removed to eliminate blinking and market closed displays */}
 
       {/* Main Price Display - Always visible */}
       <div className="flex items-center justify-between mb-3">
@@ -409,14 +351,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               ${formatPrice(displayPrice)}
             </div>
           ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
-            <div className="text-amber-500 font-mono text-xl">
-              <div className="flex items-center gap-2">
-                <span>Invalid Price</span>
-                <span className="text-xs text-gray-400">
-                  (Market Closed)
-                </span>
-              </div>
-            </div>
+             <div className="text-amber-500 font-mono text-xl">
+               <span>Invalid Price</span>
+             </div>
           ) : (
             <div className={`text-gray-500 font-mono text-xl ${isLoading ? 'animate-pulse' : ''}`}>
               {isLoading ? 'Loading...' : '---.--'}

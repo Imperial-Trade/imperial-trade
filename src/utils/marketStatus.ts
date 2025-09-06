@@ -287,36 +287,44 @@ function getUSStockStatus(etNow: Date, etDay: number, etHour: number, etMinute: 
 }
 
 function getForexStatus(now: Date, symbol: string, marketType: string): MarketStatus {
-  const utcDay = now.getUTCDay();
-  const utcHour = now.getUTCHours();
+  // Convert current time to ET for proper DST handling
+  const etNow = toZonedTime(now, 'America/New_York');
+  const etDay = etNow.getDay(); // 0=Sun, 6=Sat
+  const etHour = etNow.getHours();
+  const etMinute = etNow.getMinutes();
 
-  // Weekend closure for Forex/Gold/Commodities
-  if (utcDay === 6 || (utcDay === 0 && utcHour < 22)) {
-    const nextSunday = utcDay === 6 ? addDays(now, 1) : now;
-    const sundayOpen = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 22);
+  // Weekend closure - Saturday and Sunday before 5 PM ET
+  if (etDay === 6 || (etDay === 0 && etHour < 17)) {
+    const nextSunday = etDay === 6 ? addDays(etNow, 1) : etNow;
+    const sundayOpenET = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 17); // 5:00 PM ET
+    const sundayOpenUTC = fromZonedTime(sundayOpenET, 'America/New_York');
     
     return {
       isClosed: true,
       label: `Weekend - ${marketType} Market Closed`,
-      nextOpenTime: sundayOpen,
-      countdown: calculateCountdown(now, sundayOpen)
+      nextOpenTime: sundayOpenUTC,
+      countdown: calculateCountdown(now, sundayOpenUTC),
+      currentSession: 'Weekend Closure'
     };
   }
 
-  // Friday post-close
-  if (utcDay === 5 && utcHour >= 21) {
-    const nextSunday = getNextWeekday(now, 0);
-    const sundayOpen = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 22);
+  // Friday post-close (after 5 PM ET)
+  if (etDay === 5 && etHour >= 17) {
+    const nextSunday = getNextWeekdayET(etNow, 0); // Get next Sunday
+    const sundayOpenET = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 17); // 5:00 PM ET
+    const sundayOpenUTC = fromZonedTime(sundayOpenET, 'America/New_York');
     
     return {
       isClosed: true,
       label: `Weekend Break - ${marketType} Market Closed`,
-      nextOpenTime: sundayOpen,
-      countdown: calculateCountdown(now, sundayOpen)
+      nextOpenTime: sundayOpenUTC,
+      countdown: calculateCountdown(now, sundayOpenUTC),
+      currentSession: 'Weekend Closure'
     };
   }
 
-  // Market is open
+  // Market is open - Convert ET hour to UTC for session determination
+  const utcHour = now.getUTCHours();
   return {
     isClosed: false,
     label: null,

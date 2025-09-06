@@ -76,17 +76,35 @@ const OptimizedWebSocketPriceProviderInner: React.FC<OptimizedWebSocketPriceProv
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
-      socket.onopen = () => {
-        console.log('✅ Optimized WebSocket connected - 24/7 LIVE');
-        setConnectionStatus('connected');
-        setError(null);
-        connectionStartTime.current = Date.now();
-        
-        // Auto-subscribe to ALL symbols for 24/7 data flow
-        const symbols = ['BTCUSD', 'XAUUSD'];
-        console.log(`🔥 24/7 AUTO-SUBSCRIBE: ${symbols.join(', ')}`);
-        subscribe(symbols);
-      };
+        socket.onopen = () => {
+          console.log('✅ WebSocket connected');
+          setConnectionStatus('connected');
+          setError(null);
+          
+          // ULTRA-FAST: Subscribe immediately on connection (auth handled by edge function)
+          const currentSymbols = Array.from(subscriptionsRef.current);
+          if (currentSymbols.length === 0) {
+            // Default subscribe to main trading symbols
+            currentSymbols.push('BTCUSD', 'XAUUSD');
+            subscriptionsRef.current.add('BTCUSD');
+            subscriptionsRef.current.add('XAUUSD');
+          }
+          
+          console.log('🚀 IMMEDIATE SUBSCRIBE:', currentSymbols);
+          socket.send(JSON.stringify({
+            type: 'subscribe',
+            symbols: currentSymbols
+          }));
+          
+          // Heartbeat to keep connection alive
+          const heartbeatInterval = setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'ping' }));
+            } else {
+              clearInterval(heartbeatInterval);
+            }
+          }, 25000);
+        };
 
       socket.onmessage = (event) => {
         try {
@@ -102,11 +120,18 @@ const OptimizedWebSocketPriceProviderInner: React.FC<OptimizedWebSocketPriceProv
               timestamp: message.timestamp || new Date().toISOString()
             };
             
-            // ULTRA-FAST: Direct state update for sub-50ms latency
+            // ULTRA-FAST: Direct state update + caching for sub-50ms latency
             setPrices(prev => ({
               ...prev,
               [message.symbol]: priceData
             }));
+            
+            // Cache for quick bootstrap and smooth interpolation
+            try {
+              localStorage.setItem(`price_${message.symbol}`, JSON.stringify(priceData));
+            } catch (e) {
+              // Ignore localStorage errors
+            }
             
             console.log(`🔥 ULTRA-FAST: ${message.symbol} = ${message.mid} (LIVE)`);
           }

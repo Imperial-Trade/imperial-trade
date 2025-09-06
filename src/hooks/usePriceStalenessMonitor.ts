@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 interface PriceStalenessStatus {
   isStale: boolean;
@@ -10,7 +10,7 @@ interface PriceStalenessStatus {
 }
 
 export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
-  const { getConnectionHealth, lastUpdated, prices } = useHybridWebSocketPrices();
+  const { prices, connectionStatus } = useOptimizedWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,
@@ -21,29 +21,32 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
 
   useEffect(() => {
     const checkStaleness = () => {
-      const health = getConnectionHealth();
+      // Use connection status directly for immediate feedback
+      const isConnected = connectionStatus === 'connected';
       
       if (symbol) {
         const priceData = prices[symbol];
         const now = Date.now();
         const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
         const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
-        const isStale = ageInSeconds ? ageInSeconds > maxAgeSeconds : true;
+        
+        // Only consider stale if disconnected OR age > threshold
+        const isStale = !isConnected || (ageInSeconds ? ageInSeconds > maxAgeSeconds : true);
         
         setStalenessStatus({
           isStale,
           ageInSeconds,
-          lastUpdate: lastUpdated,
-          isHealthy: health.isHealthy,
-          stalePrices: [] // Simplified for hybrid system
+          lastUpdate: priceData ? new Date(priceData.timestamp) : null,
+          isHealthy: isConnected,
+          stalePrices: isStale && symbol ? [symbol] : []
         });
       } else {
         setStalenessStatus({
-          isStale: false,
+          isStale: !isConnected,
           ageInSeconds: null,
-          lastUpdate: health.lastUpdate,
-          isHealthy: health.isHealthy,
-          stalePrices: [] // Simplified for hybrid system
+          lastUpdate: null,
+          isHealthy: isConnected,
+          stalePrices: []
         });
       }
     };
@@ -55,7 +58,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices]);
+  }, [symbol, maxAgeSeconds, connectionStatus, prices]);
 
   return stalenessStatus;
 }

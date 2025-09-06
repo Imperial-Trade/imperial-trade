@@ -121,7 +121,16 @@ interface EnhancedPriceData extends PriceData {
   timestamp: Date;
   freshness: 'fresh' | 'stale' | 'critical';
   cacheHit: boolean;
+  change?: number;
+  changePercent?: number;
 }
+
+// Write throttling tracker per symbol
+const writeThrottleTracker = new Map<string, {
+  lastWritePrice: number;
+  lastWriteTime: number;
+  lastDbWrite: number;
+}>();
 
 interface ClientConnection {
   socket: WebSocket;
@@ -455,8 +464,20 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
   
   console.log(`📤 24/7 LIVE: Broadcasting ${symbol}: ${priceData.mid} to ${broadcastCount} clients ${freshnessEmoji}`);
   
-  // Cache with optimized TTL based on cost optimizer settings
-  if (redis) {
+  // ULTRA-OPTIMIZATION: Write throttling to reduce Redis/DB costs
+  const now = Date.now();
+  const tracker = writeThrottleTracker.get(symbol) || { 
+    lastWritePrice: 0, 
+    lastWriteTime: 0,
+    lastDbWrite: 0 
+  };
+  
+  // Only write to Redis if price changed >0.01% OR >1 second elapsed
+  const priceChangePercent = Math.abs((priceData.mid - tracker.lastWritePrice) / tracker.lastWritePrice) * 100;
+  const timeSinceWrite = now - tracker.lastWriteTime;
+  const shouldWriteRedis = priceChangePercent > 0.01 || timeSinceWrite > 1000;
+  
+  if (redis && shouldWriteRedis) {
     try {
       const optimizedTTL = ultraCostOptimizer.getOptimizedCacheTTL(PRICE_CACHE_TTL_MS / 1000, 'prices');
       await redis.setex(`price:${symbol}`, optimizedTTL, JSON.stringify(priceData));
@@ -464,15 +485,23 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
       // Track cache operation for cost monitoring
       ultraCostOptimizer.trackApiCall('redis');
       
+      // Update tracker
+      tracker.lastWritePrice = priceData.mid;
+      tracker.lastWriteTime = now;
+      writeThrottleTracker.set(symbol, tracker);
+      
       console.log(`💾 CACHED: ${symbol} for ${optimizedTTL}s (24/7 streaming)`);
     } catch (error) {
       console.error(`❌ Redis cache error for ${symbol}:`, error);
     }
   }
   
-  // CRITICAL FIX: Write to database for persistent storage and historical data
-  try {
-    if (supabaseService) {
+  // ULTRA-OPTIMIZATION: Database write throttling (only on significant changes)
+  const timeSinceDbWrite = now - tracker.lastDbWrite;
+  const shouldWriteDb = priceChangePercent > 0.05 || timeSinceDbWrite > 5000; // 0.05% change OR 5 seconds
+  
+  if (supabaseService && shouldWriteDb) {
+    try {
       await supabaseService.rpc('upsert_market_price', {
         p_symbol: symbol,
         p_bid: priceData.bid,
@@ -480,10 +509,15 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
         p_mid: priceData.mid,
         p_timestamp: priceData.timestamp.toISOString()
       });
+      
+      // Update DB write tracker
+      tracker.lastDbWrite = now;
+      writeThrottleTracker.set(symbol, tracker);
+      
       console.log(`💾 DATABASE: Stored ${symbol} price ${priceData.mid} in market_prices table`);
+    } catch (error) {
+      console.error(`❌ Database write error for ${symbol}:`, error);
     }
-  } catch (error) {
-    console.error(`❌ Database write error for ${symbol}:`, error);
   }
 }
 
@@ -652,9 +686,10 @@ serve(async (req: Request): Promise<Response> => {
         type: 'welcome',
         clientId,
         timestamp: Date.now(),
-        marketStatus: getMarketStatus(),
+        marketStatus: '24/7 Live Trading',
         authenticated: true,
-        status: 'connected'
+        status: 'connected',
+        activeSymbols: TRADERMADE_SYMBOLS
       }));
       console.log(`✅ Client ${clientId} connected and auto-authenticated`);
     } catch (error) {

@@ -1,4 +1,6 @@
-// Minimal no-op Toaster to avoid React hook/context issues during setup
+import React from "react"
+
+// Safe no-op Toaster that doesn't use hooks
 export function Toaster() {
   return null
 }

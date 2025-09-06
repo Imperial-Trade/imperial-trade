@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React from "react"
 import type { ReactNode } from "react"
 import { toast as sonnerToast } from "sonner"
 
@@ -167,7 +167,8 @@ function toast({ title, description, ..._rest }: Toast) {
 
 
 function useToast() {
-  return {
+  // Safe implementation that doesn't rely on React hooks during initialization
+  return React.useMemo(() => ({
     toasts: [],
     toast,
     dismiss: (_toastId?: string) => {
@@ -175,7 +176,7 @@ function useToast() {
         (sonnerToast as any).dismiss?.()
       } catch {}
     },
-  }
+  }), [])
 }
 
 export { useToast, toast }

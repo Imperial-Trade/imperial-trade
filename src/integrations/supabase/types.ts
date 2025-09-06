@@ -3326,20 +3326,20 @@ export type Database = {
         Row: {
           display_name: string | null
           id: string | null
-          xeon_stream_activated_at: string | null
-          xeon_stream_subscription: boolean | null
+          notification_preferences: Json | null
+          onesignal_player_id: string | null
         }
         Insert: {
           display_name?: string | null
           id?: string | null
-          xeon_stream_activated_at?: string | null
-          xeon_stream_subscription?: boolean | null
+          notification_preferences?: Json | null
+          onesignal_player_id?: string | null
         }
         Update: {
           display_name?: string | null
           id?: string | null
-          xeon_stream_activated_at?: string | null
-          xeon_stream_subscription?: boolean | null
+          notification_preferences?: Json | null
+          onesignal_player_id?: string | null
         }
         Relationships: []
       }

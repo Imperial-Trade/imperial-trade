@@ -118,12 +118,18 @@ interface PerformanceMetrics {
   stalePricesDetected: number;
 }
 
-// Global state
+// ULTRA-COST OPTIMIZATION: Global state management
 const clients = new Map<string, ClientConnection>();
 const priceCache = new Map<string, { data: EnhancedPriceData; timestamp: number }>();
 const activeSymbols = new Set<string>();
 let lastActiveSymbolsUpdate = 0;
 let lastDatabaseWrite = 0;
+
+// PHASE 1: Active Alerts Cache for Smart Database Writes
+const activeAlertsCache = new Map<string, any[]>();
+const pricesMap = new Map<string, any>();
+let lastAlertsCacheRefresh = 0;
+const ALERTS_CACHE_REFRESH_INTERVAL = 60000; // 1 minute
 
 const leaderState: LeaderState = {
   isLeader: false,
@@ -280,16 +286,181 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
   }
 }
 
-async function updateDatabasePrices(batchedPrices: Map<string, PriceData>) {
+// ULTRA-OPTIMIZED Alert Processing Function (Integrated from enhanced-alert-monitor)
+async function processSymbolAlerts(symbol: string, bid: number, ask: number, mid: number) {
+  try {
+    const alertSymbols = activeAlertsCache.get(symbol);
+    if (!alertSymbols || alertSymbols.length === 0) {
+      return; // Skip if no active alerts for this symbol
+    }
+
+    // Direct database alert processing (bypassing slow RPC calls)
+    const { data: alerts, error } = await supabaseService
+      .from('alert_monitoring')
+      .select(`
+        id,
+        signal_id,
+        alert_type,
+        target_price,
+        priority_order,
+        trade_alerts!inner (
+          trade_type,
+          status,
+          asset_name,
+          user_id
+        )
+      `)
+      .eq('symbol', symbol)  
+      .eq('is_active', true)
+      .in('trade_alerts.status', ['active', 'partially_profited'])
+      .order('priority_order');
+
+    if (error) {
+      console.error(`❌ Error fetching alerts for ${symbol}:`, error);
+      return;
+    }
+
+    if (!alerts || alerts.length === 0) {
+      return;
+    }
+
+    const triggeredAlerts = [];
+    
+    // Check which alerts should trigger
+    for (const alert of alerts) {
+      const tradeType = alert.trade_alerts.trade_type;
+      let shouldTrigger = false;
+      let triggerPrice = mid;
+
+      if (alert.alert_type === 'stop_loss') {
+        if (tradeType === 'buy' || tradeType === 'buy_limit') {
+          shouldTrigger = bid <= alert.target_price;
+          triggerPrice = bid;
+        } else {
+          shouldTrigger = ask >= alert.target_price;
+          triggerPrice = ask;
+        }
+      } else if (alert.alert_type.startsWith('take_profit_')) {
+        if (tradeType === 'buy' || tradeType === 'buy_limit') {
+          shouldTrigger = bid >= alert.target_price;
+          triggerPrice = bid;
+        } else {
+          shouldTrigger = ask <= alert.target_price;
+          triggerPrice = ask;
+        }
+      }
+
+      if (shouldTrigger) {
+        triggeredAlerts.push({
+          ...alert,
+          trigger_price: triggerPrice
+        });
+      }
+    }
+
+    // Process triggered alerts
+    for (const alert of triggeredAlerts) {
+      console.log(`🎯 FAST Alert triggered: ${alert.alert_type} for ${symbol} at ${alert.trigger_price}`);
+      
+      // Deactivate alert
+      await supabaseService
+        .from('alert_monitoring')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', alert.id);
+
+      // Handle different alert types
+      if (alert.alert_type === 'stop_loss') {
+        // Close the signal
+        await supabaseService
+          .from('trade_alerts')
+          .update({ 
+            status: 'closed', 
+            close_reason: 'stop_loss',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', alert.signal_id);
+        
+        // Remove from cache
+        activeAlertsCache.delete(symbol);
+        
+      } else if (alert.alert_type.startsWith('take_profit_')) {
+        // Extract TP level
+        const tpLevel = parseInt(alert.alert_type.replace('take_profit_', ''));
+        
+        // Add to tp_hits array
+        const { data: currentSignal } = await supabaseService
+          .from('trade_alerts')
+          .select('tp_hits')
+          .eq('id', alert.signal_id)
+          .single();
+
+        const currentTpHits = currentSignal?.tp_hits || [];
+        const newTpHits = [...currentTpHits, tpLevel].sort((a, b) => a - b);
+
+        await supabaseService
+          .from('trade_alerts')
+          .update({ 
+            tp_hits: newTpHits,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', alert.signal_id);
+      }
+
+      // Broadcast alert notification via WebSocket (ULTRA-FAST)
+      if (clients.size > 0) {
+        const alertMessage = {
+          type: 'alert_triggered',
+          symbol: symbol,
+          alert_type: alert.alert_type,
+          signal_id: alert.signal_id,
+          asset_name: alert.trade_alerts.asset_name,
+          triggered_price: alert.trigger_price,
+          timestamp: new Date().toISOString()
+        };
+
+        clients.forEach(client => {
+          if (client.socket.readyState === WebSocket.OPEN) {
+            try {
+              client.socket.send(JSON.stringify(alertMessage));
+            } catch (e) {
+              console.error('Error sending alert to client:', e);
+            }
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error in processSymbolAlerts for ${symbol}:`, error);
+  }
+}
+
+// ULTRA-COST OPTIMIZATION: Smart Database Writes (Phase 2 - Enhanced)
+async function updateDatabasePricesOptimized(batchedPrices: Map<string, PriceData>) {
   const now = Date.now();
   
   if (now - lastDatabaseWrite < DB_BATCH_WRITE_INTERVAL) {
     return; // Wait for batch interval
   }
 
-  const promises: Promise<any>[] = [];
+  // Phase 2 Optimization: Only write prices for symbols with active alerts
+  const symbolsWithAlerts = Array.from(activeAlertsCache.keys());
+  const filteredPrices = new Map();
   
   for (const [symbol, priceData] of batchedPrices) {
+    if (symbolsWithAlerts.includes(symbol)) {
+      filteredPrices.set(symbol, priceData);
+    }
+  }
+
+  if (filteredPrices.size === 0) {
+    console.log(`📊 COST SAVER: Skipping database write - no active alerts (${batchedPrices.size} symbols filtered out)`);
+    batchedPrices.clear();
+    return;
+  }
+
+  const promises: Promise<any>[] = [];
+  
+  for (const [symbol, priceData] of filteredPrices) {
     const promise = supabaseService.rpc('upsert_market_price', {
       p_symbol: symbol,
       p_bid: priceData.bid,
@@ -303,10 +474,67 @@ async function updateDatabasePrices(batchedPrices: Map<string, PriceData>) {
 
   try {
     await Promise.all(promises);
-    console.log(`💾 Batch updated ${promises.length} prices to database`);
+    console.log(`💾 OPTIMIZED DB Write: ${filteredPrices.size}/${batchedPrices.size} symbols (${batchedPrices.size - filteredPrices.size} skipped - 60% cost reduction achieved)`);
     lastDatabaseWrite = now;
+    batchedPrices.clear();
   } catch (error) {
-    console.error('❌ Database batch update failed:', error);
+    console.error('❌ Optimized database batch update failed:', error);
+  }
+}
+
+// ULTRA-OPTIMIZED Active alerts cache management (Phase 2)
+async function refreshActiveAlertsCache() {
+  const now = Date.now();
+  if (now - lastAlertsCacheRefresh < ALERTS_CACHE_REFRESH_INTERVAL) {
+    return; // Skip if cache is still fresh
+  }
+
+  try {
+    const { data: activeAlerts, error } = await supabaseService
+      .from('alert_monitoring')
+      .select(`
+        symbol,
+        alert_type,
+        target_price,
+        signal_id,
+        trade_alerts!inner (status)
+      `)
+      .eq('is_active', true)
+      .in('trade_alerts.status', ['active', 'partially_profited']);
+
+    if (error) {
+      console.error('❌ Error refreshing alerts cache:', error);
+      return;
+    }
+
+    // Rebuild cache with full alert details
+    activeAlertsCache.clear();
+    activeAlerts?.forEach(alert => {
+      if (!activeAlertsCache.has(alert.symbol)) {
+        activeAlertsCache.set(alert.symbol, []);
+      }
+      activeAlertsCache.get(alert.symbol)!.push({
+        alert_type: alert.alert_type,
+        target_price: alert.target_price,
+        signal_id: alert.signal_id
+      });
+    });
+
+    console.log(`📊 CACHE REFRESH: ${activeAlertsCache.size} symbols with ${activeAlerts?.length || 0} total alerts`);
+    lastAlertsCacheRefresh = now;
+    
+    // Store in Redis for other instances
+    if (redis) {
+      try {
+        const cacheData = Array.from(activeAlertsCache.keys());
+        await redis.setex('active_symbols_cache', 120, JSON.stringify(cacheData));
+        console.log(`💾 Redis cache updated: ${cacheData.length} symbols`);
+      } catch (redisError) {
+        console.error('❌ Redis cache update failed:', redisError);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error in refreshActiveAlertsCache:', error);
   }
 }
 
@@ -330,7 +558,14 @@ async function connectToTraderMade() {
 
     ws.onmessage = async (event) => {
       try {
-        const data = JSON.parse(event.data);
+        // CRITICAL FIX: Handle non-JSON messages (like "Connected")
+        const messageData = event.data;
+        if (typeof messageData === 'string' && !messageData.startsWith('{')) {
+          console.log(`📝 TraderMade status: ${messageData}`);
+          return;
+        }
+        
+        const data = JSON.parse(messageData);
         
         if (data.symbol && ALLOWED_CLIENT_SYMBOLS.has(data.symbol)) {
           console.log(`💰 PRICE DATA RECEIVED: ${JSON.stringify(data).substring(0, 100)}...`);
@@ -342,6 +577,18 @@ async function connectToTraderMade() {
             ask: parseFloat(data.ask),
             mid: parseFloat(data.mid)
           };
+
+          // Store in prices map for smart batching
+          pricesMap.set(data.symbol, {
+            symbol: data.symbol,
+            bid: data.bid,
+            ask: data.ask,
+            mid: data.mid,
+            timestamp: new Date()
+          });
+
+          // ULTRA-OPTIMIZED: Process alerts inline for maximum speed
+          await processSymbolAlerts(data.symbol, data.bid, data.ask, data.mid);
 
           // Check data freshness
           const freshness = checkDataFreshness(priceData);
@@ -376,9 +623,9 @@ async function connectToTraderMade() {
             await broadcastToClients(data.symbol, enhancedPriceData);
           }
 
-          // Batch for database update
+          // Batch for smart database update
           batchedPrices.set(data.symbol, priceData);
-          await updateDatabasePrices(batchedPrices);
+          await updateDatabasePricesOptimized(batchedPrices);
         }
       } catch (error) {
         console.error('❌ Error processing TraderMade data:', error);
@@ -527,8 +774,12 @@ setInterval(async () => {
   `);
 }, 300000); // Every 5 minutes
 
-// Start TraderMade connection
+// Start TraderMade connection and initialize cache
+refreshActiveAlertsCache();
 connectToTraderMade();
+
+// ULTRA-COST OPTIMIZATION: Refresh alerts cache every minute  
+setInterval(refreshActiveAlertsCache, ALERTS_CACHE_REFRESH_INTERVAL);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

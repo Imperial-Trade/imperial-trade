@@ -284,6 +284,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setError(data.message);
             break;
             
+          case 'alert_triggered':
+            // Handle real-time alert notifications from integrated alert processing
+            console.log('🎯 Real-time Alert Triggered:', data);
+            
+            // Emit alert event for other components to handle UI notifications
+            const alertEvent = new CustomEvent('priceAlert', {
+              detail: {
+                type: data.alert_type,
+                symbol: data.symbol,
+                signalId: data.signal_id,
+                assetName: data.asset_name,
+                triggeredPrice: data.triggered_price,
+                timestamp: data.timestamp
+              }
+            });
+            window.dispatchEvent(alertEvent);
+            break;
+            
           default:
             console.log('📦 Unknown message type:', data.type, data);
         }

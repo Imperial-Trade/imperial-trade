@@ -869,6 +869,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "function_deprecation_hits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       group_journal_entries: {
@@ -2694,6 +2701,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_engagement_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_follows: {
@@ -2727,10 +2741,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3020,6 +3048,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_saved_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_streaks: {
@@ -3287,7 +3322,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      xeon_subscribers_public: {
+        Row: {
+          display_name: string | null
+          id: string | null
+          xeon_stream_activated_at: string | null
+          xeon_stream_subscription: boolean | null
+        }
+        Insert: {
+          display_name?: string | null
+          id?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
+        }
+        Update: {
+          display_name?: string | null
+          id?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_trading_metrics: {
@@ -3302,6 +3357,10 @@ export type Database = {
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
+      }
+      check_user_xeon_subscription: {
+        Args: { user_id_param?: string }
+        Returns: boolean
       }
       cleanup_inactive_symbol_cache: {
         Args: Record<PropertyKey, never>

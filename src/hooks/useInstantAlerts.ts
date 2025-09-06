@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,14 +16,15 @@ interface AlertNotification {
 }
 
 export const useInstantAlerts = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const dupeMapRef = useRef(new Map<string, number>());
+  const [xeonSubscription, setXeonSubscription] = useState<boolean | null>(null);
   
   const handleAlertNotification = useCallback((payload: AlertNotification) => {
     console.log('🚨 INSTANT ALERT RECEIVED:', payload);
     
     // Check subscription eligibility
-    if (profile?.xeon_stream_subscription !== true) {
+    if (xeonSubscription !== true) {
       console.log('⚠️ User not subscribed to Xeon stream, dropping notification');
       return;
     }
@@ -124,7 +125,34 @@ export const useInstantAlerts = () => {
         console.log('Audio notification not available');
       }
     }
-  }, []);
+  }, [xeonSubscription]);
+
+  // Check xeon subscription status when user changes
+  useEffect(() => {
+    const checkXeonSubscription = async () => {
+      if (!user) {
+        setXeonSubscription(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .rpc('check_user_xeon_subscription');
+
+        if (error) {
+          console.warn('Failed to check xeon subscription:', error);
+          setXeonSubscription(false);
+        } else {
+          setXeonSubscription(data || false);
+        }
+      } catch (error) {
+        console.error('Error checking xeon subscription:', error);
+        setXeonSubscription(false);
+      }
+    };
+
+    checkXeonSubscription();
+  }, [user]);
 
   useEffect(() => {
     console.log('🔔 Setting up instant alert notifications...');
@@ -178,7 +206,7 @@ export const useInstantAlerts = () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };
-  }, [handleAlertNotification, profile]);
+  }, [handleAlertNotification, xeonSubscription]);
 
   return {
     // Could expose methods for manual alert testing, muting, etc.

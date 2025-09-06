@@ -167,8 +167,8 @@ function toast({ title, description, ..._rest }: Toast) {
 
 
 function useToast() {
-  // Safe implementation that doesn't rely on React hooks during initialization
-  return React.useMemo(() => ({
+  // Safe implementation that avoids React hooks entirely
+  return {
     toasts: [],
     toast,
     dismiss: (_toastId?: string) => {
@@ -176,8 +176,9 @@ function useToast() {
         (sonnerToast as any).dismiss?.()
       } catch {}
     },
-  }), [])
+  }
 }
+
 
 export { useToast, toast }
 

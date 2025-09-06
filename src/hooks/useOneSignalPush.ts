@@ -130,6 +130,8 @@ export const useOneSignalPush = () => {
     if (!user) return;
 
     try {
+      console.log('🔄 Updating user profile with OneSignal Player ID:', playerId);
+      
       const { error } = await supabase
         .from('profiles')
         .update({ 
@@ -138,15 +140,19 @@ export const useOneSignalPush = () => {
           onesignal_subscription_status: 'subscribed',
           xeon_stream_subscription: true,
           xeon_stream_activated_at: new Date().toISOString(),
+          onesignal_last_sync_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (error) {
-        console.error('Failed to update user profile with OneSignal ID:', error);
+        console.error('❌ Failed to update user profile with OneSignal ID:', error);
         throw error;
       }
+      
+      console.log('✅ Successfully updated user profile with OneSignal Player ID');
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error('❌ Error updating user profile:', error);
+      throw error;
     }
   };
 
@@ -209,13 +215,16 @@ export const useOneSignalPush = () => {
       setState(prev => ({ ...prev, isPushEnabled: true, playerId: 'dev_mock_player_id' }));
       
       if (user) {
-        // Update profile for development
+        // Update profile for development with mock player ID
         await supabase
           .from('profiles')
           .update({ 
+            onesignal_player_id: 'dev_mock_player_id',
             push_subscription_active: true,
             onesignal_subscription_status: 'subscribed_dev',
-            xeon_stream_subscription: true
+            xeon_stream_subscription: true,
+            xeon_stream_activated_at: new Date().toISOString(),
+            onesignal_last_sync_at: new Date().toISOString(),
           })
           .eq('id', user.id);
         

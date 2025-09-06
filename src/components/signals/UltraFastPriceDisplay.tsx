@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { getSymbolStreamingPolicy, getUnifiedMarketStatus } from '@/utils/unifiedMarketHours';
 import { TrendingUp, TrendingDown, Activity, Zap, Clock } from 'lucide-react';
 
@@ -26,7 +26,7 @@ export function UltraFastPriceDisplay({
   showDiagnostics = false, 
   className = '' 
 }: UltraFastPriceDisplayProps) {
-  const { prices, connectionStatus, subscribe, getPrice } = useHybridWebSocketPrices();
+  const { prices, connectionStatus, subscribe, getPrice } = useOptimizedWebSocketPrices();
   const [animation, setAnimation] = useState<PriceAnimation>({ 
     isAnimating: false, 
     direction: 'none', 

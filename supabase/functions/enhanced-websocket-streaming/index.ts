@@ -568,7 +568,8 @@ async function setupRedisPubSubConsumer() {
     // Use polling instead of subscribe if the Redis client doesn't support pub/sub
     console.log('✅ PHASE 3: Using Redis polling for follower price distribution');
     
-    const pollRedisForUpdates = async () => {
+    const pollRedisForUpdates = async (): Promise<boolean> => {
+      let hadNewData = false;
       try {
         for (const symbol of TRADERMADE_SYMBOLS) {
           const cachedPrice = await redis.get(`price:${symbol}`);
@@ -577,6 +578,7 @@ async function setupRedisPubSubConsumer() {
             let priceData;
             try {
               priceData = JSON.parse(cachedPrice);
+              hadNewData = true;
             } catch (parseError) {
               console.error(`❌ Redis JSON parse error for ${symbol}:`, parseError);
               console.error(`❌ Invalid JSON data: ${cachedPrice}`);
@@ -595,10 +597,37 @@ async function setupRedisPubSubConsumer() {
       } catch (error) {
         console.error('❌ Redis polling error:', error);
       }
+      return hadNewData;
     };
     
-    // Poll every 2 seconds for followers
-    setInterval(pollRedisForUpdates, 2000);
+    // ULTRA-FAST: Poll every 100ms for real-time performance, with smart scaling
+    let pollInterval = 100; // Start with ultra-fast 100ms
+    let consecutiveEmptyPolls = 0;
+    let consecutiveDataPolls = 0;
+    
+    const adaptivePolling = () => {
+      pollRedisForUpdates().then((hadData: boolean) => {
+        if (hadData) {
+          consecutiveDataPolls++;
+          consecutiveEmptyPolls = 0;
+          // When data flows, use ultra-fast polling (100ms)
+          pollInterval = Math.max(50, pollInterval - 10);
+        } else {
+          consecutiveEmptyPolls++;
+          consecutiveDataPolls = 0;
+          // When no data, gradually slow down (but max 500ms)
+          if (consecutiveEmptyPolls > 5) {
+            pollInterval = Math.min(500, pollInterval + 25);
+          }
+        }
+      }).catch(() => {
+        pollInterval = 200; // Fallback on errors
+      });
+      
+      setTimeout(adaptivePolling, pollInterval);
+    };
+    
+    adaptivePolling();
     
     console.log('✅ PHASE 3: Redis follower polling established');
   } catch (error) {

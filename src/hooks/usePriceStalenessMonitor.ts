@@ -7,6 +7,8 @@ interface PriceStalenessStatus {
   lastUpdate: Date | null;
   isHealthy: boolean;
   stalePrices: string[];
+  freshness: 'fresh' | 'live' | 'delayed' | 'stale';
+  displayStatus: 'Live' | 'Delayed' | 'Stale' | 'Offline';
 }
 
 export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
@@ -16,7 +18,9 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     ageInSeconds: null,
     lastUpdate: null,
     isHealthy: true,
-    stalePrices: []
+    stalePrices: [],
+    freshness: 'fresh',
+    displayStatus: 'Live'
   });
 
   useEffect(() => {
@@ -30,15 +34,41 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
         const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
         const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
         
-        // Only consider stale if disconnected OR age > threshold
-        const isStale = !isConnected || (ageInSeconds ? ageInSeconds > maxAgeSeconds : true);
+        // ULTRA-FAST: Graduated staleness detection for ultra-responsive UI
+        let freshness: 'fresh' | 'live' | 'delayed' | 'stale';
+        let displayStatus: 'Live' | 'Delayed' | 'Stale' | 'Offline';
+        let isStale: boolean;
+        
+        if (!isConnected) {
+          freshness = 'stale';
+          displayStatus = 'Offline';
+          isStale = true;
+        } else if (!ageInSeconds || ageInSeconds <= 5) {
+          freshness = 'fresh';
+          displayStatus = 'Live';
+          isStale = false;
+        } else if (ageInSeconds <= 15) {
+          freshness = 'live';
+          displayStatus = 'Live';
+          isStale = false;
+        } else if (ageInSeconds <= maxAgeSeconds) {
+          freshness = 'delayed';
+          displayStatus = 'Delayed';
+          isStale = false;
+        } else {
+          freshness = 'stale';
+          displayStatus = 'Stale';
+          isStale = true;
+        }
         
         setStalenessStatus({
           isStale,
           ageInSeconds,
           lastUpdate: priceData ? new Date(priceData.timestamp) : null,
-          isHealthy: isConnected,
-          stalePrices: isStale && symbol ? [symbol] : []
+          isHealthy: isConnected && !isStale,
+          stalePrices: isStale && symbol ? [symbol] : [],
+          freshness,
+          displayStatus
         });
       } else {
         setStalenessStatus({
@@ -46,7 +76,9 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
           ageInSeconds: null,
           lastUpdate: null,
           isHealthy: isConnected,
-          stalePrices: []
+          stalePrices: [],
+          freshness: isConnected ? 'fresh' : 'stale',
+          displayStatus: isConnected ? 'Live' : 'Offline'
         });
       }
     };

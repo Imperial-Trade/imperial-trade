@@ -110,11 +110,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
-  // GUARDRAIL: Increased debounce to 2000ms to reduce flickering
+  // GUARDRAIL: Reduce debounce to 1000ms for faster status updates
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
       setDebouncedConnectionStatus(connectionStatus);
-    }, 2000);
+    }, 1000);
 
     return () => clearTimeout(debounceTimeout);
   }, [connectionStatus]);
@@ -189,10 +189,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 30s)
-    if (dataFreshness < 30 && price > 0) {
+    // ULTRA-FAST: Use graduated staleness for accurate status display
+    if (debouncedConnectionStatus === 'connected' && dataFreshness < 15 && price > 0) {
       return { 
         color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'Ultra-fast real-time updates',
+        animate: false
+      };
+    }
+    
+    if (debouncedConnectionStatus === 'connected' && dataFreshness < 30 && price > 0) {
+      return { 
+        color: 'text-green-300', 
         icon: Wifi, 
         text: 'Live',
         description: 'Real-time price updates active',
@@ -213,8 +223,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return { 
       color: 'text-red-400', 
       icon: WifiOff, 
-      text: 'Offline',
-      description: 'No recent price updates',
+      text: debouncedConnectionStatus === 'connected' ? 'Stale' : 'Offline',
+      description: debouncedConnectionStatus === 'connected' ? 'Price data is stale' : 'No connection to price feed',
       animate: false
     };
   }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);

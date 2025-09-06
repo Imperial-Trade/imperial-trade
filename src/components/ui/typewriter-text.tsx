@@ -69,14 +69,6 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
           {line}
         </span>
       ))}
-      {showCursor && (
-        <span 
-          className={cn(
-            'inline-block w-0.5 h-[1em] bg-gradient-to-r from-yellow-400 via-white to-primary ml-1 align-middle',
-            showCursorBlink ? 'opacity-100' : 'opacity-0'
-          )}
-        />
-      )}
     </span>
   );
 };

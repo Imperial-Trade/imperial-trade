@@ -657,7 +657,7 @@ const LivePriceWidgetComponent = ({
       )}
 
       {/* Loading State for Initial Load */}
-      {isLoading && currentPrice === 0 && (
+      {isLoading && currentPrice === 0 && !marketStatus.isClosed && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

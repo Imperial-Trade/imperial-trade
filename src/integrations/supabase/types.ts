@@ -1341,6 +1341,7 @@ export type Database = {
           delivered_at: string | null
           delivery_channel: string
           error_message: string | null
+          event_key: string | null
           id: string
           metadata: Json | null
           notification_type: string
@@ -1355,6 +1356,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_channel: string
           error_message?: string | null
+          event_key?: string | null
           id?: string
           metadata?: Json | null
           notification_type: string
@@ -1369,6 +1371,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_channel?: string
           error_message?: string | null
+          event_key?: string | null
           id?: string
           metadata?: Json | null
           notification_type?: string
@@ -3313,6 +3316,10 @@ export type Database = {
         Returns: number
       }
       cleanup_old_economic_events: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_old_notification_logs: {
         Args: Record<PropertyKey, never>
         Returns: number
       }

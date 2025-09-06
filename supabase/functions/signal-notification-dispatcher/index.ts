@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+
+// LEGACY DISPATCHER - OBSERVE ONLY MODE
+// This dispatcher is deprecated in favor of enhanced-signal-notification-dispatcher
 import { corsHeaders } from "../_shared/cors.ts"
 import { isPushEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 

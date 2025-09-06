@@ -16,6 +16,7 @@ const DashboardNav: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const isMobile = useIsMobile();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -43,6 +44,16 @@ const DashboardNav: React.FC = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Handle notification badge
+  useEffect(() => {
+    const handleNotificationReceived = () => {
+      setUnreadCount(prev => prev + 1);
+    };
+    
+    window.addEventListener('notification:received', handleNotificationReceived);
+    return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
@@ -150,14 +161,17 @@ const DashboardNav: React.FC = () => {
                 className={`relative hover:bg-primary/10 group transition-all duration-200 ${
                   scrolled ? 'bg-background/60' : 'bg-background/30'
                 }`}
+                onClick={() => setUnreadCount(0)}
               >
                 <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs animate-bounce bg-red-500 border-2 border-background"
-                >
-                  3
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs animate-bounce bg-red-500 border-2 border-background"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
               </Button>
 
               {/* More menu dropdown */}

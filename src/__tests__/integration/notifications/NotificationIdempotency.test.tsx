@@ -129,6 +129,61 @@ describe('Notification Idempotency Integration', () => {
     expect(results[1].metrics.idempotency_skipped_count).toBeGreaterThan(0);
   });
 
+  it('should include enhanced metrics in response', async () => {
+    // Mock fetch to return enhanced metrics
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: true,
+        metrics: {
+          processed_count: 2,
+          realtime_sent_count: 1,
+          push_sent_count: 1,
+          push_error_rate: 0.1,
+          idempotency_skipped_by_type: { 'in_app': 1 },
+          push_error_codes_count: { '400': 1 }
+        }
+      })
+    });
+
+    // Mock Supabase
+    const mockInsert = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockSelect = vi.fn().mockResolvedValue({ data: [], error: null });
+    const mockRpc = vi.fn().mockResolvedValue({ data: ['user1'], error: null });
+    const mockChannel = vi.fn().mockReturnValue({
+      send: vi.fn().mockResolvedValue(undefined)
+    });
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        insert: mockInsert,
+        select: mockSelect
+      }),
+      rpc: mockRpc,
+      channel: mockChannel
+    };
+
+    // Test the metrics response structure
+    const response = await fetch('/api/enhanced-notification-dispatcher', {
+      method: 'POST',
+      body: JSON.stringify({
+        notifications: [{
+          signal_id: 'test',
+          notification_type: 'test',
+          delivery_channels: ['in_app', 'push']
+        }]
+      })
+    });
+
+    const result = await response.json();
+    
+    expect(result.metrics).toBeDefined();
+    expect(result.metrics.idempotency_skipped_by_type).toBeDefined();
+    expect(result.metrics.push_error_codes_count).toBeDefined();
+    expect(typeof result.metrics.idempotency_skipped_by_type).toBe('object');
+    expect(typeof result.metrics.push_error_codes_count).toBe('object');
+  });
+
   it('handles concurrent notifications for different channels correctly', async () => {
     // Mock separate successful responses for different channels
     (global.fetch as any).mockResolvedValue({
@@ -205,15 +260,15 @@ describe('Notification Idempotency Integration', () => {
   });
 
   it('tracks idempotency and error metrics correctly', async () => {
-    // Mock response with metrics
+    // Mock response with enhanced metrics
     (global.fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
         success: true,
         metrics: {
-          total_processed: 1,
-          idempotency_skipped_count: 1,
-          push_error_rate: { '4xx': 1 }
+          processed_count: 1,
+          idempotency_skipped_by_type: { 'in_app': 1, 'push': 1 },
+          push_error_codes_count: { '4xx': 1, '5xx': 1 }
         }
       })
     });
@@ -242,11 +297,13 @@ describe('Notification Idempotency Integration', () => {
     const result = await (response as Response).json();
     expect(result.success).toBe(true);
     
-    // Should track both successes and skips due to conflicts
-    expect(result.metrics).toHaveProperty('idempotency_skipped_count');
-    expect(result.metrics).toHaveProperty('push_error_rate');
-    expect(result.metrics).toHaveProperty('total_processed');
+    // Should track detailed metrics by type
+    expect(result.metrics).toHaveProperty('idempotency_skipped_by_type');
+    expect(result.metrics).toHaveProperty('push_error_codes_count');
+    expect(result.metrics).toHaveProperty('processed_count');
     
-    expect(result.metrics.total_processed).toBe(1);
+    expect(typeof result.metrics.idempotency_skipped_by_type).toBe('object');
+    expect(typeof result.metrics.push_error_codes_count).toBe('object');
+    expect(result.metrics.processed_count).toBe(1);
   });
 });

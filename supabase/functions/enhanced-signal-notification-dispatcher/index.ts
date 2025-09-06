@@ -41,11 +41,12 @@ interface NotificationPayload {
 }
 
 interface DeliveryMetrics {
-  idempotency_skipped_count: number;
-  push_error_rate: Record<string, number>;
-  total_processed: number;
-  realtime_sent: number;
-  push_sent: number;
+  processed_count: number;
+  realtime_sent_count: number;
+  push_sent_count: number;
+  push_error_rate: number;
+  idempotency_skipped_by_type: Record<string, number>;
+  push_error_codes_count: Record<string, number>;
 }
 
 serve(async (req) => {
@@ -59,6 +60,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Read feature flags
+    const realtimeEnabled = Deno.env.get('REALTIME_ENABLED') !== 'false';
+    const pushEnabled = Deno.env.get('PUSH_ENABLED') === 'true';
+    const payloadVersion = Deno.env.get('PAYLOAD_VERSION') || 'v1.0';
+    const legacyObserveOnly = Deno.env.get('LEGACY_DISPATCHER_OBSERVE_ONLY') === 'true';
+    
+    console.log(`🚀 Enhanced dispatcher startup - REALTIME_ENABLED: ${realtimeEnabled}, PUSH_ENABLED: ${pushEnabled}, PAYLOAD_VERSION: ${payloadVersion}, LEGACY_DISPATCHER_OBSERVE_ONLY: ${legacyObserveOnly}`);
+
     const { notifications } = await req.json();
     console.log('🚀 Enhanced Signal Notification Dispatcher - Processing notifications:', notifications?.length);
 
@@ -66,19 +75,14 @@ serve(async (req) => {
       throw new Error('Invalid notifications payload');
     }
 
-    // Feature flags
-    const REALTIME_ENABLED = Deno.env.get('REALTIME_ENABLED') !== 'false';
-    const PUSH_ENABLED = Deno.env.get('PUSH_ENABLED') !== 'false';
-    const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
-
-    console.log('📋 Feature flags:', { REALTIME_ENABLED, PUSH_ENABLED, ONESIGNAL_CONFIGURED: !!ONESIGNAL_API_KEY });
-
+    // Initialize metrics
     const metrics: DeliveryMetrics = {
-      idempotency_skipped_count: 0,
-      push_error_rate: {},
-      total_processed: 0,
-      realtime_sent: 0,
-      push_sent: 0
+      processed_count: 0,
+      realtime_sent_count: 0,
+      push_sent_count: 0,
+      push_error_rate: 0,
+      idempotency_skipped_by_type: {},
+      push_error_codes_count: {}
     };
 
     const results = [];
@@ -120,145 +124,49 @@ serve(async (req) => {
 
         if (targetUsers.length === 0) {
           console.log('⏭️ No target users, skipping notification');
-          metrics.idempotency_skipped_count++;
+          metrics.idempotency_skipped_by_type['no_users'] = (metrics.idempotency_skipped_by_type['no_users'] || 0) + 1;
           continue;
         }
 
-        // REALTIME: Claim-before-send for in-app notifications
-        let realtimeSent = false;
-        if (REALTIME_ENABLED && notification.delivery_channels.includes('in_app')) {
-          const realtimeClaimResults = [];
+        // Add payload version to notification data
+        const enhancedNotification = {
+          ...notification,
+          v: payloadVersion,
+          event_key: event_key,
+          alert_type: notification.alert_type,
+          target_price: notification.target_price,
+          triggered_price: notification.triggered_price,
+          urgency: notification.alert_type === 'stop_loss' ? 'critical' : 'high',
+          timestamp: server_time
+        };
+
+        // **Realtime Dispatch**
+        if (realtimeEnabled && notification.delivery_channels.includes('in_app')) {
+          console.log(`📡 Broadcasting to instant-alerts channel for ${targetUsers.length} users`);
           
-          // Insert pending rows for all eligible users
-          for (const user of targetUsers) {
-            const { data: claimedRow, error: claimError } = await supabase
-              .from('notification_delivery_log')
-              .insert({
-                user_id: user.user_id,
-                delivery_channel: 'in_app',
-                notification_type: notification.notification_type,
-                signal_id: notification.signal_id,
-                status: 'pending',
-                metadata: {
-                  event_key,
-                  signal_data: {
-                    asset_name: notification.asset_name,
-                    trade_type: notification.trade_type,
-                    entry_price: notification.entry_price,
-                    author_name: notification.author_name
-                  },
-                  server_time,
-                  exclude_creator_id: notification.author_id
-                },
-                sent_at: server_time
-              })
-              .select('id')
-              .single();
-
-            if (claimError && claimError.code === '23505') {
-              // Duplicate key - another process claimed this
-              console.log('🔒 Realtime already claimed for user:', user.user_id);
-            } else if (claimError) {
-              console.error('❌ Realtime claim error for user:', user.user_id, claimError);
-            } else {
-              realtimeClaimResults.push({ user_id: user.user_id, log_id: claimedRow.id });
-            }
-          }
-
-          // If we claimed any rows, broadcast once to the shared channel
-          if (realtimeClaimResults.length > 0) {
-            console.log('📡 Broadcasting to Realtime channel for', realtimeClaimResults.length, 'users');
-            
-            // Create PII-safe payload for broadcast
-            const realtimePayload = {
-              v: 1, // version
-              event_key,
-              notification_type: notification.notification_type,
-              signal_id: notification.signal_id,
-              asset_name: notification.asset_name,
-              trade_type: notification.trade_type,
-              entry_price: notification.entry_price,
-              author_name: notification.author_name,
-              author_avatar_url: notification.author_avatar_url,
-              server_time,
-              exclude_creator_id: notification.author_id,
-              // No user_ids array - clients will self-filter
-            };
-
-            await supabase.channel('instant-alerts').send({
+          // Broadcast the enhanced notification
+          await supabase
+            .channel('instant-alerts')
+            .send({
               type: 'broadcast',
               event: 'alert_triggered',
-              payload: realtimePayload
+              payload: enhancedNotification
             });
 
-            // Update claimed rows to 'sent'
-            const claimedIds = realtimeClaimResults.map(r => r.log_id);
-            await supabase
-              .from('notification_delivery_log')
-              .update({ status: 'sent', delivered_at: server_time })
-              .in('id', claimedIds);
-
-            realtimeSent = true;
-            metrics.realtime_sent++;
-          } else {
-            console.log('🔒 Realtime: All users already claimed by other process');
-            metrics.idempotency_skipped_count++;
-          }
+          metrics.realtime_sent_count += targetUsers.length;
         }
 
-        // PUSH: Claim-before-send for push notifications
+        // **Push Dispatch**
         let pushSent = 0;
-        if (PUSH_ENABLED && ONESIGNAL_API_KEY && notification.delivery_channels.includes('push')) {
-          const pushClaimResults = [];
-          
-          // Insert pending rows for all eligible users with OneSignal player IDs
+        if (pushEnabled && Deno.env.get('ONESIGNAL_API_KEY') && notification.delivery_channels.includes('push')) {
+          // Get users with OneSignal player IDs
           const pushEligibleUsers = targetUsers.filter(user => user.onesignal_player_id);
           console.log('📱 Push-eligible users:', pushEligibleUsers.length);
 
-          for (const user of pushEligibleUsers) {
-            const { data: claimedRow, error: claimError } = await supabase
-              .from('notification_delivery_log')
-              .insert({
-                user_id: user.user_id,
-                delivery_channel: 'push',
-                notification_type: notification.notification_type,
-                signal_id: notification.signal_id,
-                status: 'pending',
-                metadata: {
-                  event_key,
-                  onesignal_player_id: user.onesignal_player_id,
-                  signal_data: {
-                    asset_name: notification.asset_name,
-                    trade_type: notification.trade_type,
-                    entry_price: notification.entry_price,
-                    author_name: notification.author_name
-                  },
-                  server_time
-                },
-                sent_at: server_time
-              })
-              .select('id')
-              .single();
-
-            if (claimError && claimError.code === '23505') {
-              // Duplicate key - another process claimed this
-              console.log('🔒 Push already claimed for user:', user.user_id);
-            } else if (claimError) {
-              console.error('❌ Push claim error for user:', user.user_id, claimError);
-            } else {
-              pushClaimResults.push({ 
-                user_id: user.user_id, 
-                log_id: claimedRow.id, 
-                player_id: user.onesignal_player_id 
-              });
-            }
-          }
-
-          // Send push notifications for claimed rows with bounded retries
-          if (pushClaimResults.length > 0) {
-            console.log('📱 Sending push notifications to', pushClaimResults.length, 'users');
+          if (pushEligibleUsers.length > 0) {
+            console.log('📱 Sending push notifications to', pushEligibleUsers.length, 'users');
             
-            const playerIds = pushClaimResults.map(r => r.player_id);
+            const playerIds = pushEligibleUsers.map(user => user.onesignal_player_id);
             
             // Format notification based on type
             let title = '';
@@ -315,7 +223,7 @@ serve(async (req) => {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+                    'Authorization': `Basic ${Deno.env.get('ONESIGNAL_API_KEY')}`,
                   },
                   body: JSON.stringify(pushPayload),
                 });
@@ -351,45 +259,27 @@ serve(async (req) => {
               }
             }
 
-            // Update delivery log based on result
-            const finalStatus = pushSuccess ? 'sent' : 'failed';
-            const claimedIds = pushClaimResults.map(r => r.log_id);
-            
-            await supabase
-              .from('notification_delivery_log')
-              .update({ 
-                status: finalStatus, 
-                delivered_at: pushSuccess ? server_time : null,
-                error_message: pushSuccess ? null : `HTTP ${statusCode}`,
-                metadata: { 
-                  ...pushClaimResults[0] ? { event_key, server_time } : {},
-                  onesignal_status_code: statusCode,
-                  attempts: 3
-                }
-              })
-              .in('id', claimedIds);
-
             if (pushSuccess) {
-              pushSent = pushClaimResults.length;
-              metrics.push_sent += pushSent;
+              pushSent = pushEligibleUsers.length;
+              metrics.push_sent_count += pushSent;
             } else {
               // Track error rate by status code bucket
               const bucket = statusCode >= 500 ? '5xx' : statusCode >= 400 ? '4xx' : 'unknown';
-              metrics.push_error_rate[bucket] = (metrics.push_error_rate[bucket] || 0) + 1;
+              metrics.push_error_codes_count[bucket] = (metrics.push_error_codes_count[bucket] || 0) + 1;
             }
           } else {
             console.log('🔒 Push: All eligible users already claimed by other process');
-            metrics.idempotency_skipped_count++;
+            metrics.idempotency_skipped_by_type['push'] = (metrics.idempotency_skipped_by_type['push'] || 0) + 1;
           }
         }
 
-        metrics.total_processed++;
+        metrics.processed_count++;
         
         results.push({
           signal_id: notification.signal_id,
           event_key,
           target_users_count: targetUsers.length,
-          realtime_sent: realtimeSent,
+          realtime_sent: realtimeEnabled && notification.delivery_channels.includes('in_app'),
           push_sent,
           status: 'processed'
         });
@@ -409,7 +299,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      processed: metrics.total_processed,
+      processed: metrics.processed_count,
       results,
       metrics
     }), {

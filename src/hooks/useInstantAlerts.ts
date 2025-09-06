@@ -11,11 +11,36 @@ interface AlertNotification {
   notification_type: string;
   timestamp: string;
   urgency: 'critical' | 'high' | 'normal';
+  event_key: string;
+  v: string;
 }
 
 export const useInstantAlerts = () => {
+  const { profile } = useAuth();
+  const dupeMapRef = useRef(new Map<string, number>());
+  
   const handleAlertNotification = useCallback((payload: AlertNotification) => {
     console.log('🚨 INSTANT ALERT RECEIVED:', payload);
+    
+    // Check subscription eligibility
+    if (profile?.xeon_stream_subscription !== true) {
+      console.log('⚠️ User not subscribed to Xeon stream, dropping notification');
+      return;
+    }
+    
+    // 60s de-duplication by event_key
+    const now = Date.now();
+    const lastReceived = dupeMapRef.current.get(payload.event_key);
+    if (lastReceived && (now - lastReceived) < 60000) {
+      console.log('🔄 De-duped notification within 60s:', payload.event_key);
+      return;
+    }
+    dupeMapRef.current.set(payload.event_key, now);
+    
+    // Optional foreground toast suppression
+    const currentPath = window.location.pathname;
+    const suppressForegroundToasts = localStorage.getItem('suppressForegroundToasts') === 'true';
+    const shouldSuppressToast = currentPath === '/dashboard/signal-stream' && suppressForegroundToasts;
     
     const { alert_type, target_price, triggered_price, urgency } = payload;
     
@@ -27,8 +52,23 @@ export const useInstantAlerts = () => {
     const title = `${urgencyEmoji} ${alertTypeDisplay} TRIGGERED!`;
     const message = `${priceDirection} Target: $${target_price.toFixed(2)} | Triggered: $${triggered_price.toFixed(2)}`;
     
-    // Show toast notification with appropriate styling
-    if (urgency === 'critical') {
+    // Call NotificationSystem.addNotification
+    if ((window as any).addNotification) {
+      (window as any).addNotification({
+        type: urgency === 'critical' ? 'error' : 'success',
+        title,
+        message,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Dispatch custom event for badge increment
+    window.dispatchEvent(new CustomEvent('notification:received', { 
+      detail: { event_key: payload.event_key } 
+    }));
+    
+    // Show toast notification with appropriate styling (unless suppressed)
+    if (!shouldSuppressToast && urgency === 'critical') {
       toast.error(title, {
         description: message,
         duration: 10000, // Show critical alerts for 10 seconds
@@ -41,7 +81,7 @@ export const useInstantAlerts = () => {
           }
         }
       });
-    } else {
+    } else if (!shouldSuppressToast) {
       toast.success(title, {
         description: message,
         duration: 7000, // Show other alerts for 7 seconds
@@ -138,7 +178,7 @@ export const useInstantAlerts = () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };
-  }, [handleAlertNotification]);
+  }, [handleAlertNotification, profile]);
 
   return {
     // Could expose methods for manual alert testing, muting, etc.
@@ -150,7 +190,9 @@ export const useInstantAlerts = () => {
         triggered_price: 3401,
         notification_type: 'take_profit_hit',
         timestamp: new Date().toISOString(),
-        urgency: alertType === 'stop_loss' ? 'critical' : 'high'
+        urgency: alertType === 'stop_loss' ? 'critical' : 'high',
+        event_key: `test_${Date.now()}`,
+        v: 'test'
       });
     }, [handleAlertNotification])
   };

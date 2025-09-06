@@ -325,20 +325,32 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    const { notifications } = await req.json();
-    
-    if (!notifications || !Array.isArray(notifications)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid notifications array' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check if legacy dispatcher is in observe-only mode
+    const observeOnly = Deno.env.get('LEGACY_DISPATCHER_OBSERVE_ONLY') === 'true';
+    console.log(`🔧 Legacy dispatcher startup - observe_only: ${observeOnly}`);
+
+    const payload = await req.json();
+    console.log('📨 Notification request received:', JSON.stringify(payload, null, 2));
+    console.log(`🔧 Legacy dispatcher processing - observe_only: ${observeOnly}`);
+
+    if (observeOnly) {
+      console.log('⚠️ Legacy dispatcher in observe-only mode - no notifications will be sent');
+      return new Response(JSON.stringify({
+        success: true,
+        observe_only: true,
+        message: 'Legacy dispatcher in observe-only mode'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`📡 Processing ${notifications.length} instant notifications...`);
+    const { signal_id, signal_data, user_ids } = payload;
 
     const results = [];
     

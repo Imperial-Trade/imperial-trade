@@ -19,6 +19,7 @@ interface Profile {
   approved_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+  xeon_stream_subscription: boolean | null;
 }
 
 interface AuthContextType {
@@ -73,7 +74,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_at,
           approved_by,
           created_at,
-          updated_at
+          updated_at,
+          xeon_stream_subscription
         `)
         .eq('id', userId)
         .single();

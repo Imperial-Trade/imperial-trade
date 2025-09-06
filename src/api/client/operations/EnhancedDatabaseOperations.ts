@@ -3,7 +3,6 @@ import { DatabaseOperations } from './DatabaseOperations';
 import { redisCache } from '@/services/RedisCache';
 import { connectionPool } from '@/services/ConnectionPoolManager';
 import { enhancedPerformanceMonitor } from '@/services/EnhancedPerformanceMonitor';
-import { ultraCostOptimizer } from '@/services/UltraCostOptimizer';
 import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from '../types';
 import { ApiResponse } from '@/types/common';
 
@@ -39,20 +38,14 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
 
     // Execute with performance monitoring and connection pooling
     return enhancedPerformanceMonitor.trackSignalDelivery(async () => {
-      // Track database operation for cost optimization
-      ultraCostOptimizer.trackApiCall('database');
-      
       return connectionPool.execute(async () => {
         const result = await super.select(table, options, config);
         
         if (result.success && result.data) {
-          // Use ultra-optimized cache TTL
-          const ttl = ultraCostOptimizer.getOptimizedCacheTTL(
-            this.getCacheTTL(table) / 1000, 
-            table === 'market_prices' ? 'prices' : 'other'
-          ) * 1000;
+          // Cache successful results with appropriate TTL
+          const ttl = this.getCacheTTL(table);
           redisCache.write<TableRow<T>[]>(cacheKey, result.data, ttl);
-          console.log(`💾 Ultra-cached ${table} result for ${ttl}ms (${Math.round(ttl/1000)}s)`);
+          console.log(`💾 Cached ${table} result for ${ttl}ms`);
         }
         
         return result;
@@ -148,45 +141,31 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     return result;
   }
 
-  // ULTRA-COST OPTIMIZATION: Batch price fetching with aggressive caching
   async getRecentPrices(symbols: string[]): Promise<ApiResponse<TableRow<'market_prices'>[]>> {
-    // Filter to only allowed symbols for cost optimization
-    const allowedSymbols = symbols.filter(symbol => ultraCostOptimizer.isSymbolAllowed(symbol));
-    if (allowedSymbols.length === 0) {
-      return { success: true, data: [], error: undefined };
-    }
-
-    const cacheKey = `ultra_prices:${allowedSymbols.sort().join(',')}`;
+    const cacheKey = `prices:${symbols.sort().join(',')}`;
     
-    // Try ultra-aggressive cache first
+    // Try batch cache lookup
     const cached = redisCache.read<TableRow<'market_prices'>[]>(cacheKey);
     if (cached) {
-      console.log(`⚡ Ultra-cache HIT for prices: ${allowedSymbols.join(',')}`);
       return { success: true, data: cached, error: undefined };
     }
 
-    ultraCostOptimizer.trackApiCall('database');
-
-    // Fetch from database with optimized query (batch operation)
+    // Fetch from database with optimized query
     const result = await this.select('market_prices', {
       select: 'symbol, bid, ask, updated_at',
-      limit: ultraCostOptimizer.getOptimalBatchSize(allowedSymbols.length * 2)
+      limit: symbols.length * 2 // Allow for multiple entries per symbol
     });
     
     if (result.success && result.data) {
-      // Ultra-aggressive caching: 20 seconds for prices (4x longer)
-      const cacheTTL = ultraCostOptimizer.getOptimizedCacheTTL(5, 'prices') * 1000;
-      redisCache.write(cacheKey, result.data, cacheTTL);
+      // Cache prices for 5 seconds (very short TTL for market data)
+      redisCache.write(cacheKey, result.data, 5000);
       
-      // Batch cache individual symbol prices for allowed symbols only
+      // Also cache individual symbol prices
       result.data.forEach((price: TableRow<'market_prices'>) => {
-        if (price.symbol && allowedSymbols.includes(price.symbol)) {
-          ultraCostOptimizer.trackApiCall('redis');
-          redisCache.setPrice(price.symbol, (price as any).bid || 0, cacheTTL);
+        if (price.symbol) {
+          redisCache.setPrice(price.symbol, (price as any).bid || 0, 5000);
         }
       });
-      
-      console.log(`💰 Ultra-cached ${allowedSymbols.length} symbols for ${cacheTTL/1000}s`);
     }
     
     return result;
@@ -211,13 +190,13 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     return hash.toString(36);
   }
 
-  // ULTRA-COST OPTIMIZATION: Smart caching TTL for cost reduction
+  // Cache TTL strategies based on table type
   private getCacheTTL<T extends DatabaseTable>(table: T): number {
     switch (table) {
       case 'trade_alerts':
-        return 60000; // 60s for signals (2x longer cache)
+        return 30000; // 30s for active signals
       case 'market_prices':
-        return 15000; // 15s for market data (3x longer cache for XAUUSD/BTCUSD only)
+        return 5000;  // 5s for market data
       case 'profiles':
         return 300000; // 5min for user profiles
       case 'notification_settings':

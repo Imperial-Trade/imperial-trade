@@ -693,19 +693,9 @@ const LivePriceWidgetComponent = ({
             ) : (
               <div className="text-muted-foreground font-mono text-lg">
                 {marketStatus.isClosed ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>Market Closed</span>
                     <Clock className="w-4 h-4" />
-                    <span className="font-medium">Market Closed</span>
-                    {connectionStatus === 'connecting' && (
-                      <div className="animate-pulse text-xs">
-                        (Reconnecting...)
-                      </div>
-                    )}
-                  </div>
-                ) : connectionStatus === 'connecting' ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                    <span>Connecting...</span>
                   </div>
                 ) : (
                   <span>Loading...</span>

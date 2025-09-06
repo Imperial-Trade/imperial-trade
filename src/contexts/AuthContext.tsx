@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
@@ -73,7 +74,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_at,
           approved_by,
           created_at,
-          updated_at
+          updated_at,
+          xeon_stream_subscription
         `)
         .eq('id', userId)
         .single();
@@ -83,18 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return null;
       }
 
-      // Get xeon subscription status securely
-      const { data: xeonStatus, error: xeonError } = await supabase
-        .rpc('check_user_xeon_subscription', { user_id_param: userId });
-
-      if (xeonError) {
-        console.warn('Failed to get xeon subscription status:', xeonError);
-      }
-
-      return {
-        ...profileData,
-        xeon_stream_subscription: xeonStatus || false
-      } as Profile;
+      return profileData as Profile;
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;

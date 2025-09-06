@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 
 interface PriceStalenessStatus {
   isStale: boolean;
@@ -7,78 +7,43 @@ interface PriceStalenessStatus {
   lastUpdate: Date | null;
   isHealthy: boolean;
   stalePrices: string[];
-  freshness: 'fresh' | 'live' | 'delayed' | 'stale';
-  displayStatus: 'Live' | 'Delayed' | 'Stale' | 'Offline';
 }
 
 export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
-  const { prices, connectionStatus } = useOptimizedWebSocketPrices();
+  const { getConnectionHealth, lastUpdated, prices } = useHybridWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,
     lastUpdate: null,
     isHealthy: true,
-    stalePrices: [],
-    freshness: 'fresh',
-    displayStatus: 'Live'
+    stalePrices: []
   });
 
   useEffect(() => {
     const checkStaleness = () => {
-      // Use connection status directly for immediate feedback
-      const isConnected = connectionStatus === 'connected';
+      const health = getConnectionHealth();
       
       if (symbol) {
         const priceData = prices[symbol];
         const now = Date.now();
         const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
         const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
-        
-        // ULTRA-FAST: Graduated staleness detection for ultra-responsive UI
-        let freshness: 'fresh' | 'live' | 'delayed' | 'stale';
-        let displayStatus: 'Live' | 'Delayed' | 'Stale' | 'Offline';
-        let isStale: boolean;
-        
-        if (!isConnected) {
-          freshness = 'stale';
-          displayStatus = 'Offline';
-          isStale = true;
-        } else if (!ageInSeconds || ageInSeconds <= 5) {
-          freshness = 'fresh';
-          displayStatus = 'Live';
-          isStale = false;
-        } else if (ageInSeconds <= 15) {
-          freshness = 'live';
-          displayStatus = 'Live';
-          isStale = false;
-        } else if (ageInSeconds <= maxAgeSeconds) {
-          freshness = 'delayed';
-          displayStatus = 'Delayed';
-          isStale = false;
-        } else {
-          freshness = 'stale';
-          displayStatus = 'Stale';
-          isStale = true;
-        }
+        const isStale = ageInSeconds ? ageInSeconds > maxAgeSeconds : true;
         
         setStalenessStatus({
           isStale,
           ageInSeconds,
-          lastUpdate: priceData ? new Date(priceData.timestamp) : null,
-          isHealthy: isConnected && !isStale,
-          stalePrices: isStale && symbol ? [symbol] : [],
-          freshness,
-          displayStatus
+          lastUpdate: lastUpdated,
+          isHealthy: health.isHealthy,
+          stalePrices: [] // Simplified for hybrid system
         });
       } else {
         setStalenessStatus({
-          isStale: !isConnected,
+          isStale: false,
           ageInSeconds: null,
-          lastUpdate: null,
-          isHealthy: isConnected,
-          stalePrices: [],
-          freshness: isConnected ? 'fresh' : 'stale',
-          displayStatus: isConnected ? 'Live' : 'Offline'
+          lastUpdate: health.lastUpdate,
+          isHealthy: health.isHealthy,
+          stalePrices: [] // Simplified for hybrid system
         });
       }
     };
@@ -90,7 +55,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, connectionStatus, prices]);
+  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices]);
 
   return stalenessStatus;
 }

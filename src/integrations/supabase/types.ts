@@ -869,13 +869,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "function_deprecation_hits_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       group_journal_entries: {
@@ -2701,13 +2694,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_engagement_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_follows: {
@@ -2741,24 +2727,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_follows_following_id_fkey"
-            columns: ["following_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3048,13 +3020,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_saved_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_streaks: {
@@ -3322,27 +3287,7 @@ export type Database = {
       }
     }
     Views: {
-      xeon_subscribers_public: {
-        Row: {
-          display_name: string | null
-          id: string | null
-          notification_preferences: Json | null
-          onesignal_player_id: string | null
-        }
-        Insert: {
-          display_name?: string | null
-          id?: string | null
-          notification_preferences?: Json | null
-          onesignal_player_id?: string | null
-        }
-        Update: {
-          display_name?: string | null
-          id?: string | null
-          notification_preferences?: Json | null
-          onesignal_player_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_trading_metrics: {
@@ -3357,10 +3302,6 @@ export type Database = {
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
-      }
-      check_user_xeon_subscription: {
-        Args: { user_id_param?: string }
-        Returns: boolean
       }
       cleanup_inactive_symbol_cache: {
         Args: Record<PropertyKey, never>
@@ -3387,10 +3328,6 @@ export type Database = {
         Returns: undefined
       }
       cleanup_old_rate_limits_optimized: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_stale_market_prices: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
@@ -3453,15 +3390,6 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
-      }
-      get_market_data_freshness: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          hours_old: number
-          is_stale: boolean
-          last_update: string
-          symbol: string
-        }[]
       }
       get_market_session: {
         Args: Record<PropertyKey, never>

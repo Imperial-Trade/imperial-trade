@@ -160,27 +160,14 @@ class NotificationService {
   // Get user's notification preferences
   async getUserNotificationSettings(userId: string) {
     try {
-      // Get notification preferences and push settings
-      const { data: profileData, error: profileError } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('notification_preferences, push_subscription_active')
+        .select('notification_preferences, push_subscription_active, xeon_stream_subscription')
         .eq('id', userId)
         .single();
 
-      if (profileError) throw profileError;
-
-      // Get xeon subscription status securely
-      const { data: xeonStatus, error: xeonError } = await supabase
-        .rpc('check_user_xeon_subscription', { user_id_param: userId });
-
-      if (xeonError) {
-        console.warn('Failed to get xeon subscription status:', xeonError);
-      }
-
-      return {
-        ...profileData,
-        xeon_stream_subscription: xeonStatus || false
-      };
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Failed to get notification settings:', error);
       return null;

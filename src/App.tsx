@@ -81,10 +81,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CacheCleanerMount />
-        <Toaster />
+        {/* <Toaster /> - Temporarily disabled due to React null reference */}
         <Sonner />
         <BrowserRouter>
-            <PostHogPageViewTracker />
+            {/* <PostHogPageViewTracker /> - Temporarily disabled due to React null reference */}
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>

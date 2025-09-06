@@ -287,6 +287,7 @@ async function connectToTraderMade() {
 
   if (!await tryBecomeLeader()) {
     console.log('⚡ Following price distribution via Redis pub/sub');
+    setupRedisPubSubConsumer(); // PHASE 3: Add Redis consumer for follower instances
     return;
   }
 
@@ -337,7 +338,23 @@ async function connectToTraderMade() {
 
     wsConnection.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        // PHASE 3: Handle both JSON and plaintext TraderMade responses
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (parseError) {
+          // Handle plaintext error messages from TraderMade API
+          const textData = event.data.toString();
+          if (textData.includes('User Key Used too many times') || textData.includes('rate limit')) {
+            console.error('🚨 PHASE 3: TraderMade rate limit (plaintext):', textData);
+            lastTraderMadeError = Date.now();
+            errorCount = Math.min(errorCount + 3, 6); // Aggressive backoff for rate limits
+            wsConnection?.close(1000, 'Rate limit detected');
+            return;
+          }
+          console.warn('⚠️ PHASE 3: Non-JSON TraderMade message:', textData);
+          return;
+        }
         
         if (data.symbol && data.bid && data.ask) {
           const enhancedData: EnhancedPriceData = {
@@ -431,12 +448,16 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
     }
   }
   
-  // Original broadcasting logic with cost optimization tracking
+  // PHASE 3: Fix message schema - send price at top level for client compatibility
   const message = JSON.stringify({
     type: 'price_update',
     symbol,
-    data: priceData,
-    timestamp: Date.now(),
+    price: priceData.mid,
+    bid: priceData.bid,
+    ask: priceData.ask,
+    change: priceData.change || 0,
+    changePercent: priceData.changePercent || 0,
+    timestamp: priceData.timestamp.toISOString(),
     freshness: priceData.freshness,
     source: leaderState.isLeader ? 'leader_direct' : 'follower_redis'
   });
@@ -483,6 +504,50 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
 
 function generateClientId(): string {
   return crypto.randomUUID();
+}
+
+// PHASE 3: Add Redis pub/sub consumer for follower instances
+async function setupRedisPubSubConsumer() {
+  if (!redis) {
+    console.error('❌ Redis not configured for pub/sub consumption');
+    return;
+  }
+
+  console.log('🔄 PHASE 3: Setting up Redis pub/sub consumer for follower instance');
+  
+  try {
+    // Subscribe to price updates published by leader
+    await redis.subscribe('price_updates');
+    
+    redis.on('message', (channel, message) => {
+      if (channel === 'price_updates') {
+        try {
+          const { symbol, priceData } = JSON.parse(message);
+          
+          // Create enhanced data from Redis message
+          const enhancedData: EnhancedPriceData = {
+            ...priceData,
+            freshness: 'redis_fresh',
+            cacheHit: true,
+            timestamp: new Date(priceData.timestamp)
+          };
+          
+          // Rebroadcast to this instance's clients
+          broadcastToClients(symbol, enhancedData);
+          
+          console.log(`📈 FOLLOWER-REDIS: ${symbol}: ${priceData.mid} (rebroadcast to clients)`);
+        } catch (error) {
+          console.error('❌ Error processing Redis price message:', error);
+        }
+      }
+    });
+    
+    console.log('✅ PHASE 3: Redis pub/sub consumer active for follower instance');
+  } catch (error) {
+    console.error('❌ Failed to setup Redis pub/sub consumer:', error);
+    // Retry after delay
+    setTimeout(setupRedisPubSubConsumer, 5000);
+  }
 }
 
 // Start TraderMade connection

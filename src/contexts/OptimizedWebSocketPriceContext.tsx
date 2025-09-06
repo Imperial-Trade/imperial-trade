@@ -108,17 +108,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         reconnectAttempts.current = 0;
         isAuthenticatedRef.current = false;
 
-        // PHASE 2: Wait for welcome message before sending auth
+        // PHASE 4: Enhanced authentication with immediate fallback
         let welcomeReceived = false;
         
+        // PHASE 4: Aggressive auth timeout - much faster
         const authTimeout = setTimeout(() => {
           if (!isAuthenticatedRef.current) {
-            console.error('❌ PHASE 2: Authentication timeout after 15s');
+            console.error('❌ PHASE 4: Authentication timeout after 8s - retrying');
             setError('Connection timeout - retrying...');
             setConnectionStatus('error');
             socket.close(1000, 'Auth timeout');
           }
-        }, 15000);
+        }, 8000); // Reduced from 15s to 8s
 
         // Store auth data to send after welcome
         const authData = {
@@ -128,8 +129,27 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           clientId: crypto.randomUUID()
         };
         
-        // Store timeout reference for cleanup
+        // PHASE 4: Send auth immediately if no welcome within 2 seconds
+        const immediateAuthTimeout = setTimeout(() => {
+          if (!welcomeReceived && !isAuthenticatedRef.current && socket.readyState === WebSocket.OPEN) {
+            try {
+              socket.send(JSON.stringify({
+                type: 'auth',
+                token: authData.token,
+                user_id: authData.user_id,
+                timestamp: Date.now(),
+                clientId: authData.clientId
+              }));
+              console.log('🚀 PHASE 4: Immediate auth sent without waiting for welcome');
+            } catch (error) {
+              console.error('❌ Error sending immediate auth:', error);
+            }
+          }
+        }, 2000);
+        
+        // Store timeout references for cleanup
         (socket as any)._authTimeout = authTimeout;
+        (socket as any)._immediateAuthTimeout = immediateAuthTimeout;
         (socket as any)._authData = authData;
       };
 
@@ -139,7 +159,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         switch (data.type) {
           case 'welcome':
+            (socketRef.current as any)._welcomeReceived = true; // PHASE 4: Track welcome receipt
             console.log('✅ Welcome received from server:', data.clientId || data.client_id);
+            // Clear immediate auth timeout since we got welcome
+            if ((socketRef.current as any)?._immediateAuthTimeout) {
+              clearTimeout((socketRef.current as any)._immediateAuthTimeout);
+            }
             // Send authentication after welcome
             const authData = (socketRef.current as any)?._authData;
             if (authData) {
@@ -153,7 +178,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 };
                 
                 socketRef.current?.send(JSON.stringify(authMessage));
-                console.log('🔐 PHASE 2: Authentication sent after welcome');
+                console.log('🔐 PHASE 4: Authentication sent after welcome');
               } catch (error) {
                 console.error('❌ Error sending auth after welcome:', error);
                 setError('Authentication failed - retrying...');
@@ -168,9 +193,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
           case 'auth_success':
           case 'auth_response':
-            // PHASE 2: Clear auth timeout on any auth response
+            // PHASE 4: Clear all auth timeouts on any auth response
             if ((socketRef.current as any)?._authTimeout) {
               clearTimeout((socketRef.current as any)._authTimeout);
+            }
+            if ((socketRef.current as any)?._immediateAuthTimeout) {
+              clearTimeout((socketRef.current as any)._immediateAuthTimeout);
             }
             
             if (data.success === false) {
@@ -259,15 +287,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
            }
             
            case 'price_update':
-             // Enhanced individual real-time price update with plausibility validation
-             if (data.symbol && data.price !== undefined) {
-               import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
-                 if (isPricePlausibleForSymbol(data.price, data.symbol)) {
-                   console.log(`✅ [${data.symbol}] Valid direct price update: ${data.price}`);
-                   const priceData: PriceData = {
-                     symbol: data.symbol,
-                     price: data.price,
-                     change: data.change || 0,
+              // PHASE 3: Enhanced price update handling with multiple price sources
+              const currentPrice = data.price || data.data?.mid || data.data?.price || 
+                                 (data.data?.bid && data.data?.ask ? (data.data.bid + data.data.ask) / 2 : undefined);
+              
+              if (data.symbol && currentPrice !== undefined) {
+                import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
+                  if (isPricePlausibleForSymbol(currentPrice, data.symbol)) {
+                    console.log(`✅ [${data.symbol}] Valid price update: ${currentPrice} (source: ${data.source || 'unknown'})`);
+                    const priceData: PriceData = {
+                      symbol: data.symbol,
+                      price: currentPrice,
+                      change: data.change || data.data?.change || 0,
                      changePercent: data.changePercent || 0,
                      timestamp: data.timestamp || new Date().toISOString()
                    };

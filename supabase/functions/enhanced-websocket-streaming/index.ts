@@ -577,37 +577,6 @@ async function setupRedisPubSubConsumer() {
     console.error('❌ Failed to setup Redis pub/sub consumer:', error);
   }
 }
-    
-    redis.on('message', (channel, message) => {
-      if (channel === 'price_updates') {
-        try {
-          const { symbol, priceData } = JSON.parse(message);
-          
-          // Create enhanced data from Redis message
-          const enhancedData: EnhancedPriceData = {
-            ...priceData,
-            freshness: 'redis_fresh',
-            cacheHit: true,
-            timestamp: new Date(priceData.timestamp)
-          };
-          
-          // Rebroadcast to this instance's clients
-          broadcastToClients(symbol, enhancedData);
-          
-          console.log(`📈 FOLLOWER-REDIS: ${symbol}: ${priceData.mid} (rebroadcast to clients)`);
-        } catch (error) {
-          console.error('❌ Error processing Redis price message:', error);
-        }
-      }
-    });
-    
-    console.log('✅ PHASE 3: Redis pub/sub consumer active for follower instance');
-  } catch (error) {
-    console.error('❌ Failed to setup Redis pub/sub consumer:', error);
-    // Retry after delay
-    setTimeout(setupRedisPubSubConsumer, 5000);
-  }
-}
 
 // Start TraderMade connection
 connectToTraderMade();

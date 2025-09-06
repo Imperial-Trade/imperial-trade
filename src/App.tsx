@@ -1,4 +1,4 @@
-// import { Toaster } from "@/components/ui/toaster"; // Temporarily disabled to prevent React hook crash
+import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -65,7 +65,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
-// import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
+import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,10 +81,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CacheCleanerMount />
-        {/* <Toaster /> */}
+        <Toaster />
         <Sonner />
         <BrowserRouter>
-            {/* <PostHogPageViewTracker /> */}
+            <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>

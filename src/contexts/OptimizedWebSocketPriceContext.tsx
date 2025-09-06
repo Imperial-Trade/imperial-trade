@@ -49,7 +49,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const isAuthenticatedRef = useRef<boolean>(false);
 
   // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
 
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -80,27 +80,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const socket = new WebSocket(WEBSOCKET_URL);
       socketRef.current = socket;
 
-      socket.onopen = async () => {
+    socket.onopen = async () => {
         console.log('✅ WebSocket opened, authenticating...');
+        console.log('🔗 Connection URL:', WEBSOCKET_URL);
         setConnectionStatus('connecting');
         setError(null);
         reconnectAttempts.current = 0;
         isAuthenticatedRef.current = false;
 
-        // Send authentication message first (support both legacy and new schemas)
+        // Send authentication message first
         try {
           const token = session?.access_token;
+          const authMessage = { type: 'auth', token: token || null };
           
-          // Primary: legacy-compatible schema
-          socket.send(JSON.stringify({
-            type: 'auth',
-            token: token || null
-          }));
-          
-          // Compatibility: also send newer action-based schema if server expects it
-          try {
-            socket.send(JSON.stringify({ action: 'auth', token: token || null }));
-          } catch {}
+          console.log('🔐 Sending authentication message:', authMessage);
+          socket.send(JSON.stringify(authMessage));
           
           console.log('🔐 Authentication message sent');
         } catch (error) {
@@ -113,8 +107,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('📨 [WebSocket] Received message:', data.type, data);
         
         switch (data.type) {
+          case 'connection':
+            console.log('🎯 [Connection] Received server welcome:', data.message, data.clientId);
+            break;
+            
           case 'welcome':
             console.log('🎉 WebSocket welcomed:', data.clientId || data.client_id);
             break;
@@ -125,20 +124,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
           case 'auth_success':
           case 'auth_response':
-            if (data.success === false) {
+            if (data.authenticated === false || data.success === false) {
               console.error('❌ Authentication failed:', data.message);
               setError(data.message || 'Authentication failed');
               setConnectionStatus('error');
-            } else {
+            } else if (data.authenticated === true || data.success === true) {
               console.log('🔑 Authentication successful');
               setConnectionStatus('connected');
               isAuthenticatedRef.current = true;
-              // Re-subscribe to any previous subscriptions after authentication
+              // Re-subscribe to any previous subscriptions after authentication (one by one)
               if (subscriptionsRef.current.size > 0) {
                 const symbols = Array.from(subscriptionsRef.current);
-                socket.send(JSON.stringify({ type: 'subscribe', symbols }));
-                // Compatibility: also support action schema
-                try { socket.send(JSON.stringify({ action: 'subscribe', symbols })); } catch {}
+                console.log('🔄 Re-subscribing to symbols after auth:', symbols);
+                symbols.forEach(symbol => {
+                  socket.send(JSON.stringify({ type: 'subscribe', symbol }));
+                });
               }
             }
             break;
@@ -352,26 +352,32 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       subscriptionsRef.current.add(symbol);
     });
     
-    // Send subscription message if connected and authenticated
+    // Send subscription message if connected and authenticated (one symbol per message)
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      console.log(`📤 [Subscribe] Sending subscription for symbols:`, validatedSymbols);
-      // Primary: legacy-compatible schema
-      socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols: validatedSymbols }));
-      // Compatibility: also support action-based schema
-      try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: validatedSymbols })); } catch {}
+      console.log(`📤 [Subscribe] Sending individual subscriptions for symbols:`, validatedSymbols);
+      validatedSymbols.forEach(symbol => {
+        console.log(`📤 [Subscribe] → ${symbol}`);
+        socketRef.current!.send(JSON.stringify({ type: 'subscribe', symbol }));
+      });
+    } else {
+      console.log(`⏳ [Subscribe] Connection not ready - queuing symbols:`, validatedSymbols);
     }
   }, []);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Remove from local subscription tracking
-    symbols.forEach(symbol => subscriptionsRef.current.delete(symbol));
+    symbols.forEach(symbol => {
+      console.log(`📝 [Unsubscribe] Removing ${symbol} from subscription set`);
+      subscriptionsRef.current.delete(symbol);
+    });
     
-    // Send unsubscription message if connected and authenticated
+    // Send unsubscription message if connected and authenticated (one symbol per message)
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      // Primary: legacy-compatible schema
-      socketRef.current.send(JSON.stringify({ type: 'unsubscribe', symbols }));
-      // Compatibility: also support action-based schema
-      try { socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols })); } catch {}
+      console.log(`📤 [Unsubscribe] Sending individual unsubscriptions for symbols:`, symbols);
+      symbols.forEach(symbol => {
+        console.log(`📤 [Unsubscribe] → ${symbol}`);
+        socketRef.current!.send(JSON.stringify({ type: 'unsubscribe', symbol }));
+      });
     }
     
     // Remove prices for unsubscribed symbols

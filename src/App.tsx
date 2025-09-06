@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -65,7 +64,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
-import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,10 +79,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CacheCleanerMount />
-        {/* <Toaster /> - Temporarily disabled due to React null reference */}
         <Sonner />
         <BrowserRouter>
-            {/* <PostHogPageViewTracker /> - Temporarily disabled due to React null reference */}
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>

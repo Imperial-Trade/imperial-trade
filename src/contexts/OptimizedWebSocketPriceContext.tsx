@@ -53,8 +53,26 @@ const OptimizedWebSocketPriceProviderInner: React.FC<OptimizedWebSocketPriceProv
   // PHASE 3: Use smart reconnection context
   const { scheduleReconnection, cancelReconnection } = useSmartReconnection();
 
-  // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  // Robust WebSocket URL builder with fallbacks
+  const buildWebSocketUrl = (): string => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    
+    if (supabaseUrl) {
+      const baseWsUrl = supabaseUrl.replace(/^https?/, 'wss');
+      console.log('🔌 Using VITE_SUPABASE_URL for WebSocket connection');
+      return `${baseWsUrl}/functions/v1/enhanced-websocket-streaming`;
+    }
+    
+    if (projectId) {
+      console.log('🔌 Using VITE_SUPABASE_PROJECT_ID for WebSocket connection');
+      return `wss://${projectId}.supabase.co/functions/v1/enhanced-websocket-streaming`;
+    }
+    
+    // Hardcoded fallback
+    console.log('🔌 Using hardcoded fallback for WebSocket connection');
+    return 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  };
 
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -68,8 +86,7 @@ const OptimizedWebSocketPriceProviderInner: React.FC<OptimizedWebSocketPriceProv
     // 24/7 CONNECTION: Always connect for live price data
     console.log('🔥 24/7 CONNECTION: Connecting for continuous live price streaming');
 
-    const wsUrl = `${import.meta.env.VITE_SUPABASE_URL?.replace('https://', 'wss://').replace('http://', 'ws://')}/functions/v1/enhanced-websocket-streaming`;
-    
+    const wsUrl = buildWebSocketUrl();
     console.log('🔌 Connecting to optimized WebSocket:', wsUrl);
 
     try {
@@ -80,6 +97,7 @@ const OptimizedWebSocketPriceProviderInner: React.FC<OptimizedWebSocketPriceProv
           console.log('✅ WebSocket connected');
           setConnectionStatus('connected');
           setError(null);
+          isAuthenticatedRef.current = true; // Mark as authenticated for subscriptions
           
           // ULTRA-FAST: Subscribe immediately on connection (auth handled by edge function)
           const currentSymbols = Array.from(subscriptionsRef.current);

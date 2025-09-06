@@ -692,14 +692,7 @@ const LivePriceWidgetComponent = ({
               </div>
             ) : (
               <div className="text-muted-foreground font-mono text-lg">
-                {marketStatus.isClosed ? (
-                  <div className="flex items-center gap-2">
-                    <span>Market Closed</span>
-                    <Clock className="w-4 h-4" />
-                  </div>
-                ) : (
-                  <span>Loading...</span>
-                )}
+                <span>---</span>
               </div>
             )}
           </div>
@@ -720,28 +713,7 @@ const LivePriceWidgetComponent = ({
         </div>
       )}
 
-      {/* Market Status Banner - Only show when market is closed */}
-      {marketStatus.isClosed && (
-        <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4 text-amber-400" />
-              <div className="text-amber-400 text-sm font-medium">Market Closed</div>
-            </div>
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <div className="text-amber-400 text-sm font-mono font-bold">
-                {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            {marketStatus.label} • Last price: {lastUpdated ? formatTime(lastUpdated) : '—'}
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <span className="ml-1">• Opens in {formatCountdown(marketStatus.countdown)}</span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Market status banner intentionally suppressed to prevent layout shift during closed markets */}
 
       {/* P&L from Entry Display */}
       {priceChange && profitLossDisplay && (

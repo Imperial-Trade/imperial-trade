@@ -554,13 +554,20 @@ serve(async (req: Request): Promise<Response> => {
   clients.set(clientId, client);
   console.log(`🔌 Client ${clientId} connected (${clients.size}/${MAX_CLIENTS})`);
 
-  // Send welcome message
-  socket.send(JSON.stringify({
-    type: 'welcome',
-    clientId,
-    timestamp: Date.now(),
-    marketStatus: getMarketStatus()
-  }));
+  // PHASE 2: Delayed welcome - wait for client to be ready
+  socket.onopen = () => {
+    try {
+      socket.send(JSON.stringify({
+        type: 'welcome',
+        clientId,
+        timestamp: Date.now(),
+        marketStatus: getMarketStatus()
+      }));
+      console.log(`✅ Welcome sent to client ${clientId}`);
+    } catch (error) {
+      console.error(`❌ Error sending welcome to ${clientId}:`, error);
+    }
+  };
 
   socket.onmessage = async (event) => {
     try {
@@ -574,8 +581,15 @@ serve(async (req: Request): Promise<Response> => {
           
           if (data.token) {
             try {
-              const { data: userData, error } = await supabase.auth.getUser(data.token);
-              if (!error && userData.user) {
+              // PHASE 2: Add timeout to auth validation
+              const authPromise = supabase.auth.getUser(data.token);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Auth timeout')), 5000)
+              );
+              
+              const { data: userData, error } = await Promise.race([authPromise, timeoutPromise]) as any;
+              
+              if (!error && userData?.user) {
                 client.isAuthenticated = true;
                 client.userId = userData.user.id;
                 socket.send(JSON.stringify({ 

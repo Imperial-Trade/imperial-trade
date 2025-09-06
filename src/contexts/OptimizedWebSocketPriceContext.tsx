@@ -102,45 +102,35 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       socketRef.current = socket;
 
       socket.onopen = async () => {
-        console.log('✅ WebSocket opened, authenticating...');
+        console.log('✅ WebSocket opened, waiting for welcome...');
         setConnectionStatus('connecting');
         setError(null);
         reconnectAttempts.current = 0;
         isAuthenticatedRef.current = false;
 
-        // PHASE 2: Simplified authentication with timeout
+        // PHASE 2: Wait for welcome message before sending auth
+        let welcomeReceived = false;
+        
         const authTimeout = setTimeout(() => {
           if (!isAuthenticatedRef.current) {
-            console.error('❌ PHASE 2: Authentication timeout after 10s');
-            setError('Authentication timeout - please refresh and try again');
+            console.error('❌ PHASE 2: Authentication timeout after 15s');
+            setError('Connection timeout - retrying...');
             setConnectionStatus('error');
             socket.close(1000, 'Auth timeout');
           }
-        }, 10000);
+        }, 15000);
 
-        try {
-          const token = session?.access_token;
-          
-          // PHASE 2: Simplified auth message - only send one format
-          const authMessage = {
-            type: 'auth',
-            token: token || null,
-            user_id: session?.user?.id || null,
-            timestamp: Date.now(),
-            clientId: crypto.randomUUID()
-          };
-          
-          socket.send(JSON.stringify(authMessage));
-          console.log('🔐 PHASE 2: Simplified authentication sent');
-          
-          // Store timeout reference for cleanup
-          (socket as any)._authTimeout = authTimeout;
-        } catch (error) {
-          clearTimeout(authTimeout);
-          console.error('❌ Authentication error:', error);
-          setError('Authentication failed - please refresh and try again');
-          setConnectionStatus('error');
-        }
+        // Store auth data to send after welcome
+        const authData = {
+          token: session?.access_token || null,
+          user_id: session?.user?.id || null,
+          timestamp: Date.now(),
+          clientId: crypto.randomUUID()
+        };
+        
+        // Store timeout reference for cleanup
+        (socket as any)._authTimeout = authTimeout;
+        (socket as any)._authData = authData;
       };
 
     socket.onmessage = (event) => {
@@ -149,7 +139,27 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         switch (data.type) {
           case 'welcome':
-            console.log('🎉 WebSocket welcomed:', data.clientId || data.client_id);
+            console.log('✅ Welcome received from server:', data.clientId || data.client_id);
+            // Send authentication after welcome
+            const authData = (socketRef.current as any)?._authData;
+            if (authData) {
+              try {
+                const authMessage = {
+                  type: 'auth',
+                  token: authData.token,
+                  user_id: authData.user_id,
+                  timestamp: Date.now(),
+                  clientId: authData.clientId
+                };
+                
+                socketRef.current?.send(JSON.stringify(authMessage));
+                console.log('🔐 PHASE 2: Authentication sent after welcome');
+              } catch (error) {
+                console.error('❌ Error sending auth after welcome:', error);
+                setError('Authentication failed - retrying...');
+                setConnectionStatus('error');
+              }
+            }
             break;
           
           case 'connection_status':
@@ -335,43 +345,48 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     };
 
+    socket.onerror = (error) => {
+      console.error('❌ WebSocket error:', error);
+      setConnectionStatus('error');
+      setError('Connection error - retrying...');
+      
+      // Clear auth timeout on error
+      if ((socket as any)?._authTimeout) {
+        clearTimeout((socket as any)._authTimeout);
+      }
+      
+      // Force close socket to trigger clean reconnection
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.close(1000, 'Error recovery');
+      }
+    };
+
     socket.onclose = (event) => {
-      console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+      console.log(`🔌 WebSocket connection closed: ${event.code} ${event.reason || ''}`);
       setConnectionStatus('disconnected');
+      isAuthenticatedRef.current = false;
+      
+      // Clear auth timeout if connection closes
+      const authTimeout = (socketRef.current as any)?._authTimeout;
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+      }
       
       // Check if any symbols can stream before attempting reconnection
       const currentSymbols = Array.from(subscriptionsRef.current);
       const streamingCheck = canStreamAnySymbol(currentSymbols);
       
-      // Zero-pause: Immediate reconnection for critical disconnections (but only if symbols can stream)
-      if (event.code !== 1000 && streamingCheck.canStream) { // Not a normal closure and symbols can stream
-        // Zero-pause: Faster reconnection with reduced backoff
-        const delay = Math.min(500 * Math.pow(1.5, reconnectAttempts.current), 5000); // Max 5s delay
+      // Always attempt reconnection unless it was a normal closure
+      if (event.code !== 1000 && streamingCheck.canStream) {
+        setError('Connection lost - reconnecting...');
+        const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current), 10000);
         reconnectAttempts.current++;
         
-        console.log(`🔄 Zero-pause reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
+        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
         reconnectTimeoutRef.current = window.setTimeout(() => connect(false), delay);
       } else if (!streamingCheck.canStream) {
         console.log('📴 No symbols can stream - stopping reconnection attempts');
-        setConnectionStatus('disconnected');
-        setError('No symbols available for streaming - connection paused for cost optimization');
-      }
-    };
-
-    socket.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
-      setConnectionStatus('error');
-      
-      // PHASE 2: Clear auth timeout on error
-      if ((socket as any)?._authTimeout) {
-        clearTimeout((socket as any)._authTimeout);
-      }
-      
-      // PHASE 2: More specific error messages
-      if (reconnectAttempts.current > 3) {
-        setError('WebSocket connection failed - TraderMade API may be experiencing issues');
-      } else {
-        setError('WebSocket connection failed - attempting to reconnect...');
+        setError('No symbols available for streaming - connection paused');
       }
     };
   } catch (error) {
@@ -382,7 +397,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Retry connection after delay
     const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts.current), 8000);
     reconnectAttempts.current++;
-    reconnectTimeoutRef.current = window.setTimeout(connect, delay);
+    reconnectTimeoutRef.current = window.setTimeout(() => connect(false), delay);
   }
 }, [WEBSOCKET_URL]);
 

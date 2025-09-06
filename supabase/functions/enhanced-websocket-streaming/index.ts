@@ -506,7 +506,7 @@ function generateClientId(): string {
   return crypto.randomUUID();
 }
 
-// PHASE 3: Add Redis pub/sub consumer for follower instances
+// PHASE 3: Enhanced Redis pub/sub consumer for follower instances
 async function setupRedisPubSubConsumer() {
   if (!redis) {
     console.error('❌ Redis not configured for pub/sub consumption');
@@ -516,8 +516,67 @@ async function setupRedisPubSubConsumer() {
   console.log('🔄 PHASE 3: Setting up Redis pub/sub consumer for follower instance');
   
   try {
-    // Subscribe to price updates published by leader
-    await redis.subscribe('price_updates');
+    // Create a separate Redis client for pub/sub as the main client might not support it
+    const pubsubRedis = new Redis({
+      url: redisRestUrl!,
+      token: redisRestToken!,
+    });
+    
+    // Setup message handler for price updates
+    const handlePriceUpdate = (channel: string, message: string) => {
+      try {
+        const priceUpdate = JSON.parse(message);
+        console.log(`📨 FOLLOWER: Received ${priceUpdate.symbol} from Redis: ${priceUpdate.price}`);
+        
+        // Broadcast to connected clients as follower
+        const enhancedData: EnhancedPriceData = {
+          symbol: priceUpdate.symbol,
+          ts: new Date().toISOString(),
+          bid: priceUpdate.bid || priceUpdate.price - 0.1,
+          ask: priceUpdate.ask || priceUpdate.price + 0.1,
+          mid: priceUpdate.price,
+          timestamp: new Date(priceUpdate.timestamp),
+          freshness: priceUpdate.freshness || 'fresh',
+          cacheHit: true
+        };
+        
+        broadcastToClients(priceUpdate.symbol, enhancedData);
+      } catch (error) {
+        console.error('❌ Error processing Redis price update:', error);
+      }
+    };
+    
+    // Use polling instead of subscribe if the Redis client doesn't support pub/sub
+    console.log('✅ PHASE 3: Using Redis polling for follower price distribution');
+    
+    const pollRedisForUpdates = async () => {
+      try {
+        for (const symbol of TRADERMADE_SYMBOLS) {
+          const cachedPrice = await redis.get(`price:${symbol}`);
+          if (cachedPrice) {
+            const priceData = JSON.parse(cachedPrice);
+            // Only broadcast if we have clients subscribed to this symbol
+            const hasSubscribers = Array.from(clients.values())
+              .some(client => client.subscribedSymbols.has(symbol));
+            
+            if (hasSubscribers) {
+              broadcastToClients(symbol, priceData);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Redis polling error:', error);
+      }
+    };
+    
+    // Poll every 2 seconds for followers
+    setInterval(pollRedisForUpdates, 2000);
+    
+    console.log('✅ PHASE 3: Redis follower polling established');
+  } catch (error) {
+    console.error('❌ Failed to setup Redis pub/sub consumer:', error);
+  }
+}
     
     redis.on('message', (channel, message) => {
       if (channel === 'price_updates') {

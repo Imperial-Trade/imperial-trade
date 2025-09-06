@@ -81,10 +81,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CacheCleanerMount />
-        <Toaster />
-        <Sonner />
         <BrowserRouter>
-            <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>
@@ -93,6 +90,9 @@ function App() {
                     <HybridWebSocketPriceProvider>
                       <ContextErrorBoundary>
                         <SignalRealtimeProvider>
+                          <Toaster />
+                          <Sonner />
+                          <PostHogPageViewTracker />
                       <Routes>
                         {/* Landing Routes */}
                         <Route

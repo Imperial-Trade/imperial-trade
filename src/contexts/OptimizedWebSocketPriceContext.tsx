@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getMarketStatus, isMarketClosed } from '@/utils/marketHours';
+import { getSymbolStreamingPolicy, canStreamAnySymbol, getUnifiedMarketStatus } from '@/utils/unifiedMarketHours';
 
 // Simple price data interface
 interface PriceData {
@@ -52,28 +52,29 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
   const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (forceConnect: boolean = false) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
-    // ULTRA-SMART: Block all WebSocket connections during market closure (50% cost reduction)
-    if (isMarketClosed()) {
-      console.log('📴 ULTRA-COST: Market closed - blocking WebSocket connection entirely');
-      setConnectionStatus('disconnected');
-      setError('Market is currently closed - connections blocked for cost optimization');
+    // ULTRA-SMART: Only block connections if NO symbols can stream
+    if (!forceConnect && subscriptionsRef.current.size > 0) {
+      const streamingCheck = canStreamAnySymbol(Array.from(subscriptionsRef.current));
       
-      // Schedule connection attempt for when market opens
-      const status = getMarketStatus();
-      if (status.nextOpenTime) {
-        const timeUntilOpen = status.nextOpenTime.getTime() - Date.now();
-        console.log(`⏰ ULTRA-COST: Scheduling connection check in ${Math.round(timeUntilOpen/1000/60)} minutes`);
-        setTimeout(connect, Math.min(timeUntilOpen, 3600000)); // Check when market opens or in 1 hour max
+      if (!streamingCheck.canStream) {
+        console.log('🌙 No symbols can stream - connections blocked for cost optimization');
+        setConnectionStatus('disconnected');
+        setError('All requested assets are currently closed - connection blocked for cost optimization');
+        
+        // Schedule intelligent reconnection
+        const timeUntilNextCheck = getNextReconnectionTime(Array.from(subscriptionsRef.current));
+        console.log(`⏰ ULTRA-SMART: Scheduling connection check in ${Math.round(timeUntilNextCheck/1000/60)} minutes`);
+        setTimeout(() => connect(false), timeUntilNextCheck);
+        return;
       } else {
-        console.log('⏰ ULTRA-COST: Scheduling connection check in 1 hour');
-        setTimeout(connect, 3600000); // Check again in 1 hour
+        console.log('🚀 ULTRA-SMART: Some symbols can stream:', streamingCheck.allowedSymbols.join(', '));
+        console.log('📋 Streaming reason:', streamingCheck.reason);
       }
-      return;
     }
 
     console.log('🔗 Connecting to optimized WebSocket...');
@@ -316,21 +317,22 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🔌 WebSocket connection closed:', event.code, event.reason);
       setConnectionStatus('disconnected');
       
-      // Check if market is closed before attempting reconnection
-      const marketClosed = isMarketClosed();
+      // Check if any symbols can stream before attempting reconnection
+      const currentSymbols = Array.from(subscriptionsRef.current);
+      const streamingCheck = canStreamAnySymbol(currentSymbols);
       
-      // Zero-pause: Immediate reconnection for critical disconnections (but not during market close)
-      if (event.code !== 1000 && !marketClosed) { // Not a normal closure and market is open
+      // Zero-pause: Immediate reconnection for critical disconnections (but only if symbols can stream)
+      if (event.code !== 1000 && streamingCheck.canStream) { // Not a normal closure and symbols can stream
         // Zero-pause: Faster reconnection with reduced backoff
         const delay = Math.min(500 * Math.pow(1.5, reconnectAttempts.current), 5000); // Max 5s delay
         reconnectAttempts.current++;
         
         console.log(`🔄 Zero-pause reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
-        reconnectTimeoutRef.current = window.setTimeout(connect, delay);
-      } else if (marketClosed) {
-        console.log('📴 Market closed - stopping reconnection attempts');
+        reconnectTimeoutRef.current = window.setTimeout(() => connect(false), delay);
+      } else if (!streamingCheck.canStream) {
+        console.log('📴 No symbols can stream - stopping reconnection attempts');
         setConnectionStatus('disconnected');
-        setError('Market is currently closed');
+        setError('No symbols available for streaming - connection paused for cost optimization');
       }
     };
 
@@ -366,28 +368,52 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, []);
 
   const subscribe = useCallback((symbols: string[]) => {
-    // FIXED: Add strict symbol validation and logging
+    // ULTRA-SMART: Add strict symbol validation and streaming policy check
     const validatedSymbols = symbols.filter(symbol => {
       const isValid = symbol && symbol.trim().length > 0;
       console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
       return isValid;
     });
     
-    // Add to local subscription tracking
+    if (validatedSymbols.length === 0) {
+      console.log('⚠️ No valid symbols provided for subscription');
+      return;
+    }
+
+    // ULTRA-SMART: Check streaming policy for each symbol
+    const streamingCheck = canStreamAnySymbol(validatedSymbols);
+    console.log('🎯 ULTRA-SMART Streaming Policy:', streamingCheck);
+    
+    // Add to local subscription tracking (track all requested symbols)
     validatedSymbols.forEach(symbol => {
-      console.log(`📝 [Subscribe] Adding ${symbol} to subscription set`);
+      const policy = getSymbolStreamingPolicy(symbol);
+      console.log(`📝 [Subscribe] Adding ${symbol} to subscription set (${policy.reason})`);
       subscriptionsRef.current.add(symbol);
     });
     
-    // Send subscription message if connected and authenticated
-    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      console.log(`📤 [Subscribe] Sending subscription for symbols:`, validatedSymbols);
-      // Primary: legacy-compatible schema
-      socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols: validatedSymbols }));
-      // Compatibility: also support action-based schema
-      try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: validatedSymbols })); } catch {}
+    // Only send subscription for symbols that can actually stream
+    if (streamingCheck.canStream) {
+      // Send subscription message if connected and authenticated
+      if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
+        console.log(`📤 [Subscribe] Sending subscription for streaming symbols:`, streamingCheck.allowedSymbols);
+        // Primary: legacy-compatible schema
+        socketRef.current.send(JSON.stringify({ type: 'subscribe', symbols: streamingCheck.allowedSymbols }));
+        // Compatibility: also support action-based schema
+        try { socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: streamingCheck.allowedSymbols })); } catch {}
+      } else {
+        console.log('⏳ Connection not ready, will subscribe after connection');
+        connect(); // Attempt to connect
+      }
+    } else {
+      console.log('🚫 ULTRA-SMART: No symbols can stream right now, scheduling retry');
+      setConnectionStatus('disconnected');
+      setError(`No symbols available for streaming: ${streamingCheck.reason}`);
+      
+      // Schedule retry for when markets might be open
+      const retryTime = getNextReconnectionTime(validatedSymbols);
+      setTimeout(() => connect(false), retryTime);
     }
-  }, []);
+  }, [connect]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Remove from local subscription tracking
@@ -413,24 +439,31 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return prices[symbol] || null;
   }, [prices]);
 
-  // Initialize connection on mount - but only if market is open
-  useEffect(() => {
-    // ULTRA-COST: Only attempt connection if market is open
-    if (!isMarketClosed()) {
-      connect();
-    } else {
-      console.log('📴 ULTRA-COST: Market closed on mount - skipping initial connection');
-      setConnectionStatus('disconnected');
-      setError('Market is currently closed - connection blocked for cost optimization');
-      
-      // Schedule connection attempt for when market opens
-      const status = getMarketStatus();
+  // Helper function to get next reconnection time based on symbol types
+  const getNextReconnectionTime = (symbols: string[]): number => {
+    let minTime = 3600000; // Default: 1 hour
+
+    for (const symbol of symbols) {
+      const status = getUnifiedMarketStatus(symbol);
       if (status.nextOpenTime) {
         const timeUntilOpen = status.nextOpenTime.getTime() - Date.now();
-        console.log(`⏰ ULTRA-COST: Scheduling initial connection in ${Math.round(timeUntilOpen/1000/60)} minutes`);
-        setTimeout(connect, Math.min(timeUntilOpen, 3600000));
+        minTime = Math.min(minTime, timeUntilOpen);
       }
     }
+
+    // Cap at 1 hour max, minimum 1 minute
+    return Math.max(60000, Math.min(minTime, 3600000));
+  };
+
+  // ULTRA-SMART: Initialize connection - only connects if symbols can stream
+  useEffect(() => {
+    console.log('🚀 ULTRA-SMART: Initializing optimized WebSocket system');
+    
+    // Don't auto-connect on mount - wait for actual symbol subscriptions
+    // This prevents unnecessary connections when no symbols are needed
+    console.log('⏸️ ULTRA-SMART: Waiting for symbol subscriptions before connecting');
+    setConnectionStatus('disconnected');
+    setError('Waiting for symbol subscriptions...');
     
     // Zero-pause: Faster health check ping every 15 seconds (vs 30s)
     const pingInterval = setInterval(() => {

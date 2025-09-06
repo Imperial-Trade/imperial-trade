@@ -76,12 +76,29 @@ const NotificationSystem = () => {
       setLastNotificationTime(now);
 
       const id = Date.now() + Math.random();
-      setNotifications((prev) => [
-        { ...notification, id, timestamp: new Date() },
-        ...prev,
-      ]);
+      const enhancedNotification = { 
+        ...notification, 
+        id, 
+        timestamp: new Date(),
+        eventKey: notification.eventKey || `notification_${id}`,
+        deliveryChannel: notification.deliveryChannel || 'in_app'
+      };
+      
+      setNotifications((prev) => [enhancedNotification, ...prev]);
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
+
+      // Record delivery if eventKey is provided
+      if (notification.eventKey) {
+        // Import notification service dynamically to avoid circular imports
+        import('@/services/NotificationService').then(({ notificationService }) => {
+          notificationService.recordNotificationDelivery(
+            notification.eventKey,
+            notification.deliveryChannel || 'in_app',
+            'delivered'
+          );
+        });
+      }
     },
     [playNotificationSound, removeNotification, lastNotificationTime]
   );

@@ -157,8 +157,14 @@ export const useOneSignalPush = () => {
     const isDev = import.meta.env.DEV;
     
     if (!isProduction || isDev) {
-      console.log('🔔 Push notifications only available on production domain');
-      return false;
+      console.log('🔔 Development Mode: Using mock push notifications');
+      // In development, simulate successful permission grant
+      setState(prev => ({ ...prev, isPushEnabled: true, playerId: 'dev_mock_player_id' }));
+      toast({
+        title: "Development Mode",
+        description: "Mock push notifications enabled for testing",
+      });
+      return true;
     }
 
     if (!state.isInitialized) return false;
@@ -199,8 +205,26 @@ export const useOneSignalPush = () => {
     const isDev = import.meta.env.DEV;
     
     if (!isProduction || isDev) {
-      console.log('🔔 Push notifications only available on production domain');
-      return false;
+      console.log('🔔 Development Mode: Mock push subscription');
+      setState(prev => ({ ...prev, isPushEnabled: true, playerId: 'dev_mock_player_id' }));
+      
+      if (user) {
+        // Update profile for development
+        await supabase
+          .from('profiles')
+          .update({ 
+            push_subscription_active: true,
+            onesignal_subscription_status: 'subscribed_dev',
+            xeon_stream_subscription: true
+          })
+          .eq('id', user.id);
+        
+        toast({
+          title: "Development Mode",
+          description: "Mock push notifications enabled! You'll see in-app notifications instead.",
+        });
+      }
+      return true;
     }
 
     if (!state.isInitialized) return false;

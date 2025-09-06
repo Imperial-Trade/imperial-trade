@@ -159,30 +159,36 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         switch (data.type) {
           case 'welcome':
-            (socketRef.current as any)._welcomeReceived = true; // PHASE 4: Track welcome receipt
-            console.log('✅ Welcome received from server:', data.clientId || data.client_id);
-            // Clear immediate auth timeout since we got welcome
-            if ((socketRef.current as any)?._immediateAuthTimeout) {
-              clearTimeout((socketRef.current as any)._immediateAuthTimeout);
+            console.log('🎉 Welcome message received:', data);
+            
+            // Clear connection timeout
+            if ((socketRef.current as any)?._connectionTimeout) {
+              clearTimeout((socketRef.current as any)._connectionTimeout);
             }
-            // Send authentication after welcome
-            const authData = (socketRef.current as any)?._authData;
-            if (authData) {
-              try {
-                const authMessage = {
-                  type: 'auth',
-                  token: authData.token,
-                  user_id: authData.user_id,
-                  timestamp: Date.now(),
-                  clientId: authData.clientId
-                };
+            
+            // PHASE 1: Check if already authenticated from server
+            if (data.authenticated || data.status === 'connected') {
+              console.log('✅ Auto-authenticated by server');
+              setConnectionStatus('connected');
+              setError(null);
+              isAuthenticatedRef.current = true;
+              
+              // Subscribe immediately since we're already authenticated
+              if (subscriptionsRef.current.size > 0) {
+                const symbols = Array.from(subscriptionsRef.current);
+                const supportedSymbols = symbols.filter(s => ['BTCUSD', 'XAUUSD'].includes(s.toUpperCase()));
                 
-                socketRef.current?.send(JSON.stringify(authMessage));
-                console.log('🔐 PHASE 4: Authentication sent after welcome');
-              } catch (error) {
-                console.error('❌ Error sending auth after welcome:', error);
-                setError('Authentication failed - retrying...');
-                setConnectionStatus('error');
+                if (supportedSymbols.length > 0) {
+                  console.log('🔄 Subscribing to symbols:', supportedSymbols);
+                  socket.send(JSON.stringify({ type: 'subscribe', symbols: supportedSymbols }));
+                }
+              }
+            } else {
+              // Optional enhanced authentication
+              if (socket.readyState === WebSocket.OPEN && session?.access_token) {
+                const authMessage = { type: 'auth', token: session.access_token };
+                socket.send(JSON.stringify(authMessage));
+                console.log('🔑 Sending optional enhanced auth');
               }
             }
             break;
@@ -193,33 +199,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
           case 'auth_success':
           case 'auth_response':
-            // PHASE 4: Clear all auth timeouts on any auth response
-            if ((socketRef.current as any)?._authTimeout) {
-              clearTimeout((socketRef.current as any)._authTimeout);
-            }
-            if ((socketRef.current as any)?._immediateAuthTimeout) {
-              clearTimeout((socketRef.current as any)._immediateAuthTimeout);
+            console.log('🔑 Authentication response received:', data);
+            
+            // Clear connection timeout
+            if ((socketRef.current as any)?._connectionTimeout) {
+              clearTimeout((socketRef.current as any)._connectionTimeout);
             }
             
-            if (data.success === false) {
-              console.error('❌ Authentication failed:', data.message);
-              setError(data.message || 'Authentication failed');
-              setConnectionStatus('error');
-            } else {
-              console.log('🔑 PHASE 2: Authentication successful - connection established');
-              setConnectionStatus('connected');
-              setError(null);
-              isAuthenticatedRef.current = true;
+            console.log('✅ Authentication successful - connection established');
+            setConnectionStatus('connected');
+            setError(null);
+            isAuthenticatedRef.current = true;
+            
+            // Re-subscribe after authentication
+            if (subscriptionsRef.current.size > 0) {
+              const symbols = Array.from(subscriptionsRef.current);
+              const supportedSymbols = symbols.filter(s => ['BTCUSD', 'XAUUSD'].includes(s.toUpperCase()));
               
-              // PHASE 2: Re-subscribe immediately after authentication
-              if (subscriptionsRef.current.size > 0) {
-                const symbols = Array.from(subscriptionsRef.current);
-                const supportedSymbols = symbols.filter(s => ['BTCUSD', 'XAUUSD'].includes(s.toUpperCase()));
-                
-                if (supportedSymbols.length > 0) {
-                  console.log('🔄 PHASE 2: Re-subscribing to symbols:', supportedSymbols);
-                  socket.send(JSON.stringify({ type: 'subscribe', symbols: supportedSymbols }));
-                }
+              if (supportedSymbols.length > 0) {
+                console.log('🔄 Re-subscribing to symbols:', supportedSymbols);
+                socket.send(JSON.stringify({ type: 'subscribe', symbols: supportedSymbols }));
               }
             }
             break;
@@ -381,9 +380,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setConnectionStatus('error');
       setError('Connection error - retrying...');
       
-      // Clear auth timeout on error
-      if ((socket as any)?._authTimeout) {
-        clearTimeout((socket as any)._authTimeout);
+      // Clear connection timeout on error
+      if ((socket as any)?._connectionTimeout) {
+        clearTimeout((socket as any)._connectionTimeout);
       }
       
       // Force close socket to trigger clean reconnection
@@ -397,7 +396,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setConnectionStatus('disconnected');
       isAuthenticatedRef.current = false;
       
-      // Clear auth timeout if connection closes
+      // Clear connection timeout if connection closes
+      if ((socketRef.current as any)?._connectionTimeout) {
+        clearTimeout((socketRef.current as any)._connectionTimeout);
+      }
       const authTimeout = (socketRef.current as any)?._authTimeout;
       if (authTimeout) {
         clearTimeout(authTimeout);

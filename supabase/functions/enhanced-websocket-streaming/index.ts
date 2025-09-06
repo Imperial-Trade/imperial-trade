@@ -619,16 +619,21 @@ serve(async (req: Request): Promise<Response> => {
   clients.set(clientId, client);
   console.log(`🔌 Client ${clientId} connected (${clients.size}/${MAX_CLIENTS})`);
 
-  // PHASE 2: Delayed welcome - wait for client to be ready
+  // PHASE 1: Immediate welcome with simplified flow
   socket.onopen = () => {
     try {
+      // Auto-authenticate anonymous users immediately
+      client.isAuthenticated = true;
+      
       socket.send(JSON.stringify({
         type: 'welcome',
         clientId,
         timestamp: Date.now(),
-        marketStatus: getMarketStatus()
+        marketStatus: getMarketStatus(),
+        authenticated: true,
+        status: 'connected'
       }));
-      console.log(`✅ Welcome sent to client ${clientId}`);
+      console.log(`✅ Client ${clientId} connected and auto-authenticated`);
     } catch (error) {
       console.error(`❌ Error sending welcome to ${clientId}:`, error);
     }
@@ -641,66 +646,56 @@ serve(async (req: Request): Promise<Response> => {
 
       switch (data.type) {
         case 'auth':
-          // PHASE 2: Simplified authentication with faster response
-          console.log(`🔐 PHASE 2: Processing auth for client ${client.id}`);
+          // PHASE 1: Optional enhanced authentication (already authenticated by default)
+          console.log(`🔐 Processing enhanced auth for client ${client.id}`);
           
           if (data.token) {
             try {
-              // PHASE 2: Add timeout to auth validation
-              const authPromise = supabase.auth.getUser(data.token);
-              const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Auth timeout')), 5000)
-              );
-              
-              const { data: userData, error } = await Promise.race([authPromise, timeoutPromise]) as any;
+              const { data: userData, error } = await supabase.auth.getUser(data.token);
               
               if (!error && userData?.user) {
-                client.isAuthenticated = true;
                 client.userId = userData.user.id;
                 socket.send(JSON.stringify({ 
                   type: 'auth_success', 
                   success: true,
                   user_id: userData.user.id,
+                  authenticated: true,
                   timestamp: Date.now()
                 }));
-                console.log(`✅ PHASE 2: Client ${client.id} authenticated as ${userData.user.id}`);
+                console.log(`✅ Client ${client.id} enhanced auth as ${userData.user.id}`);
               } else {
                 socket.send(JSON.stringify({ 
-                  type: 'auth_error', 
-                  success: false, 
-                  message: 'Invalid authentication token' 
+                  type: 'auth_success', 
+                  success: true,
+                  anonymous: true,
+                  authenticated: true,
+                  timestamp: Date.now()
                 }));
-                console.error(`❌ PHASE 2: Authentication failed for client ${client.id}:`, error?.message);
+                console.log(`✅ Client ${client.id} fallback to anonymous`);
               }
             } catch (error) {
-              console.error('❌ PHASE 2: Authentication error:', error);
+              console.log('⚠️ Auth service unavailable, maintaining anonymous access');
               socket.send(JSON.stringify({ 
-                type: 'auth_error', 
-                success: false, 
-                message: 'Authentication service unavailable' 
+                type: 'auth_success', 
+                success: true, 
+                anonymous: true,
+                authenticated: true,
+                timestamp: Date.now()
               }));
             }
           } else {
-            // PHASE 2: Allow anonymous connections for testing
-            client.isAuthenticated = true;
             socket.send(JSON.stringify({ 
               type: 'auth_success', 
               success: true,
               anonymous: true,
+              authenticated: true,
               timestamp: Date.now()
             }));
-            console.log(`✅ PHASE 2: Client ${client.id} connected anonymously`);
           }
           break;
 
         case 'subscribe':
-          if (!client.isAuthenticated) {
-            socket.send(JSON.stringify({
-              type: 'error',
-              message: 'Authentication required'
-            }));
-            break;
-          }
+          // Always allow subscriptions since client is auto-authenticated
 
           const symbols = data.symbols || [];
           const validSymbols = symbols.filter((s: string) => 

@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { getMarketStatus, formatCountdown, MarketStatus } from '@/utils/marketStatus';
+
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -77,76 +77,6 @@ const LivePriceWidgetComponent = ({
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
 
-  // Market status check - isolated from price updates with separate effect
-  const [marketStatus, setMarketStatus] = useState<MarketStatus>({ isClosed: false, label: null });
-  
-  useEffect(() => {
-    if (!alert.tradermade_symbol) {
-      setMarketStatus({ isClosed: false, label: null });
-      return;
-    }
-    
-    const updateMarketStatus = () => {
-      const status = getMarketStatus(alert.tradermade_symbol);
-      setMarketStatus(status);
-    };
-    
-    // Update immediately
-    updateMarketStatus();
-    
-    // Update every 30 seconds to keep countdown fresh
-    const interval = setInterval(updateMarketStatus, 30000);
-    
-    return () => clearInterval(interval);
-  }, [alert.tradermade_symbol]);
-
-  // Countdown component for market reopening - prevents parent re-renders
-  const Countdown = memo(({ nextOpenTime }: { nextOpenTime?: Date }) => {
-    const [countdown, setCountdown] = useState('');
-    
-    useEffect(() => {
-      if (!nextOpenTime) return;
-      
-      const updateCountdown = () => {
-        const now = new Date();
-        const timeUntilOpen = nextOpenTime.getTime() - now.getTime();
-        
-        if (timeUntilOpen <= 0) {
-          setCountdown('Opening soon...');
-          return;
-        }
-        
-        const totalSeconds = Math.floor(timeUntilOpen / 1000);
-        const days = Math.floor(totalSeconds / (24 * 60 * 60));
-        const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
-        const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
-        const seconds = totalSeconds % 60;
-        
-        const parts = [];
-        if (days > 0) parts.push(`${days}d`);
-        if (hours > 0 || days > 0) parts.push(`${hours}h`);
-        if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
-        if (days === 0 && hours === 0) parts.push(`${seconds}s`);
-        
-        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const localTime = nextOpenTime.toLocaleString('en-US', {
-          timeZone: userTimezone,
-          weekday: 'short',
-          hour: 'numeric',
-          minute: '2-digit',
-          timeZoneName: 'short'
-        });
-        
-        setCountdown(`${parts.join(' ')} (${localTime})`);
-      };
-      
-      updateCountdown();
-      const interval = setInterval(updateCountdown, 1000);
-      return () => clearInterval(interval);
-    }, [nextOpenTime]);
-    
-    return <span className="text-xs text-yellow-600 dark:text-yellow-400">{countdown}</span>;
-  });
 
   // Data age tracking removed to prevent blinking and forced refreshes
 
@@ -521,23 +451,6 @@ const LivePriceWidgetComponent = ({
     
     return (
       <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
-        {/* Market Closed Banner for Pending Orders */}
-        {marketStatus.isClosed && (
-          <div className="mb-3 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                  Market Closed
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-yellow-600 dark:text-yellow-400">Opens in</div>
-                <Countdown nextOpenTime={marketStatus.nextOpenTime} />
-              </div>
-            </div>
-          </div>
-        )}
         
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
@@ -686,33 +599,6 @@ const LivePriceWidgetComponent = ({
         </div>
       )}
 
-      {/* Market Closed Banner */}
-      {marketStatus.isClosed && (
-        <div className="mb-3 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                Market Closed
-              </span>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-yellow-600 dark:text-yellow-400">Opens in</div>
-              <Countdown nextOpenTime={marketStatus.nextOpenTime} />
-            </div>
-          </div>
-          {currentPrice > 0 && (
-            <div className="mt-2 pt-2 border-t border-yellow-500/20">
-              <div className="text-xs text-yellow-600 dark:text-yellow-400 mb-1">
-                Last Price Before Market Closed
-              </div>
-              <div className="font-mono text-lg font-bold text-yellow-600 dark:text-yellow-400">
-                ${formatPrice(currentPrice)}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* P&L from Entry Display */}
       {priceChange && profitLossDisplay && (

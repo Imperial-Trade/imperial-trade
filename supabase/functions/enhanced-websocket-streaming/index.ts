@@ -462,11 +462,6 @@ async function startFollowerMode() {
     console.error('❌ Failed to start follower mode:', error);
   }
 }
-    
-  } catch (error) {
-    console.error('❌ Failed to start follower mode:', error);
-  }
-}
 
 async function connectToTraderMade() {
   if (!tradermadeApiKey) {

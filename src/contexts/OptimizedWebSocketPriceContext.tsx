@@ -113,17 +113,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const token = session?.access_token;
           
           // Primary: legacy-compatible schema
-          socket.send(JSON.stringify({
+        // PHASE 2B: Enhanced authentication with user context
+          const authMessage = {
             type: 'auth',
-            token: token || null
-          }));
+            token: token || null,
+            user_id: session?.user?.id || null,
+            timestamp: Date.now()
+          };
+          
+          socket.send(JSON.stringify(authMessage));
           
           // Compatibility: also send newer action-based schema if server expects it
           try {
-            socket.send(JSON.stringify({ action: 'auth', token: token || null }));
+            socket.send(JSON.stringify({ 
+              action: 'auth', 
+              token: token || null,
+              user_id: session?.user?.id || null
+            }));
           } catch {}
           
-          console.log('🔐 Authentication message sent');
+          console.log('🔐 PHASE 2B: Enhanced authentication message sent with user context');
         } catch (error) {
           console.error('❌ Authentication error:', error);
           setError('Authentication failed - please refresh and try again');
@@ -151,15 +160,22 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               setError(data.message || 'Authentication failed');
               setConnectionStatus('error');
             } else {
-              console.log('🔑 Authentication successful');
+              console.log('🔑 PHASE 2B: Authentication successful - connection established');
               setConnectionStatus('connected');
+              setError(null);
               isAuthenticatedRef.current = true;
-              // Re-subscribe to any previous subscriptions after authentication
+              
+              // PHASE 2B: Re-subscribe to any previous subscriptions after authentication
               if (subscriptionsRef.current.size > 0) {
                 const symbols = Array.from(subscriptionsRef.current);
-                socket.send(JSON.stringify({ type: 'subscribe', symbols }));
-                // Compatibility: also support action schema
-                try { socket.send(JSON.stringify({ action: 'subscribe', symbols })); } catch {}
+                const supportedSymbols = symbols.filter(s => ['BTCUSD', 'XAUUSD'].includes(s.toUpperCase()));
+                
+                if (supportedSymbols.length > 0) {
+                  console.log('🔄 PHASE 2B: Re-subscribing to supported symbols:', supportedSymbols);
+                  socket.send(JSON.stringify({ type: 'subscribe', symbols: supportedSymbols }));
+                  // Compatibility: also support action schema
+                  try { socket.send(JSON.stringify({ action: 'subscribe', symbols: supportedSymbols })); } catch {}
+                }
               }
             }
             break;

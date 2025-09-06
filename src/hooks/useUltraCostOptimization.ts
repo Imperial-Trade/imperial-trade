@@ -26,9 +26,12 @@ export const useUltraCostOptimization = () => {
       
       setState({
         isOptimized: isPerforming,
-        projectedSavings: report.projectedSavings,
-        allowedSymbols: report.config.allowedSymbols,
-        isEmergencyMode: report.config.aggressive
+        projectedSavings: {
+          percentage: report.costSavingsPercent,
+          monthly: report.projectedMonthlyCostUSD
+        },
+        allowedSymbols: report.allowedSymbols,
+        isEmergencyMode: report.optimizationLevel === 'EMERGENCY'
       });
     };
 

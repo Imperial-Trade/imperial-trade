@@ -3,6 +3,34 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 import { Redis } from 'https://esm.sh/@upstash/redis@1.28.4';
 
+// PHASE 2A+2D: Ultra Cost Optimizer Integration
+interface UltraCostOptimizer {
+  trackApiCall(type: 'tradermade' | 'database' | 'redis' | 'edge_function'): void;
+  getOptimizedCacheTTL(baseSeconds: number, dataType: 'prices' | 'signals' | 'other'): number;
+  isSymbolAllowed(symbol: string): boolean;
+  getOptimalConnectionCount(isMarketHours: boolean, isPeakHours: boolean): number;
+}
+
+// Inline Ultra Cost Optimizer for edge function
+const ultraCostOptimizer: UltraCostOptimizer = {
+  trackApiCall: (type) => {
+    // Lightweight tracking in edge function
+    console.log(`📊 Cost tracking: ${type}`);
+  },
+  getOptimizedCacheTTL: (baseSeconds, dataType) => {
+    // Cost-optimized TTL
+    const multiplier = dataType === 'prices' ? 2 : dataType === 'signals' ? 3 : 4;
+    return Math.min(baseSeconds * multiplier, 300);
+  },
+  isSymbolAllowed: (symbol) => {
+    return ['BTCUSD', 'XAUUSD'].includes(symbol.toUpperCase());
+  },
+  getOptimalConnectionCount: (isMarketHours, isPeakHours) => {
+    if (!isMarketHours) return 1;
+    return isPeakHours ? 3 : 2;
+  }
+};
+
 console.log('🚀 ULTRA-COST OPTIMIZED WebSocket Streaming - Target: 70% Cost Reduction');
 
 const corsHeaders = {
@@ -255,8 +283,10 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
       // Publish to Redis channel for instant follower distribution
       await redis.publish(`price_updates:${symbol}`, JSON.stringify(pubsubMessage));
       
-      // Track cost optimization
-      ultraCostOptimizer.trackApiCall('redis');
+// Track cost optimization
+      if (typeof ultraCostOptimizer !== 'undefined') {
+        ultraCostOptimizer.trackApiCall('redis');
+      }
       
       console.log(`🚀 LEADER: Published ${symbol} to Redis pub/sub`);
     } catch (error) {
@@ -314,6 +344,7 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
   }
 }
 
+// PHASE 2A: Smart Database Writes - Only write when active alerts exist
 async function updateDatabasePrices(batchedPrices: Map<string, PriceData>) {
   const now = Date.now();
   
@@ -321,26 +352,90 @@ async function updateDatabasePrices(batchedPrices: Map<string, PriceData>) {
     return; // Wait for batch interval
   }
 
-  const promises: Promise<any>[] = [];
-  
-  for (const [symbol, priceData] of batchedPrices) {
-    const promise = supabaseService.rpc('upsert_market_price', {
-      p_symbol: symbol,
-      p_bid: priceData.bid,
-      p_ask: priceData.ask,
-      p_mid: priceData.mid,
-      p_timestamp: new Date(parseInt(priceData.ts)).toISOString()
-    });
-    
-    promises.push(promise);
-  }
-
   try {
+    // PHASE 2A: Get active alert symbols from Redis cache (60s TTL)
+    let activeAlertSymbols: Set<string> = new Set();
+    
+    if (redis) {
+      try {
+        const cachedSymbols = await redis.get('active_alert_symbols');
+        if (cachedSymbols) {
+          const symbolsList = Array.isArray(cachedSymbols) ? cachedSymbols : JSON.parse(cachedSymbols as string);
+          activeAlertSymbols = new Set(symbolsList);
+          console.log(`📊 Using cached active alert symbols: ${symbolsList.length} symbols`);
+        } else {
+          // Cache miss - fetch from database
+          const { data: symbols, error } = await supabaseService
+            .from('alert_monitoring')
+            .select('symbol')
+            .eq('is_active', true);
+            
+          if (!error && symbols) {
+            const uniqueSymbols = [...new Set(symbols.map(s => s.symbol))];
+            activeAlertSymbols = new Set(uniqueSymbols);
+            
+            // Cache for 60 seconds to avoid repeated queries
+            await redis.set('active_alert_symbols', JSON.stringify(uniqueSymbols), { ex: 60 });
+            console.log(`💾 Cached ${uniqueSymbols.length} active alert symbols for 60s`);
+          }
+        }
+      } catch (cacheError) {
+        console.error('❌ Error checking active alert symbols:', cacheError);
+        // Fallback: assume all symbols need database writes
+        activeAlertSymbols = new Set(Array.from(batchedPrices.keys()));
+      }
+    } else {
+      // No Redis - fallback to database query
+      const { data: symbols, error } = await supabaseService
+        .from('alert_monitoring')  
+        .select('symbol')
+        .eq('is_active', true);
+        
+      if (!error && symbols) {
+        activeAlertSymbols = new Set(symbols.map(s => s.symbol));
+      }
+    }
+
+    // PHASE 2A: Only write prices for symbols with active alerts
+    const filteredPrices = new Map<string, PriceData>();
+    for (const [symbol, priceData] of batchedPrices) {
+      if (activeAlertSymbols.has(symbol)) {
+        filteredPrices.set(symbol, priceData);
+      } else {
+        console.log(`⏭️ Skipping DB write for ${symbol} (no active alerts)`);
+      }
+    }
+
+    if (filteredPrices.size === 0) {
+      console.log('📊 No database writes needed - no active alerts for any symbols');
+      lastDatabaseWrite = now;
+      return;
+    }
+
+    // PHASE 2A: Batch write only necessary prices
+    const promises: Promise<any>[] = [];
+    
+    for (const [symbol, priceData] of filteredPrices) {
+      const promise = supabaseService.rpc('upsert_market_price', {
+        p_symbol: symbol,
+        p_bid: priceData.bid,
+        p_ask: priceData.ask,
+        p_mid: priceData.mid,
+        p_timestamp: new Date(parseInt(priceData.ts)).toISOString()
+      });
+      
+      promises.push(promise);
+      
+      // Track database write for cost optimization
+      ultraCostOptimizer.trackApiCall('database');
+    }
+
     await Promise.all(promises);
-    console.log(`💾 Batch updated ${promises.length} prices to database`);
+    console.log(`💾 PHASE 2A: Smart batch update - wrote ${promises.length}/${batchedPrices.size} prices (${Math.round((1 - promises.length/batchedPrices.size)*100)}% reduction)`);
     lastDatabaseWrite = now;
+    
   } catch (error) {
-    console.error('❌ Database batch update failed:', error);
+    console.error('❌ Smart database batch update failed:', error);
   }
 }
 

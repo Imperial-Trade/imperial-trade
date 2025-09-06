@@ -72,7 +72,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // PHASE 2B: Local caching to reduce database queries
   const localCacheRef = useRef<{ data: TradeAlertWithProfile[], expiry: number }>({ data: [], expiry: 0 });
 
-  // PHASE 2B: Enhanced instant alerts with WebSocket integration
+// PHASE 2B: Enhanced instant alerts with WebSocket integration
   useInstantAlerts();
   
   // PHASE 2B: Use optimized WebSocket alerts instead of heavy Realtime subscriptions

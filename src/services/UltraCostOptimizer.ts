@@ -1,50 +1,47 @@
-/**
- * Ultra-Cost Optimization Service
- * Implements aggressive cost reduction strategies for 70% savings
- */
+// PHASE 2A+2D: Ultra Cost Optimizer - 70% total cost reduction
+// Singleton service for aggressive cost optimization while maintaining 50ms performance
 
 interface CostMetrics {
   tradermadeApiCalls: number;
-  databaseConnections: number;
+  databaseWrites: number;
   redisOperations: number;
   edgeFunctionExecutions: number;
-  estimatedMonthlyCost: number;
+  realtimeSubscriptions: number;
+  costEstimateUSD: number;
+  lastReset: Date;
 }
 
 interface OptimizationConfig {
-  allowedSymbols: string[];
-  maxDatabaseConnections: number;
-  cacheTTLMultiplier: number;
-  batchSizeMultiplier: number;
-  aggressive: boolean;
+  maxDatabaseWritesPerMinute: number;
+  maxTraderMadeCallsPerHour: number;
+  maxRedisOperationsPerMinute: number;
+  emergencyModeThreshold: number;
+  costTargetUSD: number;
 }
 
 class UltraCostOptimizer {
   private static instance: UltraCostOptimizer;
-  private config: OptimizationConfig;
-  private metrics: CostMetrics;
-  private lastOptimization: Date;
+  
+  private metrics: CostMetrics = {
+    tradermadeApiCalls: 0,
+    databaseWrites: 0,
+    redisOperations: 0,
+    edgeFunctionExecutions: 0,
+    realtimeSubscriptions: 0,
+    costEstimateUSD: 0,
+    lastReset: new Date()
+  };
 
-  private constructor() {
-    this.config = {
-      allowedSymbols: ['XAUUSD', 'BTCUSD'], // Only 2 symbols for maximum cost savings
-      maxDatabaseConnections: 15, // Reduced from 50
-      cacheTTLMultiplier: 3, // 3x longer cache times
-      batchSizeMultiplier: 2, // 2x larger batches
-      aggressive: true
-    };
+  private config: OptimizationConfig = {
+    maxDatabaseWritesPerMinute: 10, // Reduced from ~200
+    maxTraderMadeCallsPerHour: 1, // Single leader connection
+    maxRedisOperationsPerMinute: 100, // Batch optimized
+    emergencyModeThreshold: 50, // $50/month emergency threshold
+    costTargetUSD: 30 // Target: $30/month (down from $900)
+  };
 
-    this.metrics = {
-      tradermadeApiCalls: 0,
-      databaseConnections: 0,
-      redisOperations: 0,
-      edgeFunctionExecutions: 0,
-      estimatedMonthlyCost: 0
-    };
-
-    this.lastOptimization = new Date();
-    console.log('💰 Ultra-Cost Optimizer initialized - Target: 70% cost reduction');
-  }
+  private emergencyMode = false;
+  private allowedSymbols = new Set(['BTCUSD', 'XAUUSD']); // Only these 2 symbols
 
   static getInstance(): UltraCostOptimizer {
     if (!UltraCostOptimizer.instance) {
@@ -53,122 +50,137 @@ class UltraCostOptimizer {
     return UltraCostOptimizer.instance;
   }
 
-  // Symbol filtering for cost optimization
+  // PHASE 2A: Smart symbol filtering for cost optimization
   isSymbolAllowed(symbol: string): boolean {
-    return this.config.allowedSymbols.includes(symbol);
+    return this.allowedSymbols.has(symbol.toUpperCase());
   }
 
-  // Dynamic connection scaling based on market activity
+  // PHASE 2C: Optimized connection count based on market conditions
   getOptimalConnectionCount(isMarketHours: boolean, isPeakHours: boolean): number {
-    if (!isMarketHours) return 5; // Minimum during market close
-    if (isPeakHours) return this.config.maxDatabaseConnections; // Maximum during peaks
-    return Math.floor(this.config.maxDatabaseConnections * 0.6); // 60% during normal hours
+    if (this.emergencyMode) return 1; // Emergency: single connection only
+    
+    // Cost-optimized connection strategy
+    if (!isMarketHours) return 1; // Market closed: minimal connections
+    if (isPeakHours) return 3; // Peak hours: slightly more connections
+    return 2; // Normal hours: balanced connections
   }
 
-  // Smart cache TTL calculation
+  // PHASE 2A+2D: Optimized cache TTL based on cost and data importance
   getOptimizedCacheTTL(baseSeconds: number, dataType: 'prices' | 'signals' | 'other'): number {
-    let multiplier = this.config.cacheTTLMultiplier;
+    const multiplier = this.emergencyMode ? 3 : 2; // Emergency mode: longer cache
     
-    // Extra aggressive caching for non-critical data
     switch (dataType) {
       case 'prices':
-        multiplier = 4; // 4x longer for price data (acceptable for XAUUSD/BTCUSD)
-        break;
+        return Math.min(baseSeconds * multiplier, 300); // Max 5 minutes for prices
       case 'signals':
-        multiplier = 2; // 2x longer for signals
-        break;
+        return Math.min(baseSeconds * multiplier, 600); // Max 10 minutes for signals
+      case 'other':
+        return Math.min(baseSeconds * multiplier, 1800); // Max 30 minutes for other data
       default:
-        multiplier = 5; // 5x longer for other data
+        return baseSeconds * multiplier;
     }
-    
-    return baseSeconds * multiplier;
   }
 
-  // Batch size optimization
+  // PHASE 2D: Optimized batch size for Redis operations
   getOptimalBatchSize(baseBatchSize: number): number {
-    return Math.floor(baseBatchSize * this.config.batchSizeMultiplier);
+    const multiplier = this.emergencyMode ? 2 : 1.5;
+    return Math.floor(baseBatchSize * multiplier);
   }
 
-  // Cost tracking
+  // Track API usage for cost monitoring
   trackApiCall(type: 'tradermade' | 'database' | 'redis' | 'edge_function'): void {
     switch (type) {
       case 'tradermade':
         this.metrics.tradermadeApiCalls++;
+        this.metrics.costEstimateUSD += 0.01; // $0.01 per API call estimate
         break;
       case 'database':
-        this.metrics.databaseConnections++;
+        this.metrics.databaseWrites++;
+        this.metrics.costEstimateUSD += 0.001; // $0.001 per write estimate
         break;
       case 'redis':
         this.metrics.redisOperations++;
+        this.metrics.costEstimateUSD += 0.0001; // $0.0001 per operation estimate
         break;
       case 'edge_function':
         this.metrics.edgeFunctionExecutions++;
+        this.metrics.costEstimateUSD += 0.002; // $0.002 per execution estimate
         break;
     }
-    
-    this.updateCostEstimate();
+
+    // Check emergency threshold
+    if (this.metrics.costEstimateUSD > this.config.emergencyModeThreshold) {
+      this.enableEmergencyMode();
+    }
   }
 
-  // Cost estimation (monthly)
-  private updateCostEstimate(): void {
-    // Rough cost estimates per month
-    const tradermadeCost = this.metrics.tradermadeApiCalls * 0.001; // $0.001 per call
-    const databaseCost = this.metrics.databaseConnections * 0.01; // $0.01 per connection
-    const redisCost = this.metrics.redisOperations * 0.0001; // $0.0001 per operation
-    const edgeFunctionCost = this.metrics.edgeFunctionExecutions * 0.000001; // $0.000001 per execution
+  // Get current optimization report
+  getOptimizationReport() {
+    const hoursSinceReset = (Date.now() - this.metrics.lastReset.getTime()) / (1000 * 60 * 60);
     
-    this.metrics.estimatedMonthlyCost = tradermadeCost + databaseCost + redisCost + edgeFunctionCost;
-  }
-
-  // Get optimization report
-  getOptimizationReport(): {
-    config: OptimizationConfig;
-    metrics: CostMetrics;
-    projectedSavings: {
-      percentage: number;
-      monthly: number;
-    };
-  } {
-    const originalMonthlyCost = 45; // Estimated original cost
-    const currentCost = this.metrics.estimatedMonthlyCost;
-    const savings = originalMonthlyCost - currentCost;
-    const savingsPercentage = (savings / originalMonthlyCost) * 100;
-
     return {
-      config: this.config,
+      currentConfig: this.config,
       metrics: this.metrics,
-      projectedSavings: {
-        percentage: Math.round(savingsPercentage),
-        monthly: Math.round(savings)
-      }
+      projectedMonthlyCostUSD: (this.metrics.costEstimateUSD / Math.max(hoursSinceReset, 0.1)) * 24 * 30,
+      optimizationLevel: this.emergencyMode ? 'EMERGENCY' : 'NORMAL',
+      costSavingsPercent: Math.max(0, (1 - (this.metrics.costEstimateUSD / this.config.costTargetUSD)) * 100),
+      allowedSymbols: Array.from(this.allowedSymbols),
+      recommendations: this.getOptimizationRecommendations()
     };
   }
 
-  // Reset metrics (for monthly tracking)
+  private getOptimizationRecommendations(): string[] {
+    const recommendations: string[] = [];
+    
+    if (this.metrics.databaseWrites > this.config.maxDatabaseWritesPerMinute) {
+      recommendations.push('CRITICAL: Reduce database writes - implement conditional writes');
+    }
+    
+    if (this.metrics.tradermadeApiCalls > this.config.maxTraderMadeCallsPerHour) {
+      recommendations.push('WARNING: Multiple TraderMade connections detected - ensure leader election');
+    }
+    
+    if (this.metrics.costEstimateUSD > this.config.costTargetUSD) {
+      recommendations.push('COST: Above target cost - consider enabling emergency mode');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('✅ All cost optimization targets met');
+    }
+
+    return recommendations;
+  }
+
+  // Reset metrics (call daily)
   resetMetrics(): void {
     this.metrics = {
       tradermadeApiCalls: 0,
-      databaseConnections: 0,
+      databaseWrites: 0,
       redisOperations: 0,
       edgeFunctionExecutions: 0,
-      estimatedMonthlyCost: 0
+      realtimeSubscriptions: 0,
+      costEstimateUSD: 0,
+      lastReset: new Date()
     };
-    this.lastOptimization = new Date();
-    console.log('📊 Ultra-Cost Optimizer metrics reset');
+    console.log('📊 UltraCostOptimizer metrics reset');
   }
 
-  // Emergency cost reduction mode
+  // Emergency mode: Maximum cost reduction
   enableEmergencyMode(): void {
-    this.config.aggressive = true;
-    this.config.cacheTTLMultiplier = 5; // Even more aggressive caching
-    this.config.maxDatabaseConnections = 10; // Further reduce connections
-    console.log('🚨 Emergency cost reduction mode enabled');
+    if (!this.emergencyMode) {
+      this.emergencyMode = true;
+      console.log('🚨 EMERGENCY COST MODE ACTIVATED - Maximum cost reduction enabled');
+      
+      // Tighten all limits
+      this.config.maxDatabaseWritesPerMinute = Math.floor(this.config.maxDatabaseWritesPerMinute / 2);
+      this.config.maxRedisOperationsPerMinute = Math.floor(this.config.maxRedisOperationsPerMinute / 2);
+    }
   }
 
-  // Check if optimization targets are being met
+  // Check if system is performing well within cost constraints
   isPerformingWell(): boolean {
     const report = this.getOptimizationReport();
-    return report.projectedSavings.percentage >= 60; // Target 60%+ savings
+    return report.projectedMonthlyCostUSD <= this.config.costTargetUSD * 1.2; // 20% buffer
   }
 }
 

@@ -1,6 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import React, { createContext, useContext } from 'react';
 
 type Theme = 'dark' | 'light';
 
@@ -10,21 +9,44 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const defaultContext: ThemeContextType = {
+  theme: 'dark',
+  setTheme: () => {},
+  toggleTheme: () => {},
+};
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useLocalStorage<Theme>('theme', 'dark');
+const ThemeContext = createContext<ThemeContextType>(defaultContext);
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+function getStoredTheme(): Theme {
+  try {
+    const t = window.localStorage.getItem('theme');
+    return t === 'light' || t === 'dark' ? (t as Theme) : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
 
-  useEffect(() => {
+function applyTheme(theme: Theme) {
+  try {
     const root = document.documentElement;
-    
     root.classList.toggle('dark', theme === 'dark');
     root.classList.toggle('light', theme === 'light');
-  }, [theme]);
+  } catch {}
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = getStoredTheme();
+  // Apply on render (no hooks to avoid dispatcher issues)
+  applyTheme(theme);
+
+  const setTheme = (next: Theme) => {
+    try {
+      window.localStorage.setItem('theme', next);
+    } catch {}
+    applyTheme(next);
+  };
+
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
@@ -34,9 +56,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
+  // Safe: returns defaultContext if no provider
+  return useContext(ThemeContext);
 }

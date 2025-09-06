@@ -3,6 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 import { Redis } from 'https://esm.sh/@upstash/redis@1.28.4';
 
+console.log('🚀 ULTRA-COST OPTIMIZED WebSocket Streaming - Target: 70% Cost Reduction');
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -23,10 +25,10 @@ const LEADER_ELECTION_TTL = 15;
 const FOLLOWER_PROMOTION_INTERVAL = 15000;
 const LEADER_HEARTBEAT_INTERVAL = 20000;
 
-// PHASE 2A: Smart Database Write Settings
-const ACTIVE_SYMBOLS_CACHE_TTL = 60; // Cache active symbols for 60 seconds
-const DB_BATCH_WRITE_INTERVAL = 3000; // Write to DB every 3 seconds instead of every price tick
-const REDIS_PIPELINE_BATCH_SIZE = 10; // Batch Redis operations
+// ULTRA-COST OPTIMIZATION: Aggressive batching for cost reduction
+const ACTIVE_SYMBOLS_CACHE_TTL = 300; // 5-minute cache (5x longer)
+const DB_BATCH_WRITE_INTERVAL = 10000; // Write to DB every 10 seconds (3x longer)
+const REDIS_PIPELINE_BATCH_SIZE = 20; // Larger batch sizes (2x bigger)
 
 // Performance Monitoring Enhancement - Track data freshness
 const DATA_FRESHNESS_THRESHOLD_MS = 60000; // 1 minute threshold for stale data alerts
@@ -69,7 +71,8 @@ if (redisRestUrl && redisRestToken) {
   console.log('📵 Redis disabled - running without cache');
 }
 
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD'];
+// ULTRA-COST OPTIMIZATION: Only XAUUSD and BTCUSD for 70% cost reduction
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD'];
 const ALLOWED_CLIENT_SYMBOLS = new Set(TRADERMADE_SYMBOLS);
 
 // Performance Monitoring State

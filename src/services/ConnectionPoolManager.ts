@@ -27,11 +27,13 @@ class ConnectionPoolManager {
   private requestQueue: Array<{ resolve: Function; reject: Function; timestamp: number }> = [];
 
   private constructor(config: Partial<PoolConfig> = {}) {
+    // ULTRA-COST OPTIMIZATION: Dynamic scaling based on market activity
+    const baseConnections = this.isMarketHours() ? 15 : 5;
     this.config = {
-      maxConnections: 50, // Supabase default pool size
-      healthCheckInterval: 30000, // 30s health checks
-      retryAttempts: 3,
-      circuitBreakerThreshold: 0.5, // 50% error rate threshold
+      maxConnections: this.isPeakHours() ? 25 : baseConnections, // Dynamic scaling
+      healthCheckInterval: 45000, // 45s health checks (cost optimization)
+      retryAttempts: 2, // Reduced retries for faster failure detection
+      circuitBreakerThreshold: 0.3, // More aggressive circuit breaker
       ...config
     };
 
@@ -247,15 +249,15 @@ class ConnectionPoolManager {
     return utcHour >= 13 && utcHour <= 17;
   }
 
-  // Adjust pool behavior based on market conditions
+  // ULTRA-COST OPTIMIZATION: Aggressive pool scaling for cost savings
   getOptimalPoolSize(): number {
+    if (!this.isMarketHours()) {
+      return 3; // Ultra-minimal during market close
+    }
     if (this.isPeakHours()) {
-      return Math.min(this.config.maxConnections * 1.5, 100); // Increase during peaks
+      return Math.min(this.config.maxConnections, 25); // Capped maximum
     }
-    if (this.isMarketHours()) {
-      return this.config.maxConnections;
-    }
-    return Math.max(this.config.maxConnections * 0.5, 10); // Reduce during off-hours
+    return Math.max(Math.floor(this.config.maxConnections * 0.4), 5); // 40% during normal hours
   }
 
   destroy(): void {

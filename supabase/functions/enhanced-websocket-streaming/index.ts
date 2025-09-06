@@ -310,28 +310,166 @@ async function updateDatabasePrices(batchedPrices: Map<string, PriceData>) {
   }
 }
 
+// Market hours checking function
+function isMarketOpen(): boolean {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcDay = now.getUTCDay();
+  
+  // Weekend check (Saturday = 6, Sunday = 0)
+  if (utcDay === 6 || utcDay === 0) {
+    return false;
+  }
+  
+  // Market hours: Monday 00:00 UTC to Friday 22:00 UTC (approximate)
+  return !(utcDay === 5 && utcHour >= 22) && !(utcDay === 1 && utcHour < 1);
+}
+
+// Redis leader election functions
+async function tryBecomeLeader(): Promise<boolean> {
+  if (!redis) return true; // No Redis, assume single instance
+  
+  try {
+    const result = await redis.set(
+      'tradermade:leader',
+      Deno.env.get('DENO_DEPLOYMENT_ID') || 'default',
+      { px: LEADER_ELECTION_TTL * 1000, nx: true }
+    );
+    
+    if (result === 'OK') {
+      console.log('👑 Became TraderMade connection leader');
+      leaderState.isLeader = true;
+      leaderState.lastHeartbeat = Date.now();
+      startLeaderHeartbeat();
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Leader election failed:', error);
+    return false;
+  }
+}
+
+async function startLeaderHeartbeat() {
+  const heartbeatInterval = setInterval(async () => {
+    if (!leaderState.isLeader || !redis) {
+      clearInterval(heartbeatInterval);
+      return;
+    }
+    
+    try {
+      const result = await redis.set(
+        'tradermade:leader',
+        Deno.env.get('DENO_DEPLOYMENT_ID') || 'default',
+        { px: LEADER_ELECTION_TTL * 1000, xx: true }
+      );
+      
+      if (result !== 'OK') {
+        console.log('💔 Lost leadership - stopping TraderMade connection');
+        leaderState.isLeader = false;
+        clearInterval(heartbeatInterval);
+      } else {
+        leaderState.lastHeartbeat = Date.now();
+      }
+    } catch (error) {
+      console.error('❌ Leader heartbeat failed:', error);
+      leaderState.isLeader = false;
+      clearInterval(heartbeatInterval);
+    }
+  }, LEADER_HEARTBEAT_INTERVAL);
+}
+
+async function startFollowerMode() {
+  if (!redis) return;
+  
+  console.log('👥 Starting follower mode - subscribing to Redis prices');
+  
+  try {
+    // Subscribe to price updates from leader
+    const redisSubscriber = new Redis({
+      url: redisRestUrl!,
+      token: redisRestToken!,
+    });
+    
+    // Subscribe to price channels
+    for (const symbol of TRADERMADE_SYMBOLS) {
+      try {
+        // Note: Upstash Redis REST API doesn't support pub/sub directly
+        // We'll poll for price updates instead
+        setInterval(async () => {
+          try {
+            const cachedPrice = await redis.get(`price:${symbol}`);
+            if (cachedPrice) {
+              const priceData = JSON.parse(cachedPrice);
+              await broadcastToClients(symbol, priceData);
+            }
+          } catch (error) {
+            console.error(`❌ Error polling price for ${symbol}:`, error);
+          }
+        }, 1000); // Poll every second
+      } catch (error) {
+        console.error(`❌ Error subscribing to ${symbol}:`, error);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to start follower mode:', error);
+  }
+}
+
 async function connectToTraderMade() {
   if (!tradermadeApiKey) {
     console.warn('⚠️ TraderMade API key not configured - skipping connection');
     return;
   }
 
+  // Check market hours first
+  if (!isMarketOpen()) {
+    console.log('🌙 Market is closed - skipping TraderMade connection');
+    return;
+  }
+
+  // Try to become leader
+  const isLeader = await tryBecomeLeader();
+  
+  if (!isLeader) {
+    console.log('👥 Another instance is leader - starting follower mode');
+    await startFollowerMode();
+    return;
+  }
+
   const wsUrl = `wss://marketdata.tradermade.com/feedadv?api_key=${tradermadeApiKey}`;
   
   try {
-    console.log('🔌 Connecting to TraderMade WebSocket...');
+    console.log('🔌 Connecting to TraderMade WebSocket as LEADER...');
     const ws = new WebSocket(wsUrl);
     const batchedPrices = new Map<string, PriceData>();
 
     ws.onopen = () => {
-      console.log('✅ TraderMade WebSocket connected');
-      leaderState.isLeader = true;
+      console.log('✅ TraderMade WebSocket connected (LEADER)');
     };
 
     ws.onmessage = async (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const message = event.data;
         
+        // Handle plain text messages (like "Connected", "Heartbeat")
+        if (typeof message === 'string' && !message.startsWith('{')) {
+          console.log(`📝 TraderMade text message: ${message}`);
+          return;
+        }
+        
+        // Try to parse as JSON
+        let data;
+        try {
+          data = JSON.parse(message);
+        } catch (parseError) {
+          console.log(`📝 Non-JSON message from TraderMade: ${message.substring(0, 100)}`);
+          return;
+        }
+        
+        // Process price data
         if (data.symbol && ALLOWED_CLIENT_SYMBOLS.has(data.symbol)) {
           console.log(`💰 PRICE DATA RECEIVED: ${JSON.stringify(data).substring(0, 100)}...`);
           
@@ -370,11 +508,8 @@ async function connectToTraderMade() {
 
           console.log(`💰 LIVE PRICE: ${data.symbol} = ${data.bid}/${data.ask} (mid: ${data.mid})`);
 
-          // Priority handling for important symbols
-          if (PRIORITY_SYMBOLS.has(data.symbol)) {
-            console.log(`⚡ PRIORITY SYMBOL ${data.symbol} - Immediate broadcast`);
-            await broadcastToClients(data.symbol, enhancedPriceData);
-          }
+          // Broadcast to connected clients
+          await broadcastToClients(data.symbol, enhancedPriceData);
 
           // Batch for database update
           batchedPrices.set(data.symbol, priceData);
@@ -394,8 +529,13 @@ async function connectToTraderMade() {
         console.log('⚡ PRICE FLOW STOPPED - Scheduling reconnection...');
       }
       
-      console.log('🔄 Scheduling TraderMade reconnection in 1000ms');
-      setTimeout(connectToTraderMade, RECONNECT_DELAY_MS);
+      // Only reconnect if market is still open
+      if (isMarketOpen()) {
+        console.log('🔄 Scheduling TraderMade reconnection in 1000ms');
+        setTimeout(connectToTraderMade, RECONNECT_DELAY_MS);
+      } else {
+        console.log('🌙 Market closed - not reconnecting');
+      }
     };
 
     ws.onerror = (error) => {
@@ -404,7 +544,9 @@ async function connectToTraderMade() {
 
   } catch (error) {
     console.error('❌ Failed to connect to TraderMade:', error);
-    setTimeout(connectToTraderMade, RECONNECT_DELAY_MS);
+    if (isMarketOpen()) {
+      setTimeout(connectToTraderMade, RECONNECT_DELAY_MS);
+    }
   }
 }
 
@@ -527,8 +669,31 @@ setInterval(async () => {
   `);
 }, 300000); // Every 5 minutes
 
-// Start TraderMade connection
-connectToTraderMade();
+// Start leader election and connection process
+async function initializeTraderMadeConnection() {
+  console.log('🚀 Initializing TraderMade connection with leader election...');
+  
+  // Check market hours before attempting connection
+  if (!isMarketOpen()) {
+    console.log('🌙 Market is closed - scheduling check for market open');
+    
+    // Check every hour if market opens
+    const marketCheckInterval = setInterval(() => {
+      if (isMarketOpen()) {
+        clearInterval(marketCheckInterval);
+        connectToTraderMade();
+      }
+    }, 3600000); // Check every hour
+    
+    return;
+  }
+  
+  // Market is open, proceed with connection
+  await connectToTraderMade();
+}
+
+// Initialize connection
+initializeTraderMadeConnection();
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import React from "react";
 import App from "./App.tsx";
 import "./index.css";
-import { PostHogProvider } from "posthog-js/react";
+import posthog from "posthog-js";
 import { RootErrorBoundary } from "./components/error-boundary/RootErrorBoundary";
 
 // Service Worker Registration for PWA
@@ -40,10 +40,17 @@ if ('serviceWorker' in navigator) {
 const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
 const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 
-const options = {
-  api_host: POSTHOG_HOST,
-  capture_pageview: false,
-};
+// Initialize PostHog directly
+if (POSTHOG_KEY && POSTHOG_HOST) {
+  try {
+    posthog.init(POSTHOG_KEY, {
+      api_host: POSTHOG_HOST,
+      capture_pageview: false,
+    });
+  } catch (error) {
+    console.error('PostHog initialization failed:', error);
+  }
+}
 
 // Debug React version
 console.log('🔍 React version:', React.version);
@@ -51,8 +58,6 @@ console.log('🔍 React-DOM loaded:', !!document.getElementById("root"));
 
 createRoot(document.getElementById("root")!).render(
   <RootErrorBoundary>
-    <PostHogProvider apiKey={POSTHOG_KEY} options={options}>
-      <App />
-    </PostHogProvider>
+    <App />
   </RootErrorBoundary>
 );

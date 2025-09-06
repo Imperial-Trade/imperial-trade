@@ -24,76 +24,54 @@ export interface StreamingPolicy {
  * Ultra-Smart Symbol Classification
  * Determines streaming policy based on asset type
  */
-export function getSymbolStreamingPolicy(symbol: string): StreamingPolicy {
-  if (!symbol) {
-    return { allowStreaming: false, reason: 'Invalid symbol' };
-  }
-
-  const sym = symbol.toUpperCase();
-  
-  // 🎯 ULTRA-FOCUSED: Only BTCUSD and XAUUSD allowed
-  if (sym === 'BTCUSD') {
+export const getSymbolStreamingPolicy = (symbol: string): StreamingPolicy => {
+  // 24/7 STREAMING: Always allow all symbols for continuous price data
+  if (symbol === 'BTCUSD') {
     return {
       allowStreaming: true,
-      reason: 'BTCUSD - 24/7 Crypto Priority Asset'
+      reason: '24/7 Cryptocurrency streaming - always live'
     };
   }
-
-  if (sym === 'XAUUSD') {
-    const forexStatus = getForexMarketStatus();
+  
+  if (symbol === 'XAUUSD') {
     return {
-      allowStreaming: forexStatus.isOpen,
-      reason: forexStatus.isOpen ? 'XAUUSD Gold Market Open' : 'XAUUSD Gold Market Closed - Cost Optimization',
-      nextCheck: forexStatus.nextOpenTime
+      allowStreaming: true,
+      reason: '24/7 Gold streaming - continuous price updates'
     };
   }
-
-  // 🚫 Block all other symbols for cost optimization
+  
+  // Allow all symbols for 24/7 streaming
   return {
-    allowStreaming: false,
-    reason: `Only BTCUSD and XAUUSD supported - ${sym} blocked for cost optimization`
+    allowStreaming: true,
+    reason: '24/7 streaming enabled for all symbols'
   };
-}
+};
 
 /**
  * Multi-Symbol Streaming Policy Check
  * Determines if ANY of the requested symbols can stream
  */
 export function canStreamAnySymbol(symbols: string[]): { canStream: boolean; allowedSymbols: string[]; reason: string } {
-  if (!symbols.length) {
-    return { canStream: false, allowedSymbols: [], reason: 'No symbols provided' };
-  }
-
-  // 🎯 Filter to only supported symbols first
+  const allowedSymbols: string[] = [];
+  const reasons: string[] = [];
+  
+  // Filter to only supported symbols
   const supportedSymbols = symbols.filter(symbol => 
     ['BTCUSD', 'XAUUSD'].includes(symbol.toUpperCase())
   );
-
-  if (supportedSymbols.length === 0) {
-    return { 
-      canStream: false, 
-      allowedSymbols: [], 
-      reason: 'Only BTCUSD and XAUUSD are supported for cost optimization' 
-    };
-  }
-
-  const allowedSymbols: string[] = [];
-  const reasons: string[] = [];
-
+  
+  // 24/7 STREAMING: All supported symbols can stream
   for (const symbol of supportedSymbols) {
-    const policy = getSymbolStreamingPolicy(symbol);
-    if (policy.allowStreaming) {
-      allowedSymbols.push(symbol);
-      reasons.push(`${symbol}: ${policy.reason}`);
-    } else {
-      reasons.push(`${symbol}: ${policy.reason}`);
-    }
+    allowedSymbols.push(symbol);
+    reasons.push(`24/7 ${symbol} streaming`);
   }
-
+  
   return {
     canStream: allowedSymbols.length > 0,
     allowedSymbols,
-    reason: reasons.join('; ')
+    reason: allowedSymbols.length > 0 ? 
+      `24/7 Live Streaming: ${allowedSymbols.join(', ')}` : 
+      'No supported symbols provided'
   };
 }
 
@@ -103,6 +81,7 @@ export function canStreamAnySymbol(symbols: string[]): { canStream: boolean; all
 export function getUnifiedMarketStatus(symbol: string): UnifiedMarketStatus {
   const sym = symbol.toUpperCase();
   
+  // 24/7 STREAMING: All symbols are considered "open" for streaming
   if (isCryptoSymbol(sym)) {
     return {
       isOpen: true,
@@ -113,37 +92,34 @@ export function getUnifiedMarketStatus(symbol: string): UnifiedMarketStatus {
     };
   }
 
+  // Gold and Forex also get 24/7 streaming for user experience
   if (isForexSymbol(sym) || isGoldSymbol(sym)) {
-    const status = getForexMarketStatus();
     return {
-      isOpen: status.isOpen,
-      isClosed: status.isClosed,
-      canStream: status.isOpen,
+      isOpen: true,
+      isClosed: false,
+      canStream: true,
       marketType: isGoldSymbol(sym) ? 'commodities' : 'forex',
-      session: status.session,
-      nextOpenTime: status.nextOpenTime
+      session: '24/7 Live Streaming'
     };
   }
 
   if (isUSMarketSymbol(sym)) {
-    const status = getUSMarketStatus();
     return {
-      isOpen: status.isOpen,
-      isClosed: status.isClosed,
-      canStream: status.isOpen,
+      isOpen: true,
+      isClosed: false,
+      canStream: true,
       marketType: 'us_market',
-      session: status.session,
-      nextOpenTime: status.nextOpenTime
+      session: '24/7 Live Streaming'
     };
   }
 
-  // Default: assume 24/7 for unknown symbols
+  // Default: assume 24/7 for all symbols
   return {
     isOpen: true,
     isClosed: false,
     canStream: true,
     marketType: '24/7',
-    session: 'Unknown Market Type'
+    session: '24/7 Live Streaming'
   };
 }
 
@@ -320,8 +296,8 @@ function isDSTActive(): boolean {
  * @deprecated Use getUnifiedMarketStatus instead
  */
 export function isMarketClosed(symbol: string = 'GENERIC'): boolean {
-  const status = getUnifiedMarketStatus(symbol);
-  return status.isClosed;
+  // 24/7 OVERRIDE: Always return false (never closed) for continuous streaming
+  return false;
 }
 
 /**
@@ -329,11 +305,11 @@ export function isMarketClosed(symbol: string = 'GENERIC'): boolean {
  * @deprecated Use getUnifiedMarketStatus instead
  */
 export function getMarketStatus(symbol: string = 'GENERIC') {
-  const status = getUnifiedMarketStatus(symbol);
+  // 24/7 OVERRIDE: Always return open status for continuous streaming
   return {
-    isOpen: status.isOpen,
-    isClosed: status.isClosed,
-    session: status.session,
-    nextOpenTime: status.nextOpenTime
+    isOpen: true,
+    isClosed: false,
+    session: '24/7 Live Streaming',
+    nextOpenTime: undefined
   };
 }

@@ -168,54 +168,21 @@ let performanceMetrics: PerformanceMetrics = {
   stalePricesDetected: 0
 };
 
-// PHASE 1: Fixed Market hours for BTCUSD (24/7) and XAUUSD (market hours)
-function isMarketOpen(symbol?: string): boolean {
-  const now = new Date();
-  const utcHour = now.getUTCHours();
-  const utcDay = now.getUTCDay();
-  
-  // BTCUSD trades 24/7 (crypto)
-  if (symbol === 'BTCUSD') {
-    return true;
-  }
-  
-  // XAUUSD (Gold) follows forex market hours
-  if (symbol === 'XAUUSD') {
-    // Weekend check (Friday 22:00 UTC to Sunday 22:00 UTC closed)
-    if (utcDay === 6) return false; // Saturday closed
-    if (utcDay === 0 && utcHour < 22) return false; // Sunday before 22:00 UTC closed
-    if (utcDay === 5 && utcHour >= 22) return false; // Friday after 22:00 UTC closed
-    
-    return true; // Open Monday 22:00 UTC to Friday 22:00 UTC
-  }
-  
-  // Default logic for other symbols (if any)
-  if (utcDay === 6 || utcDay === 0) {
-    return false;
-  }
-  
-  return !(utcDay === 5 && utcHour >= 22) && !(utcDay === 1 && utcHour < 1);
-}
+// 24/7 Connection Strategy - NO MARKET HOURS RESTRICTIONS
+const isAlwaysOpen = (symbol?: string): boolean => {
+  // BTCUSD and XAUUSD always connect for continuous price data
+  // This ensures users always see live prices regardless of market status
+  return true;
+};
 
-// PHASE 1: Enhanced market status with per-symbol checking
-function getMarketStatus(): { isOpen: boolean; openSymbols: string[]; closedSymbols: string[] } {
-  const openSymbols: string[] = [];
-  const closedSymbols: string[] = [];
-  
-  for (const symbol of TRADERMADE_SYMBOLS) {
-    if (isMarketOpen(symbol)) {
-      openSymbols.push(symbol);
-    } else {
-      closedSymbols.push(symbol);
-    }
-  }
-  
+const getConnectionStatus = (): { shouldConnect: boolean; activeSymbols: string[]; reason: string } => {
+  // Always connect to maintain data consistency and user experience
   return {
-    isOpen: openSymbols.length > 0,
-    openSymbols,
-    closedSymbols
+    shouldConnect: true,
+    activeSymbols: TRADERMADE_SYMBOLS,
+    reason: '24/7 live price streaming for optimal user experience'
   };
-}
+};
 
 // Redis leader election functions
 async function tryBecomeLeader(): Promise<boolean> {
@@ -278,67 +245,69 @@ let connectionState = 'disconnected';
 let lastTraderMadeError: number = 0;
 let errorCount = 0;
 
-// PHASE 1: Enhanced TraderMade connection with per-symbol market hours
+// TraderMade Connection and Data Broadcasting - 24/7 ALWAYS CONNECT
 async function connectToTraderMade() {
   if (!tradermadeApiKey) {
-    console.error('❌ TraderMade API key not configured');
+    console.error('❌ CRITICAL: TraderMade API key not configured');
     return;
   }
 
   if (!await tryBecomeLeader()) {
     console.log('⚡ Following price distribution via Redis pub/sub');
-    setupRedisPubSubConsumer(); // PHASE 3: Add Redis consumer for follower instances
+    setupRedisPubSubConsumer();
     return;
   }
 
-  // PHASE 1: Check market status per symbol
-  const marketStatus = getMarketStatus();
-  console.log(`📊 Market Status: ${marketStatus.openSymbols.length}/${TRADERMADE_SYMBOLS.length} symbols open`);
-  console.log(`🟢 Open: ${marketStatus.openSymbols.join(', ')}`);
-  if (marketStatus.closedSymbols.length > 0) {
-    console.log(`🔴 Closed: ${marketStatus.closedSymbols.join(', ')}`);
-  }
-
-  if (!marketStatus.isOpen) {
-    console.log('🌙 All markets closed - scheduling check for market open');
-    setTimeout(connectToTraderMade, 60000); // Check every minute
+  // Always connect for 24/7 live price streaming
+  const connectionStatus = getConnectionStatus();
+  console.log(`🔥 24/7 CONNECTION: ${connectionStatus.reason}`);
+  console.log(`📊 Active symbols: [${connectionStatus.activeSymbols.join(', ')}]`);
+  
+  // Connect immediately for continuous price data
+  if (!connectionStatus.shouldConnect) {
+    console.log('⚠️ Connection disabled - this should never happen in 24/7 mode');
+    setTimeout(connectToTraderMade, 1000); // Retry immediately
     return;
   }
 
   try {
-    console.log('🔗 Connecting to TraderMade WebSocket...');
+    console.log('🔗 Connecting to TraderMade WebSocket - 24/7 MODE...');
     connectionState = 'connecting';
     
-    // PHASE 1: Add exponential backoff for rate limiting
-    const now = Date.now();
-    if (now - lastTraderMadeError < Math.pow(2, errorCount) * 1000) {
-      const waitTime = Math.pow(2, errorCount) * 1000 - (now - lastTraderMadeError);
-      console.log(`⏳ PHASE 1: Rate limit backoff - waiting ${Math.round(waitTime/1000)}s before connecting`);
-      setTimeout(connectToTraderMade, waitTime);
-      return;
+    // Simple reconnection delay - no complex market hours logic
+    if (errorCount > 0) {
+      // Fast reconnection for better user experience
+      const baseDelay = Math.min(1000 * errorCount, 10000); // Max 10s delay
+      const jitter = Math.random() * 500; // Small jitter
+      const totalDelay = baseDelay + jitter;
+      
+      console.log(`🔄 SIMPLIFIED RECONNECT: ${Math.round(totalDelay)}ms delay (attempt ${errorCount})`);
+      await new Promise(resolve => setTimeout(resolve, totalDelay));
     }
     
     wsConnection = new WebSocket(`wss://marketdata.tradermade.com/feedadv?api_key=${tradermadeApiKey}`);
     
     wsConnection.onopen = () => {
-      console.log('✅ TraderMade WebSocket connected - SINGLE INSTANCE with Redis distribution');
+      console.log('✅ TraderMade WebSocket connected - 24/7 LIVE');
       connectionState = 'connected';
       errorCount = 0; // Reset error count on successful connection
       
-      // PHASE 1: Subscribe only to open market symbols for cost optimization
-      const openSymbols = getMarketStatus().openSymbols;
-      const subscribeMessage = {
+      // Reset performance metrics on successful connection
+      performanceMetrics.cacheHitRate = 0;
+      performanceMetrics.dataFreshnessScore = 100;
+      
+      const authMessage = {
         userKey: tradermadeApiKey,
-        symbol: openSymbols.join(',')
+        symbol: TRADERMADE_SYMBOLS.join(',')
       };
       
-      wsConnection!.send(JSON.stringify(subscribeMessage));
-      console.log(`📡 PHASE 1: Subscribed to ${openSymbols.length} open symbols: ${openSymbols.join(', ')}`);
+      console.log(`🔑 AUTHENTICATING: ${TRADERMADE_SYMBOLS.join(',')} - 24/7 streaming`);
+      wsConnection!.send(JSON.stringify(authMessage));
     };
 
     wsConnection.onmessage = (event) => {
       try {
-        // PHASE 3: Handle both JSON and plaintext TraderMade responses
+        // Handle both JSON and plaintext TraderMade responses
         let data;
         try {
           data = JSON.parse(event.data);
@@ -346,13 +315,13 @@ async function connectToTraderMade() {
           // Handle plaintext error messages from TraderMade API
           const textData = event.data.toString();
           if (textData.includes('User Key Used too many times') || textData.includes('rate limit')) {
-            console.error('🚨 PHASE 3: TraderMade rate limit (plaintext):', textData);
+            console.error('🚨 CRITICAL: TraderMade rate limit (plaintext):', textData);
             lastTraderMadeError = Date.now();
             errorCount = Math.min(errorCount + 3, 6); // Aggressive backoff for rate limits
             wsConnection?.close(1000, 'Rate limit detected');
             return;
           }
-          console.warn('⚠️ PHASE 3: Non-JSON TraderMade message:', textData);
+          console.warn('⚠️ NON-JSON MESSAGE: ${textData}');
           return;
         }
         
@@ -365,13 +334,13 @@ async function connectToTraderMade() {
             cacheHit: false
           };
           
-          // Broadcast to all connected clients
+          // Broadcast to all connected clients AND write to database
           broadcastToClients(data.symbol, enhancedData);
           
           // Track API call for cost optimization
           ultraCostOptimizer.trackApiCall('tradermade');
           
-          console.log(`📈 SINGLE-INSTANCE: ${data.symbol}: ${enhancedData.mid} (distributed via Redis)`);
+          console.log(`📈 LIVE PRICE: ${data.symbol}: ${enhancedData.mid} (24/7 stream)`);
         }
       } catch (error) {
         console.error('❌ Error processing TraderMade message:', error);
@@ -484,7 +453,7 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
   const freshnessEmoji = priceData.freshness === 'fresh' ? '🟢' : 
                         priceData.freshness === 'stale' ? '🟡' : '🔴';
   
-  console.log(`📤 ULTRA-COST: Broadcasting ${symbol}: ${priceData.mid} to ${broadcastCount} clients ${freshnessEmoji}`);
+  console.log(`📤 24/7 LIVE: Broadcasting ${symbol}: ${priceData.mid} to ${broadcastCount} clients ${freshnessEmoji}`);
   
   // Cache with optimized TTL based on cost optimizer settings
   if (redis) {
@@ -495,10 +464,26 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
       // Track cache operation for cost monitoring
       ultraCostOptimizer.trackApiCall('redis');
       
-      console.log(`💾 ULTRA-COST: Cached ${symbol} for ${optimizedTTL}s (4x optimized TTL)`);
+      console.log(`💾 CACHED: ${symbol} for ${optimizedTTL}s (24/7 streaming)`);
     } catch (error) {
       console.error(`❌ Redis cache error for ${symbol}:`, error);
     }
+  }
+  
+  // CRITICAL FIX: Write to database for persistent storage and historical data
+  try {
+    if (supabaseService) {
+      await supabaseService.rpc('upsert_market_price', {
+        p_symbol: symbol,
+        p_bid: priceData.bid,
+        p_ask: priceData.ask,
+        p_mid: priceData.mid,
+        p_timestamp: priceData.timestamp.toISOString()
+      });
+      console.log(`💾 DATABASE: Stored ${symbol} price ${priceData.mid} in market_prices table`);
+    }
+  } catch (error) {
+    console.error(`❌ Database write error for ${symbol}:`, error);
   }
 }
 
@@ -554,7 +539,16 @@ async function setupRedisPubSubConsumer() {
         for (const symbol of TRADERMADE_SYMBOLS) {
           const cachedPrice = await redis.get(`price:${symbol}`);
           if (cachedPrice) {
-            const priceData = JSON.parse(cachedPrice);
+            // CRITICAL FIX: Ensure we're parsing valid JSON
+            let priceData;
+            try {
+              priceData = JSON.parse(cachedPrice);
+            } catch (parseError) {
+              console.error(`❌ Redis JSON parse error for ${symbol}:`, parseError);
+              console.error(`❌ Invalid JSON data: ${cachedPrice}`);
+              continue; // Skip this symbol and continue with others
+            }
+            
             // Only broadcast if we have clients subscribed to this symbol
             const hasSubscribers = Array.from(clients.values())
               .some(client => client.subscribedSymbols.has(symbol));
@@ -592,7 +586,7 @@ serve(async (req: Request): Promise<Response> => {
 
   // PHASE 2: Add connection diagnostics endpoint
   if (url.pathname === '/health') {
-    const marketStatus = getMarketStatus();
+    const connectionInfo = getConnectionStatus();
     const diagnostics = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -600,10 +594,11 @@ serve(async (req: Request): Promise<Response> => {
       connectionState,
       tradermadeConfigured: !!tradermadeApiKey,
       redisConfigured: !!redis,
-      marketStatus: {
-        isOpen: marketStatus.isOpen,
-        openSymbols: marketStatus.openSymbols,
-        closedSymbols: marketStatus.closedSymbols
+      connectionPolicy: {
+        mode: '24/7 Live Streaming',
+        shouldConnect: connectionInfo.shouldConnect,
+        activeSymbols: connectionInfo.activeSymbols,
+        reason: connectionInfo.reason
       },
       clientCount: clients.size,
       errorCount,

@@ -116,7 +116,7 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
       }
 
       // Build WebSocket URL - pointing to enhanced service  
-      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/enhanced-websocket-streaming/ws';
       
       console.log(`🔗 Connecting to enhanced WebSocket: ${wsUrl}`);
       const ws = new WebSocket(wsUrl);
@@ -195,11 +195,14 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
               
               // Subscribe to current symbols
               if (subscribedSymbolsRef.current.size > 0) {
-                ws.send(JSON.stringify({
-                  type: 'subscribe',
-                  symbols: Array.from(subscribedSymbolsRef.current),
-                  timestamp: new Date().toISOString()
-                }));
+                const symbols = Array.from(subscribedSymbolsRef.current);
+                symbols.forEach((sym) => {
+                  ws.send(JSON.stringify({
+                    type: 'subscribe',
+                    symbol: sym,
+                    timestamp: new Date().toISOString()
+                  }));
+                });
               }
               
               // Start heartbeat
@@ -218,6 +221,27 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
               processPriceUpdates(updates, messageAt);
             }
             break;
+
+          case 'price_update': {
+            // Server sends { type, symbol, data: { bid, ask, mid, ... } }
+            const u = message.data || {};
+            const symbol = message.symbol || u.symbol;
+            const price = u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : u.price);
+            if (symbol && price) {
+              processPriceUpdates([
+                {
+                  symbol,
+                  mid: price,
+                  bid: u.bid,
+                  ask: u.ask,
+                  change: u.change,
+                  changePercent: u.changePercent,
+                  timestamp: u.timestamp || new Date().toISOString()
+                }
+              ], messageAt);
+            }
+            break;
+          }
 
           case 'ping':
             // Respond to heartbeat
@@ -411,11 +435,13 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
     
     // Send subscription update if authenticated
     if (websocketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      websocketRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        symbols: Array.from(subscribedSymbolsRef.current),
-        timestamp: new Date().toISOString()
-      }));
+      Array.from(subscribedSymbolsRef.current).forEach((sym) => {
+        websocketRef.current!.send(JSON.stringify({
+          type: 'subscribe',
+          symbol: sym,
+          timestamp: new Date().toISOString()
+        }));
+      });
     }
   }, [normalizeSymbol]);
 
@@ -436,11 +462,13 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
     
     // Update subscription if authenticated
     if (websocketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      websocketRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        symbols: Array.from(subscribedSymbolsRef.current),
-        timestamp: new Date().toISOString()
-      }));
+      normalizedSymbols.forEach((sym) => {
+        websocketRef.current!.send(JSON.stringify({
+          type: 'unsubscribe',
+          symbol: sym,
+          timestamp: new Date().toISOString()
+        }));
+      });
     }
   }, [normalizeSymbol]);
 

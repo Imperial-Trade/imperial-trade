@@ -49,7 +49,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const isAuthenticatedRef = useRef<boolean>(false);
 
   // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
+  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/enhanced-websocket-streaming/ws';
 
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -135,12 +135,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               // Re-subscribe to any previous subscriptions after authentication (batch)
               if (subscriptionsRef.current.size > 0) {
                 const symbols = Array.from(subscriptionsRef.current);
-                console.log('🔄 Re-subscribing to symbols after auth:', symbols);
-                socket.send(JSON.stringify({ 
-                  type: 'subscribe', 
-                  symbols: symbols,
-                  timestamp: new Date().toISOString()
-                }));
+                console.log('🔄 Re-subscribing to symbols after auth (per-symbol):', symbols);
+                symbols.forEach((sym) => {
+                  socket.send(JSON.stringify({
+                    type: 'subscribe',
+                    symbol: sym,
+                    timestamp: new Date().toISOString()
+                  }));
+                });
               }
             }
             break;
@@ -208,63 +210,35 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
            }
             
            case 'price_update':
-             // Enhanced individual real-time price update with plausibility validation
-             if (data.symbol && data.price !== undefined) {
-               import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
-                 if (isPricePlausibleForSymbol(data.price, data.symbol)) {
-                   console.log(`✅ [${data.symbol}] Valid direct price update: ${data.price}`);
-                   const priceData: PriceData = {
-                     symbol: data.symbol,
-                     price: data.price,
-                     change: data.change || 0,
-                     changePercent: data.changePercent || 0,
-                     timestamp: data.timestamp || new Date().toISOString()
-                   };
-                   setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
-                 } else {
-                   console.warn(`🚫 [${data.symbol}] Rejected implausible direct price: ${data.price}`);
-                 }
-               }).catch(() => {
-                 // Fallback if import fails
-                 console.log(`📈 [${data.symbol}] Direct price update (validation failed): ${data.price}`);
-                 const priceData: PriceData = {
-                   symbol: data.symbol,
-                   price: data.price,
-                   change: data.change || 0,
-                   changePercent: data.changePercent || 0,
-                   timestamp: data.timestamp || new Date().toISOString()
-                 };
-                 setPrices(prev => ({ ...prev, [data.symbol]: priceData }));
-               });
-             } else if (data.update) {
-               const u = data.update;
+             // Handle server payload { type, symbol, data: { bid, ask, mid, ... } }
+             if (data && (data.data || data.update || (data.symbol && data.price !== undefined))) {
+               const u = data.data || data.update || data;
+               const symbol = data.symbol || u.symbol;
                const price = u.price ?? u.mid ?? ((u.bid !== undefined && u.ask !== undefined) ? (u.bid + u.ask) / 2 : undefined);
-               if (u.symbol && price !== undefined) {
+               if (symbol && price !== undefined) {
                  import('@/utils/priceGuards').then(({ isPricePlausibleForSymbol }) => {
-                   if (isPricePlausibleForSymbol(price, u.symbol)) {
-                     console.log(`✅ [${u.symbol}] Valid nested price update: ${price}`);
+                   if (isPricePlausibleForSymbol(price, symbol)) {
+                     console.log(`✅ [${symbol}] Parsed price update: ${price}`);
                      const priceData: PriceData = {
-                       symbol: u.symbol,
+                       symbol,
                        price,
                        change: u.change || 0,
                        changePercent: u.changePercent || 0,
                        timestamp: u.timestamp || new Date().toISOString()
                      };
-                     setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                     setPrices(prev => ({ ...prev, [symbol]: priceData }));
                    } else {
-                     console.warn(`🚫 [${u.symbol}] Rejected implausible nested price: ${price}`);
+                     console.warn(`🚫 [${symbol}] Rejected implausible parsed price: ${price}`);
                    }
                  }).catch(() => {
-                   // Fallback if import fails
-                   console.log(`📈 [${u.symbol}] Nested price update (validation failed): ${price}`);
                    const priceData: PriceData = {
-                     symbol: u.symbol,
+                     symbol,
                      price,
                      change: u.change || 0,
                      changePercent: u.changePercent || 0,
                      timestamp: u.timestamp || new Date().toISOString()
                    };
-                   setPrices(prev => ({ ...prev, [u.symbol]: priceData }));
+                   setPrices(prev => ({ ...prev, [symbol]: priceData }));
                  });
                }
              }
@@ -374,12 +348,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Send subscription message if connected and authenticated (batch)
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current && validatedSymbols.length > 0) {
-      console.log(`📤 [Subscribe] Sending batch subscription for symbols:`, validatedSymbols);
-      socketRef.current.send(JSON.stringify({ 
-        type: 'subscribe', 
-        symbols: validatedSymbols,
-        timestamp: new Date().toISOString()
-      }));
+      console.log(`📤 [Subscribe] Sending per-symbol subscriptions:`, validatedSymbols);
+      validatedSymbols.forEach(sym => {
+        socketRef.current!.send(JSON.stringify({
+          type: 'subscribe',
+          symbol: sym,
+          timestamp: new Date().toISOString()
+        }));
+      });
     } else {
       console.log(`⏳ [Subscribe] Connection not ready - queuing symbols:`, validatedSymbols);
     }
@@ -394,12 +370,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Send unsubscription message if connected and authenticated (batch)
     if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current && symbols.length > 0) {
-      console.log(`📤 [Unsubscribe] Sending batch unsubscription for symbols:`, symbols);
-      socketRef.current.send(JSON.stringify({ 
-        type: 'unsubscribe', 
-        symbols: symbols,
-        timestamp: new Date().toISOString()
-      }));
+      console.log(`📤 [Unsubscribe] Sending per-symbol unsubscriptions:`, symbols);
+      symbols.forEach(sym => {
+        socketRef.current!.send(JSON.stringify({
+          type: 'unsubscribe',
+          symbol: sym,
+          timestamp: new Date().toISOString()
+        }));
+      });
     }
     
     // Remove prices for unsubscribed symbols

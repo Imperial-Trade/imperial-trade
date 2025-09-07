@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
 
@@ -35,15 +35,17 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = getStoredTheme();
-  // Apply on render (no hooks to avoid dispatcher issues)
-  applyTheme(theme);
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   const setTheme = (next: Theme) => {
     try {
       window.localStorage.setItem('theme', next);
     } catch {}
-    applyTheme(next);
+    setThemeState(next);
   };
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');

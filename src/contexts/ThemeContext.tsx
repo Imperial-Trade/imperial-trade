@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
@@ -9,60 +8,70 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const defaultContext: ThemeContextType = {
+const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
   setTheme: () => {},
   toggleTheme: () => {},
-};
+});
 
-const ThemeContext = createContext<ThemeContextType>(defaultContext);
-
-function getStoredTheme(): Theme {
+// Utility functions
+function getInitialTheme(): Theme {
   try {
-    const t = window.localStorage.getItem('theme');
-    return t === 'light' || t === 'dark' ? (t as Theme) : 'dark';
+    const stored = window.localStorage.getItem('theme');
+    return stored === 'light' || stored === 'dark' ? (stored as Theme) : 'dark';
   } catch {
     return 'dark';
   }
 }
 
-function applyTheme(theme: Theme) {
+function updateDOMTheme(theme: Theme) {
   try {
-    const root = document.documentElement;
-    root.classList.toggle('dark', theme === 'dark');
-    root.classList.toggle('light', theme === 'light');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle('light', theme === 'light');
   } catch {}
 }
 
+// NEW CACHE-BUSTED THEME PROVIDER
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  console.log('[ThemeProvider] Starting - No useLocalStorage called');
-  const [theme, setThemeState] = useState<Theme>(() => {
-    console.log('[ThemeProvider] Initializing theme state');
-    return getStoredTheme();
+  console.log('[NEW ThemeProvider v2] Starting without useLocalStorage');
+  
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+    console.log('[NEW ThemeProvider v2] Getting initial theme');
+    return getInitialTheme();
   });
 
+  // Apply theme to DOM
   useEffect(() => {
-    applyTheme(theme);
-    console.log('[ThemeProvider] applied theme', theme);
-  }, [theme]);
+    updateDOMTheme(currentTheme);
+    console.log('[NEW ThemeProvider v2] Applied theme:', currentTheme);
+  }, [currentTheme]);
 
-  const setTheme = (next: Theme) => {
+  // Theme setter with localStorage
+  const updateTheme = (newTheme: Theme) => {
     try {
-      window.localStorage.setItem('theme', next);
+      window.localStorage.setItem('theme', newTheme);
     } catch {}
-    setThemeState(next);
+    setCurrentTheme(newTheme);
   };
 
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+  // Theme toggler
+  const toggleCurrentTheme = () => {
+    updateTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const contextValue: ThemeContextType = {
+    theme: currentTheme,
+    setTheme: updateTheme,
+    toggleTheme: toggleCurrentTheme,
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export function useTheme() {
-  // Safe: returns defaultContext if no provider
   return useContext(ThemeContext);
 }

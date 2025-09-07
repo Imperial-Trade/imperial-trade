@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
+  console.warn('[DEBUG] useLocalStorage invoked for key:', key);
+
   // Get value from localStorage or use initial value
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {

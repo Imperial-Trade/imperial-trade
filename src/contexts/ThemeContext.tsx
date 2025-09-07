@@ -39,6 +39,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     applyTheme(theme);
+    console.log('[ThemeProvider] applied theme', theme);
   }, [theme]);
 
   const setTheme = (next: Theme) => {

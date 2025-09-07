@@ -71,10 +71,25 @@ if (redisRestUrl && redisRestToken) {
   console.log('📵 Redis disabled - running without cache');
 }
 
-// ULTRA-COST OPTIMIZATION: Only XAUUSD and BTCUSD for 70% cost reduction
+// ULTRA-COST OPTIMIZATION: Only XAUUSD and BTCUSD for 70% cost reduction (base set)
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD'];
-const ALLOWED_CLIENT_SYMBOLS = new Set(TRADERMADE_SYMBOLS);
 
+// Dynamic allowlist: union of base symbols and symbols with active alerts
+function getAllowedClientSymbols(): Set<string> {
+  const base = new Set<string>(TRADERMADE_SYMBOLS);
+  try {
+    // Add symbols from active alerts cache
+    for (const sym of activeAlertsCache.keys()) {
+      base.add(sym);
+    }
+  } catch (_) {}
+  return base;
+}
+
+function isAllowedSymbol(symbol?: string | null): boolean {
+  if (!symbol) return false;
+  return getAllowedClientSymbols().has(symbol);
+}
 // Performance Monitoring State
 let cacheHits = 0;
 let cacheMisses = 0;
@@ -584,7 +599,7 @@ async function connectToTraderMade() {
         
         const data = JSON.parse(messageData);
         
-        if (data.symbol && ALLOWED_CLIENT_SYMBOLS.has(data.symbol)) {
+        if (data.symbol && isAllowedSymbol(data.symbol)) {
           console.log(`💰 PRICE DATA RECEIVED: ${JSON.stringify(data).substring(0, 100)}...`);
           
           const priceData: PriceData = {
@@ -734,7 +749,7 @@ function handleWebSocketConnection(request: Request): Response {
             console.log(`📋 [${clientId}] Processing symbols:`, symbolsToSubscribe);
             
             const validSymbols = symbolsToSubscribe.filter(symbol => {
-              const isValid = ALLOWED_CLIENT_SYMBOLS.has(symbol);
+              const isValid = isAllowedSymbol(symbol);
               console.log(`📋 [${clientId}] Symbol ${symbol} valid:`, isValid);
               return isValid;
             });
@@ -890,6 +905,49 @@ serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
+  }
+
+  if (url.pathname === '/report') {
+    const allowedSymbols = Array.from(getAllowedClientSymbols());
+    const clientSummaries = Array.from(clients.values()).map(c => ({
+      id: c.id,
+      isAuthenticated: c.isAuthenticated,
+      subscribed: Array.from(c.subscribedSymbols),
+      lastActivity: c.lastActivity
+    }));
+
+    const cachedPrices: Record<string, any> = {};
+    for (const [sym, val] of priceCache.entries()) {
+      cachedPrices[sym] = {
+        bid: val.data.bid,
+        ask: val.data.ask,
+        mid: val.data.mid,
+        ts: val.data.ts
+      };
+    }
+
+    return new Response(JSON.stringify({
+      ok: true,
+      projectRef: Deno.env.get('PROJECT_REF') || null,
+      domains: {
+        websocket_primary: `wss://${Deno.env.get('PROJECT_REF') || 'kmuoqkcxguafxulqlbmi'}.fun/enhanced-websocket-streaming/ws`,
+        websocket_fallback: `wss://${Deno.env.get('PROJECT_REF') || 'kmuoqkcxguafxulqlbmi'}.functions.supabase.co/enhanced-websocket-streaming/ws`
+      },
+      upstream: {
+        provider: 'TraderMade',
+        status: tradermadeApiKey ? 'configured' : 'missing'
+      },
+      redis: {
+        enabled: !!redis,
+        rest_url_present: !!redisRestUrl
+      },
+      allowedSymbols,
+      activeAlertsSymbols: Array.from(activeAlertsCache.keys()),
+      clients: clientSummaries,
+      cachedPrices,
+      performance: performanceMetrics,
+      timestamp: new Date().toISOString()
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }});
   }
 
   return new Response('Enhanced WebSocket Streaming Service - Optimized', {

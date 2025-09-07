@@ -245,26 +245,43 @@ async function authenticateClient(socket: WebSocket, authToken?: string): Promis
 }
 
 async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) {
+  console.log(`🚀 [BROADCAST] Starting broadcast for ${symbol}: ${priceData.mid}`);
+  
   const message = JSON.stringify({
     type: 'price_update',
     symbol,
-    data: priceData,
+    data: {
+      ...priceData,
+      price: priceData.mid, // Ensure price field is set
+      mid: priceData.mid,
+      bid: priceData.bid,
+      ask: priceData.ask
+    },
     timestamp: Date.now(),
     freshness: priceData.freshness,
     source: 'tradermade'
   });
 
   let broadcastCount = 0;
+  let eligibleClients = 0;
   
-  for (const client of clients.values()) {
-    if (client.socket.readyState === WebSocket.OPEN && 
-        client.subscribedSymbols.has(symbol) && 
-        client.isAuthenticated) {
+  console.log(`👥 [BROADCAST] Checking ${clients.size} total clients`);
+  
+  for (const [clientId, client] of clients.entries()) {
+    const isOpen = client.socket.readyState === WebSocket.OPEN;
+    const isSubscribed = client.subscribedSymbols.has(symbol);
+    const isAuthenticated = client.isAuthenticated;
+    
+    console.log(`👤 [${clientId}] Status: open=${isOpen}, subscribed=${isSubscribed}, auth=${isAuthenticated}`);
+    
+    if (isOpen && isSubscribed && isAuthenticated) {
+      eligibleClients++;
       try {
         client.socket.send(message);
         broadcastCount++;
+        console.log(`✅ [${clientId}] Price sent successfully`);
       } catch (error) {
-        console.error(`Error broadcasting to client ${client.id}:`, error);
+        console.error(`❌ [${clientId}] Failed to send:`, error);
       }
     }
   }
@@ -273,13 +290,13 @@ async function broadcastToClients(symbol: string, priceData: EnhancedPriceData) 
   const freshnessEmoji = priceData.freshness === 'fresh' ? '🟢' : 
                         priceData.freshness === 'stale' ? '🟡' : '🔴';
   
-  console.log(`📊 BROADCASTING ${symbol}: ${priceData.mid} to ${broadcastCount} clients ${freshnessEmoji}`);
+  console.log(`📊 BROADCAST COMPLETE ${symbol}: ${priceData.mid} → ${broadcastCount}/${eligibleClients} eligible clients (${clients.size} total) ${freshnessEmoji}`);
   
   // Cache with freshness metadata
   if (redis) {
     try {
       await redis.setex(`price:${symbol}`, PRICE_CACHE_TTL_MS / 1000, JSON.stringify(priceData));
-      console.log(`🔄 Stored ${symbol} price in Redis with freshness: ${priceData.freshness}`);
+      console.log(`🔄 Cached ${symbol} price in Redis: ${priceData.mid}`);
     } catch (error) {
       console.error(`❌ Redis cache error for ${symbol}:`, error);
     }
@@ -656,6 +673,10 @@ async function connectToTraderMade() {
 }
 
 function handleWebSocketConnection(request: Request): Response {
+  console.log('🔗 NEW WebSocket connection request');
+  console.log('📍 Request URL:', request.url);
+  console.log('📋 Request headers:', Object.fromEntries(request.headers.entries()));
+  
   const { socket, response } = Deno.upgradeWebSocket(request);
   const clientId = generateClientId();
   
@@ -669,8 +690,10 @@ function handleWebSocketConnection(request: Request): Response {
 
   clients.set(clientId, client);
   console.log(`🔗 New client connected: ${clientId} (Total: ${clients.size})`);
+  console.log(`👥 Current client IDs: [${Array.from(clients.keys()).join(', ')}]`);
 
   socket.onopen = () => {
+    console.log(`🟢 [${clientId}] WebSocket opened successfully`);
     socket.send(JSON.stringify({
       type: 'connection',
       message: 'Connected to Imperial Trading WebSocket',
@@ -684,39 +707,73 @@ function handleWebSocketConnection(request: Request): Response {
     try {
       const message = JSON.parse(event.data);
       client.lastActivity = Date.now();
+      
+      console.log(`📨 [${clientId}] Received message:`, message.type, message);
 
       switch (message.type) {
         case 'auth':
+          console.log(`🔐 [${clientId}] Auth request with token:`, !!message.token);
           client.isAuthenticated = await authenticateClient(socket, message.token);
           if (client.isAuthenticated) {
             client.userId = message.userId;
           }
+          console.log(`🔐 [${clientId}] Auth result:`, client.isAuthenticated);
           socket.send(JSON.stringify({
             type: 'auth_response',
-            authenticated: client.isAuthenticated
+            authenticated: client.isAuthenticated,
+            success: client.isAuthenticated,
+            message: client.isAuthenticated ? 'Authentication successful' : 'Authentication failed'
           }));
           break;
 
         case 'subscribe':
-          if (client.isAuthenticated && ALLOWED_CLIENT_SYMBOLS.has(message.symbol)) {
-            client.subscribedSymbols.add(message.symbol);
+          console.log(`📋 [${clientId}] Subscribe request:`, message);
+          if (client.isAuthenticated) {
+            // Handle both single symbol and batch symbols
+            const symbolsToSubscribe = message.symbols || [message.symbol].filter(Boolean);
+            console.log(`📋 [${clientId}] Processing symbols:`, symbolsToSubscribe);
             
-            // Send cached price if available
-            const cached = priceCache.get(message.symbol);
-            if (cached) {
-              socket.send(JSON.stringify({
-                type: 'price_update',
-                symbol: message.symbol,
-                data: cached.data,
-                timestamp: Date.now(),
-                cached: true
-              }));
-            }
+            const validSymbols = symbolsToSubscribe.filter(symbol => {
+              const isValid = ALLOWED_CLIENT_SYMBOLS.has(symbol);
+              console.log(`📋 [${clientId}] Symbol ${symbol} valid:`, isValid);
+              return isValid;
+            });
+            
+            validSymbols.forEach(symbol => {
+              client.subscribedSymbols.add(symbol);
+              console.log(`✅ [${clientId}] Subscribed to ${symbol}`);
+              
+              // Send cached price if available
+              const cached = priceCache.get(symbol);
+              if (cached) {
+                console.log(`📦 [${clientId}] Sending cached price for ${symbol}:`, cached.data.mid);
+                socket.send(JSON.stringify({
+                  type: 'price_update',
+                  symbol: symbol,
+                  data: cached.data,
+                  timestamp: Date.now(),
+                  cached: true
+                }));
+              }
+            });
+            
+            socket.send(JSON.stringify({
+              type: 'subscription_response',
+              success: true,
+              subscribedSymbols: validSymbols
+            }));
+          } else {
+            console.warn(`❌ [${clientId}] Subscribe rejected - not authenticated`);
           }
           break;
 
         case 'unsubscribe':
-          client.subscribedSymbols.delete(message.symbol);
+          console.log(`📋 [${clientId}] Unsubscribe request:`, message);
+          const symbolsToUnsubscribe = message.symbols || [message.symbol].filter(Boolean);
+          symbolsToUnsubscribe.forEach(symbol => {
+            client.subscribedSymbols.delete(symbol);
+            console.log(`❌ [${clientId}] Unsubscribed from ${symbol}`);
+          });
           break;
 
         case 'ping':
@@ -736,13 +793,17 @@ function handleWebSocketConnection(request: Request): Response {
     }
   };
 
-  socket.onclose = () => {
+  socket.onclose = (event) => {
+    console.log(`🔴 [${clientId}] WebSocket closed - Code: ${event.code}, Reason: ${event.reason || 'No reason'}`);
+    console.log(`🔴 [${clientId}] Was authenticated: ${client.isAuthenticated}, Subscribed to: [${Array.from(client.subscribedSymbols).join(', ')}]`);
     clients.delete(clientId);
     console.log(`🔌 Client disconnected: ${clientId} (Remaining: ${clients.size})`);
   };
 
   socket.onerror = (error) => {
-    console.error(`❌ WebSocket error for client ${clientId}:`, error);
+    console.error(`❌ [${clientId}] WebSocket error:`, error);
+    console.error(`❌ [${clientId}] WebSocket readyState:`, socket.readyState);
+    console.error(`❌ [${clientId}] Client authenticated:`, client.isAuthenticated);
   };
 
   return response;

@@ -35,7 +35,11 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
+  console.log('[ThemeProvider] Starting - No useLocalStorage called');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    console.log('[ThemeProvider] Initializing theme state');
+    return getStoredTheme();
+  });
 
   useEffect(() => {
     applyTheme(theme);

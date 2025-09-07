@@ -20,6 +20,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import WebSocketDiagnostics from '@/components/debug/WebSocketDiagnostics';
 
 export default function SignalStream() {
   const {
@@ -566,6 +567,13 @@ export default function SignalStream() {
               <div data-prevent-widget-open="true">
                 <SignalStreamStatus />
               </div>
+              
+              {/* WebSocket Diagnostics Panel - Admin only */}
+              {(isAdmin || isEducator) && (
+                <div data-prevent-widget-open="true" className="mt-4">
+                  <WebSocketDiagnostics symbols={symbols} />
+                </div>
+              )}
 
 
               <div className="mb-6" />

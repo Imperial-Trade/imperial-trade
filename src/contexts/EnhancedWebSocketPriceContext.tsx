@@ -115,12 +115,11 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
         return;
       }
 
-      // Build WebSocket URL - pointing to enhanced service
-      const wsUrl = new URL(window.location.origin.replace(/^http/, 'ws'));
-      wsUrl.pathname = '/functions/v1/enhanced-websocket-streaming';
+      // Build WebSocket URL - pointing to enhanced service  
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
       
-      console.log(`🔗 Connecting to enhanced WebSocket: ${wsUrl.toString()}`);
-      const ws = new WebSocket(wsUrl.toString());
+      console.log(`🔗 Connecting to enhanced WebSocket: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl);
       
       let connectionTimer: NodeJS.Timeout | null = null;
       

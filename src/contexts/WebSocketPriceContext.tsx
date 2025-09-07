@@ -374,11 +374,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
 
       // Build WebSocket URL
-      const wsUrl = new URL(window.location.origin.replace(/^http/, 'ws'));
-      wsUrl.pathname = '/functions/v1/enhanced-websocket-streaming';
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
       
-      console.log(`🔗 Connecting to WebSocket: ${wsUrl.toString()}`);
-      const ws = new WebSocket(wsUrl.toString());
+      console.log(`🔗 Connecting to WebSocket: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
         console.log('✅ Direct WebSocket connection opened');

@@ -49,7 +49,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const isAuthenticatedRef = useRef<boolean>(false);
 
   // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
+  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
 
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -132,13 +132,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               console.log('🔑 Authentication successful');
               setConnectionStatus('connected');
               isAuthenticatedRef.current = true;
-              // Re-subscribe to any previous subscriptions after authentication (one by one)
+              // Re-subscribe to any previous subscriptions after authentication (batch)
               if (subscriptionsRef.current.size > 0) {
                 const symbols = Array.from(subscriptionsRef.current);
                 console.log('🔄 Re-subscribing to symbols after auth:', symbols);
-                symbols.forEach(symbol => {
-                  socket.send(JSON.stringify({ type: 'subscribe', symbol }));
-                });
+                socket.send(JSON.stringify({ 
+                  type: 'subscribe', 
+                  symbols: symbols,
+                  timestamp: new Date().toISOString()
+                }));
               }
             }
             break;
@@ -370,13 +372,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       subscriptionsRef.current.add(symbol);
     });
     
-    // Send subscription message if connected and authenticated (one symbol per message)
-    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      console.log(`📤 [Subscribe] Sending individual subscriptions for symbols:`, validatedSymbols);
-      validatedSymbols.forEach(symbol => {
-        console.log(`📤 [Subscribe] → ${symbol}`);
-        socketRef.current!.send(JSON.stringify({ type: 'subscribe', symbol }));
-      });
+    // Send subscription message if connected and authenticated (batch)
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current && validatedSymbols.length > 0) {
+      console.log(`📤 [Subscribe] Sending batch subscription for symbols:`, validatedSymbols);
+      socketRef.current.send(JSON.stringify({ 
+        type: 'subscribe', 
+        symbols: validatedSymbols,
+        timestamp: new Date().toISOString()
+      }));
     } else {
       console.log(`⏳ [Subscribe] Connection not ready - queuing symbols:`, validatedSymbols);
     }
@@ -389,13 +392,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       subscriptionsRef.current.delete(symbol);
     });
     
-    // Send unsubscription message if connected and authenticated (one symbol per message)
-    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current) {
-      console.log(`📤 [Unsubscribe] Sending individual unsubscriptions for symbols:`, symbols);
-      symbols.forEach(symbol => {
-        console.log(`📤 [Unsubscribe] → ${symbol}`);
-        socketRef.current!.send(JSON.stringify({ type: 'unsubscribe', symbol }));
-      });
+    // Send unsubscription message if connected and authenticated (batch)
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticatedRef.current && symbols.length > 0) {
+      console.log(`📤 [Unsubscribe] Sending batch unsubscription for symbols:`, symbols);
+      socketRef.current.send(JSON.stringify({ 
+        type: 'unsubscribe', 
+        symbols: symbols,
+        timestamp: new Date().toISOString()
+      }));
     }
     
     // Remove prices for unsubscribed symbols

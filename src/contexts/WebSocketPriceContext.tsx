@@ -374,7 +374,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
 
       // Build WebSocket URL
-      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
       
       console.log(`🔗 Connecting to WebSocket: ${wsUrl}`);
       const ws = new WebSocket(wsUrl);

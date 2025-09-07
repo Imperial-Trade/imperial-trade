@@ -116,7 +116,7 @@ export const EnhancedWebSocketPriceProvider: React.FC<Props> = ({ children }) =>
       }
 
       // Build WebSocket URL - pointing to enhanced service  
-      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+      const wsUrl = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
       
       console.log(`🔗 Connecting to enhanced WebSocket: ${wsUrl}`);
       const ws = new WebSocket(wsUrl);

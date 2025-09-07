@@ -49,7 +49,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const isAuthenticatedRef = useRef<boolean>(false);
 
   // COST OPTIMIZED: Connection to enhanced-websocket-streaming with batching
-  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming/ws';
 
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {

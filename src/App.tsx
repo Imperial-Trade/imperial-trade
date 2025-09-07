@@ -8,7 +8,7 @@ import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceContext";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AppThemeProvider as ThemeProvider } from "@/contexts/AppTheme";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";

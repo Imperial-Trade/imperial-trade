@@ -2,7 +2,7 @@
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAppTheme as useTheme } from '@/contexts/AppTheme';
+import { useTheme } from "@/contexts/FreshTheme";
 
 interface ThemeToggleProps {
   isCollapsed?: boolean;

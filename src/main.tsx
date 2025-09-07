@@ -19,9 +19,14 @@ if ('serviceWorker' in navigator) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
-                  // New update available
-                  console.log('Trade Imperial SW: New version available');
-                  // Could show update notification here
+                  // New update available - activate immediately and reload
+                  console.log('Trade Imperial SW: New version available, activating...');
+                  if (registration.waiting) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                  navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                  });
                 } else {
                   // First time install
                   console.log('Trade Imperial SW: App is ready for offline use');

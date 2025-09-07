@@ -1,88 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, TrendingUp, Clock, RefreshCw, AlertCircle, Target, Zap, BarChart3, Filter, SortDesc, Eye, Bell, Play, Brain, BookOpen } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-import { useAuth } from '@/contexts/AuthContext';
-import { signalProcessingService, EducationalSignal } from '@/services/signalProcessingService';
-import { MarketDataPoint } from '@/types/marketData';
+import React from 'react';
+import { Card } from '@/components/ui/card';
+import { Brain, Target, BookOpen, BarChart3, Zap, Clock } from 'lucide-react';
 
 export default function OpportunityScanner() {
-  const { user } = useAuth();
-  // Feature disabled - keeping minimal state
-  const [signals] = useState<EducationalSignal[]>([]);
-  const [livePrice] = useState<Record<string, MarketDataPoint>>({});
-  const [isScanning] = useState(false);
-  const [lastScan] = useState<Date | null>(null);
-  const [scanError] = useState<string | null>(null);
-  const [filters] = useState({
-    market: 'all',
-    strategy: 'all',
-    timeframe: 'all'
-  });
-  const [sortBy] = useState('probability');
-
-  // No automatic signal loading - feature disabled
-
-  // Feature disabled - no live price fetching needed
-  const fetchLivePrices = async (symbols: string[]) => {
-    return;
-  };
-
-  // Feature disabled - no signal loading
-  const loadSignals = async () => {
-    return;
-  };
-
-  // Feature disabled - no scanning
-  const scanForOpportunities = async () => {
-    return;
-  };
-
-  // No filter-based reloading - feature disabled
-
-  const getSignalTypeColor = (type: string) => {
-    const colors = {
-      breakout: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      reversal: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      news_event: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-      pattern: 'bg-green-500/10 text-green-400 border-green-500/20',
-      momentum: 'bg-red-500/10 text-red-400 border-red-500/20',
-      educational: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-    };
-    return colors[type as keyof typeof colors] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-  };
-
-  const getProbabilityColor = (probability: number) => {
-    if (probability >= 80) return 'text-green-400';
-    if (probability >= 60) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
-  const getConfidenceGauge = (score: number) => {
-    const percentage = score;
-    const color = score >= 80 ? 'text-green-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400';
-    return { percentage, color };
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-2 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-3 sm:space-y-6">
-
-        {/* Header with Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Educational Pattern Scanner</h1>
-            <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20 w-fit">
-              <Brain className="w-3 h-3 mr-1" />
-              Coming Soon
-            </Badge>
-          </div>
-        </div>
 
         {/* Coming Soon Content */}
         <div className="text-center py-8 sm:py-12 lg:py-16">

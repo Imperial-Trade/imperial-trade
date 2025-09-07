@@ -1,6 +1,3 @@
-
-import { supabase } from '@/integrations/supabase/client';
-
 export interface EconomicEvent {
   id: string;
   time: string;
@@ -22,17 +19,14 @@ export interface EconomicCalendarRequest {
 }
 
 class EconomicCalendarService {
-  private cache = new Map<string, { data: EconomicEvent[], timestamp: number }>();
-  private cacheTTL = 300000; // 5 minutes cache for economic events
-
   async getEconomicEvents(request: EconomicCalendarRequest = {}): Promise<EconomicEvent[]> {
-    // Feature disabled to reduce infrastructure costs
-    console.log('Economic Calendar is disabled to optimize costs');
+    console.log('Economic Calendar service is coming soon', { request });
+    // No tradermade calls or edge function invocations
     return [];
   }
 
   clearCache(): void {
-    this.cache.clear();
+    console.log('Economic Calendar cache clearing is coming soon');
   }
 }
 

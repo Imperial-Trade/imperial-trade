@@ -164,14 +164,26 @@ export default function SignalStream() {
   });
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
-    activeAlerts.forEach(alert => {
+    
+    // Subscribe to symbols from both active AND pending alerts
+    [...activeAlerts, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
         symbolSet.add(alert.tradermadeSymbol.trim());
       }
     });
+    
+    // If no symbols found, subscribe to default popular symbols to ensure data flow
+    if (symbolSet.size === 0) {
+      ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'].forEach(symbol => {
+        symbolSet.add(symbol);
+      });
+      console.log('🔄 SignalStream - No alert symbols found, using default symbols');
+    }
+    
     const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
+    console.log('🔄 SignalStream - Symbols to subscribe:', symbolList);
     return symbolList;
-  }, [activeAlerts]);
+  }, [activeAlerts, alerts]);
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,

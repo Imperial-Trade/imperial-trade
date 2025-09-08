@@ -56,8 +56,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     setError(null);
 
     try {
-      // Create the live-prices channel
-      const channel = supabase.channel('live-prices');
+      // Create the live-prices-broadcast channel (matches price-ingestor)
+      const channel = supabase.channel('live-prices-broadcast');
       channelRef.current = channel;
 
       // Set up listener for price updates

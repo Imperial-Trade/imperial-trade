@@ -118,7 +118,7 @@ export function PriceDiagnosticPanel() {
         addResult({
           step: 'Price Ingestion Test',
           status: 'success',
-          message: `Price broadcast successful! ${priceTest.data?.processed || 0} prices processed.`,
+          message: `Price broadcast successful! ${priceTest.data?.processed || 0} processed, ${priceTest.data?.filtered || 0} significant, ${priceTest.data?.broadcasted || 0} broadcasted.`,
           data: priceTest.data
         });
       }

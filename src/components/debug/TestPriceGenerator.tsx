@@ -32,11 +32,22 @@ export function TestPriceGenerator() {
 
   const sendTestPrices = async () => {
     try {
-      const testPrices = TEST_SYMBOLS.map(symbol => ({
-        symbol,
-        price: generateMockPrice(symbol, getBasePrice(symbol)),
-        timestamp: new Date().toISOString()
-      }));
+      // Send multiple price ticks with varying changes to ensure some exceed significance threshold
+      const testPrices = TEST_SYMBOLS.flatMap(symbol => {
+        const basePrice = getBasePrice(symbol);
+        return [
+          {
+            symbol,
+            price: generateMockPrice(symbol, basePrice),
+            timestamp: new Date().toISOString()
+          },
+          {
+            symbol,
+            price: basePrice * (1 + (Math.random() > 0.5 ? 0.015 : -0.015)), // Ensure significant change (1.5%)
+            timestamp: new Date(Date.now() + 100).toISOString()
+          }
+        ];
+      });
 
       const { data, error } = await supabase.functions.invoke('price-ingestor', {
         body: { prices: testPrices },

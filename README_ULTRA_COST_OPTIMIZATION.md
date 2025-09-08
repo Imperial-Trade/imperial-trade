@@ -41,7 +41,7 @@
 ### 🔧 Implementation Details
 
 #### Files Modified:
-1. `supabase/functions/enhanced-websocket-streaming/index.ts` - Symbol limitation
+1. `supabase/functions/price-ingestor/index.ts` - New price ingestion system
 2. `src/services/ConnectionPoolManager.ts` - Dynamic scaling
 3. `src/api/client/operations/EnhancedDatabaseOperations.ts` - Aggressive caching
 4. `src/services/UltraCostOptimizer.ts` - New cost tracking service

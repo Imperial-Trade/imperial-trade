@@ -9,8 +9,8 @@ interface WebSocketDiagnosticsProps {
   symbols?: string[];
 }
 
-const WS_FUN_BASE = 'https://kmuoqkcxguafxulqlbmi.fun/enhanced-websocket-streaming';
-const WS_FUNCTIONS_BASE = 'https://kmuoqkcxguafxulqlbmi.functions.supabase.co/enhanced-websocket-streaming';
+const WS_FUN_BASE = 'https://kmuoqkcxguafxulqlbmi.fun/price-ingestor';
+const WS_FUNCTIONS_BASE = 'https://kmuoqkcxguafxulqlbmi.functions.supabase.co/price-ingestor';
 
 export default function WebSocketDiagnostics({ symbols = [] }: WebSocketDiagnosticsProps) {
   const { connectionStatus, dataSource, prices } = useHybridWebSocketPrices();

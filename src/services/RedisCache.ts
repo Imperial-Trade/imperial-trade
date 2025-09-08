@@ -209,7 +209,7 @@ class RedisCache {
     try {
       // Use edge function as Redis proxy since we can't directly connect from browser
       // The Redis integration happens at the edge function level
-      console.log('📡 Redis integration handled by enhanced-websocket-streaming Edge Function');
+      console.log('📡 Redis integration handled by price-ingestor Edge Function');
       this.isRedisConnected = true;
     } catch (error) {
       console.error('❌ Failed to initialize Redis:', error);
@@ -223,7 +223,7 @@ class RedisCache {
       this.pubSubSubscriptions.add(channel);
       console.log(`📡 Subscribed to channel: ${channel}`);
       
-      // In browser environment, we rely on WebSocket connection to enhanced-websocket-streaming
+      // In browser environment, we rely on WebSocket connection to price-ingestor
       // which handles Redis pub/sub internally and sends updates via WebSocket
     }
   }

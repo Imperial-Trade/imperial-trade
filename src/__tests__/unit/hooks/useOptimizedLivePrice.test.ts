@@ -3,17 +3,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TestWrapper } from '@/test/utils/test-helpers';
 
-// Mock the WebSocket context
-vi.mock('@/contexts/WebSocketPriceContext', () => ({
-  useWebSocketPrices: () => ({
+// Mock the HybridWebSocket context for tests
+vi.mock('@/contexts/HybridWebSocketPriceContext', () => ({
+  useHybridWebSocketPrices: () => ({
     prices: {
       EURUSD: { price: 1.0500, change: 0.0010, changePercent: 0.095, timestamp: new Date().toISOString() }
     },
     connectionStatus: 'connected',
-    dataSource: 'tradermade',
+    dataSource: 'Enhanced WebSocket (100%)',
     lastUpdated: new Date(),
     errors: {},
-    priceUpdateSources: { EURUSD: 'websocket' },
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     getPrice: vi.fn((symbol) => ({ 
@@ -23,7 +22,9 @@ vi.mock('@/contexts/WebSocketPriceContext', () => ({
       timestamp: new Date().toISOString(),
       symbol 
     })),
-    refreshPrice: vi.fn()
+    refreshPrice: vi.fn(),
+    getConnectionHealth: vi.fn(() => ({ isHealthy: true, lastUpdate: new Date() })),
+    isUsingEnhancedSystem: true
   })
 }));
 
@@ -45,7 +46,7 @@ describe('useOptimizedLivePrice', () => {
     await waitFor(() => {
       expect(result.current.price).toBe(1.0500);
       expect(result.current.connectionStatus).toBe('connected');
-      expect(result.current.priceUpdateSource).toBe('websocket');
+      // Remove priceUpdateSource check since it's not part of the new API
     });
   });
 

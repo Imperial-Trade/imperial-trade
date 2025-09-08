@@ -134,9 +134,9 @@ serve(async (req) => {
       order.tradermade_symbol || order.asset_name
     ))];
 
-    console.log('💰 Fetching current prices from market_prices table (fed by enhanced-websocket-streaming):', symbols);
+    console.log('💰 Fetching current prices from market_prices table (fed by price-ingestor):', symbols);
 
-    // Step 3: Get current prices from market_prices table (populated by enhanced-websocket-streaming)
+    // Step 3: Get current prices from market_prices table (populated by price-ingestor)
     const { data: marketPrices, error: pricesError } = await supabase
       .from('market_prices')
       .select('symbol, bid, ask, mid')

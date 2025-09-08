@@ -1,6 +1,6 @@
 // Enhanced TraderMade Health Test Utility
 export const testTradermadeHealth = async () => {
-  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/price-ingestor';
   
   try {
     // Test basic health check
@@ -10,10 +10,7 @@ export const testTradermadeHealth = async () => {
     return {
       success: true,
       status: response.status,
-      version: health.version,
-      isLeader: health.health?.leader?.is_leader,
-      cacheControl: response.headers.get('Cache-Control'),
-      alertingThresholds: health.health?.alerting_thresholds
+      data: health
     };
     
   } catch (error) {
@@ -26,7 +23,7 @@ export const testTradermadeHealth = async () => {
 
 // Leader Health Probe - calls /health?prefer_leader=true three times
 export const runLeaderHealthProbe = async () => {
-  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-websocket-streaming';
+  const baseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/price-ingestor';
   const results = [];
   
   console.log('🔍 Starting Leader Health Probe...');

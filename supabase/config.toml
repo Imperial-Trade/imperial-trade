@@ -12,7 +12,7 @@ enabled = true
 [edge_functions]
 enabled = true
 
-[functions.enhanced-websocket-streaming]
+[functions.price-ingestor]
 verify_jwt = false
 
 [functions.enhanced-alert-monitor]

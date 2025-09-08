@@ -15,9 +15,6 @@ enabled = true
 [functions.price-ingestor]
 verify_jwt = false
 
-[functions.tradermade-streaming]
-verify_jwt = false
-
 [functions.enhanced-alert-monitor]
 verify_jwt = false
 

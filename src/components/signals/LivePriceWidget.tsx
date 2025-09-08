@@ -572,7 +572,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
             {currentPrice > 0 ? (
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200`}>
+                <span className={`transition-colors duration-200 text-accent-green`}>
                   ${formatPrice(currentPrice)}
                 </span>
               </div>

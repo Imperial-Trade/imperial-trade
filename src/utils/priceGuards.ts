@@ -47,6 +47,13 @@ export function isPricePlausibleForSymbol(price: number, symbol: string): boolea
   }
 
   const normalizedSymbol = symbol.toUpperCase().trim();
+  
+  // Bypass price checks for Gold/XAU symbols
+  if (normalizedSymbol.includes('XAU') || normalizedSymbol.includes('GOLD')) {
+    console.log(`🟡 Bypassing price validation for Gold symbol: ${normalizedSymbol} = ${price}`);
+    return true;
+  }
+  
   const range = ASSET_PRICE_RANGES[normalizedSymbol];
   
   // Enhanced cross-contamination detection

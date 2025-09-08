@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { PriceDiagnosticPanel } from '@/components/debug/PriceDiagnosticPanel';
 
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -572,6 +573,14 @@ export default function SignalStream() {
               {(isAdmin || isEducator) && (
                 <div data-prevent-widget-open="true" className="mt-4">
                   <WebSocketDiagnostics symbols={symbols} />
+                </div>
+              )}
+
+              {/* Price Pipeline Diagnostics - Admin only */}
+              {(isAdmin || isEducator) && (
+                <div data-prevent-widget-open="true" className="mt-4 p-4 border-2 border-yellow-400 rounded-lg bg-yellow-50">
+                  <h3 className="font-bold text-yellow-800 mb-2">🚧 Price Pipeline Diagnostic</h3>
+                  <PriceDiagnosticPanel />
                 </div>
               )}
 

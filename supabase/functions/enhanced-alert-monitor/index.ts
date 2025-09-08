@@ -251,20 +251,29 @@ class SmartAlertMonitor {
             if (triggeredCount > 0) {
               console.log(`🚨 ${triggeredCount} alerts triggered for ${price.symbol}`);
               
-              // Process triggered alerts in priority order
-              const sortedAlerts = triggeredAlerts
-                .filter((alert: EnhancedAlertResult) => alert.triggered)
-                .sort((a, b) => a.priority_order - b.priority_order);
+        // Phase 2: Process triggered alerts with enhanced cooldown logic
+        for (const alert of sortedAlerts) {
+          try {
+            // Check if alert should be processed (cooldown validation)
+            const shouldProcess = await this.checkAlertCooldown(
+              alert.signal_id,
+              price.symbol,
+              alert.alert_type
+            );
 
-              for (const alert of sortedAlerts) {
-                try {
-                  const { data: result, error: handleError } = await connection
-                    .rpc('handle_triggered_alert_enhanced', {
-                      p_alert_id: alert.alert_id,
-                      p_signal_id: alert.signal_id,
-                      p_alert_type: alert.alert_type,
-                      p_triggered_price: alert.trigger_price
-                    });
+            if (!shouldProcess) {
+              console.log(`❄️ Alert ${alert.alert_id} (${alert.alert_type}) blocked by cooldown for ${price.symbol}`);
+              continue;
+            }
+
+            // Phase 2: Use enhanced alert handling with cooldown integration
+            const { data: result, error: handleError } = await connection
+              .rpc('handle_triggered_alert_enhanced', {
+                p_alert_id: alert.alert_id,
+                p_signal_id: alert.signal_id,
+                p_alert_type: alert.alert_type,
+                p_triggered_price: alert.trigger_price
+              });
 
                   if (handleError) {
                     console.error(`❌ Error handling alert ${alert.alert_id}:`, handleError);
@@ -339,8 +348,27 @@ class SmartAlertMonitor {
     return completionMessage;
   }
 
-  // PHASE 2C: Optimized notification sending
-  private async sendCriticalNotification(alert: EnhancedAlertResult, price: PriceData, result: AlertHandlingResult): Promise<void> {
+  // Phase 2: Check alert cooldown to prevent spam
+  private async checkAlertCooldown(signalId: string, symbol: string, alertType: string): Promise<boolean> {
+    try {
+      const { data: shouldTrigger, error } = await this.supabase
+        .rpc('check_alert_cooldown', {
+          p_asset_symbol: symbol,
+          p_alert_type: alertType,
+          p_cooldown_seconds: 120 // 2 minutes cooldown
+        });
+
+      if (error) {
+        console.error('❌ Error checking alert cooldown:', error);
+        return true; // Allow on error to prevent missing critical alerts
+      }
+
+      return shouldTrigger;
+    } catch (error) {
+      console.error('❌ Exception in cooldown check:', error);
+      return true; // Allow on exception
+    }
+  }
     try {
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-signal-notification-dispatcher';

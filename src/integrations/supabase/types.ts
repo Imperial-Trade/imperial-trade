@@ -226,6 +226,30 @@ export type Database = {
           },
         ]
       }
+      alert_cooldowns: {
+        Row: {
+          alert_type: string
+          asset_symbol: string
+          created_at: string
+          id: string
+          last_triggered_at: string
+        }
+        Insert: {
+          alert_type: string
+          asset_symbol: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+        }
+        Update: {
+          alert_type?: string
+          asset_symbol?: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+        }
+        Relationships: []
+      }
       alert_monitoring: {
         Row: {
           alert_type: string
@@ -3357,6 +3381,14 @@ export type Database = {
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
+      }
+      check_alert_cooldown: {
+        Args: {
+          p_alert_type: string
+          p_asset_symbol: string
+          p_cooldown_seconds?: number
+        }
+        Returns: boolean
       }
       check_user_xeon_subscription: {
         Args: { user_id_param?: string }

@@ -79,7 +79,12 @@ export function PriceDiagnosticPanel() {
     });
 
     try {
-      const priceTest = await supabase.functions.invoke('price-ingestor', {
+      // Phase 1: Increased timeout to match server-side changes (20 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Price ingestion test timed out after 20 seconds')), 20000)
+      );
+
+      const priceTestPromise = supabase.functions.invoke('price-ingestor', {
         body: {
           prices: [
             {
@@ -93,6 +98,8 @@ export function PriceDiagnosticPanel() {
           'X-INGEST-KEY': secretValue || 'test-secret'
         }
       });
+
+      const priceTest = await Promise.race([priceTestPromise, timeoutPromise]) as any;
 
       if (priceTest.error) {
         addResult({
@@ -130,8 +137,8 @@ export function PriceDiagnosticPanel() {
       
       const connectionPromise = new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('WebSocket connection timeout'));
-        }, 5000);
+          reject(new Error('WebSocket connection timeout after 20 seconds'));
+        }, 20000); // Phase 1: Increased timeout to match server-side changes
 
         channel.on('broadcast', { event: 'price_update' }, (payload) => {
           clearTimeout(timeout);

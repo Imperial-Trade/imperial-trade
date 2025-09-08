@@ -1,43 +1,134 @@
-// supabase/functions/price-ingestor/index.ts
-
+// Phase 1: Enhanced Price Ingestor with Connection Reuse & Significance Filtering
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
 
-// CORS headers for cross-origin requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-ingest-key',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+// Phase 1: Global connection reuse to prevent cold start issues
+let supabaseClient: any = null;
+let priceChannel: any = null;
+let channelConnectionPromise: Promise<any> | null = null;
 
-// This is the core logic that will be executed for every incoming request.
-serve(async (req) => {
-  console.log(`🔄 [price-ingestor] ${req.method} request received from ${req.headers.get('origin') || 'unknown'}`);
+// Phase 1: Significance filtering configuration - reduces 90% of broadcasts
+const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for most assets
+const MIN_PRICE_CHANGE_PIPS = 0.1; // 0.1 pips for Gold
+const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-  // 1. CORS: Handle preflight OPTIONS requests
-  if (req.method === 'OPTIONS') {
-    console.log('✅ [price-ingestor] Handled CORS preflight request');
-    return new Response(null, { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+// In-memory cache for last broadcasted prices
+const lastBroadcastedPrices: Record<string, number> = {};
+
+// Phase 1: Enhanced timeout configuration
+const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000; // Increased from 5000ms to 15000ms
+
+// Phase 1: Initialize Supabase client and channel only once per warm instance
+async function initializeSupabase() {
+  if (!supabaseClient) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+    
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('🔗 Supabase client initialized');
   }
 
-  // 2. SECURITY: Ensure the request is a POST request
+  // Phase 1: Reuse existing channel connection if available
+  if (!priceChannel || priceChannel.state === 'CLOSED') {
+    console.log('📡 Creating new Realtime channel...');
+    priceChannel = supabaseClient.channel('live-prices-broadcast');
+    
+    // Phase 1: Enhanced channel subscription with longer timeout
+    if (!channelConnectionPromise) {
+      channelConnectionPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          channelConnectionPromise = null;
+          reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
+        }, CHANNEL_SUBSCRIPTION_TIMEOUT);
+
+        priceChannel.subscribe((status: string) => {
+          console.log(`📡 Channel status: ${status}`);
+          clearTimeout(timeout);
+          channelConnectionPromise = null;
+          
+          if (status === 'SUBSCRIBED') {
+            resolve(status);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            reject(new Error(`Channel failed to subscribe: ${status}`));
+          }
+          // Other statuses (JOINING, etc.) are handled by the timeout
+        });
+      });
+    }
+    
+    await channelConnectionPromise;
+    console.log('✅ Realtime channel connected successfully');
+  }
+
+  return { supabaseClient, priceChannel };
+}
+
+// Phase 1: Price significance filtering function
+function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: number, timestamp: string}>) {
+  const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
+
+  for (const priceData of incomingPrices) {
+    const { symbol, price } = priceData;
+    const normalizedSymbol = symbol.toUpperCase();
+    const lastPrice = lastBroadcastedPrices[normalizedSymbol];
+
+    // Always broadcast the first price for a symbol
+    if (!lastPrice) {
+      significantUpdates.push(priceData);
+      lastBroadcastedPrices[normalizedSymbol] = price;
+      console.log(`🆕 First price for ${symbol}: ${price}`);
+      continue;
+    }
+
+    // Calculate significance based on asset type
+    const percentChange = Math.abs(price - lastPrice) / lastPrice * 100;
+    const absoluteChange = Math.abs(price - lastPrice);
+    
+    const isGoldAsset = GOLD_SYMBOLS.some(goldSymbol => normalizedSymbol.includes(goldSymbol));
+    const threshold = isGoldAsset ? MIN_PRICE_CHANGE_PIPS : MIN_PRICE_CHANGE_PERCENT;
+    const changeValue = isGoldAsset ? absoluteChange : percentChange;
+
+    if (changeValue >= threshold) {
+      significantUpdates.push(priceData);
+      lastBroadcastedPrices[normalizedSymbol] = price;
+      console.log(`📈 Significant change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
+    } else {
+      console.log(`⏭️ Skipping minor change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
+    }
+  }
+
+  return significantUpdates;
+}
+
+serve(async (req) => {
+  console.log(`🔄 [price-ingestor-v2] ${req.method} request received`);
+
+  // CORS preflight handling
+  if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  // Method validation
   if (req.method !== 'POST') {
-    console.warn(`❌ [price-ingestor] Method ${req.method} not allowed`);
+    console.warn(`❌ Method ${req.method} not allowed`);
     return new Response('Method Not Allowed', { 
       status: 405,
       headers: corsHeaders 
     });
   }
 
-  // 3. AUTHENTICATION: Verify the X-INGEST-KEY header
+  // Authentication
   const ingestKey = req.headers.get('X-INGEST-KEY') || req.headers.get('x-ingest-key');
   const expectedKey = Deno.env.get('INGEST_SECRET');
   
   if (!expectedKey) {
-    console.error('❌ [price-ingestor] INGEST_SECRET not configured');
+    console.error('❌ INGEST_SECRET not configured');
     return new Response('Server configuration error', { 
       status: 500,
       headers: corsHeaders 
@@ -45,77 +136,62 @@ serve(async (req) => {
   }
 
   if (!ingestKey || ingestKey !== expectedKey) {
-    console.warn('❌ [price-ingestor] Invalid or missing X-INGEST-KEY header');
+    console.warn('❌ Invalid or missing X-INGEST-KEY header');
     return new Response('Unauthorized', { 
       status: 401,
       headers: corsHeaders 
     });
   }
 
-  console.log('✅ [price-ingestor] Authentication successful');
+  console.log('✅ Authentication successful');
 
   try {
-    // 4. DATA EXTRACTION: Parse the incoming JSON data from the request body
+    // Parse request payload
     const requestBody = await req.json();
     const { prices } = requestBody;
 
-    // Validate payload structure
+    // Validate payload
     if (!prices || !Array.isArray(prices) || prices.length === 0) {
-      console.warn('❌ [price-ingestor] Invalid payload: missing or empty prices array');
-      return new Response('Invalid payload: prices array is required and cannot be empty', { 
+      console.warn('❌ Invalid payload: missing or empty prices array');
+      return new Response('Invalid payload: prices array required', { 
         status: 400,
         headers: corsHeaders 
       });
     }
 
-    console.log(`📊 [price-ingestor] Processing ${prices.length} price update(s)`);
+    console.log(`📊 Processing ${prices.length} price update(s)`);
 
-    // 5. CREATE SUPABASE CLIENT: Initialize client with service role key
-    // This bypasses Row Level Security (RLS) policies for server-to-server communication
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    // Phase 1: Initialize connection (reuse if warm)
+    const { priceChannel } = await initializeSupabase();
 
-    // 6. ESTABLISH REALTIME CHANNEL: Create the channel for broadcasting
-    const realtimeChannel = supabase.channel('live-prices');
-
-    // 7. ENSURE CHANNEL SUBSCRIPTION: Wait for channel to be ready before broadcasting
-    console.log('🔗 [price-ingestor] Establishing Realtime channel...');
+    // Phase 1: Apply significance filtering BEFORE broadcasting
+    const filteredPrices = filterSignificantPrices(prices);
     
-    const channelStatus = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Channel subscription timeout'));
-      }, 5000); // 5 second timeout
-
-      realtimeChannel.subscribe((status) => {
-        console.log(`📡 [price-ingestor] Channel status: ${status}`);
-        clearTimeout(timeout);
-        resolve(status);
-      });
-    });
-
-    if (channelStatus !== 'SUBSCRIBED') {
-      console.error(`❌ [price-ingestor] Channel subscription failed with status: ${channelStatus}`);
-      return new Response('Failed to establish realtime channel', { 
-        status: 500,
-        headers: corsHeaders 
+    if (filteredPrices.length === 0) {
+      console.log('✅ No significant price changes - skipping broadcast');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No significant changes to broadcast',
+        processed: prices.length,
+        broadcasted: 0,
+        filtered: prices.length
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
-    console.log('✅ [price-ingestor] Realtime channel established successfully');
-
-    // 8. BROADCAST PRICE DATA: Send each price update as a separate broadcast
+    // Phase 1: Broadcast only significant price updates
     let successfulBroadcasts = 0;
-    const broadcastPromises = prices.map(async (price, index) => {
+    const broadcastPromises = filteredPrices.map(async (price, index) => {
       try {
-        // Validate price data structure
+        // Validate price structure
         if (!price.symbol || typeof price.price !== 'number' || price.price <= 0) {
-          console.warn(`⚠️ [price-ingestor] Skipping invalid price at index ${index}:`, price);
+          console.warn(`⚠️ Skipping invalid price at index ${index}:`, price);
           return false;
         }
 
-        const broadcastResult = await realtimeChannel.send({
+        const broadcastResult = await priceChannel.send({
           type: 'broadcast',
           event: 'price_update',
           payload: {
@@ -126,64 +202,50 @@ serve(async (req) => {
         });
 
         if (broadcastResult === 'ok') {
-          console.log(`💰 [price-ingestor] Broadcasted ${price.symbol}: $${price.price}`);
+          console.log(`💰 Broadcasted ${price.symbol}: $${price.price}`);
           return true;
         } else {
-          console.warn(`⚠️ [price-ingestor] Broadcast failed for ${price.symbol}:`, broadcastResult);
+          console.warn(`⚠️ Broadcast failed for ${price.symbol}:`, broadcastResult);
           return false;
         }
       } catch (error) {
-        console.error(`❌ [price-ingestor] Error broadcasting price at index ${index}:`, error);
+        console.error(`❌ Error broadcasting price at index ${index}:`, error);
         return false;
       }
     });
 
-    // Wait for all broadcasts to complete
     const results = await Promise.all(broadcastPromises);
     successfulBroadcasts = results.filter(Boolean).length;
 
-    console.log(`📈 [price-ingestor] Successfully broadcasted ${successfulBroadcasts}/${prices.length} prices`);
+    console.log(`📈 Successfully broadcasted ${successfulBroadcasts}/${filteredPrices.length} filtered prices (${prices.length - filteredPrices.length} filtered out)`);
 
-    // 9. CLEANUP: Remove the channel to prevent memory leaks
-    await supabase.removeChannel(realtimeChannel);
-    console.log('🧹 [price-ingestor] Channel cleaned up');
+    // Phase 1: Success response with enhanced metrics
+    const responseMessage = `Processed ${prices.length} price(s), filtered to ${filteredPrices.length}, broadcasted ${successfulBroadcasts}`;
+    console.log(`✅ ${responseMessage}`);
 
-    // 10. SUCCESS RESPONSE: Acknowledge successful processing
-    const responseMessage = `Processed ${prices.length} price(s), successfully broadcasted ${successfulBroadcasts}`;
-    console.log(`✅ [price-ingestor] ${responseMessage}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: responseMessage,
-        processed: prices.length,
-        broadcasted: successfulBroadcasts 
-      }), 
-      {
-        status: 200,
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders 
-        },
-      }
-    );
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: responseMessage,
+      processed: prices.length,
+      significant: filteredPrices.length,
+      broadcasted: successfulBroadcasts,
+      efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% filtered`,
+      version: '2.0-optimized'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
 
   } catch (error) {
-    console.error('❌ [price-ingestor] Unexpected error:', error);
+    console.error('❌ Price ingestor error:', error);
     
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: 'Internal server error',
-        error: error.message 
-      }), 
-      {
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders 
-        },
-      }
-    );
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
   }
 });

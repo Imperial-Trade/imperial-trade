@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.password-reset]
 verify_jwt = false
+
+[functions.ingest-secret-verifier]
+verify_jwt = false

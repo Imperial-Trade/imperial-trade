@@ -1,0 +1,14 @@
+{
+  "name": "imperial-trading-test-scripts",
+  "version": "1.0.0",
+  "description": "Test scripts for Imperial Trading Platform price ingestion system",
+  "type": "module",
+  "scripts": {
+    "test:prices": "node external-price-simulator.mjs",
+    "test:prices:verbose": "node external-price-simulator.mjs --verbose",
+    "test:prices:help": "node external-price-simulator.mjs --help"
+  },
+  "keywords": ["trading", "prices", "websocket", "testing"],
+  "author": "Imperial Trading",
+  "license": "MIT"
+}

@@ -152,8 +152,8 @@ export function TestPriceGenerator() {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          <strong>Note:</strong> This generator sends mock price data to test the pipeline. 
-          The INGEST_SECRET is automatically configured in Supabase Edge Functions.
+          <strong>Note:</strong> This generator is for TESTING ONLY. 
+          Auto-generation is disabled to ensure only real live data flows through the system.
         </div>
       </CardContent>
     </Card>

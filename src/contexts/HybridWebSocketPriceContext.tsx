@@ -1,6 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { OptimizedWebSocketPriceProvider, useOptimizedWebSocketPrices } from './OptimizedWebSocketPriceContext';
-import { FallbackPriceProvider } from './FallbackPriceContext';
 
 interface PriceData {
   symbol: string;
@@ -53,7 +52,7 @@ const EnhancedWebSocketContextProvider: React.FC<{ children: ReactNode }> = ({ c
   const contextValue: HybridWebSocketContextType = {
     prices: optimizedContext.prices,
     connectionStatus: optimizedContext.connectionStatus,
-    dataSource: 'Enhanced WebSocket (100%)',
+    dataSource: 'Real-Time Data Only',
     lastUpdated: Object.keys(optimizedContext.prices).length > 0 ? new Date() : null,
     errors: optimizedContext.error ? { general: optimizedContext.error } : {},
     subscribe: optimizedContext.subscribe,
@@ -86,17 +85,15 @@ const EnhancedWebSocketContextProvider: React.FC<{ children: ReactNode }> = ({ c
 export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProviderProps> = ({ 
   children
 }) => {
-  console.log('🎯 WebSocket System: Enhanced (100% rollout - Realtime optimized with fallback support)');
+  console.log('🎯 WebSocket System: Enhanced (100% rollout - Real-time data only)');
 
-  // Force 100% Enhanced WebSocket usage with fallback support
+  // Force 100% Enhanced WebSocket usage - REAL DATA ONLY
   return (
-    <FallbackPriceProvider>
-      <OptimizedWebSocketPriceProvider>
-        <EnhancedWebSocketContextProvider>
-          {children}
-        </EnhancedWebSocketContextProvider>
-      </OptimizedWebSocketPriceProvider>
-    </FallbackPriceProvider>
+    <OptimizedWebSocketPriceProvider>
+      <EnhancedWebSocketContextProvider>
+        {children}
+      </EnhancedWebSocketContextProvider>
+    </OptimizedWebSocketPriceProvider>
   );
 };
 

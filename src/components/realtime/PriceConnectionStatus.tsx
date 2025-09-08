@@ -1,45 +1,35 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
-import { useFallbackPrices } from '@/contexts/FallbackPriceContext';
 
 export const PriceConnectionStatus: React.FC = () => {
   const { connectionStatus, error } = useOptimizedWebSocketPrices();
-  const { isActive: fallbackActive } = useFallbackPrices();
 
   const getStatusDisplay = () => {
-    if (fallbackActive) {
-      return {
-        label: 'Mock Data Active',
-        variant: 'secondary' as const,
-        description: 'Using fallback price generation'
-      };
-    }
-    
     switch (connectionStatus) {
       case 'connected':
         return {
-          label: 'Live Prices',
+          label: 'Real-Time Data',
           variant: 'default' as const,
-          description: 'Connected to real-time data'
+          description: 'Connected to live price feed'
         };
       case 'connecting':
         return {
           label: 'Connecting...',
           variant: 'secondary' as const,
-          description: 'Establishing connection'
+          description: 'Establishing real-time connection'
         };
       case 'error':
         return {
           label: 'Connection Error',
           variant: 'destructive' as const,
-          description: error || 'Failed to connect'
+          description: error || 'Failed to connect to live data'
         };
       default:
         return {
-          label: 'Disconnected',
+          label: 'No Data',
           variant: 'outline' as const,
-          description: 'No connection established'
+          description: 'No real-time connection established'
         };
     }
   };

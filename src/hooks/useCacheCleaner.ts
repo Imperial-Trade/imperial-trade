@@ -54,3 +54,5 @@ export const CacheCleanerMount: React.FC = () => {
 
   return null; // This component renders nothing
 };
+
+export default CacheCleanerMount;

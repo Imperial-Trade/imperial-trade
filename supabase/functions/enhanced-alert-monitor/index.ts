@@ -251,6 +251,11 @@ class SmartAlertMonitor {
             if (triggeredCount > 0) {
               console.log(`🚨 ${triggeredCount} alerts triggered for ${price.symbol}`);
               
+              // Sort alerts by priority (SL first, then TP by order)
+              const sortedAlerts = triggeredAlerts
+                .filter((alert: EnhancedAlertResult) => alert.triggered)
+                .sort((a: EnhancedAlertResult, b: EnhancedAlertResult) => a.priority_order - b.priority_order);
+              
         // Phase 2: Process triggered alerts with enhanced cooldown logic
         for (const alert of sortedAlerts) {
           try {
@@ -369,6 +374,9 @@ class SmartAlertMonitor {
       return true; // Allow on exception
     }
   }
+
+  // Phase 2: Send critical notifications for stop losses and signal closures
+  private async sendCriticalNotification(alert: EnhancedAlertResult, price: PriceData, result: AlertHandlingResult): Promise<void> {
     try {
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-signal-notification-dispatcher';

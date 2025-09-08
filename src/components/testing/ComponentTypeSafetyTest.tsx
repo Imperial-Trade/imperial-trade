@@ -2,14 +2,14 @@
 import React from 'react';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useOptimizedTradeAlertForm, type TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
-import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
+import { useLivePrice } from '@/hooks/useLivePrice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const ComponentTypeSafetyTest: React.FC = () => {
   // Test optimized hooks
-  const { price, isLoading, connectionStatus } = useWebSocketLivePrice('XAU/USD');
+  const price = useLivePrice('XAUUSD');
   const { form, isSubmitting } = useOptimizedTradeAlertForm({
     onSubmit: async (data: TradeAlertSubmissionData) => {
       console.log('✅ Optimized form submission:', data);
@@ -37,12 +37,11 @@ const ComponentTypeSafetyTest: React.FC = () => {
             <h3 className="text-lg font-semibold text-primary mb-2">Live Price (WebSocket)</h3>
             <div className="flex items-center gap-4">
               <span className="text-2xl font-mono text-accent-green">
-                ${price.toFixed(2)}
+                {price ? `$${price.toFixed(2)}` : 'Loading...'}
               </span>
-              <Badge variant={connectionStatus === 'connected' ? 'default' : 'destructive'}>
-                {connectionStatus}
-              </Badge>
-              {isLoading && <span className="text-secondary">Loading...</span>}
+        <Badge variant={price ? "default" : "secondary"}>
+          Live Price: {price ? `$${price.toFixed(2)}` : 'Loading...'}
+        </Badge>
             </div>
           </div>
 

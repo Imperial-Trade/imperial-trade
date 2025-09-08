@@ -11,7 +11,7 @@ export function useLivePrice(symbol: string) {
     if (!symbol) return;
 
     // 1. DEFINE THE CHANNEL: This name MUST EXACTLY MATCH the channel name in the Edge Function.
-    const channel = supabase.channel('live-prices');
+    const channel = supabase.channel('live-prices-broadcast');
 
     // 2. SET UP THE LISTENER: We tell the channel to listen for 'broadcast' messages
     // that have our specific 'event' name.

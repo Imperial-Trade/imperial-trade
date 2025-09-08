@@ -33,7 +33,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
     <div className={cn('flex flex-col space-y-1', className)}>
       {/* Main Price */}
       <div className="flex items-center gap-2">
-        <span className="text-2xl font-bold text-primary">
+        <span className="text-2xl font-bold text-accent-green">
           {formatPrice(price)}
         </span>
         

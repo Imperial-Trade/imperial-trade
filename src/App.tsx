@@ -55,6 +55,7 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
+import PriceTestingPage from "@/pages/dashboard/dev-tests/PriceTestingPage";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -193,6 +194,7 @@ function App() {
                           <Route path="settings" element={<Settings />} />
                           <Route path="athena" element={<AthenaTest />} />
                           <Route path="dev-tests" element={<DevTests />} />
+                          <Route path="price-testing" element={<PriceTestingPage />} />
 
                           <Route
                             path="administration"

@@ -33,12 +33,18 @@ export function PriceDiagnosticPanel() {
     });
 
     try {
-      const secretTest = await supabase.functions.invoke('ingest-secret-verifier', {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Secret verification timed out after 10 seconds')), 10000)
+      );
+
+      const secretTestPromise = supabase.functions.invoke('ingest-secret-verifier', {
         body: {},
         headers: {
           'X-INGEST-KEY': secretValue || 'test-secret'
         }
       });
+
+      const secretTest = await Promise.race([secretTestPromise, timeoutPromise]) as any;
 
       if (secretTest.error) {
         addResult({

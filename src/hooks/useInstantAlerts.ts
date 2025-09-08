@@ -29,14 +29,15 @@ export const useInstantAlerts = () => {
       return;
     }
     
-    // 60s de-duplication by event_key
+    // 60s de-duplication by signal_id + alert_type for better specificity
     const now = Date.now();
-    const lastReceived = dupeMapRef.current.get(payload.event_key);
+    const dedupKey = `${payload.signal_id}:${payload.alert_type}`;
+    const lastReceived = dupeMapRef.current.get(dedupKey);
     if (lastReceived && (now - lastReceived) < 60000) {
-      console.log('🔄 De-duped notification within 60s:', payload.event_key);
+      console.log('🔄 De-duped notification within 60s:', dedupKey);
       return;
     }
-    dupeMapRef.current.set(payload.event_key, now);
+    dupeMapRef.current.set(dedupKey, now);
     
     // Optional foreground toast suppression
     const currentPath = window.location.pathname;

@@ -73,6 +73,20 @@ const NotificationSystem = () => {
         return;
       }
 
+      // Enhanced notification-level deduplication with 120s TTL
+      const notificationKey = notification.eventKey || `${notification.title}:${notification.message}`;
+      const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
+      if (now - lastShownTime < 120000) {
+        console.warn("Notification suppressed due to 120s deduplication:", notificationKey);
+        return;
+      }
+      
+      // Initialize or update lastShownMap globally
+      if (!(window as any).lastShownMap) {
+        (window as any).lastShownMap = new Map();
+      }
+      (window as any).lastShownMap.set(notificationKey, now);
+
       setLastNotificationTime(now);
 
       const id = Date.now() + Math.random();

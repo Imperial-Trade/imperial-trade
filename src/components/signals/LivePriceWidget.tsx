@@ -43,6 +43,10 @@ const calculatePips = (entry, current, symbol) => {
     difference
   };
 };
+// Deduplication and local state for level hits
+const levelHitRef = useRef(new Map<string, number>());
+const [localClosed, setLocalClosed] = useState(false);
+
 const LivePriceWidgetComponent = ({
   alert,
   onTakeProfitHit,
@@ -129,15 +133,14 @@ const LivePriceWidgetComponent = ({
       isProcessingRef.current = false;
     }
   }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
+  // Enhanced level checking with better logic
   const checkLevels = useCallback(price => {
-    // Optimized level checking with smart thresholds
-    if (!price || price === lastProcessedPrice || isProcessingRef.current) {
+    // Sanity guardrails: only run if alert is active/partially_profited and not locally closed
+    if (!alert || localClosed || !['active', 'partially_profited'].includes(alert.status)) {
       return;
     }
-    
-    // Only check levels if price changed significantly to reduce CPU usage
-    const priceChangePercent = Math.abs((price - lastProcessedPrice) / lastProcessedPrice) * 100;
-    if (lastProcessedPrice > 0 && priceChangePercent < 0.02) { // Reduced to 0.02% threshold for better responsiveness
+    // Check for price change and apply deduplication
+    if (!price || price === lastProcessedPrice || isProcessingRef.current) {
       return;
     }
     if (price <= 0 || !isFinite(price)) {
@@ -188,6 +191,14 @@ const LivePriceWidgetComponent = ({
     // Priority 1: Check Stop Loss first (highest priority)
     const stopLossHit = isBuy ? price <= alert.stop_loss - buffer : price >= alert.stop_loss + buffer;
     if (stopLossHit) {
+      const hitKey = `${alert.id}:stop_loss`;
+      const lastHit = levelHitRef.current.get(hitKey);
+      const now = Date.now();
+      
+      // One-and-done: prevent duplicate hits within 5 minutes
+      if (lastHit && (now - lastHit) < 300000) return;
+      levelHitRef.current.set(hitKey, now);
+      
       const closeReason = hasAlreadyHitTP ? 'reversal_after_tp' : 'stop_loss';
       console.log(`💥 [STOP LOSS] Hit for ${alert.asset_name}, reason: ${closeReason}`, {
         currentPrice: price,
@@ -258,6 +269,20 @@ const LivePriceWidgetComponent = ({
       }
     });
     if (newHits.length > 0) {
+      // Check for existing TP hits to prevent duplicates
+      newHits.forEach(tp => {
+        const hitKey = `${alert.id}:tp_${tp}`;
+        const lastHit = levelHitRef.current.get(hitKey);
+        const now = Date.now();
+        
+        // One-and-done: prevent duplicate TP hits within 5 minutes
+        if (lastHit && (now - lastHit) < 300000) {
+          console.log(`[DEDUPE] TP${tp} hit already processed within 5 minutes`);
+          return;
+        }
+        levelHitRef.current.set(hitKey, now);
+      });
+      
       // Final validation: Ensure price movement makes sense
       const largestNewHit = Math.max(...newHits);
       const correspondingTP = validTPs.find(tp => tp.level === largestNewHit);

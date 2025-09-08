@@ -192,27 +192,42 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Stable symbol subscription to prevent thrashing
+  // Debounced symbol subscription to stabilize price subscriptions  
   const symbolsRef = useRef<string[]>([]);
   const subscriptionActiveRef = useRef(false);
+  const debouncedSymbolsRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    // Compute diffs to avoid full unsubscribe/subscribe churn
-    const prev = symbolsRef.current;
-    const added = symbols.filter(s => !prev.includes(s));
-    const removed = prev.filter(s => !symbols.includes(s));
-    if (added.length > 0) {
-      console.log('🔄 SignalStream - Subscribing (diff):', added);
-      subscribe(added);
-      subscriptionActiveRef.current = true;
+    // Clear existing debounce
+    if (debouncedSymbolsRef.current) {
+      clearTimeout(debouncedSymbolsRef.current);
     }
-    if (removed.length > 0) {
-      console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-      unsubscribe(removed);
-    }
+    
+    // Debounce symbol changes by 500ms to prevent thrashing
+    debouncedSymbolsRef.current = setTimeout(() => {
+      // Compute diffs to avoid full unsubscribe/subscribe churn
+      const prev = symbolsRef.current;
+      const added = symbols.filter(s => !prev.includes(s));
+      const removed = prev.filter(s => !symbols.includes(s));
+      if (added.length > 0) {
+        console.log('🔄 SignalStream - Subscribing (diff):', added);
+        subscribe(added);
+        subscriptionActiveRef.current = true;
+      }
+      if (removed.length > 0) {
+        console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
+        unsubscribe(removed);
+      }
 
-    // Update reference after applying diffs
-    symbolsRef.current = [...symbols];
+      // Update reference after applying diffs
+      symbolsRef.current = [...symbols];
+    }, 500);
     return () => {
+      // Clear debounce timer and cleanup subscriptions
+      if (debouncedSymbolsRef.current) {
+        clearTimeout(debouncedSymbolsRef.current);
+      }
+      
       // On unmount, clean up any remaining subscriptions
       if (symbolsRef.current.length > 0) {
         console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
@@ -365,6 +380,13 @@ export default function SignalStream() {
       }
       return;
     }
+    
+    // Optimistic local state: immediately mark as closed if closing
+    if (newStatus === 'closed') {
+      // Set local closed state to prevent duplicate processing
+      alert.localClosed = true;
+    }
+    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
@@ -383,6 +405,10 @@ export default function SignalStream() {
       }
     } catch (err) {
       console.error("Failed to update status:", err);
+      // Revert optimistic update on error
+      if (newStatus === 'closed') {
+        alert.localClosed = false;
+      }
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
@@ -690,10 +716,13 @@ export default function SignalStream() {
         
         {/* Create Signal Modal */}
          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
-             <DialogHeader>
-               <DialogTitle className="text-white text-xl font-semibold">Create Alert</DialogTitle>
-             </DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
+              <DialogHeader>
+                <DialogTitle className="text-white text-xl font-semibold">Create Alert</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  Create a new educational trading pattern for learning and analysis purposes.
+                </p>
+              </DialogHeader>
              <OptimizedNewAlertForm 
                onSubmit={handleCreateSignal}
                onCancel={() => setShowCreateModal(false)}

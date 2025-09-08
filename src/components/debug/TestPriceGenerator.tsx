@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useIngestSecret } from '@/hooks/useIngestSecret';
 
 const TEST_SYMBOLS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'];
 
@@ -11,7 +12,7 @@ export function TestPriceGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
   const [lastSent, setLastSent] = useState<string>('');
-  const [secretKey, setSecretKey] = useState('');
+  const { isConfigured, error: secretError } = useIngestSecret();
 
   const generateMockPrice = (symbol: string, basePrice: number) => {
     // Add realistic price movement (±0.5% change)
@@ -52,7 +53,7 @@ export function TestPriceGenerator() {
       const { data, error } = await supabase.functions.invoke('price-ingestor', {
         body: { prices: testPrices },
         headers: {
-          'X-INGEST-KEY': secretKey || 'test-secret'
+          'X-INGEST-KEY': 'CONFIGURED_SECRET' // Server will use the configured INGEST_SECRET
         }
       });
 
@@ -107,16 +108,18 @@ export function TestPriceGenerator() {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">INGEST_SECRET (optional)</label>
-          <input
-            type="password"
-            placeholder="Enter your INGEST_SECRET"
-            value={secretKey}
-            onChange={(e) => setSecretKey(e.target.value)}
-            className="w-full p-2 border rounded focus:ring-2 focus:ring-primary"
-          />
-        </div>
+        {secretError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-sm text-red-600">⚠️ {secretError}</p>
+            <p className="text-xs text-red-500 mt-1">Price generation may fail without proper secret configuration.</p>
+          </div>
+        )}
+        
+        {isConfigured && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded">
+            <p className="text-sm text-green-600">✅ INGEST_SECRET is properly configured</p>
+          </div>
+        )}
 
         <div className="flex items-center justify-between p-3 border rounded">
           <div>
@@ -150,7 +153,7 @@ export function TestPriceGenerator() {
 
         <div className="text-xs text-muted-foreground">
           <strong>Note:</strong> This generator sends mock price data to test the pipeline. 
-          Make sure your INGEST_SECRET matches the server configuration.
+          The INGEST_SECRET is automatically configured in Supabase Edge Functions.
         </div>
       </CardContent>
     </Card>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Activity, AlertTriangle } from 'lucide-react';
 import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
 import { supabase } from '@/integrations/supabase/client';
+import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
 
 interface StreamStatus {
   websocket: 'connected' | 'connecting' | 'disconnected' | 'error';
@@ -137,5 +138,69 @@ export function SignalStreamStatus() {
 
   const needsAction = status.monitor === 'inactive' || status.monitor === 'error';
 
-  return null;
-}
+  return (
+    <div className="space-y-3">
+      {/* Price Connection Status */}
+      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Price Data:</span>
+          <PriceConnectionStatus />
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={checkSystemStatus}
+          disabled={isRefreshing}
+          className="ml-auto"
+        >
+          {isRefreshing ? (
+            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+          ) : (
+            <RefreshCw className="h-3 w-3 mr-1" />
+          )}
+          Refresh
+        </Button>
+      </div>
+
+      {/* System Status */}
+      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">System:</span>
+          <Badge className={getStatusColor('websocket')}>
+            {getStatusIcon('websocket')}
+            <span className="ml-1">{status.websocket}</span>
+          </Badge>
+          <Badge className={getStatusColor('monitor')}>
+            {getStatusIcon('monitor')}
+            <span className="ml-1">Monitor {status.monitor}</span>
+          </Badge>
+          <Badge variant="outline">
+            {getStatusIcon('alerts')}
+            <span className="ml-1">{status.alerts} Active Alerts</span>
+          </Badge>
+        </div>
+        
+        {needsAction && (
+          <Button 
+            onClick={initializeMonitor}
+            disabled={isRefreshing}
+            size="sm"
+            variant="destructive"
+          >
+            Initialize Monitor
+          </Button>
+        )}
+      </div>
+
+      {/* Enhanced System Badge */}
+      {isUsingEnhancedSystem && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="text-green-600 border-green-200">
+            Enhanced System Active
+          </Badge>
+          <span>{dataSource}</span>
+        </div>
+      )}
+    </div>
+  );
+};

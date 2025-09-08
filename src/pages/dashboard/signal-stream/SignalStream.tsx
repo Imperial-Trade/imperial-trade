@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
 import { PriceDiagnosticPanel } from '@/components/debug/PriceDiagnosticPanel';
 
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';

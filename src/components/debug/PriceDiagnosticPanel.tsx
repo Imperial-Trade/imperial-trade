@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useIngestSecret } from '@/hooks/useIngestSecret';
 
 interface TestResult {
   step: string;
@@ -15,7 +16,7 @@ interface TestResult {
 export function PriceDiagnosticPanel() {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
-  const [secretValue, setSecretValue] = useState('');
+  const { isConfigured, error: secretError } = useIngestSecret();
 
   const addResult = (result: TestResult) => {
     setResults(prev => [...prev, result]);
@@ -40,7 +41,7 @@ export function PriceDiagnosticPanel() {
       const secretTestPromise = supabase.functions.invoke('ingest-secret-verifier', {
         body: {},
         headers: {
-          'X-INGEST-KEY': secretValue || 'test-secret'
+          'X-INGEST-KEY': 'CONFIGURED_SECRET' // Server will use the configured INGEST_SECRET
         }
       });
 
@@ -101,7 +102,7 @@ export function PriceDiagnosticPanel() {
           ]
         },
         headers: {
-          'X-INGEST-KEY': secretValue || 'test-secret'
+          'X-INGEST-KEY': 'CONFIGURED_SECRET' // Server will use the configured INGEST_SECRET
         }
       });
 
@@ -198,29 +199,37 @@ export function PriceDiagnosticPanel() {
     <Card className="w-full max-w-4xl">
       <CardHeader>
         <CardTitle>🔍 Price Pipeline Diagnostic</CardTitle>
-        <div className="space-y-2">
-          <input
-            type="password"
-            placeholder="Enter your INGEST_SECRET to test"
-            value={secretValue}
-            onChange={(e) => setSecretValue(e.target.value)}
-            className="w-full p-2 border rounded"
-          />
-          <Button 
-            onClick={runDiagnostic} 
-            disabled={isRunning || !secretValue}
-            className="w-full"
-          >
-            {isRunning ? 'Running Diagnostic...' : 'Run Full Diagnostic'}
-          </Button>
-        </div>
+        
+        {secretError && (
+          <Alert>
+            <AlertDescription>
+              ⚠️ {secretError} - Diagnostic may show authentication failures.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {isConfigured && (
+          <Alert>
+            <AlertDescription>
+              ✅ INGEST_SECRET is properly configured. Ready to run diagnostics.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <Button 
+          onClick={runDiagnostic} 
+          disabled={isRunning}
+          className="w-full"
+        >
+          {isRunning ? 'Running Diagnostic...' : 'Run Full Diagnostic'}
+        </Button>
       </CardHeader>
       
       <CardContent className="space-y-4">
         {results.length === 0 && !isRunning && (
           <Alert>
             <AlertDescription>
-              Enter your INGEST_SECRET above and click "Run Full Diagnostic" to test the entire price pipeline.
+              Click "Run Full Diagnostic" to test the entire price pipeline with authentication and WebSocket connectivity.
             </AlertDescription>
           </Alert>
         )}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { OptimizedWebSocketPriceProvider, useOptimizedWebSocketPrices } from './OptimizedWebSocketPriceContext';
+import { FallbackPriceProvider } from './FallbackPriceContext';
 
 interface PriceData {
   symbol: string;
@@ -85,15 +86,17 @@ const EnhancedWebSocketContextProvider: React.FC<{ children: ReactNode }> = ({ c
 export const HybridWebSocketPriceProvider: React.FC<HybridWebSocketPriceProviderProps> = ({ 
   children
 }) => {
-  console.log('🎯 WebSocket System: Enhanced (100% rollout - Realtime optimized)');
+  console.log('🎯 WebSocket System: Enhanced (100% rollout - Realtime optimized with fallback support)');
 
-  // Force 100% Enhanced WebSocket usage - no legacy fallback
+  // Force 100% Enhanced WebSocket usage with fallback support
   return (
-    <OptimizedWebSocketPriceProvider>
-      <EnhancedWebSocketContextProvider>
-        {children}
-      </EnhancedWebSocketContextProvider>
-    </OptimizedWebSocketPriceProvider>
+    <FallbackPriceProvider>
+      <OptimizedWebSocketPriceProvider>
+        <EnhancedWebSocketContextProvider>
+          {children}
+        </EnhancedWebSocketContextProvider>
+      </OptimizedWebSocketPriceProvider>
+    </FallbackPriceProvider>
   );
 };
 

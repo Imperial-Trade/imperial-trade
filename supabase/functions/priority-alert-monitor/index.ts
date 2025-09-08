@@ -85,7 +85,7 @@ async function fetchEnhancedPrice(symbol: string, supabase: any, redis: any): Pr
         const cachedPrice = await redis.get(redisKey);
         if (cachedPrice) {
           const priceData = JSON.parse(cachedPrice);
-          console.log(`✅ Redis hit: ${symbol} Bid: $${priceData.bid?.toFixed(5)} Ask: $${priceData.ask?.toFixed(5)} (TraderMade source)`);
+          console.log(`✅ Redis hit: ${symbol} Bid: $${priceData.bid?.toFixed(5)} Ask: $${priceData.ask?.toFixed(5)} (DigitalOcean source)`);
           
           return {
             symbol,
@@ -133,7 +133,7 @@ async function fetchEnhancedPrice(symbol: string, supabase: any, redis: any): Pr
       timestamp: dbPrice.timestamp
     };
 
-    console.log(`✅ Database hit: ${symbol} Bid: $${priceUpdate.bid?.toFixed(5)} Ask: $${priceUpdate.ask?.toFixed(5)} (TraderMade source)`);
+    console.log(`✅ Database hit: ${symbol} Bid: $${priceUpdate.bid?.toFixed(5)} Ask: $${priceUpdate.ask?.toFixed(5)} (DigitalOcean source)`);
     return priceUpdate;
 
   } catch (error) {

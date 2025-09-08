@@ -10,6 +10,7 @@ import {
   Lock
 } from 'lucide-react';
 import { LegalSection } from '@/components/legal/LegalSection';
+import { ComplianceFooter } from '@/components/compliance/ComplianceFooter';
 
 export default function TermsPage() {
   return (
@@ -159,18 +160,9 @@ export default function TermsPage() {
           </div>
         </LegalSection>
 
-        {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-border text-center">
-          <div className="bg-muted/30 rounded-lg p-6">
-            <p className="text-sm text-muted-foreground mb-2">
-              <strong>Last Updated:</strong> January 1, 2025 | <strong>Version:</strong> 2.0
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Trade Imperial reserves the right to modify these terms at any time. Continued use of the platform constitutes acceptance of updated terms.
-            </p>
-          </div>
-        </div>
       </div>
+      
+      <ComplianceFooter />
     </div>
   );
 }

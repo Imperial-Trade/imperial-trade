@@ -11,6 +11,7 @@ import {
   Globe
 } from 'lucide-react';
 import { LegalSection } from '@/components/legal/LegalSection';
+import { ComplianceFooter } from '@/components/compliance/ComplianceFooter';
 
 export default function PrivacyPage() {
   return (
@@ -312,18 +313,9 @@ export default function PrivacyPage() {
           </div>
         </LegalSection>
 
-        {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-border text-center">
-          <div className="bg-muted/30 rounded-lg p-6">
-            <p className="text-sm text-muted-foreground mb-2">
-              <strong>Last Updated:</strong> January 1, 2025 | <strong>Version:</strong> 3.0 | <strong>Next Review:</strong> July 1, 2025
-            </p>
-            <p className="text-xs text-muted-foreground">
-              We may update this Privacy Policy periodically. Material changes will be communicated via email and platform notifications 30 days in advance.
-            </p>
-          </div>
-        </div>
       </div>
+      
+      <ComplianceFooter />
     </div>
   );
 }

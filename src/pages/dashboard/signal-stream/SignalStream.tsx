@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
+
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -622,10 +622,8 @@ export default function SignalStream() {
           <div className="max-w-none w-full">
             <div className="w-full">
               
-              {/* System Status */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamStatus />
-              </div>
+              {/* System Status - Removed for clean UI */}
+              
               
 
 

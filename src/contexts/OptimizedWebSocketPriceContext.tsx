@@ -60,6 +60,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
+  // Enhanced reconnection state
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [maxReconnectAttempts] = useState(10);
+  const [baseReconnectDelay] = useState(1000); // Start with 1 second
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [stalenessWatchdog, setStalenessWatchdog] = useState<NodeJS.Timeout | null>(null);
+  const [reconnectTimer, setReconnectTimer] = useState<NodeJS.Timeout | null>(null);
+  
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionsRef = useRef<Set<string>>(new Set());
   const messagesReceivedRef = useRef<number>(0);
@@ -68,9 +76,31 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const latencySumRef = useRef<number>(0);
   const latencyCountRef = useRef<number>(0);
 
+  const handleReconnect = useCallback(() => {
+    if (isReconnecting || reconnectAttempt >= maxReconnectAttempts) return;
+    
+    setIsReconnecting(true);
+    const delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempt), 30000); // Exponential backoff, max 30s
+    
+    if (isDevToolsEnabled()) {
+      console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
+    }
+    
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+    }
+    
+    setReconnectTimer(setTimeout(() => {
+      setReconnectAttempt(prev => prev + 1);
+      reconnectionsRef.current += 1;
+      disconnect();
+      setTimeout(() => connect(), 100); // Small delay before reconnect
+    }, delay));
+  }, [isReconnecting, reconnectAttempt, maxReconnectAttempts, baseReconnectDelay, reconnectTimer]);
+
   const connect = useCallback(async () => {
-    if (channelRef.current) {
-      return; // Already connected
+    if (channelRef.current || connectionStatus === 'connecting' || isReconnecting) {
+      return; // Already connected or connecting
     }
 
     if (isDevToolsEnabled()) {
@@ -78,6 +108,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     setConnectionStatus('connecting');
     setError(null);
+    setIsReconnecting(false);
 
     try {
       // Create the live-prices-broadcast channel (matches price-ingestor)
@@ -90,6 +121,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           console.log('📈 Received price update:', payload);
         }
         messagesReceivedRef.current += 1;
+        
+        // Reset staleness watchdog on data receipt
+        if (stalenessWatchdog) {
+          clearTimeout(stalenessWatchdog);
+        }
+        setStalenessWatchdog(setTimeout(() => {
+          if (isDevToolsEnabled()) {
+            console.warn('🔄 Price data stale, triggering reconnection');
+          }
+          handleReconnect();
+        }, 30000)); // 30 seconds staleness threshold
         
         // Calculate latency if timestamp is provided
         if (payload.ts) {
@@ -124,7 +166,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         // Track reconnections (transition from non-connected to connected)
         if (status === 'SUBSCRIBED' && prevStatusRef.current !== 'SUBSCRIBED') {
-          reconnectionsRef.current += 1;
+          setReconnectAttempt(0); // Reset on successful connection
         }
         prevStatusRef.current = status;
         
@@ -133,19 +175,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             console.log('✅ Successfully connected to Supabase Realtime');
           }
           setConnectionStatus('connected');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime channel error');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error(`❌ Realtime connection issue: ${status}`);
           setConnectionStatus('error');
-          setError('Failed to connect to live price channel');
-        } else if (status === 'TIMED_OUT') {
-          console.error('⏰ Realtime connection timed out');
-          setConnectionStatus('error');
-          setError('Connection timed out');
-        } else if (status === 'CLOSED') {
-          if (isDevToolsEnabled()) {
-            console.log('🔌 Realtime connection closed');
-          }
-          setConnectionStatus('disconnected');
+          setError(`Connection failed: ${status}`);
+          handleReconnect();
         }
       });
     } catch (error) {
@@ -154,18 +188,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
       setConnectionStatus('error');
       setError('Failed to establish connection - please check your network');
+      handleReconnect();
     }
-  }, []);
-
+  }, [connectionStatus, isReconnecting, handleReconnect, stalenessWatchdog]);
 
   const disconnect = useCallback(() => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    
+    if (stalenessWatchdog) {
+      clearTimeout(stalenessWatchdog);
+      setStalenessWatchdog(null);
+    }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      setReconnectTimer(null);
+    }
     setConnectionStatus('disconnected');
-  }, []);
+    setIsReconnecting(false);
+  }, [stalenessWatchdog, reconnectTimer]);
 
   const subscribe = useCallback((symbols: string[]) => {
     // Add strict symbol validation and logging
@@ -235,6 +277,39 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       ? latencySumRef.current / latencyCountRef.current 
       : 50 // Fallback estimated latency
   }), []);
+
+  // Network state listeners for fast recovery
+  useEffect(() => {
+    const handleOnline = () => {
+      if (isDevToolsEnabled()) {
+        console.log('🌐 Network back online, triggering reconnection');
+      }
+      if (connectionStatus !== 'connected') {
+        setReconnectAttempt(0); // Reset attempts on network recovery
+        connect();
+      }
+    };
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden && connectionStatus !== 'connected') {
+        if (isDevToolsEnabled()) {
+          console.log('👁️ Tab visible again, checking connection');
+        }
+        // Small delay to avoid immediate reconnection spam
+        setTimeout(() => {
+          connect();
+        }, 1000);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [connectionStatus, connect]);
 
   // Initialize connection on mount
   useEffect(() => {

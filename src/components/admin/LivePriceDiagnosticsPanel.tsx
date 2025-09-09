@@ -18,6 +18,7 @@ export const LivePriceDiagnosticsPanel: React.FC = () => {
     lastUpdated, 
     getStats, 
     getConnectionHealth,
+    restartConnection,
     dataSource 
   } = useOptimizedWebSocketPrices();
 
@@ -26,8 +27,8 @@ export const LivePriceDiagnosticsPanel: React.FC = () => {
   const priceSymbols = Object.keys(prices);
 
   const handleRestartConnection = async () => {
-    // Force reconnection by refreshing the page - most reliable method
-    window.location.reload();
+    // Use context method for clean reconnection
+    restartConnection();
   };
 
   return (

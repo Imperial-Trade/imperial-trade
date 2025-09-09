@@ -35,6 +35,7 @@ interface OptimizedWebSocketContextType {
     reconnections: number; 
     avgLatency: number;
   };
+  restartConnection: () => void;
   isUsingEnhancedSystem: boolean;
 }
 
@@ -65,7 +66,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const [maxReconnectAttempts] = useState(10);
   const [baseReconnectDelay] = useState(1000); // Start with 1 second
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const [stalenessWatchdog, setStalenessWatchdog] = useState<NodeJS.Timeout | null>(null);
+  const [heartbeatInterval, setHeartbeatInterval] = useState<NodeJS.Timeout | null>(null);
   const [reconnectTimer, setReconnectTimer] = useState<NodeJS.Timeout | null>(null);
   
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -80,10 +81,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     if (isReconnecting || reconnectAttempt >= maxReconnectAttempts) return;
     
     setIsReconnecting(true);
-    const delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempt), 30000); // Exponential backoff, max 30s
+    // Add jitter to exponential backoff (±25% random variance)
+    const baseDelay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempt), 30000);
+    const jitter = baseDelay * 0.25 * (Math.random() - 0.5);
+    const delay = Math.max(baseDelay + jitter, 100); // Min 100ms
     
     if (isDevToolsEnabled()) {
-      console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
+      console.log(`🔄 Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
     }
     
     if (reconnectTimer) {
@@ -122,16 +126,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
         messagesReceivedRef.current += 1;
         
-        // Reset staleness watchdog on data receipt
-        if (stalenessWatchdog) {
-          clearTimeout(stalenessWatchdog);
-        }
-        setStalenessWatchdog(setTimeout(() => {
-          if (isDevToolsEnabled()) {
-            console.warn('🔄 Price data stale, triggering reconnection');
-          }
-          handleReconnect();
-        }, 30000)); // 30 seconds staleness threshold
+        // Update last received timestamp for heartbeat monitoring
+        setLastUpdated(payload.ts ? new Date(payload.ts) : new Date());
         
         // Calculate latency if timestamp is provided
         if (payload.ts) {
@@ -153,8 +149,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             mid: payload.mid
           };
           setPrices(prev => ({ ...prev, [payload.symbol]: priceData }));
-          // Use payload timestamp if available, otherwise current time
-          setLastUpdated(payload.ts ? new Date(payload.ts) : new Date());
         }
       });
 
@@ -175,10 +169,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             console.log('✅ Successfully connected to Supabase Realtime');
           }
           setConnectionStatus('connected');
+          // Start heartbeat monitoring on successful connection
+          startHeartbeat();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.error(`❌ Realtime connection issue: ${status}`);
           setConnectionStatus('error');
           setError(`Connection failed: ${status}`);
+          stopHeartbeat();
+          channelRef.current = null; // Clear channel reference
           handleReconnect();
         }
       });
@@ -190,24 +188,57 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setError('Failed to establish connection - please check your network');
       handleReconnect();
     }
-  }, [connectionStatus, isReconnecting, handleReconnect, stalenessWatchdog]);
+  }, [connectionStatus, isReconnecting, handleReconnect]);
+
+  // Heartbeat monitoring functions
+  const startHeartbeat = useCallback(() => {
+    stopHeartbeat(); // Clear any existing heartbeat
+    const interval = setInterval(() => {
+      if (connectionStatus === 'connected' && lastUpdated) {
+        const staleness = Date.now() - lastUpdated.getTime();
+        if (staleness > 40000) { // 40 seconds threshold
+          if (isDevToolsEnabled()) {
+            console.warn(`🔄 Price data stale (${Math.round(staleness/1000)}s), triggering reconnection`);
+          }
+          stopHeartbeat();
+          channelRef.current = null; // Clear channel reference
+          handleReconnect();
+        }
+      }
+    }, 15000); // Check every 15 seconds
+    setHeartbeatInterval(interval);
+  }, [connectionStatus, lastUpdated, handleReconnect]);
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      setHeartbeatInterval(null);
+    }
+  }, [heartbeatInterval]);
 
   const disconnect = useCallback(() => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    if (stalenessWatchdog) {
-      clearTimeout(stalenessWatchdog);
-      setStalenessWatchdog(null);
-    }
+    stopHeartbeat();
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       setReconnectTimer(null);
     }
     setConnectionStatus('disconnected');
     setIsReconnecting(false);
-  }, [stalenessWatchdog, reconnectTimer]);
+  }, [stopHeartbeat, reconnectTimer]);
+
+  // Public method for admin tooling
+  const restartConnection = useCallback(() => {
+    if (isDevToolsEnabled()) {
+      console.log('🔄 Manual restart requested');
+    }
+    setReconnectAttempt(0); // Reset backoff
+    disconnect();
+    setTimeout(() => connect(), 100);
+  }, [disconnect, connect]);
 
   const subscribe = useCallback((symbols: string[]) => {
     // Add strict symbol validation and logging
@@ -335,6 +366,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     refreshPrice,
     getConnectionHealth,
     getStats,
+    restartConnection,
     isUsingEnhancedSystem: true
   };
 

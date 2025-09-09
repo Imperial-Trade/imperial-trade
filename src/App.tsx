@@ -1,3 +1,4 @@
+import React from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,10 +13,13 @@ import { FreshThemeProvider as ThemeProvider } from "@/contexts/FreshTheme";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
+import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
+import { DevAuthBanner } from "@/components/debug/DevAuthBanner";
+import { initializeAppState } from "@/utils/appStateCleanup";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -76,20 +80,27 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize app state on startup
+  React.useEffect(() => {
+    initializeAppState();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <CacheCleanerMount />
         <Sonner />
+        <DevAuthBanner />
         <BrowserRouter>
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
-                    <HybridWebSocketPriceProvider>
-                      <ContextErrorBoundary>
-                        <SignalRealtimeProvider>
+                    <WebSocketErrorBoundary>
+                      <HybridWebSocketPriceProvider>
+                        <ContextErrorBoundary>
+                          <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -286,9 +297,10 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                        </SignalRealtimeProvider>
-                      </ContextErrorBoundary>
-                    </HybridWebSocketPriceProvider>
+                          </SignalRealtimeProvider>
+                        </ContextErrorBoundary>
+                      </HybridWebSocketPriceProvider>
+                    </WebSocketErrorBoundary>
                   </NavigationGuard>
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}

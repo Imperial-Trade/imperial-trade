@@ -4,7 +4,7 @@ import { TestPriceGenerator } from '@/components/debug/TestPriceGenerator';
 import { ZeroPausePriceDisplay } from '@/components/ui/price-display-zero-pause';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const TEST_SYMBOLS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'];
+const TEST_SYMBOLS = ['XAUUSD', 'BTCUSD']; // Restricted to essential symbols only
 
 export default function PriceTestingPage() {
   return (

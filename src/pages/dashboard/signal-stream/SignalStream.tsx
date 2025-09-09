@@ -178,13 +178,13 @@ export default function SignalStream() {
       }
     });
     
-    // If no symbols found, subscribe to default popular symbols to ensure data flow
+    // If no symbols found, subscribe to ONLY essential symbols to prevent message explosion
     if (symbolSet.size === 0) {
-      ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'].forEach(symbol => {
+      ['XAUUSD', 'BTCUSD'].forEach(symbol => { // ✅ RESTRICTED to only essential symbols
         symbolSet.add(symbol);
       });
       if (isDevToolsEnabled()) {
-        console.log('🔄 SignalStream - No alert symbols found, using default symbols');
+        console.log('🔄 SignalStream - No alert symbols found, using essential symbols only: XAUUSD, BTCUSD');
       }
     }
     

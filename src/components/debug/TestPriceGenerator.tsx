@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIngestSecret } from '@/hooks/useIngestSecret';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
-const TEST_SYMBOLS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'];
+const TEST_SYMBOLS = ['XAUUSD', 'BTCUSD']; // ✅ RESTRICTED to essential symbols only
 
 export function TestPriceGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -23,11 +23,8 @@ export function TestPriceGenerator() {
 
   const getBasePrice = (symbol: string) => {
     const basePrices = {
-      'XAUUSD': 2650.00,
-      'EURUSD': 1.0850,
-      'GBPUSD': 1.2750,
-      'BTCUSD': 94500.00,
-      'USDJPY': 149.50
+      'XAUUSD': 2650.00,    // Gold price
+      'BTCUSD': 94500.00    // Bitcoin price
     };
     return basePrices[symbol] || 1.0000;
   };

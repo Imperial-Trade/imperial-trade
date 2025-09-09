@@ -47,7 +47,7 @@ export const ComprehensiveWebSocketTester: React.FC = () => {
   const [lastSentBatch, setLastSentBatch] = useState<string>('');
   
   const intervalRef = useRef<NodeJS.Timeout>();
-  const testSymbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD'];
+  const testSymbols = ['XAUUSD', 'BTCUSD']; // Restricted to essential symbols only
   const latencyBuffer = useRef<number[]>([]);
 
   // Generate mock prices and send to price-ingestor
@@ -58,10 +58,7 @@ export const ComprehensiveWebSocketTester: React.FC = () => {
     const mockPrices: Record<string, number> = {};
     
     testSymbols.forEach(symbol => {
-      const basePrice = symbol === 'EURUSD' ? 1.0850 :
-                       symbol === 'GBPUSD' ? 1.2650 :
-                       symbol === 'USDJPY' ? 149.50 :
-                       symbol === 'XAUUSD' ? 2025.00 : 43500.00;
+      const basePrice = symbol === 'XAUUSD' ? 2025.00 : 43500.00; // Only XAUUSD and BTCUSD
       
       const variation = (Math.random() - 0.5) * 0.002;
       mockPrices[symbol] = Number((basePrice * (1 + variation)).toFixed(5));

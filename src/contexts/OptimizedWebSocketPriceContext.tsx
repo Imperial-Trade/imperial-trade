@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
+// ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
+const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
+const MAX_SUBSCRIPTIONS = 2; // Hard cap to prevent overuse
+
 // Enhanced price data interface with bid/ask support
 interface PriceData {
   symbol: string;
@@ -383,12 +387,39 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }, HEALTH_CONFIG.healthCheckInterval);
   }, [lastUpdated, disconnect, connect]);
 
-  // PHASE 1: Ref-counting subscription management
+  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING
   const subscribe = useCallback((symbols: string[]) => {
-    const validSymbols = symbols.filter(s => s && s.trim().length > 0);
+    // ✅ STEP 1: Filter and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
+    const requestedSymbols = symbols.filter(s => s && s.trim().length > 0);
+    const allowedSymbols = requestedSymbols.filter(symbol => {
+      if (!ALLOWED_SYMBOLS.includes(symbol as any)) {
+        if (isDevToolsEnabled()) {
+          console.warn(`🚫 Rejected subscription to unauthorized symbol: ${symbol}. Only ${ALLOWED_SYMBOLS.join(', ')} are allowed.`);
+        }
+        return false;
+      }
+      return true;
+    });
+
+    // ✅ STEP 2: Enforce subscription cap
+    const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
+    const newSymbolsToAdd = allowedSymbols.filter(s => !currentSubscriptions.includes(s));
+    
+    if (currentSubscriptions.length + newSymbolsToAdd.length > MAX_SUBSCRIPTIONS) {
+      console.error(`🛑 SUBSCRIPTION LIMIT EXCEEDED! Cannot subscribe to more than ${MAX_SUBSCRIPTIONS} symbols. Currently: ${currentSubscriptions.length}, requested: ${newSymbolsToAdd.length}`);
+      return;
+    }
+
+    if (allowedSymbols.length === 0) {
+      if (isDevToolsEnabled()) {
+        console.warn('📭 No valid symbols to subscribe to after filtering');
+      }
+      return;
+    }
+
     let hasNewSubscriptions = false;
 
-    validSymbols.forEach(symbol => {
+    allowedSymbols.forEach(symbol => {
       const currentCount = subscriptionsRef.current.get(symbol) || 0;
       if (currentCount === 0) hasNewSubscriptions = true;
       subscriptionsRef.current.set(symbol, currentCount + 1);
@@ -400,8 +431,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
 
     if (isDevToolsEnabled()) {
-      const newSymbols = validSymbols.filter(s => (subscriptionsRef.current.get(s) || 0) === 1);
-      console.log('📝 Subscribed to:', newSymbols, `(${subscriptionsRef.current.size} total)`);
+      const newSymbols = allowedSymbols.filter(s => (subscriptionsRef.current.get(s) || 0) === 1);
+      console.log('✅ Subscribed to:', newSymbols, `(${subscriptionsRef.current.size}/${MAX_SUBSCRIPTIONS} total)`);
+      console.log('🔒 Active subscriptions:', Array.from(subscriptionsRef.current.keys()));
     }
   }, [connect]);
 

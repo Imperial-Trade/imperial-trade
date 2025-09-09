@@ -37,25 +37,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // Enhanced diagnostics for debugging
-    console.error('🚨 useAuth called outside AuthProvider - Context undefined');
-    console.error('🔍 AuthProvider active flag:', (window as any).__AUTH_PROVIDER_ACTIVE__);
-    console.error('🔍 Current location:', window.location.href);
-    console.error('🔍 Stack trace:', new Error().stack);
-    console.error('🔍 Available contexts in DOM:', document.querySelectorAll('[data-auth-provider]').length);
-    console.error('🔍 React version:', React.version);
+    // Enhanced error logging for diagnostics
+    console.error('🚨 useAuth called outside AuthProvider context!', {
+      stack: new Error().stack,
+      timestamp: new Date().toISOString(),
+      location: window.location.pathname
+    });
     
-    // Return safe fallback instead of throwing - prevents app crash
-    return {
-      user: null,
-      session: null,
-      profile: null,
-      loading: false,
-      profileLoading: false,
-      signOut: async () => {},
-      refreshSession: async () => {},
-      refreshProfile: async () => {}
-    };
+    // Runtime probe - check if AuthProvider exists in DOM
+    const authProviders = document.querySelectorAll('[data-auth-provider]');
+    console.error('🔍 AuthProvider probe:', {
+      providersFound: authProviders.length,
+      currentComponent: document.querySelector('[data-current-component]')?.getAttribute('data-current-component') || 'unknown'
+    });
+    
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
@@ -63,17 +59,6 @@ export const useAuth = () => {
 interface AuthProviderProps {
   children: React.ReactNode;
 }
-
-// AuthContextProbe - One-time runtime probe to verify provider presence
-const AuthContextProbe: React.FC = () => {
-  const ctx = React.useContext(AuthContext);
-  React.useEffect(() => {
-    console.log('[AuthContextProbe] AuthProvider mounted', { hasContext: !!ctx });
-    (window as any).__AUTH_PROVIDER_ACTIVE__ = true;
-  }, []);
-  
-  return null;
-};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
@@ -258,7 +243,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }}
     >
       <div data-auth-provider="true">
-        <AuthContextProbe />
         {children}
       </div>
     </AuthContext.Provider>

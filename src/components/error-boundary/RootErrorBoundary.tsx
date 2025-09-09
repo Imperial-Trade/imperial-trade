@@ -25,27 +25,6 @@ export class RootErrorBoundary extends React.Component<Props, State> {
     console.error('React version:', React.version);
   }
 
-  private hardRefresh = async () => {
-    try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-      }
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch (e) {
-      console.warn('Hard refresh cleanup error:', e);
-    } finally {
-      const url = new URL(window.location.href);
-      url.searchParams.set('v', Date.now().toString());
-      window.location.replace(url.toString());
-    }
-  };
-
   render() {
     if (this.state.hasError) {
       return (
@@ -62,38 +41,22 @@ export class RootErrorBoundary extends React.Component<Props, State> {
         }}>
           <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Imperial Trading Platform</h1>
           <p style={{ fontSize: '1.2rem', marginBottom: '2rem', textAlign: 'center' }}>
-            Something went wrong. You can refresh, or perform a hard refresh to clear cached files.
+            Something went wrong. Please refresh the page.
           </p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1rem',
-                backgroundColor: '#d4af37',
-                color: '#000',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: 'pointer'
-              }}
-            >
-              Refresh Page
-            </button>
-            <button
-              onClick={this.hardRefresh}
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1rem',
-                backgroundColor: '#444',
-                color: '#fff',
-                border: '1px solid #666',
-                borderRadius: '0.5rem',
-                cursor: 'pointer'
-              }}
-            >
-              Hard Refresh (Clear Cache)
-            </button>
-          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '1rem 2rem',
+              fontSize: '1rem',
+              backgroundColor: '#gold',
+              color: '#000',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer'
+            }}
+          >
+            Refresh Page
+          </button>
           {this.state.error && (
             <details style={{ marginTop: '2rem', fontSize: '0.875rem' }}>
               <summary>Technical Details</summary>

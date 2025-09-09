@@ -6,9 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 
 export const GlobalWelcomeOverlay: React.FC = () => {
-  // Guard against early rendering before AuthProvider is mounted
-  if (!(window as any).__AUTH_PROVIDER_ACTIVE__) return null;
-  
   const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome();
   const { user } = useAuth();
   const location = useLocation();

@@ -3,9 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { X, Eye, EyeOff } from 'lucide-react';
 
 export const DevAuthBanner: React.FC = () => {
-  // Guard against early rendering before AuthProvider is mounted
-  if (!(window as any).__AUTH_PROVIDER_ACTIVE__) return null;
-  
   const { user, session, profile, loading } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);

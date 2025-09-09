@@ -14,15 +14,7 @@ const NotificationPromptContext = createContext<NotificationPromptContextType | 
 export const useNotificationPrompt = () => {
   const context = useContext(NotificationPromptContext);
   if (context === undefined) {
-    // Fail-safe: do not crash app if provider isn't mounted yet
-    console.warn('useNotificationPrompt used outside NotificationPromptProvider – returning safe defaults');
-    return {
-      hasSeenNotificationPrompt: true,
-      markNotificationPromptAsSeen: () => {},
-      resetNotificationPromptForNewSession: () => {},
-      shouldShowNotificationPrompt: false,
-      setShouldShowNotificationPrompt: () => {},
-    } as const;
+    throw new Error('useNotificationPrompt must be used within a NotificationPromptProvider');
   }
   return context;
 };

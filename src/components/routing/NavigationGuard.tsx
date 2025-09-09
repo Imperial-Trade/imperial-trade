@@ -9,9 +9,6 @@ interface NavigationGuardProps {
 }
 
 export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) => {
-  // Guard against early rendering before AuthProvider is mounted
-  if (!(window as any).__AUTH_PROVIDER_ACTIVE__) return null;
-  
   const { user, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

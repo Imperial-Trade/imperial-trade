@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface PriceData {
   symbol: string;
@@ -104,13 +105,13 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   useEffect(() => {
     if (!symbol) return;
 
-    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+    if (isDevToolsEnabled()) {
       console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${symbol}`);
     }
     subscribe([symbol]);
 
     return () => {
-      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      if (isDevToolsEnabled()) {
         console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${symbol}`);
       }
       unsubscribe([symbol]);

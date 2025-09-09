@@ -14,6 +14,7 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
@@ -64,15 +65,17 @@ export default function SignalStream() {
   }, [profile]);
   const canCreateSignals = useMemo(() => {
     const canCreate = isAdmin || isEducator;
-    console.log('SignalStream - canCreateSignals check:', {
-      profile,
-      isAdmin,
-      isEducator,
-      canCreate,
-      access_level: profile?.access_level,
-      role: profile?.role,
-      user_type: profile?.user_type
-    });
+    if (isDevToolsEnabled()) {
+      console.log('SignalStream - canCreateSignals check:', {
+        profile,
+        isAdmin,
+        isEducator,
+        canCreate,
+        access_level: profile?.access_level,
+        role: profile?.role,
+        user_type: profile?.user_type
+      });
+    }
     return canCreate;
   }, [isAdmin, isEducator, profile]);
   const isCreator = useCallback((alertCreatorId: string) => {
@@ -81,16 +84,18 @@ export default function SignalStream() {
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
-    console.log('SignalStream - Processing alerts:', allAlerts.length);
-    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
-      id: a.id,
-      asset: a.assetName,
-      creator: a.creator?.display_name,
-      creatorId: a.creator?.id,
-      role: a.creator?.role,
-      userType: a.creator?.user_type,
-      accessLevel: a.creator?.access_level
-    })));
+    if (isDevToolsEnabled()) {
+      console.log('SignalStream - Processing alerts:', allAlerts.length);
+      console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
+        id: a.id,
+        asset: a.assetName,
+        creator: a.creator?.display_name,
+        creatorId: a.creator?.id,
+        role: a.creator?.role,
+        userType: a.creator?.user_type,
+        accessLevel: a.creator?.access_level
+      })));
+    }
     let filteredAlerts = allAlerts;
 
     // Apply user filters
@@ -178,11 +183,15 @@ export default function SignalStream() {
       ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'].forEach(symbol => {
         symbolSet.add(symbol);
       });
-      console.log('🔄 SignalStream - No alert symbols found, using default symbols');
+      if (isDevToolsEnabled()) {
+        console.log('🔄 SignalStream - No alert symbols found, using default symbols');
+      }
     }
     
     const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
-    console.log('🔄 SignalStream - Symbols to subscribe:', symbolList);
+    if (isDevToolsEnabled()) {
+      console.log('🔄 SignalStream - Symbols to subscribe:', symbolList);
+    }
     return symbolList;
   }, [activeAlerts, alerts]);
   const {
@@ -223,12 +232,16 @@ export default function SignalStream() {
       const added = symbols.filter(s => !prev.includes(s));
       const removed = prev.filter(s => !symbols.includes(s));
       if (added.length > 0) {
-        console.log('🔄 SignalStream - Subscribing (diff):', added);
+        if (isDevToolsEnabled()) {
+          console.log('🔄 SignalStream - Subscribing (diff):', added);
+        }
         subscribe(added);
         subscriptionActiveRef.current = true;
       }
       if (removed.length > 0) {
-        console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
+        if (isDevToolsEnabled()) {
+          console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
+        }
         unsubscribe(removed);
       }
 
@@ -243,7 +256,9 @@ export default function SignalStream() {
       
       // On unmount, clean up any remaining subscriptions
       if (symbolsRef.current.length > 0) {
-        console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
+        if (isDevToolsEnabled()) {
+          console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
+        }
         unsubscribe(symbolsRef.current);
         symbolsRef.current = [];
         subscriptionActiveRef.current = false;
@@ -367,23 +382,27 @@ export default function SignalStream() {
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
-    console.log('SignalStream - handleStatusUpdate authorization check:', {
-      alertId: alert.id,
-      alertCreatorId: alert.creator?.id,
-      currentUserId: profile?.id,
-      isCreator: alertIsCreator,
-      isAdmin,
-      canUpdate: alertIsCreator || isAdmin
-    });
-    if (!alertIsCreator && !isAdmin) {
-      console.warn('SignalStream - User not authorized to update this signal:', {
-        userId: profile?.id,
-        creatorId: alert.creator?.id,
-        userRole: profile?.role,
-        userAccessLevel: profile?.access_level,
+    if (isDevToolsEnabled()) {
+      console.log('SignalStream - handleStatusUpdate authorization check:', {
+        alertId: alert.id,
+        alertCreatorId: alert.creator?.id,
+        currentUserId: profile?.id,
         isCreator: alertIsCreator,
-        isAdmin
+        isAdmin,
+        canUpdate: alertIsCreator || isAdmin
       });
+    }
+    if (!alertIsCreator && !isAdmin) {
+      if (isDevToolsEnabled()) {
+        console.warn('SignalStream - User not authorized to update this signal:', {
+          userId: profile?.id,
+          creatorId: alert.creator?.id,
+          userRole: profile?.role,
+          userAccessLevel: profile?.access_level,
+          isCreator: alertIsCreator,
+          isAdmin
+        });
+      }
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',

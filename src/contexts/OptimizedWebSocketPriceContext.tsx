@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 // Enhanced price data interface with bid/ask support
 interface PriceData {
@@ -83,7 +84,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       // Set up listener for price updates
       channel.on('broadcast', { event: 'price_update' }, ({ payload }) => {
-        if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+        if (isDevToolsEnabled()) {
           console.log('📈 Received price update:', payload);
         }
         messagesReceivedRef.current += 1;

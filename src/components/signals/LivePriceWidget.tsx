@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -180,7 +181,7 @@ const LivePriceWidgetComponent = ({
     const buffer = alert.entry_price * 0.0001;
 
     // Enhanced logging for debugging
-    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+    if (isDevToolsEnabled()) {
       console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
         currentPrice: price,
         entryPrice: alert.entry_price,
@@ -219,7 +220,7 @@ const LivePriceWidgetComponent = ({
     // Priority 2: Validate trade direction before checking TP levels
     const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
     if (!isPriceInProfitDirection) {
-      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      if (isDevToolsEnabled()) {
         console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
           currentPrice: price,
           entryPrice: alert.entry_price,
@@ -331,7 +332,7 @@ const LivePriceWidgetComponent = ({
 
   // Debug logging
   useEffect(() => {
-    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+    if (isDevToolsEnabled()) {
       console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
         alertSymbol: alert.tradermade_symbol,
         currentPrice: currentPrice,

@@ -7,6 +7,7 @@ import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, 
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
@@ -74,7 +75,7 @@ export default function TradingCalculator({
     
     // Log ultra-fast price updates for monitoring
     if (isUltraFastTick && priceValue !== alert.entry_price) {
-      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      if (isDevToolsEnabled()) {
         console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
           symbol,
           price: priceValue,

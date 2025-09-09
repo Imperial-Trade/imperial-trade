@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { Zap, Activity, Clock, TrendingUp } from 'lucide-react';
@@ -15,7 +15,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
     errors,
     subscribe,
     unsubscribe
-  } = useHybridWebSocketPrices();
+  } = useOptimizedWebSocketPrices();
 
   const connectionHealth = useConnectionHealth();
   const [isMonitoring, setIsMonitoring] = useState(false);

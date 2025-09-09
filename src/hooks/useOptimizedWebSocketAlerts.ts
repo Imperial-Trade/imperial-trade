@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 // PHASE 2B: Direct WebSocket alerts to replace expensive Realtime subscriptions
 interface WebSocketAlert {
@@ -13,7 +13,7 @@ interface WebSocketAlert {
 
 export function useOptimizedWebSocketAlerts() {
   const [alerts, setAlerts] = useState<WebSocketAlert[]>([]);
-  const { connectionStatus } = useHybridWebSocketPrices();
+  const { connectionStatus } = useOptimizedWebSocketPrices();
 
   const handleWebSocketAlert = useCallback((alert: WebSocketAlert) => {
     console.log('🔔 PHASE 2B: WebSocket alert received:', alert);

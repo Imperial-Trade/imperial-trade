@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { Activity, Heart, Zap, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -24,7 +24,7 @@ interface SystemHealth {
 }
 
 export const WebSocketHealthMonitor: React.FC = () => {
-  const { connectionStatus, prices, dataSource } = useHybridWebSocketPrices();
+  const { connectionStatus, prices, dataSource } = useOptimizedWebSocketPrices();
   const [health, setHealth] = useState<SystemHealth>({
     overall: 'unknown',
     checks: [],

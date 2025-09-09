@@ -3,7 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Wifi, WifiOff, Activity, AlertTriangle } from 'lucide-react';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
 
@@ -15,7 +15,7 @@ interface StreamStatus {
 }
 
 export function SignalStreamStatus() {
-  const { connectionStatus, dataSource, isUsingEnhancedSystem } = useHybridWebSocketPrices();
+  const { connectionStatus, dataSource, isUsingEnhancedSystem } = useOptimizedWebSocketPrices();
   const [status, setStatus] = useState<StreamStatus>({
     websocket: 'connecting',
     monitor: 'inactive', 

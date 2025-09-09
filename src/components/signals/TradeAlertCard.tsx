@@ -14,7 +14,7 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 interface PriceRowProps {
   label: string;
@@ -74,7 +74,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  const { getPrice } = useHybridWebSocketPrices();
+  const { getPrice } = useOptimizedWebSocketPrices();
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {

@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TestWrapper } from '@/test/utils/test-helpers';
 
-// Mock the HybridWebSocket context for tests
-vi.mock('@/contexts/HybridWebSocketPriceContext', () => ({
-  useHybridWebSocketPrices: () => ({
+// Mock the OptimizedWebSocket context for tests
+vi.mock('@/contexts/OptimizedWebSocketPriceContext', () => ({
+  useOptimizedWebSocketPrices: () => ({
     prices: {
       EURUSD: { price: 1.0500, change: 0.0010, changePercent: 0.095, timestamp: new Date().toISOString() }
     },

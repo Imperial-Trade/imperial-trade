@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useIngestSecret } from '@/hooks/useIngestSecret';
 import { supabase } from '@/integrations/supabase/client';
 import { Activity, Wifi, WifiOff, Zap, BarChart3, AlertTriangle } from 'lucide-react';
@@ -28,7 +28,7 @@ interface PriceUpdate {
 }
 
 export const ComprehensiveWebSocketTester: React.FC = () => {
-  const { prices, connectionStatus, subscribe, unsubscribe, dataSource } = useHybridWebSocketPrices();
+  const { prices, connectionStatus, subscribe, unsubscribe, dataSource } = useOptimizedWebSocketPrices();
   const { isConfigured: hasSecret, isLoading: secretLoading } = useIngestSecret();
   
   const [isAutoTesting, setIsAutoTesting] = useState(false);

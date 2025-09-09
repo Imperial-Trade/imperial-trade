@@ -22,7 +22,7 @@ export class ContextErrorBoundary extends Component<Props, State> {
   public static getDerivedStateFromError(error: Error): State {
     // Check if this is a context-related error
     if (error.message.includes('useSignalRealtime') || 
-        error.message.includes('useHybridWebSocketPrices') ||
+        error.message.includes('useOptimizedWebSocketPrices') ||
         error.message.includes('useOptimizedWebSocketPrices') ||
         error.message.includes('useState') ||
         error.message.includes('Provider') ||

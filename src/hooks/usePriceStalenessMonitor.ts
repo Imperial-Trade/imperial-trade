@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 interface PriceStalenessStatus {
   isStale: boolean;
@@ -10,7 +10,7 @@ interface PriceStalenessStatus {
 }
 
 export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
-  const { getConnectionHealth, lastUpdated, prices } = useHybridWebSocketPrices();
+  const { getConnectionHealth, lastUpdated, prices } = useOptimizedWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useIngestSecret } from '@/hooks/useIngestSecret';
 import { supabase } from '@/integrations/supabase/client';
 import { Play, Square, CheckCircle, XCircle, Clock, Target } from 'lucide-react';
@@ -29,7 +29,7 @@ interface TestResult {
 }
 
 export const EndToEndTestSuite: React.FC = () => {
-  const { prices, connectionStatus, subscribe, unsubscribe } = useHybridWebSocketPrices();
+  const { prices, connectionStatus, subscribe, unsubscribe } = useOptimizedWebSocketPrices();
   const { isConfigured: hasSecret } = useIngestSecret();
   
   const [isRunning, setIsRunning] = useState(false);

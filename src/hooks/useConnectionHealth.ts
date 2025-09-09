@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 interface ConnectionHealthMetrics {
   tickFrequency: number; // in ms
@@ -12,7 +12,7 @@ interface ConnectionHealthMetrics {
 }
 
 export function useConnectionHealth() {
-  const { connectionStatus, lastUpdated, prices } = useHybridWebSocketPrices();
+  const { connectionStatus, lastUpdated, prices } = useOptimizedWebSocketPrices();
   const [metrics, setMetrics] = useState<ConnectionHealthMetrics>({
     tickFrequency: 250,
     actualFrequency: 0,

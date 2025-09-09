@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
-import { HybridWebSocketPriceProvider } from "@/contexts/HybridWebSocketPriceContext";
+import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { FreshThemeProvider as ThemeProvider } from "@/contexts/FreshTheme";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
@@ -98,7 +98,7 @@ function App() {
                 <NotificationPromptProvider>
                   <NavigationGuard>
                     <WebSocketErrorBoundary>
-                      <HybridWebSocketPriceProvider>
+                      <OptimizedWebSocketPriceProvider>
                         <ContextErrorBoundary>
                           <SignalRealtimeProvider>
                       <Routes>
@@ -299,7 +299,7 @@ function App() {
                       </Routes>
                           </SignalRealtimeProvider>
                         </ContextErrorBoundary>
-                      </HybridWebSocketPriceProvider>
+                      </OptimizedWebSocketPriceProvider>
                     </WebSocketErrorBoundary>
                   </NavigationGuard>
                 </NotificationPromptProvider>

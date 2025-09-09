@@ -6,14 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
-import { useHybridWebSocketPrices } from '@/contexts/HybridWebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
 }) {
   // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
-  const { prices, getPrice } = useHybridWebSocketPrices();
+  const { prices, getPrice } = useOptimizedWebSocketPrices();
   
   // Subscribe to this symbol and get its price data
   const wsLivePrice = useMemo(() => {

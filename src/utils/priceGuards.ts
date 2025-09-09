@@ -2,6 +2,7 @@
  * Price validation guards to prevent cross-contamination between assets
  * Each asset has realistic price ranges to detect implausible data
  */
+import { isDevToolsEnabled } from './featureFlags';
 
 interface PriceRange {
   min: number;
@@ -50,7 +51,9 @@ export function isPricePlausibleForSymbol(price: number, symbol: string): boolea
   
   // Bypass price checks for Gold/XAU symbols
   if (normalizedSymbol.includes('XAU') || normalizedSymbol.includes('GOLD')) {
-    console.log(`🟡 Bypassing price validation for Gold symbol: ${normalizedSymbol} = ${price}`);
+    if (isDevToolsEnabled()) {
+      console.log(`🟡 Bypassing price validation for Gold symbol: ${normalizedSymbol} = ${price}`);
+    }
     return true;
   }
   
@@ -58,14 +61,16 @@ export function isPricePlausibleForSymbol(price: number, symbol: string): boolea
   
   // Enhanced cross-contamination detection
   if (!range) {
-    console.warn(`⚠️ No price range defined for symbol: ${normalizedSymbol}`);
+    if (isDevToolsEnabled()) {
+      console.warn(`⚠️ No price range defined for symbol: ${normalizedSymbol}`);
+    }
     return true; // Allow unknown symbols but warn
   }
   
   const isPlausible = price >= range.min && price <= range.max;
   
   // Log implausible prices for debugging
-  if (!isPlausible) {
+  if (!isPlausible && isDevToolsEnabled()) {
     console.error(`❌ Implausible price detected: ${normalizedSymbol} = ${price} (expected: ${range.min}-${range.max})`);
     
     // Special case: detect Gold/Bitcoin cross-contamination
@@ -107,13 +112,17 @@ export function isCachedPriceValid(symbol: string, cachedData: { price: number; 
   const maxAgeMinutes = isWeekend ? 48 * 60 : 5; // 48 hours on weekends, 5 minutes during week
   
   if (ageMinutes > maxAgeMinutes) {
-    console.log(`📅 Cache expired for ${symbol}: ${Math.round(ageMinutes)} minutes old (max: ${maxAgeMinutes})`);
+    if (isDevToolsEnabled()) {
+      console.log(`📅 Cache expired for ${symbol}: ${Math.round(ageMinutes)} minutes old (max: ${maxAgeMinutes})`);
+    }
     return false;
   }
 
   // Check price plausibility
   if (!isPricePlausibleForSymbol(cachedData.price, symbol)) {
-    console.log(`🚫 Cache invalid for ${symbol}: price ${cachedData.price} not plausible`);
+    if (isDevToolsEnabled()) {
+      console.log(`🚫 Cache invalid for ${symbol}: price ${cachedData.price} not plausible`);
+    }
     return false;
   }
 
@@ -154,10 +163,14 @@ export function cleanInvalidPriceCache(symbols?: string[]): void {
     }
     
     if (keysToRemove.length > 0) {
-      console.log(`🧹 Cleaning ${keysToRemove.length} invalid cache entries:`, keysToRemove);
+      if (isDevToolsEnabled()) {
+        console.log(`🧹 Cleaning ${keysToRemove.length} invalid cache entries:`, keysToRemove);
+      }
       keysToRemove.forEach(key => localStorage.removeItem(key));
     }
   } catch (e) {
-    console.warn('Failed to clean invalid price cache:', e);
+    if (isDevToolsEnabled()) {
+      console.warn('Failed to clean invalid price cache:', e);
+    }
   }
 }

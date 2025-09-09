@@ -6,6 +6,7 @@ import { enhancedPerformanceMonitor } from '@/services/EnhancedPerformanceMonito
 import { ultraCostOptimizer } from '@/services/UltraCostOptimizer';
 import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from '../types';
 import { ApiResponse } from '@/types/common';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 /**
  * Enhanced Database Operations with Redis Caching and Connection Pooling
@@ -161,7 +162,9 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     // Try ultra-aggressive cache first
     const cached = redisCache.read<TableRow<'market_prices'>[]>(cacheKey);
     if (cached) {
-      console.log(`⚡ Ultra-cache HIT for prices: ${allowedSymbols.join(',')}`);
+      if (isDevToolsEnabled()) {
+        console.log(`⚡ Ultra-cache HIT for prices: ${allowedSymbols.join(',')}`);
+      }
       return { success: true, data: cached, error: undefined };
     }
 

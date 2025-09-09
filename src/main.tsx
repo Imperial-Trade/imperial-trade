@@ -44,6 +44,41 @@ if (enableServiceWorker && 'serviceWorker' in navigator) {
   });
 } else {
   console.log('Trade Imperial SW: Service Worker disabled via VITE_ENABLE_SW flag');
+  
+  // Automatically clean up any existing service workers and caches
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        // Unregister all service workers for this origin
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        let unregisteredCount = 0;
+        for (const registration of registrations) {
+          await registration.unregister();
+          unregisteredCount++;
+        }
+        
+        // Clear all caches
+        let clearedCacheCount = 0;
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map(async (cacheName) => {
+              await caches.delete(cacheName);
+              clearedCacheCount++;
+            })
+          );
+        }
+        
+        if (unregisteredCount > 0 || clearedCacheCount > 0) {
+          console.log(`Trade Imperial SW: Cleanup complete - unregistered ${unregisteredCount} service workers, cleared ${clearedCacheCount} caches`);
+        } else {
+          console.log('Trade Imperial SW: No cleanup needed - no service workers or caches found');
+        }
+      } catch (error) {
+        console.error('Trade Imperial SW: Cleanup failed', error);
+      }
+    });
+  }
 }
 
 const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;

@@ -72,11 +72,11 @@ interface AuthProviderProps {
 
 // AuthContextProbe - One-time runtime probe to verify provider presence
 const AuthContextProbe: React.FC = () => {
+  const ctx = React.useContext(AuthContext);
   React.useEffect(() => {
-    const ctx = React.useContext(AuthContext);
     console.log('[AuthContextProbe] AuthProvider mounted', { hasContext: !!ctx });
     (window as any).__AUTH_PROVIDER_ACTIVE__ = true;
-  }, []);
+  }, [ctx]);
   
   return null;
 };

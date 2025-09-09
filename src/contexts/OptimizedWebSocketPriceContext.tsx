@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
+import { costTracker } from '@/services/CostTracker';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
@@ -223,11 +225,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
           statsRef.current.messagesReceived++;
           
+          // Track cost for price updates
+          costTracker.recordRealtimeMessage('price_update');
+          pricePerformanceMonitor.recordPriceUpdate();
+          
           // Calculate latency if timestamp provided
           if (payload.ts) {
             const latency = Date.now() - new Date(payload.ts).getTime();
             statsRef.current.latencySum += latency;
             statsRef.current.latencyCount++;
+            pricePerformanceMonitor.recordLatency(latency);
           }
           
           const priceData: PriceData = {
@@ -248,6 +255,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             updateBatchTimeoutRef.current = setTimeout(() => {
               setPrices(prev => ({ ...prev, ...Object.fromEntries(batchedUpdates.current) }));
               setLastUpdated(new Date());
+              pricePerformanceMonitor.recordUIUpdate();
               batchedUpdates.current.clear();
               updateBatchTimeoutRef.current = null;
             }, 50); // Batch updates every 50ms
@@ -435,6 +443,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('✅ Subscribed to:', newSymbols, `(${subscriptionsRef.current.size}/${MAX_SUBSCRIPTIONS} total)`);
       console.log('🔒 Active subscriptions:', Array.from(subscriptionsRef.current.keys()));
     }
+
+    // Track subscription costs
+    allowedSymbols.forEach(() => costTracker.recordRealtimeMessage('subscription'));
   }, [connect]);
 
   const unsubscribe = useCallback((symbols: string[]) => {

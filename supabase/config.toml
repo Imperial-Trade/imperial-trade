@@ -12,12 +12,6 @@ enabled = true
 [edge_functions]
 enabled = true
 
-[functions.price-ingestor]
-verify_jwt = false
-
-[functions.enhanced-alert-monitor]
-verify_jwt = false
-
 [functions.enhanced-signal-notification-dispatcher]
 verify_jwt = false
 

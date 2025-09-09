@@ -37,49 +37,17 @@ export function SignalStreamStatus() {
     try {
       setIsRefreshing(true);
       
-      // Check enhanced alert monitor health
-      const monitorResponse = await supabase.functions.invoke('enhanced-alert-monitor', {
-        body: { action: 'health' }
-      });
-      
-      // Check active alerts count
-      const { count: alertCount } = await supabase
-        .from('alert_monitoring')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
+      // Update status based on websocket connection
       setStatus(prev => ({
         ...prev,
-        monitor: monitorResponse.data?.status === 'active' ? 'active' : 'inactive',
-        alerts: alertCount || 0
+        monitor: connectionStatus === 'connected' ? 'active' : 'inactive',
+        alerts: 0 // No alert monitoring system active
       }));
       
-      console.log('✅ System status check completed:', { monitorResponse, alertCount });
+      console.log('✅ System status refreshed');
     } catch (error) {
       console.error('❌ Status check failed:', error);
       setStatus(prev => ({ ...prev, monitor: 'error' }));
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const initializeMonitor = async () => {
-    try {
-      setIsRefreshing(true);
-      console.log('🚀 Initializing persistent monitor...');
-      
-      const response = await supabase.functions.invoke('enhanced-alert-monitor', {
-        body: { action: 'start' }
-      });
-      
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-      
-      console.log('✅ Monitor initialized:', response.data);
-      await checkSystemStatus();
-    } catch (error) {
-      console.error('❌ Failed to initialize monitor:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -136,7 +104,7 @@ export function SignalStreamStatus() {
     }
   };
 
-  const needsAction = status.monitor === 'inactive' || status.monitor === 'error';
+  const needsAction = false; // No monitor initialization needed
 
   return (
     <div className="space-y-3">
@@ -180,16 +148,7 @@ export function SignalStreamStatus() {
           </Badge>
         </div>
         
-        {needsAction && (
-          <Button 
-            onClick={initializeMonitor}
-            disabled={isRefreshing}
-            size="sm"
-            variant="destructive"
-          >
-            Initialize Monitor
-          </Button>
-        )}
+        {/* Monitor initialization removed - using enhanced-signal-notification-dispatcher only */}
       </div>
 
       {/* Enhanced System Badge */}

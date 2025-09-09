@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -15,7 +15,33 @@ interface PriceData {
   mid?: number;
 }
 
-// Unified WebSocket context type with all features
+// Connection state management interface
+interface ConnectionState {
+  status: 'disconnected' | 'connecting' | 'connected' | 'error' | 'circuit-breaker';
+  attempt: number;
+  nextRetryAt: number | null;
+  errorCount: number;
+  lastSuccessAt: number | null;
+}
+
+// Circuit breaker configuration
+const CIRCUIT_BREAKER_CONFIG = {
+  maxConsecutiveFailures: 5,
+  breakerOpenDuration: 30000, // 30 seconds
+  maxReconnectAttempts: 10,
+  baseRetryDelay: 2000, // Start with 2 seconds
+  maxRetryDelay: 30000, // Cap at 30 seconds
+  retryMultiplier: 1.8, // Gentle exponential backoff
+  jitterRange: 0.3, // ±30% jitter
+};
+
+// Health monitoring configuration
+const HEALTH_CONFIG = {
+  staleDataThreshold: 45000, // 45 seconds before considering data stale
+  healthCheckInterval: 30000, // Check health every 30 seconds
+  maxSilentPeriod: 60000, // 1 minute of no data before concern
+};
+
 interface OptimizedWebSocketContextType {
   prices: Record<string, PriceData>;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -24,7 +50,7 @@ interface OptimizedWebSocketContextType {
   getPrice: (symbol: string) => PriceData | null;
   isConnected: boolean;
   error: string | null;
-  // Enhanced features from HybridWebSocketPriceContext
+  // Enhanced features
   dataSource: string;
   lastUpdated: Date | null;
   errors: Record<string, string>;
@@ -57,301 +83,378 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   children
 }) => {
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  // Enhanced reconnection state
-  const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  const [maxReconnectAttempts] = useState(10);
-  const [baseReconnectDelay] = useState(1000); // Start with 1 second
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const [heartbeatInterval, setHeartbeatInterval] = useState<NodeJS.Timeout | null>(null);
-  const [reconnectTimer, setReconnectTimer] = useState<NodeJS.Timeout | null>(null);
+  // Connection state management
+  const connectionStateRef = useRef<ConnectionState>({
+    status: 'disconnected',
+    attempt: 0,
+    nextRetryAt: null,
+    errorCount: 0,
+    lastSuccessAt: null,
+  });
+
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   
+  // Core refs for connection management
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionsRef = useRef<Set<string>>(new Set());
-  const messagesReceivedRef = useRef<number>(0);
-  const prevStatusRef = useRef<string>('disconnected');
-  const reconnectionsRef = useRef<number>(0);
-  const latencySumRef = useRef<number>(0);
-  const latencyCountRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectingRef = useRef(false);
+  
+  // Stats tracking
+  const statsRef = useRef({
+    messagesReceived: 0,
+    reconnections: 0,
+    latencySum: 0,
+    latencyCount: 0,
+  });
 
-  const handleReconnect = useCallback(() => {
-    if (isReconnecting || reconnectAttempt >= maxReconnectAttempts) return;
+  // PHASE 1: Connection State Management with Circuit Breaker
+  const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
+    connectionStateRef.current = { ...connectionStateRef.current, ...updates };
+    setConnectionStatus(connectionStateRef.current.status === 'circuit-breaker' ? 'error' : connectionStateRef.current.status);
+  }, []);
+
+  const isCircuitBreakerOpen = useCallback(() => {
+    const state = connectionStateRef.current;
+    return state.status === 'circuit-breaker' || 
+           (state.errorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures &&
+            Date.now() < (state.nextRetryAt || 0));
+  }, []);
+
+  const calculateRetryDelay = useCallback((attempt: number): number => {
+    const baseDelay = Math.min(
+      CIRCUIT_BREAKER_CONFIG.baseRetryDelay * Math.pow(CIRCUIT_BREAKER_CONFIG.retryMultiplier, attempt),
+      CIRCUIT_BREAKER_CONFIG.maxRetryDelay
+    );
     
-    setIsReconnecting(true);
-    // Add jitter to exponential backoff (±25% random variance)
-    const baseDelay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttempt), 30000);
-    const jitter = baseDelay * 0.25 * (Math.random() - 0.5);
-    const delay = Math.max(baseDelay + jitter, 100); // Min 100ms
+    const jitter = baseDelay * CIRCUIT_BREAKER_CONFIG.jitterRange * (Math.random() - 0.5);
+    return Math.max(baseDelay + jitter, 1000); // Minimum 1 second
+  }, []);
+
+  // PHASE 2 & 4: Enhanced connection management
+  const disconnect = useCallback(() => {
+    // Clear all timers first
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current);
+      healthCheckIntervalRef.current = null;
+    }
+
+    // Clean up channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    isConnectingRef.current = false;
+    updateConnectionState({ status: 'disconnected' });
     
     if (isDevToolsEnabled()) {
-      console.log(`🔄 Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
+      console.log('🔌 WebSocket disconnected and cleaned up');
     }
-    
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-    }
-    
-    setReconnectTimer(setTimeout(() => {
-      setReconnectAttempt(prev => prev + 1);
-      reconnectionsRef.current += 1;
-      disconnect();
-      setTimeout(() => connect(), 100); // Small delay before reconnect
-    }, delay));
-  }, [isReconnecting, reconnectAttempt, maxReconnectAttempts, baseReconnectDelay, reconnectTimer]);
+  }, [updateConnectionState]);
 
+  // PHASE 3: Optimized connection with circuit breaker
   const connect = useCallback(async () => {
-    if (channelRef.current || connectionStatus === 'connecting' || isReconnecting) {
-      return; // Already connected or connecting
+    // Connection guards
+    if (isConnectingRef.current || channelRef.current || isCircuitBreakerOpen()) {
+      if (isDevToolsEnabled()) {
+        console.log('🚫 Connection attempt blocked:', {
+          isConnecting: isConnectingRef.current,
+          hasChannel: !!channelRef.current,
+          circuitOpen: isCircuitBreakerOpen()
+        });
+      }
+      return;
     }
 
-    if (isDevToolsEnabled()) {
-      console.log('🔗 Connecting to Supabase Realtime...');
-    }
-    setConnectionStatus('connecting');
+    isConnectingRef.current = true;
+    updateConnectionState({ status: 'connecting' });
     setError(null);
-    setIsReconnecting(false);
 
     try {
-      // Create the live-prices-broadcast channel (matches price-ingestor)
-      const channel = supabase.channel('live-prices-broadcast');
+      if (isDevToolsEnabled()) {
+        console.log('🔗 Initiating WebSocket connection...');
+      }
+
+      // Create optimized channel with minimal overhead
+      const channel = supabase.channel('live-prices-broadcast', {
+        config: {
+          broadcast: { self: false }, // Don't echo our own messages
+          presence: { key: 'prices' }, // Minimal presence tracking
+        }
+      });
+
       channelRef.current = channel;
 
-      // Set up listener for price updates
+      // Set up optimized message handler
       channel.on('broadcast', { event: 'price_update' }, ({ payload }) => {
-        if (isDevToolsEnabled()) {
-          console.log('📈 Received price update:', payload);
-        }
-        messagesReceivedRef.current += 1;
-        
-        // Update last received timestamp for heartbeat monitoring
-        setLastUpdated(payload.ts ? new Date(payload.ts) : new Date());
-        
-        // Calculate latency if timestamp is provided
-        if (payload.ts) {
-          const latency = Date.now() - new Date(payload.ts).getTime();
-          latencySumRef.current += latency;
-          latencyCountRef.current += 1;
-        }
-        
-        // Only process if we're subscribed to this symbol
-        if (subscriptionsRef.current.has(payload.symbol)) {
+        try {
+          if (!payload?.symbol || !subscriptionsRef.current.has(payload.symbol)) {
+            return; // Skip unsubscribed symbols
+          }
+
+          statsRef.current.messagesReceived++;
+          
+          // Calculate latency if timestamp provided
+          if (payload.ts) {
+            const latency = Date.now() - new Date(payload.ts).getTime();
+            statsRef.current.latencySum += latency;
+            statsRef.current.latencyCount++;
+          }
+          
           const priceData: PriceData = {
             symbol: payload.symbol,
             price: payload.price,
-            change: 0, // Will be calculated by DigitalOcean
-            changePercent: 0, // Will be calculated by DigitalOcean
+            change: payload.change || 0,
+            changePercent: payload.changePercent || 0,
             timestamp: payload.ts || new Date().toISOString(),
             bid: payload.bid,
             ask: payload.ask,
             mid: payload.mid
           };
+
           setPrices(prev => ({ ...prev, [payload.symbol]: priceData }));
+          setLastUpdated(new Date());
+          
+        } catch (err) {
+          console.error('❌ Error processing price update:', err);
         }
       });
 
-      // Subscribe to the channel
+      // Subscribe with enhanced error handling
       channel.subscribe((status) => {
         if (isDevToolsEnabled()) {
-          console.log('🔌 Realtime connection status:', status);
+          console.log('🔌 Connection status:', status);
         }
-        
-        // Track reconnections (transition from non-connected to connected)
-        if (status === 'SUBSCRIBED' && prevStatusRef.current !== 'SUBSCRIBED') {
-          setReconnectAttempt(0); // Reset on successful connection
-        }
-        prevStatusRef.current = status;
         
         if (status === 'SUBSCRIBED') {
-          if (isDevToolsEnabled()) {
-            console.log('✅ Successfully connected to Supabase Realtime');
-          }
-          setConnectionStatus('connected');
-          // Start heartbeat monitoring on successful connection
-          startHeartbeat();
+          // Success: Reset circuit breaker
+          updateConnectionState({
+            status: 'connected',
+            attempt: 0,
+            errorCount: 0,
+            nextRetryAt: null,
+            lastSuccessAt: Date.now()
+          });
+          
+          statsRef.current.reconnections++;
+          isConnectingRef.current = false;
+          startHealthMonitoring();
+          
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.error(`❌ Realtime connection issue: ${status}`);
-          setConnectionStatus('error');
+          const state = connectionStateRef.current;
+          const newErrorCount = state.errorCount + 1;
+          
+          console.error(`❌ Connection failed: ${status} (error #${newErrorCount})`);
+          
+          // Update error state
+          updateConnectionState({
+            status: newErrorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures ? 'circuit-breaker' : 'error',
+            errorCount: newErrorCount,
+          });
+          
           setError(`Connection failed: ${status}`);
-          stopHeartbeat();
-          channelRef.current = null; // Clear channel reference
-          handleReconnect();
+          isConnectingRef.current = false;
+          channelRef.current = null;
+          
+          // Schedule reconnect if under limits
+          if (state.attempt < CIRCUIT_BREAKER_CONFIG.maxReconnectAttempts && !isCircuitBreakerOpen()) {
+            scheduleReconnect();
+          }
         }
       });
-    } catch (error) {
-      if (isDevToolsEnabled()) {
-        console.error('❌ Connection setup failed:', error);
-      }
-      setConnectionStatus('error');
-      setError('Failed to establish connection - please check your network');
-      handleReconnect();
-    }
-  }, [connectionStatus, isReconnecting, handleReconnect]);
 
-  // Heartbeat monitoring functions
-  const startHeartbeat = useCallback(() => {
-    stopHeartbeat(); // Clear any existing heartbeat
-    const interval = setInterval(() => {
-      if (connectionStatus === 'connected' && lastUpdated) {
+    } catch (err) {
+      console.error('❌ Connection setup failed:', err);
+      updateConnectionState({ 
+        status: 'error',
+        errorCount: connectionStateRef.current.errorCount + 1 
+      });
+      setError('Failed to establish connection');
+      isConnectingRef.current = false;
+      scheduleReconnect();
+    }
+  }, [updateConnectionState, isCircuitBreakerOpen]);
+
+  // PHASE 4: Enhanced reconnection with circuit breaker
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current || isCircuitBreakerOpen()) {
+      return;
+    }
+
+    const state = connectionStateRef.current;
+    const delay = calculateRetryDelay(state.attempt);
+    const nextRetryAt = Date.now() + delay;
+    
+    updateConnectionState({
+      attempt: state.attempt + 1,
+      nextRetryAt,
+    });
+
+    if (isDevToolsEnabled()) {
+      console.log(`🔄 Scheduling reconnect in ${Math.round(delay)}ms (attempt ${state.attempt + 1})`);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
+      disconnect();
+      setTimeout(connect, 100); // Small delay before reconnect
+    }, delay);
+  }, [updateConnectionState, isCircuitBreakerOpen, calculateRetryDelay, disconnect, connect]);
+
+  // PHASE 1: Health monitoring without aggressive reconnections
+  const startHealthMonitoring = useCallback(() => {
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current);
+    }
+
+    healthCheckIntervalRef.current = setInterval(() => {
+      const state = connectionStateRef.current;
+      
+      if (state.status === 'connected' && lastUpdated) {
         const staleness = Date.now() - lastUpdated.getTime();
-        if (staleness > 40000) { // 40 seconds threshold
+        
+        // Only trigger reconnect if data is extremely stale and we're not already reconnecting
+        if (staleness > HEALTH_CONFIG.maxSilentPeriod && !isConnectingRef.current) {
           if (isDevToolsEnabled()) {
-            console.warn(`🔄 Price data stale (${Math.round(staleness/1000)}s), triggering reconnection`);
+            console.warn(`⚠️ Data silent for ${Math.round(staleness/1000)}s, connection may be dead`);
           }
-          stopHeartbeat();
-          channelRef.current = null; // Clear channel reference
-          handleReconnect();
+          
+          // Gentle reconnection - don't increment error count for stale data
+          disconnect();
+          setTimeout(connect, 2000); // 2 second delay
         }
       }
-    }, 15000); // Check every 15 seconds
-    setHeartbeatInterval(interval);
-  }, [connectionStatus, lastUpdated, handleReconnect]);
+    }, HEALTH_CONFIG.healthCheckInterval);
+  }, [lastUpdated, disconnect, connect]);
 
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
-      setHeartbeatInterval(null);
-    }
-  }, [heartbeatInterval]);
-
-  const disconnect = useCallback(() => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    stopHeartbeat();
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      setReconnectTimer(null);
-    }
-    setConnectionStatus('disconnected');
-    setIsReconnecting(false);
-  }, [stopHeartbeat, reconnectTimer]);
-
-  // Public method for admin tooling
-  const restartConnection = useCallback(() => {
-    if (isDevToolsEnabled()) {
-      console.log('🔄 Manual restart requested');
-    }
-    setReconnectAttempt(0); // Reset backoff
-    disconnect();
-    setTimeout(() => connect(), 100);
-  }, [disconnect, connect]);
-
+  // PHASE 2: Optimized subscription management
   const subscribe = useCallback((symbols: string[]) => {
-    // Add strict symbol validation and logging
-    const validatedSymbols = symbols.filter(symbol => {
-      const isValid = symbol && symbol.trim().length > 0;
-      if (isDevToolsEnabled()) {
-        console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
-      }
-      return isValid;
-    });
+    const validSymbols = symbols.filter(s => s && s.trim().length > 0);
+    const newSymbols = validSymbols.filter(s => !subscriptionsRef.current.has(s));
     
-    // Add to local subscription tracking - this is passive, just for filtering
-    validatedSymbols.forEach(symbol => {
-      if (isDevToolsEnabled()) {
-        console.log(`📝 [Subscribe] Adding ${symbol} to subscription set`);
-      }
+    if (newSymbols.length === 0) return;
+
+    newSymbols.forEach(symbol => {
       subscriptionsRef.current.add(symbol);
     });
-    
-    // Note: With Supabase Realtime, we don't need to send subscription messages
-    // The DigitalOcean worker will broadcast all prices, and we filter locally
-    if (isDevToolsEnabled()) {
-      console.log(`✅ [Subscribe] Subscribed to symbols (passive filtering):`, validatedSymbols);
+
+    // Connect on demand if we have subscriptions and not connected
+    if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
+      connect();
     }
-  }, []);
+
+    if (isDevToolsEnabled()) {
+      console.log('📝 Subscribed to:', newSymbols);
+    }
+  }, [connect]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
-    // Remove from local subscription tracking
-    symbols.forEach(symbol => {
-      if (isDevToolsEnabled()) {
-        console.log(`📝 [Unsubscribe] Removing ${symbol} from subscription set`);
-      }
+    const removedSymbols = symbols.filter(s => subscriptionsRef.current.has(s));
+    
+    removedSymbols.forEach(symbol => {
       subscriptionsRef.current.delete(symbol);
     });
-    
+
     // Remove prices for unsubscribed symbols
     setPrices(prev => {
       const updated = { ...prev };
-      symbols.forEach(symbol => delete updated[symbol]);
+      removedSymbols.forEach(symbol => delete updated[symbol]);
       return updated;
     });
-    
-    if (isDevToolsEnabled()) {
-      console.log(`✅ [Unsubscribe] Unsubscribed from symbols:`, symbols);
-    }
-  }, []);
 
+    // Disconnect if no active subscriptions
+    if (subscriptionsRef.current.size === 0 && channelRef.current) {
+      disconnect();
+    }
+
+    if (isDevToolsEnabled()) {
+      console.log('📝 Unsubscribed from:', removedSymbols);
+    }
+  }, [disconnect]);
+
+  // Stable utility functions
   const getPrice = useCallback((symbol: string): PriceData | null => {
     return prices[symbol] || null;
   }, [prices]);
 
   const refreshPrice = useCallback((symbol: string) => {
-    // Refresh by re-subscribing
-    unsubscribe([symbol]);
-    setTimeout(() => subscribe([symbol]), 100);
+    // Simply re-subscribe to refresh
+    if (subscriptionsRef.current.has(symbol)) {
+      unsubscribe([symbol]);
+      setTimeout(() => subscribe([symbol]), 100);
+    }
   }, [subscribe, unsubscribe]);
 
   const getConnectionHealth = useCallback(() => ({
-    isHealthy: connectionStatus === 'connected',
+    isHealthy: connectionStateRef.current.status === 'connected',
     lastUpdate: lastUpdated
-  }), [connectionStatus, lastUpdated]);
+  }), [lastUpdated]);
 
   const getStats = useCallback(() => ({
-    messagesReceived: messagesReceivedRef.current,
-    reconnections: reconnectionsRef.current,
-    avgLatency: latencyCountRef.current > 0 
-      ? latencySumRef.current / latencyCountRef.current 
-      : 50 // Fallback estimated latency
+    messagesReceived: statsRef.current.messagesReceived,
+    reconnections: statsRef.current.reconnections,
+    avgLatency: statsRef.current.latencyCount > 0 
+      ? statsRef.current.latencySum / statsRef.current.latencyCount 
+      : 50
   }), []);
 
-  // Network state listeners for fast recovery
-  useEffect(() => {
-    const handleOnline = () => {
-      if (isDevToolsEnabled()) {
-        console.log('🌐 Network back online, triggering reconnection');
-      }
-      if (connectionStatus !== 'connected') {
-        setReconnectAttempt(0); // Reset attempts on network recovery
-        connect();
-      }
-    };
+  const restartConnection = useCallback(() => {
+    if (isDevToolsEnabled()) {
+      console.log('🔄 Manual connection restart requested');
+    }
     
-    const handleVisibilityChange = () => {
-      if (!document.hidden && connectionStatus !== 'connected') {
-        if (isDevToolsEnabled()) {
-          console.log('👁️ Tab visible again, checking connection');
-        }
-        // Small delay to avoid immediate reconnection spam
-        setTimeout(() => {
-          connect();
-        }, 1000);
-      }
-    };
+    // Reset circuit breaker
+    updateConnectionState({
+      status: 'disconnected',
+      attempt: 0,
+      errorCount: 0,
+      nextRetryAt: null,
+    });
+    
+    disconnect();
+    setTimeout(connect, 500);
+  }, [updateConnectionState, disconnect, connect]);
 
+  // PHASE 2: Stable network event handlers (only for recovery, not aggressive reconnection)
+  const handleOnline = useCallback(() => {
+    if (connectionStateRef.current.status === 'disconnected' && subscriptionsRef.current.size > 0) {
+      if (isDevToolsEnabled()) {
+        console.log('🌐 Network recovered, reconnecting');
+      }
+      // Reset circuit breaker on network recovery
+      updateConnectionState({ errorCount: 0, attempt: 0 });
+      setTimeout(connect, 1000); // 1 second delay
+    }
+  }, [updateConnectionState, connect]);
+
+  // Setup network event listeners (stable, no dependency array changes)
+  useEffect(() => {
     window.addEventListener('online', handleOnline);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       window.removeEventListener('online', handleOnline);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [connectionStatus, connect]);
+  }, [handleOnline]);
 
-  // Initialize connection on mount
+  // Cleanup on unmount
   useEffect(() => {
-    connect();
-    
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [disconnect]);
 
-  const contextValue: OptimizedWebSocketContextType = {
+  // Stable context value
+  const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({
     prices,
     connectionStatus,
     subscribe,
@@ -359,16 +462,27 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getPrice,
     isConnected: connectionStatus === 'connected',
     error,
-    // Enhanced features
-    dataSource: 'Real-Time Data Only',
+    dataSource: 'Optimized Real-Time WebSocket',
     lastUpdated,
-    errors: error ? { general: error } : {},
+    errors: error ? { connection: error } : {},
     refreshPrice,
     getConnectionHealth,
     getStats,
     restartConnection,
     isUsingEnhancedSystem: true
-  };
+  }), [
+    prices, 
+    connectionStatus, 
+    subscribe, 
+    unsubscribe, 
+    getPrice, 
+    error, 
+    lastUpdated, 
+    refreshPrice, 
+    getConnectionHealth, 
+    getStats, 
+    restartConnection
+  ]);
 
   return (
     <OptimizedWebSocketContext.Provider value={contextValue}>

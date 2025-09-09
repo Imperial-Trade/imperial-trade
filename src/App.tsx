@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
+import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { FreshThemeProvider as ThemeProvider } from "@/contexts/FreshTheme";
@@ -98,9 +99,10 @@ function App() {
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
-                    <WebSocketErrorBoundary>
-                      <OptimizedWebSocketPriceProvider>
-                        <ContextErrorBoundary>
+                  <WebSocketErrorBoundary>
+                    <OptimizedWebSocketPriceProvider>
+                      <ContextErrorBoundary>
+                        <SharedRealtimeProvider>
                           <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
@@ -303,9 +305,10 @@ function App() {
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                           </SignalRealtimeProvider>
-                        </ContextErrorBoundary>
-                      </OptimizedWebSocketPriceProvider>
-                    </WebSocketErrorBoundary>
+                        </SharedRealtimeProvider>
+                      </ContextErrorBoundary>
+                    </OptimizedWebSocketPriceProvider>
+                  </WebSocketErrorBoundary>
                   </NavigationGuard>
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}

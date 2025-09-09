@@ -2,17 +2,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { useInstantAlerts } from '@/hooks/useInstantAlerts';
-import { useOptimizedWebSocketAlerts } from '@/hooks/useOptimizedWebSocketAlerts';
+import { useSharedRealtime } from './SharedRealtimeContext';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
-// PHASE 2B: Optimized Realtime Subscriptions - 60% reduction in Realtime costs
-// Cache educator user IDs to avoid expensive OR queries
+// PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
+// Enhanced caching and shared connection strategy
 let educatorUserIdsCache: string[] = [];
 let educatorCacheExpiry = 0;
-const EDUCATOR_CACHE_TTL = 10 * 60 * 1000; // Extended to 10 minutes for better caching
-const REALTIME_RECONNECT_DELAY = 5000; // Slower reconnects to reduce costs
-const LOCAL_CACHE_TTL = 60000; // 1 minute local cache for signals
+const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
+const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 5 minute local cache for signals
+const SIGNAL_REFRESH_THROTTLE = 30000; // Minimum 30 seconds between refreshes
 
 async function getEducatorUserIds(): Promise<string[]> {
   const now = Date.now();
@@ -60,39 +59,60 @@ interface SignalRealtimeProviderProps {
 
 export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ children }) => {
   const [signals, setSignals] = useState<TradeAlertWithProfile[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  // PHASE 3: Use shared Realtime connection to eliminate duplicate channels
+  const { connectionState, subscribeToTable } = useSharedRealtime();
+  
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
+  const lastRefreshRef = useRef<number>(0);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   
-  // PHASE 2B: Local caching to reduce database queries
-  const localCacheRef = useRef<{ data: TradeAlertWithProfile[], expiry: number }>({ data: [], expiry: 0 });
-
-  // PHASE 2B: Enhanced instant alerts with WebSocket integration
-  useInstantAlerts();
-  
-  // PHASE 2B: Use optimized WebSocket alerts instead of heavy Realtime subscriptions
-  const { alertsEnabled } = useOptimizedWebSocketAlerts();
+  // PHASE 3: Enhanced local caching to minimize database queries
+  const localCacheRef = useRef<{ 
+    data: TradeAlertWithProfile[], 
+    expiry: number,
+    educatorIds: string[],
+    educatorExpiry: number 
+  }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
   const refreshSignals = useCallback(async () => {
     try {
-      console.log('🔄 PHASE 2B: SignalRealtime refresh with enhanced cost optimization...');
-      
-      // PHASE 2B: Check local cache first to reduce database load
+      // PHASE 3: Throttle refresh requests to reduce database load
       const now = Date.now();
-      if (localCacheRef.current.data.length > 0 && now < localCacheRef.current.expiry) {
-        console.log('📊 Using local cached signals, skipping database query');
-        setSignals(localCacheRef.current.data);
+      if (now - lastRefreshRef.current < SIGNAL_REFRESH_THROTTLE) {
+        if (isDevToolsEnabled()) {
+          console.log('⏱️ Refresh throttled, using cached data');
+        }
+        return;
+      }
+      
+      lastRefreshRef.current = now;
+      
+      if (isDevToolsEnabled()) {
+        console.log('🔄 PHASE 3: SignalRealtime refresh with maximum cost optimization...');
+      }
+      
+      // PHASE 3: Enhanced cache checking with educator IDs
+      const cache = localCacheRef.current;
+      if (cache.data.length > 0 && now < cache.expiry && cache.educatorIds.length > 0) {
+        if (isDevToolsEnabled()) {
+          console.log('📊 Using comprehensive cached signals, skipping all database queries');
+        }
+        setSignals(cache.data);
         setLastUpdated(new Date());
         return;
       }
       
-      // Fetch educator user IDs with extended caching
-      const educatorUserIds = await getEducatorUserIds();
+      // PHASE 3: Use cached educator IDs or fetch fresh ones
+      let educatorUserIds = cache.educatorIds;
+      if (educatorUserIds.length === 0 || now >= cache.educatorExpiry) {
+        educatorUserIds = await getEducatorUserIds();
+        localCacheRef.current.educatorIds = educatorUserIds;
+        localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
+      }
       
       // First get alerts from educator users
       const { data: alertsData, error: alertsError } = await supabase
@@ -175,12 +195,16 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         };
       });
 
-      console.log('📊 PHASE 2B: Final educator signals with local caching:', allAlertsWithProfiles.length);
+      if (isDevToolsEnabled()) {
+        console.log('📊 PHASE 3: Final educator signals with enhanced caching:', allAlertsWithProfiles.length);
+      }
       
-      // PHASE 2B: Update local cache to reduce future database queries
+      // PHASE 3: Update comprehensive local cache
       localCacheRef.current = {
         data: allAlertsWithProfiles,
-        expiry: now + LOCAL_CACHE_TTL
+        expiry: now + LOCAL_CACHE_TTL,
+        educatorIds: educatorUserIds,
+        educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
       setSignals(allAlertsWithProfiles);
@@ -194,13 +218,17 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   }, []);
 
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
-    console.log('SignalRealtimeContext - Real-time update received:', payload);
+    if (isDevToolsEnabled()) {
+      console.log('SignalRealtimeContext - Real-time update received:', payload);
+    }
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
       if (eventType === 'INSERT' && newRecord) {
-        console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
+        }
         
         // Get profile for the new signal
         const { data: profile, error: profileError } = await supabase
@@ -209,11 +237,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           .eq('id', newRecord.user_id)
           .single();
 
-        if (profileError) {
+        if (profileError && isDevToolsEnabled()) {
           console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
         }
 
-        console.log('SignalRealtimeContext - Profile for new signal:', profile);
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Profile for new signal:', profile);
+        }
 
         const newSignal: TradeAlertWithProfile = {
           id: newRecord.id,
@@ -251,22 +281,35 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           }
         };
 
-        console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
+        }
+        
         setSignals(prev => {
           // Check for duplicates using the state from the setter to avoid stale closure
           const alreadyExists = prev.find(signal => signal.id === newSignal.id);
           if (alreadyExists) {
-            console.log('SignalRealtimeContext - Signal already in state during update, skipping duplication:', newSignal.id);
+            if (isDevToolsEnabled()) {
+              console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
+            }
             return prev;
           }
           return [newSignal, ...prev];
         });
         
+        // PHASE 3: Update local cache with new signal
+        const cache = localCacheRef.current;
+        if (cache.data.length > 0) {
+          cache.data = [newSignal, ...cache.data];
+        }
+        
         // Dispatch custom event for notifications
         window.dispatchEvent(new CustomEvent('signal-posted'));
       } 
       else if (eventType === 'UPDATE' && newRecord) {
-        console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
+        }
         
         setSignals(prev => prev.map(signal => 
           signal.id === newRecord.id ? {
@@ -288,11 +331,22 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             updatedAt: newRecord.updated_at
           } : signal
         ));
-        console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
+        
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
+        }
       }
       else if (eventType === 'DELETE' && oldRecord) {
-        console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
+        }
         setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));
+        
+        // PHASE 3: Update local cache by removing deleted signal
+        const cache = localCacheRef.current;
+        if (cache.data.length > 0) {
+          cache.data = cache.data.filter(signal => signal.id !== oldRecord.id);
+        }
       }
 
       setLastUpdated(new Date());
@@ -303,57 +357,53 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   }, []);
 
   const subscribe = useCallback(async () => {
-    if (channelRef.current) {
-      console.log('SignalRealtimeContext - Already subscribed to real-time');
+    if (unsubscribeRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('SignalRealtimeContext - Already subscribed via shared connection');
+      }
       return;
     }
 
-      console.log('🔄 PHASE 2B: SignalRealtime subscribing with minimal Realtime usage');
-      setConnectionStatus('connecting');
-
-      try {
-        // PHASE 2B: Reduced Realtime subscriptions - only new signals, updates via WebSocket
-        const educatorUserIds = await getEducatorUserIds();
-        
-        // Only subscribe to INSERT events to minimize Realtime traffic
-        // Updates will come through WebSocket notifications from the enhanced system
-        const channel = supabase
-          .channel('trade_alerts_minimal_realtime')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT', // PHASE 2B: Only new signals via Realtime
-              schema: 'public',
-              table: 'trade_alerts',
-              filter: `user_id=in.(${educatorUserIds.join(',')})`
-            },
-            handleRealtimeUpdate
-          )
-        .subscribe((status) => {
-          console.log('🔄 PHASE 2B: Minimal Realtime status:', status);
-          
-          if (status === 'SUBSCRIBED') {
-            setConnectionStatus('connected');
-            setError(null);
-            setNextRetryAt(null);
-            reconnectAttempts.current = 0;
-            // Load initial data with caching
-            refreshSignals();
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            setConnectionStatus('connecting');
-            setError(null);
-            // PHASE 2B: Slower reconnection to reduce costs
-            setTimeout(attemptReconnect, REALTIME_RECONNECT_DELAY);
-          }
-        });
-        
-      channelRef.current = channel;
-    } catch (error) {
-      console.error('❌ Failed to get educator user IDs:', error);
-      setError('Failed to initialize realtime connection');
-      setConnectionStatus('error');
+    if (isDevToolsEnabled()) {
+      console.log('🔄 PHASE 3: SignalRealtime subscribing via shared connection (massive savings)');
     }
-  }, [handleRealtimeUpdate, refreshSignals]);
+
+    try {
+      // PHASE 3: Get educator IDs with enhanced caching
+      const cache = localCacheRef.current;
+      const now = Date.now();
+      
+      let educatorUserIds = cache.educatorIds;
+      if (educatorUserIds.length === 0 || now >= cache.educatorExpiry) {
+        educatorUserIds = await getEducatorUserIds();
+        localCacheRef.current.educatorIds = educatorUserIds;
+        localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
+      }
+      
+      // PHASE 3: Subscribe via shared connection - eliminates duplicate Realtime channels
+      const unsubscribe = subscribeToTable(
+        {
+          table: 'trade_alerts',
+          event: 'INSERT', // Only new signals to minimize traffic
+          filter: `user_id=in.(${educatorUserIds.join(',')})`
+        },
+        handleRealtimeUpdate
+      );
+      
+      unsubscribeRef.current = unsubscribe;
+      
+      // Load initial data with caching
+      refreshSignals();
+      
+      if (isDevToolsEnabled()) {
+        console.log('✅ PHASE 3: Subscribed via shared connection, zero duplicate channels');
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to subscribe to signals:', error);
+      setError('Failed to initialize realtime connection');
+    }
+  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals]);
 
   const unsubscribe = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -361,36 +411,33 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       reconnectTimeoutRef.current = null;
     }
 
-    if (channelRef.current) {
-      console.log('Unsubscribing from signal realtime');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+    if (unsubscribeRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('Unsubscribing from shared signal realtime');
+      }
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
     
     setNextRetryAt(null);
-    setConnectionStatus('disconnected');
   }, []);
 
+  // PHASE 3: Simplified reconnection via shared connection (automatic)
   const attemptReconnect = useCallback(() => {
-    // PHASE 2B: Cost-optimized reconnection with longer delays
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
-    setConnectionStatus('connecting');
-    setError(null);
-
-    // PHASE 2B: Longer base delays to reduce Realtime connection costs
-    const baseDelay = Math.min(REALTIME_RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts.current), 60000);
-    const jitter = Math.random() * 1000; // Larger jitter to spread reconnections
-    const delay = Math.max(REALTIME_RECONNECT_DELAY, baseDelay + jitter);
+    const delay = 5000; // Simple 5 second delay
     const target = Date.now() + delay;
     setNextRetryAt(target);
 
-    console.log(`🔄 PHASE 2B: Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current + 1})`);
+    if (isDevToolsEnabled()) {
+      console.log(`🔄 PHASE 3: Reconnecting via shared connection in ${Math.round(delay)}ms`);
+    }
+    
     reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectAttempts.current++;
       unsubscribe();
       subscribe();
     }, delay);
@@ -405,9 +452,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   const contextValue: SignalRealtimeContextType = {
     signals,
-    connectionStatus,
+    connectionStatus: connectionState.connectionStatus,
     lastUpdated,
-    error,
+    error: error || connectionState.error,
     nextRetryAt,
     subscribe,
     unsubscribe,

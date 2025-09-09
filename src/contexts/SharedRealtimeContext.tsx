@@ -1,0 +1,268 @@
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
+
+// Shared connection state to prevent multiple Realtime channels
+interface SharedRealtimeState {
+  isConnected: boolean;
+  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
+  error: string | null;
+  lastUpdated: Date | null;
+  subscribers: Set<string>;
+}
+
+interface SharedRealtimeContextType {
+  connectionState: SharedRealtimeState;
+  subscribeToTable: (tableConfig: TableSubscriptionConfig, callback: RealtimeCallback) => () => void;
+  getConnectionHealth: () => { isHealthy: boolean; connectionCount: number };
+}
+
+interface TableSubscriptionConfig {
+  table: string;
+  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+  filter?: string;
+  schema?: string;
+}
+
+type RealtimeCallback = (payload: any) => void;
+
+const SharedRealtimeContext = createContext<SharedRealtimeContextType | null>(null);
+
+export const useSharedRealtime = () => {
+  const context = useContext(SharedRealtimeContext);
+  if (!context) {
+    throw new Error('useSharedRealtime must be used within SharedRealtimeProvider');
+  }
+  return context;
+};
+
+interface SharedRealtimeProviderProps {
+  children: React.ReactNode;
+}
+
+export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ children }) => {
+  const [connectionState, setConnectionState] = useState<SharedRealtimeState>({
+    isConnected: false,
+    connectionStatus: 'disconnected',
+    error: null,
+    lastUpdated: null,
+    subscribers: new Set(),
+  });
+
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const subscriptionsRef = useRef<Map<string, { config: TableSubscriptionConfig; callback: RealtimeCallback }>>(new Map());
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+  const baseReconnectDelay = 3000;
+
+  // PHASE 3: Single shared connection for all Realtime needs
+  const connect = useCallback(() => {
+    if (channelRef.current || connectionState.connectionStatus === 'connecting') {
+      return;
+    }
+
+    if (isDevToolsEnabled()) {
+      console.log('🔗 SharedRealtime: Establishing single shared connection');
+    }
+
+    setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
+
+    try {
+      const channel = supabase.channel('shared-realtime-connection');
+      channelRef.current = channel;
+
+      // Add all existing subscriptions to the new channel
+      subscriptionsRef.current.forEach(({ config, callback }) => {
+        (channel as any).on(
+          'postgres_changes',
+          {
+            event: config.event || 'INSERT',
+            schema: config.schema || 'public',
+            table: config.table,
+            ...(config.filter && { filter: config.filter })
+          },
+          callback
+        );
+      });
+
+      channel.subscribe((status) => {
+        if (isDevToolsEnabled()) {
+          console.log('🔌 SharedRealtime status:', status);
+        }
+
+        if (status === 'SUBSCRIBED') {
+          setConnectionState(prev => ({
+            ...prev,
+            isConnected: true,
+            connectionStatus: 'connected',
+            error: null,
+            lastUpdated: new Date()
+          }));
+          reconnectAttempts.current = 0;
+          
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error('❌ SharedRealtime connection failed:', status);
+          setConnectionState(prev => ({
+            ...prev,
+            isConnected: false,
+            connectionStatus: 'error',
+            error: `Connection failed: ${status}`
+          }));
+          
+          channelRef.current = null;
+          scheduleReconnect();
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ SharedRealtime setup failed:', error);
+      setConnectionState(prev => ({
+        ...prev,
+        connectionStatus: 'error',
+        error: 'Failed to establish shared connection'
+      }));
+      scheduleReconnect();
+    }
+  }, [connectionState.connectionStatus]);
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    setConnectionState(prev => ({
+      ...prev,
+      isConnected: false,
+      connectionStatus: 'disconnected',
+      error: null
+    }));
+  }, []);
+
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current || reconnectAttempts.current >= maxReconnectAttempts) {
+      return;
+    }
+
+    const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts.current);
+    const jitter = delay * 0.1 * Math.random();
+    const totalDelay = Math.min(delay + jitter, 30000);
+
+    if (isDevToolsEnabled()) {
+      console.log(`🔄 SharedRealtime reconnecting in ${Math.round(totalDelay)}ms`);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectAttempts.current++;
+      reconnectTimeoutRef.current = null;
+      connect();
+    }, totalDelay);
+  }, [connect]);
+
+  // PHASE 3: Optimized subscription management
+  const subscribeToTable = useCallback((
+    config: TableSubscriptionConfig, 
+    callback: RealtimeCallback
+  ): (() => void) => {
+    const key = `${config.table}|${config.event || 'INSERT'}|${config.filter || ''}`;
+    
+    // Add to subscriptions map
+    subscriptionsRef.current.set(key, { config, callback });
+    
+    // Update subscriber count
+    setConnectionState(prev => ({
+      ...prev,
+      subscribers: new Set([...prev.subscribers, key])
+    }));
+
+    // Add to existing channel if connected
+    if (channelRef.current) {
+      (channelRef.current as any).on(
+        'postgres_changes',
+        {
+          event: config.event || 'INSERT',
+          schema: config.schema || 'public',
+          table: config.table,
+          ...(config.filter && { filter: config.filter })
+        },
+        callback
+      );
+    }
+
+    // Connect if we have subscribers and not connected
+    if (connectionState.connectionStatus === 'disconnected' && subscriptionsRef.current.size === 1) {
+      connect();
+    }
+
+    if (isDevToolsEnabled()) {
+      console.log(`📝 SharedRealtime: Subscribed to ${config.table} (${subscriptionsRef.current.size} total)`);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      subscriptionsRef.current.delete(key);
+      
+      setConnectionState(prev => {
+        const newSubscribers = new Set(prev.subscribers);
+        newSubscribers.delete(key);
+        return { ...prev, subscribers: newSubscribers };
+      });
+
+      // Disconnect if no more subscribers
+      if (subscriptionsRef.current.size === 0) {
+        disconnect();
+      }
+
+      if (isDevToolsEnabled()) {
+        console.log(`📝 SharedRealtime: Unsubscribed from ${config.table} (${subscriptionsRef.current.size} remaining)`);
+      }
+    };
+  }, [connectionState.connectionStatus, connect, disconnect]);
+
+  const getConnectionHealth = useCallback(() => ({
+    isHealthy: connectionState.isConnected,
+    connectionCount: subscriptionsRef.current.size
+  }), [connectionState.isConnected]);
+
+  // Network recovery
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!connectionState.isConnected && subscriptionsRef.current.size > 0) {
+        if (isDevToolsEnabled()) {
+          console.log('🌐 SharedRealtime: Network recovered, reconnecting');
+        }
+        reconnectAttempts.current = 0;
+        setTimeout(connect, 1000);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [connectionState.isConnected, connect]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
+
+  const contextValue = useMemo<SharedRealtimeContextType>(() => ({
+    connectionState,
+    subscribeToTable,
+    getConnectionHealth
+  }), [connectionState, subscribeToTable, getConnectionHealth]);
+
+  return (
+    <SharedRealtimeContext.Provider value={contextValue}>
+      {children}
+    </SharedRealtimeContext.Provider>
+  );
+};

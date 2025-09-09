@@ -43,9 +43,8 @@ const calculatePips = (entry, current, symbol) => {
     difference
   };
 };
-// Deduplication and local state for level hits
-const levelHitRef = useRef(new Map<string, number>());
-const [localClosed, setLocalClosed] = useState(false);
+// Use a module-level Map for cross-instance deduplication
+const globalLevelHitMap = new Map<string, number>();
 
 const LivePriceWidgetComponent = ({
   alert,
@@ -54,6 +53,9 @@ const LivePriceWidgetComponent = ({
   onOrderActivation,
   allowAutomation = true
 }) => {
+  // Move hooks inside the component
+  const levelHitRef = useRef(globalLevelHitMap);
+  const [localClosed, setLocalClosed] = useState(false);
   // Use the optimized live price hook directly
   const {
     price: currentPrice,

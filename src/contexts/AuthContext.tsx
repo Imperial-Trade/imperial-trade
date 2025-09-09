@@ -76,7 +76,7 @@ const AuthContextProbe: React.FC = () => {
   React.useEffect(() => {
     console.log('[AuthContextProbe] AuthProvider mounted', { hasContext: !!ctx });
     (window as any).__AUTH_PROVIDER_ACTIVE__ = true;
-  }, [ctx]);
+  }, []);
   
   return null;
 };

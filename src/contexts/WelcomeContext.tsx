@@ -12,7 +12,13 @@ const WelcomeContext = createContext<WelcomeContextType | undefined>(undefined);
 export const useWelcome = () => {
   const context = useContext(WelcomeContext);
   if (context === undefined) {
-    throw new Error('useWelcome must be used within a WelcomeProvider');
+    // Fail-safe: do not crash app if provider isn't mounted yet
+    console.warn('useWelcome used outside WelcomeProvider – returning safe defaults');
+    return {
+      hasSeenWelcome: true,
+      markWelcomeAsSeen: () => {},
+      resetWelcomeForNewSession: () => {},
+    } as const;
   }
   return context;
 };

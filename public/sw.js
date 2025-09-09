@@ -1,7 +1,7 @@
 // Trade Imperial - Service Worker for PWA and Push Notifications
-// Version: 1.0.1
+// Version: 1.0.2 - Enhanced error handling and cache management
 
-const CACHE_NAME = 'trade-imperial-v2';
+const CACHE_NAME = 'trade-imperial-v3';
 const STATIC_CACHE_URLS = [
   '/',
   '/offline.html',
@@ -57,20 +57,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Network-first strategy with cache fallback
+// Fetch Event - Enhanced network-first strategy with better error handling
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   
-  // Skip non-GET requests and chrome-extension requests
-  if (request.method !== 'GET' || request.url.startsWith('chrome-extension://')) {
+  // Skip non-GET requests, chrome-extension, and webpack dev requests
+  if (request.method !== 'GET' || 
+      request.url.startsWith('chrome-extension://') ||
+      request.url.includes('webpack') ||
+      request.url.includes('hot-update')) {
     return;
   }
   
-  // Network-first strategy for API calls
-  if (request.url.includes('/api/') || request.url.includes('supabase.co')) {
+  // Network-first strategy for API calls and dynamic content
+  if (request.url.includes('/api/') || 
+      request.url.includes('supabase.co') ||
+      request.url.includes('/assets/') && request.url.includes('?')) {
     event.respondWith(
       fetch(request)
-        .catch(() => {
+        .catch((error) => {
+          console.warn('Trade Imperial SW: Network request failed:', request.url, error);
           // If network fails, return a custom offline response for API calls
           return new Response(
             JSON.stringify({ error: 'Offline - Unable to fetch data' }),
@@ -85,7 +91,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Cache-first strategy for static assets
+  // Cache-first strategy for static assets with better error handling
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
@@ -95,7 +101,7 @@ self.addEventListener('fetch', (event) => {
         
         return fetch(request)
           .then((response) => {
-            // Don't cache non-successful responses
+            // Don't cache non-successful responses or opaque responses
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
@@ -103,19 +109,36 @@ self.addEventListener('fetch', (event) => {
             // Clone the response for caching
             const responseToCache = response.clone();
             
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(request, responseToCache);
-              });
+            // Cache static assets only
+            if (request.url.includes('/assets/') || 
+                request.url.includes('.css') || 
+                request.url.includes('.js') ||
+                STATIC_CACHE_URLS.includes(new URL(request.url).pathname)) {
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(request, responseToCache);
+                })
+                .catch((cacheError) => {
+                  console.warn('Trade Imperial SW: Cache put failed:', cacheError);
+                });
+            }
             
             return response;
           })
-          .catch(() => {
+          .catch((fetchError) => {
+            console.warn('Trade Imperial SW: Fetch failed:', request.url, fetchError);
             // Return offline page for navigation requests
             if (request.destination === 'document') {
               return caches.match('/offline.html');
             }
+            // Return a generic error response for other requests
+            return new Response('Resource unavailable offline', { status: 503 });
           });
+      })
+      .catch((cacheError) => {
+        console.error('Trade Imperial SW: Cache match failed:', cacheError);
+        // Fallback to network if cache fails
+        return fetch(request);
       })
   );
 });

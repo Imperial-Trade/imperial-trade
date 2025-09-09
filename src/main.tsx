@@ -5,8 +5,10 @@ import "./index.css";
 import posthog from "posthog-js";
 import { RootErrorBoundary } from "./components/error-boundary/RootErrorBoundary";
 
-// Service Worker Registration for PWA
-if ('serviceWorker' in navigator) {
+// Service Worker Registration for PWA - Gated behind environment flag
+const ENABLE_SERVICE_WORKER = import.meta.env.VITE_ENABLE_SERVICE_WORKER !== 'false';
+
+if (ENABLE_SERVICE_WORKER && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
@@ -40,6 +42,8 @@ if ('serviceWorker' in navigator) {
         console.error('Trade Imperial SW: Registration failed', error);
       });
   });
+} else {
+  console.log('Trade Imperial SW: Service Worker disabled via environment flag');
 }
 
 const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;

@@ -37,19 +37,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // Enhanced error logging for diagnostics
-    console.error('🚨 useAuth called outside AuthProvider context!', {
-      stack: new Error().stack,
-      timestamp: new Date().toISOString(),
-      location: window.location.pathname
-    });
-    
-    // Runtime probe - check if AuthProvider exists in DOM
-    const authProviders = document.querySelectorAll('[data-auth-provider]');
-    console.error('🔍 AuthProvider probe:', {
-      providersFound: authProviders.length,
-      currentComponent: document.querySelector('[data-current-component]')?.getAttribute('data-current-component') || 'unknown'
-    });
+    // Enhanced diagnostics for debugging
+    console.error('🚨 useAuth called outside AuthProvider - Context undefined');
+    console.error('🔍 AuthProvider active flag:', (window as any).__AUTH_PROVIDER_ACTIVE__);
+    console.error('🔍 Current location:', window.location.href);
+    console.error('🔍 Stack trace:', new Error().stack);
+    console.error('🔍 Available contexts in DOM:', document.querySelectorAll('[data-auth-provider]').length);
+    console.error('🔍 React version:', React.version);
     
     // Return safe fallback instead of throwing - prevents app crash
     return {

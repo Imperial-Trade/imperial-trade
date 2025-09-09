@@ -1,6 +1,6 @@
 // Phase 3: Optimized Live Price Hook with Throttling & Backward Compatibility
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 
 interface PriceData {
@@ -37,49 +37,39 @@ interface LivePriceReturn {
 }
 
 export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions = {}): LivePriceReturn {
-  const [priceState, setPriceState] = useState({
-    price: null as number | null,
+  const { prices, connectionStatus, subscribe, unsubscribe, error, lastUpdated, refreshPrice: ctxRefreshPrice } = useOptimizedWebSocketPrices();
+  
+  const [localState, setLocalState] = useState({
     change: 0,
     changePercent: 0,
-    isLoading: true,
-    error: null as string | null,
-    lastUpdated: null as Date | null,
-    connectionStatus: 'connecting',
-    dataSource: 'websocket',
-    priceUpdateSource: 'websocket_institutional',
     dataAge: 0
   });
 
   // Phase 3: Throttling configuration
   const throttledUpdateRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingUpdateRef = useRef<PriceData | null>(null);
+  const pendingUpdateRef = useRef<{ price: number; timestamp: string } | null>(null);
   const previousPriceRef = useRef<number | null>(null);
   const THROTTLE_DELAY_MS = options.debounceMs || 250;
 
-  const applyThrottledUpdate = useCallback((priceData: PriceData) => {
-    pendingUpdateRef.current = priceData;
+  const currentPrice = prices[symbol];
+
+  const applyThrottledUpdate = useCallback((price: number, timestamp: string) => {
+    pendingUpdateRef.current = { price, timestamp };
     pricePerformanceMonitor.recordPriceUpdate(false);
     
     if (!throttledUpdateRef.current) {
       // Immediate update for first price
       const prevPrice = previousPriceRef.current;
-      const newPrice = priceData.price;
-      const change = prevPrice ? newPrice - prevPrice : 0;
+      const change = prevPrice ? price - prevPrice : 0;
       const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
 
-      setPriceState(prev => ({
-        ...prev,
-        price: newPrice,
+      setLocalState({
         change,
         changePercent,
-        isLoading: false,
-        error: null,
-        lastUpdated: new Date(priceData.ts),
-        connectionStatus: 'connected',
-        dataAge: 0
-      }));
+        dataAge: Date.now() - new Date(timestamp).getTime()
+      });
 
-      previousPriceRef.current = newPrice;
+      previousPriceRef.current = price;
       pricePerformanceMonitor.recordUIUpdate();
 
       // Set up throttling for subsequent updates
@@ -87,20 +77,16 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
         const pending = pendingUpdateRef.current;
         if (pending) {
           const prevPrice = previousPriceRef.current;
-          const newPrice = pending.price;
-          const change = prevPrice ? newPrice - prevPrice : 0;
+          const change = prevPrice ? pending.price - prevPrice : 0;
           const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
 
-          setPriceState(prev => ({
-            ...prev,
-            price: newPrice,
+          setLocalState({
             change,
             changePercent,
-            lastUpdated: new Date(pending.ts),
-            dataAge: Date.now() - new Date(pending.ts).getTime()
-          }));
+            dataAge: Date.now() - new Date(pending.timestamp).getTime()
+          });
 
-          previousPriceRef.current = newPrice;
+          previousPriceRef.current = pending.price;
           pricePerformanceMonitor.recordUIUpdate();
         }
         throttledUpdateRef.current = null;
@@ -110,96 +96,72 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   }, [THROTTLE_DELAY_MS]);
 
   const refreshPrice = useCallback(async () => {
-    setPriceState(prev => ({ ...prev, isLoading: true }));
-    // Refresh will be handled by the WebSocket reconnection
+    ctxRefreshPrice(symbol);
     return Promise.resolve();
-  }, []);
+  }, [symbol, ctxRefreshPrice]);
 
+  // Subscribe to the symbol using the unified context
   useEffect(() => {
     if (!symbol) return;
 
-    console.log(`🔗 Subscribing to optimized live prices for ${symbol}`);
-    
-    const channel = supabase.channel('live-prices-broadcast');
-    let connectionCheckInterval: NodeJS.Timeout;
+    console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${symbol}`);
+    subscribe([symbol]);
 
-    // Phase 3: Enhanced connection handling
-    setPriceState(prev => ({ 
-      ...prev, 
-      isLoading: true, 
-      connectionStatus: 'connecting',
-      error: null 
-    }));
+    return () => {
+      console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${symbol}`);
+      unsubscribe([symbol]);
+    };
+  }, [symbol, subscribe, unsubscribe]);
 
-    channel.on('broadcast', { event: 'price_update' }, ({ payload }: { payload: PriceData }) => {
-      if (payload.symbol === symbol) {
-        const latency = Date.now() - new Date(payload.ts).getTime();
-        pricePerformanceMonitor.recordLatency(latency);
-        console.log(`📈 Received price update for ${symbol}: ${payload.price}`);
-        applyThrottledUpdate(payload);
-      }
-    });
+  // Update local state when price changes
+  useEffect(() => {
+    if (currentPrice) {
+      applyThrottledUpdate(currentPrice.price, currentPrice.timestamp);
+    }
+  }, [currentPrice, applyThrottledUpdate]);
 
-    channel.subscribe((status) => {
-      console.log(`📡 WebSocket status for ${symbol}: ${status}`);
-      
-      setPriceState(prev => ({
+  // Data age tracking interval
+  useEffect(() => {
+    if (!currentPrice) return;
+
+    const interval = setInterval(() => {
+      setLocalState(prev => ({
         ...prev,
-        connectionStatus: status === 'SUBSCRIBED' ? 'connected' : 
-                         status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
-        isLoading: status !== 'SUBSCRIBED'
+        dataAge: Date.now() - new Date(currentPrice.timestamp).getTime()
       }));
+    }, 5000);
 
-      if (status === 'SUBSCRIBED') {
-        connectionCheckInterval = setInterval(() => {
-          setPriceState(prev => {
-            if (prev.lastUpdated) {
-              const age = Date.now() - prev.lastUpdated.getTime();
-              return { ...prev, dataAge: age };
-            }
-            return prev;
-          });
-        }, 5000);
-      } else if (status === 'CHANNEL_ERROR') {
-        setPriceState(prev => ({ 
-          ...prev, 
-          error: 'WebSocket connection error',
-          isLoading: false 
-        }));
-      }
-    });
+    return () => clearInterval(interval);
+  }, [currentPrice]);
 
+  // Cleanup throttled update on unmount
+  useEffect(() => {
     return () => {
       if (throttledUpdateRef.current) {
         clearTimeout(throttledUpdateRef.current);
         throttledUpdateRef.current = null;
       }
-      if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval);
-      }
-      supabase.removeChannel(channel);
-      console.log(`🧹 Cleaned up optimized price subscription for ${symbol}`);
     };
-  }, [symbol, applyThrottledUpdate]);
+  }, []);
 
   return {
     // Backward compatibility properties
-    price: priceState.price,
-    change: priceState.change,
-    changePercent: priceState.changePercent,
-    isLoading: priceState.isLoading,
-    error: priceState.error,
-    lastUpdated: priceState.lastUpdated,
-    connectionStatus: priceState.connectionStatus,
-    dataSource: priceState.dataSource,
-    priceUpdateSource: priceState.priceUpdateSource,
+    price: currentPrice?.price || null,
+    change: localState.change,
+    changePercent: localState.changePercent,
+    isLoading: connectionStatus === 'connecting',
+    error: error,
+    lastUpdated: lastUpdated,
+    connectionStatus: connectionStatus,
+    dataSource: 'websocket',
+    priceUpdateSource: 'websocket_institutional',
     refreshPrice,
     // New optimized properties
-    livePrice: priceState.price,
-    lastUpdate: priceState.lastUpdated?.toISOString() || null,
-    isConnected: priceState.connectionStatus === 'connected',
-    dataAge: priceState.dataAge,
-    isStale: priceState.dataAge > 60000,
-    isVeryStale: priceState.dataAge > 300000
+    livePrice: currentPrice?.price || null,
+    lastUpdate: lastUpdated?.toISOString() || null,
+    isConnected: connectionStatus === 'connected',
+    dataAge: localState.dataAge,
+    isStale: localState.dataAge > 60000,
+    isVeryStale: localState.dataAge > 300000
   };
 }

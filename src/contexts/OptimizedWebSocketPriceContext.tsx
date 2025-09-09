@@ -62,6 +62,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionsRef = useRef<Set<string>>(new Set());
   const messagesReceivedRef = useRef<number>(0);
+  const prevStatusRef = useRef<string>('disconnected');
+  const reconnectionsRef = useRef<number>(0);
+  const latencySumRef = useRef<number>(0);
+  const latencyCountRef = useRef<number>(0);
 
   const connect = useCallback(async () => {
     if (channelRef.current) {
@@ -82,6 +86,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         console.log('📈 Received price update:', payload);
         messagesReceivedRef.current += 1;
         
+        // Calculate latency if timestamp is provided
+        if (payload.ts) {
+          const latency = Date.now() - new Date(payload.ts).getTime();
+          latencySumRef.current += latency;
+          latencyCountRef.current += 1;
+        }
+        
         // Only process if we're subscribed to this symbol
         if (subscriptionsRef.current.has(payload.symbol)) {
           const priceData: PriceData = {
@@ -95,13 +106,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             mid: payload.mid
           };
           setPrices(prev => ({ ...prev, [payload.symbol]: priceData }));
-          setLastUpdated(new Date());
+          // Use payload timestamp if available, otherwise current time
+          setLastUpdated(payload.ts ? new Date(payload.ts) : new Date());
         }
       });
 
       // Subscribe to the channel
       channel.subscribe((status) => {
         console.log('🔌 Realtime connection status:', status);
+        
+        // Track reconnections (transition from non-connected to connected)
+        if (status === 'SUBSCRIBED' && prevStatusRef.current !== 'SUBSCRIBED') {
+          reconnectionsRef.current += 1;
+        }
+        prevStatusRef.current = status;
+        
         if (status === 'SUBSCRIBED') {
           console.log('✅ Successfully connected to Supabase Realtime');
           setConnectionStatus('connected');
@@ -188,8 +207,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   const getStats = useCallback(() => ({
     messagesReceived: messagesReceivedRef.current,
-    reconnections: 0, // Simplified for now
-    avgLatency: 50 // Estimated latency
+    reconnections: reconnectionsRef.current,
+    avgLatency: latencyCountRef.current > 0 
+      ? latencySumRef.current / latencyCountRef.current 
+      : 50 // Fallback estimated latency
   }), []);
 
   // Initialize connection on mount

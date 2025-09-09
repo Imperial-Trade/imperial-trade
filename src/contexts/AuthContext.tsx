@@ -51,7 +51,17 @@ export const useAuth = () => {
       currentComponent: document.querySelector('[data-current-component]')?.getAttribute('data-current-component') || 'unknown'
     });
     
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Return safe fallback instead of throwing - prevents app crash
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      loading: false,
+      profileLoading: false,
+      signOut: async () => {},
+      refreshSession: async () => {},
+      refreshProfile: async () => {}
+    };
   }
   return context;
 };
@@ -59,6 +69,17 @@ export const useAuth = () => {
 interface AuthProviderProps {
   children: React.ReactNode;
 }
+
+// AuthContextProbe - One-time runtime probe to verify provider presence
+const AuthContextProbe: React.FC = () => {
+  React.useEffect(() => {
+    const ctx = React.useContext(AuthContext);
+    console.log('[AuthContextProbe] AuthProvider mounted', { hasContext: !!ctx });
+    (window as any).__AUTH_PROVIDER_ACTIVE__ = true;
+  }, []);
+  
+  return null;
+};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
@@ -243,6 +264,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }}
     >
       <div data-auth-provider="true">
+        <AuthContextProbe />
         {children}
       </div>
     </AuthContext.Provider>

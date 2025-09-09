@@ -28,6 +28,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const AppBar: React.FC = () => {
+  // Guard against early rendering before AuthProvider is mounted
+  if (!(window as any).__AUTH_PROVIDER_ACTIVE__) return null;
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();

@@ -22,10 +22,18 @@ const AdminPanel: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-muted-foreground mt-1">Manage users, requests, and system settings</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-          <Shield className="w-3 h-3 mr-1" />
-          Admin Access
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+            <Shield className="w-3 h-3 mr-1" />
+            Admin Access
+          </Badge>
+          {isDevToolsEnabled() && (
+            <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+              <Code className="w-3 h-3 mr-1" />
+              Dev Tools Enabled
+            </Badge>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

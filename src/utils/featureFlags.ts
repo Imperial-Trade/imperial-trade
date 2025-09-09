@@ -22,6 +22,9 @@ export const shouldShowDevFeatures = (): boolean => {
 };
 
 // Build information utilities
+// Alias for backward compatibility with the original plan
+export const showDevTools = isDevToolsEnabled;
+
 export const getBuildInfo = () => {
   const buildDate = new Date().toISOString();
   const nodeEnv = import.meta.env.MODE;

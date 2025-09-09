@@ -190,7 +190,7 @@ export default function TradingCalculator({
     const priceValue = currentPrice;
 
     // Enhanced debug logging for ultra-fast price updates
-    if (isUltraFastTick) {
+    if (isUltraFastTick && isDevToolsEnabled()) {
       console.log('⚡ ULTRA-FAST CALC UPDATE:', {
         symbol: alert.tradermade_symbol || alert.asset_name,
         priceValue,
@@ -215,7 +215,7 @@ export default function TradingCalculator({
     const riskPercentage = totalRisk / balance * 100;
 
     // Enhanced debug logging for ultra-fast risk calculations
-    if (isUltraFastTick && !isPending) {
+    if (isUltraFastTick && !isPending && isDevToolsEnabled()) {
       console.log('⚡ ULTRA-FAST RISK UPDATE:', {
         riskBasePrice,
         totalRisk,

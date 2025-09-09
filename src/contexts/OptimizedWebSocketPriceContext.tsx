@@ -73,7 +73,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return; // Already connected
     }
 
-    console.log('🔗 Connecting to Supabase Realtime...');
+    if (isDevToolsEnabled()) {
+      console.log('🔗 Connecting to Supabase Realtime...');
+    }
     setConnectionStatus('connecting');
     setError(null);
 
@@ -116,7 +118,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       // Subscribe to the channel
       channel.subscribe((status) => {
-        console.log('🔌 Realtime connection status:', status);
+        if (isDevToolsEnabled()) {
+          console.log('🔌 Realtime connection status:', status);
+        }
         
         // Track reconnections (transition from non-connected to connected)
         if (status === 'SUBSCRIBED' && prevStatusRef.current !== 'SUBSCRIBED') {
@@ -125,7 +129,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         prevStatusRef.current = status;
         
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully connected to Supabase Realtime');
+          if (isDevToolsEnabled()) {
+            console.log('✅ Successfully connected to Supabase Realtime');
+          }
           setConnectionStatus('connected');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Realtime channel error');
@@ -136,12 +142,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           setConnectionStatus('error');
           setError('Connection timed out');
         } else if (status === 'CLOSED') {
-          console.log('🔌 Realtime connection closed');
+          if (isDevToolsEnabled()) {
+            console.log('🔌 Realtime connection closed');
+          }
           setConnectionStatus('disconnected');
         }
       });
     } catch (error) {
-      console.error('❌ Connection setup failed:', error);
+      if (isDevToolsEnabled()) {
+        console.error('❌ Connection setup failed:', error);
+      }
       setConnectionStatus('error');
       setError('Failed to establish connection - please check your network');
     }
@@ -161,25 +171,33 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Add strict symbol validation and logging
     const validatedSymbols = symbols.filter(symbol => {
       const isValid = symbol && symbol.trim().length > 0;
-      console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
+      if (isDevToolsEnabled()) {
+        console.log(`🎯 [Subscribe] Symbol: ${symbol} → Valid: ${isValid}`);
+      }
       return isValid;
     });
     
     // Add to local subscription tracking - this is passive, just for filtering
     validatedSymbols.forEach(symbol => {
-      console.log(`📝 [Subscribe] Adding ${symbol} to subscription set`);
+      if (isDevToolsEnabled()) {
+        console.log(`📝 [Subscribe] Adding ${symbol} to subscription set`);
+      }
       subscriptionsRef.current.add(symbol);
     });
     
     // Note: With Supabase Realtime, we don't need to send subscription messages
     // The DigitalOcean worker will broadcast all prices, and we filter locally
-    console.log(`✅ [Subscribe] Subscribed to symbols (passive filtering):`, validatedSymbols);
+    if (isDevToolsEnabled()) {
+      console.log(`✅ [Subscribe] Subscribed to symbols (passive filtering):`, validatedSymbols);
+    }
   }, []);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Remove from local subscription tracking
     symbols.forEach(symbol => {
-      console.log(`📝 [Unsubscribe] Removing ${symbol} from subscription set`);
+      if (isDevToolsEnabled()) {
+        console.log(`📝 [Unsubscribe] Removing ${symbol} from subscription set`);
+      }
       subscriptionsRef.current.delete(symbol);
     });
     
@@ -190,7 +208,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return updated;
     });
     
-    console.log(`✅ [Unsubscribe] Unsubscribed from symbols:`, symbols);
+    if (isDevToolsEnabled()) {
+      console.log(`✅ [Unsubscribe] Unsubscribed from symbols:`, symbols);
+    }
   }, []);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {

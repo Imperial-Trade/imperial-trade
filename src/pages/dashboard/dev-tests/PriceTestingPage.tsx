@@ -1,6 +1,6 @@
 import React from 'react';
 import { TestPriceGenerator } from '@/components/debug/TestPriceGenerator';
-import { PriceDiagnosticPanel } from '@/components/debug/PriceDiagnosticPanel';
+
 import { ZeroPausePriceDisplay } from '@/components/ui/price-display-zero-pause';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -39,10 +39,6 @@ export default function PriceTestingPage() {
         </Card>
       </div>
 
-      {/* Diagnostic Panel */}
-      <div className="flex justify-center">
-        <PriceDiagnosticPanel />
-      </div>
     </div>
   );
 }

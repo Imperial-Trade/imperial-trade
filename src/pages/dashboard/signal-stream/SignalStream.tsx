@@ -14,7 +14,7 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
-import { PriceDiagnosticPanel } from '@/components/debug/PriceDiagnosticPanel';
+
 
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -615,13 +615,6 @@ export default function SignalStream() {
                 </div>
               )}
 
-              {/* Price Pipeline Diagnostics - Admin only */}
-              {(isAdmin || isEducator) && (
-                <div data-prevent-widget-open="true" className="mt-4 p-4 border-2 border-yellow-400 rounded-lg bg-yellow-50">
-                  <h3 className="font-bold text-yellow-800 mb-2">🚧 Price Pipeline Diagnostic</h3>
-                  <PriceDiagnosticPanel />
-                </div>
-              )}
 
 
               <div className="mb-6" />

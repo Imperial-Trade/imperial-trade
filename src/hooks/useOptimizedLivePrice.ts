@@ -104,11 +104,15 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   useEffect(() => {
     if (!symbol) return;
 
-    console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${symbol}`);
+    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${symbol}`);
+    }
     subscribe([symbol]);
 
     return () => {
-      console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${symbol}`);
+      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+        console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${symbol}`);
+      }
       unsubscribe([symbol]);
     };
   }, [symbol, subscribe, unsubscribe]);

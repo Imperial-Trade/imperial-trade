@@ -180,15 +180,17 @@ const LivePriceWidgetComponent = ({
     const buffer = alert.entry_price * 0.0001;
 
     // Enhanced logging for debugging
-    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
-      currentPrice: price,
-      entryPrice: alert.entry_price,
-      tradeType: alert.trade_type,
-      stopLoss: alert.stop_loss,
-      buffer: buffer,
-      currentHits: currentHits,
-      isBuy: isBuy
-    });
+    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
+        currentPrice: price,
+        entryPrice: alert.entry_price,
+        tradeType: alert.trade_type,
+        stopLoss: alert.stop_loss,
+        buffer: buffer,
+        currentHits: currentHits,
+        isBuy: isBuy
+      });
+    }
 
     // Priority 1: Check Stop Loss first (highest priority)
     const stopLossHit = isBuy ? price <= alert.stop_loss - buffer : price >= alert.stop_loss + buffer;
@@ -217,12 +219,14 @@ const LivePriceWidgetComponent = ({
     // Priority 2: Validate trade direction before checking TP levels
     const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
     if (!isPriceInProfitDirection) {
-      console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
-        currentPrice: price,
-        entryPrice: alert.entry_price,
-        tradeType: alert.trade_type,
-        isPriceInProfitDirection
-      });
+      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+        console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
+          currentPrice: price,
+          entryPrice: alert.entry_price,
+          tradeType: alert.trade_type,
+          isPriceInProfitDirection
+        });
+      }
       // Don't process TP levels if price is not moving in profitable direction
       return;
     }
@@ -327,14 +331,16 @@ const LivePriceWidgetComponent = ({
 
   // Debug logging
   useEffect(() => {
-    console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-      alertSymbol: alert.tradermade_symbol,
-      currentPrice: currentPrice,
-      connectionStatus,
-      priceUpdateSource,
-      entryPrice: alert.entry_price,
-      stopLoss: alert.stop_loss
-    });
+    if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+      console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
+        alertSymbol: alert.tradermade_symbol,
+        currentPrice: currentPrice,
+        connectionStatus,
+        priceUpdateSource,
+        entryPrice: alert.entry_price,
+        stopLoss: alert.stop_loss
+      });
+    }
   }, [currentPrice, connectionStatus, priceUpdateSource, alert]);
   // Format price with dynamic decimal places
   const formatPrice = useCallback((price) => {

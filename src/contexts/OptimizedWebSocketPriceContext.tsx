@@ -83,7 +83,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       // Set up listener for price updates
       channel.on('broadcast', { event: 'price_update' }, ({ payload }) => {
-        console.log('📈 Received price update:', payload);
+        if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+          console.log('📈 Received price update:', payload);
+        }
         messagesReceivedRef.current += 1;
         
         // Calculate latency if timestamp is provided

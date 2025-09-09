@@ -74,13 +74,15 @@ export default function TradingCalculator({
     
     // Log ultra-fast price updates for monitoring
     if (isUltraFastTick && priceValue !== alert.entry_price) {
-      console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
-        symbol,
-        price: priceValue,
-        frequency: updateFrequency,
-        source: priceSource,
-        timestamp: new Date().toISOString()
-      });
+      if (import.meta.env.VITE_SHOW_DEV_TOOLS === 'true') {
+        console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
+          symbol,
+          price: priceValue,
+          frequency: updateFrequency,
+          source: priceSource,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     
     return priceValue;

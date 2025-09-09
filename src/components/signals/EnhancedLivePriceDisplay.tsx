@@ -250,8 +250,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
   if (!symbol) return null;
 
-  // Debug mode check
-  const showDebugPanel = typeof window !== 'undefined' && window.localStorage.getItem('LIVE_PRICE_DEBUG') === '1';
 
   return (
     <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm transition-all duration-500 ${
@@ -422,19 +420,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       </div>
 
-      {/* Debug Panel - GUARDRAIL: Source details moved here only */}
-      {showDebugPanel && (
-        <div className="mt-3 p-2 bg-gray-800/50 border border-gray-600 rounded text-xs text-gray-300">
-          <div className="font-semibold mb-1">🔍 Debug Info</div>
-          <div><strong>Source:</strong> {priceUpdateSource === 'websocket' ? '⚡ WebSocket' : priceUpdateSource === 'http' ? '🔄 HTTP' : '❓ Unknown'}</div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>Status: {debouncedConnectionStatus}</div>
-            <div>Source: {priceUpdateSource}</div>
-            <div>Age: {dataAge || 'N/A'}</div>
-            <div>Price: {price > 0 ? `$${formatPrice(price)}` : 'N/A'}</div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

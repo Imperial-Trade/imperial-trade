@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface PriceData {
   symbol: string;
@@ -116,7 +117,9 @@ export const FallbackPriceProvider: React.FC<{ children: React.ReactNode }> = ({
   const startFallback = useCallback(() => {
     if (isActive) return;
     
-    console.log('🚨 Starting fallback price generation');
+    if (isDevToolsEnabled()) {
+      console.log('🚨 Starting fallback price generation');
+    }
     setIsActive(true);
     
     // Generate prices every 2 seconds
@@ -130,7 +133,9 @@ export const FallbackPriceProvider: React.FC<{ children: React.ReactNode }> = ({
   const stopFallback = useCallback(() => {
     if (!isActive) return;
     
-    console.log('✅ Stopping fallback price generation');
+    if (isDevToolsEnabled()) {
+      console.log('✅ Stopping fallback price generation');
+    }
     setIsActive(false);
     
     if (intervalId) {

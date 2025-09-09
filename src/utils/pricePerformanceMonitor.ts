@@ -1,4 +1,5 @@
 // Phase 4: Performance Monitoring Utilities
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 interface PerformanceMetrics {
   priceUpdatesReceived: number;
   priceUpdatesFiltered: number;
@@ -73,14 +74,16 @@ class PricePerformanceMonitor {
 
   // Phase 4: Log performance summary
   logSummary() {
-    const metrics = this.getMetrics();
-    console.log('📊 Price Performance Metrics:', {
-      received: metrics.priceUpdatesReceived,
-      filtered: `${metrics.priceUpdatesFiltered} (${(metrics.efficiencyRatio * 100).toFixed(1)}% reduction)`,
-      rendered: metrics.uiUpdatesRendered,
-      avgLatency: `${metrics.avgLatencyMs.toFixed(1)}ms`,
-      uptime: `${Math.floor(metrics.uptime / 60000)}m ${Math.floor((metrics.uptime % 60000) / 1000)}s`
-    });
+    if (isDevToolsEnabled()) {
+      const metrics = this.getMetrics();
+      console.log('📊 Price Performance Metrics:', {
+        received: metrics.priceUpdatesReceived,
+        filtered: `${metrics.priceUpdatesFiltered} (${(metrics.efficiencyRatio * 100).toFixed(1)}% reduction)`,
+        rendered: metrics.uiUpdatesRendered,
+        avgLatency: `${metrics.avgLatencyMs.toFixed(1)}ms`,
+        uptime: `${Math.floor(metrics.uptime / 60000)}m ${Math.floor((metrics.uptime % 60000) / 1000)}s`
+      });
+    }
   }
 }
 

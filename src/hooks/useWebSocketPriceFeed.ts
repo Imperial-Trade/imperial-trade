@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface PriceFeedData {
   prices: Record<string, number>;
@@ -25,11 +26,15 @@ export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
     const removed = prev.filter(s => !validSymbols.includes(s));
 
     if (added.length > 0) {
-      console.log('useWebSocketPriceFeed - Subscribing (diff):', added);
+      if (isDevToolsEnabled()) {
+        console.log('useWebSocketPriceFeed - Subscribing (diff):', added);
+      }
       subscribe(added);
     }
     if (removed.length > 0) {
-      console.log('useWebSocketPriceFeed - Unsubscribing (diff):', removed);
+      if (isDevToolsEnabled()) {
+        console.log('useWebSocketPriceFeed - Unsubscribing (diff):', removed);
+      }
       unsubscribe(removed);
     }
 

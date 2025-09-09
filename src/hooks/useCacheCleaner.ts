@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { cleanInvalidPriceCache } from '@/utils/priceGuards';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 /**
  * Smart cache cleaner component that only removes invalid/stale price data
@@ -8,11 +9,15 @@ import { cleanInvalidPriceCache } from '@/utils/priceGuards';
  */
 export const CacheCleanerMount: React.FC = () => {
   useEffect(() => {
-    console.log('🧹 CacheCleanerMount: Starting cache management...');
+    if (isDevToolsEnabled()) {
+      console.log('🧹 CacheCleanerMount: Starting cache management...');
+    }
     
     // Defensive check for storage availability
     if (typeof Storage === 'undefined') {
-      console.warn('🧹 Storage not available, skipping cache cleaning');
+      if (isDevToolsEnabled()) {
+        console.warn('🧹 Storage not available, skipping cache cleaning');
+      }
       return;
     }
     
@@ -20,7 +25,9 @@ export const CacheCleanerMount: React.FC = () => {
       // Clear all price cache on first app startup to prevent cross-contamination
       const startupClearKey = 'priceCache_startup_cleared_v2';
       if (!sessionStorage.getItem(startupClearKey)) {
-        console.log('🧹 Startup: Clearing all price cache to prevent symbol contamination...');
+        if (isDevToolsEnabled()) {
+          console.log('🧹 Startup: Clearing all price cache to prevent symbol contamination...');
+        }
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('live_price_') || (key.includes('price') && key.includes('_timestamp'))) {
             localStorage.removeItem(key);
@@ -30,25 +37,35 @@ export const CacheCleanerMount: React.FC = () => {
       }
       
       // Clean invalid cache entries on mount using price guards
-      console.log('🧹 Smart cache cleaning: validating price entries...');
+      if (isDevToolsEnabled()) {
+        console.log('🧹 Smart cache cleaning: validating price entries...');
+      }
       cleanInvalidPriceCache();
       
       // Periodic cleanup every 15 minutes (increased frequency for better hygiene)
       const interval = setInterval(() => {
-        console.log('🧹 Periodic smart cache validation...');
+        if (isDevToolsEnabled()) {
+          console.log('🧹 Periodic smart cache validation...');
+        }
         try {
           cleanInvalidPriceCache();
         } catch (error) {
-          console.error('🧹 Error during periodic cache cleaning:', error);
+          if (isDevToolsEnabled()) {
+            console.error('🧹 Error during periodic cache cleaning:', error);
+          }
         }
       }, 15 * 60 * 1000);
       
       return () => {
-        console.log('🧹 CacheCleanerMount: Cleaning up interval');
+        if (isDevToolsEnabled()) {
+          console.log('🧹 CacheCleanerMount: Cleaning up interval');
+        }
         clearInterval(interval);
       };
     } catch (error) {
-      console.error('🧹 Error initializing cache cleaner:', error);
+      if (isDevToolsEnabled()) {
+        console.error('🧹 Error initializing cache cleaner:', error);
+      }
     }
   }, []);
 

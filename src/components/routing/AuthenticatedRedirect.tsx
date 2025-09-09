@@ -26,7 +26,11 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
 
   // Show loading spinner while auth is being determined, unless timeout
   if (loading && !hasTimeout) {
-    return <LoadingSpinner />;
+    return (
+      <div data-current-component="AuthenticatedRedirect">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   // If user is authenticated, redirect to dashboard
@@ -35,5 +39,9 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   }
 
   // If not authenticated or timeout reached, show the landing content
-  return <>{children}</>;
+  return (
+    <div data-current-component="AuthenticatedRedirect-Content">
+      {children}
+    </div>
+  );
 };

@@ -46,28 +46,27 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
     }
   }, [user, loading, location, navigate]);
 
-  // Show error if navigation failed
-  if (navigationError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-2">Navigation Error</h2>
-          <p className="text-muted-foreground mb-4">{navigationError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded"
-          >
-            Refresh Page
-          </button>
+  return (
+    <div data-current-component="NavigationGuard">
+      {/* Show error if navigation failed */}
+      {navigationError ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold mb-2">Navigation Error</h2>
+            <p className="text-muted-foreground mb-4">{navigationError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-primary text-primary-foreground rounded"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  // Show loading spinner while auth is being determined, unless timeout
-  if (loading && !hasTimeout) {
-    return <LoadingSpinner />;
-  }
-
-  return <>{children}</>;
+      ) : loading && !hasTimeout ? (
+        <LoadingSpinner />
+      ) : (
+        <>{children}</>
+      )}
+    </div>
+  );
 };

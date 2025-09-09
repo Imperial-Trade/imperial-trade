@@ -37,6 +37,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
+    // Enhanced error logging for diagnostics
+    console.error('🚨 useAuth called outside AuthProvider context!', {
+      stack: new Error().stack,
+      timestamp: new Date().toISOString(),
+      location: window.location.pathname
+    });
+    
+    // Runtime probe - check if AuthProvider exists in DOM
+    const authProviders = document.querySelectorAll('[data-auth-provider]');
+    console.error('🔍 AuthProvider probe:', {
+      providersFound: authProviders.length,
+      currentComponent: document.querySelector('[data-current-component]')?.getAttribute('data-current-component') || 'unknown'
+    });
+    
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
@@ -216,17 +230,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
-      loading, 
-      profileLoading,
-      signOut, 
-      refreshSession, 
-      refreshProfile 
-    }}>
-      {children}
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        session, 
+        profile, 
+        loading, 
+        profileLoading,
+        signOut, 
+        refreshSession, 
+        refreshProfile 
+      }}
+    >
+      <div data-auth-provider="true">
+        {children}
+      </div>
     </AuthContext.Provider>
   );
 };

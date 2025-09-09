@@ -19,7 +19,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div data-current-component="ProtectedRoute-Loading">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (!user) {
@@ -45,5 +49,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  return <>{children}</>;
+  return (
+    <div data-current-component="ProtectedRoute-Content">
+      {children}
+    </div>
+  );
 };

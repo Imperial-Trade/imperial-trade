@@ -8,10 +8,11 @@ import { AutomatedTestRunner } from '@/components/admin/AutomatedTestRunner';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import ComponentTypeSafetyTest from '@/components/testing/ComponentTypeSafetyTest';
 import { AlertTriangle, Code, Beaker } from 'lucide-react';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 const DevTests = () => {
-  // Only show in development mode
-  if (process.env.NODE_ENV !== 'development') {
+  // Only show when dev tools are enabled
+  if (!isDevToolsEnabled()) {
     return (
       <div className="container mx-auto p-6">
         <Card className="glass-effect border-default">

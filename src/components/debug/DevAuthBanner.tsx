@@ -7,11 +7,10 @@ export const DevAuthBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
 
-  // Only show in development mode and when there are auth issues
+  // Only show when there are auth issues (gated by feature flag at App level)
   useEffect(() => {
-    const isDev = import.meta.env.DEV;
     const hasAuthIssue = (!user && !loading) || (user && !session) || loading;
-    setIsVisible(isDev && hasAuthIssue);
+    setIsVisible(hasAuthIssue);
   }, [user, session, loading]);
 
   if (!isVisible) return null;

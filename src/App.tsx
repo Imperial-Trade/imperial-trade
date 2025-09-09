@@ -20,7 +20,7 @@ import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirec
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { DevAuthBanner } from "@/components/debug/DevAuthBanner";
 import { initializeAppState } from "@/utils/appStateCleanup";
-import { shouldShowDevFeatures } from "@/utils/featureFlags";
+import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -94,7 +94,7 @@ function App() {
         <BrowserRouter>
             <ScrollToTop />
             <AuthProvider>
-              {shouldShowDevFeatures() && <DevAuthBanner />}
+              {isDevToolsEnabled() && <DevAuthBanner />}
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
@@ -204,13 +204,13 @@ function App() {
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
                            <Route path="settings" element={<Settings />} />
-                           {shouldShowDevFeatures() && (
-                             <>
-                               <Route path="athena" element={<AthenaTest />} />
-                               <Route path="dev-tests" element={<DevTests />} />
-                               <Route path="price-testing" element={<PriceTestingPage />} />
-                             </>
-                           )}
+                           {isDevToolsEnabled() && (
+                              <>
+                                <Route path="athena" element={<AthenaTest />} />
+                                <Route path="dev-tests" element={<DevTests />} />
+                                <Route path="price-testing" element={<PriceTestingPage />} />
+                              </>
+                            )}
 
                           <Route
                             path="administration"

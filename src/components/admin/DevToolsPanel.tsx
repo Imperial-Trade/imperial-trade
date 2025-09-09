@@ -39,6 +39,33 @@ export const DevToolsPanel: React.FC = () => {
           });
         });
       }
+
+      // Clear IndexedDB (best effort)
+      if ('indexedDB' in window) {
+        try {
+          // Try to get database names (modern browsers)
+          if (indexedDB.databases) {
+            indexedDB.databases().then(databases => {
+              databases.forEach(db => {
+                if (db.name) {
+                  indexedDB.deleteDatabase(db.name);
+                }
+              });
+            }).catch(() => {
+              // Fallback: try common database names
+              ['localforage', 'keyval-store', 'firestore', 'supabase'].forEach(dbName => {
+                try {
+                  indexedDB.deleteDatabase(dbName);
+                } catch (e) {
+                  // Ignore errors for non-existent databases
+                }
+              });
+            });
+          }
+        } catch (error) {
+          console.warn('Could not clear IndexedDB:', error);
+        }
+      }
       
       toast.success('Developer state cleared successfully');
       
@@ -112,10 +139,25 @@ export const DevToolsPanel: React.FC = () => {
               </Badge>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Build Date:</span>
+              <span className="text-muted-foreground">Build Time:</span>
               <span className="font-mono text-xs">
-                {new Date(buildInfo.buildDate).toLocaleString()}
+                {import.meta.env.VITE_BUILD_TIMESTAMP 
+                  ? new Date(import.meta.env.VITE_BUILD_TIMESTAMP).toLocaleString()
+                  : new Date(buildInfo.buildDate).toLocaleString()
+                }
               </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Build SHA:</span>
+              <span className="font-mono text-xs">
+                {import.meta.env.VITE_BUILD_SHA?.slice(0, 7) || 'dev'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Node Env:</span>
+              <Badge variant="outline">
+                {import.meta.env.MODE}
+              </Badge>
             </div>
           </div>
         </CardContent>

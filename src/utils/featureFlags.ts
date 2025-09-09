@@ -1,5 +1,10 @@
 // Feature flag utilities for controlling developer tools and debug features
 
+/**
+ * Primary feature flag for controlling all developer tools visibility.
+ * Set VITE_SHOW_DEV_TOOLS=true in .env to enable developer tools.
+ * This is the single source of truth for gating all internal diagnostic tools.
+ */
 export const isDevToolsEnabled = (): boolean => {
   return import.meta.env.VITE_SHOW_DEV_TOOLS === 'true';
 };
@@ -8,6 +13,10 @@ export const isDevelopment = (): boolean => {
   return import.meta.env.DEV;
 };
 
+/**
+ * @deprecated Use isDevToolsEnabled() instead for consistent gating
+ * This function is kept for compatibility but should be replaced
+ */
 export const shouldShowDevFeatures = (): boolean => {
   return isDevelopment() && isDevToolsEnabled();
 };

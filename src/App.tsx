@@ -90,10 +90,10 @@ function App() {
       <ThemeProvider>
         <CacheCleanerMount />
         <Sonner />
-        <DevAuthBanner />
         <BrowserRouter>
             <ScrollToTop />
             <AuthProvider>
+              <DevAuthBanner />
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>

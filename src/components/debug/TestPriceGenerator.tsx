@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngestSecret } from '@/hooks/useIngestSecret';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 const TEST_SYMBOLS = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'USDJPY'];
 
@@ -62,7 +63,9 @@ export function TestPriceGenerator() {
         setLastSent(`❌ Error: ${error.message}`);
       } else {
         setLastSent(`✅ Sent ${testPrices.length} prices at ${new Date().toLocaleTimeString()}`);
-        console.log('Test prices sent:', data);
+        if (isDevToolsEnabled()) {
+          console.log('Test prices sent:', data);
+        }
       }
     } catch (error) {
       setLastSent(`❌ Failed: ${error.message}`);

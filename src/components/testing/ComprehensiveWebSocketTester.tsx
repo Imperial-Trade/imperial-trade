@@ -9,6 +9,7 @@ import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceC
 import { useIngestSecret } from '@/hooks/useIngestSecret';
 import { supabase } from '@/integrations/supabase/client';
 import { Activity, Wifi, WifiOff, Zap, BarChart3, AlertTriangle } from 'lucide-react';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface TestMetrics {
   pricesReceived: number;
@@ -111,7 +112,9 @@ export const ComprehensiveWebSocketTester: React.FC = () => {
       subscribe(testSymbols);
       
       return () => {
-        console.log('🔌 Unsubscribing from test symbols');
+        if (isDevToolsEnabled()) {
+          console.log('🔌 Unsubscribing from test symbols');
+        }
         unsubscribe(testSymbols);
       };
     }

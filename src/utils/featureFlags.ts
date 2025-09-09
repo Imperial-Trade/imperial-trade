@@ -22,8 +22,8 @@ export const shouldShowDevFeatures = (): boolean => {
 };
 
 // Build information utilities
-// Alias for backward compatibility with the original plan
-export const showDevTools = isDevToolsEnabled;
+// Boolean constant for feature flag gating (fixed from function reference)
+export const showDevTools: boolean = import.meta.env.VITE_SHOW_DEV_TOOLS === 'true';
 
 export const getBuildInfo = () => {
   const buildDate = new Date().toISOString();

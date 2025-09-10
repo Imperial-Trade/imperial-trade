@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { RealtimeOptimizationStatus } from '@/components/debug/RealtimeOptimizationStatus';
-import { Activity, TrendingDown, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useSharedRealtime } from '@/contexts/SharedRealtimeContext';
+import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
+import { Activity, TrendingDown, Zap, AlertTriangle, RefreshCw, Database, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Use the correct telemetry structure from the new table
@@ -28,7 +30,9 @@ interface EdgeTelemetry {
 }
 
 export const RealtimeDiagnostics: React.FC = () => {
-  const { telemetryData, syncTelemetry } = useRealtimeTelemetry();
+  const { telemetryData, syncTelemetry, reset } = useRealtimeTelemetry();
+  const { connectionState: sharedState } = useSharedRealtime();
+  const { connectionStatus: signalStatus, lastUpdated: signalLastUpdated } = useSignalRealtime();
   const [edgeTelemetry, setEdgeTelemetry] = useState<EdgeTelemetry[]>([]);
   const [dailyStats, setDailyStats] = useState({
     totalMessages: 0,
@@ -93,6 +97,11 @@ export const RealtimeDiagnostics: React.FC = () => {
     await fetchTelemetryData();
   };
 
+  const handleResetCounters = () => {
+    reset();
+    console.log('🔄 Client-side telemetry counters reset');
+  };
+
   const efficiencyRate = dailyStats.totalMessages > 0 
     ? ((dailyStats.totalMessages - dailyStats.totalBroadcasts) / dailyStats.totalMessages * 100)
     : telemetryData.optimizationRate;
@@ -106,13 +115,83 @@ export const RealtimeDiagnostics: React.FC = () => {
           <h1 className="text-2xl font-bold text-foreground">Realtime Diagnostics</h1>
           <p className="text-muted-foreground">Monitor realtime optimization performance and costs</p>
         </div>
-        <Button onClick={handleRefresh} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Data
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+          <Button onClick={handleResetCounters} variant="outline">
+            Reset Counters
+          </Button>
+        </div>
       </div>
 
-      {/* Current Status */}
+      {/* PHASE C: Per-Channel Telemetry Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Database Changes (Shared)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Connection Status</span>
+                <Badge variant={sharedState.isConnected ? "default" : "destructive"}>
+                  {sharedState.connectionStatus}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Active Subscribers</span>
+                <span className="font-mono">{sharedState.subscribers.size}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Messages (Session)</span>
+                <span className="font-mono">{telemetryData.totalMessages}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Last Updated</span>
+                <span className="text-xs text-muted-foreground">
+                  {sharedState.lastUpdated ? format(sharedState.lastUpdated, 'HH:mm:ss') : 'Never'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Radio className="w-5 h-5" />
+              Signal Updates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Connection Status</span>
+                <Badge variant={signalStatus === 'connected' ? "default" : "destructive"}>
+                  {signalStatus}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Event Version</span>
+                <Badge variant="outline">signal_change_v3</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Last Updated</span>
+                <span className="text-xs text-muted-foreground">
+                  {signalLastUpdated ? format(signalLastUpdated, 'HH:mm:ss') : 'Never'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Current Session Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -368,8 +447,8 @@ export const RealtimeDiagnostics: React.FC = () => {
               <Badge variant="default">Active</Badge>
             </div>
             <div className="flex items-center justify-between p-4 border rounded-lg">
-              <span className="text-sm font-medium">Single Tab Leadership</span>
-              <Badge variant="default">Enforced</Badge>
+              <span className="text-sm font-medium">Event Versioning</span>
+              <Badge variant="default">db_change_v3, signal_change_v3</Badge>
             </div>
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <span className="text-sm font-medium">Route Gating</span>

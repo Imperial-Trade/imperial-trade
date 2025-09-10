@@ -6,6 +6,7 @@ import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -71,6 +72,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // PHASE 3: Use shared Realtime connection to eliminate duplicate channels + HEALTH MONITORING
   const { connectionState, subscribeToTable } = useSharedRealtime();
   const healthMonitor = useRealtimeHealth();
+  const { recordMessage, recordConnection } = useRealtimeTelemetry();
   
   // PHASE B: Route gating for signal subscriptions
   const isSignalSubscriptionAllowed = useRealtimeGate('signals');
@@ -252,6 +254,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       }
       
       healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
+      recordMessage('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
@@ -430,6 +433,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       );
       
       unsubscribeRef.current = unsubscribe;
+      recordConnection(); // PHASE C: Record successful subscription
       
       // Load initial data with caching
       refreshSignals();

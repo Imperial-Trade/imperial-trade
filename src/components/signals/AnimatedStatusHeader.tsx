@@ -10,29 +10,34 @@ interface Creator {
   avatar_url?: string;
 }
 
-interface Alert {
-  id: string;
-  asset_name: string;
-  status: 'pending' | 'active' | 'closed' | 'partially_profited';
-  trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-  tp_hits?: number[];
-  close_reason?: string;
-  created_date: string;
-  updated_date?: string;
-}
-
+// PHASE C: Minimal primitive props for isolated animations
 interface AnimatedStatusHeaderProps {
   creator?: Creator;
-  alert: Alert;
+  // Primitive props only - no complex objects
+  assetName: string;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  tradeType?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  closeReason?: string;
+  highestTP?: number | null;
+  hasTPHits: boolean;
   isRecentClosure?: boolean;
   justAdded?: boolean;
+  createdDate: string;
+  updatedDate?: string;
 }
 
 const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   creator,
-  alert,
+  assetName,
+  status,
+  tradeType,
+  closeReason,
+  highestTP,
+  hasTPHits,
   isRecentClosure,
-  justAdded = false
+  justAdded = false,
+  createdDate,
+  updatedDate
 }) => {
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
@@ -71,6 +76,17 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
 
   return (
     <div className="mb-2">
+      {/* Glowing top indicator for closed trades - computed from primitives only */}
+      {status === 'closed' && (
+        <div className={`h-1 w-full mb-2 animate-pulse ${
+          closeReason === 'stop_loss' 
+            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
+            : (hasTPHits || closeReason?.startsWith('tp'))
+              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
+              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
+        }`} />
+      )}
+
       {/* Signal Creator Attribution */}
       {creator && (
         <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">
@@ -83,7 +99,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <div className="text-xs text-muted-foreground">
-              {formatTimeAgo(alert.created_date)}
+              {formatTimeAgo(createdDate)}
             </div>
           </div>
         </div>
@@ -93,10 +109,10 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-bold">{alert.asset_name}</h3>
+            <h3 className="text-base font-bold">{assetName}</h3>
             <TradeStatusBadge 
-              alert={alert} 
-              updatedDate={alert.updated_date} 
+              alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
+              updatedDate={updatedDate} 
               isRecentClosure={isRecentClosure} 
             />
           </div>
@@ -107,18 +123,20 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
 };
 
 export default memo(AnimatedStatusHeader, (prevProps, nextProps) => {
-  // Only re-render if essential display properties change
-  // Specifically exclude any price-related changes
+  // PHASE C: Shallow compare of primitive props only - no complex objects
   return (
-    prevProps.alert.id === nextProps.alert.id &&
-    prevProps.alert.asset_name === nextProps.alert.asset_name &&
-    prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.close_reason === nextProps.alert.close_reason &&
-    JSON.stringify(prevProps.alert.tp_hits) === JSON.stringify(nextProps.alert.tp_hits) &&
+    prevProps.assetName === nextProps.assetName &&
+    prevProps.status === nextProps.status &&
+    prevProps.tradeType === nextProps.tradeType &&
+    prevProps.closeReason === nextProps.closeReason &&
+    prevProps.highestTP === nextProps.highestTP &&
+    prevProps.hasTPHits === nextProps.hasTPHits &&
     prevProps.creator?.id === nextProps.creator?.id &&
     prevProps.creator?.display_name === nextProps.creator?.display_name &&
     prevProps.creator?.role === nextProps.creator?.role &&
     prevProps.isRecentClosure === nextProps.isRecentClosure &&
-    prevProps.justAdded === nextProps.justAdded
+    prevProps.justAdded === nextProps.justAdded &&
+    prevProps.createdDate === nextProps.createdDate &&
+    prevProps.updatedDate === nextProps.updatedDate
   );
 });

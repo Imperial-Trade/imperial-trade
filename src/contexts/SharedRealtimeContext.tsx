@@ -4,6 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { connectionStabilizer } from '@/utils/connectionStabilizer';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
+import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 
 // Shared connection state to prevent multiple Realtime channels
 interface SharedRealtimeState {
@@ -45,6 +46,7 @@ interface SharedRealtimeProviderProps {
 
 export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ children }) => {
   const healthMonitor = useRealtimeHealth();
+  const { recordMessage, recordConnection } = useRealtimeTelemetry();
   
   // Deterministic channel ID for logging
   const channelIdRef = useRef(`shared-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
@@ -90,11 +92,15 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     
     // Add all current subscribers to the channel
     subscriptionsRef.current.forEach(({ config, callback }) => {
+      const wrappedCallback = (payload: any) => {
+        recordMessage('db_change_v3'); // PHASE C: Versioned event for zombie isolation
+        callback(payload);
+      };
       (channel as any).on('postgres_changes', { 
         event: config.event || 'INSERT', 
         schema: config.schema || 'public', 
         table: config.table 
-      }, callback);
+      }, wrappedCallback);
     });
     
     channel.subscribe((status) => {
@@ -106,6 +112,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
         if (isDevToolsEnabled()) {
           console.log(`WS-SHARED: SUBSCRIBE [${channelIdRef.current}] name=shared-realtime-connection`);
         }
+        recordConnection(); // PHASE C: Record successful connection
         setConnectionState(prev => ({ ...prev, connectionStatus: 'connected', isConnected: true, error: null }));
       } else if (status === 'CHANNEL_ERROR') {
         setConnectionState(prev => ({ 
@@ -170,6 +177,10 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
 
     // Add to existing channel if connected
     if (channelRef.current) {
+      const wrappedCallback = (payload: any) => {
+        recordMessage('db_change_v3'); // PHASE C: Versioned event for zombie isolation
+        callback(payload);
+      };
       (channelRef.current as any).on(
         'postgres_changes',
         {
@@ -178,7 +189,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           table: config.table,
           ...(config.filter && { filter: config.filter })
         },
-        callback
+        wrappedCallback
       );
     }
 

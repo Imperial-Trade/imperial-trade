@@ -127,12 +127,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <div className="p-3">
-        {/* Use the new AnimatedStatusHeader component */}
+        {/* Use the new AnimatedStatusHeader component with primitive props */}
         <AnimatedStatusHeader 
           creator={creator} 
-          alert={alert} 
+          assetName={alert.asset_name}
+          status={alert.status}
+          tradeType={alert.trade_type}
+          closeReason={alert.close_reason}
+          highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
+          hasTPHits={Boolean(hitTPs.length)}
           isRecentClosure={isRecentClosure} 
-          justAdded={justAdded} 
+          justAdded={justAdded}
+          createdDate={alert.created_date}
+          updatedDate={alert.updated_date}
         />
 
         {/* Actions - moved to the right */}
@@ -186,19 +193,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       </div>
 
-      {/* Live Price Widget - Show for active, pending, and partially_profited trades */}
-      {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-        <div className="px-3 pb-3">
-          <LivePriceWidget 
-              alert={alert} 
-              onTakeProfitHit={onTakeProfitHit}
-              onStopLossHit={onStopLossHit}
-              onOrderActivation={onOrderActivation}
-              allowAutomation={isCreator} // Only allow automation for signal creators
-          />
-        </div>
-      )}
-
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
         <CollapsibleContent className="px-3 pb-3" data-prevent-widget-open="true">
             <QuickCopyPanel alert={alert} />
@@ -212,8 +206,27 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Use the new PricePanel component */}
-      <PricePanel alert={alert} />
+      {/* Use the new PricePanel component with primitive props and tpHitsKey */}
+      <PricePanel 
+        id={alert.id}
+        assetName={alert.asset_name}
+        symbol={alert.tradermade_symbol}
+        tradeType={alert.trade_type}
+        entryPrice={alert.entry_price}
+        stopLoss={alert.stop_loss}
+        tp1={alert.tp1}
+        tp2={alert.tp2}
+        tp3={alert.tp3}
+        tp4={alert.tp4}
+        tp5={alert.tp5}
+        tpHitsKey={(alert.tp_hits || []).join(',')}
+        status={alert.status}
+        closeReason={alert.close_reason}
+        allowAutomation={isCreator}
+        onTakeProfitHit={onTakeProfitHit}
+        onStopLossHit={onStopLossHit}
+        onOrderActivation={onOrderActivation}
+      />
       
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">
@@ -295,9 +308,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 };
 
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // Enhanced memo comparison with safer tp_hits comparison
-  const prevHits = JSON.stringify(prevProps.alert.tp_hits?.sort() || []);
-  const nextHits = JSON.stringify(nextProps.alert.tp_hits?.sort() || []);
+  // PHASE C: Enhanced memo comparison with tpHitsKey for stable array comparison
+  const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
+  const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
   
   return (
     prevProps.alert.id === nextProps.alert.id &&
@@ -313,7 +326,7 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
     prevProps.alert.tp5 === nextProps.alert.tp5 &&
     prevProps.alert.notes === nextProps.alert.notes &&
     prevProps.alert.close_reason === nextProps.alert.close_reason &&
-    prevHits === nextHits &&
+    prevHitsKey === nextHitsKey &&
     prevProps.isAdmin === nextProps.isAdmin &&
     prevProps.isCreator === nextProps.isCreator &&
     prevProps.isRecentClosure === nextProps.isRecentClosure &&

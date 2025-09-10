@@ -8,6 +8,7 @@ import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
 import { useSingleTabLeadership } from '@/hooks/useSingleTabLeadership';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
+import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
@@ -96,6 +97,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
   const { recordMessage, recordConnection, recordClampActivation, syncTelemetry } = useRealtimeTelemetry();
+  const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +194,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Reset manual close flag shortly after cleanup
     setTimeout(() => { manualCloseRef.current = false; }, 1000);
-  }, [updateConnectionState]);
+  }, [updateConnectionState, isEnforced, isGlobalLeader]);
 
   // PHASE 3: Optimized connection with circuit breaker
   const connect = useCallback(async () => {

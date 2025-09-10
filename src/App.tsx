@@ -9,6 +9,7 @@ import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
+import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
@@ -98,12 +99,13 @@ function App() {
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
-                  <WebSocketErrorBoundary>
                     <RealtimeHealthProvider>
-                      <OptimizedWebSocketPriceProvider>
-                        <ContextErrorBoundary>
-                          <SharedRealtimeProvider>
-                            <SignalRealtimeProvider>
+                      <GlobalPreviewControlProvider>
+                        <OptimizedWebSocketPriceProvider>
+                        <WebSocketErrorBoundary>
+                          <ContextErrorBoundary>
+                            <SharedRealtimeProvider>
+                              <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -304,12 +306,13 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                            </SignalRealtimeProvider>
-                          </SharedRealtimeProvider>
-                        </ContextErrorBoundary>
-                      </OptimizedWebSocketPriceProvider>
+                              </SignalRealtimeProvider>
+                            </SharedRealtimeProvider>
+                          </ContextErrorBoundary>
+                        </WebSocketErrorBoundary>
+                        </OptimizedWebSocketPriceProvider>
+                      </GlobalPreviewControlProvider>
                     </RealtimeHealthProvider>
-                  </WebSocketErrorBoundary>
                   </NavigationGuard>
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}

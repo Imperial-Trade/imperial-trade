@@ -8,12 +8,11 @@ import { RealtimeOptimizationStatus } from '@/components/debug/RealtimeOptimizat
 import { Activity, TrendingDown, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Use the correct telemetry structure
+// Use the correct telemetry structure from the new table
 interface EdgeTelemetry {
   id: string;
   created_at: string;
-  scope: string;
-  channel: string;
+  function_name: string;
   metric: string;
   count: number;
   metadata: {
@@ -25,6 +24,7 @@ interface EdgeTelemetry {
     clamped_batch?: number;
     alerts_triggered?: number;
   };
+  batch_id?: string;
 }
 
 export const RealtimeDiagnostics: React.FC = () => {
@@ -44,9 +44,9 @@ export const RealtimeDiagnostics: React.FC = () => {
       
       // Fetch recent edge telemetry (last 24 hours)
       const { data: edgeData, error: edgeError } = await supabase
-        .from('realtime_telemetry')
+        .from('edge_function_telemetry')
         .select('*')
-        .eq('scope', 'edge')
+        .eq('function_name', 'price-ingestor')
         .eq('metric', 'ingestor_batch')
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false })

@@ -803,6 +803,36 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_function_telemetry: {
+        Row: {
+          batch_id: string | null
+          count: number
+          created_at: string
+          function_name: string
+          id: string
+          metadata: Json
+          metric: string
+        }
+        Insert: {
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          function_name: string
+          id?: string
+          metadata?: Json
+          metric: string
+        }
+        Update: {
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          function_name?: string
+          id?: string
+          metadata?: Json
+          metric?: string
+        }
+        Relationships: []
+      }
       forum_posts: {
         Row: {
           category: Database["public"]["Enums"]["post_category"]

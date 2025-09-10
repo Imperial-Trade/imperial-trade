@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
+import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
@@ -67,6 +68,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // PHASE 3: Use shared Realtime connection to eliminate duplicate channels + HEALTH MONITORING
   const { connectionState, subscribeToTable } = useSharedRealtime();
   const healthMonitor = useRealtimeHealth();
+  
+  // PHASE B: Route gating for signal subscriptions
+  const isSignalSubscriptionAllowed = useRealtimeGate('signals');
   
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
@@ -381,6 +385,14 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   }, []);
 
   const subscribe = useCallback(async () => {
+    // PHASE B: Route gating - only subscribe if current route allows signals
+    if (!isSignalSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Signal subscription blocked by route gating');
+      }
+      return;
+    }
+
     if (unsubscribeRef.current) {
       if (isDevToolsEnabled()) {
         console.log('SignalRealtimeContext - Already subscribed via shared connection');
@@ -427,7 +439,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       console.error('❌ Failed to subscribe to signals:', error);
       setError('Failed to initialize realtime connection');
     }
-  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals]);
+  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed]);
 
   const unsubscribe = useCallback(() => {
     if (reconnectTimeoutRef.current) {

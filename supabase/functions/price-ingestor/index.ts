@@ -394,9 +394,8 @@ serve(async (req) => {
 
     // PHASE C: Record telemetry to permanent table
     try {
-      await supabaseClient.from('realtime_telemetry').insert({
-        scope: 'edge',
-        channel: 'price_update',
+      await supabaseClient.from('edge_function_telemetry').insert({
+        function_name: 'price-ingestor',
         metric: 'ingestor_batch',
         count: successfulBroadcasts,
         metadata: {
@@ -407,7 +406,8 @@ serve(async (req) => {
           clamped_symbol: clampActivated ? totalClampActivations : 0,
           clamped_batch: clampActivated ? 1 : 0,
           alerts_triggered: totalTriggeredAlerts
-        }
+        },
+        batch_id: `batch_${Date.now()}`
       });
     } catch (telemetryError) {
       console.warn('⚠️ Telemetry logging failed:', telemetryError);

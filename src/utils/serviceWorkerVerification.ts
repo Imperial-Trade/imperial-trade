@@ -14,6 +14,20 @@ export function verifyServiceWorkerSafety() {
             state: registration.active?.state,
             scriptURL: registration.active?.scriptURL
           });
+          
+          // Hardening: Auto-cleanup in dev preview to prevent conflicts
+          if (window.location.hostname.includes('lovable.app') || window.location.hostname.includes('replit')) {
+            console.log(`🔧 DEV: Auto-cleaning SW ${index + 1} in preview environment`);
+            registration.unregister().then(success => {
+              if (success) {
+                console.log(`✅ DEV: Successfully cleaned SW ${index + 1}`);
+              } else {
+                console.warn(`❌ DEV: Failed to clean SW ${index + 1}`);
+              }
+            }).catch(err => {
+              console.warn(`❌ DEV: Error cleaning SW ${index + 1}:`, err);
+            });
+          }
         });
       } else {
         console.log('✅ DEV: No Service Workers registered');

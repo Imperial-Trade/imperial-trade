@@ -60,6 +60,9 @@ interface SignalRealtimeProviderProps {
 }
 
 export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ children }) => {
+  // Deterministic channel ID for logging
+  const channelIdRef = useRef(`signal-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
+  
   const [signals, setSignals] = useState<TradeAlertWithProfile[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -401,7 +404,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
 
     if (isDevToolsEnabled()) {
-      console.log('🔄 PHASE 3: SignalRealtime subscribing via shared connection (massive savings)');
+      console.log(`🔄 PHASE 3: SignalRealtime [${channelIdRef.current}] subscribing via shared connection (massive savings)`);
     }
 
     try {
@@ -449,7 +452,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
     if (unsubscribeRef.current) {
       if (isDevToolsEnabled()) {
-        console.log('Unsubscribing from shared signal realtime');
+        console.log(`SignalRealtimeContext [${channelIdRef.current}] - Unsubscribing from shared signal realtime`);
       }
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -479,14 +482,21 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }, delay);
   }, [subscribe, unsubscribe]);
 
-  // Cleanup on unmount
+  // Mount-only health registration to prevent flapping
   useEffect(() => {
+    if (isDevToolsEnabled()) {
+      console.log(`📊 SignalRealtime: MOUNT [${channelIdRef.current}] registering with health monitor`);
+    }
     healthMonitor.registerConnection('SignalRealtime');
+    
     return () => {
+      if (isDevToolsEnabled()) {
+        console.log(`📊 SignalRealtime: UNMOUNT [${channelIdRef.current}] unregistering from health monitor`);
+      }
       healthMonitor.unregisterConnection('SignalRealtime');
       unsubscribe();
     };
-  }, [healthMonitor, unsubscribe]);
+  }, []); // Empty dependencies to prevent re-registration flapping
 
   const contextValue: SignalRealtimeContextType = {
     signals,

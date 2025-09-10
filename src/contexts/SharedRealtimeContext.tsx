@@ -235,14 +235,21 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     return () => window.removeEventListener('online', handleOnline);
   }, [connectionState.isConnected, connect]);
 
-  // Cleanup on unmount
+  // Mount-only health registration to prevent flapping
   useEffect(() => {
+    if (isDevToolsEnabled()) {
+      console.log(`📊 SharedRealtime: MOUNT [${channelIdRef.current}] registering with health monitor`);
+    }
     healthMonitor.registerConnection('SharedRealtime');
+    
     return () => {
+      if (isDevToolsEnabled()) {
+        console.log(`📊 SharedRealtime: UNMOUNT [${channelIdRef.current}] unregistering from health monitor`);
+      }
       healthMonitor.unregisterConnection('SharedRealtime');
       disconnect();
     };
-  }, [healthMonitor, disconnect]);
+  }, []); // Empty dependencies to prevent re-registration flapping
 
   const contextValue = useMemo<SharedRealtimeContextType>(() => ({
     connectionState,

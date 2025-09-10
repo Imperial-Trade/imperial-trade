@@ -158,9 +158,8 @@ export const useInstantAlerts = () => {
   useEffect(() => {
     console.log('🔔 Setting up instant alert notifications...');
 
-    const channelId = `instant-alerts-${Date.now()}`;
-    const monitoringChannelId = `alert-monitoring-${Date.now()}`;
-    console.log(`WS-ALERTS: SUBSCRIBE [${channelId}], [${monitoringChannelId}]`);
+    const alertsChannelId = `alerts-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
+    const monitoringChannelId = `monitor-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
 
     // Subscribe to instant alert channel
     const channel = supabase
@@ -172,7 +171,7 @@ export const useInstantAlerts = () => {
         console.log('📡 Instant alerts subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to instant alerts');
+          console.log(`WS-ALERTS: SUBSCRIBE [${alertsChannelId}] name=instant-alerts`);
           
           // Request notification permission
           if ('Notification' in window && Notification.permission === 'default') {
@@ -204,10 +203,14 @@ export const useInstantAlerts = () => {
           // Additional fallback notification handling could go here
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`WS-ALERTS: SUBSCRIBE [${monitoringChannelId}] name=alert-monitoring-changes`);
+        }
+      });
 
     return () => {
-      console.log(`WS-ALERTS: UNSUBSCRIBE [${channelId}], [${monitoringChannelId}]`);
+      console.log(`WS-ALERTS: UNSUBSCRIBE [${alertsChannelId}], [${monitoringChannelId}]`);
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };

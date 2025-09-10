@@ -99,6 +99,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { recordMessage, recordConnection, recordClampActivation, syncTelemetry } = useRealtimeTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
+  // Deterministic channel ID for logging
+  const channelIdRef = useRef(`prices-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
+  
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -179,8 +182,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Mark as intentional close to ignore CLOSED/TIMED_OUT noise
     manualCloseRef.current = true;
 
-    // Clean up channel
+    // Clean up channel with deterministic logging
     if (channelRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log(`WS-P: UNSUBSCRIBE [${channelIdRef.current}]`);
+      }
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
@@ -191,10 +197,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Unregister from health monitor and telemetry
     healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
     recordConnection();
-    
-    if (isDevToolsEnabled()) {
-      console.log('🔌 WebSocket disconnected and cleaned up');
-    }
 
     // Reset manual close flag shortly after cleanup
     setTimeout(() => { manualCloseRef.current = false; }, 1000);
@@ -202,6 +204,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // PHASE 3: Optimized connection with circuit breaker
   const connect = useCallback(async () => {
+    // Guard: Block connect if background disconnect timer is pending
+    if (visibilityTimeoutRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('WS-P: connect blocked (background disconnect pending)');
+      }
+      return;
+    }
+    
     // Connection guards
     if (isConnectingRef.current || channelRef.current || isCircuitBreakerOpen()) {
       if (isDevToolsEnabled()) {
@@ -330,6 +340,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
         
         if (status === 'SUBSCRIBED') {
+          // Deterministic subscribe logging
+          if (isDevToolsEnabled()) {
+            console.log(`WS-P: SUBSCRIBE [${channelIdRef.current}] name=live-prices-broadcast`);
+          }
+          
           // Success: Reset circuit breaker
           updateConnectionState({
             status: 'connected',

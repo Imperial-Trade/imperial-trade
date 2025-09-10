@@ -119,8 +119,7 @@ export function useEducatorSignals() {
         setLoading(false);
       });
 
-      const channelId = `educator-analytics-${Date.now()}`;
-      console.log(`WS-EDUCATOR: SUBSCRIBE [${channelId}]`);
+      const channelId = `educator-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
       
       // Set up real-time subscriptions for trade_alerts table
       const analyticsChannel = supabase
@@ -137,10 +136,14 @@ export function useEducatorSignals() {
             loadAnalytics();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`WS-EDU: SUBSCRIBE [${channelId}] name=educator-analytics`);
+          }
+        });
 
       return () => {
-        console.log(`WS-EDUCATOR: UNSUBSCRIBE [${channelId}]`);
+        console.log(`WS-EDU: UNSUBSCRIBE [${channelId}]`);
         supabase.removeChannel(analyticsChannel);
       };
     }

@@ -133,6 +133,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const priceUpdateTimestamps = useRef(new Map<string, number>());
   const batchedUpdates = useRef(new Map<string, PriceData>());
   const updateBatchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // PHASE B: BroadcastChannel for leader/follower fanout
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const isFollowerRef = useRef(false);
 
   // PHASE 1: Connection State Management with Circuit Breaker
   const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
@@ -265,9 +269,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           
           if (!updateBatchTimeoutRef.current) {
             updateBatchTimeoutRef.current = setTimeout(() => {
-              setPrices(prev => ({ ...prev, ...Object.fromEntries(batchedUpdates.current) }));
+              const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
+              setPrices(prev => ({ ...prev, ...updatedPrices }));
               setLastUpdated(new Date());
               pricePerformanceMonitor.recordUIUpdate();
+              
+              // PHASE B: BroadcastChannel fanout - Leader broadcasts to followers
+              if (isLeader && broadcastChannelRef.current) {
+                try {
+                  broadcastChannelRef.current.postMessage({
+                    type: 'prices-batch',
+                    data: updatedPrices,
+                    timestamp: Date.now()
+                  });
+                } catch (error) {
+                  if (isDevToolsEnabled()) {
+                    console.warn('📡 BroadcastChannel send failed:', error);
+                  }
+                }
+              }
+              
               batchedUpdates.current.clear();
               updateBatchTimeoutRef.current = null;
             }, 200); // 🔥 SLOWER BATCHING: Every 200ms instead of 50ms
@@ -644,11 +665,48 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('online', handleOnline);
     
+    // PHASE B: Initialize BroadcastChannel for tab coordination
+    if (!broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current = new BroadcastChannel('prices-bc');
+        
+        // Listen for price updates from leader tab
+        broadcastChannelRef.current.onmessage = (event) => {
+          const { type, data, timestamp } = event.data;
+          
+          if (type === 'prices-batch' && !isLeader && data) {
+            // Followers receive price updates via BroadcastChannel
+            if (isDevToolsEnabled()) {
+              console.log('📻 Received price batch from leader:', Object.keys(data));
+            }
+            
+            setPrices(prev => ({ ...prev, ...data }));
+            setLastUpdated(new Date(timestamp));
+            isFollowerRef.current = true;
+          }
+        };
+        
+        if (isDevToolsEnabled()) {
+          console.log('📡 BroadcastChannel initialized for tab coordination');
+        }
+      } catch (error) {
+        if (isDevToolsEnabled()) {
+          console.warn('⚠️ BroadcastChannel not available:', error);
+        }
+      }
+    }
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
+      
+      // Cleanup BroadcastChannel
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
     };
-  }, [handleVisibilityChange, handleOnline]);
+  }, [handleVisibilityChange, handleOnline, isLeader]);
 
   // Cleanup on unmount
   useEffect(() => {

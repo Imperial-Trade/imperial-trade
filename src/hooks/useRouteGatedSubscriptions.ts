@@ -14,6 +14,9 @@ const ROUTE_SUBSCRIPTION_MAP: Record<string, string[]> = {
   // Signals page - needs full signals data
   '/dashboard/signals': ['signals', 'prices'],
   
+  // Signal stream - needs full signals and prices data  
+  '/dashboard/signal-stream': ['signals', 'prices'],
+  
   // Create alert - needs prices only
   '/dashboard/create-alert': ['prices'],
   

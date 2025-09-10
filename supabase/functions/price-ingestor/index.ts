@@ -183,22 +183,26 @@ serve(async (req) => {
     let totalTriggeredAlerts = 0;
     
     for (const priceUpdate of prices) {
-      // ENHANCED NaN VALIDATION AND SANITIZATION
-      if (!priceUpdate.symbol || 
-          typeof priceUpdate.bid !== 'number' || 
-          typeof priceUpdate.ask !== 'number' ||
-          !isFinite(priceUpdate.bid) || 
-          !isFinite(priceUpdate.ask) ||
-          priceUpdate.bid <= 0 || 
-          priceUpdate.ask <= 0 ||
-          isNaN(priceUpdate.bid) ||
-          isNaN(priceUpdate.ask)) {
-        console.warn(`⚠️ Skipping invalid price data: {
-  symbol: "${priceUpdate.symbol}",
-  bid: ${priceUpdate.bid},
-  ask: ${priceUpdate.ask},
-  timestamp: "${priceUpdate.timestamp}"
-}`);
+      // PHASE A: Accept dual payload formats (full vs mid-only)
+      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+      const hasMidOnly = typeof priceUpdate.price === 'number';
+      
+      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
+        console.warn(`⚠️ Skipping invalid price data (no symbol or price): ${JSON.stringify(priceUpdate)}`);
+        continue;
+      }
+
+      // Skip alert processing for mid-only prices (they're UI-only)
+      if (!hasFullData) {
+        console.log(`📊 Mid-only price for ${priceUpdate.symbol}: ${priceUpdate.price} (alerts skipped)`);
+        continue;
+      }
+
+      // ENHANCED NaN VALIDATION for full data
+      if (!isFinite(priceUpdate.bid) || !isFinite(priceUpdate.ask) ||
+          priceUpdate.bid <= 0 || priceUpdate.ask <= 0 ||
+          isNaN(priceUpdate.bid) || isNaN(priceUpdate.ask)) {
+        console.warn(`⚠️ Skipping invalid bid/ask data: ${JSON.stringify(priceUpdate)}`);
         continue;
       }
 
@@ -226,11 +230,16 @@ serve(async (req) => {
     totalAlertsTriggered += totalTriggeredAlerts;
     console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts`);
 
-    // STEP 2: Asynchronously upsert latest prices (non-blocking)
+    // STEP 2: Asynchronously upsert latest prices (non-blocking, full data only)
     console.log('💾 STEP 2: Asynchronously upserting market prices...');
     const upsertPromises = prices.map(async (priceUpdate) => {
-      if (!priceUpdate.symbol || typeof priceUpdate.bid !== 'number' || typeof priceUpdate.ask !== 'number') {
-        return false;
+      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+      
+      if (!priceUpdate.symbol || !hasFullData) {
+        if (typeof priceUpdate.price === 'number') {
+          console.log(`📊 Upsert skipped for mid-only price: ${priceUpdate.symbol}`);
+        }
+        return { skipped: true, reason: 'mid_only_or_invalid' };
       }
 
       try {
@@ -242,38 +251,59 @@ serve(async (req) => {
           p_mid: mid,
           p_timestamp: priceUpdate.timestamp || new Date().toISOString()
         });
-        return true;
+        return { upserted: true };
       } catch (error) {
         console.error(`❌ Price upsert error for ${priceUpdate.symbol}:`, error);
-        return false;
+        return { error: true };
       }
     });
 
     // Don't wait for upserts to complete - they're async by design
     Promise.all(upsertPromises).then(results => {
-      const successfulUpserts = results.filter(Boolean).length;
-      totalPricesUpserted += successfulUpserts;
-      console.log(`💾 STEP 2 COMPLETE: ${successfulUpserts}/${prices.length} prices upserted`);
+      const upserted = results.filter((r: any) => r.upserted).length;
+      const skipped = results.filter((r: any) => r.skipped).length;
+      totalPricesUpserted += upserted;
+      console.log(`💾 STEP 2 COMPLETE: ${upserted}/${prices.length} prices upserted (${skipped} mid-only skipped)`);
     });
 
     // STEP 3: Apply significance filtering + CLAMPS for UI broadcasts only
     console.log('📡 STEP 3: Filtering significant changes for UI broadcast...');
+    // PHASE A: Handle both full and mid-only prices for UI
     const uiPrices = prices
-      .filter(p => p.symbol && typeof p.bid === 'number' && typeof p.ask === 'number' && 
-               p.bid > 0 && p.ask > 0 && isFinite(p.bid) && isFinite(p.ask) &&
-               !isNaN(p.bid) && !isNaN(p.ask))
+      .filter(p => {
+        const hasFullData = p.symbol && typeof p.bid === 'number' && typeof p.ask === 'number';
+        const hasMidOnly = p.symbol && typeof p.price === 'number';
+        return hasFullData || hasMidOnly;
+      })
       .map(p => {
-        const mid = (p.bid + p.ask) / 2;
-        // Final NaN check on calculated mid price
-        if (!isFinite(mid) || isNaN(mid) || mid <= 0) {
-          console.warn(`⚠️ Calculated invalid mid price for ${p.symbol}: bid=${p.bid}, ask=${p.ask}, mid=${mid}`);
-          return null;
+        // Handle mid-only format
+        if (typeof p.price === 'number' && (!p.bid || !p.ask)) {
+          if (!isFinite(p.price) || isNaN(p.price) || p.price <= 0) {
+            console.warn(`⚠️ Invalid mid-only price for ${p.symbol}: ${p.price}`);
+            return null;
+          }
+          return { 
+            symbol: p.symbol, 
+            price: p.price, 
+            timestamp: p.timestamp || new Date().toISOString() 
+          };
         }
-        return { 
-          symbol: p.symbol, 
-          price: mid, 
-          timestamp: p.timestamp || new Date().toISOString() 
-        };
+        
+        // Handle full bid/ask format
+        if (p.bid > 0 && p.ask > 0 && isFinite(p.bid) && isFinite(p.ask)) {
+          const mid = (p.bid + p.ask) / 2;
+          if (!isFinite(mid) || isNaN(mid) || mid <= 0) {
+            console.warn(`⚠️ Calculated invalid mid price for ${p.symbol}: bid=${p.bid}, ask=${p.ask}`);
+            return null;
+          }
+          return { 
+            symbol: p.symbol, 
+            price: mid, 
+            timestamp: p.timestamp || new Date().toISOString() 
+          };
+        }
+        
+        return null;
       })
       .filter(Boolean) as Array<{symbol: string, price: number, timestamp: string}>;
     
@@ -361,6 +391,27 @@ serve(async (req) => {
     totalUIBroadcasts += successfulBroadcasts;
 
     console.log(`📈 STEP 4 COMPLETE: ${successfulBroadcasts}/${clampedPrices.length} UI updates broadcasted (${prices.length - clampedPrices.length} filtered/clamped out)`);
+
+    // PHASE C: Record telemetry to permanent table
+    try {
+      await supabaseClient.from('realtime_telemetry').insert({
+        scope: 'edge',
+        channel: 'price_update',
+        metric: 'ingestor_batch',
+        count: successfulBroadcasts,
+        metadata: {
+          processed: prices.length,
+          valid: uiPrices.length,
+          filtered: filteredPrices.length,
+          broadcasted: successfulBroadcasts,
+          clamped_symbol: clampActivated ? totalClampActivations : 0,
+          clamped_batch: clampActivated ? 1 : 0,
+          alerts_triggered: totalTriggeredAlerts
+        }
+      });
+    } catch (telemetryError) {
+      console.warn('⚠️ Telemetry logging failed:', telemetryError);
+    }
 
     // COMPREHENSIVE SUCCESS RESPONSE
     const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts ${clampActivated ? '(CLAMPED)' : ''}`;

@@ -653,25 +653,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     setTimeout(connect, 500);
   }, [updateConnectionState, disconnect, connect]);
 
-  // Mock price generator integration - starts when we become leader
-  useEffect(() => {
-    if ((isLeader && !isEnforced) || isGlobalLeader) {
-      const { mockPriceGenerator } = require('@/services/mockPriceGenerator');
-      mockPriceGenerator.start();
-      
-      if (isDevToolsEnabled()) {
-        console.log('🎯 Mock price generator started - broadcasting live prices');
-      }
-      
-      return () => {
-        mockPriceGenerator.stop();
-        if (isDevToolsEnabled()) {
-          console.log('🛑 Mock price generator stopped');
-        }
-      };
-    }
-  }, [isLeader, isGlobalLeader, isEnforced]);
-
   // PHASE 3: Page Visibility API for adaptive background disconnect
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden) {

@@ -60,8 +60,8 @@ export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProvider
 
   // Initialize global presence channel
   useEffect(() => {
-    // Enable global preview control for live price system
-    const isEnforced = true; // Enabled to support live price coordination
+    // Feature flag check - can be enabled later
+    const isEnforced = false; // TODO: Replace with actual feature flag
     setState(prev => ({ ...prev, isEnforced }));
 
     if (!isEnforced || !sessionIdRef.current) return;

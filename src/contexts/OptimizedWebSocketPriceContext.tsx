@@ -402,8 +402,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }, HEALTH_CONFIG.healthCheckInterval);
   }, [lastUpdated, disconnect, connect]);
 
-  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING
+  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING + Leadership + Route Gating
   const subscribe = useCallback((symbols: string[]) => {
+    // 🚦 GATE 1: Route gating - only subscribe if current route allows it
+    if (!isPriceSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Price subscription blocked by route gating');
+      }
+      return;
+    }
+
+    // 🚦 GATE 2: Single-tab leadership - only leader can connect
+    if (!isLeader) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Price subscription blocked - not leader tab');
+      }
+      return;
+    }
+
     // ✅ STEP 1: Filter and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
     const requestedSymbols = symbols.filter(s => s && s.trim().length > 0);
     const allowedSymbols = requestedSymbols.filter(symbol => {
@@ -453,7 +469,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Track subscription costs
     allowedSymbols.forEach(() => costTracker.recordRealtimeMessage('subscription'));
-  }, [connect]);
+  }, [connect, isPriceSubscriptionAllowed, isLeader]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     const actuallyRemovedSymbols: string[] = [];
@@ -489,6 +505,27 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('📝 Unsubscribed from:', actuallyRemovedSymbols, `(${subscriptionsRef.current.size} remaining)`);
     }
   }, [disconnect]);
+
+  // PHASE 1: Auto-disconnect logic when leadership is lost or route changes
+  useEffect(() => {
+    // Disconnect if we lose leadership or route doesn't allow subscriptions
+    if (!isLeader || !isPriceSubscriptionAllowed) {
+      if (channelRef.current) {
+        if (isDevToolsEnabled()) {
+          console.log('🚦 Disconnecting due to leadership change or route gating', {isLeader, isPriceSubscriptionAllowed});
+        }
+        disconnect();
+      }
+      return;
+    }
+
+    if (!subscriptionsRef.current.size) return;
+    
+    // Connect on leadership change - if we're leader and have subscriptions
+    if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
+      connect();
+    }
+  }, [isLeader, isPriceSubscriptionAllowed, disconnect, connect]);
 
   // Stable utility functions
   const getPrice = useCallback((symbol: string): PriceData | null => {

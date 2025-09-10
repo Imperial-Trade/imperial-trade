@@ -238,7 +238,13 @@ serve(async (req) => {
 
     // STEP 3: Apply significance filtering for UI broadcasts only
     console.log('📡 STEP 3: Filtering significant changes for UI broadcast...');
-    const uiPrices = prices.map(p => ({ symbol: p.symbol, price: (p.bid + p.ask) / 2, timestamp: p.timestamp }));
+    const uiPrices = prices
+      .filter(p => p.symbol && typeof p.bid === 'number' && typeof p.ask === 'number' && p.bid > 0 && p.ask > 0)
+      .map(p => ({ 
+        symbol: p.symbol, 
+        price: (p.bid + p.ask) / 2, 
+        timestamp: p.timestamp || new Date().toISOString() 
+      }));
     const filteredPrices = filterSignificantPrices(uiPrices);
     
     if (filteredPrices.length === 0) {
@@ -273,12 +279,12 @@ serve(async (req) => {
           payload: {
             symbol: price.symbol,
             price: price.price,
-            ts: price.timestamp || new Date().toISOString(),
+            ts: price.timestamp,
           },
         });
 
         if (broadcastResult === 'ok') {
-          console.log(`💰 UI Broadcast: ${price.symbol}: $${price.price}`);
+          console.log(`💰 UI Broadcast: ${price.symbol}: $${price.price.toFixed(5)}`);
           return true;
         } else {
           console.warn(`⚠️ UI Broadcast failed for ${price.symbol}:`, broadcastResult);

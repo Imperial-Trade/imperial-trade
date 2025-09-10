@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
-    const handleAuthStateChange = async (event: string, session: Session | null) => {
+    const handleAuthStateChange = (event: string, session: Session | null) => {
       if (!mounted) return;
       
       console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
@@ -165,25 +165,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (session?.user) {
         console.log('👤 User authenticated, loading profile...');
-        try {
-          const profileData = await fetchProfile(session.user.id);
-          if (mounted) {
-            setProfile(profileData);
-            // Only set loading false after we have both session AND profile attempt
-            if (!authInitialized) {
-              setLoading(false);
-              setAuthInitialized(true);
-              console.log('✅ Auth initialization complete');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Failed to load profile:', error);
-          if (mounted) {
-            setProfile(null);
-            setLoading(false);
-            setAuthInitialized(true);
-          }
-        }
+        // Defer Supabase calls to avoid deadlocks in the auth callback
+        setTimeout(() => {
+          fetchProfile(session.user!.id)
+            .then((profileData) => {
+              if (mounted) {
+                setProfile(profileData);
+              }
+            })
+            .catch((error) => {
+              console.error('❌ Failed to load profile:', error);
+              if (mounted) {
+                setProfile(null);
+              }
+            })
+            .finally(() => {
+              if (mounted && !authInitialized) {
+                setLoading(false);
+                setAuthInitialized(true);
+                console.log('✅ Auth initialization complete');
+              }
+            });
+        }, 0);
       } else {
         console.log('❌ No user session');
         if (mounted) {
@@ -230,7 +233,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        await handleAuthStateChange('INITIAL_SESSION', session);
+        handleAuthStateChange('INITIAL_SESSION', session);
       } catch (error) {
         console.error('❌ Auth initialization failed:', error);
         if (mounted) {

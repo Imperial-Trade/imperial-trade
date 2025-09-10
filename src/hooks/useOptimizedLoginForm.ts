@@ -126,7 +126,7 @@ export const useOptimizedLoginForm = () => {
 
   return {
     form,
-    onSubmit: form.handleSubmit(onSubmit),
+    onSubmit: (data: LoginFormData) => onSubmit(data),
     canSubmit,
     isSubmitting: form.formState.isSubmitting,
   };

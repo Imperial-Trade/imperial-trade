@@ -115,7 +115,7 @@ export const useLoginForm = () => {
 
   return {
     form,
-    onSubmit: form.handleSubmit(onSubmit),
+    onSubmit: (data: LoginFormData) => onSubmit(data),
     isSubmitting: form.formState.isSubmitting,
   };
 };

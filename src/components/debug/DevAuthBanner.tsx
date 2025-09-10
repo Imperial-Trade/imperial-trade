@@ -9,13 +9,14 @@ export const DevAuthBanner: React.FC = () => {
 
   // Only show when there are genuine auth issues - not during normal loading
   useEffect(() => {
-    // Only show when there are genuine auth issues - not during normal loading
+    const isProtectedPath = /^\/(dashboard|admin)/.test(window.location.pathname);
+
     const hasGenuineAuthIssues = 
       (!user && !loading && !profileLoading) || // No user after loading complete
       (user && !session && !loading) ||        // User but no session (inconsistent state)
       (loading && !user && !session);          // Prolonged loading without any auth data
     
-    setIsVisible(hasGenuineAuthIssues);
+    setIsVisible(isProtectedPath && hasGenuineAuthIssues);
   }, [user, session, loading, profileLoading]);
 
   if (!isVisible) return null;

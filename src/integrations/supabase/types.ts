@@ -3682,6 +3682,10 @@ export type Database = {
         Args: { p_event_ids: string[]; p_event_type: string }
         Returns: number
       }
+      observe_deprecated_function_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
         Returns: {

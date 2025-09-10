@@ -7,7 +7,9 @@ import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { RealtimeOptimizationStatus } from '@/components/debug/RealtimeOptimizationStatus';
 import { useSharedRealtime } from '@/contexts/SharedRealtimeContext';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
-import { Activity, TrendingDown, Zap, AlertTriangle, RefreshCw, Database, Radio } from 'lucide-react';
+import { useTelemetry } from '@/contexts/TelemetryContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { Activity, TrendingDown, Zap, AlertTriangle, RefreshCw, Database, Radio, BarChart, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Use the correct telemetry structure from the new table
@@ -30,9 +32,11 @@ interface EdgeTelemetry {
 }
 
 export const RealtimeDiagnostics: React.FC = () => {
-  const { telemetryData, syncTelemetry, reset } = useRealtimeTelemetry();
-  const { connectionState: sharedState } = useSharedRealtime();
+  const { telemetryData, syncTelemetry, reset: resetTelemetry } = useRealtimeTelemetry();
+  const telemetry = useTelemetry();
+  const { connectionState } = useSharedRealtime();
   const { connectionStatus: signalStatus, lastUpdated: signalLastUpdated } = useSignalRealtime();
+  const { connectionStatus: priceStatus, lastUpdated: priceLastUpdated } = useOptimizedWebSocketPrices();
   const [edgeTelemetry, setEdgeTelemetry] = useState<EdgeTelemetry[]>([]);
   const [dailyStats, setDailyStats] = useState({
     totalMessages: 0,
@@ -145,7 +149,7 @@ export const RealtimeDiagnostics: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Active Subscribers</span>
-                <span className="font-mono">{sharedState.subscribers.size}</span>
+                <span className="font-mono">{sharedState.subscribers}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Messages (Session)</span>

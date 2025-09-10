@@ -11,6 +11,7 @@ import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
+import { TelemetryProvider } from "@/contexts/TelemetryContext";
 import { RealtimeShutdownGuard } from "@/components/RealtimeShutdownGuard";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
@@ -104,7 +105,8 @@ function App() {
                 <NotificationPromptProvider>
                   <NavigationGuard>
                     <RealtimeHealthProvider>
-                      <GlobalPreviewControlProvider>
+                      <TelemetryProvider>
+                        <GlobalPreviewControlProvider>
                         <OptimizedWebSocketPriceProvider>
                         <WebSocketErrorBoundary>
                           <ContextErrorBoundary>
@@ -315,7 +317,8 @@ function App() {
                           </ContextErrorBoundary>
                         </WebSocketErrorBoundary>
                         </OptimizedWebSocketPriceProvider>
-                      </GlobalPreviewControlProvider>
+                        </GlobalPreviewControlProvider>
+                      </TelemetryProvider>
                     </RealtimeHealthProvider>
                   </NavigationGuard>
                 </NotificationPromptProvider>

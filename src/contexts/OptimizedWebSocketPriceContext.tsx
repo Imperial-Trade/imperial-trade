@@ -8,6 +8,7 @@ import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
 import { useSingleTabLeadership } from '@/hooks/useSingleTabLeadership';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
+import { useTelemetry } from '@/contexts/TelemetryContext';
 import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
@@ -97,6 +98,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
   const { recordMessage, recordConnection, recordClampActivation, syncTelemetry } = useRealtimeTelemetry();
+  const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
   // Deterministic channel ID for logging
@@ -243,25 +245,42 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       channelRef.current = channel;
 
       // PHASE 4: Set up rate-limited message handler with batching
+      // V2 event listener for legacy compatibility
       channel.on('broadcast', { event: 'price_update' }, ({ payload }) => {
+        handlePriceUpdate(payload, 'price_update');
+      });
+
+      // V3 event listener for new versioned events
+      channel.on('broadcast', { event: 'price_update_v3' }, ({ payload }) => {
+        handlePriceUpdate(payload, 'price_update_v3');
+      });
+
+      const handlePriceUpdate = (payload: any, eventVersion: 'price_update' | 'price_update_v3') => {
         try {
           if (!payload?.symbol || !subscriptionsRef.current.has(payload.symbol)) {
             return; // Skip unsubscribed symbols
           }
 
-          // 🔥 FURTHER RATE LIMITING: Max 2 updates/sec per symbol instead of 10
-          const now = Date.now();
-          const lastUpdate = priceUpdateTimestamps.current.get(payload.symbol) || 0;
-          if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
-            recordClampActivation(); // Record when we drop updates due to rate limiting
-            return;
-          }
-          priceUpdateTimestamps.current.set(payload.symbol, now);
+        // 🔥 FURTHER RATE LIMITING: Max 2 updates/sec per symbol instead of 10
+        const now = Date.now();
+        const lastUpdate = priceUpdateTimestamps.current.get(payload.symbol) || 0;
+        if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
+          recordClampActivation(); // Record when we drop updates due to rate limiting
+          telemetry.record('clamp_activation');
+          return;
+        }
+        priceUpdateTimestamps.current.set(payload.symbol, now);
 
-          statsRef.current.messagesReceived++;
-          
-          // Track telemetry
-          recordMessage('price_update');
+        statsRef.current.messagesReceived++;
+        
+        // Track telemetry with version info
+        recordMessage(eventVersion);
+        telemetry.record(eventVersion);
+
+        // Dev-only logging with session info
+        if (isDevToolsEnabled()) {
+          console.log(`📊 Price event: ${eventVersion} | Session: ${telemetry.sessionInfo.sessionId} | Build: ${telemetry.sessionInfo.buildVersion}`);
+        }
           
           // Track cost for price updates
           costTracker.recordRealtimeMessage('price_update');
@@ -330,7 +349,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             errorLogCountRef.current = 1;
           }
         }
-      });
+      };
 
       // Subscribe with enhanced error handling
       channel.subscribe((status) => {

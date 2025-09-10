@@ -5,6 +5,7 @@ import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
+import { useTelemetry } from '@/contexts/TelemetryContext';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 
@@ -254,7 +255,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       }
       
       healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
-      recordMessage('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
+      telemetry.record('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;

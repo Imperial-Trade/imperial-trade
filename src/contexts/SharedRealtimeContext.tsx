@@ -5,6 +5,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { connectionStabilizer } from '@/utils/connectionStabilizer';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
+import { useTelemetry } from '@/contexts/TelemetryContext';
 
 // Shared connection state to prevent multiple Realtime channels
 interface SharedRealtimeState {
@@ -12,7 +13,8 @@ interface SharedRealtimeState {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   error: string | null;
   lastUpdated: Date | null;
-  subscribers: Set<string>;
+  subscribers: number;
+  sessionMessages: number;
 }
 
 interface SharedRealtimeContextType {
@@ -47,6 +49,7 @@ interface SharedRealtimeProviderProps {
 export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ children }) => {
   const healthMonitor = useRealtimeHealth();
   const { recordMessage, recordConnection } = useRealtimeTelemetry();
+  const telemetry = useTelemetry();
   
   // Deterministic channel ID for logging
   const channelIdRef = useRef(`shared-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
@@ -56,7 +59,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     connectionStatus: 'disconnected',
     error: null,
     lastUpdated: null,
-    subscribers: new Set(),
+    subscribers: 0,
+    sessionMessages: 0,
   });
 
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -93,7 +97,19 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     // Add all current subscribers to the channel
     subscriptionsRef.current.forEach(({ config, callback }) => {
       const wrappedCallback = (payload: any) => {
-        recordMessage('db_change_v3'); // PHASE C: Versioned event for zombie isolation
+        // Health monitoring
+        healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
+        
+        // Record telemetry for per-channel tracking
+        telemetry.record('db_change_v3');
+        
+        // Update session messages and lastUpdated
+        setConnectionState(prev => ({
+          ...prev,
+          sessionMessages: prev.sessionMessages + 1,
+          lastUpdated: new Date()
+        }));
+        
         callback(payload);
       };
       (channel as any).on('postgres_changes', { 
@@ -113,7 +129,13 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           console.log(`WS-SHARED: SUBSCRIBE [${channelIdRef.current}] name=shared-realtime-connection`);
         }
         recordConnection(); // PHASE C: Record successful connection
-        setConnectionState(prev => ({ ...prev, connectionStatus: 'connected', isConnected: true, error: null }));
+        setConnectionState(prev => ({ 
+          ...prev, 
+          connectionStatus: 'connected', 
+          isConnected: true, 
+          error: null,
+          subscribers: subscriptionsRef.current.size
+        }));
       } else if (status === 'CHANNEL_ERROR') {
         setConnectionState(prev => ({ 
           ...prev, 
@@ -172,13 +194,25 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     // Update subscriber count
     setConnectionState(prev => ({
       ...prev,
-      subscribers: new Set([...prev.subscribers, key])
+      subscribers: subscriptionsRef.current.size + 1
     }));
 
     // Add to existing channel if connected
     if (channelRef.current) {
       const wrappedCallback = (payload: any) => {
-        recordMessage('db_change_v3'); // PHASE C: Versioned event for zombie isolation
+        // Health monitoring
+        healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
+        
+        // Record telemetry for per-channel tracking
+        telemetry.record('db_change_v3');
+        
+        // Update session messages and lastUpdated
+        setConnectionState(prev => ({
+          ...prev,
+          sessionMessages: prev.sessionMessages + 1,
+          lastUpdated: new Date()
+        }));
+        
         callback(payload);
       };
       (channelRef.current as any).on(
@@ -206,11 +240,10 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     return () => {
       subscriptionsRef.current.delete(key);
       
-      setConnectionState(prev => {
-        const newSubscribers = new Set(prev.subscribers);
-        newSubscribers.delete(key);
-        return { ...prev, subscribers: newSubscribers };
-      });
+      setConnectionState(prev => ({
+        ...prev,
+        subscribers: Math.max(0, prev.subscribers - 1)
+      }));
 
       // Disconnect if no more subscribers
       if (subscriptionsRef.current.size === 0) {

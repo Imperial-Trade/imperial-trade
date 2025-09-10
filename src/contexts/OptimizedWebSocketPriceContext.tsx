@@ -51,7 +51,7 @@ const CIRCUIT_BREAKER_CONFIG = {
 const HEALTH_CONFIG = {
   staleDataThreshold: 45000, // 45 seconds before considering data stale
   healthCheckInterval: 30000, // Check health every 30 seconds
-  maxSilentPeriod: 60000, // 1 minute of no data before concern
+  maxSilentPeriod: 180000, // 3 minutes of no data before concern (was 60s)
 };
 
 interface OptimizedWebSocketContextType {

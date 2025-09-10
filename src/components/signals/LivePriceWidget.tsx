@@ -72,8 +72,11 @@ const LivePriceWidgetComponent = ({
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
     debounceMs: 120, // Business Plan: Ultra-fast 120ms for live price tickers
-    pauseOnInput: false
+    pauseOnInput: false,
+    trackDataAge: false // Prevent data age interval to eliminate flickering
   });
+
+  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
 
   // price animations disabled
 
@@ -87,12 +90,21 @@ const LivePriceWidgetComponent = ({
 
   // Data age tracking removed to prevent blinking and forced refreshes
 
+  // Grace period for status indicators to prevent flickering
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDisplayStatus(connectionStatus);
+    }, 2000); // 2 second grace period before status changes
+
+    return () => clearTimeout(timeoutId);
+  }, [connectionStatus]);
   // Disable price animations to prevent flicker; track last price only
   useEffect(() => {
     if (currentPrice > 0) {
       setPrevPrice(currentPrice);
     }
   }, [currentPrice]);
+
   const processLevelHit = useCallback(async (hitType, data) => {
     // Skip automation if not allowed (for non-owners)
     if (!allowAutomation) {
@@ -386,14 +398,14 @@ const LivePriceWidgetComponent = ({
       };
     }
     
-    if (connectionStatus === 'connected') {
+    if (displayStatus === 'connected') { // Use stable displayStatus instead of connectionStatus
       switch (priceUpdateSource) {
         case 'websocket':
         case 'websocket_institutional':
           return { 
             color: 'text-green-400', 
             icon: Wifi, 
-            text: 'WS Live',
+            text: 'Live',
             description: 'Live WebSocket updates active',
             animate: false
           };
@@ -401,7 +413,7 @@ const LivePriceWidgetComponent = ({
           return { 
             color: 'text-blue-400', 
             icon: RefreshCw, 
-            text: 'HTTP Fallback',
+            text: 'HTTP',
             description: 'Using HTTP API fallback mode',
             animate: false
           };
@@ -433,7 +445,7 @@ const LivePriceWidgetComponent = ({
       description: 'Price updates active',
       animate: false
     };
-  }, [connectionStatus, error, lastUpdated, priceUpdateSource]);
+  }, [displayStatus, error, lastUpdated, priceUpdateSource]); // Use displayStatus instead of connectionStatus
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -550,11 +562,7 @@ const LivePriceWidgetComponent = ({
   }
 
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 ${
-      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
-      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
-      'border-border'
-    }`}>
+    <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
@@ -566,7 +574,6 @@ const LivePriceWidgetComponent = ({
               className="w-3 h-3" 
             />
             <span>{connectionStatusInfo.text}</span>
-            {/* removed data age/badges display */}
           </div>
         </div>
         

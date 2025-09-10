@@ -14,6 +14,7 @@ interface LivePriceOptions {
   debounceMs?: number;
   enableSmartPausing?: boolean;
   pauseOnInput?: boolean;
+  trackDataAge?: boolean; // New option to guard data age tracking interval
 }
 
 interface LivePriceReturn {
@@ -125,9 +126,9 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyThrottledUpdate]);
 
-  // Data age tracking interval
+  // Data age tracking interval - guarded by trackDataAge option
   useEffect(() => {
-    if (!currentPrice) return;
+    if (!currentPrice || options.trackDataAge === false) return;
 
     const interval = setInterval(() => {
       setLocalState(prev => ({
@@ -137,7 +138,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [currentPrice]);
+  }, [currentPrice, options.trackDataAge]);
 
   // Cleanup throttled update on unmount
   useEffect(() => {

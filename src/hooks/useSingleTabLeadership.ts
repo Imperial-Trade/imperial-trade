@@ -7,6 +7,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 const LEADERSHIP_KEY = 'imperial_trading_tab_leader';
 const HEARTBEAT_INTERVAL = 3000; // 3 seconds
 const LEADERSHIP_TIMEOUT = 10000; // 10 seconds
+const SOFT_LEADERSHIP_GRACE = 1500; // Soft takeover if heartbeat stale by ~1.5s
 
 interface TabLeadershipState {
   isLeader: boolean;
@@ -52,6 +53,12 @@ export function useSingleTabLeadership(route: string = window.location.pathname)
           shouldBecomeLeader = true;
           if (isDevToolsEnabled()) {
             console.log('👑 Previous leader timed out, claiming leadership');
+          }
+        } else if (document.visibilityState === 'visible' && timeSinceLastHeartbeat > HEARTBEAT_INTERVAL + SOFT_LEADERSHIP_GRACE) {
+          // Soft takeover: visible tab claims leadership if heartbeat is slightly stale
+          shouldBecomeLeader = true;
+          if (isDevToolsEnabled()) {
+            console.log('👑 Soft takeover due to stale heartbeat (~1.5s beyond interval)');
           }
         }
       }

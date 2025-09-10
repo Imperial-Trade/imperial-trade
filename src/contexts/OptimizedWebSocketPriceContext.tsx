@@ -122,7 +122,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const isBackgroundDisconnected = useRef(false);
   const lastErrorLogRef = useRef<string>('');
   const errorLogCountRef = useRef(0);
-  
+  const manualCloseRef = useRef(false);
   // Stats tracking + PHASE 4: Rate limiting state
   const statsRef = useRef({
     messagesReceived: 0,
@@ -174,6 +174,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       healthCheckIntervalRef.current = null;
     }
 
+    // Mark as intentional close to ignore CLOSED/TIMED_OUT noise
+    manualCloseRef.current = true;
+
     // Clean up channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -186,6 +189,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     if (isDevToolsEnabled()) {
       console.log('🔌 WebSocket disconnected and cleaned up');
     }
+
+    // Reset manual close flag shortly after cleanup
+    setTimeout(() => { manualCloseRef.current = false; }, 1000);
   }, [updateConnectionState]);
 
   // PHASE 3: Optimized connection with circuit breaker
@@ -334,6 +340,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           const state = connectionStateRef.current;
+
+          // Ignore intentional closes to prevent false errors
+          if (manualCloseRef.current && status === 'CLOSED') {
+            if (isDevToolsEnabled()) {
+              console.log('ℹ️ Channel closed intentionally');
+            }
+            updateConnectionState({ status: 'disconnected' });
+            setError(null);
+            isConnectingRef.current = false;
+            channelRef.current = null;
+            manualCloseRef.current = false;
+            return;
+          }
+
           const newErrorCount = state.errorCount + 1;
           
           // PHASE 5: Throttle connection error logs
@@ -448,12 +468,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // 🚦 GATE 3: Background tab detection
+    // 🚦 GATE 3: Background tab detection (non-blocking)
     if (document.hidden) {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Price subscription blocked - tab is in background');
+        console.log('👀 Tab is in background - proceeding with subscription (will auto-pause after 20s if still hidden)');
       }
-      return;
+      // Do not block; visibility handler pauses later to avoid race conditions in previews/iframes
     }
 
     // ✅ STEP 1: Filter and validate symbols - ONLY ALLOW XAUUSD/BTCUSD

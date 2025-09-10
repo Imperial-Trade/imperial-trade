@@ -181,6 +181,74 @@ export const RealtimeDiagnostics: React.FC = () => {
         </Card>
       </div>
 
+      {/* Clamps Panel */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            Rate Limiting & Clamps
+          </CardTitle>
+          <Badge variant={dailyStats.clampActivations > 0 ? "destructive" : "secondary"}>
+            {dailyStats.clampActivations > 0 ? 'Active' : 'Normal'}
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium">Total Clamp Activations (24h)</div>
+              <div className="text-2xl font-bold text-destructive">{dailyStats.clampActivations}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium">Clamp Rate</div>
+              <div className="text-2xl font-bold">
+                {dailyStats.totalMessages > 0 ? 
+                  ((dailyStats.clampActivations / dailyStats.totalMessages) * 100).toFixed(2) : 0}%
+              </div>
+            </div>
+          </div>
+          
+          {/* Recent Clamp Events */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Recent Clamp Events</div>
+            <div className="max-h-32 overflow-y-auto space-y-1">
+              {edgeTelemetry
+                .filter(record => 
+                  (record.metadata?.clamped_symbol && record.metadata.clamped_symbol > 0) ||
+                  (record.metadata?.clamped_batch && record.metadata.clamped_batch > 0)
+                )
+                .slice(0, 5)
+                .map((record, index) => (
+                  <div key={index} className="flex justify-between items-center text-xs p-2 bg-muted rounded">
+                    <span className="text-muted-foreground">
+                      {format(new Date(record.created_at), 'HH:mm:ss')}
+                    </span>
+                    <div className="flex gap-2">
+                      {record.metadata?.clamped_symbol && record.metadata.clamped_symbol > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          Symbol: {record.metadata.clamped_symbol}
+                        </Badge>
+                      )}
+                      {record.metadata?.clamped_batch && record.metadata.clamped_batch > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          Batch: {record.metadata.clamped_batch}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {edgeTelemetry.filter(r => 
+              (r.metadata?.clamped_symbol && r.metadata.clamped_symbol > 0) ||
+              (r.metadata?.clamped_batch && r.metadata.clamped_batch > 0)
+            ).length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-2">
+                No clamp events in the last 24 hours
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Recent Edge Function Telemetry */}
       <Card>
         <CardHeader>

@@ -3670,6 +3670,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      log_deprecated_function_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       mark_notifications_cleared: {
         Args: Record<PropertyKey, never>
         Returns: string

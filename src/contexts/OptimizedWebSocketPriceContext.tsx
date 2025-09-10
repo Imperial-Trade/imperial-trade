@@ -549,25 +549,43 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [disconnect]);
 
-  // PHASE 1: Auto-disconnect logic when leadership is lost or route changes
+  // PHASE 1: Auto-disconnect logic with debounce for leadership/route changes (Phase B)
   useEffect(() => {
-    // Disconnect if we lose leadership or route doesn't allow subscriptions
-    if (!isLeader || !isPriceSubscriptionAllowed) {
-      if (channelRef.current) {
-        if (isDevToolsEnabled()) {
-          console.log('🚦 Disconnecting due to leadership change or route gating', {isLeader, isPriceSubscriptionAllowed});
+    const debounceTimeoutRef = { current: null as NodeJS.Timeout | null };
+    
+    const handleConnectionChange = () => {
+      // Disconnect if we lose leadership or route doesn't allow subscriptions
+      if (!isLeader || !isPriceSubscriptionAllowed) {
+        if (channelRef.current) {
+          if (isDevToolsEnabled()) {
+            console.log('🚦 Disconnecting due to leadership change or route gating', {isLeader, isPriceSubscriptionAllowed});
+          }
+          disconnect();
         }
-        disconnect();
+        return;
       }
-      return;
+
+      if (!subscriptionsRef.current.size) return;
+      
+      // Connect on leadership change - if we're leader and have subscriptions
+      if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
+        connect();
+      }
+    };
+
+    // Clear any existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
-    if (!subscriptionsRef.current.size) return;
-    
-    // Connect on leadership change - if we're leader and have subscriptions
-    if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
-      connect();
-    }
+    // Debounce connect/disconnect operations (Phase B: 150ms debounce)
+    debounceTimeoutRef.current = setTimeout(handleConnectionChange, 150);
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
   }, [isLeader, isPriceSubscriptionAllowed, disconnect, connect]);
 
   // Stable utility functions

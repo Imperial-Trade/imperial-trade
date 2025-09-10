@@ -57,13 +57,16 @@ export const RealtimeDiagnostics: React.FC = () => {
       const typedData = (edgeData || []) as EdgeTelemetry[];
       setEdgeTelemetry(typedData);
       
-      // Calculate daily stats from edge telemetry
+      // Calculate daily stats from edge telemetry (Phase C: Fixed clamp aggregation)
       const stats = typedData.reduce((acc, record) => {
-        const metadata = record.metadata || {};
+        const metadata = record.metadata as any || {};
+        // Phase C: Aggregate clamps using clamped_symbol_total + clamped_batch
+        const perSymbolTotal = metadata.clamped_symbol_total || 0;
+        const batchClamps = metadata.clamped_batch || 0;
         return {
           totalMessages: acc.totalMessages + (metadata.processed || 0),
           totalBroadcasts: acc.totalBroadcasts + record.count,
-          clampActivations: acc.clampActivations + (metadata.clamped_symbol || 0) + (metadata.clamped_batch || 0),
+          clampActivations: acc.clampActivations + perSymbolTotal + batchClamps,
           avgProcessed: acc.avgProcessed + (metadata.processed || 0)
         };
       }, { totalMessages: 0, totalBroadcasts: 0, clampActivations: 0, avgProcessed: 0 });

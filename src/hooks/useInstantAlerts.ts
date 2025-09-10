@@ -158,6 +158,10 @@ export const useInstantAlerts = () => {
   useEffect(() => {
     console.log('🔔 Setting up instant alert notifications...');
 
+    const channelId = `instant-alerts-${Date.now()}`;
+    const monitoringChannelId = `alert-monitoring-${Date.now()}`;
+    console.log(`WS-ALERTS: SUBSCRIBE [${channelId}], [${monitoringChannelId}]`);
+
     // Subscribe to instant alert channel
     const channel = supabase
       .channel('instant-alerts')
@@ -203,7 +207,7 @@ export const useInstantAlerts = () => {
       .subscribe();
 
     return () => {
-      console.log('🔕 Cleaning up instant alert subscriptions');
+      console.log(`WS-ALERTS: UNSUBSCRIBE [${channelId}], [${monitoringChannelId}]`);
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };

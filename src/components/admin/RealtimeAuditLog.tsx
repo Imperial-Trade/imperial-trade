@@ -38,6 +38,9 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
   useEffect(() => {
     loadAuditLogs();
     
+    const channelId = `audit-logs-${Date.now()}`;
+    console.log(`WS-AUDIT: SUBSCRIBE [${channelId}]`);
+    
     // Set up real-time subscription for new audit logs
     const channel = supabase
       .channel('audit-logs-changes')
@@ -57,6 +60,7 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
       .subscribe();
 
     return () => {
+      console.log(`WS-AUDIT: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
     };
   }, [maxEntries]);

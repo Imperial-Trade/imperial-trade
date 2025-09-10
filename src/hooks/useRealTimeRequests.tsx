@@ -23,6 +23,9 @@ export const useRealTimeRequests = () => {
   useEffect(() => {
     loadRequests();
 
+    const channelId = `account-requests-${Date.now()}`;
+    console.log(`WS-REQUESTS: SUBSCRIBE [${channelId}]`);
+    
     // Set up real-time subscription
     const channel = supabase
       .channel('account_requests_changes')
@@ -74,6 +77,7 @@ export const useRealTimeRequests = () => {
       .subscribe();
 
     return () => {
+      console.log(`WS-REQUESTS: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
     };
   }, [loadRequests]);

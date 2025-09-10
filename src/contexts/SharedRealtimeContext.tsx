@@ -63,101 +63,62 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
 
   // PHASE 3: Single shared connection for all Realtime needs WITH CONNECTION STABILIZER
   const connect = useCallback(() => {
-    if (channelRef.current || connectionState.connectionStatus === 'connecting') {
+    // Never attempt connect unless we have active subscriptions
+    if (subscriptionsRef.current.size === 0) {
+      console.log('SharedRealtime - No subscribers, skipping connect');
       return;
     }
 
-    // 🔥 USE CONNECTION STABILIZER to prevent cascade failures
-    if (!connectionStabilizer.canAttemptConnection('SharedRealtime')) {
+    if (connectionState.connectionStatus === 'connected' || connectionState.connectionStatus === 'connecting') {
+      console.log('SharedRealtime - Already connected or connecting, skipping');
       return;
     }
 
-    if (isDevToolsEnabled()) {
-      console.log('🔗 SharedRealtime: Establishing single shared connection');
-    }
-
-    connectionStabilizer.startConnection('SharedRealtime');
+    const channelId = `shared-realtime-${Date.now()}`;
+    console.log(`WS-SHARED: SUBSCRIBE [${channelId}] with ${subscriptionsRef.current.size} subscribers`);
     setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
+    
+    const channel = supabase.channel('shared-realtime-connection');
+    
+    // Add all current subscribers to the channel
+    subscriptionsRef.current.forEach(({ config, callback }) => {
+      (channel as any).on('postgres_changes', { 
+        event: config.event || 'INSERT', 
+        schema: config.schema || 'public', 
+        table: config.table 
+      }, callback);
+    });
+    
+    channel.subscribe((status) => {
+      console.log('SharedRealtime - Connection status:', status);
+      if (status === 'SUBSCRIBED') {
+        setConnectionState(prev => ({ ...prev, connectionStatus: 'connected', error: null }));
+        healthMonitor.registerConnection('SharedRealtime');
+      } else if (status === 'CHANNEL_ERROR') {
+        setConnectionState(prev => ({ 
+          ...prev, 
+          connectionStatus: 'error', 
+          error: 'Failed to connect to realtime'
+        }));
+        scheduleReconnect();
+      }
+    });
 
-    try {
-      const channel = supabase.channel('shared-realtime-connection');
-      channelRef.current = channel;
-
-      // Add all existing subscriptions to the new channel
-      subscriptionsRef.current.forEach(({ config, callback }) => {
-        (channel as any).on(
-          'postgres_changes',
-          {
-            event: config.event || 'INSERT',
-            schema: config.schema || 'public',
-            table: config.table,
-            ...(config.filter && { filter: config.filter })
-          },
-          callback
-        );
-      });
-
-      channel.subscribe((status) => {
-        if (isDevToolsEnabled()) {
-          console.log('🔌 SharedRealtime status:', status);
-        }
-
-        if (status === 'SUBSCRIBED') {
-          setConnectionState(prev => ({
-            ...prev,
-            isConnected: true,
-            connectionStatus: 'connected',
-            error: null,
-            lastUpdated: new Date()
-          }));
-          reconnectAttempts.current = 0;
-          connectionStabilizer.endConnection('SharedRealtime', true); // ✅ Success
-          
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.error('❌ SharedRealtime connection failed:', status);
-          setConnectionState(prev => ({
-            ...prev,
-            isConnected: false,
-            connectionStatus: 'error',
-            error: `Connection failed: ${status}`
-          }));
-          
-          channelRef.current = null;
-          connectionStabilizer.endConnection('SharedRealtime', false); // ❌ Failure
-          scheduleReconnect();
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ SharedRealtime setup failed:', error);
-      connectionStabilizer.endConnection('SharedRealtime', false);
-      setConnectionState(prev => ({
-        ...prev,
-        connectionStatus: 'error',
-        error: 'Failed to establish shared connection'
-      }));
-      scheduleReconnect();
-    }
-  }, [connectionState.connectionStatus]);
+    channelRef.current = channel;
+    // Store channelId for cleanup logging
+    (channel as any)._channelId = channelId;
+  }, [healthMonitor]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
     if (channelRef.current) {
+      const channelId = (channelRef.current as any)._channelId || 'unknown';
+      console.log(`WS-SHARED: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
+      setConnectionState(prev => ({ ...prev, connectionStatus: 'disconnected', error: null }));
+      healthMonitor.unregisterConnection('SharedRealtime');
     }
-
-    setConnectionState(prev => ({
-      ...prev,
-      isConnected: false,
-      connectionStatus: 'disconnected',
-      error: null
-    }));
-  }, []);
+  }, [healthMonitor]);
 
   const scheduleReconnect = useCallback(() => {
     if (reconnectTimeoutRef.current || reconnectAttempts.current >= maxReconnectAttempts) {

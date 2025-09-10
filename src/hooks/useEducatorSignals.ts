@@ -119,6 +119,9 @@ export function useEducatorSignals() {
         setLoading(false);
       });
 
+      const channelId = `educator-analytics-${Date.now()}`;
+      console.log(`WS-EDUCATOR: SUBSCRIBE [${channelId}]`);
+      
       // Set up real-time subscriptions for trade_alerts table
       const analyticsChannel = supabase
         .channel('educator-analytics')
@@ -137,6 +140,7 @@ export function useEducatorSignals() {
         .subscribe();
 
       return () => {
+        console.log(`WS-EDUCATOR: UNSUBSCRIBE [${channelId}]`);
         supabase.removeChannel(analyticsChannel);
       };
     }

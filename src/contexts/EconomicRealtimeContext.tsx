@@ -74,7 +74,8 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
   const subscribe = useCallback(() => {
     if (!enabled || channel) return;
 
-    console.log('EconomicRealtime - Subscribing to economic_events updates');
+    const channelId = `economic-events-${Date.now()}`;
+    console.log(`WS-ECONOMIC: SUBSCRIBE [${channelId}]`);
     setConnectionStatus('connecting');
 
     const newChannel = supabase
@@ -131,13 +132,16 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
         }
       });
 
+    // Store channelId for cleanup logging
+    (newChannel as any)._channelId = channelId;
     setChannel(newChannel);
   }, [enabled, notificationsEnabled, channel]);
 
   // Unsubscribe from real-time updates
   const unsubscribe = useCallback(() => {
     if (channel) {
-      console.log('EconomicRealtime - Unsubscribing from updates');
+      const channelId = (channel as any)._channelId || 'unknown';
+      console.log(`WS-ECONOMIC: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
       setChannel(null);
       setConnectionStatus('disconnected');

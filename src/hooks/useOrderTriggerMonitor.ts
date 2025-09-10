@@ -50,6 +50,9 @@ export const useOrderTriggerMonitor = (userId?: string) => {
 
     console.log('🔔 Setting up order trigger monitoring for user:', userId);
 
+    const channelId = `order-triggers-${Date.now()}`;
+    console.log(`WS-ORDERS: SUBSCRIBE [${channelId}]`);
+    
     // Subscribe to order trigger broadcasts
     const channel = supabase
       .channel('order-triggers')
@@ -69,7 +72,7 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     }
 
     return () => {
-      console.log('🔕 Cleaning up order trigger monitoring');
+      console.log(`WS-ORDERS: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
     };
   }, [userId, handleOrderTrigger]);

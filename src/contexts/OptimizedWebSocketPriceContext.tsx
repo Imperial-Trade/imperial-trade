@@ -163,7 +163,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return Math.max(baseDelay + jitter, 1000); // Minimum 1 second
   }, []);
 
-  // PHASE 2 & 4: Enhanced connection management
+  // Stable disconnect function - only depends on updateConnectionState
   const disconnect = useCallback(() => {
     // Clear all timers first
     if (reconnectTimeoutRef.current) {
@@ -188,13 +188,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isConnectingRef.current = false;
     updateConnectionState({ status: 'disconnected' });
     
+    // Unregister from health monitor and telemetry
+    healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
+    recordConnection();
+    
     if (isDevToolsEnabled()) {
       console.log('🔌 WebSocket disconnected and cleaned up');
     }
 
     // Reset manual close flag shortly after cleanup
     setTimeout(() => { manualCloseRef.current = false; }, 1000);
-  }, [updateConnectionState, isEnforced, isGlobalLeader]);
+  }, [updateConnectionState]);
 
   // PHASE 3: Optimized connection with circuit breaker
   const connect = useCallback(async () => {
@@ -571,8 +575,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [disconnect]);
 
-  // PHASE 1: Auto-disconnect logic with debounce for leadership/route changes (Phase B)
+  // Light guard against background-disconnect timer
+  const backgroundDisconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-disconnect effect (watches isLeader/route) - depends on stable functions only
   useEffect(() => {
+    // Clear any pending background disconnect
+    if (backgroundDisconnectTimerRef.current) {
+      clearTimeout(backgroundDisconnectTimerRef.current);
+      backgroundDisconnectTimerRef.current = null;
+    }
+
     const debounceTimeoutRef = { current: null as NodeJS.Timeout | null };
     
     const handleConnectionChange = () => {
@@ -589,9 +602,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       if (!subscriptionsRef.current.size) return;
       
-      // Connect on leadership change - if we're leader and have subscriptions
-      if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
-        connect();
+      // Guard: do not attempt new connect if background-disconnect timer is pending
+      if (!backgroundDisconnectTimerRef.current) {
+        // Connect on leadership change - if we're leader and have subscriptions
+        if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
+          connect();
+        }
       }
     };
 
@@ -600,7 +616,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Debounce connect/disconnect operations (Phase B: 150ms debounce)
+    // Debounce connect/disconnect operations
     debounceTimeoutRef.current = setTimeout(handleConnectionChange, 150);
 
     return () => {
@@ -749,14 +765,22 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     };
   }, [handleVisibilityChange, handleOnline, isLeader]);
 
-  // Cleanup on unmount
+  // Register/unregister and disconnect on unmount - truly mount-only effect
   useEffect(() => {
+    const channelId = `ws-price-${Date.now()}`;
+    console.log(`WS-P: SUBSCRIBE [${channelId}]`);
+    
     healthMonitor.registerConnection('OptimizedWebSocketPrice');
+    recordConnection();
+
+    // Store disconnect in ref to avoid dependencies re-triggering the effect
+    const disconnectRef = { current: disconnect };
+
     return () => {
-      healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
-      disconnect();
+      console.log(`WS-P: UNSUBSCRIBE [${channelId}]`);
+      disconnectRef.current();
     };
-  }, [healthMonitor, disconnect]);
+  }, [healthMonitor, recordConnection]); // Remove disconnect from dependencies
 
   // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
   useEffect(() => {

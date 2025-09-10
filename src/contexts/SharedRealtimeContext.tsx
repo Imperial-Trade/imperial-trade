@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { connectionStabilizer } from '@/utils/connectionStabilizer';
+import { useRealtimeHealth } from './RealtimeHealthMonitor';
 
 // Shared connection state to prevent multiple Realtime channels
 interface SharedRealtimeState {
@@ -42,6 +44,8 @@ interface SharedRealtimeProviderProps {
 }
 
 export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ children }) => {
+  const healthMonitor = useRealtimeHealth();
+  
   const [connectionState, setConnectionState] = useState<SharedRealtimeState>({
     isConnected: false,
     connectionStatus: 'disconnected',
@@ -54,12 +58,17 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   const subscriptionsRef = useRef<Map<string, { config: TableSubscriptionConfig; callback: RealtimeCallback }>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const baseReconnectDelay = 3000;
+  const maxReconnectAttempts = 3; // 🔥 REDUCED from 5 to 3 attempts
+  const baseReconnectDelay = 8000; // 🔥 INCREASED from 3s to 8s base delay
 
-  // PHASE 3: Single shared connection for all Realtime needs
+  // PHASE 3: Single shared connection for all Realtime needs WITH CONNECTION STABILIZER
   const connect = useCallback(() => {
     if (channelRef.current || connectionState.connectionStatus === 'connecting') {
+      return;
+    }
+
+    // 🔥 USE CONNECTION STABILIZER to prevent cascade failures
+    if (!connectionStabilizer.canAttemptConnection('SharedRealtime')) {
       return;
     }
 
@@ -67,6 +76,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       console.log('🔗 SharedRealtime: Establishing single shared connection');
     }
 
+    connectionStabilizer.startConnection('SharedRealtime');
     setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
 
     try {
@@ -101,6 +111,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
             lastUpdated: new Date()
           }));
           reconnectAttempts.current = 0;
+          connectionStabilizer.endConnection('SharedRealtime', true); // ✅ Success
           
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.error('❌ SharedRealtime connection failed:', status);
@@ -112,12 +123,14 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           }));
           
           channelRef.current = null;
+          connectionStabilizer.endConnection('SharedRealtime', false); // ❌ Failure
           scheduleReconnect();
         }
       });
 
     } catch (error) {
       console.error('❌ SharedRealtime setup failed:', error);
+      connectionStabilizer.endConnection('SharedRealtime', false);
       setConnectionState(prev => ({
         ...prev,
         connectionStatus: 'error',
@@ -151,12 +164,13 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       return;
     }
 
-    const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts.current);
-    const jitter = delay * 0.1 * Math.random();
-    const totalDelay = Math.min(delay + jitter, 30000);
+    // 🔥 DRASTICALLY REDUCED RECONNECTION FREQUENCY - 5x slower minimum
+    const delay = Math.max(baseReconnectDelay * Math.pow(2.5, reconnectAttempts.current), 10000); // Minimum 10 seconds
+    const jitter = delay * 0.15 * Math.random();
+    const totalDelay = Math.min(delay + jitter, 120000); // Cap at 2 minutes instead of 30s
 
     if (isDevToolsEnabled()) {
-      console.log(`🔄 SharedRealtime reconnecting in ${Math.round(totalDelay)}ms`);
+      console.log(`🔄 SharedRealtime reconnecting in ${Math.round(totalDelay/1000)}s (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
     }
 
     reconnectTimeoutRef.current = setTimeout(() => {
@@ -249,10 +263,12 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
 
   // Cleanup on unmount
   useEffect(() => {
+    healthMonitor.registerConnection('SharedRealtime');
     return () => {
+      healthMonitor.unregisterConnection('SharedRealtime');
       disconnect();
     };
-  }, [disconnect]);
+  }, [healthMonitor, disconnect]);
 
   const contextValue = useMemo<SharedRealtimeContextType>(() => ({
     connectionState,

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
+import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
@@ -10,8 +11,8 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 let educatorUserIdsCache: string[] = [];
 let educatorCacheExpiry = 0;
 const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
-const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 5 minute local cache for signals
-const SIGNAL_REFRESH_THROTTLE = 30000; // Minimum 30 seconds between refreshes
+const LOCAL_CACHE_TTL = 10 * 60 * 1000; // 🔥 DOUBLED to 10 minute cache
+const SIGNAL_REFRESH_THROTTLE = 120000; // 🔥 INCREASED to 2 minutes between refreshes
 
 async function getEducatorUserIds(): Promise<string[]> {
   const now = Date.now();
@@ -63,8 +64,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   
-  // PHASE 3: Use shared Realtime connection to eliminate duplicate channels
+  // PHASE 3: Use shared Realtime connection to eliminate duplicate channels + HEALTH MONITORING
   const { connectionState, subscribeToTable } = useSharedRealtime();
+  const healthMonitor = useRealtimeHealth();
   
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
@@ -94,6 +96,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       if (isDevToolsEnabled()) {
         console.log('🔄 PHASE 3: SignalRealtime refresh with maximum cost optimization...');
       }
+      
+      healthMonitor.recordDatabaseQuery('SignalRealtime', 'refresh');
       
       // PHASE 3: Enhanced cache checking with educator IDs
       const cache = localCacheRef.current;
@@ -217,10 +221,30 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, []);
 
+  // 🔥 ADD THROTTLING: Track last update time per signal to prevent spam
+  const lastUpdateRef = useRef<Map<string, number>>(new Map());
+  
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
-    if (isDevToolsEnabled()) {
-      console.log('SignalRealtimeContext - Real-time update received:', payload);
+    const now = Date.now();
+    const signalId = payload?.new?.id || payload?.old?.id;
+    
+    // 🔥 THROTTLE UPDATES: Max 1 update per signal per 5 seconds
+    if (signalId) {
+      const lastUpdate = lastUpdateRef.current.get(signalId) || 0;
+      if (now - lastUpdate < 5000) {
+        if (isDevToolsEnabled()) {
+          console.log('🛑 Update throttled for signal:', signalId);
+        }
+        return;
+      }
+      lastUpdateRef.current.set(signalId, now);
     }
+    
+      if (isDevToolsEnabled()) {
+        console.log('SignalRealtimeContext - Processing real-time update:', payload.eventType, signalId);
+      }
+      
+      healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
@@ -380,11 +404,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // PHASE 3: Subscribe via shared connection - eliminates duplicate Realtime channels
+      // 🔥 CRITICAL: Subscribe to UPDATES as well but with reduced frequency
       const unsubscribe = subscribeToTable(
         {
           table: 'trade_alerts',
-          event: 'INSERT', // Only new signals to minimize traffic
+          event: '*', // All events but processed with heavy throttling
           filter: `user_id=in.(${educatorUserIds.join(',')})`
         },
         handleRealtimeUpdate
@@ -445,10 +469,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   // Cleanup on unmount
   useEffect(() => {
+    healthMonitor.registerConnection('SignalRealtime');
     return () => {
+      healthMonitor.unregisterConnection('SignalRealtime');
       unsubscribe();
     };
-  }, [unsubscribe]);
+  }, [healthMonitor, unsubscribe]);
 
   const contextValue: SignalRealtimeContextType = {
     signals,

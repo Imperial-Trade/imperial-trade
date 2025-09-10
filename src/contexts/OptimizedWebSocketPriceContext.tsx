@@ -4,6 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { costTracker } from '@/services/CostTracker';
+import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
@@ -88,6 +89,8 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
+  const healthMonitor = useRealtimeHealth();
+  
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -215,10 +218,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return; // Skip unsubscribed symbols
           }
 
-          // PHASE 4: Per-symbol rate limiting (max 10 updates/sec per symbol)
+          // 🔥 FURTHER RATE LIMITING: Max 2 updates/sec per symbol instead of 10
           const now = Date.now();
           const lastUpdate = priceUpdateTimestamps.current.get(payload.symbol) || 0;
-          if (now - lastUpdate < 100) { // 100ms = max 10 updates/sec
+          if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
             return;
           }
           priceUpdateTimestamps.current.set(payload.symbol, now);
@@ -258,7 +261,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               pricePerformanceMonitor.recordUIUpdate();
               batchedUpdates.current.clear();
               updateBatchTimeoutRef.current = null;
-            }, 50); // Batch updates every 50ms
+            }, 200); // 🔥 SLOWER BATCHING: Every 200ms instead of 50ms
           }
           
         } catch (err) {
@@ -587,10 +590,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // Cleanup on unmount
   useEffect(() => {
+    healthMonitor.registerConnection('OptimizedWebSocketPrice');
     return () => {
+      healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
       disconnect();
     };
-  }, [disconnect]);
+  }, [healthMonitor, disconnect]);
 
   // Stable context value
   const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({

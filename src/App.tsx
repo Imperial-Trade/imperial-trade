@@ -9,6 +9,7 @@ import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
+import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
@@ -98,10 +99,11 @@ function App() {
                 <NotificationPromptProvider>
                   <NavigationGuard>
                   <WebSocketErrorBoundary>
-                    <OptimizedWebSocketPriceProvider>
-                      <ContextErrorBoundary>
-                        <SharedRealtimeProvider>
-                          <SignalRealtimeProvider>
+                    <RealtimeHealthProvider>
+                      <OptimizedWebSocketPriceProvider>
+                        <ContextErrorBoundary>
+                          <SharedRealtimeProvider>
+                            <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -302,10 +304,11 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                          </SignalRealtimeProvider>
-                        </SharedRealtimeProvider>
-                      </ContextErrorBoundary>
-                    </OptimizedWebSocketPriceProvider>
+                            </SignalRealtimeProvider>
+                          </SharedRealtimeProvider>
+                        </ContextErrorBoundary>
+                      </OptimizedWebSocketPriceProvider>
+                    </RealtimeHealthProvider>
                   </WebSocketErrorBoundary>
                   </NavigationGuard>
                 </NotificationPromptProvider>

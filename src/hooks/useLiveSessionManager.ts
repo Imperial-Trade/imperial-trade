@@ -209,8 +209,7 @@ export const useLiveSessionManager = () => {
 
   // Set up real-time subscription
   useEffect(() => {
-    const channelId = `live-sessions-${Date.now()}`;
-    console.log(`WS-SESSIONS: SUBSCRIBE [${channelId}]`);
+    const channelId = `live-sessions-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
     
     const channel = supabase
       .channel('live-sessions-changes')
@@ -245,10 +244,14 @@ export const useLiveSessionManager = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`WS-LIVE: SUBSCRIBE [${channelId}] name=live-sessions-changes`);
+        }
+      });
 
     return () => {
-      console.log(`WS-SESSIONS: UNSUBSCRIBE [${channelId}]`);
+      console.log(`WS-LIVE: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
     };
   }, []);

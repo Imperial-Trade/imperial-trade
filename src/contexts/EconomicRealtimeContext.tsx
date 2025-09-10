@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { EconomicEvent } from '@/services/EconomicCalendarService';
 import { toast } from 'sonner';
@@ -42,6 +42,7 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [eventAlerts, setEventAlerts] = useState<Set<string>>(new Set());
   const [channel, setChannel] = useState<any>(null);
+  const channelIdRef = useRef(`econ-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
 
   // Calculate upcoming events (next 24 hours)
   const upcomingEvents = React.useMemo(() => {
@@ -74,8 +75,6 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
   const subscribe = useCallback(() => {
     if (!enabled || channel) return;
 
-    const channelId = `economic-events-${Date.now()}`;
-    console.log(`WS-ECONOMIC: SUBSCRIBE [${channelId}]`);
     setConnectionStatus('connecting');
 
     const newChannel = supabase
@@ -126,22 +125,20 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
       .subscribe((status) => {
         console.log('EconomicRealtime - Subscription status:', status);
         if (status === 'SUBSCRIBED') {
+          console.log(`WS-ECON: SUBSCRIBE [${channelIdRef.current}] name=economic_events_realtime`);
           setConnectionStatus('connected');
         } else if (status === 'CHANNEL_ERROR') {
           setConnectionStatus('error');
         }
       });
 
-    // Store channelId for cleanup logging
-    (newChannel as any)._channelId = channelId;
     setChannel(newChannel);
   }, [enabled, notificationsEnabled, channel]);
 
   // Unsubscribe from real-time updates
   const unsubscribe = useCallback(() => {
     if (channel) {
-      const channelId = (channel as any)._channelId || 'unknown';
-      console.log(`WS-ECONOMIC: UNSUBSCRIBE [${channelId}]`);
+      console.log(`WS-ECON: UNSUBSCRIBE [${channelIdRef.current}]`);
       supabase.removeChannel(channel);
       setChannel(null);
       setConnectionStatus('disconnected');

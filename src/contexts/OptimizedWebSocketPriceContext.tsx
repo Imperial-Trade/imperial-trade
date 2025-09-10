@@ -780,22 +780,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     };
   }, [handleVisibilityChange, handleOnline, isLeader]);
 
+  // Create disconnectRef for mount-only cleanup
+  const disconnectRef = useRef(disconnect);
+  useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
+
   // Register/unregister and disconnect on unmount - truly mount-only effect
   useEffect(() => {
-    const channelId = `ws-price-${Date.now()}`;
-    console.log(`WS-P: SUBSCRIBE [${channelId}]`);
-    
     healthMonitor.registerConnection('OptimizedWebSocketPrice');
     recordConnection();
 
-    // Store disconnect in ref to avoid dependencies re-triggering the effect
-    const disconnectRef = { current: disconnect };
-
     return () => {
-      console.log(`WS-P: UNSUBSCRIBE [${channelId}]`);
+      healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
       disconnectRef.current();
     };
-  }, [healthMonitor, recordConnection]); // Remove disconnect from dependencies
+  }, []);
 
   // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
   useEffect(() => {

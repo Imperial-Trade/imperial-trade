@@ -102,7 +102,7 @@ export const RealtimeDiagnostics: React.FC = () => {
   };
 
   const handleResetCounters = () => {
-    reset();
+    telemetry.reset();
     console.log('🔄 Client-side telemetry counters reset');
   };
 
@@ -130,6 +130,59 @@ export const RealtimeDiagnostics: React.FC = () => {
         </div>
       </div>
 
+      {/* Session Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Session Info</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Session ID</span>
+              <span className="font-mono text-xs">{telemetry.sessionInfo.sessionId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Build Version</span>
+              <span className="font-mono text-xs">{telemetry.sessionInfo.buildVersion}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-Channel Message Counters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Per-Channel Message Counters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{telemetry.counters.price_update}</div>
+              <div className="text-xs text-muted-foreground">Price Updates (v2)</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{telemetry.counters.price_update_v3}</div>
+              <div className="text-xs text-muted-foreground">Price Updates (v3)</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{telemetry.counters.db_change_v3}</div>
+              <div className="text-xs text-muted-foreground">DB Changes</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">{telemetry.counters.signal_change_v3}</div>
+              <div className="text-xs text-muted-foreground">Signal Updates</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-destructive">{telemetry.counters.clamp_activation}</div>
+              <div className="text-xs text-muted-foreground">Clamp Activations</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* PHASE C: Per-Channel Telemetry Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
@@ -143,22 +196,22 @@ export const RealtimeDiagnostics: React.FC = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Connection Status</span>
-                <Badge variant={sharedState.isConnected ? "default" : "destructive"}>
-                  {sharedState.connectionStatus}
+                <Badge variant={connectionState.isConnected ? "default" : "destructive"}>
+                  {connectionState.connectionStatus}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Active Subscribers</span>
-                <span className="font-mono">{sharedState.subscribers}</span>
+                <span className="font-mono">{connectionState.subscribers}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Messages (Session)</span>
-                <span className="font-mono">{telemetryData.totalMessages}</span>
+                <span className="font-mono">{connectionState.sessionMessages}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Last Updated</span>
                 <span className="text-xs text-muted-foreground">
-                  {sharedState.lastUpdated ? format(sharedState.lastUpdated, 'HH:mm:ss') : 'Never'}
+                  {connectionState.lastUpdated ? format(connectionState.lastUpdated, 'HH:mm:ss') : 'Never'}
                 </span>
               </div>
             </div>

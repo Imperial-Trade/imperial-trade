@@ -74,6 +74,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const { connectionState, subscribeToTable } = useSharedRealtime();
   const healthMonitor = useRealtimeHealth();
   const { recordMessage, recordConnection } = useRealtimeTelemetry();
+  const telemetry = useTelemetry();
   
   // PHASE B: Route gating for signal subscriptions
   const isSignalSubscriptionAllowed = useRealtimeGate('signals');

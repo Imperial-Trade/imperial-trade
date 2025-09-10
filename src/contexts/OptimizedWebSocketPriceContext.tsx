@@ -194,8 +194,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isConnectingRef.current = false;
     updateConnectionState({ status: 'disconnected' });
     
-    // Unregister from health monitor and telemetry
-    healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
+    // Track telemetry (health monitor unregistration only happens on unmount)
     recordConnection();
 
     // Reset manual close flag shortly after cleanup
@@ -541,15 +540,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, [connect, isPriceSubscriptionAllowed, isLeader]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
-    // Leadership and route gating still apply for unsubscription
-    if (!isLeader) {
-      if (isDevToolsEnabled()) {
-        console.log('🚦 Unsubscribe blocked - not leader tab');
-      }
-      return;
-    }
     const actuallyRemovedSymbols: string[] = [];
     
+    // Always handle ref count decrements (idempotent regardless of leadership)
     symbols.forEach(symbol => {
       const currentCount = subscriptionsRef.current.get(symbol) || 0;
       if (currentCount > 0) {
@@ -572,15 +565,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       });
     }
 
-    // Disconnect if no active subscriptions
-    if (subscriptionsRef.current.size === 0 && channelRef.current) {
+    // Only leader can trigger actual disconnect
+    if (isLeader && subscriptionsRef.current.size === 0 && channelRef.current) {
       disconnect();
     }
 
     if (isDevToolsEnabled()) {
-      console.log('📝 Unsubscribed from:', actuallyRemovedSymbols, `(${subscriptionsRef.current.size} remaining)`);
+      console.log('📝 Unsubscribed from:', actuallyRemovedSymbols, `(${subscriptionsRef.current.size} remaining)${!isLeader ? ' [follower]' : ''}`);
     }
-  }, [disconnect]);
+  }, [disconnect, isLeader]);
 
   // Light guard against background-disconnect timer
   const backgroundDisconnectTimerRef = useRef<NodeJS.Timeout | null>(null);

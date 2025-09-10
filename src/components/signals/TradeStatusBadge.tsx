@@ -48,7 +48,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
             <div className="flex items-center gap-1.5">
-                <Badge variant="outline" className={`${badgeColors} animate-pulse whitespace-nowrap uppercase text-xs px-1.5 py-0.5`}>
+                <Badge variant="outline" className={`${badgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`}>
                     <Target className="w-2.5 h-2.5 mr-0.5" /> TP{highestTP} HIT
                 </Badge>
                 <Badge variant="outline" className={`${badgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`}>

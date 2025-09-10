@@ -214,57 +214,7 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Debounced symbol subscription to stabilize price subscriptions  
-  const symbolsRef = useRef<string[]>([]);
-  const subscriptionActiveRef = useRef(false);
-  const debouncedSymbolsRef = useRef<NodeJS.Timeout | null>(null);
-  
-  useEffect(() => {
-    // Clear existing debounce
-    if (debouncedSymbolsRef.current) {
-      clearTimeout(debouncedSymbolsRef.current);
-    }
-    
-    // Debounce symbol changes by 500ms to prevent thrashing
-    debouncedSymbolsRef.current = setTimeout(() => {
-      // Compute diffs to avoid full unsubscribe/subscribe churn
-      const prev = symbolsRef.current;
-      const added = symbols.filter(s => !prev.includes(s));
-      const removed = prev.filter(s => !symbols.includes(s));
-      if (added.length > 0) {
-        if (isDevToolsEnabled()) {
-          console.log('🔄 SignalStream - Subscribing (diff):', added);
-        }
-        subscribe(added);
-        subscriptionActiveRef.current = true;
-      }
-      if (removed.length > 0) {
-        if (isDevToolsEnabled()) {
-          console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-        }
-        unsubscribe(removed);
-      }
-
-      // Update reference after applying diffs
-      symbolsRef.current = [...symbols];
-    }, 500);
-    return () => {
-      // Clear debounce timer and cleanup subscriptions
-      if (debouncedSymbolsRef.current) {
-        clearTimeout(debouncedSymbolsRef.current);
-      }
-      
-      // On unmount, clean up any remaining subscriptions
-      if (symbolsRef.current.length > 0) {
-        if (isDevToolsEnabled()) {
-          console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        }
-        unsubscribe(symbolsRef.current);
-        symbolsRef.current = [];
-        subscriptionActiveRef.current = false;
-      }
-    };
-  }, [symbols, subscribe, unsubscribe]);
+  // Remove page-level price subscription - let each LivePriceWidget manage its own subscription
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {

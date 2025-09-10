@@ -1,7 +1,7 @@
 // 🔥 GLOBAL REALTIME HEALTH MONITOR
 // Prevents multiple contexts from overwhelming the database
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface HealthMetrics {
@@ -145,7 +145,7 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
     return () => clearInterval(logInterval);
   }, [metrics]);
 
-  const contextValue: RealtimeHealthContextType = {
+  const contextValue: RealtimeHealthContextType = useMemo(() => ({
     metrics,
     registerConnection,
     unregisterConnection,
@@ -153,7 +153,7 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
     recordDatabaseQuery,
     recordRealtimeMessage,
     isSystemHealthy
-  };
+  }), [metrics, unregisterConnection]);
 
   return (
     <RealtimeHealthContext.Provider value={contextValue}>

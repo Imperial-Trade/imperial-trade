@@ -106,8 +106,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
         if (isDevToolsEnabled()) {
           console.log(`WS-SHARED: SUBSCRIBE [${channelIdRef.current}] name=shared-realtime-connection`);
         }
-        setConnectionState(prev => ({ ...prev, connectionStatus: 'connected', error: null }));
-        healthMonitor.registerConnection('SharedRealtime');
+        setConnectionState(prev => ({ ...prev, connectionStatus: 'connected', isConnected: true, error: null }));
       } else if (status === 'CHANNEL_ERROR') {
         setConnectionState(prev => ({ 
           ...prev, 
@@ -128,8 +127,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       }
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
-      setConnectionState(prev => ({ ...prev, connectionStatus: 'disconnected', error: null }));
-      healthMonitor.unregisterConnection('SharedRealtime');
+      setConnectionState(prev => ({ ...prev, connectionStatus: 'disconnected', isConnected: false, error: null }));
     }
   }, [healthMonitor]);
 

@@ -484,7 +484,7 @@ const LivePriceWidgetComponent = ({
     const isSellLimit = alert.trade_type === 'sell_limit';
     
     return (
-      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
         
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
@@ -550,7 +550,7 @@ const LivePriceWidgetComponent = ({
   }
 
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 ${
+    <div className={`bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 ${
       connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
       connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
       'border-border'

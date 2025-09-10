@@ -15,8 +15,9 @@ const MIN_PRICE_CHANGE_PIPS = 0.15; // 0.15 pips for Gold (slightly increased)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
 // Per-symbol rate limiting and clamps (NEW: HARDENING)
-const SYMBOL_RATE_LIMITS: Record<string, { maxPerSecond: number, lastBroadcast: number, clampCount: number }> = {};
-const GLOBAL_BROADCAST_CLAMP = 50; // Max 50 broadcasts per batch
+const SYMBOL_RATE_LIMITS: Record<string, { lastBroadcasts: number[], clampCount: number }> = {};
+const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 2;
+const MAX_UI_BROADCASTS_PER_BATCH = 50;
 const PER_SYMBOL_CLAMP = 10; // Max 10 broadcasts per symbol per batch
 
 // In-memory cache for last broadcasted prices (UI filtering only)
@@ -244,7 +245,7 @@ serve(async (req) => {
 
       try {
         const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
-        await supabaseClient.rpc('upsert_market_price_enhanced', {
+        await supabaseClient.rpc('upsert_market_price', {
           p_symbol: priceUpdate.symbol,
           p_bid: priceUpdate.bid,
           p_ask: priceUpdate.ask,
@@ -309,16 +310,64 @@ serve(async (req) => {
     
     const filteredPrices = filterSignificantPrices(uiPrices);
     
-    // APPLY GLOBAL AND PER-SYMBOL CLAMPS
-    let clampedPrices = filteredPrices;
-    let clampActivated = false;
+    // APPLY PER-SECOND PER-SYMBOL RATE LIMITING
+    const currentTime = Date.now();
+    const symbolClampCounts: Record<string, number> = {};
     
-    // Global clamp
-    if (filteredPrices.length > GLOBAL_BROADCAST_CLAMP) {
-      clampedPrices = filteredPrices.slice(0, GLOBAL_BROADCAST_CLAMP);
-      clampActivated = true;
+    const rateLimitedPrices = filteredPrices.filter(price => {
+      const symbol = price.symbol.toUpperCase();
+      
+      // Initialize symbol rate tracking
+      if (!SYMBOL_RATE_LIMITS[symbol]) {
+        SYMBOL_RATE_LIMITS[symbol] = { lastBroadcasts: [], clampCount: 0 };
+      }
+      
+      const symbolLimits = SYMBOL_RATE_LIMITS[symbol];
+      
+      // Clean old timestamps (older than 1 second)
+      symbolLimits.lastBroadcasts = symbolLimits.lastBroadcasts.filter(
+        timestamp => currentTime - timestamp < 1000
+      );
+      
+      // Check if under rate limit
+      if (symbolLimits.lastBroadcasts.length >= MAX_SYMBOL_UI_BROADCASTS_PER_SECOND) {
+        symbolLimits.clampCount++;
+        symbolClampCounts[symbol] = (symbolClampCounts[symbol] || 0) + 1;
+        return false; // Rate limited
+      }
+      
+      // Add current timestamp
+      symbolLimits.lastBroadcasts.push(currentTime);
+      return true;
+    });
+    
+    // Log per-symbol rate limit clamps
+    let perSymbolClampActivated = false;
+    for (const [symbol, count] of Object.entries(symbolClampCounts)) {
+      console.log(`🛑 SYMBOL_RATE_LIMIT (2/sec) clamped for ${symbol} (count=${count})`);
+      perSymbolClampActivated = true;
       totalClampActivations++;
-      console.warn(`🛑 GLOBAL CLAMP: Limiting ${filteredPrices.length} → ${GLOBAL_BROADCAST_CLAMP} broadcasts`);
+    }
+    
+    // APPLY BATCH CLAMP WITH RANKING
+    let clampedPrices = rateLimitedPrices;
+    let batchClampActivated = false;
+    
+    if (rateLimitedPrices.length > MAX_UI_BROADCASTS_PER_BATCH) {
+      // Sort by absolute delta vs last broadcasted price (descending)
+      const rankedPrices = rateLimitedPrices.sort((a, b) => {
+        const deltaA = Math.abs(a.price - (lastBroadcastedPrices[a.symbol.toUpperCase()] || a.price));
+        const deltaB = Math.abs(b.price - (lastBroadcastedPrices[b.symbol.toUpperCase()] || b.price));
+        return deltaB - deltaA; // Descending order - largest changes first
+      });
+      
+      clampedPrices = rankedPrices.slice(0, MAX_UI_BROADCASTS_PER_BATCH);
+      batchClampActivated = true;
+      totalClampActivations++;
+      
+      const kept = clampedPrices.length;
+      const dropped = rateLimitedPrices.length - kept;
+      console.log(`🛑 clamped_batch kept=${kept} dropped=${dropped}`);
     }
     
     // Per-symbol clamp
@@ -345,7 +394,7 @@ serve(async (req) => {
         alerts_triggered: totalTriggeredAlerts,
         ui_broadcasts: 0,
         efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
-        clamp_activated: clampActivated
+        clamp_activated: perSymbolClampActivated || batchClampActivated
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -403,8 +452,8 @@ serve(async (req) => {
           valid: uiPrices.length,
           filtered: filteredPrices.length,
           broadcasted: successfulBroadcasts,
-          clamped_symbol: clampActivated ? totalClampActivations : 0,
-          clamped_batch: clampActivated ? 1 : 0,
+          clamped_symbol: perSymbolClampActivated ? Object.values(symbolClampCounts).reduce((a, b) => a + b, 0) : 0,
+          clamped_batch: batchClampActivated ? 1 : 0,
           alerts_triggered: totalTriggeredAlerts
         },
         batch_id: `batch_${Date.now()}`
@@ -426,7 +475,7 @@ serve(async (req) => {
       ui_significant: clampedPrices.length,
       ui_broadcasted: successfulBroadcasts,
       efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
-      clamp_activated: clampActivated,
+      clamp_activated: perSymbolClampActivated || batchClampActivated,
       clamp_activations: totalClampActivations,
       session_totals: {
         processed: totalPricesProcessed,

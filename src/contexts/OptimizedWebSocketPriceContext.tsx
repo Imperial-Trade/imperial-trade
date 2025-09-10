@@ -95,7 +95,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
-  const { recordMessage, recordConnection, recordClampActivation } = useRealtimeTelemetry();
+  const { recordMessage, recordConnection, recordClampActivation, syncTelemetry } = useRealtimeTelemetry();
   
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +232,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const now = Date.now();
           const lastUpdate = priceUpdateTimestamps.current.get(payload.symbol) || 0;
           if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
+            recordClampActivation(); // Record when we drop updates due to rate limiting
             return;
           }
           priceUpdateTimestamps.current.set(payload.symbol, now);
@@ -716,6 +717,32 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       disconnect();
     };
   }, [healthMonitor, disconnect]);
+
+  // PHASE B: Periodic telemetry sync (60-120s interval while connected)
+  useEffect(() => {
+    let telemetrySyncInterval: NodeJS.Timeout | null = null;
+    
+    if (connectionStatus === 'connected') {
+      // Random interval between 60-120 seconds
+      const intervalMs = 60000 + Math.random() * 60000;
+      
+      telemetrySyncInterval = setInterval(() => {
+        if (connectionStatus === 'connected') {
+          syncTelemetry();
+        }
+      }, intervalMs);
+      
+      if (isDevToolsEnabled()) {
+        console.log(`📊 Periodic telemetry sync started (${Math.round(intervalMs/1000)}s interval)`);
+      }
+    }
+    
+    return () => {
+      if (telemetrySyncInterval) {
+        clearInterval(telemetrySyncInterval);
+      }
+    };
+  }, [connectionStatus, syncTelemetry]);
 
   // Stable context value
   const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({

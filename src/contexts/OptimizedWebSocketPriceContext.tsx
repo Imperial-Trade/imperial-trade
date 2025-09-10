@@ -718,13 +718,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     };
   }, [healthMonitor, disconnect]);
 
-  // PHASE B: Periodic telemetry sync (60-120s interval while connected)
+  // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
   useEffect(() => {
     let telemetrySyncInterval: NodeJS.Timeout | null = null;
     
     if (connectionStatus === 'connected') {
-      // Random interval between 60-120 seconds
-      const intervalMs = 60000 + Math.random() * 60000;
+      // Fixed 90s interval for stability
+      const intervalMs = 90000;
       
       telemetrySyncInterval = setInterval(() => {
         if (connectionStatus === 'connected') {
@@ -733,7 +733,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }, intervalMs);
       
       if (isDevToolsEnabled()) {
-        console.log(`📊 Periodic telemetry sync started (${Math.round(intervalMs/1000)}s interval)`);
+        console.log(`📊 Periodic telemetry sync started (90s interval)`);
       }
     }
     

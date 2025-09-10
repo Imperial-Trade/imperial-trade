@@ -308,6 +308,9 @@ serve(async (req) => {
       })
       .filter(Boolean) as Array<{symbol: string, price: number, timestamp: string}>;
     
+    // CRITICAL: Capture snapshot BEFORE filtering for batch clamp ranking
+    const prevPricesSnapshot = { ...lastBroadcastedPrices };
+    
     const filteredPrices = filterSignificantPrices(uiPrices);
     
     // APPLY PER-SECOND PER-SYMBOL RATE LIMITING
@@ -349,15 +352,16 @@ serve(async (req) => {
       totalClampActivations++;
     }
     
-    // APPLY BATCH CLAMP WITH RANKING
+    // APPLY BATCH CLAMP WITH RANKING  
     let clampedPrices = rateLimitedPrices;
     let batchClampActivated = false;
+    let perSymbolFinalClampActivated = false; // Initialize the missing variable
     
     if (rateLimitedPrices.length > MAX_UI_BROADCASTS_PER_BATCH) {
-      // Sort by absolute delta vs last broadcasted price (descending)
+      // Sort by absolute delta vs SNAPSHOT (not mutated lastBroadcastedPrices)
       const rankedPrices = rateLimitedPrices.sort((a, b) => {
-        const deltaA = Math.abs(a.price - (lastBroadcastedPrices[a.symbol.toUpperCase()] || a.price));
-        const deltaB = Math.abs(b.price - (lastBroadcastedPrices[b.symbol.toUpperCase()] || b.price));
+        const deltaA = Math.abs(a.price - (prevPricesSnapshot[a.symbol.toUpperCase()] || a.price));
+        const deltaB = Math.abs(b.price - (prevPricesSnapshot[b.symbol.toUpperCase()] || b.price));
         return deltaB - deltaA; // Descending order - largest changes first
       });
       
@@ -370,14 +374,14 @@ serve(async (req) => {
       console.log(`🛑 clamped_batch kept=${kept} dropped=${dropped}`);
     }
     
-    // Per-symbol clamp
+    // Per-symbol clamp (final step)
     const symbolCounts: Record<string, number> = {};
     clampedPrices = clampedPrices.filter(price => {
       symbolCounts[price.symbol] = (symbolCounts[price.symbol] || 0) + 1;
       if (symbolCounts[price.symbol] > PER_SYMBOL_CLAMP) {
         if (symbolCounts[price.symbol] === PER_SYMBOL_CLAMP + 1) { // Log only once per symbol
           console.warn(`🛑 SYMBOL CLAMP: ${price.symbol} limited to ${PER_SYMBOL_CLAMP} broadcasts`);
-          clampActivated = true;
+          perSymbolFinalClampActivated = true;
           totalClampActivations++;
         }
         return false;
@@ -394,7 +398,7 @@ serve(async (req) => {
         alerts_triggered: totalTriggeredAlerts,
         ui_broadcasts: 0,
         efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
-        clamp_activated: perSymbolClampActivated || batchClampActivated
+        clamp_activated: perSymbolClampActivated || batchClampActivated || perSymbolFinalClampActivated
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -452,8 +456,9 @@ serve(async (req) => {
           valid: uiPrices.length,
           filtered: filteredPrices.length,
           broadcasted: successfulBroadcasts,
-          clamped_symbol: perSymbolClampActivated ? Object.values(symbolClampCounts).reduce((a, b) => a + b, 0) : 0,
-          clamped_batch: batchClampActivated ? 1 : 0,
+          clamped_symbol_total: perSymbolClampActivated ? Object.values(symbolClampCounts).reduce((a, b) => a + b, 0) : 0,
+          clamped_batch: batchClampActivated ? (rateLimitedPrices.length - MAX_UI_BROADCASTS_PER_BATCH) : 0,
+          per_symbol_clamps: symbolClampCounts,
           alerts_triggered: totalTriggeredAlerts
         },
         batch_id: `batch_${Date.now()}`
@@ -462,8 +467,9 @@ serve(async (req) => {
       console.warn('⚠️ Telemetry logging failed:', telemetryError);
     }
 
-    // COMPREHENSIVE SUCCESS RESPONSE
-    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts ${clampActivated ? '(CLAMPED)' : ''}`;
+    // COMPREHENSIVE SUCCESS RESPONSE  
+    const anyClampActivated = perSymbolClampActivated || batchClampActivated || perSymbolFinalClampActivated;
+    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts ${anyClampActivated ? '(CLAMPED)' : ''}`;
     console.log(`✅ COMPLETE: ${responseMessage}`);
     console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
 
@@ -475,7 +481,7 @@ serve(async (req) => {
       ui_significant: clampedPrices.length,
       ui_broadcasted: successfulBroadcasts,
       efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
-      clamp_activated: perSymbolClampActivated || batchClampActivated,
+      clamp_activated: anyClampActivated,
       clamp_activations: totalClampActivations,
       session_totals: {
         processed: totalPricesProcessed,

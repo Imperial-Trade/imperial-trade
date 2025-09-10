@@ -310,6 +310,49 @@ export const RealtimeDiagnostics: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Clamps Panel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Clamps (Last 24h)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {edgeTelemetry.length > 0 ? (
+              <>
+                <div className="text-sm text-muted-foreground">
+                  Per-symbol rate limit activations from edge function telemetry
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(
+                  edgeTelemetry.reduce((acc, record) => {
+                    const perSymbolClamps = (record.metadata as any)?.per_symbol_clamps || {};
+                    Object.entries(perSymbolClamps).forEach(([symbol, count]) => {
+                      acc[symbol] = (acc[symbol] || 0) + (count as number);
+                    });
+                    return acc;
+                  }, {} as Record<string, number>)
+                  )
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 10)
+                    .map(([symbol, totalClamps]) => (
+                      <div key={symbol} className="flex justify-between items-center p-2 border rounded">
+                        <span className="font-mono text-sm">{symbol}</span>
+                        <Badge variant={totalClamps > 50 ? "destructive" : "secondary"}>
+                          {totalClamps} clamps
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">
+                No clamp data available. Data will appear when rate limits are activated.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* System Health Indicators */}
       <Card>
         <CardHeader>

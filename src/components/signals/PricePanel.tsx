@@ -45,6 +45,56 @@ interface PricePanelProps {
   onOrderActivation?: (alert: any) => void;
 }
 
+// Static levels block component - memoized to prevent unnecessary re-renders
+const StaticLevelsBlock = memo<{
+  tradeType: string;
+  entryPrice: number;
+  stopLoss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  tpHitsKey: string;
+  closeReason?: string;
+}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, closeReason }) => {
+  const isBuy = tradeType.includes('buy');
+  const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
+  const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
+
+  return (
+    <div className="bg-muted/50 rounded-md p-2.5 mt-2">
+      <PriceRow 
+        label="Entry Price" 
+        value={entryPrice} 
+        icon={isBuy ? ArrowUp : ArrowDown} 
+        colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
+      />
+      <PriceRow 
+        label="Stop Loss" 
+        value={stopLoss} 
+        icon={XOctagon} 
+        colorClass="text-accent-red"
+        isHit={closeReason === 'stop_loss'}
+      />
+      {takeProfits.map((tp, index) => {
+        const tpLevel = index + 1;
+        const isHit = hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`;
+        return (
+          <PriceRow 
+            key={index} 
+            label={`Take Profit ${tpLevel}`} 
+            value={tp} 
+            icon={Target} 
+            colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
+            isHit={isHit}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
 const PricePanel: React.FC<PricePanelProps> = ({ 
   id, assetName, symbol, tradeType, entryPrice, stopLoss, 
   tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason, allowAutomation,
@@ -64,57 +114,48 @@ const PricePanel: React.FC<PricePanelProps> = ({
     close_reason: closeReason
   }), [id, assetName, symbol, tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason]);
 
-  // For active/pending/partially_profited trades, show LivePriceWidget
+  // For active/pending/partially_profited trades, show LivePriceWidget + static levels
   if (status === 'active' || status === 'pending' || status === 'partially_profited') {
     return (
       <div className="px-3 pb-3">
         <LivePriceWidget 
-            alert={alert} 
-            onTakeProfitHit={onTakeProfitHit}
-            onStopLossHit={onStopLossHit}
-            onOrderActivation={onOrderActivation}
-            allowAutomation={allowAutomation}
+          alert={alert} 
+          onTakeProfitHit={onTakeProfitHit}
+          onStopLossHit={onStopLossHit}
+          onOrderActivation={onOrderActivation}
+          allowAutomation={allowAutomation}
+        />
+        <StaticLevelsBlock
+          tradeType={tradeType}
+          entryPrice={entryPrice}
+          stopLoss={stopLoss}
+          tp1={tp1}
+          tp2={tp2}
+          tp3={tp3}
+          tp4={tp4}
+          tp5={tp5}
+          tpHitsKey={tpHitsKey}
+          closeReason={closeReason}
         />
       </div>
     );
   }
 
-  // For closed trades, show static price breakdown
-  const isBuy = tradeType.includes('buy');
-  const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = alert.tp_hits || [];
-
+  // For closed trades, show only static levels
   return (
-    <div className="px-3 pb-3 space-y-1.5">
-      <div className="bg-muted/50 rounded-md p-2.5">
-        <PriceRow 
-          label="Entry Price" 
-          value={entryPrice} 
-          icon={isBuy ? ArrowUp : ArrowDown} 
-          colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
-        />
-        <PriceRow 
-          label="Stop Loss" 
-          value={stopLoss} 
-          icon={XOctagon} 
-          colorClass={closeReason === 'stop_loss' ? "text-accent-red" : "text-accent-red"}
-          isHit={closeReason === 'stop_loss'}
-        />
-        {takeProfits.map((tp, index) => {
-          const tpLevel = index + 1;
-          const isHit = hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`;
-          return (
-            <PriceRow 
-              key={index} 
-              label={`Take Profit ${tpLevel}`} 
-              value={tp} 
-              icon={Target} 
-              colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
-              isHit={isHit}
-            />
-          );
-        })}
-      </div>
+    <div className="px-3 pb-3">
+      <StaticLevelsBlock
+        tradeType={tradeType}
+        entryPrice={entryPrice}
+        stopLoss={stopLoss}
+        tp1={tp1}
+        tp2={tp2}
+        tp3={tp3}
+        tp4={tp4}
+        tp5={tp5}
+        tpHitsKey={tpHitsKey}
+        closeReason={closeReason}
+      />
     </div>
   );
 };

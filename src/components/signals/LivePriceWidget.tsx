@@ -457,6 +457,11 @@ const LivePriceWidgetComponent = ({
     }
   };
 
+  // Use displayPrice fallback to prevent '---' flashes
+  const displayPrice = useMemo(() => {
+    return currentPrice > 0 ? currentPrice : prevPrice;
+  }, [currentPrice, prevPrice]);
+
   const priceChangeColor = useMemo(() => {
     return change >= 0 ? 'text-green-400' : 'text-red-400';
   }, [change]);
@@ -527,7 +532,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200`}>
-                  ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
+                  ${displayPrice > 0 ? formatPrice(displayPrice) : '---.--'}
                 </span>
               </div>
             
@@ -608,18 +613,18 @@ const LivePriceWidgetComponent = ({
       )}
 
       {/* Price Display */}
-      {(currentPrice > 0 || !isLoading) && (
+      {(displayPrice > 0 || !isLoading) && (
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            {currentPrice > 0 ? (
+            {displayPrice > 0 ? (
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200 text-accent-green`}>
-                  ${formatPrice(currentPrice)}
+                  ${formatPrice(displayPrice)}
                 </span>
               </div>
             ) : (
               <div className="text-muted-foreground font-mono text-lg">
-                <span>---</span>
+                <span>Loading...</span>
               </div>
             )}
           </div>

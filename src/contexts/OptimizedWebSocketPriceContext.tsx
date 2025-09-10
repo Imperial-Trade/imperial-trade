@@ -5,6 +5,8 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { costTracker } from '@/services/CostTracker';
 import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
+import { useSingleTabLeadership } from '@/hooks/useSingleTabLeadership';
+import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
@@ -90,6 +92,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   children
 }) => {
   const healthMonitor = useRealtimeHealth();
+  const { isLeader, tabId, tabCount } = useSingleTabLeadership();
+  const isPriceSubscriptionAllowed = useRealtimeGate('prices');
   
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);

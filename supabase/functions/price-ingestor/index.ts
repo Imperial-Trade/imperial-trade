@@ -1,20 +1,27 @@
-// Phase 1: Enhanced Price Ingestor with Connection Reuse & Significance Filtering
+// IMPERIAL TRADING PRICE INGESTOR v3.0 - Complete Architecture Implementation
+// Processes ALL business logic on raw data + broadcasts filtered UI updates
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-// Phase 1: Global connection reuse to prevent cold start issues
+// Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 let priceChannel: any = null;
 let channelConnectionPromise: Promise<any> | null = null;
 
-// Phase 1: Significance filtering configuration - reduces 90% of broadcasts
-const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for most assets
-const MIN_PRICE_CHANGE_PIPS = 0.1; // 0.1 pips for Gold
+// Significance filtering configuration - reduces 85-90% of broadcasts
+const MIN_PRICE_CHANGE_PERCENT = 0.015; // 0.015% for most assets (slightly increased for quality)
+const MIN_PRICE_CHANGE_PIPS = 0.15; // 0.15 pips for Gold (slightly increased)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-// In-memory cache for last broadcasted prices
+// In-memory cache for last broadcasted prices (UI filtering only)
 const lastBroadcastedPrices: Record<string, number> = {};
+
+// Telemetry tracking
+let totalPricesProcessed = 0;
+let totalAlertsTriggered = 0;
+let totalPricesUpserted = 0;
+let totalUIBroadcasts = 0;
 
 // Phase 1: Enhanced timeout configuration
 const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000; // Increased from 5000ms to 15000ms
@@ -160,28 +167,97 @@ serve(async (req) => {
     }
 
     console.log(`📊 Processing ${prices.length} price update(s)`);
+    totalPricesProcessed += prices.length;
 
-    // Phase 1: Initialize connection (reuse if warm)
-    const { priceChannel } = await initializeSupabase();
+    // Initialize connection (reuse if warm)
+    const { supabaseClient, priceChannel } = await initializeSupabase();
 
-    // Phase 1: Apply significance filtering BEFORE broadcasting
-    const filteredPrices = filterSignificantPrices(prices);
+    // STEP 1: Process ALL price ticks for business logic (alerts, limit orders, etc.)
+    console.log('🎯 STEP 1: Processing ALL alerts on raw price data...');
+    let totalTriggeredAlerts = 0;
+    
+    for (const priceUpdate of prices) {
+      if (!priceUpdate.symbol || typeof priceUpdate.bid !== 'number' || typeof priceUpdate.ask !== 'number') {
+        console.warn(`⚠️ Skipping invalid price data:`, priceUpdate);
+        continue;
+      }
+
+      try {
+        // Call enhanced alert processing with bid/ask precision
+        const { data: triggeredAlerts, error: alertError } = await supabaseClient
+          .rpc('process_price_alerts_enhanced', {
+            p_symbol: priceUpdate.symbol,
+            p_current_bid: priceUpdate.bid,
+            p_current_ask: priceUpdate.ask
+          });
+
+        if (alertError) {
+          console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, alertError);
+        } else if (triggeredAlerts && triggeredAlerts.length > 0) {
+          const triggeredCount = triggeredAlerts.filter((alert: any) => alert.triggered).length;
+          totalTriggeredAlerts += triggeredCount;
+          console.log(`🚨 ${triggeredCount} alerts triggered for ${priceUpdate.symbol}`);
+        }
+      } catch (error) {
+        console.error(`❌ Critical alert processing error for ${priceUpdate.symbol}:`, error);
+      }
+    }
+
+    totalAlertsTriggered += totalTriggeredAlerts;
+    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts`);
+
+    // STEP 2: Asynchronously upsert latest prices (non-blocking)
+    console.log('💾 STEP 2: Asynchronously upserting market prices...');
+    const upsertPromises = prices.map(async (priceUpdate) => {
+      if (!priceUpdate.symbol || typeof priceUpdate.bid !== 'number' || typeof priceUpdate.ask !== 'number') {
+        return false;
+      }
+
+      try {
+        const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
+        await supabaseClient.rpc('upsert_market_price_enhanced', {
+          p_symbol: priceUpdate.symbol,
+          p_bid: priceUpdate.bid,
+          p_ask: priceUpdate.ask,
+          p_mid: mid,
+          p_timestamp: priceUpdate.timestamp || new Date().toISOString()
+        });
+        return true;
+      } catch (error) {
+        console.error(`❌ Price upsert error for ${priceUpdate.symbol}:`, error);
+        return false;
+      }
+    });
+
+    // Don't wait for upserts to complete - they're async by design
+    Promise.all(upsertPromises).then(results => {
+      const successfulUpserts = results.filter(Boolean).length;
+      totalPricesUpserted += successfulUpserts;
+      console.log(`💾 STEP 2 COMPLETE: ${successfulUpserts}/${prices.length} prices upserted`);
+    });
+
+    // STEP 3: Apply significance filtering for UI broadcasts only
+    console.log('📡 STEP 3: Filtering significant changes for UI broadcast...');
+    const uiPrices = prices.map(p => ({ symbol: p.symbol, price: (p.bid + p.ask) / 2, timestamp: p.timestamp }));
+    const filteredPrices = filterSignificantPrices(uiPrices);
     
     if (filteredPrices.length === 0) {
-      console.log('✅ No significant price changes - skipping broadcast');
+      console.log('✅ STEP 3 COMPLETE: No significant UI changes - skipping broadcast');
       return new Response(JSON.stringify({ 
         success: true, 
-        message: 'No significant changes to broadcast',
+        message: 'Business logic processed, no UI updates needed',
         processed: prices.length,
-        broadcasted: 0,
-        filtered: prices.length
+        alerts_triggered: totalTriggeredAlerts,
+        ui_broadcasts: 0,
+        efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% UI filtered`
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
-    // Phase 1: Broadcast only significant price updates
+    // STEP 4: Broadcast only significant UI updates to Realtime
+    console.log('📡 STEP 4: Broadcasting significant UI updates...');
     let successfulBroadcasts = 0;
     const broadcastPromises = filteredPrices.map(async (price, index) => {
       try {
@@ -202,35 +278,44 @@ serve(async (req) => {
         });
 
         if (broadcastResult === 'ok') {
-          console.log(`💰 Broadcasted ${price.symbol}: $${price.price}`);
+          console.log(`💰 UI Broadcast: ${price.symbol}: $${price.price}`);
           return true;
         } else {
-          console.warn(`⚠️ Broadcast failed for ${price.symbol}:`, broadcastResult);
+          console.warn(`⚠️ UI Broadcast failed for ${price.symbol}:`, broadcastResult);
           return false;
         }
       } catch (error) {
-        console.error(`❌ Error broadcasting price at index ${index}:`, error);
+        console.error(`❌ Error broadcasting UI update at index ${index}:`, error);
         return false;
       }
     });
 
     const results = await Promise.all(broadcastPromises);
     successfulBroadcasts = results.filter(Boolean).length;
+    totalUIBroadcasts += successfulBroadcasts;
 
-    console.log(`📈 Successfully broadcasted ${successfulBroadcasts}/${filteredPrices.length} filtered prices (${prices.length - filteredPrices.length} filtered out)`);
+    console.log(`📈 STEP 4 COMPLETE: ${successfulBroadcasts}/${filteredPrices.length} UI updates broadcasted (${prices.length - filteredPrices.length} filtered out)`);
 
-    // Phase 1: Success response with enhanced metrics
-    const responseMessage = `Processed ${prices.length} price(s), filtered to ${filteredPrices.length}, broadcasted ${successfulBroadcasts}`;
-    console.log(`✅ ${responseMessage}`);
+    // COMPREHENSIVE SUCCESS RESPONSE
+    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts`;
+    console.log(`✅ COMPLETE: ${responseMessage}`);
+    console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: responseMessage,
       processed: prices.length,
-      significant: filteredPrices.length,
-      broadcasted: successfulBroadcasts,
-      efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% filtered`,
-      version: '2.0-optimized'
+      alerts_triggered: totalTriggeredAlerts,
+      ui_significant: filteredPrices.length,
+      ui_broadcasted: successfulBroadcasts,
+      efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% UI filtered`,
+      session_totals: {
+        processed: totalPricesProcessed,
+        alerts_triggered: totalAlertsTriggered,
+        prices_upserted: totalPricesUpserted,
+        ui_broadcasts: totalUIBroadcasts
+      },
+      version: '3.0-hybrid-architecture'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }

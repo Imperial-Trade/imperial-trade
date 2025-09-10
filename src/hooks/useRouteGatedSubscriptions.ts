@@ -20,6 +20,14 @@ const ROUTE_SUBSCRIPTION_MAP: Record<string, string[]> = {
   // Create alert - needs prices only
   '/dashboard/create-alert': ['prices'],
   
+  // New signal creation - needs prices only
+  '/dashboard/new-signal': ['prices'],
+  
+  // Administration pages - need signals and prices
+  '/dashboard/admin': ['signals', 'prices'],
+  '/dashboard/admin/*': ['signals', 'prices'],
+  '/dashboard/administration': ['signals', 'prices'],
+  
   // Academy - no realtime needed
   '/dashboard/academy': [],
   '/dashboard/academy/*': [],

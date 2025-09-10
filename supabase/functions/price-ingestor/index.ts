@@ -14,6 +14,11 @@ const MIN_PRICE_CHANGE_PERCENT = 0.015; // 0.015% for most assets (slightly incr
 const MIN_PRICE_CHANGE_PIPS = 0.15; // 0.15 pips for Gold (slightly increased)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
+// Per-symbol rate limiting and clamps (NEW: HARDENING)
+const SYMBOL_RATE_LIMITS: Record<string, { maxPerSecond: number, lastBroadcast: number, clampCount: number }> = {};
+const GLOBAL_BROADCAST_CLAMP = 50; // Max 50 broadcasts per batch
+const PER_SYMBOL_CLAMP = 10; // Max 10 broadcasts per symbol per batch
+
 // In-memory cache for last broadcasted prices (UI filtering only)
 const lastBroadcastedPrices: Record<string, number> = {};
 
@@ -22,6 +27,7 @@ let totalPricesProcessed = 0;
 let totalAlertsTriggered = 0;
 let totalPricesUpserted = 0;
 let totalUIBroadcasts = 0;
+let totalClampActivations = 0;
 
 // Phase 1: Enhanced timeout configuration
 const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000; // Increased from 5000ms to 15000ms
@@ -177,8 +183,22 @@ serve(async (req) => {
     let totalTriggeredAlerts = 0;
     
     for (const priceUpdate of prices) {
-      if (!priceUpdate.symbol || typeof priceUpdate.bid !== 'number' || typeof priceUpdate.ask !== 'number') {
-        console.warn(`⚠️ Skipping invalid price data:`, priceUpdate);
+      // ENHANCED NaN VALIDATION AND SANITIZATION
+      if (!priceUpdate.symbol || 
+          typeof priceUpdate.bid !== 'number' || 
+          typeof priceUpdate.ask !== 'number' ||
+          !isFinite(priceUpdate.bid) || 
+          !isFinite(priceUpdate.ask) ||
+          priceUpdate.bid <= 0 || 
+          priceUpdate.ask <= 0 ||
+          isNaN(priceUpdate.bid) ||
+          isNaN(priceUpdate.ask)) {
+        console.warn(`⚠️ Skipping invalid price data: {
+  symbol: "${priceUpdate.symbol}",
+  bid: ${priceUpdate.bid},
+  ask: ${priceUpdate.ask},
+  timestamp: "${priceUpdate.timestamp}"
+}`);
         continue;
       }
 
@@ -236,18 +256,57 @@ serve(async (req) => {
       console.log(`💾 STEP 2 COMPLETE: ${successfulUpserts}/${prices.length} prices upserted`);
     });
 
-    // STEP 3: Apply significance filtering for UI broadcasts only
+    // STEP 3: Apply significance filtering + CLAMPS for UI broadcasts only
     console.log('📡 STEP 3: Filtering significant changes for UI broadcast...');
     const uiPrices = prices
-      .filter(p => p.symbol && typeof p.bid === 'number' && typeof p.ask === 'number' && p.bid > 0 && p.ask > 0)
-      .map(p => ({ 
-        symbol: p.symbol, 
-        price: (p.bid + p.ask) / 2, 
-        timestamp: p.timestamp || new Date().toISOString() 
-      }));
+      .filter(p => p.symbol && typeof p.bid === 'number' && typeof p.ask === 'number' && 
+               p.bid > 0 && p.ask > 0 && isFinite(p.bid) && isFinite(p.ask) &&
+               !isNaN(p.bid) && !isNaN(p.ask))
+      .map(p => {
+        const mid = (p.bid + p.ask) / 2;
+        // Final NaN check on calculated mid price
+        if (!isFinite(mid) || isNaN(mid) || mid <= 0) {
+          console.warn(`⚠️ Calculated invalid mid price for ${p.symbol}: bid=${p.bid}, ask=${p.ask}, mid=${mid}`);
+          return null;
+        }
+        return { 
+          symbol: p.symbol, 
+          price: mid, 
+          timestamp: p.timestamp || new Date().toISOString() 
+        };
+      })
+      .filter(Boolean) as Array<{symbol: string, price: number, timestamp: string}>;
+    
     const filteredPrices = filterSignificantPrices(uiPrices);
     
-    if (filteredPrices.length === 0) {
+    // APPLY GLOBAL AND PER-SYMBOL CLAMPS
+    let clampedPrices = filteredPrices;
+    let clampActivated = false;
+    
+    // Global clamp
+    if (filteredPrices.length > GLOBAL_BROADCAST_CLAMP) {
+      clampedPrices = filteredPrices.slice(0, GLOBAL_BROADCAST_CLAMP);
+      clampActivated = true;
+      totalClampActivations++;
+      console.warn(`🛑 GLOBAL CLAMP: Limiting ${filteredPrices.length} → ${GLOBAL_BROADCAST_CLAMP} broadcasts`);
+    }
+    
+    // Per-symbol clamp
+    const symbolCounts: Record<string, number> = {};
+    clampedPrices = clampedPrices.filter(price => {
+      symbolCounts[price.symbol] = (symbolCounts[price.symbol] || 0) + 1;
+      if (symbolCounts[price.symbol] > PER_SYMBOL_CLAMP) {
+        if (symbolCounts[price.symbol] === PER_SYMBOL_CLAMP + 1) { // Log only once per symbol
+          console.warn(`🛑 SYMBOL CLAMP: ${price.symbol} limited to ${PER_SYMBOL_CLAMP} broadcasts`);
+          clampActivated = true;
+          totalClampActivations++;
+        }
+        return false;
+      }
+      return true;
+    });
+    
+    if (clampedPrices.length === 0) {
       console.log('✅ STEP 3 COMPLETE: No significant UI changes - skipping broadcast');
       return new Response(JSON.stringify({ 
         success: true, 
@@ -255,7 +314,8 @@ serve(async (req) => {
         processed: prices.length,
         alerts_triggered: totalTriggeredAlerts,
         ui_broadcasts: 0,
-        efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% UI filtered`
+        efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
+        clamp_activated: clampActivated
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -265,7 +325,7 @@ serve(async (req) => {
     // STEP 4: Broadcast only significant UI updates to Realtime
     console.log('📡 STEP 4: Broadcasting significant UI updates...');
     let successfulBroadcasts = 0;
-    const broadcastPromises = filteredPrices.map(async (price, index) => {
+    const broadcastPromises = clampedPrices.map(async (price, index) => {
       try {
         // Validate price structure
         if (!price.symbol || typeof price.price !== 'number' || price.price <= 0) {
@@ -300,26 +360,29 @@ serve(async (req) => {
     successfulBroadcasts = results.filter(Boolean).length;
     totalUIBroadcasts += successfulBroadcasts;
 
-    console.log(`📈 STEP 4 COMPLETE: ${successfulBroadcasts}/${filteredPrices.length} UI updates broadcasted (${prices.length - filteredPrices.length} filtered out)`);
+    console.log(`📈 STEP 4 COMPLETE: ${successfulBroadcasts}/${clampedPrices.length} UI updates broadcasted (${prices.length - clampedPrices.length} filtered/clamped out)`);
 
     // COMPREHENSIVE SUCCESS RESPONSE
-    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts`;
+    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts ${clampActivated ? '(CLAMPED)' : ''}`;
     console.log(`✅ COMPLETE: ${responseMessage}`);
-    console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}`);
+    console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: responseMessage,
       processed: prices.length,
       alerts_triggered: totalTriggeredAlerts,
-      ui_significant: filteredPrices.length,
+      ui_significant: clampedPrices.length,
       ui_broadcasted: successfulBroadcasts,
-      efficiency: `${Math.round((prices.length - filteredPrices.length) / prices.length * 100)}% UI filtered`,
+      efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
+      clamp_activated: clampActivated,
+      clamp_activations: totalClampActivations,
       session_totals: {
         processed: totalPricesProcessed,
         alerts_triggered: totalAlertsTriggered,
         prices_upserted: totalPricesUpserted,
-        ui_broadcasts: totalUIBroadcasts
+        ui_broadcasts: totalUIBroadcasts,
+        clamp_activations: totalClampActivations
       },
       version: '3.0-hybrid-architecture'
     }), {

@@ -420,6 +420,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
+    // 🚦 GATE 3: Background tab detection
+    if (document.hidden) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Price subscription blocked - tab is in background');
+      }
+      return;
+    }
+
     // ✅ STEP 1: Filter and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
     const requestedSymbols = symbols.filter(s => s && s.trim().length > 0);
     const allowedSymbols = requestedSymbols.filter(symbol => {
@@ -472,6 +480,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, [connect, isPriceSubscriptionAllowed, isLeader]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
+    // Leadership and route gating still apply for unsubscription
+    if (!isLeader) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Unsubscribe blocked - not leader tab');
+      }
+      return;
+    }
     const actuallyRemovedSymbols: string[] = [];
     
     symbols.forEach(symbol => {

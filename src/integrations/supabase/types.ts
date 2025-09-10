@@ -2111,6 +2111,48 @@ export type Database = {
         }
         Relationships: []
       }
+      realtime_telemetry: {
+        Row: {
+          channel_breakdown: Json
+          clamp_activations: number
+          cost_estimate: number
+          created_at: string
+          date: string
+          id: string
+          message_rate: number
+          optimization_rate: number
+          total_connections: number
+          total_messages: number
+          updated_at: string
+        }
+        Insert: {
+          channel_breakdown?: Json
+          clamp_activations?: number
+          cost_estimate?: number
+          created_at?: string
+          date?: string
+          id?: string
+          message_rate?: number
+          optimization_rate?: number
+          total_connections?: number
+          total_messages?: number
+          updated_at?: string
+        }
+        Update: {
+          channel_breakdown?: Json
+          clamp_activations?: number
+          cost_estimate?: number
+          created_at?: string
+          date?: string
+          id?: string
+          message_rate?: number
+          optimization_rate?: number
+          total_connections?: number
+          total_messages?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       replies: {
         Row: {
           content: string
@@ -3661,6 +3703,18 @@ export type Database = {
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
+        Returns: undefined
+      }
+      upsert_daily_telemetry: {
+        Args: {
+          p_channel_breakdown?: Json
+          p_clamp_activations?: number
+          p_connections: number
+          p_cost_estimate: number
+          p_message_rate: number
+          p_messages: number
+          p_optimization_rate?: number
+        }
         Returns: undefined
       }
       upsert_market_price: {

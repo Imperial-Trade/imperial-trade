@@ -17,23 +17,27 @@ export function useRealtimeTelemetry() {
     optimizationRate: 85 // Default based on expected filtering
   });
 
-  const messagesCountRef = useRef(0);
-  const connectionsCountRef = useRef(0);
-  const startTimeRef = useRef(Date.now());
+  // Enhanced telemetry tracking
+  const telemetryRef = useRef({
+    messagesReceived: 0,
+    connectionsCreated: 0,
+    startTime: Date.now(),
+    clampActivations: 0
+  });
 
   // Record a message
   const recordMessage = (channel: string = 'price_update') => {
-    messagesCountRef.current++;
+    telemetryRef.current.messagesReceived++;
     
     // Calculate rate and cost estimate
-    const elapsedHours = (Date.now() - startTimeRef.current) / (1000 * 60 * 60);
-    const messageRate = messagesCountRef.current / Math.max(elapsedHours, 0.1);
+    const elapsedHours = (Date.now() - telemetryRef.current.startTime) / (1000 * 60 * 60);
+    const messageRate = telemetryRef.current.messagesReceived / Math.max(elapsedHours, 0.1);
     const dailyEstimate = messageRate * 24;
     const costEstimate = (dailyEstimate * 30 * 2.50) / 1000000; // $2.50 per million messages
 
     setTelemetryData(prev => ({
       ...prev,
-      totalMessages: messagesCountRef.current,
+      totalMessages: telemetryRef.current.messagesReceived,
       messageRate,
       costEstimate
     }));
@@ -41,21 +45,51 @@ export function useRealtimeTelemetry() {
 
   // Record a connection
   const recordConnection = () => {
-    connectionsCountRef.current++;
+    telemetryRef.current.connectionsCreated++;
     setTelemetryData(prev => ({
       ...prev,
-      totalConnections: connectionsCountRef.current
+      totalConnections: telemetryRef.current.connectionsCreated
     }));
+  };
+
+  // Record clamp activation
+  const recordClampActivation = () => {
+    telemetryRef.current.clampActivations++;
+  };
+
+  // Sync to persistent storage
+  const syncTelemetry = async () => {
+    const elapsedHours = (Date.now() - telemetryRef.current.startTime) / (1000 * 60 * 60);
+    const messageRate = telemetryRef.current.messagesReceived / Math.max(elapsedHours, 0.1);
+    const costEstimate = (messageRate * 24 * 30 * 2.50) / 1000000;
+    
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase.rpc('upsert_daily_telemetry', {
+        p_messages: telemetryRef.current.messagesReceived,
+        p_connections: telemetryRef.current.connectionsCreated,
+        p_message_rate: messageRate,
+        p_cost_estimate: costEstimate,
+        p_clamp_activations: telemetryRef.current.clampActivations
+      });
+    } catch (error) {
+      console.warn('Failed to sync telemetry:', error);
+    }
   };
 
   return {
     telemetryData,
     recordMessage,
     recordConnection,
+    recordClampActivation,
+    syncTelemetry,
     reset: () => {
-      messagesCountRef.current = 0;
-      connectionsCountRef.current = 0;
-      startTimeRef.current = Date.now();
+      telemetryRef.current = {
+        messagesReceived: 0,
+        connectionsCreated: 0,
+        startTime: Date.now(),
+        clampActivations: 0
+      };
       setTelemetryData({
         totalMessages: 0,
         totalConnections: 0,

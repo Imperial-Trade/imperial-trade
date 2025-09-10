@@ -3541,6 +3541,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_realtime_system_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_trader_stats: {
         Args: { p_user_id: string }
         Returns: Json

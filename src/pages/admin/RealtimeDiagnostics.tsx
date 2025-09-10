@@ -16,7 +16,7 @@ interface TelemetryRecord {
   cost_estimate: number;
   optimization_rate: number;
   clamp_activations: number;
-  channel_breakdown: Record<string, any>;
+  channel_breakdown: any; // Using any to handle Supabase Json type
 }
 
 export const RealtimeDiagnostics: React.FC = () => {
@@ -34,7 +34,7 @@ export const RealtimeDiagnostics: React.FC = () => {
         .limit(7);
 
       if (error) throw error;
-      setHistoricalData(data || []);
+      setHistoricalData(data as TelemetryRecord[] || []);
     } catch (error) {
       console.error('Failed to fetch telemetry data:', error);
     } finally {

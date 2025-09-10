@@ -7,6 +7,7 @@ import { costTracker } from '@/services/CostTracker';
 import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
 import { useSingleTabLeadership } from '@/hooks/useSingleTabLeadership';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
+import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
@@ -94,6 +95,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
+  const { recordMessage, recordConnection, recordClampActivation } = useRealtimeTelemetry();
   
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +234,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
           statsRef.current.messagesReceived++;
           
+          // Track telemetry
+          recordMessage('price_update');
+          
           // Track cost for price updates
           costTracker.recordRealtimeMessage('price_update');
           pricePerformanceMonitor.recordPriceUpdate();
@@ -301,6 +306,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           });
           
           statsRef.current.reconnections++;
+          recordConnection(); // Track telemetry
           isConnectingRef.current = false;
           startHealthMonitoring();
           

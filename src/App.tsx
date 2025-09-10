@@ -19,7 +19,6 @@ import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
-import { DevAuthBanner } from "@/components/debug/DevAuthBanner";
 import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
@@ -95,7 +94,6 @@ function App() {
         <BrowserRouter>
             <ScrollToTop />
             <AuthProvider>
-              {isDevToolsEnabled() && <DevAuthBanner />}
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>

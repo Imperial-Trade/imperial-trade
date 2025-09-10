@@ -11,6 +11,7 @@ import { RateLimitManager } from "@/components/admin/RateLimitManager";
 import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosticsPanel";
+import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 const AdminPanel: React.FC = () => {
@@ -38,7 +39,7 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-9' : 'grid-cols-7'}`}>
+        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-10' : 'grid-cols-8'}`}>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Requests
@@ -66,6 +67,10 @@ const AdminPanel: React.FC = () => {
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
             Settings
+          </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Diagnostics
           </TabsTrigger>
           {isDevToolsEnabled() && (
             <TabsTrigger value="live-prices" className="flex items-center gap-2">
@@ -111,6 +116,10 @@ const AdminPanel: React.FC = () => {
             <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
             <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
           </div>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="space-y-4">
+          <RealtimeDiagnostics />
         </TabsContent>
 
         {isDevToolsEnabled() && (

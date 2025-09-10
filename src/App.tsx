@@ -24,6 +24,7 @@ import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirec
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
+import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -87,6 +88,7 @@ function App() {
   // Initialize app state on startup
   React.useEffect(() => {
     initializeAppState();
+    verifyServiceWorkerSafety();
   }, []);
 
   return (

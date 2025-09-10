@@ -14,7 +14,6 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
-import { LivePreviewDiagnostics } from '@/components/dev/LivePreviewDiagnostics';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 
@@ -597,7 +596,6 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
-        <LivePreviewDiagnostics />
         <NotificationSystem />
         
         {/* Header - Mobile Optimized spacing */}

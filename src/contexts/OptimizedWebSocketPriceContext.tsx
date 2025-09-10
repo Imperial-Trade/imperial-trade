@@ -471,20 +471,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }, HEALTH_CONFIG.healthCheckInterval);
   }, [lastUpdated, disconnect, connect]);
 
-  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING + Leadership + Route Gating
+  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING + Route Gating (Leadership only affects connection)
   const subscribe = useCallback((symbols: string[]) => {
     // 🚦 GATE 1: Route gating - only subscribe if current route allows it
     if (!isPriceSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
         console.log('🚦 Price subscription blocked by route gating');
-      }
-      return;
-    }
-
-    // 🚦 GATE 2: Single-tab leadership - only leader can connect
-    if (!isLeader) {
-      if (isDevToolsEnabled()) {
-        console.log('🚦 Price subscription blocked - not leader tab');
       }
       return;
     }
@@ -533,8 +525,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       subscriptionsRef.current.set(symbol, currentCount + 1);
     });
 
-    // Connect on demand if we have subscriptions and not connected
-    if (hasNewSubscriptions && subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
+    // Connect on demand if we have subscriptions and not connected (only if leader)
+    if (hasNewSubscriptions && subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected' && isLeader) {
       connect();
     }
 

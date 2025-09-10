@@ -3,15 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { X, Eye, EyeOff } from 'lucide-react';
 
 export const DevAuthBanner: React.FC = () => {
-  const { user, session, profile, loading } = useAuth();
+  const { user, session, profile, loading, profileLoading } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
 
-  // Only show when there are auth issues (gated by feature flag at App level)
+  // Only show when there are genuine auth issues - not during normal loading
   useEffect(() => {
-    const hasAuthIssue = (!user && !loading) || (user && !session) || loading;
-    setIsVisible(hasAuthIssue);
-  }, [user, session, loading]);
+    // Only show when there are genuine auth issues - not during normal loading
+    const hasGenuineAuthIssues = 
+      (!user && !loading && !profileLoading) || // No user after loading complete
+      (user && !session && !loading) ||        // User but no session (inconsistent state)
+      (loading && !user && !session);          // Prolonged loading without any auth data
+    
+    setIsVisible(hasGenuineAuthIssues);
+  }, [user, session, loading, profileLoading]);
 
   if (!isVisible) return null;
 
@@ -37,6 +42,7 @@ export const DevAuthBanner: React.FC = () => {
               <span>Session: {session ? 'Yes' : 'No'}</span>
               <span>Profile: {profile ? 'Yes' : 'No'}</span>
               <span>Loading: {loading ? 'Yes' : 'No'}</span>
+              <span>Profile Loading: {profileLoading ? 'Yes' : 'No'}</span>
             </div>
           )}
         </div>

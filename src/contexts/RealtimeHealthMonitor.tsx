@@ -1,7 +1,7 @@
 // 🔥 GLOBAL REALTIME HEALTH MONITOR
 // Prevents multiple contexts from overwhelming the database
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface HealthMetrics {
@@ -69,7 +69,7 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
     }
   };
 
-  const unregisterConnection = (contextName: string) => {
+  const unregisterConnection = useCallback((contextName: string) => {
     activeConnections.current.delete(contextName);
     setMetrics(prev => ({
       ...prev,
@@ -80,7 +80,7 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
     if (isDevToolsEnabled()) {
       console.log(`📊 RealtimeHealth: ${contextName} unregistered (${activeConnections.current.size} remaining)`);
     }
-  };
+  }, []);
 
   const recordReconnection = (contextName: string) => {
     setMetrics(prev => ({

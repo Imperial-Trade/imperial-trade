@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+// Debug React import at module level
+console.log('[FreshTheme Module] React import check:', {
+  React: typeof React,
+  useState: typeof useState,
+  useEffect: typeof useEffect
+});
+
 type Theme = 'dark' | 'light';
 
 interface FreshThemeContextType {
@@ -17,6 +24,12 @@ const FreshThemeContext = createContext<FreshThemeContextType>({
 // Cache-busted theme provider without any external hooks
 export function FreshThemeProvider({ children }: { children: React.ReactNode }) {
   console.log('[FreshThemeProvider] Starting completely fresh - no cache issues');
+  console.log('[FreshThemeProvider] React availability check:', {
+    React: typeof React,
+    useState: typeof React?.useState,
+    useEffect: typeof React?.useEffect,
+    ReactObject: React
+  });
   
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
     try {

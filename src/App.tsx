@@ -10,7 +10,7 @@ import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
-import { FreshThemeProvider as ThemeProvider } from "@/contexts/FreshTheme";
+import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";

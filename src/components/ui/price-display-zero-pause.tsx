@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLivePrice } from '@/hooks/useLivePrice';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,14 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   precision = 2
 }) => {
   const price = useLivePrice(symbol);
+  const [lastPrice, setLastPrice] = useState<number | null>(null);
+
+  // Update last price when we receive a valid price
+  useEffect(() => {
+    if (price && price > 0) {
+      setLastPrice(price);
+    }
+  }, [price]);
 
   const formatPrice = (value: number | null) => {
     if (!value) return '---';
@@ -29,30 +37,26 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
     return value.toFixed(precision);
   };
 
+  // Use current price if available, otherwise fallback to last known price
+  const displayPrice = price && price > 0 ? price : lastPrice;
+
   return (
     <div className={cn('flex flex-col space-y-1', className)}>
       {/* Main Price */}
       <div className="flex items-center gap-2">
         <span className="text-2xl font-bold text-accent-green">
-          {formatPrice(price)}
+          {formatPrice(displayPrice)}
         </span>
         
         {/* Connection Status Indicator */}
         <div className={cn(
           'w-2 h-2 rounded-full',
-          price ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+          price && price > 0 ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
         )} />
       </div>
 
-      {/* Loading state */}
-      {!price && (
-        <span className="text-xs text-muted-foreground">
-          Loading live price...
-        </span>
-      )}
-
       {/* Timestamp */}
-      {showTimestamp && price && (
+      {showTimestamp && displayPrice && (
         <span className="text-xs text-muted-foreground">
           {new Date().toLocaleTimeString()}
         </span>

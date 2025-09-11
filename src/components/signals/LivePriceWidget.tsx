@@ -532,7 +532,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200`}>
-                  ${displayPrice > 0 ? formatPrice(displayPrice) : 'Loading price...'}
+                  ${displayPrice > 0 ? formatPrice(displayPrice) : '---'}
                 </span>
               </div>
             
@@ -605,12 +605,6 @@ const LivePriceWidgetComponent = ({
         </div>
       )}
 
-      {/* Loading State - Fixed height to prevent layout shifts */}
-      {isLoading && currentPrice === 0 && (
-        <div className="mb-3 p-2 text-center min-h-[40px] flex items-center justify-center">
-          <div className="text-sm text-muted-foreground font-mono">Connecting to price feed...</div>
-        </div>
-      )}
 
       {/* Price Display */}
       {(displayPrice > 0 || !isLoading) && (
@@ -624,7 +618,7 @@ const LivePriceWidgetComponent = ({
               </div>
             ) : (
               <div className="text-muted-foreground font-mono text-lg min-h-[28px] flex items-center">
-                <span>Loading price...</span>
+                <span>---</span>
               </div>
             )}
           </div>

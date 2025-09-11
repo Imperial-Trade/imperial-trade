@@ -7,6 +7,7 @@ import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { useTelemetry } from '@/contexts/TelemetryContext';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
+import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 
 // Shared connection state to prevent multiple Realtime channels
 interface SharedRealtimeState {
@@ -68,8 +69,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   const subscriptionsRef = useRef<Map<string, { config: TableSubscriptionConfig; callback: RealtimeCallback }>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 2; // 🔥 FURTHER REDUCED from 3 to 2 attempts
-  const baseReconnectDelay = 12000; // 🔥 INCREASED from 8s to 12s base delay
+  const maxReconnectAttempts = 1; // 🚨 EMERGENCY: Only 1 reconnect attempt
+  const baseReconnectDelay = 30000; // 🚨 EMERGENCY: 30s minimum delay
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent reconnection after unmount
   
   // 🔥 LEAK-PROOF: Additional refs for connection serialization
@@ -92,12 +93,24 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     // Add all current subscribers to the channel
     subscriptionsRef.current.forEach(({ config, callback }) => {
       const wrappedCallback = (payload: any) => {
+        // 🚨 EMERGENCY MESSAGE BRAKE: Block excessive messages
+        if (connectionStateRef.current.sessionMessages > 1000) {
+          console.warn('🚨 EMERGENCY: Message limit exceeded, disconnecting');
+          disconnect();
+          return;
+        }
+
         // Health monitoring
         healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
         
         // Record telemetry for per-channel tracking
         telemetry.record('db_change_v3');
         
+        // 🚨 EMERGENCY MESSAGE FILTER: Block messages not allowed by breaker  
+        if (!emergencyRealtimeBreaker.recordMessage('db_change')) {
+          return; // Message blocked by emergency breaker
+        }
+
         // Update session messages and lastUpdated
         setConnectionState(prev => ({
           ...prev,
@@ -164,8 +177,16 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     }
   }, [buildChannel]);
 
-  // 🔥 LEAK-PROOF: Connection with mount guards and serialization
+  // 🔥 LEAK-PROOF: Connection with mount guards and emergency breaker
   const connect = useCallback(() => {
+    // 🚨 EMERGENCY BREAKER: Check if realtime operations are allowed
+    if (!emergencyRealtimeBreaker.canAllowRealtimeOperation('connection')) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - Connect blocked by emergency breaker');
+      }
+      return;
+    }
+    
     // 🔥 LEAK-PROOF: Block connection after component unmount
     if (!mountOnlyRef.current) {
       if (isDevToolsEnabled()) {

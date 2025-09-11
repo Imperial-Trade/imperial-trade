@@ -27,10 +27,10 @@ class UltraCostOptimizer {
 
   private constructor() {
     this.config = {
-      allowedSymbols: ['XAUUSD', 'BTCUSD'], // Only 2 symbols for maximum cost savings
-      maxDatabaseConnections: 15, // Reduced from 50
-      cacheTTLMultiplier: 3, // 3x longer cache times
-      batchSizeMultiplier: 2, // 2x larger batches
+      allowedSymbols: ['XAUUSD'], // 🚨 EMERGENCY: Only 1 symbol
+      maxDatabaseConnections: 3, // 🚨 EMERGENCY: Max 3 connections total
+      cacheTTLMultiplier: 10, // 🚨 EMERGENCY: 10x longer cache
+      batchSizeMultiplier: 5, // 🚨 EMERGENCY: 5x larger batches
       aggressive: true
     };
 

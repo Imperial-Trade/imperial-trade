@@ -11,6 +11,7 @@ import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
+import { RealtimeConnectionManagerProvider } from "@/contexts/RealtimeConnectionManager";
 import { TelemetryProvider } from "@/contexts/TelemetryContext";
 import { RealtimeShutdownGuard } from "@/components/RealtimeShutdownGuard";
 import { VersionChecker } from "@/components/VersionChecker";
@@ -106,8 +107,9 @@ function App() {
               <WelcomeProvider>
                 <NotificationPromptProvider>
                   <NavigationGuard>
-                    <RealtimeHealthProvider>
-                      <TelemetryProvider>
+                     <RealtimeHealthProvider>
+                       <RealtimeConnectionManagerProvider>
+                         <TelemetryProvider>
                         <GlobalPreviewControlProvider>
                         <OptimizedWebSocketPriceProvider>
                         <WebSocketErrorBoundary>
@@ -216,13 +218,25 @@ function App() {
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
                            <Route path="settings" element={<Settings />} />
-                           {isDevToolsEnabled() && (
-                              <>
-                                <Route path="athena" element={<AthenaTest />} />
-                                <Route path="dev-tests" element={<DevTests />} />
-                                <Route path="price-testing" element={<PriceTestingPage />} />
-                              </>
-                            )}
+                            {isDevToolsEnabled() && (
+                               <>
+                                 <Route path="athena" element={<AthenaTest />} />
+                                 <Route path="dev-tests" element={<DevTests />} />
+                                 <Route path="price-testing" element={<PriceTestingPage />} />
+                                 <Route 
+                                   path="realtime-cost-status" 
+                                   element={
+                                     <ProtectedRoute requiredAccessLevel="admin">
+                                       <div className="p-4">
+                                         {React.createElement(
+                                           React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                         )}
+                                       </div>
+                                     </ProtectedRoute>
+                                   } 
+                                 />
+                               </>
+                             )}
 
                           <Route
                             path="administration"
@@ -320,8 +334,9 @@ function App() {
                         </WebSocketErrorBoundary>
                         </OptimizedWebSocketPriceProvider>
                         </GlobalPreviewControlProvider>
-                      </TelemetryProvider>
-                    </RealtimeHealthProvider>
+                         </TelemetryProvider>
+                       </RealtimeConnectionManagerProvider>
+                     </RealtimeHealthProvider>
                   </NavigationGuard>
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}

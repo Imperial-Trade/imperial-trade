@@ -30,8 +30,8 @@ class CostTracker {
 
   private hourlyMessages: number[] = [];
   private readonly MESSAGE_COST_USD = 0.00024; // $0.24 per 1M messages
-  private readonly DAILY_WARNING_THRESHOLD = 5.00; // $5/day warning
-  private readonly DAILY_CRITICAL_THRESHOLD = 20.00; // $20/day critical
+  private readonly DAILY_WARNING_THRESHOLD = 0.50; // 🚨 $0.50/day warning
+  private readonly DAILY_CRITICAL_THRESHOLD = 1.00; // 🚨 $1.00/day critical
   private alerts: CostAlert[] = [];
 
   private constructor() {

@@ -12,6 +12,7 @@ import { useTelemetry } from '@/contexts/TelemetryContext';
 import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
 import { normalizeSymbol } from '@/utils/symbolUtils';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
+import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -220,8 +221,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     setTimeout(() => { manualCloseRef.current = false; }, 1000);
   }, [updateConnectionState]); // 🔥 LEAK-PROOF: Minimal dependencies
 
-  // 🔥 LEAK-PROOF: Connection with mount guards and definitive logging
+  // 🔥 LEAK-PROOF: Connection with mount guards and emergency breaker
   const connect = useCallback(async () => {
+    // 🚨 EMERGENCY BREAKER: Check if realtime operations are allowed
+    if (!emergencyRealtimeBreaker.canAllowRealtimeOperation('connection')) {
+      if (isDevToolsEnabled()) {
+        console.log('WS-P: connect blocked by emergency breaker');
+      }
+      return;
+    }
+    
     // 🔥 LEAK-PROOF: Block connect after unmount
     if (!mountOnlyRef.current) {
       if (isDevToolsEnabled()) {
@@ -286,20 +295,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return; // Skip unsubscribed symbols
           }
 
-        // 🔥 FURTHER RATE LIMITING: Max 2 updates/sec per symbol instead of 10
+        // 🚨 EMERGENCY RATE LIMITING: Max 0.5 updates/sec per symbol
         const now = Date.now();
         const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
-        if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
+        if (now - lastUpdate < 2000) { // 2000ms = max 0.5 updates/sec
           recordClampActivation(); // Record when we drop updates due to rate limiting
           telemetry.record('clamp_activation');
           return;
         }
         priceUpdateTimestamps.current.set(normalizedSymbol, now);
 
-        statsRef.current.messagesReceived++;
-        
-        // Track telemetry with version info
-        recordMessage(eventVersion);
+        // 🚨 EMERGENCY MESSAGE FILTER: Block messages not allowed by breaker
+        if (!emergencyRealtimeBreaker.recordMessage(eventVersion)) {
+          return; // Message blocked by emergency breaker
+        }
         telemetry.record(eventVersion);
 
         // Dev-only logging with session info

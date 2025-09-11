@@ -1,4 +1,4 @@
-import React, { useState, memo, useEffect } from 'react';
+import React, { useState, memo, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil } from 'lucide-react';
@@ -54,6 +54,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
   const { getPrice } = useOptimizedWebSocketPrices();
 
+  // Stop-Loss Proximity state management (moved to top level to fix React Hooks violation)
+  const [showStopLossProximity, setShowStopLossProximity] = useState(false);
+  const lastToggleTimestampRef = useRef(0);
+
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
     id: alert.id,
@@ -106,6 +110,36 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsSavingNotes(false);
     }
   };
+
+  // Stop-Loss Proximity effect (moved to top level to fix React Hooks violation)
+  useEffect(() => {
+    if (alert.status !== 'active' || !alert.entry_price || !alert.stop_loss) {
+      return;
+    }
+
+    const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
+    const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
+    
+    if (!currentPrice) return;
+
+    const totalDistance = Math.abs(alert.entry_price - alert.stop_loss);
+    if (totalDistance === 0) return;
+    
+    const currentDistance = Math.abs(currentPrice - alert.stop_loss);
+    const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
+    
+    const now = Date.now();
+    const throttleMs = 5000; // 5 second throttle
+
+    // Hysteresis logic: Show at >= 55%, Hide at <= 45%
+    if (!showStopLossProximity && proximityPercentage >= 55 && (now - lastToggleTimestampRef.current > throttleMs)) {
+      setShowStopLossProximity(true);
+      lastToggleTimestampRef.current = now;
+    } else if (showStopLossProximity && proximityPercentage <= 45 && (now - lastToggleTimestampRef.current > throttleMs)) {
+      setShowStopLossProximity(false);
+      lastToggleTimestampRef.current = now;
+    }
+  }, [livePrice, alert, showStopLossProximity, getPrice]);
 
   // Get button text (only creator can close in stream)
   const getCloseButtonText = () => 'Close My Signal';
@@ -262,52 +296,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         )}
       </div>
 
-      {/* Stop Loss Proximity Warning with Hysteresis */}
-      {alert.status === 'active' && (() => {
-        const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
-        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
-        const entryPrice = alert.entry_price;
-        const stopLoss = alert.stop_loss;
-        if (!entryPrice || !stopLoss || !currentPrice) return null;
-        const totalDistance = Math.abs(entryPrice - stopLoss);
-        if (totalDistance === 0) return null;
-        const currentDistance = Math.abs(currentPrice - stopLoss);
-        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        
-        // Hysteresis: Show at >=55%, hide at <=45%
-        const [showProximityPanel, setShowProximityPanel] = useState(proximityPercentage >= 55);
-        const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
-        
-        useEffect(() => {
-          const now = Date.now();
-          // Throttle updates to every 5 seconds
-          if (now - lastUpdateTime < 5000) return;
-          
-          if (proximityPercentage >= 55 && !showProximityPanel) {
-            setShowProximityPanel(true);
-            setLastUpdateTime(now);
-          } else if (proximityPercentage <= 45 && showProximityPanel) {
-            setShowProximityPanel(false);
-            setLastUpdateTime(now);
-          }
-        }, [proximityPercentage, showProximityPanel, lastUpdateTime]);
-        
-        if (showProximityPanel) {
-          return (
-            <div className="px-3 pb-3">
-              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5 transition-opacity duration-300">
-                <span className="text-accent-gold mt-0.5 leading-none text-sm">🟡</span>
-                <div className="text-xs text-accent-gold">
-                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
-                  <br />
-                  <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
-                </div>
-              </div>
+      {/* Stop Loss Proximity Warning (fixed React Hooks violation) */}
+      {alert.status === 'active' && showStopLossProximity && (
+        <div className="px-3 pb-3">
+          <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5 transition-opacity duration-300">
+            <span className="text-accent-gold mt-0.5 leading-none text-sm">🟡</span>
+            <div className="text-xs text-accent-gold">
+              <span className="font-semibold">Stop-Loss Proximity Warning</span>
+              <br />
+              <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
             </div>
-          );
-        }
-        return null;
-      })()}
+          </div>
+        </div>
+      )}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
         <div className="bg-muted/50 px-3 py-1.5 flex justify-end">

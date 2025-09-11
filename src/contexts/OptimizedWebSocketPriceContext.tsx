@@ -534,8 +534,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       // Do not block; visibility handler pauses later to avoid race conditions in previews/iframes
     }
 
-    // ✅ STEP 1: Filter and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
-    const requestedSymbols = symbols.filter(s => s && s.trim().length > 0);
+    // ✅ STEP 1: Filter, normalize, and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
+    const requestedSymbols = symbols
+      .map(s => s?.trim().toUpperCase())
+      .filter(Boolean);
     const allowedSymbols = requestedSymbols.filter(symbol => {
       if (!ALLOWED_SYMBOLS.includes(symbol as any)) {
         if (isDevToolsEnabled()) {
@@ -588,8 +590,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const unsubscribe = useCallback((symbols: string[]) => {
     const actuallyRemovedSymbols: string[] = [];
     
+    // Normalize symbols for consistent handling
+    const normalizedSymbols = symbols
+      .map(s => s?.trim().toUpperCase())
+      .filter(Boolean);
+    
     // Always handle ref count decrements (idempotent regardless of leadership)
-    symbols.forEach(symbol => {
+    normalizedSymbols.forEach(symbol => {
       const currentCount = subscriptionsRef.current.get(symbol) || 0;
       if (currentCount > 0) {
         const newCount = currentCount - 1;

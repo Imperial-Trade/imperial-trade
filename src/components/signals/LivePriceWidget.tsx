@@ -532,13 +532,13 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200`}>
-                  ${displayPrice > 0 ? formatPrice(displayPrice) : '---.--'}
+                  ${displayPrice > 0 ? formatPrice(displayPrice) : 'Loading price...'}
                 </span>
               </div>
             
           </div>
           
-          {!error && currentPrice > 0 && (
+          {!error && displayPrice > 0 && (
             <div className={`flex items-center gap-1 ${priceChangeColor}`}>
               {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
               <div className="text-right">
@@ -629,7 +629,7 @@ const LivePriceWidgetComponent = ({
             )}
           </div>
           
-          {!error && currentPrice > 0 && (
+          {!error && displayPrice > 0 && (
             <div className={`flex items-center gap-0.5 ${priceChangeColor}`}>
               {React.createElement(priceChangeIcon, { className: "w-3 h-3" })}
               <div className="text-right">

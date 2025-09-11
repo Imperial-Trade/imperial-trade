@@ -10,10 +10,11 @@ import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { useTelemetry } from '@/contexts/TelemetryContext';
 import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
+import { normalizeSymbol } from '@/utils/symbolUtils';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
-const MAX_SUBSCRIPTIONS = 4; // Increased for better coverage
+const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
 
 // Enhanced price data interface with bid/ask support
 interface PriceData {
@@ -273,7 +274,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       const handlePriceUpdate = (payload: any, eventVersion: 'price_update' | 'price_update_v3') => {
         try {
-          const normalizedSymbol = payload?.symbol?.trim().toUpperCase();
+          const normalizedSymbol = normalizeSymbol(payload?.symbol);
           if (!normalizedSymbol || !subscriptionsRef.current.has(normalizedSymbol)) {
             return; // Skip unsubscribed symbols
           }
@@ -534,9 +535,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       // Do not block; visibility handler pauses later to avoid race conditions in previews/iframes
     }
 
-    // ✅ STEP 1: Filter, normalize, and validate symbols - ONLY ALLOW XAUUSD/BTCUSD
+    // ✅ STEP 1: Filter, normalize, and validate symbols - ONLY ALLOW AUTHORIZED SYMBOLS
     const requestedSymbols = symbols
-      .map(s => s?.trim().toUpperCase())
+      .map(s => normalizeSymbol(s))
       .filter(Boolean);
     const allowedSymbols = requestedSymbols.filter(symbol => {
       if (!ALLOWED_SYMBOLS.includes(symbol as any)) {
@@ -548,13 +549,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return true;
     });
 
-    // ✅ STEP 2: Enforce subscription cap
+    // ✅ STEP 2: Enforce subscription cap with partial acceptance
     const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
     const newSymbolsToAdd = allowedSymbols.filter(s => !currentSubscriptions.includes(s));
+    const availableSlots = MAX_SUBSCRIPTIONS - currentSubscriptions.length;
     
-    if (currentSubscriptions.length + newSymbolsToAdd.length > MAX_SUBSCRIPTIONS) {
-      console.error(`🛑 SUBSCRIPTION LIMIT EXCEEDED! Cannot subscribe to more than ${MAX_SUBSCRIPTIONS} symbols. Currently: ${currentSubscriptions.length}, requested: ${newSymbolsToAdd.length}`);
-      return;
+    if (newSymbolsToAdd.length > availableSlots) {
+      if (availableSlots > 0) {
+        const acceptedSymbols = newSymbolsToAdd.slice(0, availableSlots);
+        console.warn(`⚠️ SUBSCRIPTION LIMIT: Can only accept ${acceptedSymbols.length} of ${newSymbolsToAdd.length} requested symbols. Accepted: ${acceptedSymbols.join(', ')}`);
+        // Continue with partial subscription
+        allowedSymbols.splice(0, allowedSymbols.length, ...acceptedSymbols, ...allowedSymbols.filter(s => currentSubscriptions.includes(s)));
+      } else {
+        console.error(`🛑 SUBSCRIPTION LIMIT EXCEEDED! Cannot subscribe to more than ${MAX_SUBSCRIPTIONS} symbols. Currently: ${currentSubscriptions.length}`);
+        return;
+      }
     }
 
     if (allowedSymbols.length === 0) {
@@ -592,7 +601,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Normalize symbols for consistent handling
     const normalizedSymbols = symbols
-      .map(s => s?.trim().toUpperCase())
+      .map(s => normalizeSymbol(s))
       .filter(Boolean);
     
     // Always handle ref count decrements (idempotent regardless of leadership)
@@ -681,7 +690,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // Stable utility functions
   const getPrice = useCallback((symbol: string): PriceData | null => {
-    return prices[symbol] || null;
+    const normalizedSymbol = normalizeSymbol(symbol);
+    return prices[normalizedSymbol] || null;
   }, [prices]);
 
   const refreshPrice = useCallback((symbol: string) => {

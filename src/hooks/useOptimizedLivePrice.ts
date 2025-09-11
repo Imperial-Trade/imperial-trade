@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { normalizeSymbol } from '@/utils/symbolUtils';
 
 interface PriceData {
   symbol: string;
@@ -53,7 +54,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   const previousPriceRef = useRef<number | null>(null);
   const THROTTLE_DELAY_MS = options.debounceMs || 250;
 
-  const currentPrice = prices[symbol?.trim().toUpperCase()];
+  const currentPrice = prices[normalizeSymbol(symbol)];
 
   const applyThrottledUpdate = useCallback((price: number, timestamp: string) => {
     pendingUpdateRef.current = { price, timestamp };
@@ -107,7 +108,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     if (!symbol) return;
 
     // Normalize symbol before subscription
-    const normalizedSymbol = symbol.trim().toUpperCase();
+    const normalizedSymbol = normalizeSymbol(symbol);
     
     if (isDevToolsEnabled()) {
       console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol}`);

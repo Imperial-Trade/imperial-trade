@@ -11,9 +11,9 @@ import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { useTelemetry } from '@/contexts/TelemetryContext';
 import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
 
-// ✅ GLOBAL SYMBOL WHITELIST - Only these symbols are allowed
-const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD'] as const;
-const MAX_SUBSCRIPTIONS = 2; // Hard cap to prevent overuse
+// ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
+const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
+const MAX_SUBSCRIPTIONS = 4; // Increased for better coverage
 
 // Enhanced price data interface with bid/ask support
 interface PriceData {
@@ -104,7 +104,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // Deterministic channel ID for logging
   const channelIdRef = useRef(`prices-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
   
-  const [prices, setPrices] = useState<Record<string, PriceData>>({});
+  // Initialize with cached prices from sessionStorage
+  const [prices, setPrices] = useState<Record<string, PriceData>>(() => {
+    try {
+      const cached = sessionStorage.getItem('cached_prices');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const now = Date.now();
+        // Only use cached prices that are less than 5 minutes old
+        if (parsed.timestamp && (now - parsed.timestamp) < 300000) {
+          return parsed.prices || {};
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore cached prices:', error);
+    }
+    return {};
+  });
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
@@ -257,19 +273,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       const handlePriceUpdate = (payload: any, eventVersion: 'price_update' | 'price_update_v3') => {
         try {
-          if (!payload?.symbol || !subscriptionsRef.current.has(payload.symbol)) {
+          const normalizedSymbol = payload?.symbol?.trim().toUpperCase();
+          if (!normalizedSymbol || !subscriptionsRef.current.has(normalizedSymbol)) {
             return; // Skip unsubscribed symbols
           }
 
         // 🔥 FURTHER RATE LIMITING: Max 2 updates/sec per symbol instead of 10
         const now = Date.now();
-        const lastUpdate = priceUpdateTimestamps.current.get(payload.symbol) || 0;
+        const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
         if (now - lastUpdate < 500) { // 500ms = max 2 updates/sec (was 100ms)
           recordClampActivation(); // Record when we drop updates due to rate limiting
           telemetry.record('clamp_activation');
           return;
         }
-        priceUpdateTimestamps.current.set(payload.symbol, now);
+        priceUpdateTimestamps.current.set(normalizedSymbol, now);
 
         statsRef.current.messagesReceived++;
         
@@ -295,7 +312,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           }
           
           const priceData: PriceData = {
-            symbol: payload.symbol,
+            symbol: normalizedSymbol,
             price: payload.price,
             change: payload.change || 0,
             changePercent: payload.changePercent || 0,
@@ -306,14 +323,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           };
 
           // PHASE 4: Batch state updates to reduce React renders
-          batchedUpdates.current.set(payload.symbol, priceData);
-          
-          if (!updateBatchTimeoutRef.current) {
-            updateBatchTimeoutRef.current = setTimeout(() => {
-              const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
-              setPrices(prev => ({ ...prev, ...updatedPrices }));
-              setLastUpdated(new Date());
-              pricePerformanceMonitor.recordUIUpdate();
+          batchedUpdates.current.set(normalizedSymbol, priceData);
+              
+              if (!updateBatchTimeoutRef.current) {
+                updateBatchTimeoutRef.current = setTimeout(() => {
+                  const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
+                  setPrices(prev => ({ ...prev, ...updatedPrices }));
+                  setLastUpdated(new Date());
+                  pricePerformanceMonitor.recordUIUpdate();
+                  
+                  // Cache prices to sessionStorage with timestamp
+                  try {
+                    sessionStorage.setItem('cached_prices', JSON.stringify({
+                      prices: updatedPrices,
+                      timestamp: Date.now()
+                    }));
+                  } catch (error) {
+                    // Ignore sessionStorage errors (quota exceeded, etc.)
+                  }
               
               // PHASE B: BroadcastChannel fanout - Leader broadcasts to followers
               if (isLeader && broadcastChannelRef.current) {

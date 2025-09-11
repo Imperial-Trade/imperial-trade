@@ -262,9 +262,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         )}
       </div>
 
-      {/* Stop Loss Proximity Warning */}
+      {/* Stop Loss Proximity Warning with Hysteresis */}
       {alert.status === 'active' && (() => {
-        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
+        const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
         const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
         const entryPrice = alert.entry_price;
         const stopLoss = alert.stop_loss;
@@ -273,10 +273,29 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         if (totalDistance === 0) return null;
         const currentDistance = Math.abs(currentPrice - stopLoss);
         const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        if (proximityPercentage >= 50) {
+        
+        // Hysteresis: Show at >=55%, hide at <=45%
+        const [showProximityPanel, setShowProximityPanel] = useState(proximityPercentage >= 55);
+        const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
+        
+        useEffect(() => {
+          const now = Date.now();
+          // Throttle updates to every 5 seconds
+          if (now - lastUpdateTime < 5000) return;
+          
+          if (proximityPercentage >= 55 && !showProximityPanel) {
+            setShowProximityPanel(true);
+            setLastUpdateTime(now);
+          } else if (proximityPercentage <= 45 && showProximityPanel) {
+            setShowProximityPanel(false);
+            setLastUpdateTime(now);
+          }
+        }, [proximityPercentage, showProximityPanel, lastUpdateTime]);
+        
+        if (showProximityPanel) {
           return (
             <div className="px-3 pb-3">
-              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5">
+              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5 transition-opacity duration-300">
                 <span className="text-accent-gold mt-0.5 leading-none text-sm">🟡</span>
                 <div className="text-xs text-accent-gold">
                   <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>

@@ -457,9 +457,9 @@ const LivePriceWidgetComponent = ({
     }
   };
 
-  // Use displayPrice fallback to prevent '---' flashes
+  // Enhanced displayPrice with better fallback chain
   const displayPrice = useMemo(() => {
-    return currentPrice > 0 ? currentPrice : prevPrice;
+    return currentPrice > 0 ? currentPrice : (prevPrice > 0 ? prevPrice : 0);
   }, [currentPrice, prevPrice]);
 
   const priceChangeColor = useMemo(() => {
@@ -595,20 +595,20 @@ const LivePriceWidgetComponent = ({
         </Button>
       </div>
 
-      {/* Error State */}
-      {error && !error.includes('Price data is') && (
+      {/* Error State - suppress transient connection errors */}
+      {error && !error.includes('TIMED_OUT') && !error.includes('CLOSED') && !error.includes('Price data is') && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
           <div className="text-red-400 text-sm">
-            {error}
+            Connection Error
           </div>
         </div>
       )}
 
-      {/* Loading State - Simple text without blocking */}
+      {/* Loading State - Fixed height to prevent layout shifts */}
       {isLoading && currentPrice === 0 && (
-        <div className="mb-3 p-2 text-center">
-          <div className="text-sm text-muted-foreground">Loading price data...</div>
+        <div className="mb-3 p-2 text-center min-h-[40px] flex items-center justify-center">
+          <div className="text-sm text-muted-foreground font-mono">Connecting to price feed...</div>
         </div>
       )}
 
@@ -623,8 +623,8 @@ const LivePriceWidgetComponent = ({
                 </span>
               </div>
             ) : (
-              <div className="text-muted-foreground font-mono text-lg">
-                <span>Loading...</span>
+              <div className="text-muted-foreground font-mono text-lg min-h-[28px] flex items-center">
+                <span>Loading price...</span>
               </div>
             )}
           </div>

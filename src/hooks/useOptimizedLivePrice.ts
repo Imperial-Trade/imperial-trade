@@ -53,7 +53,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   const previousPriceRef = useRef<number | null>(null);
   const THROTTLE_DELAY_MS = options.debounceMs || 250;
 
-  const currentPrice = prices[symbol];
+  const currentPrice = prices[symbol?.trim().toUpperCase()];
 
   const applyThrottledUpdate = useCallback((price: number, timestamp: string) => {
     pendingUpdateRef.current = { price, timestamp };
@@ -106,16 +106,19 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   useEffect(() => {
     if (!symbol) return;
 
+    // Normalize symbol before subscription
+    const normalizedSymbol = symbol.trim().toUpperCase();
+    
     if (isDevToolsEnabled()) {
-      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${symbol}`);
+      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol}`);
     }
-    subscribe([symbol]);
+    subscribe([normalizedSymbol]);
 
     return () => {
       if (isDevToolsEnabled()) {
-        console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${symbol}`);
+        console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${normalizedSymbol}`);
       }
-      unsubscribe([symbol]);
+      unsubscribe([normalizedSymbol]);
     };
   }, [symbol, subscribe, unsubscribe]);
 

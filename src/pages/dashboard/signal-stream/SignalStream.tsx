@@ -171,26 +171,27 @@ export default function SignalStream() {
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     
-    // Subscribe to symbols from both active AND pending alerts
+    // Subscribe to symbols from both active AND pending alerts (normalized)
     [...activeAlerts, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim());
+        symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
       }
     });
     
-    // If no symbols found, subscribe to ONLY essential symbols to prevent message explosion
+    // If no symbols found, subscribe to essential symbols for warm-start
     if (symbolSet.size === 0) {
-      ['XAUUSD', 'BTCUSD'].forEach(symbol => { // ✅ RESTRICTED to only essential symbols
+      ['XAUUSD', 'BTCUSD'].forEach(symbol => {
         symbolSet.add(symbol);
       });
       if (isDevToolsEnabled()) {
-        console.log('🔄 SignalStream - No alert symbols found, using essential symbols only: XAUUSD, BTCUSD');
+        console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD');
       }
     }
     
-    const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
+    // Limit to top 2 symbols for efficient connection management
+    const symbolList = Array.from(symbolSet).sort().slice(0, 2);
     if (isDevToolsEnabled()) {
-      console.log('🔄 SignalStream - Symbols to subscribe:', symbolList);
+      console.log('🔄 SignalStream - Pre-subscribing to top 2 symbols:', symbolList);  
     }
     return symbolList;
   }, [activeAlerts, alerts]);
@@ -214,7 +215,24 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Remove page-level price subscription - let each LivePriceWidget manage its own subscription
+  // Pre-subscribe to warm up the connection for the most important symbols
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (symbols.length > 0) {
+        subscribe(symbols);
+        if (isDevToolsEnabled()) {
+          console.log('🚀 SignalStream - Pre-warming connection with symbols:', symbols);
+        }
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [symbols, subscribe, unsubscribe]);
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {

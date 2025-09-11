@@ -71,37 +71,21 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   const maxReconnectAttempts = 2; // 🔥 FURTHER REDUCED from 3 to 2 attempts
   const baseReconnectDelay = 12000; // 🔥 INCREASED from 8s to 12s base delay
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent reconnection after unmount
+  
+  // 🔥 LEAK-PROOF: Additional refs for connection serialization
+  const isConnectingRef = useRef(false);
+  const connectionStateRef = useRef(connectionState);
+  
+  // Keep connectionStateRef in sync
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
 
-  // 🔥 LEAK-PROOF: Connection with mount guards and deterministic logging
-  const connect = useCallback(() => {
-    // 🔥 LEAK-PROOF: Block connection after component unmount
-    if (!mountOnlyRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log('SharedRealtime - Connect blocked: component unmounted');
-      }
-      return;
+  // 🔥 LEAK-PROOF: buildChannel - creates fresh channel with current subscriptions
+  const buildChannel = useCallback(() => {
+    if (isDevToolsEnabled()) {
+      console.log('SharedRealtime - Building channel with', subscriptionsRef.current.size, 'subscriptions');
     }
-    
-    // Extra safety: Never attempt connect unless we have active subscriptions
-    if (subscriptionsRef.current.size === 0) {
-      if (isDevToolsEnabled()) {
-        console.log('SharedRealtime - No subscribers, skipping connect');
-      }
-      return;
-    }
-
-    // 🔥 LEAK-PROOF: Prevent duplicate connections
-    if (connectionState.connectionStatus === 'connected' || connectionState.connectionStatus === 'connecting' || channelRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log('SharedRealtime - Already connected/connecting or channel exists, skipping');
-      }
-      return;
-    }
-
-    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
-    realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider');
-    
-    setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
     
     const channel = supabase.channel('shared-realtime-connection');
     
@@ -126,7 +110,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       (channel as any).on('postgres_changes', { 
         event: config.event || 'INSERT', 
         schema: config.schema || 'public', 
-        table: config.table 
+        table: config.table,
+        ...(config.filter && { filter: config.filter })
       }, wrappedCallback);
     });
     
@@ -136,8 +121,9 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       }
       
       if (status === 'SUBSCRIBED') {
-        // 🔥 DEFINITIVE LOGGING: Connection established successfully
-        recordConnection(); // PHASE C: Record successful connection
+        isConnectingRef.current = false;
+        connectionStabilizer.endConnection('SharedRealtime', true);
+        recordConnection(); // Record successful connection
         setConnectionState(prev => ({ 
           ...prev, 
           connectionStatus: 'connected', 
@@ -146,6 +132,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           subscribers: subscriptionsRef.current.size
         }));
       } else if (status === 'CHANNEL_ERROR') {
+        isConnectingRef.current = false;
+        connectionStabilizer.endConnection('SharedRealtime', false);
         setConnectionState(prev => ({ 
           ...prev, 
           connectionStatus: 'error', 
@@ -156,7 +144,70 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     });
 
     channelRef.current = channel;
-  }, [healthMonitor]);
+    return channel;
+  }, [healthMonitor, recordConnection]);
+
+  // 🔥 LEAK-PROOF: rebuildChannel - removes old channel and builds new one
+  const rebuildChannel = useCallback(() => {
+    if (channelRef.current) {
+      // 🔥 DEFINITIVE LOGGING: Log removal of old channel
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SharedRealtimeProvider - rebuild');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
+    if (subscriptionsRef.current.size > 0) {
+      // 🔥 DEFINITIVE LOGGING: Log creation of new channel
+      channelIdRef.current = generateChannelId('shared'); // New ID for new channel
+      realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider - rebuild');
+      buildChannel();
+    }
+  }, [buildChannel]);
+
+  // 🔥 LEAK-PROOF: Connection with mount guards and serialization
+  const connect = useCallback(() => {
+    // 🔥 LEAK-PROOF: Block connection after component unmount
+    if (!mountOnlyRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - Connect blocked: component unmounted');
+      }
+      return;
+    }
+    
+    // Extra safety: Never attempt connect unless we have active subscriptions
+    if (subscriptionsRef.current.size === 0) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - No subscribers, skipping connect');
+      }
+      return;
+    }
+
+    // 🔥 LEAK-PROOF: Prevent duplicate connections with refs
+    if (channelRef.current || isConnectingRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - Already connected/connecting, skipping');
+      }
+      return;
+    }
+
+    // 🔥 SERIALIZED CONNECTION: Use connection stabilizer
+    if (!connectionStabilizer.canAttemptConnection('SharedRealtime')) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - Connection blocked by stabilizer');
+      }
+      return;
+    }
+
+    connectionStabilizer.startConnection('SharedRealtime');
+    isConnectingRef.current = true;
+
+    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
+    realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider');
+    
+    setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
+    
+    buildChannel();
+  }, [buildChannel]);
 
   // 🔥 LEAK-PROOF: Stable disconnect function with definitive logging
   const disconnect = useCallback(() => {
@@ -192,7 +243,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     }, totalDelay);
   }, [connect]);
 
-  // PHASE 3: Optimized subscription management
+  // 🔥 LEAK-PROOF: Subscription management with rebuild logic
   const subscribeToTable = useCallback((
     config: TableSubscriptionConfig, 
     callback: RealtimeCallback
@@ -205,41 +256,13 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     // Update subscriber count
     setConnectionState(prev => ({
       ...prev,
-      subscribers: subscriptionsRef.current.size + 1
+      subscribers: subscriptionsRef.current.size
     }));
 
-    // Add to existing channel if connected
+    // 🔥 LEAK-PROOF: Rebuild channel if exists, otherwise connect
     if (channelRef.current) {
-      const wrappedCallback = (payload: any) => {
-        // Health monitoring
-        healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
-        
-        // Record telemetry for per-channel tracking
-        telemetry.record('db_change_v3');
-        
-        // Update session messages and lastUpdated
-        setConnectionState(prev => ({
-          ...prev,
-          sessionMessages: prev.sessionMessages + 1,
-          lastUpdated: new Date()
-        }));
-        
-        callback(payload);
-      };
-      (channelRef.current as any).on(
-        'postgres_changes',
-        {
-          event: config.event || 'INSERT',
-          schema: config.schema || 'public',
-          table: config.table,
-          ...(config.filter && { filter: config.filter })
-        },
-        wrappedCallback
-      );
-    }
-
-    // Connect if we have subscribers and not connected
-    if (connectionState.connectionStatus === 'disconnected' && subscriptionsRef.current.size === 1) {
+      rebuildChannel();
+    } else if (subscriptionsRef.current.size === 1) {
       connect();
     }
 
@@ -253,19 +276,21 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       
       setConnectionState(prev => ({
         ...prev,
-        subscribers: Math.max(0, prev.subscribers - 1)
+        subscribers: Math.max(0, subscriptionsRef.current.size)
       }));
 
-      // Disconnect if no more subscribers
+      // 🔥 LEAK-PROOF: Disconnect if no subscribers, otherwise rebuild
       if (subscriptionsRef.current.size === 0) {
         disconnect();
+      } else {
+        rebuildChannel();
       }
 
       if (isDevToolsEnabled()) {
         console.log(`📝 SharedRealtime: Unsubscribed from ${config.table} (${subscriptionsRef.current.size} remaining)`);
       }
     };
-  }, [connectionState.connectionStatus, connect, disconnect]);
+  }, [connect, disconnect, rebuildChannel]);
 
   const getConnectionHealth = useCallback(() => ({
     isHealthy: connectionState.isConnected,

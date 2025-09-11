@@ -107,3 +107,8 @@ export const realtimeLogger = new RealtimeLogger();
 export function generateChannelId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
 }
+
+// 🔥 DEV TOOL: Expose logger on window for debugging in development
+if (typeof window !== 'undefined' && isDevToolsEnabled()) {
+  (window as any).realtimeLogger = realtimeLogger;
+}

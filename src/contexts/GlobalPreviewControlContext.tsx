@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 // Global Preview Control - Ensures only one live preview across all developers
 // Uses Supabase Realtime presence for coordination
@@ -37,6 +38,9 @@ interface GlobalPreviewControlProviderProps {
 export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProviderProps> = ({
   children
 }) => {
+  // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
+  const channelIdRef = useRef(generateChannelId('preview-ctrl'));
+  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   const [state, setState] = useState<PreviewControlState>({
     isGlobalLeader: false,
     currentLeader: null,
@@ -58,19 +62,22 @@ export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProvider
     setState(prev => ({ ...prev, sessionId }));
   }, []);
 
-  // Initialize global presence channel
+  // 🔥 LEAK-PROOF: Initialize global presence channel with mount guards
   useEffect(() => {
+    mountOnlyRef.current = true;
+    
     // Feature flag check - can be enabled later
     const isEnforced = false; // TODO: Replace with actual feature flag
     setState(prev => ({ ...prev, isEnforced }));
 
-    if (!isEnforced || !sessionIdRef.current) return;
+    if (!isEnforced || !sessionIdRef.current) {
+      return;
+    }
 
     const channelName = `preview_control:${projectId}`;
     
-    if (isDevToolsEnabled()) {
-      console.log('🌐 Joining global preview control channel:', channelName);
-    }
+    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
+    realtimeLogger.logSubscribe(channelIdRef.current, channelName, 'GlobalPreviewControlProvider');
 
     const channel = supabase.channel(channelName);
     channelRef.current = channel;
@@ -140,9 +147,15 @@ export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProvider
         }
       });
 
-    // Cleanup on unmount
+    // 🔥 LEAK-PROOF: Cleanup on unmount with definitive logging
     return () => {
+      mountOnlyRef.current = false;
+      
+      realtimeLogger.logStatus('GlobalPreviewControlProvider UNMOUNT');
+      
       if (channelRef.current) {
+        // 🔥 DEFINITIVE LOGGING: Always log unsubscription
+        realtimeLogger.logUnsubscribe(channelIdRef.current, 'GlobalPreviewControlProvider');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
@@ -151,7 +164,7 @@ export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProvider
         heartbeatIntervalRef.current = null;
       }
     };
-  }, []);
+  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
   const requestControl = useCallback(() => {
     // Implementation for requesting control from current leader

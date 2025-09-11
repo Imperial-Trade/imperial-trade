@@ -8,6 +8,7 @@ import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
 import { useTelemetry } from '@/contexts/TelemetryContext';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
+import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -62,13 +63,14 @@ interface SignalRealtimeProviderProps {
 }
 
 export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ children }) => {
-  // Deterministic channel ID for logging
-  const channelIdRef = useRef(`signal-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
+  // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
+  const channelIdRef = useRef(generateChannelId('signal'));
   
   const [signals, setSignals] = useState<TradeAlertWithProfile[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
+  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
   // PHASE 3: Use shared Realtime connection to eliminate duplicate channels + HEALTH MONITORING
   const { connectionState, subscribeToTable } = useSharedRealtime();
@@ -392,7 +394,16 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, []);
 
+  // 🔥 LEAK-PROOF: Subscribe with mount guards and definitive logging
   const subscribe = useCallback(async () => {
+    // 🔥 LEAK-PROOF: Block subscription after unmount
+    if (!mountOnlyRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('Signal subscription blocked: component unmounted');
+      }
+      return;
+    }
+    
     // PHASE B: Route gating - only subscribe if current route allows signals
     if (!isSignalSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
@@ -401,6 +412,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       return;
     }
 
+    // 🔥 LEAK-PROOF: Idempotent subscription check
     if (unsubscribeRef.current) {
       if (isDevToolsEnabled()) {
         console.log('SignalRealtimeContext - Already subscribed via shared connection');
@@ -408,9 +420,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       return;
     }
 
-    if (isDevToolsEnabled()) {
-      console.log(`🔄 PHASE 3: SignalRealtime [${channelIdRef.current}] subscribing via shared connection (massive savings)`);
-    }
+    // 🔥 DEFINITIVE LOGGING: Log subscription attempt
+    realtimeLogger.logSubscribe(channelIdRef.current, 'trade_alerts', 'SignalRealtimeProvider');
 
     try {
       // PHASE 3: Get educator IDs with enhanced caching
@@ -450,6 +461,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed]);
 
+  // 🔥 LEAK-PROOF: Deterministic unsubscribe with definitive logging
   const unsubscribe = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -457,15 +469,15 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
 
     if (unsubscribeRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log(`SignalRealtimeContext [${channelIdRef.current}] - Unsubscribing from shared signal realtime`);
-      }
+      // 🔥 DEFINITIVE LOGGING: Always log unsubscription
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SignalRealtimeProvider');
+      
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
     
     setNextRetryAt(null);
-  }, []);
+  }, []); // 🔥 LEAK-PROOF: No dependencies to prevent stale closures
 
   // PHASE 3: Simplified reconnection via shared connection (automatic)
   const attemptReconnect = useCallback(() => {
@@ -488,21 +500,30 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }, delay);
   }, [subscribe, unsubscribe]);
 
-  // Mount-only health registration to prevent flapping
+  // 🔥 LEAK-PROOF: Mount-only lifecycle with definitive cleanup
   useEffect(() => {
-    if (isDevToolsEnabled()) {
-      console.log(`📊 SignalRealtime: MOUNT [${channelIdRef.current}] registering with health monitor`);
-    }
+    mountOnlyRef.current = true;
+    
+    realtimeLogger.logStatus('SignalRealtimeProvider MOUNT');
     healthMonitor.registerConnection('SignalRealtime');
     
     return () => {
-      if (isDevToolsEnabled()) {
-        console.log(`📊 SignalRealtime: UNMOUNT [${channelIdRef.current}] unregistering from health monitor`);
+      mountOnlyRef.current = false;
+      
+      realtimeLogger.logStatus('SignalRealtimeProvider UNMOUNT');
+      
+      // 🔥 LEAK-PROOF: Clear all timers first
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
-      healthMonitor.unregisterConnection('SignalRealtime');
+      
+      // 🔥 LEAK-PROOF: Force unsubscribe
       unsubscribe();
+      
+      healthMonitor.unregisterConnection('SignalRealtime');
     };
-  }, []); // Empty dependencies to prevent re-registration flapping
+  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
   const contextValue: SignalRealtimeContextType = {
     signals,

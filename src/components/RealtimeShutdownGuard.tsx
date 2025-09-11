@@ -2,20 +2,26 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Global RealtimeShutdownGuard - Eliminates zombie connections on page unload
+ * Enhanced RealtimeShutdownGuard - Eliminates zombie connections on page unload
  * 
  * This component should be mounted once at the App level to ensure all
  * Supabase Realtime channels are properly cleaned up when the user:
  * - Closes the tab/window
- * - Navigates away from the application
+ * - Navigates away from the application  
  * - Refreshes the page
  * 
- * This is a critical safety net to prevent connection leaks.
+ * 🔥 ENHANCED: Now includes paired logging verification and comprehensive cleanup
  */
 export const RealtimeShutdownGuard: React.FC = () => {
   useEffect(() => {
     const handlePageHide = () => {
       console.log('🚨 RealtimeShutdownGuard: Page hiding, cleaning up all channels');
+      
+      // 🔥 LOG FINAL STATUS: Show realtime logger status before cleanup
+      const activeCount = (window as any).realtimeLogger?.getActiveChannelCount?.() || 0;
+      const activeChannels = (window as any).realtimeLogger?.getActiveChannels?.() || [];
+      
+      console.log(`🧹 RealtimeShutdownGuard: ${activeCount} active channels before cleanup:`, activeChannels);
       
       try {
         // Get all active channels and remove them
@@ -37,6 +43,15 @@ export const RealtimeShutdownGuard: React.FC = () => {
         });
         
         console.log(`🧹 RealtimeShutdownGuard: Cleaned up ${channels.length} channels`);
+        
+        // 🔥 VERIFY CLEANUP: Final verification that no channels remain
+        const remainingChannels = supabase.getChannels();
+        if (remainingChannels.length === 0) {
+          console.log('✅ RealtimeShutdownGuard: All channels successfully removed');
+        } else {
+          console.error('❌ RealtimeShutdownGuard: WARNING - Channels remain after cleanup:', remainingChannels.length);
+        }
+        
       } catch (error) {
         console.error('RealtimeShutdownGuard: Cleanup error:', error);
       }

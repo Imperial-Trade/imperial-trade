@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 interface AlertNotification {
   signal_id: string;
@@ -19,6 +20,11 @@ export const useInstantAlerts = () => {
   const { user, profile } = useAuth();
   const dupeMapRef = useRef(new Map<string, number>());
   const [xeonSubscription, setXeonSubscription] = useState<boolean | null>(null);
+  
+  // 🔥 LEAK-PROOF: Deterministic channel IDs for definitive logging  
+  const alertsChannelIdRef = useRef(generateChannelId('alerts'));
+  const monitoringChannelIdRef = useRef(generateChannelId('monitor'));
+  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
   const handleAlertNotification = useCallback((payload: AlertNotification) => {
     console.log('🚨 INSTANT ALERT RECEIVED:', payload);
@@ -155,24 +161,31 @@ export const useInstantAlerts = () => {
     checkXeonSubscription();
   }, [user]);
 
+  // 🔥 LEAK-PROOF: Setup instant alert notifications with mount guards
   useEffect(() => {
-    console.log('🔔 Setting up instant alert notifications...');
+    mountOnlyRef.current = true;
+    
+    realtimeLogger.logStatus('useInstantAlerts MOUNT');
 
-    const alertsChannelId = `alerts-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
-    const monitoringChannelId = `monitor-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
+    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
+    realtimeLogger.logSubscribe(alertsChannelIdRef.current, 'instant-alerts', 'useInstantAlerts');
+    realtimeLogger.logSubscribe(monitoringChannelIdRef.current, 'alert-monitoring-changes', 'useInstantAlerts');
 
     // Subscribe to instant alert channel
     const channel = supabase
       .channel('instant-alerts')
       .on('broadcast', { event: 'alert_triggered' }, ({ payload }) => {
+        // 🔥 LEAK-PROOF: Block operations after unmount
+        if (!mountOnlyRef.current) return;
+        
         handleAlertNotification(payload as AlertNotification);
       })
       .subscribe((status) => {
+        if (!mountOnlyRef.current) return;
+        
         console.log('📡 Instant alerts subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
-          console.log(`WS-ALERTS: SUBSCRIBE [${alertsChannelId}] name=instant-alerts`);
-          
           // Request notification permission
           if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission().then(permission => {
@@ -199,22 +212,28 @@ export const useInstantAlerts = () => {
           filter: 'is_active=eq.false' // Listen for alerts being deactivated (triggered)
         },
         (payload) => {
+          // 🔥 LEAK-PROOF: Block operations after unmount
+          if (!mountOnlyRef.current) return;
+          
           console.log('📊 Alert monitoring change detected:', payload);
           // Additional fallback notification handling could go here
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`WS-ALERTS: SUBSCRIBE [${monitoringChannelId}] name=alert-monitoring-changes`);
-        }
-      });
+      .subscribe();
 
     return () => {
-      console.log(`WS-ALERTS: UNSUBSCRIBE [${alertsChannelId}], [${monitoringChannelId}]`);
+      mountOnlyRef.current = false;
+      
+      realtimeLogger.logStatus('useInstantAlerts UNMOUNT');
+      
+      // 🔥 DEFINITIVE LOGGING: Always log unsubscription
+      realtimeLogger.logUnsubscribe(alertsChannelIdRef.current, 'useInstantAlerts');
+      realtimeLogger.logUnsubscribe(monitoringChannelIdRef.current, 'useInstantAlerts');
+      
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };
-  }, [handleAlertNotification, xeonSubscription]);
+  }, [handleAlertNotification, xeonSubscription]); // 🔥 LEAK-PROOF: Stable dependencies only
 
   return {
     // Could expose methods for manual alert testing, muting, etc.

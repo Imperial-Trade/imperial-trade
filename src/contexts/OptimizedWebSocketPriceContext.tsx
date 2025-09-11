@@ -11,6 +11,7 @@ import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { useTelemetry } from '@/contexts/TelemetryContext';
 import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext';
 import { normalizeSymbol } from '@/utils/symbolUtils';
+import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -102,8 +103,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
-  // Deterministic channel ID for logging
-  const channelIdRef = useRef(`prices-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
+  // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
+  const channelIdRef = useRef(generateChannelId('prices'));
+  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
   // Initialize with cached prices from sessionStorage
   const [prices, setPrices] = useState<Record<string, PriceData>>(() => {
@@ -185,7 +187,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return Math.max(baseDelay + jitter, 1000); // Minimum 1 second
   }, []);
 
-  // Stable disconnect function - only depends on updateConnectionState
+  // 🔥 LEAK-PROOF: Stable disconnect function with definitive logging
   const disconnect = useCallback(() => {
     // Clear all timers first
     if (reconnectTimeoutRef.current) {
@@ -201,11 +203,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Mark as intentional close to ignore CLOSED/TIMED_OUT noise
     manualCloseRef.current = true;
 
-    // Clean up channel with deterministic logging
+    // 🔥 DEFINITIVE LOGGING: Clean up channel with deterministic logging
     if (channelRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log(`WS-P: UNSUBSCRIBE [${channelIdRef.current}]`);
-      }
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'OptimizedWebSocketPriceProvider');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
@@ -218,10 +218,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Reset manual close flag shortly after cleanup
     setTimeout(() => { manualCloseRef.current = false; }, 1000);
-  }, [updateConnectionState]);
+  }, [updateConnectionState]); // 🔥 LEAK-PROOF: Minimal dependencies
 
-  // PHASE 3: Optimized connection with circuit breaker
+  // 🔥 LEAK-PROOF: Connection with mount guards and definitive logging
   const connect = useCallback(async () => {
+    // 🔥 LEAK-PROOF: Block connect after unmount
+    if (!mountOnlyRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('WS-P: connect blocked (component unmounted)');
+      }
+      return;
+    }
+    
     // Guard: Block connect if background disconnect timer is pending
     if (visibilityTimeoutRef.current) {
       if (isDevToolsEnabled()) {
@@ -230,7 +238,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
     
-    // Connection guards
+    // 🔥 LEAK-PROOF: Connection guards with better logging
     if (isConnectingRef.current || channelRef.current || isCircuitBreakerOpen()) {
       if (isDevToolsEnabled()) {
         console.log('🚫 Connection attempt blocked:', {
@@ -247,9 +255,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     setError(null);
 
     try {
-      if (isDevToolsEnabled()) {
-        console.log('🔗 Initiating WebSocket connection...');
-      }
+      // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
+      realtimeLogger.logSubscribe(channelIdRef.current, 'live-prices-broadcast', 'OptimizedWebSocketPriceProvider');
 
       // PHASE 2: Create optimized channel WITHOUT presence (reduces 90% of messages)
       const channel = supabase.channel('live-prices-broadcast', {
@@ -834,14 +841,40 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // Register/unregister and disconnect on unmount - truly mount-only effect
   useEffect(() => {
+    mountOnlyRef.current = true;
+    
+    realtimeLogger.logStatus('OptimizedWebSocketPriceProvider MOUNT');
     healthMonitor.registerConnection('OptimizedWebSocketPrice');
     recordConnection();
 
     return () => {
+      mountOnlyRef.current = false;
+      
+      realtimeLogger.logStatus('OptimizedWebSocketPriceProvider UNMOUNT');
+      
+      // 🔥 LEAK-PROOF: Clear all timers first
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current);
+        healthCheckIntervalRef.current = null;
+      }
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+        visibilityTimeoutRef.current = null;
+      }
+      if (updateBatchTimeoutRef.current) {
+        clearTimeout(updateBatchTimeoutRef.current);
+        updateBatchTimeoutRef.current = null;
+      }
+      
+      // 🔥 LEAK-PROOF: Force disconnect and cleanup
+      disconnect();
       healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
-      disconnectRef.current();
     };
-  }, []);
+  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
   // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
   useEffect(() => {

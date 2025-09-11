@@ -6,6 +6,7 @@ import { connectionStabilizer } from '@/utils/connectionStabilizer';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { useTelemetry } from '@/contexts/TelemetryContext';
+import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 // Shared connection state to prevent multiple Realtime channels
 interface SharedRealtimeState {
@@ -51,8 +52,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   const { recordMessage, recordConnection } = useRealtimeTelemetry();
   const telemetry = useTelemetry();
   
-  // Deterministic channel ID for logging
-  const channelIdRef = useRef(`shared-${Date.now()}-${Math.random().toString(36).slice(-4)}`);
+  // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
+  const channelIdRef = useRef(generateChannelId('shared'));
   
   const [connectionState, setConnectionState] = useState<SharedRealtimeState>({
     isConnected: false,
@@ -67,11 +68,20 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   const subscriptionsRef = useRef<Map<string, { config: TableSubscriptionConfig; callback: RealtimeCallback }>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 3; // 🔥 REDUCED from 5 to 3 attempts
-  const baseReconnectDelay = 8000; // 🔥 INCREASED from 3s to 8s base delay
+  const maxReconnectAttempts = 2; // 🔥 FURTHER REDUCED from 3 to 2 attempts
+  const baseReconnectDelay = 12000; // 🔥 INCREASED from 8s to 12s base delay
+  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent reconnection after unmount
 
-  // PHASE 3: Single shared connection for all Realtime needs WITH CONNECTION STABILIZER
+  // 🔥 LEAK-PROOF: Connection with mount guards and deterministic logging
   const connect = useCallback(() => {
+    // 🔥 LEAK-PROOF: Block connection after component unmount
+    if (!mountOnlyRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('SharedRealtime - Connect blocked: component unmounted');
+      }
+      return;
+    }
+    
     // Extra safety: Never attempt connect unless we have active subscriptions
     if (subscriptionsRef.current.size === 0) {
       if (isDevToolsEnabled()) {
@@ -80,16 +90,17 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       return;
     }
 
-    if (connectionState.connectionStatus === 'connected' || connectionState.connectionStatus === 'connecting') {
+    // 🔥 LEAK-PROOF: Prevent duplicate connections
+    if (connectionState.connectionStatus === 'connected' || connectionState.connectionStatus === 'connecting' || channelRef.current) {
       if (isDevToolsEnabled()) {
-        console.log('SharedRealtime - Already connected or connecting, skipping');
+        console.log('SharedRealtime - Already connected/connecting or channel exists, skipping');
       }
       return;
     }
 
-    if (isDevToolsEnabled()) {
-      console.log(`WS-SHARED: SUBSCRIBE [${channelIdRef.current}] with ${subscriptionsRef.current.size} subscribers`);
-    }
+    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
+    realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider');
+    
     setConnectionState(prev => ({ ...prev, connectionStatus: 'connecting', error: null }));
     
     const channel = supabase.channel('shared-realtime-connection');
@@ -125,9 +136,7 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
       }
       
       if (status === 'SUBSCRIBED') {
-        if (isDevToolsEnabled()) {
-          console.log(`WS-SHARED: SUBSCRIBE [${channelIdRef.current}] name=shared-realtime-connection`);
-        }
+        // 🔥 DEFINITIVE LOGGING: Connection established successfully
         recordConnection(); // PHASE C: Record successful connection
         setConnectionState(prev => ({ 
           ...prev, 
@@ -149,26 +158,28 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     channelRef.current = channel;
   }, [healthMonitor]);
 
+  // 🔥 LEAK-PROOF: Stable disconnect function with definitive logging
   const disconnect = useCallback(() => {
     if (channelRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log(`WS-SHARED: UNSUBSCRIBE [${channelIdRef.current}]`);
-      }
+      // 🔥 DEFINITIVE LOGGING: Always log unsubscription
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SharedRealtimeProvider');
+      
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
       setConnectionState(prev => ({ ...prev, connectionStatus: 'disconnected', isConnected: false, error: null }));
     }
-  }, [healthMonitor]);
+  }, []); // 🔥 LEAK-PROOF: No dependencies to prevent stale closures
 
   const scheduleReconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current || reconnectAttempts.current >= maxReconnectAttempts) {
+    // 🔥 LEAK-PROOF: Block reconnection after unmount
+    if (!mountOnlyRef.current || reconnectTimeoutRef.current || reconnectAttempts.current >= maxReconnectAttempts) {
       return;
     }
 
-    // 🔥 DRASTICALLY REDUCED RECONNECTION FREQUENCY - 5x slower minimum
-    const delay = Math.max(baseReconnectDelay * Math.pow(2.5, reconnectAttempts.current), 10000); // Minimum 10 seconds
-    const jitter = delay * 0.15 * Math.random();
-    const totalDelay = Math.min(delay + jitter, 120000); // Cap at 2 minutes instead of 30s
+    // 🔥 DRASTICALLY REDUCED RECONNECTION FREQUENCY - Even slower
+    const delay = Math.max(baseReconnectDelay * Math.pow(3, reconnectAttempts.current), 15000); // Minimum 15 seconds
+    const jitter = delay * 0.2 * Math.random();
+    const totalDelay = Math.min(delay + jitter, 180000); // Cap at 3 minutes
 
     if (isDevToolsEnabled()) {
       console.log(`🔄 SharedRealtime reconnecting in ${Math.round(totalDelay/1000)}s (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
@@ -277,21 +288,30 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     return () => window.removeEventListener('online', handleOnline);
   }, [connectionState.isConnected, connect]);
 
-  // Mount-only health registration to prevent flapping
+  // 🔥 LEAK-PROOF: Mount-only lifecycle with definitive cleanup
   useEffect(() => {
-    if (isDevToolsEnabled()) {
-      console.log(`📊 SharedRealtime: MOUNT [${channelIdRef.current}] registering with health monitor`);
-    }
+    mountOnlyRef.current = true;
+    
+    realtimeLogger.logStatus('SharedRealtimeProvider MOUNT');
     healthMonitor.registerConnection('SharedRealtime');
     
     return () => {
-      if (isDevToolsEnabled()) {
-        console.log(`📊 SharedRealtime: UNMOUNT [${channelIdRef.current}] unregistering from health monitor`);
+      mountOnlyRef.current = false;
+      
+      realtimeLogger.logStatus('SharedRealtimeProvider UNMOUNT');
+      
+      // 🔥 LEAK-PROOF: Clear all timers first
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
-      healthMonitor.unregisterConnection('SharedRealtime');
+      
+      // 🔥 LEAK-PROOF: Force disconnect
       disconnect();
+      
+      healthMonitor.unregisterConnection('SharedRealtime');
     };
-  }, []); // Empty dependencies to prevent re-registration flapping
+  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
   const contextValue = useMemo<SharedRealtimeContextType>(() => ({
     connectionState,

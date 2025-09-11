@@ -13,6 +13,7 @@ import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlCon
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
 import { TelemetryProvider } from "@/contexts/TelemetryContext";
 import { RealtimeShutdownGuard } from "@/components/RealtimeShutdownGuard";
+import { VersionChecker } from "@/components/VersionChecker";
 import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
 import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
@@ -96,6 +97,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RealtimeShutdownGuard />
+        <VersionChecker />
         <CacheCleanerMount />
         <Sonner />
         <BrowserRouter>

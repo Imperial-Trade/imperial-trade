@@ -26,7 +26,8 @@ const getCurrentTradingSession = () => {
     return TRADING_SESSIONS.SYDNEY.name;
   }
   
-  return 'Market Closed';
+  // Market status display removed 
+  return null;
 };
 
 const formatCurrentTime = () => {

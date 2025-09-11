@@ -459,6 +459,23 @@
   }
 }
 
+/* Professional fade animation */
+@keyframes professional-fade-out {
+  from { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  to { 
+    opacity: 0; 
+    transform: scale(0.98); 
+  }
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.7s ease-in-out;
+}
+
 .animate-parallax-float {
   animation: parallaxFloat 20s ease-in-out infinite;
 }
@@ -948,9 +965,62 @@
   animation: fadeIn 0.7s ease-in-out;
 }
 
+.animate-dashboard-fade-in {
+  animation: dashboardFadeIn 5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dashboardFadeIn {
+  0% { 
+    opacity: 0; 
+    transform: translateY(20px);
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  10% {
+    opacity: 0.1;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  20% {
+    opacity: 0.2;
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+  30% {
+    opacity: 0.3;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  40% {
+    opacity: 0.4;
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    opacity: 0.5;
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  60% {
+    opacity: 0.6;
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  70% {
+    opacity: 0.7;
+    background-color: rgba(0, 0, 0, 0.15);
+  }
+  80% {
+    opacity: 0.8;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  90% {
+    opacity: 0.9;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0);
+    background-color: transparent;
+  }
 }
 
 /* AI Tech Font Styles */

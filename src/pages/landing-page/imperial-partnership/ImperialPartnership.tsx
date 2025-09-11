@@ -113,19 +113,17 @@ function SEOHead() {
 export default function ImperialPartnership() {
   // Earnings calculator state
   const [referrals, setReferrals] = useState(25); // new active clients per month
-  const [avgRevenue, setAvgRevenue] = useState(80); // broker revenue per active client per month
-  const [royaltyRate, setRoyaltyRate] = useState(5); // lifetime royalty % on downline/volume
-  const [affiliateRate, setAffiliateRate] = useState(35); // base affiliate % of broker revenue
+  const [avgRevenue, setAvgRevenue] = useState(75); // average lot size per client
+  const [royaltyRate, setRoyaltyRate] = useState(5); // royalty per lot in dollars
 
   const monthly = useMemo(() => {
-    const base = referrals * avgRevenue * (affiliateRate / 100);
-    const royalty = referrals * royaltyRate;
+    const totalLots = referrals * avgRevenue;
+    const royalty = totalLots * royaltyRate;
     return {
-      base: Math.round(base),
       royalty: Math.round(royalty),
-      total: Math.round(base + royalty),
+      total: Math.round(royalty),
     };
-  }, [referrals, avgRevenue, royaltyRate, affiliateRate]);
+  }, [referrals, avgRevenue, royaltyRate]);
 
   return (
     <>
@@ -194,47 +192,34 @@ export default function ImperialPartnership() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="text-sm text-muted-foreground">New active clients / month</label>
                     <div className="mt-2">
-                      <Slider value={[referrals]} min={0} max={200} step={1} onValueChange={(v) => setReferrals(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" value={referrals} onChange={(e) => setReferrals(parseInt(e.target.value || "0"))} />
+                      <Slider value={[referrals]} min={0} max={1000} step={1} onValueChange={(v) => setReferrals(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" max="1000" value={referrals} onChange={(e) => setReferrals(parseInt(e.target.value || "0"))} />
                     </div>
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Average lot size (per active client)</label>
                     <div className="mt-2">
-                      <Slider value={[avgRevenue]} min={0} max={10} step={0.01} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" step="0.01" value={avgRevenue} onChange={(e) => setAvgRevenue(parseFloat(e.target.value || "0"))} />
+                      <Slider value={[avgRevenue]} min={0} max={100} step={1} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="1" max="100" value={avgRevenue} onChange={(e) => setAvgRevenue(parseFloat(e.target.value || "0"))} />
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Base affiliate rate (%)</label>
+                    <label className="text-sm text-muted-foreground">Royalty per lot ($)</label>
                     <div className="mt-2">
-                      <Slider value={[affiliateRate]} min={10} max={60} step={1} onValueChange={(v) => setAffiliateRate(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" value={affiliateRate} onChange={(e) => setAffiliateRate(parseInt(e.target.value || "0"))} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Royalty per active client ($)</label>
-                    <div className="mt-2">
-                      <Slider value={[royaltyRate]} min={0} max={500} step={1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" step="1" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseFloat(e.target.value || "0"))} />
+                      <Slider value={[royaltyRate]} min={0} max={25} step={1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="1" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseInt(e.target.value || "0"))} />
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card className="bg-gradient-to-br from-primary/10 to-background border-border">
                     <CardContent className="p-6">
-                      <div className="text-sm text-muted-foreground">Base affiliate</div>
-                      <div className="mt-1 text-3xl font-bold text-foreground">${monthly.base.toLocaleString()}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gradient-to-br from-primary/10 to-background border-border">
-                    <CardContent className="p-6">
-                      <div className="text-sm text-muted-foreground">Royalties</div>
+                      <div className="text-sm text-muted-foreground">Monthly royalties</div>
                       <div className="mt-1 text-3xl font-bold text-foreground">${monthly.royalty.toLocaleString()}</div>
                     </CardContent>
                   </Card>

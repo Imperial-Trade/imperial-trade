@@ -27,7 +27,7 @@ interface PriceData {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -102,8 +102,6 @@ serve(async (req) => {
     
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
 
     // Step 1: Fetch all pending limit orders
     console.log('📋 Fetching pending limit orders...');
@@ -136,49 +134,44 @@ serve(async (req) => {
       order.tradermade_symbol || order.asset_name
     ))];
 
-    console.log('💰 Fetching current prices for symbols:', symbols);
+    console.log('💰 Fetching current prices from market_prices table (fed by price-ingestor):', symbols);
 
-    // Step 3: Fetch current prices from TraderMade API
-    const pricePromises = symbols.map(async (symbol): Promise<PriceData | null> => {
-      try {
-        const response = await fetch(
-          `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${tradermadeApiKey}`
-        );
-        
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch price for ${symbol}:`, response.status);
-          return null;
-        }
-        
-        const data = await response.json();
-        
-        if (data.quotes && data.quotes.length > 0) {
-          const quote = data.quotes[0];
-          return {
-            symbol,
-            bid: parseFloat(quote.bid),
-            ask: parseFloat(quote.ask),
-            price: (parseFloat(quote.bid) + parseFloat(quote.ask)) / 2
-          };
-        }
-        
-        return null;
-      } catch (error) {
-        console.error(`❌ Error fetching price for ${symbol}:`, error);
-        return null;
-      }
-    });
+    // Step 3: Get current prices from market_prices table (populated by price-ingestor)
+    const { data: marketPrices, error: pricesError } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask, mid')
+      .in('symbol', symbols);
 
-    const priceResults = await Promise.all(pricePromises);
+    if (pricesError) {
+      console.error('❌ Error fetching market prices:', pricesError);
+      throw pricesError;
+    }
+
+    // If no prices available, skip processing
+    if (!marketPrices || marketPrices.length === 0) {
+      console.log('⚡ No market prices available, skipping order processing...');
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No current market prices available',
+        processed: 0 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const priceMap = new Map<string, PriceData>();
     
-    priceResults.forEach(price => {
-      if (price) {
-        priceMap.set(price.symbol, price);
-      }
+    marketPrices.forEach(price => {
+      priceMap.set(price.symbol, {
+        symbol: price.symbol,
+        bid: price.bid,
+        ask: price.ask,
+        price: price.mid
+      });
     });
 
-    console.log(`📈 Successfully fetched prices for ${priceMap.size} symbols`);
+    console.log(`📈 Successfully retrieved prices for ${priceMap.size} symbols from market_prices table`);
 
     // Step 4: Check each order for triggering conditions
     const triggeredOrders: string[] = [];

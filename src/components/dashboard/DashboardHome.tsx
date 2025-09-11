@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TypewriterText } from "@/components/ui/typewriter-text";
-import { ImperialWelcomeAnimation } from "@/components/ui/imperial-welcome-animation";
 import {
   TrendingUp,
   TrendingDown,
@@ -30,21 +29,43 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
+import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
+import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
+import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 
 export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
-  const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome();
+  const { hasSeenWelcome } = useWelcome();
+  const { 
+    hasSeenNotificationPrompt, 
+    markNotificationPromptAsSeen,
+    shouldShowNotificationPrompt,
+    setShouldShowNotificationPrompt 
+  } = useNotificationPrompt();
+  const { isPushEnabled, isInitialized } = useOneSignalPush();
+  
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
-  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(false);
 
-  // Show animation only if user hasn't seen it
+  // Show notification modal after welcome animation completes or after login
   useEffect(() => {
-    if (!hasSeenWelcome) {
-      setShowWelcomeAnimation(true);
-    }
-  }, [hasSeenWelcome]);
+    if (!user || !isInitialized) return;
+    
+    // Don't show if user has already seen prompt, already has push enabled, or welcome animation is showing
+    if (hasSeenNotificationPrompt || isPushEnabled || !hasSeenWelcome) return;
+
+    const timer = setTimeout(() => {
+      setShouldShowNotificationPrompt(true);
+    }, 1500); // 1.5 seconds delay for immediate visibility
+
+    return () => clearTimeout(timer);
+  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
+
+  const handleNotificationModalClose = () => {
+    setShouldShowNotificationPrompt(false);
+    markNotificationPromptAsSeen();
+  };
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
@@ -64,16 +85,6 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div className="relative min-h-screen">
-      {/* Welcome Animation (only on first login) */}
-      {showWelcomeAnimation && !hasSeenWelcome && (
-        <ImperialWelcomeAnimation
-          onComplete={() => {
-            setShowWelcomeAnimation(false);
-            markWelcomeAsSeen();
-          }}
-        />
-      )}
-
       {/* Video Background */}
       <VideoBackground />
 
@@ -226,6 +237,13 @@ export const DashboardHome: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Professional Notification Modal */}
+      <ProfessionalNotificationModal
+        isOpen={shouldShowNotificationPrompt}
+        onClose={handleNotificationModalClose}
+        userName={getUserFullName()}
+      />
     </div>
   );
 };

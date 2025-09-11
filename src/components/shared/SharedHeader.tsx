@@ -21,7 +21,6 @@ interface SharedHeaderProps {
 export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -53,36 +52,31 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       to: `${baseUrl}/dashboard/signal-stream`,
       icon: Bell,
       label: "Pattern Stream",
-      description: "Educational market analysis and pattern recognition",
-      features: ["Live Patterns", "Educational Indicators", "Analysis History"]
+      description: "Educational market analysis and pattern recognition"
     },
     {
       to: `${baseUrl}/dashboard/education`,
       icon: GraduationCap,
       label: "Education", 
-      description: "Comprehensive trading education platform",
-      features: ["Video Courses", "Live Webinars", "Trading Guides"]
+      description: "Comprehensive trading education platform"
     },
     {
       to: `${baseUrl}/dashboard/live`,
       icon: Video,
       label: "Live Sessions",
-      description: "Interactive live trading sessions", 
-      features: ["Market Analysis", "Live Q&A", "Trading Psychology"]
+      description: "Interactive live trading sessions"
     },
     {
       to: `${baseUrl}/dashboard/forum`,
       icon: Users,
       label: "Community",
-      description: "Connect with fellow traders",
-      features: ["Discussions", "Strategy Sharing", "Educational Guidance"]
+      description: "Connect with fellow traders"
     },
     {
       to: `${baseUrl}/dashboard/advanced-tools`,
       icon: TrendingUp,
       label: "Tools",
-      description: "Advanced trading tools and analytics",
-      features: ["Risk Calculator", "Portfolio Analysis", "Market Scanner"]
+      description: "Advanced trading tools and analytics"
     }
   ];
 
@@ -106,46 +100,19 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;
               return (
-                <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
-                  <Link to={item.to}>
-                    <Button 
-                      variant="ghost" 
-                      className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
-                        isActive 
-                          ? 'bg-primary/10 text-primary border border-primary/20' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Button>
-                  </Link>
-                
-                  {/* Apple/Stripe style dropdown */}
-                  {activeDropdown === item.label && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
-                        </div>
-                        <div className="space-y-2">
-                          {item.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
-                        <Link to={item.to}>
-                          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                            Explore {item.label}
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <Link key={item.to} to={item.to}>
+                  <Button 
+                    variant="ghost" 
+                    className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-primary/10 text-primary border border-primary/20' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
               );
             })}
             </nav>
@@ -252,22 +219,6 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
 
         /* Load Orbitron font */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
-        /* Dropdown animations */
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px) translateX(-50%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) translateX(-50%);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fadeInUp 0.2s ease-out;
-        }
       `}</style>
     </>
   );

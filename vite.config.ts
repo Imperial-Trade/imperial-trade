@@ -21,6 +21,12 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Dedupe React instances to prevent hook errors
+    dedupe: ['react', 'react-dom'],
+  },
+  // Optimize dependencies to ensure single React instance
+  optimizeDeps: {
+    include: ['react', 'react-dom', '@tanstack/react-query'],
   },
   // Production build optimizations for DigitalOcean deployment
   build: {

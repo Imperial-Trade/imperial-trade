@@ -22,9 +22,21 @@ export interface MarketStatus {
   };
 }
 
+// Cache for market status to prevent repeated calculations
+const marketStatusCache = new Map<string, { status: MarketStatus; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
 export function getMarketStatus(symbol: string): MarketStatus {
   const sym = symbol.toUpperCase();
   const now = new Date();
+  
+  // Check cache first (prevent stale market status from being cached with price data)
+  const statusCacheKey = `${sym}_${Math.floor(now.getTime() / CACHE_TTL)}`;
+  const cached = marketStatusCache.get(statusCacheKey);
+  
+  if (cached && (now.getTime() - cached.timestamp) < CACHE_TTL) {
+    return cached.status;
+  }
 
   // Convert current time to ET for US markets
   const etNow = toZonedTime(now, 'America/New_York');
@@ -68,7 +80,19 @@ export function getMarketStatus(symbol: string): MarketStatus {
   }
 
   // Default fallback - treat as forex
-  return getForexStatus(now, sym, 'Market');
+  const status = getForexStatus(now, sym, 'Market');
+  
+  // Cache the result to prevent recalculation
+  const resultCacheKey = `${sym}_${Math.floor(now.getTime() / CACHE_TTL)}`;
+  marketStatusCache.set(resultCacheKey, { status, timestamp: now.getTime() });
+  
+  // Clean old cache entries (keep only last 10 entries)
+  if (marketStatusCache.size > 10) {
+    const oldestKey = marketStatusCache.keys().next().value;
+    marketStatusCache.delete(oldestKey);
+  }
+  
+  return status;
 }
 
 function getUSIndicesStatus(etNow: Date, etDay: number, etHour: number, etMinute: number, etTimeMinutes: number): MarketStatus {
@@ -287,36 +311,44 @@ function getUSStockStatus(etNow: Date, etDay: number, etHour: number, etMinute: 
 }
 
 function getForexStatus(now: Date, symbol: string, marketType: string): MarketStatus {
-  const utcDay = now.getUTCDay();
-  const utcHour = now.getUTCHours();
+  // Convert current time to ET for proper DST handling
+  const etNow = toZonedTime(now, 'America/New_York');
+  const etDay = etNow.getDay(); // 0=Sun, 6=Sat
+  const etHour = etNow.getHours();
+  const etMinute = etNow.getMinutes();
 
-  // Weekend closure for Forex/Gold/Commodities
-  if (utcDay === 6 || (utcDay === 0 && utcHour < 22)) {
-    const nextSunday = utcDay === 6 ? addDays(now, 1) : now;
-    const sundayOpen = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 22);
+  // Weekend closure - Saturday and Sunday before 5 PM ET
+  if (etDay === 6 || (etDay === 0 && etHour < 17)) {
+    const nextSunday = etDay === 6 ? addDays(etNow, 1) : etNow;
+    const sundayOpenET = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 17); // 5:00 PM ET
+    const sundayOpenUTC = fromZonedTime(sundayOpenET, 'America/New_York');
     
     return {
       isClosed: true,
       label: `Weekend - ${marketType} Market Closed`,
-      nextOpenTime: sundayOpen,
-      countdown: calculateCountdown(now, sundayOpen)
+      nextOpenTime: sundayOpenUTC,
+      countdown: calculateCountdown(now, sundayOpenUTC),
+      currentSession: 'Weekend Closure'
     };
   }
 
-  // Friday post-close
-  if (utcDay === 5 && utcHour >= 21) {
-    const nextSunday = getNextWeekday(now, 0);
-    const sundayOpen = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 22);
+  // Friday post-close (after 5 PM ET)
+  if (etDay === 5 && etHour >= 17) {
+    const nextSunday = getNextWeekdayET(etNow, 0); // Get next Sunday
+    const sundayOpenET = setHours(setMinutes(setSeconds(nextSunday, 0), 0), 17); // 5:00 PM ET
+    const sundayOpenUTC = fromZonedTime(sundayOpenET, 'America/New_York');
     
     return {
       isClosed: true,
       label: `Weekend Break - ${marketType} Market Closed`,
-      nextOpenTime: sundayOpen,
-      countdown: calculateCountdown(now, sundayOpen)
+      nextOpenTime: sundayOpenUTC,
+      countdown: calculateCountdown(now, sundayOpenUTC),
+      currentSession: 'Weekend Closure'
     };
   }
 
-  // Market is open
+  // Market is open - Convert ET hour to UTC for session determination
+  const utcHour = now.getUTCHours();
   return {
     isClosed: false,
     label: null,

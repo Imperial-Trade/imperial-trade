@@ -114,54 +114,52 @@ All test runs generate artifacts in `test-artifacts/go-live-{timestamp}/`:
     "function": "account-request-rate-limit",
     "message": "🔴 Rate limit event - Hash: [HASH], Type: email, Allowed: false"
   },
-  "websocket_auth_success": {
-    "event_type": "auth_ok",
-    "function": "tradermade-streaming",
-    "client_id": "uuid-client-id",
-    "ip_hash": "a1b2c3d4e5f67890",
-    "user_id": "uuid-user-id"
+  "price_monitoring_active": {
+    "event_type": "PRICE_MONITORING",
+    "function": "priority-alert-monitor",
+    "message": "Enhanced monitoring: 2 SL (0.5s) + 3 TP (1s) + 0 normal (2s)",
+    "symbols_processed": ["XAUUSD", "BTCUSD", "EURUSD"],
+    "architecture": "DigitalOcean → price-ingestor → Supabase"
   },
-  "websocket_subscription_limit": {
-    "event_type": "subscribe",
-    "function": "tradermade-streaming", 
-    "client_id": "uuid-client-id",
-    "ip_hash": "a1b2c3d4e5f67890",
-    "error": "max_subscriptions_exceeded",
-    "current_count": 20,
-    "requested_count": 5,
-    "max_allowed": 20
+  "alert_triggered": {
+    "event_type": "STOP_LOSS_TRIGGERED",
+    "function": "priority-alert-monitor", 
+    "symbol": "XAUUSD",
+    "triggered_price": 2650.45,
+    "alert_type": "stop_loss",
+    "priority_level": "critical"
   }
 }
 ```
 
 ## Monitoring Queries
 
-### WebSocket Authentication Monitoring
+### Price Monitoring Performance
 ```sql
--- Monitor authentication events
+-- Monitor price data freshness and alert processing
 SELECT 
   DATE_TRUNC('hour', timestamp) as hour,
-  COUNT(*) FILTER (WHERE event_message LIKE '%auth_ok%') as successful_auths,
-  COUNT(*) FILTER (WHERE event_message LIKE '%auth_failed%') as failed_auths,
-  COUNT(*) FILTER (WHERE event_message LIKE '%unauth_timeout%') as timeouts,
-  COUNT(*) as total_auth_events
+  COUNT(*) FILTER (WHERE event_message LIKE '%Enhanced monitoring%') as monitoring_cycles,
+  COUNT(*) FILTER (WHERE event_message LIKE '%TRIGGERED%') as alerts_triggered,
+  COUNT(*) FILTER (WHERE event_message LIKE '%Cache hit%') as cache_hits,
+  COUNT(*) as total_price_events
 FROM function_edge_logs 
-WHERE function_id IN (SELECT id FROM functions WHERE name = 'tradermade-streaming')
-AND event_message ~ 'auth_(ok|failed|required|timeout)'
+WHERE function_id IN (SELECT id FROM functions WHERE name = 'priority-alert-monitor')
 AND timestamp >= NOW() - INTERVAL '24 hours'
 GROUP BY DATE_TRUNC('hour', timestamp)
 ORDER BY hour DESC;
 ```
 
-### Subscription Limit Monitoring  
+### Alert Processing Monitoring  
 ```sql
--- Monitor subscription limit violations
+-- Monitor alert trigger success rates
 SELECT 
   DATE_TRUNC('hour', timestamp) as hour,
-  COUNT(*) FILTER (WHERE event_message LIKE '%max_subscriptions_exceeded%') as limit_violations,
-  COUNT(*) FILTER (WHERE event_message LIKE '%subscribe%') as total_subscriptions
+  COUNT(*) FILTER (WHERE event_message LIKE '%STOP LOSS TRIGGERED%') as sl_triggers,
+  COUNT(*) FILTER (WHERE event_message LIKE '%TAKE PROFIT TRIGGERED%') as tp_triggers,
+  COUNT(*) FILTER (WHERE event_message LIKE '%Enhanced handling result%') as successful_handles
 FROM function_edge_logs 
-WHERE function_id IN (SELECT id FROM functions WHERE name = 'tradermade-streaming')
+WHERE function_id IN (SELECT id FROM functions WHERE name = 'priority-alert-monitor')
 AND timestamp >= NOW() - INTERVAL '24 hours'
 GROUP BY DATE_TRUNC('hour', timestamp)
 ORDER BY hour DESC;

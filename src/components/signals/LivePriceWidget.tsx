@@ -3,8 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { usePriceAnimations } from '@/hooks/usePriceAnimations';
-import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
+
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -44,6 +44,9 @@ const calculatePips = (entry, current, symbol) => {
     difference
   };
 };
+// Use a module-level Map for cross-instance deduplication
+const globalLevelHitMap = new Map<string, number>();
+
 const LivePriceWidgetComponent = ({
   alert,
   onTakeProfitHit,
@@ -51,6 +54,9 @@ const LivePriceWidgetComponent = ({
   onOrderActivation,
   allowAutomation = true
 }) => {
+  // Move hooks inside the component
+  const levelHitRef = useRef(globalLevelHitMap);
+  const [localClosed, setLocalClosed] = useState(false);
   // Use the optimized live price hook directly
   const {
     price: currentPrice,
@@ -66,79 +72,39 @@ const LivePriceWidgetComponent = ({
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
     debounceMs: 120, // Business Plan: Ultra-fast 120ms for live price tickers
-    pauseOnInput: false
+    pauseOnInput: false,
+    trackDataAge: false // Prevent data age interval to eliminate flickering
   });
 
-  const { 
-    triggerPriceAnimation, 
-    getPriceAnimationClass 
-  } = usePriceAnimations();
+  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
+
+  // price animations disabled
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataAge, setDataAge] = useState('');
   const [prevPrice, setPrevPrice] = useState(0);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
-  const staleGuardRef = useRef(null);
 
-  // Update data age every 5 seconds to reduce UI flickering
+
+  // Data age tracking removed to prevent blinking and forced refreshes
+
+  // Grace period for status indicators to prevent flickering
   useEffect(() => {
-    const updateAge = () => {
-      if (!lastUpdated) {
-        setDataAge('');
-        return;
-      }
-      
-      const now = new Date();
-      const diffMs = now.getTime() - lastUpdated.getTime();
-      const diffSeconds = Math.floor(diffMs / 1000);
-      
-      if (diffSeconds < 30) {
-        setDataAge('Live');
-      } else if (diffSeconds < 60) {
-        setDataAge(`${diffSeconds}s ago`);
-      } else if (diffSeconds < 3600) {
-        const minutes = Math.floor(diffSeconds / 60);
-        setDataAge(`${minutes}m ago`);
-      } else {
-        setDataAge('Stale');
-      }
+    const timeoutId = setTimeout(() => {
+      setDisplayStatus(connectionStatus);
+    }, 2000); // 2 second grace period before status changes
 
-      // Reduced stale-guard sensitivity
-      if (diffSeconds >= 15) {
-        if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
-        staleGuardRef.current = setTimeout(() => {
-          console.log(`🔄 Stale-guard triggered for ${alert.tradermade_symbol}`);
-          refreshPrice();
-        }, 5000); // Increased delay to reduce aggressive refreshing
-      }
-    };
-
-    updateAge();
-    const interval = setInterval(updateAge, 5000); // Reduced frequency from 1s to 5s
-    return () => {
-      clearInterval(interval);
-      if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
-    };
-  }, [lastUpdated, refreshPrice, alert.tradermade_symbol]);
-
-  // Smart price animation effect - only for WebSocket ticks
+    return () => clearTimeout(timeoutId);
+  }, [connectionStatus]);
+  // Disable price animations to prevent flicker; track last price only
   useEffect(() => {
-    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice && priceUpdateSource.startsWith('websocket')) {
-      // Use smart animation that respects thresholds and cooldowns
-      triggerPriceAnimation({
-        symbol: alert.tradermade_symbol,
-        currentPrice,
-        previousPrice: prevPrice,
-        enableAnimations: true
-      });
-    }
     if (currentPrice > 0) {
       setPrevPrice(currentPrice);
     }
-  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation, priceUpdateSource]);
+  }, [currentPrice]);
+
   const processLevelHit = useCallback(async (hitType, data) => {
     // Skip automation if not allowed (for non-owners)
     if (!allowAutomation) {
@@ -182,15 +148,14 @@ const LivePriceWidgetComponent = ({
       isProcessingRef.current = false;
     }
   }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
+  // Enhanced level checking with better logic
   const checkLevels = useCallback(price => {
-    // Optimized level checking with smart thresholds
-    if (!price || price === lastProcessedPrice || isProcessingRef.current) {
+    // Sanity guardrails: only run if alert is active/partially_profited and not locally closed
+    if (!alert || localClosed || !['active', 'partially_profited'].includes(alert.status)) {
       return;
     }
-    
-    // Only check levels if price changed significantly to reduce CPU usage
-    const priceChangePercent = Math.abs((price - lastProcessedPrice) / lastProcessedPrice) * 100;
-    if (lastProcessedPrice > 0 && priceChangePercent < 0.02) { // Reduced to 0.02% threshold for better responsiveness
+    // Check for price change and apply deduplication
+    if (!price || price === lastProcessedPrice || isProcessingRef.current) {
       return;
     }
     if (price <= 0 || !isFinite(price)) {
@@ -228,19 +193,29 @@ const LivePriceWidgetComponent = ({
     const buffer = alert.entry_price * 0.0001;
 
     // Enhanced logging for debugging
-    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
-      currentPrice: price,
-      entryPrice: alert.entry_price,
-      tradeType: alert.trade_type,
-      stopLoss: alert.stop_loss,
-      buffer: buffer,
-      currentHits: currentHits,
-      isBuy: isBuy
-    });
+    if (isDevToolsEnabled()) {
+      console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
+        currentPrice: price,
+        entryPrice: alert.entry_price,
+        tradeType: alert.trade_type,
+        stopLoss: alert.stop_loss,
+        buffer: buffer,
+        currentHits: currentHits,
+        isBuy: isBuy
+      });
+    }
 
     // Priority 1: Check Stop Loss first (highest priority)
     const stopLossHit = isBuy ? price <= alert.stop_loss - buffer : price >= alert.stop_loss + buffer;
     if (stopLossHit) {
+      const hitKey = `${alert.id}:stop_loss`;
+      const lastHit = levelHitRef.current.get(hitKey);
+      const now = Date.now();
+      
+      // One-and-done: prevent duplicate hits within 5 minutes
+      if (lastHit && (now - lastHit) < 300000) return;
+      levelHitRef.current.set(hitKey, now);
+      
       const closeReason = hasAlreadyHitTP ? 'reversal_after_tp' : 'stop_loss';
       console.log(`💥 [STOP LOSS] Hit for ${alert.asset_name}, reason: ${closeReason}`, {
         currentPrice: price,
@@ -257,12 +232,14 @@ const LivePriceWidgetComponent = ({
     // Priority 2: Validate trade direction before checking TP levels
     const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
     if (!isPriceInProfitDirection) {
-      console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
-        currentPrice: price,
-        entryPrice: alert.entry_price,
-        tradeType: alert.trade_type,
-        isPriceInProfitDirection
-      });
+      if (isDevToolsEnabled()) {
+        console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
+          currentPrice: price,
+          entryPrice: alert.entry_price,
+          tradeType: alert.trade_type,
+          isPriceInProfitDirection
+        });
+      }
       // Don't process TP levels if price is not moving in profitable direction
       return;
     }
@@ -311,6 +288,20 @@ const LivePriceWidgetComponent = ({
       }
     });
     if (newHits.length > 0) {
+      // Check for existing TP hits to prevent duplicates
+      newHits.forEach(tp => {
+        const hitKey = `${alert.id}:tp_${tp}`;
+        const lastHit = levelHitRef.current.get(hitKey);
+        const now = Date.now();
+        
+        // One-and-done: prevent duplicate TP hits within 5 minutes
+        if (lastHit && (now - lastHit) < 300000) {
+          console.log(`[DEDUPE] TP${tp} hit already processed within 5 minutes`);
+          return;
+        }
+        levelHitRef.current.set(hitKey, now);
+      });
+      
       // Final validation: Ensure price movement makes sense
       const largestNewHit = Math.max(...newHits);
       const correspondingTP = validTPs.find(tp => tp.level === largestNewHit);
@@ -353,14 +344,16 @@ const LivePriceWidgetComponent = ({
 
   // Debug logging
   useEffect(() => {
-    console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-      alertSymbol: alert.tradermade_symbol,
-      currentPrice: currentPrice,
-      connectionStatus,
-      priceUpdateSource,
-      entryPrice: alert.entry_price,
-      stopLoss: alert.stop_loss
-    });
+    if (isDevToolsEnabled()) {
+      console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
+        alertSymbol: alert.tradermade_symbol,
+        currentPrice: currentPrice,
+        connectionStatus,
+        priceUpdateSource,
+        entryPrice: alert.entry_price,
+        stopLoss: alert.stop_loss
+      });
+    }
   }, [currentPrice, connectionStatus, priceUpdateSource, alert]);
   // Format price with dynamic decimal places
   const formatPrice = useCallback((price) => {
@@ -405,14 +398,14 @@ const LivePriceWidgetComponent = ({
       };
     }
     
-    if (connectionStatus === 'connected') {
+    if (displayStatus === 'connected') { // Use stable displayStatus instead of connectionStatus
       switch (priceUpdateSource) {
         case 'websocket':
         case 'websocket_institutional':
           return { 
             color: 'text-green-400', 
             icon: Wifi, 
-            text: dataFreshness < 30 ? 'WS Live' : `WS ${dataAge}`,
+            text: 'Live',
             description: 'Live WebSocket updates active',
             animate: false
           };
@@ -420,7 +413,7 @@ const LivePriceWidgetComponent = ({
           return { 
             color: 'text-blue-400', 
             icon: RefreshCw, 
-            text: dataFreshness < 30 ? 'HTTP Fallback' : `HTTP ${dataAge}`,
+            text: 'HTTP',
             description: 'Using HTTP API fallback mode',
             animate: false
           };
@@ -452,7 +445,7 @@ const LivePriceWidgetComponent = ({
       description: 'Price updates active',
       animate: false
     };
-  }, [connectionStatus, error, lastUpdated, priceUpdateSource]);
+  }, [displayStatus, error, lastUpdated, priceUpdateSource]); // Use displayStatus instead of connectionStatus
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -464,6 +457,11 @@ const LivePriceWidgetComponent = ({
     }
   };
 
+  // Enhanced displayPrice with better fallback chain
+  const displayPrice = useMemo(() => {
+    return currentPrice > 0 ? currentPrice : (prevPrice > 0 ? prevPrice : 0);
+  }, [currentPrice, prevPrice]);
+
   const priceChangeColor = useMemo(() => {
     return change >= 0 ? 'text-green-400' : 'text-red-400';
   }, [change]);
@@ -472,20 +470,7 @@ const LivePriceWidgetComponent = ({
     return change >= 0 ? TrendingUp : TrendingDown;
   }, [change]);
 
-  // Enhanced market status with countdown timer
-  const [marketStatus, setMarketStatus] = useState(() => getMarketStatus(alert.tradermade_symbol || ''));
-  
-  useEffect(() => {
-    const updateMarketStatus = () => {
-      setMarketStatus(getMarketStatus(alert.tradermade_symbol || ''));
-    };
-
-    // Update market status immediately and then every second
-    updateMarketStatus();
-    const interval = setInterval(updateMarketStatus, 1000);
-    
-    return () => clearInterval(interval);
-  }, [alert.tradermade_symbol]);
+  // Market status logic removed to eliminate blinking
 
   const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
@@ -516,7 +501,8 @@ const LivePriceWidgetComponent = ({
     const isSellLimit = alert.trade_type === 'sell_limit';
     
     return (
-      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+        
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <div className="text-white text-sm font-medium">
@@ -525,14 +511,7 @@ const LivePriceWidgetComponent = ({
             <div className="flex items-center gap-1 text-xs text-amber-400">
               <Hourglass className="w-3 h-3" />
               <span>{isBuyLimit ? 'Buy Limit' : isSellLimit ? 'Sell Limit' : 'Pending Order'}</span>
-              {dataAge && (
-                <>
-                  <span className="text-gray-500">•</span>
-                  <span className={dataAge === 'Live' ? 'text-green-400' : dataAge === 'Stale' ? 'text-red-400' : 'text-yellow-400'}>
-                    {dataAge}
-                  </span>
-                </>
-              )}
+              {/* removed data age display */}
             </div>
           </div>
           
@@ -552,16 +531,14 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200 ${
-                  getPriceAnimationClass(alert.tradermade_symbol)
-                }`}>
-                  ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
+                <span className={`transition-colors duration-200`}>
+                  ${displayPrice > 0 ? formatPrice(displayPrice) : '---'}
                 </span>
               </div>
             
           </div>
           
-          {!error && currentPrice > 0 && (
+          {!error && displayPrice > 0 && (
             <div className={`flex items-center gap-1 ${priceChangeColor}`}>
               {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
               <div className="text-right">
@@ -590,11 +567,7 @@ const LivePriceWidgetComponent = ({
   }
 
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 ${
-      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
-      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
-      'border-border'
-    }`}>
+    <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
@@ -606,30 +579,6 @@ const LivePriceWidgetComponent = ({
               className="w-3 h-3" 
             />
             <span>{connectionStatusInfo.text}</span>
-            {dataAge && (
-              <>
-                <span className="text-gray-500">•</span>
-                {priceUpdateSource === 'websocket' && dataAge === 'Live' ? (
-                  <Badge variant="default" className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-                    <Zap className="w-3 h-3 mr-1" />
-                    WS Live
-                  </Badge>
-                ) : priceUpdateSource === 'http' ? (
-                  <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">
-                    <Database className="w-3 h-3 mr-1" />
-                    HTTP Cache{dataAge === 'Stale' && <span className="ml-1 text-amber-300">• Stale</span>}
-                  </Badge>
-                ) : (
-                  <span className={`${
-                    dataAge === 'Live' ? 'text-green-400' : 
-                    dataAge === 'Stale' ? 'text-red-400' : 
-                    'text-yellow-400'
-                  }`}>
-                    {dataAge}
-                  </span>
-                )}
-              </>
-            )}
           </div>
         </div>
         
@@ -646,51 +595,35 @@ const LivePriceWidgetComponent = ({
         </Button>
       </div>
 
-      {/* Error State */}
-      {error && (
+      {/* Error State - suppress transient connection errors */}
+      {error && !error.includes('TIMED_OUT') && !error.includes('CLOSED') && !error.includes('Price data is') && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
           <div className="text-red-400 text-sm">
-            {error}
+            Connection Error
           </div>
         </div>
       )}
 
-      {/* Loading State for Initial Load */}
-      {isLoading && currentPrice === 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
-              <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
-            </div>
-            <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
-            <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
-          </div>
-        </div>
-      )}
 
       {/* Price Display */}
-      {(currentPrice > 0 || !isLoading) && (
+      {(displayPrice > 0 || !isLoading) && (
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            {currentPrice > 0 ? (
+            {displayPrice > 0 ? (
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200 ${
-                  getPriceAnimationClass(alert.tradermade_symbol)
-                }`}>
-                  ${formatPrice(currentPrice)}
+                <span className={`transition-colors duration-200 text-accent-green`}>
+                  ${formatPrice(displayPrice)}
                 </span>
               </div>
             ) : (
-              <div className="text-gray-500 font-mono text-lg">---.--</div>
+              <div className="text-muted-foreground font-mono text-lg min-h-[28px] flex items-center">
+                <span>---</span>
+              </div>
             )}
           </div>
           
-          {!error && currentPrice > 0 && (
+          {!error && displayPrice > 0 && (
             <div className={`flex items-center gap-0.5 ${priceChangeColor}`}>
               {React.createElement(priceChangeIcon, { className: "w-3 h-3" })}
               <div className="text-right">
@@ -706,28 +639,6 @@ const LivePriceWidgetComponent = ({
         </div>
       )}
 
-      {/* Market Status Banner - Only show when market is closed */}
-      {marketStatus.isClosed && (
-        <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4 text-amber-400" />
-              <div className="text-amber-400 text-sm font-medium">Market Closed</div>
-            </div>
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <div className="text-amber-400 text-sm font-mono font-bold">
-                {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            {marketStatus.label} • Last price: {lastUpdated ? formatTime(lastUpdated) : '—'}
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <span className="ml-1">• Opens in {formatCountdown(marketStatus.countdown)}</span>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* P&L from Entry Display */}
       {priceChange && profitLossDisplay && (

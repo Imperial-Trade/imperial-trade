@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,9 @@ export const LivePriceDebugDisplay: React.FC = () => {
     subscribe,
     unsubscribe,
     getPrice
-  } = useWebSocketPrices();
+  } = useOptimizedWebSocketPrices();
 
-  const [testSymbols] = useState(['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD']);
+  const [testSymbols] = useState(['XAUUSD', 'BTCUSD']);
 
   useEffect(() => {
     console.log('LivePriceDebugDisplay - Subscribing to test symbols:', testSymbols);

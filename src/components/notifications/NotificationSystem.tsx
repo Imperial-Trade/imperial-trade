@@ -73,15 +73,46 @@ const NotificationSystem = () => {
         return;
       }
 
+      // Enhanced notification-level deduplication with 120s TTL
+      const notificationKey = notification.eventKey || `${notification.title}:${notification.message}`;
+      const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
+      if (now - lastShownTime < 120000) {
+        console.warn("Notification suppressed due to 120s deduplication:", notificationKey);
+        return;
+      }
+      
+      // Initialize or update lastShownMap globally
+      if (!(window as any).lastShownMap) {
+        (window as any).lastShownMap = new Map();
+      }
+      (window as any).lastShownMap.set(notificationKey, now);
+
       setLastNotificationTime(now);
 
       const id = Date.now() + Math.random();
-      setNotifications((prev) => [
-        { ...notification, id, timestamp: new Date() },
-        ...prev,
-      ]);
+      const enhancedNotification = { 
+        ...notification, 
+        id, 
+        timestamp: new Date(),
+        eventKey: notification.eventKey || `notification_${id}`,
+        deliveryChannel: notification.deliveryChannel || 'in_app'
+      };
+      
+      setNotifications((prev) => [enhancedNotification, ...prev]);
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
+
+      // Record delivery if eventKey is provided
+      if (notification.eventKey) {
+        // Import notification service dynamically to avoid circular imports
+        import('@/services/NotificationService').then(({ notificationService }) => {
+          notificationService.recordNotificationDelivery(
+            notification.eventKey,
+            notification.deliveryChannel || 'in_app',
+            'delivered'
+          );
+        });
+      }
     },
     [playNotificationSound, removeNotification, lastNotificationTime]
   );

@@ -22,8 +22,24 @@ export const WelcomeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default to true to prevent flash
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceWelcome = urlParams.get('forceWelcome') === '1';
+    const resetWelcome = urlParams.get('resetWelcome') === '1';
+    
     if (user?.id) {
       const welcomeKey = `imperial_welcome_session_${user.id}`;
+      
+      if (resetWelcome) {
+        localStorage.removeItem(welcomeKey);
+        setHasSeenWelcome(false);
+        return;
+      }
+      
+      if (forceWelcome) {
+        setHasSeenWelcome(false);
+        return;
+      }
+      
       const storedValue = localStorage.getItem(welcomeKey);
       
       if (storedValue === 'true') {

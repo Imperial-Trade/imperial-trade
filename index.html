@@ -24,6 +24,9 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://www.tradeimperial.com/" />
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -58,6 +61,9 @@
     
     <!-- Fonts for Welcome Animation -->
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet" />
+    
+    <!-- OneSignal SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -103,6 +109,21 @@
         "query-input": "required name=search_term_string"
       }
     }
+    </script>
+    
+    <!-- OneSignal Initialization -->
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "c6d5466e-9ca7-40b2-90db-57ec42d385ef",
+          safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98",
+          notifyButton: {
+            enable: false,
+          },
+          allowLocalhostAsSecureOrigin: true
+        });
+      });
     </script>
   </head>
 

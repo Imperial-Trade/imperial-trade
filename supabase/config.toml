@@ -12,20 +12,17 @@ enabled = true
 [edge_functions]
 enabled = true
 
-[functions.tradermade-streaming]
+[functions.enhanced-signal-notification-dispatcher]
+verify_jwt = false
+
+[functions.cleanup-old-data]
 verify_jwt = false
 
 [functions.check-user-existence]
 verify_jwt = false
 
-[functions.order-trigger-monitor]
-verify_jwt = true
-
-[functions.hello]
-verify_jwt = false
-
 [functions.password-reset]
 verify_jwt = false
 
-[functions.reset]
+[functions.ingest-secret-verifier]
 verify_jwt = false

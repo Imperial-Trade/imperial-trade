@@ -6,16 +6,31 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
-import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
 }) {
-  // Get live price from WebSocket for the current asset (PRIMARY SOURCE)
+  // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
-  const wsLivePrice = useWebSocketLivePrice(symbol);
-  const { prices, priceUpdateSources } = useWebSocketPrices();
+  const { prices, getPrice } = useOptimizedWebSocketPrices();
+  
+  // Subscribe to this symbol and get its price data
+  const wsLivePrice = useMemo(() => {
+    const priceData = getPrice(symbol);
+    if (!priceData) return null;
+    
+    return {
+      price: priceData.price,
+      change: priceData.change || 0,
+      changePercent: priceData.changePercent || 0,
+      isLoading: false,
+      error: null,
+      lastUpdated: priceData.timestamp ? new Date(priceData.timestamp) : null,
+      connectionStatus: 'connected' as const
+    };
+  }, [prices, symbol, getPrice]);
 
   // MIRROR LIVE PRICE STRATEGY: Use external price ONLY if it's more recent, otherwise use WebSocket
   const livePrice = useMemo(() => {
@@ -33,12 +48,12 @@ export default function TradingCalculator({
     return externalLivePrice;
   }, [externalLivePrice, wsLivePrice]);
   
-  // Check if we're receiving ultra-fast institutional tick data
+  // Check if we're receiving price data
   const currentPriceData = prices[symbol];
-  const isUltraFastTick = currentPriceData?.is_ultra_fast_tick === true;
-  const isInstitutionalTick = currentPriceData?.is_institutional_tick === true;
-  const updateFrequency = currentPriceData?.update_frequency || '250ms';
-  const priceSource = priceUpdateSources[symbol] || 'unknown';
+  const isUltraFastTick = false; // Simplified for hybrid system
+  const isInstitutionalTick = false; // Simplified for hybrid system
+  const updateFrequency = '250ms'; // Default frequency
+  const priceSource = 'hybrid';
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   const [priceChangeFlash, setPriceChangeFlash] = useState(false);
@@ -60,13 +75,15 @@ export default function TradingCalculator({
     
     // Log ultra-fast price updates for monitoring
     if (isUltraFastTick && priceValue !== alert.entry_price) {
-      console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
-        symbol,
-        price: priceValue,
-        frequency: updateFrequency,
-        source: priceSource,
-        timestamp: new Date().toISOString()
-      });
+      if (isDevToolsEnabled()) {
+        console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
+          symbol,
+          price: priceValue,
+          frequency: updateFrequency,
+          source: priceSource,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     
     return priceValue;
@@ -173,7 +190,7 @@ export default function TradingCalculator({
     const priceValue = currentPrice;
 
     // Enhanced debug logging for ultra-fast price updates
-    if (isUltraFastTick) {
+    if (isUltraFastTick && isDevToolsEnabled()) {
       console.log('⚡ ULTRA-FAST CALC UPDATE:', {
         symbol: alert.tradermade_symbol || alert.asset_name,
         priceValue,
@@ -198,7 +215,7 @@ export default function TradingCalculator({
     const riskPercentage = totalRisk / balance * 100;
 
     // Enhanced debug logging for ultra-fast risk calculations
-    if (isUltraFastTick && !isPending) {
+    if (isUltraFastTick && !isPending && isDevToolsEnabled()) {
       console.log('⚡ ULTRA-FAST RISK UPDATE:', {
         riskBasePrice,
         totalRisk,

@@ -1,17 +1,33 @@
-import { Toaster } from "@/components/ui/toaster";
+import React from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
+import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
-import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
+import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
+import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
+import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
+import { RealtimeConnectionManagerProvider } from "@/contexts/RealtimeConnectionManager";
+import { TelemetryProvider } from "@/contexts/TelemetryContext";
+import { RealtimeShutdownGuard } from "@/components/RealtimeShutdownGuard";
+import { VersionChecker } from "@/components/VersionChecker";
+import { CacheCleanerMount } from "@/hooks/useCacheCleaner";
+import { SafeThemeProvider as ThemeProvider } from "@/contexts/SafeThemeProvider";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
+import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
+import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
 import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
+import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
+import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
+import { initializeAppState } from "@/utils/appStateCleanup";
+import { isDevToolsEnabled } from "@/utils/featureFlags";
+import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -51,6 +67,7 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
+import PriceTestingPage from "@/pages/dashboard/dev-tests/PriceTestingPage";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -60,7 +77,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
-import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,20 +88,34 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize app state on startup
+  React.useEffect(() => {
+    initializeAppState();
+    verifyServiceWorkerSafety();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <PostHogPageViewTracker />
+        <RealtimeShutdownGuard />
+        <VersionChecker />
+        <CacheCleanerMount />
+        <Sonner />
+        <BrowserRouter>
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>
-                <NavigationGuard>
-                  <SignalRealtimeProvider>
-                    <WebSocketPriceProvider>
+                <NotificationPromptProvider>
+                  <NavigationGuard>
+                     <RealtimeHealthProvider>
+                       <RealtimeConnectionManagerProvider>
+                         <TelemetryProvider>
+                        <GlobalPreviewControlProvider>
+                        <OptimizedWebSocketPriceProvider>
+                        <WebSocketErrorBoundary>
+                          <ContextErrorBoundary>
+                            <SharedRealtimeProvider>
+                              <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -93,34 +123,34 @@ function App() {
                           element={<LandingLayout />}
                           errorElement={<RouteErrorBoundary />}
                         >
-                          <Route index element={<Landing />} />
-                          <Route path="about" element={<About />} />
-                          <Route path="features" element={<Features />} />
+                          <Route index element={<AuthenticatedRedirect><Landing /></AuthenticatedRedirect>} />
+                          <Route path="about" element={<AuthenticatedRedirect><About /></AuthenticatedRedirect>} />
+                          <Route path="features" element={<AuthenticatedRedirect><Features /></AuthenticatedRedirect>} />
                           <Route
                             path="advanced-tools"
-                            element={<AdvancedToolsPage />}
+                            element={<AuthenticatedRedirect><AdvancedToolsPage /></AuthenticatedRedirect>}
                           />
-                          <Route path="signals" element={<SignalsPage />} />
-                          <Route path="education" element={<EducationPage />} />
+                          <Route path="signals" element={<AuthenticatedRedirect><SignalsPage /></AuthenticatedRedirect>} />
+                          <Route path="education" element={<AuthenticatedRedirect><EducationPage /></AuthenticatedRedirect>} />
                           <Route
                             path="live-sessions"
-                            element={<LiveSessionsPage />}
+                            element={<AuthenticatedRedirect><LiveSessionsPage /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="community-forum"
-                            element={<CommunityForumPage />}
+                            element={<AuthenticatedRedirect><CommunityForumPage /></AuthenticatedRedirect>}
                           />
 <Route
                             path="ib-partnership"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="ib-partnership-new"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                           <Route
                             path="imperial-partnership"
-                            element={<ImperialPartnership />}
+                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />
@@ -142,9 +172,11 @@ function App() {
                           path="/dashboard"
                           element={
                             <ProtectedRoute>
-                              <Layout>
-                                <div></div>
-                              </Layout>
+                              <TooltipProvider>
+                                <Layout>
+                                  <div></div>
+                                </Layout>
+                              </TooltipProvider>
                             </ProtectedRoute>
                           }
                           errorElement={<RouteErrorBoundary />}
@@ -185,9 +217,26 @@ function App() {
                           />
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
-                          <Route path="settings" element={<Settings />} />
-                          <Route path="athena" element={<AthenaTest />} />
-                          <Route path="dev-tests" element={<DevTests />} />
+                           <Route path="settings" element={<Settings />} />
+                            {isDevToolsEnabled() && (
+                               <>
+                                 <Route path="athena" element={<AthenaTest />} />
+                                 <Route path="dev-tests" element={<DevTests />} />
+                                 <Route path="price-testing" element={<PriceTestingPage />} />
+                                 <Route 
+                                   path="realtime-cost-status" 
+                                   element={
+                                     <ProtectedRoute requiredAccessLevel="admin">
+                                       <div className="p-4">
+                                         {React.createElement(
+                                           React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                         )}
+                                       </div>
+                                     </ProtectedRoute>
+                                   } 
+                                 />
+                               </>
+                             )}
 
                           <Route
                             path="administration"
@@ -279,13 +328,22 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                    </WebSocketPriceProvider>
-                  </SignalRealtimeProvider>
-                </NavigationGuard>
+                              </SignalRealtimeProvider>
+                            </SharedRealtimeProvider>
+                          </ContextErrorBoundary>
+                        </WebSocketErrorBoundary>
+                        </OptimizedWebSocketPriceProvider>
+                        </GlobalPreviewControlProvider>
+                         </TelemetryProvider>
+                       </RealtimeConnectionManagerProvider>
+                     </RealtimeHealthProvider>
+                  </NavigationGuard>
+                </NotificationPromptProvider>
+                {/* Global Welcome Animation - renders outside all layouts */}
+                <GlobalWelcomeOverlay />
               </WelcomeProvider>
             </AuthProvider>
           </BrowserRouter>
-        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

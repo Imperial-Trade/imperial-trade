@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ASSET_REGISTRY, AssetDefinition } from '@/types/assets';
 
 export interface AssetOption {
@@ -9,12 +8,11 @@ export interface AssetOption {
   category: 'crypto' | 'commodities' | 'forex' | 'indices';
 }
 
-// Use centralized asset registry for consistent symbol handling
-const SUPPORTED_ASSETS: AssetOption[] = Object.values(ASSET_REGISTRY).map(asset => ({
-  symbol: asset.symbol,
-  name: asset.name,
-  category: asset.category
-}));
+// Cost optimization: Only support XAUUSD and BTCUSD for streaming
+const SUPPORTED_ASSETS: AssetOption[] = [
+  { symbol: 'XAUUSD', name: 'Gold', category: 'commodities' },
+  { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' }
+];
 
 interface AssetSelectorProps {
   value: string;
@@ -27,34 +25,27 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
   onValueChange,
   onAssetChange
 }) => {
-  const handleValueChange = (newValue: string) => {
-    onValueChange(newValue);
-    const selectedAsset = SUPPORTED_ASSETS.find(asset => asset.symbol === newValue);
-    if (selectedAsset && onAssetChange) {
-      onAssetChange(selectedAsset);
-    }
-  };
-
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium text-foreground">
-        Asset
+        Available Assets
       </label>
       
-      <Select value={value} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select an asset..." />
-        </SelectTrigger>
-        <SelectContent>
+      <div className="p-3 bg-muted/50 rounded-lg border border-border">
+        <div className="text-sm text-muted-foreground mb-2">
+          Currently streaming live prices for:
+        </div>
+        <div className="flex gap-2">
           {SUPPORTED_ASSETS.map((asset) => (
-            <SelectItem key={asset.symbol} value={asset.symbol}>
-              <div className="flex items-center justify-between w-full">
-                <span className="font-medium">{asset.name} {asset.symbol}</span>
-              </div>
-            </SelectItem>
+            <div 
+              key={asset.symbol}
+              className="px-3 py-1 bg-primary/10 border border-primary/20 rounded text-sm text-foreground"
+            >
+              {asset.name} ({asset.symbol})
+            </div>
           ))}
-        </SelectContent>
-      </Select>
+        </div>
+      </div>
     </div>
   );
 };

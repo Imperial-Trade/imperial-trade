@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, BarChart3, PieChart, Plus, ArrowLeft, Settings, Brain, Target, DollarSign, Percent, Activity, Eye, EyeOff, Upload, Zap, MapPin, Clock, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/contexts/SafeThemeProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

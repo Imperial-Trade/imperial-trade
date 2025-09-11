@@ -27,13 +27,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ProfessionalButton } from '@/components/ui/professional-button';
 import { ProfessionalToast } from '@/components/ui/professional-toast';
 import { useProfessionalToast } from '@/hooks/useProfessionalToast';
-import { useOptimizedRealTimeRequests } from '@/hooks/useOptimizedRealTimeRequests';
+import { useRealTimeRequests } from '@/hooks/useRealTimeRequests';
 import { useOptimizedFiltering } from '@/hooks/useOptimizedFiltering';
 import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 import { useOptimizedRetry } from '@/hooks/useOptimizedRetry';
 
 export const OptimizedAccountRequestManagement: React.FC = () => {
-  const { requests, newRequestCount, loading, error, loadRequests, clearNewRequestCount } = useOptimizedRealTimeRequests();
+  const { requests, newRequestCount, loading, loadRequests, clearNewRequestCount } = useRealTimeRequests();
   
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -280,27 +280,6 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
           <CardContent className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading account requests...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
-        </div>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">Error Loading Requests</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={loadRequests} className="gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </Button>
           </CardContent>
         </Card>
       </div>

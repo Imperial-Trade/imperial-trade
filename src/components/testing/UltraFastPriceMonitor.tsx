@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { Zap, Activity, Clock, TrendingUp } from 'lucide-react';
@@ -13,10 +13,9 @@ export const UltraFastPriceMonitor: React.FC = () => {
     dataSource,
     lastUpdated,
     errors,
-    priceUpdateSources,
     subscribe,
     unsubscribe
-  } = useWebSocketPrices();
+  } = useOptimizedWebSocketPrices();
 
   const connectionHealth = useConnectionHealth();
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -28,7 +27,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
     isUltraFast: boolean;
   }>>([]);
 
-  const testSymbols = ['XAUUSD', 'BTCUSD', 'EURUSD'];
+  const testSymbols = ['XAUUSD', 'BTCUSD'];
 
   useEffect(() => {
     if (isMonitoring) {
@@ -51,8 +50,8 @@ export const UltraFastPriceMonitor: React.FC = () => {
         symbol,
         price: priceData.price,
         timestamp: Date.now(),
-        frequency: priceData.update_frequency || 'unknown',
-        isUltraFast: priceData.is_ultra_fast_tick || false
+        frequency: '250ms', // Simplified for hybrid system
+        isUltraFast: false // Simplified for hybrid system
       }));
 
       setTickLog(prev => {
@@ -161,23 +160,15 @@ export const UltraFastPriceMonitor: React.FC = () => {
             <div className="grid gap-3">
               {testSymbols.map(symbol => {
                 const priceData = prices[symbol];
-                const source = priceUpdateSources[symbol];
                 const error = errors[symbol];
 
                 return (
                   <div key={symbol} className="flex items-center justify-between p-3 bg-background rounded border border-border">
                     <div className="flex items-center gap-3">
                       <div className="text-white font-medium">{symbol}</div>
-                      {priceData?.is_ultra_fast_tick && (
-                        <div className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-400">
-                          ⚡ Ultra-Fast
-                        </div>
-                      )}
-                      {source === 'websocket_institutional' && (
-                        <div className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-400">
-                          Institutional
-                        </div>
-                      )}
+                      <div className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-400">
+                        Hybrid System
+                      </div>
                     </div>
                     
                     <div className="text-right">
@@ -189,7 +180,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
                             ${priceData.price.toFixed(priceData.price > 100 ? 2 : 5)}
                           </div>
                           <div className="text-xs text-gray-400">
-                            {priceData.update_frequency || '250ms'} • {new Date(priceData.timestamp).toLocaleTimeString()}
+                            250ms • {new Date(priceData.timestamp).toLocaleTimeString()}
                           </div>
                         </>
                       ) : (

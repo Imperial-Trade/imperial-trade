@@ -124,219 +124,161 @@ export function SignalStreamFilters({
       onPointerDown={(e) => e.stopPropagation()}
       onPointerMove={(e) => e.stopPropagation()}
     >
-      <CardContent className="p-3 space-y-3">
-        {/* Compact Top Bar with Search and Clear */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search signals..."
-              value={filters.search}
-              onChange={(e) => updateFilter('search', e.target.value)}
-              className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
-            />
-            {filters.search && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => handleClearFilterClick(e, 'search')}
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
+      <CardContent className="p-4 space-y-4">
+        {/* Enhanced Uniform Layout */}
+        <div className="flex flex-col lg:flex-row gap-4">
           
-          <div className="flex items-center gap-2 ml-auto">
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleClearAllClick}
-                className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Clear All
-              </Button>
-            )}
-            {canCreateSignals && (
-              <Button 
-                type="button"
-                onClick={handleCreateSignalClick}
-                className="h-8 px-3 text-xs bg-foreground text-background hover:bg-foreground/90 border border-border"
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Create Pattern
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Premium Filter Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Status Filters */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
-            <div className="flex flex-wrap gap-1.5">
-              {statusOptions.map(option => {
-                const Icon = option.icon;
-                const isActive = filters.status === option.value;
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleStatusClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Trade Type Filters */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</span>
-            <div className="flex flex-wrap gap-1.5">
-              {tradeTypeOptions.map(option => {
-                const Icon = option.icon;
-                const isActive = filters.tradeType === option.value;
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => handleTradeTypeClick(e, option.value)}
-                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
-                      isActive 
-                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
-                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 mr-1.5" />
-                    <span className="hidden sm:inline">{option.label}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
-                        isActive 
-                          ? "bg-primary-foreground/20 text-primary-foreground" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      {option.count}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Educator Filter */}
-          {educatorOptions.length > 1 && (
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educator</span>
-              <select
-                value={filters.educator}
-                onChange={(e) => updateFilter('educator', e.target.value)}
-                className="w-full h-7 px-2.5 text-xs bg-background/50 border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors"
-              >
-                <option value="">All Educators ({educatorOptions.length})</option>
-                {educatorOptions.map(educator => (
-                  <option key={educator.id} value={educator.id}>
-                    {educator.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Minimal Active Filter Summary */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
-            {filters.search && (
-              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
-                <Search className="w-3 h-3" />
-                "{filters.search}"
+          {/* Search Section - Consistent sizing */}
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
+              
+              {/* Enhanced Gradient Placeholder */}
+              {!filters.search && (
+                <div className="absolute left-10 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
+                  Search{' '}
+                  <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
+                    Xeon alerts
+                  </span>
+                  <span className="animate-pulse">...</span>
+                </div>
+              )}
+              
+              <Input
+                value={filters.search}
+                onChange={(e) => updateFilter('search', e.target.value)}
+                className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+              />
+              
+              {filters.search && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={(e) => handleClearFilterClick(e, 'search')}
-                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
                 >
-                  <X className="w-2.5 h-2.5" />
+                  <X className="w-4 h-4" />
                 </Button>
-              </Badge>
-            )}
-            {filters.status && (
-              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {statusOptions.find(o => o.value === filters.status)?.label}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'status')}
-                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </Button>
-              </Badge>
-            )}
-            {filters.tradeType && (
-              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
-                {filters.tradeType === 'buy' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {tradeTypeOptions.find(o => o.value === filters.tradeType)?.label}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'tradeType')}
-                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </Button>
-              </Badge>
-            )}
-            {filters.educator && (
-              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {educatorOptions.find(e => e.id === filters.educator)?.name}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'educator')}
-                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </Button>
-              </Badge>
-            )}
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Filters Section - Uniform grid layout */}
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch gap-3 lg:min-w-fit">
+            
+            {/* Filter Controls - All same height */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
+              {/* Status Filter */}
+              <div className="min-w-0 sm:min-w-[140px]">
+                <select
+                  value={filters.status}
+                  onChange={(e) => updateFilter('status', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
+                  style={{ 
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
+                  }}
+                >
+                  {statusOptions.map(option => (
+                    <option 
+                      key={option.value} 
+                      value={option.value} 
+                      className="text-foreground bg-background"
+                    >
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Trade Type Filter */}
+              <div className="min-w-0 sm:min-w-[140px]">
+                <select
+                  value={filters.tradeType}
+                  onChange={(e) => updateFilter('tradeType', e.target.value)}
+                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
+                  style={{ 
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
+                  }}
+                >
+                  {tradeTypeOptions.map(option => (
+                    <option 
+                      key={option.value} 
+                      value={option.value} 
+                      className="text-foreground bg-background"
+                    >
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Educator Filter */}
+              {educatorOptions.length > 1 && (
+                <div className="min-w-0 sm:min-w-[140px]">
+                  <select
+                    value={filters.educator}
+                    onChange={(e) => updateFilter('educator', e.target.value)}
+                    className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
+                    style={{ 
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none'
+                    }}
+                  >
+                    <option 
+                      value="" 
+                      className="text-foreground bg-background"
+                    >
+                      All Educators ({educatorOptions.length})
+                    </option>
+                    {educatorOptions.map(educator => (
+                      <option 
+                        key={educator.id} 
+                        value={educator.id} 
+                        className="text-foreground bg-background"
+                      >
+                        {educator.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            
+            {/* Action Buttons - Same height as filters */}
+            <div className="flex items-center gap-3 justify-end sm:justify-start">
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllClick}
+                  className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm min-w-[100px]"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
+              )}
+              
+               {canCreateSignals && (
+                <Button 
+                  type="button"
+                  onClick={handleCreateSignalClick}
+                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
+                >
+                  <Plus className="w-4 h-4 mr-2 text-yellow-400" />
+                  <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Create Alert</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
       </CardContent>
     </Card>
   );

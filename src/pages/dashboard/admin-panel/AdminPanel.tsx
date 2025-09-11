@@ -2,13 +2,17 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Settings, RefreshCw, Signal, Bell } from "lucide-react";
+import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
 import { DirectAccountRequestManagement } from "@/components/admin/DirectAccountRequestManagement";
 import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
 import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
+import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
+import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosticsPanel";
+import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
+import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
@@ -20,14 +24,22 @@ const AdminPanel: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-muted-foreground mt-1">Manage users, requests, and system settings</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-          <Shield className="w-3 h-3 mr-1" />
-          Admin Access
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+            <Shield className="w-3 h-3 mr-1" />
+            Admin Access
+          </Badge>
+          {isDevToolsEnabled() && (
+            <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+              <Code className="w-3 h-3 mr-1" />
+              Dev Tools Enabled
+            </Badge>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-10' : 'grid-cols-8'}`}>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Requests
@@ -56,6 +68,22 @@ const AdminPanel: React.FC = () => {
             <Shield className="w-4 h-4" />
             Settings
           </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Diagnostics
+          </TabsTrigger>
+          {isDevToolsEnabled() && (
+            <TabsTrigger value="live-prices" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Live Prices
+            </TabsTrigger>
+          )}
+          {isDevToolsEnabled() && (
+            <TabsTrigger value="dev-tools" className="flex items-center gap-2">
+              <Code className="w-4 h-4" />
+              Dev Tools
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="requests" className="space-y-4">
@@ -89,6 +117,22 @@ const AdminPanel: React.FC = () => {
             <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
           </div>
         </TabsContent>
+
+        <TabsContent value="diagnostics" className="space-y-4">
+          <RealtimeDiagnostics />
+        </TabsContent>
+
+        {isDevToolsEnabled() && (
+          <TabsContent value="live-prices" className="space-y-4">
+            <LivePriceDiagnosticsPanel />
+          </TabsContent>
+        )}
+
+        {isDevToolsEnabled() && (
+          <TabsContent value="dev-tools" className="space-y-4">
+            <DevToolsPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

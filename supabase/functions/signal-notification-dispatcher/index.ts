@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+
+// LEGACY DISPATCHER - OBSERVE ONLY MODE
+// This dispatcher is deprecated in favor of enhanced-signal-notification-dispatcher
 import { corsHeaders } from "../_shared/cors.ts"
 import { isPushEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
@@ -145,19 +148,134 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
   }
 }
 
-async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
+async function sendPushNotification(supabase: any, payload: NotificationPayload): Promise<boolean> {
   try {
     // Check if push notifications are enabled
     if (!isPushEnabled()) {
       const hashedSignalId = await hashId(payload.signal_id);
       console.log(`event=PUSH_SUPPRESSED hashed_signal_id=${hashedSignalId} alert_type=${payload.alert_type} reason=PUSH_DISABLED`);
-      return false; // Don't count as successful delivery
+      return false;
     }
 
-    // Placeholder for push notification service (e.g., Firebase, OneSignal)
-    console.log(`📱 Push notification would be sent for ${payload.alert_type}`);
-    
-    // For now, just return true as this requires additional setup
+    const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+    const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
+
+    if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+      console.error('❌ OneSignal credentials not configured');
+      return false;
+    }
+
+    // Get Xeon Stream subscribers with OneSignal player IDs
+    const { data: subscribers } = await supabase
+      .from('profiles')
+      .select('onesignal_player_id, display_name')
+      .eq('push_subscription_active', true)
+      .eq('xeon_stream_subscription', true)
+      .eq('onesignal_subscription_status', 'subscribed')
+      .not('onesignal_player_id', 'is', null);
+
+    if (!subscribers || subscribers.length === 0) {
+      console.log(`📱 No Xeon Stream subscribers found for ${payload.alert_type}`);
+      return true; // No subscribers is not an error
+    }
+
+    const playerIds = subscribers.map(sub => sub.onesignal_player_id);
+    console.log(`📱 Sending push to ${playerIds.length} Xeon Stream subscribers`);
+
+    // Format notification content based on alert type
+    let title = "🚨 Trading Alert";
+    let message = "";
+    let urgencyIcon = "🔔";
+
+    switch (payload.alert_type) {
+      case 'stop_loss':
+        title = "🚨 Stop Loss Hit";
+        message = `Stop Loss triggered at $${payload.triggered_price}`;
+        urgencyIcon = "🛑";
+        break;
+      case 'take_profit_1':
+      case 'take_profit_2':
+      case 'take_profit_3':
+      case 'take_profit_4':
+      case 'take_profit_5':
+        title = "💰 Take Profit Hit";
+        message = `${payload.alert_type.replace('_', ' ').toUpperCase()} reached at $${payload.triggered_price}`;
+        urgencyIcon = "💸";
+        break;
+      case 'signal_created':
+        title = "📊 New Signal";
+        message = `New trading signal available - Entry: $${payload.target_price}`;
+        urgencyIcon = "🎯";
+        break;
+      case 'signal_updated':
+        title = "📈 Signal Updated";
+        message = `Trading signal updated at $${payload.triggered_price}`;
+        urgencyIcon = "📊";
+        break;
+      default:
+        title = "🔔 Trading Alert";
+        message = `${payload.alert_type.replace('_', ' ')} - Price: $${payload.triggered_price}`;
+    }
+
+    const oneSignalPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      include_player_ids: playerIds,
+      headings: { 
+        en: title 
+      },
+      contents: { 
+        en: message 
+      },
+      data: {
+        signal_id: payload.signal_id,
+        alert_type: payload.alert_type,
+        target_price: payload.target_price,
+        triggered_price: payload.triggered_price,
+        timestamp: new Date().toISOString()
+      },
+      android_accent_color: "FF9500",
+      chrome_web_badge: "/favicon.ico",
+      large_icon: "/favicon.ico",
+      small_icon: "/favicon.ico",
+      priority: payload.alert_type === 'stop_loss' ? 10 : 7,
+      ttl: 3600 // 1 hour TTL
+    };
+
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+      },
+      body: JSON.stringify(oneSignalPayload),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ OneSignal API error: ${response.status} - ${errorText}`);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log(`✅ OneSignal push sent successfully - ID: ${result.id} - Recipients: ${result.recipients}`);
+
+    // Log delivery for analytics
+    await supabase
+      .from('notification_delivery_log')
+      .insert({
+        notification_type: payload.alert_type,
+        delivery_channel: 'push',
+        signal_id: payload.signal_id,
+        user_id: null, // Bulk notification
+        status: 'sent',
+        metadata: {
+          onesignal_id: result.id,
+          recipients_count: result.recipients,
+          player_ids_count: playerIds.length
+        }
+      });
+
     return true;
   } catch (error) {
     const sanitizedError = sanitizeError(error);
@@ -166,20 +284,20 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
   }
 }
 
-async function processNotification(payload: NotificationPayload): Promise<Record<string, boolean>> {
+async function processNotification(supabase: any, payload: NotificationPayload): Promise<Record<string, boolean>> {
   const deliveryResults: Record<string, boolean> = {};
 
   // Send to all requested channels in parallel for speed
   const deliveryPromises = payload.delivery_channels.map(async (channel) => {
     switch (channel) {
       case 'realtime':
-        return { channel, success: await sendRealtimeNotification(null, payload) };
+        return { channel, success: await sendRealtimeNotification(supabase, payload) };
       case 'discord':
         return { channel, success: await sendDiscordWebhook(payload) };
       case 'telegram':
         return { channel, success: await sendTelegramNotification(payload) };
       case 'push':
-        return { channel, success: await sendPushNotification(payload) };
+        return { channel, success: await sendPushNotification(supabase, payload) };
       default:
         console.warn(`⚠️ Unknown delivery channel: ${channel}`);
         return { channel, success: false };
@@ -207,20 +325,32 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    const { notifications } = await req.json();
-    
-    if (!notifications || !Array.isArray(notifications)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid notifications array' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check if legacy dispatcher is in observe-only mode
+    const observeOnly = Deno.env.get('LEGACY_DISPATCHER_OBSERVE_ONLY') === 'true';
+    console.log(`🔧 Legacy dispatcher startup - observe_only: ${observeOnly}`);
+
+    const payload = await req.json();
+    console.log('📨 Notification request received:', JSON.stringify(payload, null, 2));
+    console.log(`🔧 Legacy dispatcher processing - observe_only: ${observeOnly}`);
+
+    if (observeOnly) {
+      console.log('⚠️ Legacy dispatcher in observe-only mode - no notifications will be sent');
+      return new Response(JSON.stringify({
+        success: true,
+        observe_only: true,
+        message: 'Legacy dispatcher in observe-only mode'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`📡 Processing ${notifications.length} instant notifications...`);
+    const { signal_id, signal_data, user_ids } = payload;
 
     const results = [];
     
@@ -229,7 +359,7 @@ serve(async (req) => {
       
       console.log(`🚨 Processing ${notification.alert_type} for signal ${notification.signal_id}`);
       
-      const deliveryResults = await processNotification(notification);
+      const deliveryResults = await processNotification(supabase, notification);
       const processingTime = Date.now() - startTime;
       
       // Update notification status in database

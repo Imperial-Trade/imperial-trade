@@ -1,7 +1,27 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { economicCalendarService, EconomicEvent, EconomicCalendarRequest } from '@/services/EconomicCalendarService';
-import { cacheService } from '@/services/CacheService';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useCallback, useMemo } from 'react';
+
+export interface EconomicEvent {
+  id: string;
+  time: string;
+  currency: string;
+  impact: 'high' | 'medium' | 'low';
+  event: string;
+  actual?: string;
+  forecast?: string;
+  previous?: string;
+  date: string;
+  description: string;
+  title: string;
+  country: string;
+  dateTime: string;
+  volatilityPrediction?: number;
+}
+
+export interface EconomicCalendarRequest {
+  dateRange?: { start: Date; end: Date };
+  currency?: string;
+  impact?: string;
+}
 
 interface UseEconomicCalendarOptions {
   autoRefresh?: boolean;
@@ -17,7 +37,7 @@ interface UseEconomicCalendarResult {
   error: Error | null;
   lastUpdated: Date | null;
   retryCount: number;
-  refreshEvents: () => Promise<void>;
+  refetch: () => Promise<void>;
   clearCache: () => void;
   filters: {
     dateRange: string;
@@ -29,9 +49,9 @@ interface UseEconomicCalendarResult {
   };
   stats: {
     total: number;
-    high: number;
-    medium: number;
-    low: number;
+    highImpact: number;
+    today: number;
+    thisWeek: number;
   };
 }
 
@@ -39,63 +59,40 @@ export function useEconomicCalendar(
   request: EconomicCalendarRequest = {},
   options: UseEconomicCalendarOptions = {}
 ): UseEconomicCalendarResult {
-  const {
-    autoRefresh = false,
-    refreshInterval = 300000, // 5 minutes
-    enableRealtime = false,
-    maxRetries = 3
-  } = options;
-
-  const [events, setEvents] = useState<EconomicEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [events] = useState<EconomicEvent[]>([]);
+  const [isLoading] = useState(false);
+  const [error] = useState<Error | null>(null);
+  const [lastUpdated] = useState<Date | null>(null);
+  const [retryCount] = useState(0);
 
   // Filter states
   const [dateRange, setDateRange] = useState('this_week');
   const [currency, setCurrency] = useState('all');
   const [impact, setImpact] = useState('all');
 
-  const { toast } = useToast();
-
-  // Feature temporarily disabled
+  // Feature disabled - no data fetching
   const fetchEvents = useCallback(async () => {
-    setIsLoading(false);
-    setError(null);
-    setEvents([]);
-    setLastUpdated(new Date());
-    console.log('Economic Calendar feature is coming soon!');
+    console.log('Economic Calendar feature is coming soon');
+    return Promise.resolve();
   }, []);
 
-  // Auto-refresh disabled for coming soon state
-  useEffect(() => {
-    // No auto-refresh during coming soon state
-  }, []);
-
-  // Initial load disabled
-  useEffect(() => {
-    // No initial load during coming soon state
-  }, []);
-
-  // Memoized filtered events (returns empty for coming soon state)
+  // Memoized filtered events (empty for coming soon state)
   const filteredEvents = useMemo(() => {
     return [];
   }, []);
 
-  // Memoized statistics (returns zeros for coming soon state)
+  // Memoized statistics (zeros for coming soon state)
   const stats = useMemo(() => {
     return { 
       total: 0,
-      high: 0,
-      medium: 0,
-      low: 0
+      highImpact: 0,
+      today: 0,
+      thisWeek: 0
     };
   }, []);
 
   const clearCache = useCallback(() => {
-    // Cache clearing disabled for coming soon state
-    console.log('Cache clearing is coming soon!');
+    console.log('Economic Calendar cache clearing is coming soon');
   }, []);
 
   return {
@@ -105,7 +102,7 @@ export function useEconomicCalendar(
     error,
     lastUpdated,
     retryCount,
-    refreshEvents: fetchEvents,
+    refetch: fetchEvents,
     clearCache,
     filters: {
       dateRange,

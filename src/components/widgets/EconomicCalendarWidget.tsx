@@ -30,59 +30,12 @@ export default function EconomicCalendarWidget({
   const loadTodaysEvents = async () => {
     setIsLoading(true);
     setError(null);
-    try {
-      const today = new Date();
-      const dateFrom = format(today, 'yyyy-MM-dd');
-      const dateTo = format(today, 'yyyy-MM-dd');
-      
-      const eventsData = await economicCalendarService.getEconomicEvents({
-        dateFrom,
-        dateTo,
-        currencies: ['USD', 'EUR', 'GBP', 'JPY'],
-        impacts: showOnlyHighImpact ? ['high'] : ['high', 'medium', 'low']
-      });
-      
-      const filteredEvents = eventsData
-        .filter(event => isToday(parseISO(event.date)))
-        .slice(0, maxEvents);
-      
-      setEvents(filteredEvents);
-    } catch (err) {
-      console.error('Failed to load economic events:', err);
-      setError('Failed to load events');
-      
-      // Fallback to mock data for today - properly typed
-      const mockEvents: EconomicEvent[] = [
-        { 
-          id: '1', 
-          time: '08:30', 
-          currency: 'USD', 
-          impact: 'high' as const, 
-          event: 'Non-Farm Payrolls', 
-          actual: '', 
-          forecast: '180K', 
-          previous: '150K', 
-          date: new Date().toISOString(), 
-          description: 'Change in the number of employed people during the previous month.' 
-        },
-        { 
-          id: '2', 
-          time: '10:00', 
-          currency: 'USD', 
-          impact: 'medium' as const, 
-          event: 'Unemployment Rate', 
-          actual: '', 
-          forecast: '4.2%', 
-          previous: '4.2%', 
-          date: new Date().toISOString(), 
-          description: 'Percentage of the total work force that is unemployed.' 
-        }
-      ].slice(0, maxEvents);
-      
-      setEvents(mockEvents);
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // Economic calendar feature is coming soon - no data loading
+    console.log('Economic Calendar Widget is coming soon');
+    setEvents([]);
+    setError('Economic Calendar is coming soon');
+    setIsLoading(false);
   };
 
   const getImpactIcon = (impact: string) => {

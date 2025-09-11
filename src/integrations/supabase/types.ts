@@ -185,39 +185,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_outputs: {
-        Row: {
-          agent_name: string
-          created_at: string
-          id: string
-          metadata: Json | null
-          output_text: string
-          updated_at: string
-          user_id: string
-          user_readable_text: string | null
-        }
-        Insert: {
-          agent_name: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          output_text: string
-          updated_at?: string
-          user_id: string
-          user_readable_text?: string | null
-        }
-        Update: {
-          agent_name?: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          output_text?: string
-          updated_at?: string
-          user_id?: string
-          user_readable_text?: string | null
-        }
-        Relationships: []
-      }
       ai_coach_feedback: {
         Row: {
           coaching_analysis: Json
@@ -258,6 +225,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      alert_cooldowns: {
+        Row: {
+          alert_type: string
+          asset_symbol: string
+          created_at: string
+          id: string
+          last_triggered_at: string
+        }
+        Insert: {
+          alert_type: string
+          asset_symbol: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+        }
+        Update: {
+          alert_type?: string
+          asset_symbol?: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+        }
+        Relationships: []
       }
       alert_monitoring: {
         Row: {
@@ -812,6 +803,36 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_function_telemetry: {
+        Row: {
+          batch_id: string | null
+          count: number
+          created_at: string
+          function_name: string
+          id: string
+          metadata: Json
+          metric: string
+        }
+        Insert: {
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          function_name: string
+          id?: string
+          metadata?: Json
+          metric: string
+        }
+        Update: {
+          batch_id?: string | null
+          count?: number
+          created_at?: string
+          function_name?: string
+          id?: string
+          metadata?: Json
+          metric?: string
+        }
+        Relationships: []
+      }
       forum_posts: {
         Row: {
           category: Database["public"]["Enums"]["post_category"]
@@ -900,6 +921,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "function_deprecation_hits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1374,6 +1402,7 @@ export type Database = {
           delivered_at: string | null
           delivery_channel: string
           error_message: string | null
+          event_key: string | null
           id: string
           metadata: Json | null
           notification_type: string
@@ -1388,6 +1417,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_channel: string
           error_message?: string | null
+          event_key?: string | null
           id?: string
           metadata?: Json | null
           notification_type: string
@@ -1402,6 +1432,7 @@ export type Database = {
           delivered_at?: string | null
           delivery_channel?: string
           error_message?: string | null
+          event_key?: string | null
           id?: string
           metadata?: Json | null
           notification_type?: string
@@ -1416,19 +1447,22 @@ export type Database = {
       notification_read_receipts: {
         Row: {
           created_at: string
-          notification_id: string
+          event_id: string
+          event_type: string
           read_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          notification_id: string
+          event_id: string
+          event_type: string
           read_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          notification_id?: string
+          event_id?: string
+          event_type?: string
           read_at?: string
           user_id?: string
         }
@@ -1464,6 +1498,36 @@ export type Database = {
           resubmissions?: boolean
           updated_at?: string
           weekly_report?: boolean
+        }
+        Relationships: []
+      }
+      notification_ui_telemetry: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          metric: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          metric: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          metric?: string
+          user_id?: string
+          value?: number | null
         }
         Relationships: []
       }
@@ -1647,6 +1711,7 @@ export type Database = {
           created_at: string | null
           device_fingerprint: string | null
           display_name: string | null
+          email_notifications: boolean
           engagement_score: number | null
           id: string
           in_app_notifications_enabled: boolean | null
@@ -1696,6 +1761,7 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email_notifications?: boolean
           engagement_score?: number | null
           id: string
           in_app_notifications_enabled?: boolean | null
@@ -1745,6 +1811,7 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email_notifications?: boolean
           engagement_score?: number | null
           id?: string
           in_app_notifications_enabled?: boolean | null
@@ -2071,6 +2138,48 @@ export type Database = {
           limit_type?: string
           updated_at?: string
           window_start?: string
+        }
+        Relationships: []
+      }
+      realtime_telemetry: {
+        Row: {
+          channel_breakdown: Json
+          clamp_activations: number
+          cost_estimate: number
+          created_at: string
+          date: string
+          id: string
+          message_rate: number
+          optimization_rate: number
+          total_connections: number
+          total_messages: number
+          updated_at: string
+        }
+        Insert: {
+          channel_breakdown?: Json
+          clamp_activations?: number
+          cost_estimate?: number
+          created_at?: string
+          date?: string
+          id?: string
+          message_rate?: number
+          optimization_rate?: number
+          total_connections?: number
+          total_messages?: number
+          updated_at?: string
+        }
+        Update: {
+          channel_breakdown?: Json
+          clamp_activations?: number
+          cost_estimate?: number
+          created_at?: string
+          date?: string
+          id?: string
+          message_rate?: number
+          optimization_rate?: number
+          total_connections?: number
+          total_messages?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2688,6 +2797,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_engagement_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_follows: {
@@ -2721,10 +2837,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3014,6 +3144,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_saved_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xeon_subscribers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_streaks: {
@@ -3281,7 +3418,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      xeon_subscribers_public: {
+        Row: {
+          display_name: string | null
+          id: string | null
+          notification_preferences: Json | null
+          onesignal_player_id: string | null
+        }
+        Insert: {
+          display_name?: string | null
+          id?: string | null
+          notification_preferences?: Json | null
+          onesignal_player_id?: string | null
+        }
+        Update: {
+          display_name?: string | null
+          id?: string | null
+          notification_preferences?: Json | null
+          onesignal_player_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_trading_metrics: {
@@ -3297,13 +3454,49 @@ export type Database = {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
       }
+      check_alert_cooldown: {
+        Args: {
+          p_alert_type: string
+          p_asset_symbol: string
+          p_cooldown_seconds?: number
+        }
+        Returns: boolean
+      }
+      check_user_xeon_subscription: {
+        Args: { user_id_param?: string }
+        Returns: boolean
+      }
+      cleanup_inactive_symbol_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_old_cron_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_old_cron_logs_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_economic_events: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_old_notification_logs: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      cleanup_old_rate_limits_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_stale_market_prices: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       create_smart_notification_batch: {
         Args: {
@@ -3327,9 +3520,25 @@ export type Database = {
         Args: { p_post_id: string }
         Returns: number
       }
+      disable_economic_events_processing: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_active_alert_symbols: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      get_active_users_for_broadcasting: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          last_activity: string
+          onesignal_player_id: string
+          user_id: string
+        }[]
       }
       get_anonymized_rate_limits: {
         Args: Record<PropertyKey, never>
@@ -3349,13 +3558,30 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      get_market_data_freshness: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          hours_old: number
+          is_stale: boolean
+          last_update: string
+          symbol: string
+        }[]
+      }
       get_market_session: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_realtime_system_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_trader_stats: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      get_unread_notification_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       get_user_access_level: {
         Args: { user_id_param?: string }
@@ -3368,6 +3594,22 @@ export type Database = {
           device_info: Json
           last_seen_at: string
           onesignal_player_id: string
+        }[]
+      }
+      get_user_notifications: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_event_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_id: string
+          event_type: string
+          post_id: string
+          post_title: string
+          unread: boolean
         }[]
       }
       get_user_role: {
@@ -3428,6 +3670,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      log_deprecated_function_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      mark_notifications_cleared: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      mark_notifications_read: {
+        Args: { p_event_ids: string[]; p_event_type: string }
+        Returns: number
+      }
+      observe_deprecated_function_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
         Returns: {
@@ -3487,6 +3745,18 @@ export type Database = {
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
+        Returns: undefined
+      }
+      upsert_daily_telemetry: {
+        Args: {
+          p_channel_breakdown?: Json
+          p_clamp_activations?: number
+          p_connections: number
+          p_cost_estimate: number
+          p_message_rate: number
+          p_messages: number
+          p_optimization_rate?: number
+        }
         Returns: undefined
       }
       upsert_market_price: {

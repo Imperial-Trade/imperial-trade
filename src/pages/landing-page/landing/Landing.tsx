@@ -7,6 +7,7 @@ import ToolsCarousel from "@/components/landing/ToolsCarousel";
 import FinalCTA from "@/components/landing/FinalCTA";
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
 
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -17,6 +18,7 @@ const Landing = () => {
       <ToolsCarousel />
       <FinalCTA />
       <ComplianceFooter />
+      
     </div>
   );
 };

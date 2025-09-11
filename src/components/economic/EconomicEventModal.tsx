@@ -73,131 +73,23 @@ const EconomicEventModal = memo(({ event, isOpen, onClose }: EconomicEventModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2">
             <Calendar className="w-6 h-6 text-primary" />
             Economic Event Details
           </DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Event Header */}
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={`${getImpactColor(event.impact)} flex items-center gap-1`}>
-                  {getImpactIcon(event.impact)}
-                  {event.impact.toUpperCase()} IMPACT
-                </Badge>
-                <Badge className="bg-primary/10 text-primary border-primary/20">
-                  <Globe className="w-3 h-3 mr-1" />
-                  {event.currency}
-                </Badge>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>{event.time}</span>
-                </div>
-                <p className="text-sm text-primary font-medium">
-                  {formatEventDate(event.date)}
-                </p>
-                <p className="text-xs text-accent-green">
-                  {getTimeUntilEvent(event.time, event.date)}
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">{event.event}</h2>
-              <p className="text-muted-foreground leading-relaxed">{event.description}</p>
-            </div>
+        
+        <div className="text-center py-8">
+          <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-8 h-8 text-primary" />
           </div>
-
-          {/* Data Values */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold">Economic Data</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {event.previous && (
-                  <div className="text-center p-4 bg-background/50 rounded-lg border border-border/50">
-                    <p className="text-sm text-muted-foreground mb-1">Previous</p>
-                    <p className="text-lg font-semibold text-foreground">{event.previous}</p>
-                  </div>
-                )}
-                
-                {event.forecast && (
-                  <div className="text-center p-4 bg-background/50 rounded-lg border border-border/50">
-                    <p className="text-sm text-muted-foreground mb-1">Forecast</p>
-                    <p className="text-lg font-semibold text-foreground">{event.forecast}</p>
-                  </div>
-                )}
-                
-                {event.actual && (
-                  <div className="text-center p-4 bg-background/50 rounded-lg border border-border/50">
-                    <p className="text-sm text-muted-foreground mb-1">Actual</p>
-                    <p className={`text-lg font-semibold ${getActualColor(event.actual, event.forecast)}`}>
-                      {event.actual}
-                    </p>
-                    {event.forecast && (
-                      <p className="text-xs mt-1">
-                        {getActualColor(event.actual, event.forecast) === 'text-accent-green' 
-                          ? '↗ Better than expected' 
-                          : getActualColor(event.actual, event.forecast) === 'text-accent-red'
-                          ? '↘ Worse than expected'
-                          : '→ As expected'
-                        }
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {(!event.previous && !event.forecast && !event.actual) && (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Data values will be available closer to the event time
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Market Impact Information */}
-          <Card className="bg-card/50 border-border/50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                {getImpactIcon(event.impact)}
-                <h3 className="text-lg font-semibold">Market Impact</h3>
-              </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Impact Level</p>
-                  <p className="text-sm text-muted-foreground">
-                    {event.impact === 'high' && 
-                      'High impact events typically cause significant market volatility and can trigger major price movements across multiple currency pairs.'}
-                    {event.impact === 'medium' && 
-                      'Medium impact events may cause moderate market movement and are watched by traders but usually have less dramatic effects.'}
-                    {event.impact === 'low' && 
-                      'Low impact events typically have minimal effect on markets but can still provide valuable economic context.'}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Affected Currency</p>
-                  <p className="text-sm text-muted-foreground">
-                    This event primarily affects the {event.currency} and related currency pairs.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Economic Event Details Coming Soon</h3>
+          <p className="text-sm text-muted-foreground">
+            Detailed event analysis and impact information will be available soon.
+          </p>
+          <Badge variant="outline" className="mt-3">Coming Soon</Badge>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,11 +1,24 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff, Timer } from 'lucide-react';
-import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
+import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
+import { isPricePlausibleForSymbol } from '@/utils/priceGuards';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  RefreshCw, 
+  TrendingUp, 
+  TrendingDown, 
+  Wifi, 
+  WifiOff, 
+  Clock,
+  AlertTriangle,
+  Zap,
+  Timer
+} from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
-import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
+// Market status imports removed
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -25,30 +38,32 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // Use standardized symbol mapping
   const apiSymbol = getStandardSymbol(symbol) || symbol;
   
-  const {
-    price,
-    change,
-    changePercent,
-    isLoading,
-    error,
-    lastUpdated,
-    connectionStatus,
-    dataSource,
-    priceUpdateSource,
-    refreshPrice
-  } = useOptimizedLivePrice(apiSymbol, {
-    enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 100, // Business Plan: Ultra-fast 100ms for signal creation
-    pauseOnInput: false
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice } = useOptimizedLivePrice(symbol, {
+    debounceMs: 50, // Critical: Faster response for trading decisions
+    enableSmartPausing: false
   });
+
+  // Defensive check: Prevent showing implausible prices for closed markets
+  const displayPrice = useMemo(() => {
+    if (!price || price === 0) return 0;
+    
+    // Check price plausibility
+    if (!isPricePlausibleForSymbol(price, symbol)) {
+      console.error(`🚨 UI Guard: Blocked implausible price display for ${symbol}: ${price}`);
+      return 0; // Don't show implausible prices
+    }
+    
+    return price;
+  }, [price, symbol]);
+
+  // Critical: Monitor price staleness for trading safety
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 15); // 15-second staleness threshold
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataAge, setDataAge] = useState<string>('');
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
-
-  // Performance monitoring in development
-  usePerformanceMonitor(`EnhancedLivePriceDisplay-${assetName}`, process.env.NODE_ENV === 'development');
+  const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
   // Update data age every second
   useEffect(() => {
@@ -95,12 +110,21 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
-  // Notify parent about price updates
+  // GUARDRAIL: Increased debounce to 2000ms to reduce flickering
   useEffect(() => {
-    if (onPriceUpdate && price > 0) {
-      onPriceUpdate(price);
+    const debounceTimeout = setTimeout(() => {
+      setDebouncedConnectionStatus(connectionStatus);
+    }, 2000);
+
+    return () => clearTimeout(debounceTimeout);
+  }, [connectionStatus]);
+
+  // Price update effect with validation
+  useEffect(() => {
+    if (onPriceUpdate && displayPrice > 0) {
+      onPriceUpdate(displayPrice);
     }
-  }, [price, onPriceUpdate]);
+  }, [displayPrice, onPriceUpdate]);
 
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude
@@ -135,7 +159,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const connectionStatusInfo = useMemo(() => {
     const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
     
-    if (isLoading || connectionStatus === 'connecting') {
+    if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 
         color: 'text-yellow-400', 
         icon: RefreshCw, 
@@ -145,74 +169,55 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (error) {
+    // GUARDRAIL: Only surface real errors (network/auth), not benign ones
+    const isBenignError = error && (
+      error.includes('timed out') || 
+      error.includes('closed') || 
+      error.includes('CHANNEL_ERROR') ||
+      error.includes('TIMED_OUT') ||
+      error.includes('connection') ||
+      error.includes('Price data is')
+    );
+    
+    if (error && !isBenignError) {
       return { 
         color: 'text-red-400', 
         icon: AlertTriangle, 
         text: 'Error',
-        description: 'Failed to fetch price data',
+        description: error,
         animate: false
       };
     }
     
-    if (connectionStatus === 'connected') {
-      // Distinguish between real-time WebSocket and HTTP fallback
-      switch (priceUpdateSource) {
-        case 'websocket':
-          return { 
-            color: 'text-green-400', 
-            icon: Wifi, 
-            text: '⚡ Real-time',
-            description: 'Live WebSocket updates active',
-            animate: false
-          };
-        case 'http':
-          return { 
-            color: 'text-blue-400', 
-            icon: RefreshCw, 
-            text: '🔄 HTTP Fallback',
-            description: 'Using HTTP API fallback mode',
-            animate: false
-          };
-        default:
-          if (dataFreshness < 30) {
-            return { 
-              color: 'text-green-400', 
-              icon: Wifi, 
-              text: 'Live',
-              description: 'Real-time price updates active',
-              animate: false
-            };
-          } else if (dataFreshness < 60) {
-            return { 
-              color: 'text-yellow-400', 
-              icon: Wifi, 
-              text: 'Delayed',
-              description: 'Price data is slightly delayed',
-              animate: false
-            };
-          }
-      }
+    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 30s)
+    if (dataFreshness < 30 && price > 0) {
+      return { 
+        color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'Real-time price updates active',
+        animate: false
+      };
     }
     
-    if (connectionStatus === 'disconnected' || dataFreshness >= 60) {
+    if (dataFreshness < 60 && price > 0) {
       return { 
-        color: 'text-red-400', 
-        icon: WifiOff, 
-        text: 'Offline',
-        description: 'No recent price updates',
+        color: 'text-yellow-400', 
+        icon: Clock, 
+        text: 'Delayed',
+        description: 'Price data is slightly delayed',
         animate: false
       };
     }
     
     return { 
-      color: 'text-gray-400', 
+      color: 'text-red-400', 
       icon: WifiOff, 
-      text: 'Unknown',
-      description: 'Connection status unknown',
+      text: 'Offline',
+      description: 'No recent price updates',
       animate: false
     };
-  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -233,19 +238,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, [change]);
 
   // Enhanced market status with countdown timer
-  const [marketStatus, setMarketStatus] = useState(() => getMarketStatus(apiSymbol));
-  
-  useEffect(() => {
-    const updateMarketStatus = () => {
-      setMarketStatus(getMarketStatus(apiSymbol));
-    };
-
-    // Update market status immediately and then every second
-    updateMarketStatus();
-    const interval = setInterval(updateMarketStatus, 1000);
-    
-    return () => clearInterval(interval);
-  }, [apiSymbol]);
+  // Market status logic removed to eliminate blinking
 
   // Check if current symbol is a Forex pair or related asset
   const isForexAsset = useMemo(() => {
@@ -257,10 +250,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
   if (!symbol) return null;
 
+
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
-      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
-      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
+    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm transition-all duration-500 ${
+      debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
+      debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
     } ${className}`}>
       {/* Header */}
@@ -272,14 +266,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             </div>
             {priceUpdateSource === 'websocket_institutional' && (
               <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
-                ⚡ 250ms
+                ⚡ Ultra-Fast
               </div>
             )}
           </div>
-          {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
-            <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-              {dataAge && (
-                <span className={`${
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={`text-xs px-2 py-1 ${connectionStatusInfo.color}`}>
+                {connectionStatusInfo.text}
+              </Badge>
+              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && (
+                <span className={`text-xs ${
                   dataAge === 'Live' ? 'text-green-400' : 
                   dataAge === 'Stale' ? 'text-red-400' : 
                   'text-yellow-400'
@@ -288,7 +284,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
                 </span>
               )}
             </div>
-          )}
         </div>
         
         <Button
@@ -304,8 +299,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </Button>
       </div>
 
-      {/* Error State */}
-      {error && (
+      {/* GUARDRAIL: Only show real errors, suppress benign ones */}
+      {error && !(
+        error.includes('Price data is') || 
+        error.includes('timed out') || 
+        error.includes('closed') || 
+        error.includes('CHANNEL_ERROR') ||
+        error.includes('TIMED_OUT') ||
+        error.includes('connection')
+      ) && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
           <div className="text-red-400 text-sm">
@@ -331,90 +333,48 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Market Status Banner - Show for closed markets or non-Forex assets */}
-      {marketStatus.isClosed ? (
-        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4 text-amber-400" />
-              <div className="text-amber-400 text-sm font-medium">Market Closed</div>
-            </div>
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <div className="text-amber-400 text-sm font-mono font-bold">
-                {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            {isForexAsset ? (
-              <>Weekend Closure: Forex market closes Fridays at 5:00 PM EST, reopens Sundays at 5:00 PM EST</>
-            ) : (
-              marketStatus.label
-            )}
-          </div>
-          {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-            <div className="text-xs text-gray-400 mt-1">
-              Opens in {formatCountdown(marketStatus.countdown)}
-            </div>
-          )}
-        </div>
-      ) : (!isForexAsset && marketStatus.currentSession && (
-        <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
-            </div>
-            {marketStatus.sessionDetails?.nextSession && marketStatus.countdown && (
-              <div className="text-green-300 text-xs">
-                {marketStatus.sessionDetails.nextSession} in {formatCountdown(marketStatus.countdown)}
-              </div>
-            )}
-          </div>
-          {marketStatus.sessionDetails?.name && (
-            <div className="text-xs text-gray-400 mt-1">
-              {marketStatus.sessionDetails.name}
-            </div>
-          )}
-        </div>
-      ))}
+      {/* Market Status Banner removed to eliminate blinking and market closed displays */}
 
-      {/* Price Display - Always show last known price */}
-      {(price > 0 || !isLoading) && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {price > 0 ? (
-              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading || isRefreshing ? 'animate-pulse' : ''
-              } ${
-                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                'text-accent-green'
-              }`}>
-                ${formatPrice(price)}
-              </div>
-            ) : (
-              <div className="text-gray-500 font-mono text-xl">---.--</div>
-            )}
-          </div>
-          
-          {!error && price > 0 && (
-            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
-              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
-              <div className="text-right">
-                <div className="text-sm font-medium">
-                  {change >= 0 ? '+' : ''}{change.toFixed(4)}
-                </div>
-                <div className="text-xs">
-                  ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-                </div>
-              </div>
+      {/* Main Price Display - Always visible */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {displayPrice > 0 ? (
+            <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+              isLoading || isRefreshing ? 'animate-pulse' : ''
+            } ${
+              priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+              priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+              'text-accent-green'
+            }`}>
+              ${formatPrice(displayPrice)}
+            </div>
+          ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
+             <div className="text-amber-500 font-mono text-xl">
+               <span>Invalid Price</span>
+             </div>
+          ) : (
+            <div className={`text-gray-500 font-mono text-xl ${isLoading ? 'animate-pulse' : ''}`}>
+              {isLoading ? 'Loading...' : '---.--'}
             </div>
           )}
         </div>
-      )}
+        
+        {!error && displayPrice > 0 && change !== undefined && changePercent !== undefined && (
+          <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+            {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {change >= 0 ? '+' : ''}{change.toFixed(4)}
+              </div>
+              <div className="text-xs">
+                ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Footer */}
+      {/* Enhanced Footer with Trading Safety */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -423,24 +383,43 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
           </div>
-          <ConnectionHealthBadge className="ml-2" />
+          {/* Critical: Price timestamp for trading safety */}
+          {stalenessStatus.ageInSeconds !== null && (
+            <Badge variant={stalenessStatus.ageInSeconds <= 5 ? "default" : stalenessStatus.ageInSeconds <= 15 ? "secondary" : "destructive"} className="text-xs px-1 py-0">
+              {stalenessStatus.ageInSeconds}s
+            </Badge>
+          )}
         </div>
         
-        {onUseCurrentPrice && (
+        <div className="flex items-center gap-1">
+          {/* Critical: Manual refresh button for trading decisions */}
           <Button
-            type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={() => onUseCurrentPrice(price)}
-            className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-            disabled={isRefreshing || !!error || price <= 0}
-            aria-disabled={isRefreshing || !!error || price <= 0}
-            title={price > 0 ? 'Use current price' : 'Price not available yet'}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-6 px-2 text-xs"
+            title="Refresh price data"
           >
-            Use Current Price
+            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''} mr-1`} />
+            Refresh
           </Button>
-        )}
+          {onUseCurrentPrice && displayPrice > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onUseCurrentPrice(displayPrice)}
+              className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
+              disabled={displayPrice <= 0}
+              title="Use current price for signal"
+            >
+              Use Price
+            </Button>
+          )}
+        </div>
       </div>
+
 
     </div>
   );

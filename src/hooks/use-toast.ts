@@ -1,4 +1,6 @@
-import * as React from "react"
+import React from "react"
+import type { ReactNode } from "react"
+import { toast as sonnerToast } from "sonner"
 
 import type {
   ToastActionElement,
@@ -10,8 +12,8 @@ const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
   id: string
-  title?: React.ReactNode
-  description?: React.ReactNode
+  title?: ReactNode
+  description?: ReactNode
   action?: ToastActionElement
 }
 
@@ -139,53 +141,44 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+function toast({ title, description, ..._rest }: Toast) {
   const id = genId()
 
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: "UPDATE_TOAST",
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
-
-  dispatch({
-    type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
-  })
+  try {
+    if (title || description) {
+      (sonnerToast as any)(String(title ?? ""), description ? { description: String(description as any) } : undefined)
+    }
+  } catch {
+    // noop if Sonner not ready
+  }
 
   return {
-    id: id,
-    dismiss,
-    update,
+    id,
+    dismiss: () => {
+      try {
+        (sonnerToast as any).dismiss?.()
+      } catch {}
+    },
+    update: () => {
+      /* no-op mapping */
+    },
   }
 }
+
 
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
+  // Safe implementation that avoids React hooks entirely
   return {
-    ...state,
+    toasts: [],
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (_toastId?: string) => {
+      try {
+        (sonnerToast as any).dismiss?.()
+      } catch {}
+    },
   }
 }
 
+
 export { useToast, toast }
+

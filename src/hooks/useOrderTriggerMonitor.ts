@@ -50,6 +50,8 @@ export const useOrderTriggerMonitor = (userId?: string) => {
 
     console.log('🔔 Setting up order trigger monitoring for user:', userId);
 
+    const channelId = `orders-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
+    
     // Subscribe to order trigger broadcasts
     const channel = supabase
       .channel('order-triggers')
@@ -59,6 +61,9 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       })
       .subscribe((status) => {
         console.log('📡 Order trigger subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log(`WS-ORDERS: SUBSCRIBE [${channelId}] name=order-triggers`);
+        }
       });
 
     // Request notification permission on first setup
@@ -69,7 +74,7 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     }
 
     return () => {
-      console.log('🔕 Cleaning up order trigger monitoring');
+      console.log(`WS-ORDERS: UNSUBSCRIBE [${channelId}]`);
       supabase.removeChannel(channel);
     };
   }, [userId, handleOrderTrigger]);

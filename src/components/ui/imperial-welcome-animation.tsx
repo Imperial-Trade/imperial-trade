@@ -1,155 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useLayoutEffect, useRef } from 'react';
+import { TypewriterText } from './typewriter-text';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ImperialWelcomeAnimationProps {
   onComplete?: () => void;
 }
 
 export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> = ({ onComplete }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { user } = useAuth();
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>();
-  
+  const dotCycleCountRef = useRef(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [activeDot, setActiveDot] = useState(0);
+  const [typingComplete, setTypingComplete] = useState(false);
+  const [fadeToBlack, setFadeToBlack] = useState(false);
+  const [doorwayFade, setDoorwayFade] = useState(false);
+  const [showDashboardFade, setShowDashboardFade] = useState(false);
+  const typingCompleteRef = useRef(false);
 
   const tagline = "the imperial experience awaits.";
-
-  // Updated timeline with longer pause and dots animation
-  const timeline = {
-    typewriter_start: 0,     // Start immediately
-    typewriter_end: 3000,    // 3 seconds for typing
-    pause_start: 3000,       // Pause starts after typing
-    pause_end: 7000,         // 4 second pause (3-7 seconds)
-    opening_start: 7000,     // Opening effect starts
-    opening_end: 8500,       // 1.5 seconds for opening
-    complete: 8500           // Total animation time
+  
+  // Get user name with fallback logic
+  const getUserName = () => {
+    if (!user) return "Trader";
+    const metadata = user.user_metadata || {};
+    return metadata.full_name || 
+           metadata.display_name || 
+           (user.email ? user.email.split('@')[0] : "Trader");
   };
-
-  // Apple-style easing function
-  const easeInOutCubic = (t: number): number => {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  };
-
-  const easeOutQuart = (t: number): number => {
-    return 1 - Math.pow(1 - t, 4);
-  };
-
-  const easeInOutQuart = (t: number): number => {
-    return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
-  };
-
-  const resizeCanvas = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
-      }
-    }
-  };
-
-  // Typewriter effect for tagline
-  const drawTypewriter = (ctx: CanvasRenderingContext2D, progress: number) => {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    const charsToShow = Math.floor(tagline.length * progress);
-    const displayText = tagline.substring(0, charsToShow);
-    
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    ctx.fillText(displayText, ctx.canvas.width / 2, ctx.canvas.height / 2);
-    
-    // Cursor effect
-    if (progress < 1) {
-      const cursorOpacity = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
-      ctx.fillStyle = `rgba(255, 255, 255, ${cursorOpacity})`;
-      const textWidth = ctx.measureText(displayText).width;
-      ctx.fillRect(ctx.canvas.width / 2 + textWidth / 2 + 5, ctx.canvas.height / 2 - 20, 3, 40);
-    }
-  };
-
-  // Pause phase with animated dots
-  const drawPause = (ctx: CanvasRenderingContext2D, elapsedTime: number) => {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    // Main text
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    ctx.fillText(tagline, ctx.canvas.width / 2, ctx.canvas.height / 2);
-    
-    // Animated dots below the text
-    const dotStartY = ctx.canvas.height / 2 + 60;
-    const dotSize = 8;
-    const dotSpacing = 20;
-    const animationSpeed = 800; // milliseconds per cycle
-    
-    // Calculate which dot should be active based on time
-    const cycleTime = elapsedTime % animationSpeed;
-    const activeDot = Math.floor((cycleTime / animationSpeed) * 4);
-    
-    // Draw 4 dots
-    for (let i = 0; i < 4; i++) {
-      const dotX = ctx.canvas.width / 2 - (1.5 * dotSpacing) + (i * dotSpacing);
-      const isActive = i === activeDot;
-      
-      ctx.beginPath();
-      ctx.arc(dotX, dotStartY, dotSize, 0, Math.PI * 2);
-      ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.3)';
-      ctx.fill();
-    }
-  };
-
-  // Opening effect - dramatic fade out with scale
-  const drawOpening = (ctx: CanvasRenderingContext2D, progress: number) => {
-    const easedProgress = easeInOutCubic(progress);
-    
-    // Create expanding circle effect
-    const maxRadius = Math.sqrt(Math.pow(ctx.canvas.width, 2) + Math.pow(ctx.canvas.height, 2));
-    const currentRadius = maxRadius * easedProgress;
-    
-    // Fill background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    // Show text with fade out
-    const textOpacity = 1 - easedProgress;
-    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
-    ctx.fillStyle = `rgba(255, 255, 255, ${textOpacity * 0.9})`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    // Scale text slightly
-    ctx.save();
-    const scale = 1 + (easedProgress * 0.1);
-    ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
-    ctx.scale(scale, scale);
-    ctx.fillText(tagline, 0, 0);
-    ctx.restore();
-    
-    // Create circular opening effect
-    if (easedProgress > 0.3) {
-      const openingProgress = (easedProgress - 0.3) / 0.7;
-      const openingRadius = maxRadius * openingProgress;
-      
-      // Create circular clipping mask for opening effect
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(ctx.canvas.width / 2, ctx.canvas.height / 2, openingRadius, 0, Math.PI * 2);
-      ctx.fillStyle = 'white';
-      ctx.fill();
-      ctx.restore();
-    }
-  };
-
 
   const animate = (currentTime: number) => {
     if (!startTimeRef.current) {
@@ -157,59 +36,240 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
     
     const elapsedTime = currentTime - startTimeRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
     
-    if (!ctx || !canvas) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    if (elapsedTime <= timeline.typewriter_end) {
-      // Typewriter effect
-      const progress = Math.min(1, elapsedTime / (timeline.typewriter_end - timeline.typewriter_start));
-      drawTypewriter(ctx, progress);
-    } else if (elapsedTime <= timeline.pause_end) {
-      // Pause phase with animated dots
-      drawPause(ctx, elapsedTime - timeline.pause_start);
-    } else if (elapsedTime <= timeline.opening_end) {
-      // Opening effect
-      const progress = Math.min(1, (elapsedTime - timeline.opening_start) / (timeline.opening_end - timeline.opening_start));
-      drawOpening(ctx, progress);
-    } else {
-      // Animation complete
-      setTimeout(() => {
-        setIsVisible(false);
-        onComplete?.();
-      }, 200);
-      return;
+    // Only animate dots after typing is complete
+    if (typingCompleteRef.current && !fadeToBlack && !doorwayFade && !showDashboardFade) {
+      // 3 cycles in 3 seconds = 1000ms per cycle
+      const cycleTime = elapsedTime % 1000;
+      const newActiveDot = Math.floor(cycleTime / 250); // 1000ms / 4 dots
+      setActiveDot(newActiveDot);
+      
+      // Count complete cycles
+      const currentCycle = Math.floor(elapsedTime / 1000);
+      if (currentCycle > dotCycleCountRef.current) {
+        dotCycleCountRef.current = currentCycle;
+      }
+      
+      // After exactly 3 cycles (3 seconds), start fade to black
+      if (currentCycle >= 3 && elapsedTime >= 3000) {
+        setFadeToBlack(true);
+        
+        // After 0.5s fade to black, start doorway fade
+        setTimeout(() => {
+          setDoorwayFade(true);
+          
+          // After 2s simple fade, call onComplete and remove overlay
+          setTimeout(() => {
+            onComplete?.();
+            setIsVisible(false);
+          }, 2000); // 2 second elegant fade duration
+        }, 500); // 0.5 second fade to black duration
+        return;
+      }
     }
     
     animationRef.current = requestAnimationFrame(animate);
   };
 
-  useEffect(() => {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+  const handleTypingComplete = () => {
+    typingCompleteRef.current = true;
+    setTypingComplete(true);
+    // Reset the start time for dot animation
+    startTimeRef.current = performance.now();
+  };
+
+  useLayoutEffect(() => {
+    // Prevent StrictMode double-invocation issues
+    let isCleanedUp = false;
     
+    // Store original styles and scroll position
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    
+    // Store original inline styles with kebab-case properties
+    const originalStyles = {
+      html: {
+        'overflow': htmlEl.style.overflow,
+        'overscroll-behavior': htmlEl.style.overscrollBehavior,
+        'touch-action': htmlEl.style.touchAction,
+        'height': htmlEl.style.height
+      },
+      body: {
+        'overflow': bodyEl.style.overflow,
+        'position': bodyEl.style.position,
+        'top': bodyEl.style.top,
+        'left': bodyEl.style.left,
+        'right': bodyEl.style.right,
+        'width': bodyEl.style.width,
+        'height': bodyEl.style.height,
+        'overscroll-behavior': bodyEl.style.overscrollBehavior,
+        'touch-action': bodyEl.style.touchAction
+      }
+    };
+
+    // Helper function to set CSS with !important
+    const setImportant = (el: HTMLElement, prop: string, val: string) => {
+      el.style.setProperty(prop, val, 'important');
+    };
+
+    // Apply comprehensive scroll lock to both html and body
+    setImportant(htmlEl, 'overflow', 'hidden');
+    setImportant(htmlEl, 'overscroll-behavior', 'none');
+    setImportant(htmlEl, 'touch-action', 'none');
+    setImportant(htmlEl, 'height', '100%');
+    
+    setImportant(bodyEl, 'overflow', 'hidden');
+    setImportant(bodyEl, 'position', 'fixed');
+    setImportant(bodyEl, 'top', `-${scrollY}px`);
+    setImportant(bodyEl, 'left', '0');
+    setImportant(bodyEl, 'right', '0');
+    setImportant(bodyEl, 'width', '100%');
+    setImportant(bodyEl, 'height', '100%');
+    setImportant(bodyEl, 'overscroll-behavior', 'none');
+    setImportant(bodyEl, 'touch-action', 'none');
+
+    // Event handlers to prevent scrolling
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const preventKeys = (e: KeyboardEvent) => {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
+        preventScroll(e as unknown as Event);
+      }
+    };
+
+    const lockScrollPos = () => {
+      if (!isCleanedUp) {
+        window.scrollTo(0, scrollY);
+      }
+    };
+
+    // Add event listeners to both window and document for maximum coverage
+    const addEventListeners = () => {
+      // Window events with capture and non-passive
+      window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+      window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+      window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
+      window.addEventListener('scroll', lockScrollPos, { passive: true });
+      
+      // Document events for additional coverage
+      document.addEventListener('wheel', preventScroll, { passive: false, capture: true });
+      document.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
+      document.addEventListener('keydown', preventKeys, { passive: false, capture: true });
+    };
+
+    const removeEventListeners = () => {
+      // Remove window events
+      window.removeEventListener('wheel', preventScroll);
+      window.removeEventListener('touchmove', preventScroll);
+      window.removeEventListener('keydown', preventKeys);
+      window.removeEventListener('scroll', lockScrollPos);
+      
+      // Remove document events
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('keydown', preventKeys);
+    };
+
+    addEventListeners();
     animationRef.current = requestAnimationFrame(animate);
     
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      isCleanedUp = true;
+      removeEventListeners();
+      
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+
+      // Restore original styles exactly using kebab-case
+      Object.entries(originalStyles.html).forEach(([prop, value]) => {
+        if (value) {
+          htmlEl.style.setProperty(prop, value);
+        } else {
+          htmlEl.style.removeProperty(prop);
+        }
+      });
+
+      Object.entries(originalStyles.body).forEach(([prop, value]) => {
+        if (value) {
+          bodyEl.style.setProperty(prop, value);
+        } else {
+          bodyEl.style.removeProperty(prop);
+        }
+      });
+
+      // Restore scroll position after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        window.scrollTo(0, scrollY);
+      }, 0);
     };
   }, []);
 
   if (!isVisible) return null;
 
+  // Additional event handlers for the overlay
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full"
-        style={{ display: 'block' }}
-      />
+    <div 
+      className={`fixed inset-0 z-[2147483646] flex items-center justify-center overscroll-none touch-none transition-all ${
+        fadeToBlack ? 'bg-black duration-500' : 
+        doorwayFade ? 'bg-black animate-fade-out' : 
+        'bg-black'
+      }`}
+      style={{ 
+        minHeight: '100dvh',
+        ...(doorwayFade ? {
+          opacity: 0,
+          animation: 'professional-fade-out 2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards'
+        } : {})
+      }}
+      onWheel={handleWheel}
+      onTouchMove={handleTouchMove}
+    >
+      {/* Simple elegant fade - no complex effects */}
+
+      <div className={`text-center px-4 max-w-4xl mx-auto transition-opacity duration-500 ${
+        fadeToBlack ? 'opacity-0' : 'opacity-100'
+      }`}>
+        {!doorwayFade && (
+          <>
+            <h1 className="text-white/90 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light tracking-wide mb-8 sm:mb-10 leading-tight">
+              <TypewriterText 
+                text={tagline}
+                speed={100}
+                onComplete={handleTypingComplete}
+                className="text-white/90"
+              />
+            </h1>
+            
+            {typingComplete && !fadeToBlack && (
+              <div className="flex items-center justify-center gap-2 sm:gap-3 animate-fade-in">
+                {[0, 1, 2, 3].map((index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-opacity duration-300 ${
+                      activeDot === index ? 'bg-white opacity-100' : 'bg-white/30 opacity-60'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

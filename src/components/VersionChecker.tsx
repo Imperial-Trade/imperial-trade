@@ -23,6 +23,14 @@ export function VersionChecker() {
         if (currentVersion && currentVersion !== versionInfo.version) {
           setNewVersion(versionInfo);
           setNeedsUpdate(true);
+          
+          // Auto-reload after 15 seconds
+          setTimeout(() => {
+            if (versionInfo) {
+              localStorage.setItem('app_version', versionInfo.version);
+            }
+            window.location.reload();
+          }, 15000);
         } else {
           localStorage.setItem('app_version', versionInfo.version);
         }
@@ -34,8 +42,8 @@ export function VersionChecker() {
     // Check on mount
     checkVersion();
     
-    // Check every 5 minutes
-    const interval = setInterval(checkVersion, 5 * 60 * 1000);
+    // Check every 90 seconds for faster update detection
+    const interval = setInterval(checkVersion, 90 * 1000);
     return () => clearInterval(interval);
   }, []);
 

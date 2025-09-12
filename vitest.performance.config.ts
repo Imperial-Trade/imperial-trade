@@ -1,36 +1,24 @@
-
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+/// <reference types="vitest" />
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
   test: {
-    name: 'performance',
     environment: 'happy-dom',
-    setupFiles: [
-      './src/test/setup.ts',
-      './src/__tests__/performance/setup.ts'
-    ],
-    globals: true,
-    testTimeout: 30000, // Longer timeout for performance tests
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.performance.test.{js,ts,jsx,tsx}'],
+    testTimeout: 30000,
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['json'],
       exclude: [
         'node_modules/',
         'src/test/',
         '**/*.d.ts',
         '**/*.config.*',
-        'dist/',
-        'e2e/',
-        'src/integrations/supabase/types.ts',
-        'src/__tests__/**'
+        'dist/'
       ]
-    },
-    reporters: ['verbose', 'json'],
-    outputFile: {
-      json: './test-results/performance-results.json'
     }
   },
   resolve: {

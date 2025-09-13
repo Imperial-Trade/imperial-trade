@@ -55,10 +55,11 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       description: "Educational market analysis and pattern recognition"
     },
     {
-      to: `${baseUrl}/dashboard/education`,
+      to: "/academy",
       icon: GraduationCap,
       label: "Education", 
-      description: "Comprehensive trading education platform"
+      description: "Comprehensive trading education platform",
+      external: true
     },
     {
       to: `${baseUrl}/dashboard/live`,
@@ -67,10 +68,11 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       description: "Interactive live trading sessions"
     },
     {
-      to: `${baseUrl}/dashboard/forum`,
+      to: "/orderflow",
       icon: Users,
       label: "Community",
-      description: "Connect with fellow traders"
+      description: "Connect with fellow traders",
+      external: true
     },
     {
       to: `${baseUrl}/dashboard/advanced-tools`,
@@ -99,19 +101,27 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
             <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;
-              return (
+              const ButtonComponent = (
+                <Button 
+                  variant="ghost" 
+                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-primary/10 text-primary border border-primary/20' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              );
+
+              return item.external ? (
+                <a key={item.to} href={item.to}>
+                  {ButtonComponent}
+                </a>
+              ) : (
                 <Link key={item.to} to={item.to}>
-                  <Button 
-                    variant="ghost" 
-                    className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary border border-primary/20' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
+                  {ButtonComponent}
                 </Link>
               );
             })}
@@ -158,23 +168,40 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                 <nav className="flex flex-col gap-2 mt-8">
                   {navigationItems.map(item => {
                     const isActive = location.pathname === item.to;
+                    const linkContent = (
+                      <>
+                        <item.icon className="h-5 w-5" />
+                        <div>
+                          <span className="text-base font-medium block">{item.label}</span>
+                          <span className="text-sm text-muted-foreground">{item.description}</span>
+                        </div>
+                      </>
+                    );
+                    const linkClassName = `flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
+                      isActive 
+                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                        : 'hover:bg-primary/10 text-foreground border-border/50'
+                    }`;
+
                     return (
                       <div key={item.to} className="space-y-2">
-                        <Link 
-                          to={item.to} 
-                          onClick={closeMobileMenu} 
-                          className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
-                            isActive 
-                              ? 'bg-primary/10 border-primary/20 text-primary' 
-                              : 'hover:bg-primary/10 text-foreground border-border/50'
-                          }`}
-                        >
-                          <item.icon className="h-5 w-5" />
-                          <div>
-                            <span className="text-base font-medium block">{item.label}</span>
-                            <span className="text-sm text-muted-foreground">{item.description}</span>
-                          </div>
-                        </Link>
+                        {item.external ? (
+                          <a 
+                            href={item.to} 
+                            onClick={closeMobileMenu} 
+                            className={linkClassName}
+                          >
+                            {linkContent}
+                          </a>
+                        ) : (
+                          <Link 
+                            to={item.to} 
+                            onClick={closeMobileMenu} 
+                            className={linkClassName}
+                          >
+                            {linkContent}
+                          </Link>
+                        )}
                       </div>
                     );
                   })}

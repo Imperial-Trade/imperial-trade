@@ -11,8 +11,8 @@ export default defineConfig({
     },
   },
   test: {
-    // Completely disable all test file processing
-    include: [],
+    // Include basic test patterns - will run no tests if none exist
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

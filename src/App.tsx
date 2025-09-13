@@ -21,8 +21,6 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
-import Forum from "@/pages/dashboard/forum/Forum";
-import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
@@ -194,22 +192,6 @@ function App() {
                           <Route
                             path="new-signal"
                             element={<NewSignalPage />}
-                          />
-                          <Route
-                            path="education"
-                            element={
-                              <RouteRedirectHandler route="education">
-                                <Education />
-                              </RouteRedirectHandler>
-                            }
-                          />
-                          <Route
-                            path="forum"
-                            element={
-                              <RouteRedirectHandler route="forum">
-                                <Forum />
-                              </RouteRedirectHandler>
-                            }
                           />
                           <Route
                             path="advanced-tools"

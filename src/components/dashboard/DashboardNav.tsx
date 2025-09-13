@@ -25,12 +25,12 @@ const DashboardNav: React.FC = () => {
   const primaryNavItems = [
     { to: "/dashboard/home", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
-    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
+    { to: "/academy", icon: GraduationCap, label: "Education", external: true },
   ];
 
   const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
-    { to: "/dashboard/forum", icon: MessageSquare, label: "Community" },
+    { to: "/orderflow", icon: MessageSquare, label: "Community", external: true },
     { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];
@@ -110,19 +110,27 @@ const DashboardNav: React.FC = () => {
             {/* Primary navigation items */}
             {primaryNavItems.map(item => {
               const isActive = location.pathname === item.to;
-              return (
+              const ButtonComponent = (
+                <Button 
+                  variant="ghost" 
+                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              );
+
+              return item.external ? (
+                <a key={item.to} href={item.to}>
+                  {ButtonComponent}
+                </a>
+              ) : (
                 <Link key={item.to} to={item.to}>
-                  <Button 
-                    variant="ghost" 
-                    className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
+                  {ButtonComponent}
                 </Link>
               );
             })}
@@ -193,15 +201,27 @@ const DashboardNav: React.FC = () => {
                     const isActive = location.pathname === item.to;
                     return (
                       <DropdownMenuItem key={item.to} asChild>
-                        <Link 
-                          to={item.to} 
-                          className={`flex items-center gap-3 w-full ${
-                            isActive ? 'bg-primary/10 text-primary' : ''
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          {item.label}
-                        </Link>
+                        {item.external ? (
+                          <a 
+                            href={item.to} 
+                            className={`flex items-center gap-3 w-full ${
+                              isActive ? 'bg-primary/10 text-primary' : ''
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </a>
+                        ) : (
+                          <Link 
+                            to={item.to} 
+                            className={`flex items-center gap-3 w-full ${
+                              isActive ? 'bg-primary/10 text-primary' : ''
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        )}
                       </DropdownMenuItem>
                     );
                   })}
@@ -289,20 +309,37 @@ const DashboardNav: React.FC = () => {
             <nav className="flex flex-col gap-3 mt-8 pb-4">
               {allNavigationItems.map(item => {
                 const isActive = location.pathname === item.to;
-                return (
+                const linkContent = (
+                  <>
+                    <item.icon className="h-6 w-6 flex-shrink-0" />
+                    <span className="text-base font-medium flex-1">{item.label}</span>
+                  </>
+                );
+                const linkClassName = `flex items-center gap-4 p-4 min-h-[56px] rounded-xl transition-all duration-200 border touch-manipulation active:scale-98 ${
+                  isActive 
+                    ? 'bg-primary/10 border-primary/20 text-primary' 
+                    : 'hover:bg-primary/10 text-foreground border-border/50'
+                }`;
+
+                return item.external ? (
+                  <a 
+                    key={item.to} 
+                    href={item.to} 
+                    onClick={closeMobileMenu} 
+                    className={linkClassName}
+                    aria-label={`Navigate to ${item.label}`}
+                  >
+                    {linkContent}
+                  </a>
+                ) : (
                   <Link 
                     key={item.to} 
                     to={item.to} 
                     onClick={closeMobileMenu} 
-                    className={`flex items-center gap-4 p-4 min-h-[56px] rounded-xl transition-all duration-200 border touch-manipulation active:scale-98 ${
-                      isActive 
-                        ? 'bg-primary/10 border-primary/20 text-primary' 
-                        : 'hover:bg-primary/10 text-foreground border-border/50'
-                    }`}
+                    className={linkClassName}
                     aria-label={`Navigate to ${item.label}`}
                   >
-                    <item.icon className="h-6 w-6 flex-shrink-0" />
-                    <span className="text-base font-medium flex-1">{item.label}</span>
+                    {linkContent}
                   </Link>
                 );
               })}

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
+import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment"
 
 interface SharedHeaderProps {
   /**
@@ -55,7 +56,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       description: "Educational market analysis and pattern recognition"
     },
     {
-      to: "/academy",
+      to: getAcademyAppUrl(),
       icon: GraduationCap,
       label: "Education", 
       description: "Comprehensive trading education platform",
@@ -68,7 +69,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       description: "Interactive live trading sessions"
     },
     {
-      to: "/orderflow",
+      to: getOrderFlowAppUrl(),
       icon: Users,
       label: "Community",
       description: "Connect with fellow traders",

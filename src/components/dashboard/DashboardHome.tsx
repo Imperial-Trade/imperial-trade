@@ -194,10 +194,10 @@ export const DashboardHome: React.FC = () => {
                 variant="outline"
                 className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
               >
-                <Link to="/dashboard/forum">
+                <a href="/orderflow">
                   Join Community
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </a>
               </Button>
             </CardContent>
           </Card>

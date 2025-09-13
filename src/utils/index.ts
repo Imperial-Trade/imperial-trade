@@ -25,7 +25,9 @@ export const createPageUrl = (page: string): string => {
     'account-request': '/account-request',
     'home': '/',
     'dashboard': '/dashboard',
-    'admin': '/dashboard/admin'
+    'admin': '/dashboard/admin',
+    'Education': '/academy',
+    'Forum': '/orderflow'
   };
   
   return pageMap[page] || '/';

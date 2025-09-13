@@ -1,15 +1,88 @@
 
-name: trade-imperial-app
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+domains:
+- domain: www.tradeimperial.com
+  type: PRIMARY
+egress:
+  type: DEDICATED_IP
+envs:
+- key: VITE_SUPABASE_URL
+  scope: RUN_AND_BUILD_TIME
+  value: https://kmuoqkcxguafxulqlbmi.supabase.co
+- key: VITE_SUPABASE_PROJECT_ID
+  scope: RUN_AND_BUILD_TIME
+  value: kmuoqkcxguafxulqlbmi
+- key: VITE_PUBLIC_POSTHOG_HOST
+  scope: RUN_AND_BUILD_TIME
+  value: https://us.i.posthog.com
+- key: VITE_PUBLIC_POSTHOG_KEY
+  scope: RUN_AND_BUILD_TIME
+  type: SECRET
+  value: EV[1:E8A7JPsh2xEWx36d5nJcrVdRuTkQUChd:ESQKS6DPmWaj9ZpgvIMZYPpGeP5ffNJ7ogLZeu6wDQqEntbamzc/GKBjK9XXEEt5NPWYKbCKtddDxDdlzOHG]
+- key: VITE_ENABLE_SW
+  scope: RUN_AND_BUILD_TIME
+  value: "false"
+- key: VITE_SUPABASE_ANON_KEY
+  scope: RUN_AND_BUILD_TIME
+  value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2MDI5NjYsImV4cCI6MjA3MzE3ODk2Nn0.m6vaoaT7X7VvcKaY3W3aVEi5ZjqitAjQAJbyYnps_sc
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: imperial-trade-app
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /
+  - component:
+      name: orderflow-social-hub
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /orderflow
+  - component:
+      name: academy
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /academy
+maintenance: {}
+name: imperial-trade-app
+region: sfo
 static_sites:
-- name: frontend
-  source_dir: /
-  github:
-    repo: your-username/your-repo-name
-    branch: main
-  build_command: npm run build
-  output_dir: dist
-  index_document: index.html
-  error_document: index.html
+- build_command: npm run build
   catchall_document: index.html
-  routes:
-  - path: /
+  environment_slug: node-js
+  github:
+    branch: production
+    deploy_on_push: true
+    repo: Imperial-Trade/imperial-trade
+  name: imperial-trade-app
+  output_dir: dist
+  source_dir: /
+- build_command: npm run build
+  catchall_document: index.html
+  environment_slug: node-js
+  github:
+    branch: production
+    deploy_on_push: true
+    repo: Imperial-Trade/orderflow
+  name: orderflow-social-hub
+  output_dir: dist
+  source_dir: /
+- build_command: npm run build
+  catchall_document: index.html
+  environment_slug: node-js
+  github:
+    branch: production
+    deploy_on_push: true
+    repo: Imperial-Trade/academy
+  name: academy
+  output_dir: dist
+  source_dir: /

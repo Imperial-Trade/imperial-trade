@@ -120,15 +120,27 @@ export default function FeatureCarousel() {
                   {features[activeIndex].details}
                 </p>
                 
-                <Link to={createPageUrl(features[activeIndex].link)}>
-                  <Button size="lg" className="border border-border bg-card hover:bg-accent text-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105" style={{
-                  background: `linear-gradient(135deg, ${features[activeIndex].color}20, ${features[activeIndex].color}40)`,
-                  borderColor: features[activeIndex].color
-                }}>
-                    Explore {features[activeIndex].title}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
+                {features[activeIndex].link.startsWith('/') ? (
+                  <a href={features[activeIndex].link}>
+                    <Button size="lg" className="border border-border bg-card hover:bg-accent text-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105" style={{
+                    background: `linear-gradient(135deg, ${features[activeIndex].color}20, ${features[activeIndex].color}40)`,
+                    borderColor: features[activeIndex].color
+                  }}>
+                      Explore {features[activeIndex].title}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </a>
+                ) : (
+                  <Link to={createPageUrl(features[activeIndex].link)}>
+                    <Button size="lg" className="border border-border bg-card hover:bg-accent text-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105" style={{
+                    background: `linear-gradient(135deg, ${features[activeIndex].color}20, ${features[activeIndex].color}40)`,
+                    borderColor: features[activeIndex].color
+                  }}>
+                      Explore {features[activeIndex].title}
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

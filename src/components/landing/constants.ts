@@ -15,7 +15,7 @@ export const features = [
       "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst. Our goal is to make you self-sufficient.",
     detailedContext:
       "Transform from beginner to expert trader through our comprehensive education system. Learn from real market professionals who've traded millions in volume. Master structured learning pathways, interactive quizzes with knowledge gates, and downloadable trading arsenals.",
-    link: "Education",
+    link: "/academy",
     videoSrc:
       "https://videos.pexels.com/video-files/8617545/8617545-hd_1920_1080_30fps.mp4",
     features: [
@@ -75,7 +75,7 @@ export const features = [
       "Trading is a lonely endeavor, but it doesn't have to be. The forum is a curated, professional ecosystem designed to foster collaboration, eliminate bad habits, and keep you connected to a network of serious, like-minded peers.",
     detailedContext:
       "Join a network of 500+ dedicated traders who share your passion for the markets. Collaborate, learn, and grow together in a supportive environment free from noise with structured channels and professional oversight.",
-    link: "Forum",
+    link: "/orderflow",
     videoSrc:
       "https://videos.pexels.com/video-files/3205394/3205394-hd_1920_1080_25fps.mp4",
     features: [

@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 
 const DashboardNav: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -25,12 +26,12 @@ const DashboardNav: React.FC = () => {
   const primaryNavItems = [
     { to: "/dashboard/home", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
-    { to: "/academy", icon: GraduationCap, label: "Education", external: true },
+    { to: getAcademyAppUrl(), icon: GraduationCap, label: "Education", external: true },
   ];
 
   const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
-    { to: "/orderflow", icon: MessageSquare, label: "Community", external: true },
+    { to: getOrderFlowAppUrl(), icon: MessageSquare, label: "Community", external: true },
     { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];

@@ -33,6 +33,7 @@ import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
+import { getOrderFlowAppUrl } from "@/utils/environment";
 
 export const DashboardHome: React.FC = () => {
   const { user } = useAuth();

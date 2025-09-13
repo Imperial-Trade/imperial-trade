@@ -11,8 +11,8 @@ export default defineConfig({
     },
   },
   test: {
-    // Completely disable all test file processing
-    include: [],
+    // Include basic test patterns - will run no tests if none exist
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -20,10 +20,7 @@ export default defineConfig({
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
       'dist/',
       'e2e/',
-      'src/**/*.{test,spec}.{ts,tsx}',
       'src/__tests__/**/*',
-      '**/*.test.*',
-      '**/*.spec.*',
       '**/*.disabled.*'
     ],
     coverage: {
@@ -32,14 +29,10 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'src/test/',
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.spec.{ts,tsx}',
         'dist/',
         'e2e/',
         'src/integrations/supabase/types.ts',
         'src/__tests__/**',
-        '**/*.test.*',
-        '**/*.spec.*',
         '**/*.disabled.*'
       ],
       thresholds: {

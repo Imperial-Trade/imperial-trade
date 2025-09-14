@@ -84,15 +84,27 @@ if (enableServiceWorker && 'serviceWorker' in navigator) {
 const POSTHOG_HOST = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
 const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 
-// Initialize PostHog directly
+// Defer PostHog initialization to prevent login freeze
 if (POSTHOG_KEY && POSTHOG_HOST) {
-  try {
-    posthog.init(POSTHOG_KEY, {
-      api_host: POSTHOG_HOST,
-      capture_pageview: false,
-    });
-  } catch (error) {
-    console.error('PostHog initialization failed:', error);
+  // Use requestIdleCallback to initialize PostHog when browser is idle
+  const initPostHog = () => {
+    try {
+      posthog.init(POSTHOG_KEY, {
+        api_host: POSTHOG_HOST,
+        capture_pageview: false,
+        // Disable surveys during initial load to prevent conflicts
+        disable_surveys: true
+      });
+    } catch (error) {
+      console.error('PostHog initialization failed:', error);
+    }
+  };
+  
+  // Defer initialization to prevent blocking main thread during login
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(initPostHog, { timeout: 3000 });
+  } else {
+    setTimeout(initPostHog, 2000);
   }
 }
 

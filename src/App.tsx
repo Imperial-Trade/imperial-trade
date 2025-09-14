@@ -54,7 +54,7 @@ import AccountRequestStatus from "@/pages/landing-page/account-request-status/Ac
 // Dashboard Pages
 import Home from "@/pages/dashboard/home/Home";
 import Live from "@/pages/dashboard/live/Live";
-import SignalStream from "@/pages/dashboard/signal-stream/SignalStream";
+import SignalStreamOptimized from "@/components/dashboard/SignalStreamOptimized";
 import NewSignalPage from "@/pages/dashboard/new-signal/NewSignalPage";
 import Education from "@/pages/dashboard/education/Education";
 import AdvancedTools from "@/pages/dashboard/advanced-tools/AdvancedTools";
@@ -187,7 +187,7 @@ function App() {
                           <Route path="live" element={<Live />} />
                           <Route
                             path="signal-stream"
-                            element={<SignalStream />}
+                            element={<SignalStreamOptimized />}
                           />
                           <Route
                             path="new-signal"

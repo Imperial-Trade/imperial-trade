@@ -3669,6 +3669,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string[]
       }
+      get_active_notification_triggers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          table_name: string
+          trigger_name: string
+        }[]
+      }
       get_active_users_for_broadcasting: {
         Args: Record<PropertyKey, never>
         Returns: {

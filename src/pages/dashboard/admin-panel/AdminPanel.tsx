@@ -12,6 +12,8 @@ import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement"
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosticsPanel";
 import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
+import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationAnalyticsDashboard";
+import { NotificationRateLimitManager } from "@/components/admin/NotificationRateLimitManager";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 const AdminPanel: React.FC = () => {
@@ -99,6 +101,7 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
+          <NotificationAnalyticsDashboard />
           <AdminNotificationSystem />
         </TabsContent>
 
@@ -107,6 +110,7 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="rate-limits" className="space-y-4">
+          <NotificationRateLimitManager />
           <RateLimitManager />
         </TabsContent>
 

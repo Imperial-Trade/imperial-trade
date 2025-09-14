@@ -1283,6 +1283,62 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_audit_trail: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          delivered_at: string | null
+          delivery_channel: string
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          metadata: Json | null
+          notification_type: string
+          signal_id: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_channel: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          notification_type: string
+          signal_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          notification_type?: string
+          signal_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_audit_trail_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_batch_queue: {
         Row: {
           asset_symbol: string | null
@@ -1441,6 +1497,87 @@ export type Database = {
           signal_id?: string | null
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          batch_notifications: boolean | null
+          created_at: string | null
+          delivery_preferences: Json | null
+          id: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          signal_closed: boolean | null
+          signal_created: boolean | null
+          signal_updated: boolean | null
+          stop_loss_hits: boolean | null
+          timezone: string | null
+          tp_hits: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_notifications?: boolean | null
+          created_at?: string | null
+          delivery_preferences?: Json | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          signal_closed?: boolean | null
+          signal_created?: boolean | null
+          signal_updated?: boolean | null
+          stop_loss_hits?: boolean | null
+          timezone?: string | null
+          tp_hits?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_notifications?: boolean | null
+          created_at?: string | null
+          delivery_preferences?: Json | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          signal_closed?: boolean | null
+          signal_created?: boolean | null
+          signal_updated?: boolean | null
+          stop_loss_hits?: boolean | null
+          timezone?: string | null
+          tp_hits?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_rate_limits: {
+        Row: {
+          count_in_window: number | null
+          created_at: string | null
+          id: string
+          last_sent_at: string | null
+          notification_type: string
+          user_id: string
+          window_start: string | null
+        }
+        Insert: {
+          count_in_window?: number | null
+          created_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          notification_type: string
+          user_id: string
+          window_start?: string | null
+        }
+        Update: {
+          count_in_window?: number | null
+          created_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          notification_type?: string
+          user_id?: string
+          window_start?: string | null
         }
         Relationships: []
       }
@@ -3685,6 +3822,10 @@ export type Database = {
       observe_deprecated_function_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      populate_alert_monitoring_for_existing_signals: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }

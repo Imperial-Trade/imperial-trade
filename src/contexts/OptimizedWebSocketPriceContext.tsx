@@ -100,7 +100,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
-  const { recordMessage, recordConnection, recordClampActivation, syncTelemetry } = useRealtimeTelemetry();
+  const { recordConnection, recordClampActivation } = useRealtimeTelemetry(); // Removed per-message recording
   const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
@@ -309,19 +309,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         if (!emergencyRealtimeBreaker.recordMessage(eventVersion)) {
           return; // Message blocked by emergency breaker
         }
-        telemetry.record(eventVersion);
-
-        // Dev-only logging with session info
-        if (isDevToolsEnabled()) {
-          console.log(`📊 Price event: ${eventVersion} | Session: ${telemetry.sessionInfo.sessionId} | Build: ${telemetry.sessionInfo.buildVersion}`);
-        }
-          
-          // Track cost for price updates
+        // 🔥 SAMPLED TELEMETRY: Only record 1 in 50 price messages to reduce overhead
+        if (Math.random() < 0.02) { // 2% sampling rate for price events
+          telemetry.record(eventVersion);
           costTracker.recordRealtimeMessage('price_update');
           pricePerformanceMonitor.recordPriceUpdate();
           
-          // Calculate latency if timestamp provided
-          if (payload.ts) {
+          // Dev-only logging with session info (sampled)
+          if (isDevToolsEnabled()) {
+            console.log(`📊 Price event: ${eventVersion} | Session: ${telemetry.sessionInfo.sessionId} | Build: ${telemetry.sessionInfo.buildVersion}`);
+          }
+        }
+          
+          // 🔥 SAMPLED LATENCY: Only calculate latency for 1 in 20 messages
+          if (payload.ts && Math.random() < 0.05) { // 5% sampling rate for latency
             const latency = Date.now() - new Date(payload.ts).getTime();
             statsRef.current.latencySum += latency;
             statsRef.current.latencyCount++;
@@ -347,7 +348,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                   const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
                   setPrices(prev => ({ ...prev, ...updatedPrices }));
                   setLastUpdated(new Date());
-                  pricePerformanceMonitor.recordUIUpdate();
+                  
+                  // 🔥 SAMPLED UI TRACKING: Only record 1 in 10 UI updates
+                  if (Math.random() < 0.1) {
+                    pricePerformanceMonitor.recordUIUpdate();
+                  }
                   
                   // Cache prices to sessionStorage with timestamp
                   try {
@@ -886,30 +891,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
   // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
-  useEffect(() => {
-    let telemetrySyncInterval: NodeJS.Timeout | null = null;
-    
-    if (connectionStatus === 'connected') {
-      // Fixed 90s interval for stability
-      const intervalMs = 90000;
-      
-      telemetrySyncInterval = setInterval(() => {
-        if (connectionStatus === 'connected') {
-          syncTelemetry();
-        }
-      }, intervalMs);
-      
-      if (isDevToolsEnabled()) {
-        console.log(`📊 Periodic telemetry sync started (90s interval)`);
-      }
-    }
-    
-    return () => {
-      if (telemetrySyncInterval) {
-        clearInterval(telemetrySyncInterval);
-      }
-    };
-  }, [connectionStatus, syncTelemetry]);
+  // 🔥 TELEMETRY SYNC DISABLED: Removed to eliminate message overhead
+  // Periodic telemetry sync has been disabled to reduce realtime message volume
+  // This was contributing to the 37,680+ messages/hour overhead
 
   // Stable context value
   const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({

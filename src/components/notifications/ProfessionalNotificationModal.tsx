@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2, Send } from 'lucide-react';
+import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,7 +33,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTestingSending, setIsTestingSending] = useState(false);
   const [shouldShake, setShouldShake] = useState(false);
 
   const showToastMessage = (message: string) => {
@@ -65,62 +64,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
 
   const handleNotNow = () => {
     onClose();
-  };
-
-  const sendTestNotification = async () => {
-    if (!user || !playerId) {
-      toast({
-        title: "Test Failed",
-        description: "Please activate notifications first to send a test.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsTestingSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
-        body: {
-          notifications: [{
-            signal_id: `test_${Date.now()}`,
-            user_id: user.id,
-            user_ids: [user.id],
-            event_type: 'test_notification',
-            title: '🔔 Test Notification',
-            message: `Hello ${userName}! Your push notifications are working perfectly.`,
-            priority: 'high',
-            delivery_channels: ['push', 'in_app'],
-            include_creator: true,
-            signal_data: {
-              type: 'test',
-              created_at: new Date().toISOString(),
-            },
-            metadata: {
-              test: true,
-              user_name: userName
-            }
-          }]
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "🚀 Test Sent!",
-        description: "Check your device for the test notification.",
-      });
-      
-      console.log('✅ Test notification sent:', data);
-    } catch (error) {
-      console.error('❌ Test notification failed:', error);
-      toast({
-        title: "Test Failed",
-        description: "Unable to send test notification. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingSending(false);
-    }
   };
 
   // Add shake animation after 10 seconds of no interaction
@@ -176,10 +119,9 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
               {/* Header with Crown Logo */}
               <div className="relative bg-gradient-to-br from-imperial-gold via-imperial-gold-light to-imperial-bronze p-8 text-center">
 
-                {/* Crown Icon with Gradient */}
-                <div className="relative mx-auto mb-4">
+                {/* Crown Icon */}
+                <div className="mx-auto mb-4">
                   <Crown className="h-16 w-16 mx-auto text-imperial-white drop-shadow-lg" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-imperial-gold to-imperial-white opacity-30 rounded-full blur-xl"></div>
                 </div>
 
                 <h1 className="text-2xl font-bold text-imperial-white mb-2">
@@ -217,38 +159,6 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                   </div>
                 </div>
 
-
-                {/* Notification Status */}
-                {isPushEnabled && playerId && (
-                  <div className="bg-accent-green/10 border border-accent-green/20 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-5 w-5 text-accent-green" />
-                      <span className="text-sm font-semibold">Push Notifications Active</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Player ID: {playerId.length > 20 ? `${playerId.substring(0, 20)}...` : playerId}
-                    </p>
-                    <Button
-                      onClick={sendTestNotification}
-                      disabled={isTestingSending}
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      {isTestingSending ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          <span>Sending...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <Send className="h-3 w-3" />
-                          <span>Send Test Notification</span>
-                        </div>
-                      )}
-                    </Button>
-                  </div>
-                )}
 
                 {/* Action Buttons */}
                 <div className="space-y-3 pt-2">

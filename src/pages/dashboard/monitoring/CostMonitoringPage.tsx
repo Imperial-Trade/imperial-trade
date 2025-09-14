@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CostMonitorDashboard from '@/components/monitoring/CostMonitorDashboard';
 import { WebSocketHealthMonitor } from '@/components/testing/WebSocketHealthMonitor';
 import WebSocketDiagnostics from '@/components/debug/WebSocketDiagnostics';
+import { RealtimeMessageRateMonitor } from '@/components/monitoring/RealtimeMessageRateMonitor';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
-import { DollarSign, Activity, Settings } from 'lucide-react';
+import { DollarSign, Activity, Settings, BarChart3 } from 'lucide-react';
 
 export default function CostMonitoringPage() {
   const { connectionStatus } = useOptimizedWebSocketPrices();
@@ -31,10 +32,14 @@ export default function CostMonitoringPage() {
       </div>
 
       <Tabs defaultValue="cost" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="cost" className="flex items-center gap-2">
             <DollarSign className="w-4 h-4" />
             Cost Tracking
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Message Rates
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
@@ -48,6 +53,10 @@ export default function CostMonitoringPage() {
 
         <TabsContent value="cost" className="space-y-4">
           <CostMonitorDashboard />
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-4">
+          <RealtimeMessageRateMonitor />
         </TabsContent>
 
         <TabsContent value="health" className="space-y-4">

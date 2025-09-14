@@ -50,7 +50,7 @@ interface SharedRealtimeProviderProps {
 
 export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ children }) => {
   const healthMonitor = useRealtimeHealth();
-  const { recordMessage, recordConnection } = useRealtimeTelemetry();
+  const { recordConnection } = useRealtimeTelemetry(); // Only record connections, not per-message telemetry
   const telemetry = useTelemetry();
   
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
@@ -100,11 +100,11 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           return;
         }
 
-        // Health monitoring
-        healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
-        
-        // Record telemetry for per-channel tracking
-        telemetry.record('db_change_v3');
+        // 🔥 SAMPLED TELEMETRY: Only record 1 in 100 messages to reduce overhead 
+        if (Math.random() < 0.01) { // 1% sampling rate
+          healthMonitor.recordRealtimeMessage('SharedRealtime', payload.eventType);
+          telemetry.record('db_change_v3');
+        }
         
         // 🚨 EMERGENCY MESSAGE FILTER: Block messages not allowed by breaker  
         if (!emergencyRealtimeBreaker.recordMessage('db_change')) {

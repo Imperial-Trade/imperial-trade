@@ -5,6 +5,7 @@ import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2, Send } from '
 import { Button } from '@/components/ui/button';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -20,6 +21,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
   userName = 'Trader'
 }) => {
   const { user } = useAuth();
+  const { markNotificationPromptAsSeen } = useNotificationPrompt();
   const { 
     isInitialized, 
     isPushEnabled, 
@@ -49,6 +51,8 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
           title: "🔔 Alerts Activated!",
           description: "You'll now receive instant trade alerts and market opportunities.",
         });
+        // Mark notification prompt as seen only on successful subscription
+        markNotificationPromptAsSeen();
         onClose();
       }
     } catch (error) {
@@ -166,7 +170,7 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                 duration: 0.45,
                 x: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] }
               }}
-              className="pointer-events-auto w-full max-w-md h-auto bg-background rounded-2xl shadow-2xl border border-border animate-pulse shadow-[0_0_30px_rgba(212,175,55,0.3)]"
+              className="pointer-events-auto w-full max-w-md h-auto bg-background rounded-2xl shadow-2xl border border-border shadow-[0_0_30px_rgba(212,175,55,0.3)]"
               style={{ willChange: 'transform' }}
             >
               {/* Header with Crown Logo */}

@@ -40,9 +40,9 @@ export const DashboardHome: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   const { 
     hasSeenNotificationPrompt, 
-    markNotificationPromptAsSeen,
-    shouldShowNotificationPrompt,
-    setShouldShowNotificationPrompt 
+    shouldShowNotificationPrompt, 
+    setShouldShowNotificationPrompt,
+    isSubscribedToPush
   } = useNotificationPrompt();
   const { isPushEnabled, isInitialized } = useOneSignalPush();
   
@@ -53,19 +53,19 @@ export const DashboardHome: React.FC = () => {
   useEffect(() => {
     if (!user || !isInitialized) return;
     
-    // Don't show if user has already seen prompt, already has push enabled, or welcome animation is showing
-    if (hasSeenNotificationPrompt || isPushEnabled || !hasSeenWelcome) return;
+    // Don't show if user is already subscribed to push notifications or welcome animation is showing
+    if (isSubscribedToPush || isPushEnabled || !hasSeenWelcome) return;
 
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
     }, 1500); // 1.5 seconds delay for immediate visibility
 
     return () => clearTimeout(timer);
-  }, [user, isInitialized, hasSeenNotificationPrompt, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
+  }, [user, isInitialized, isSubscribedToPush, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
 
   const handleNotificationModalClose = () => {
     setShouldShowNotificationPrompt(false);
-    markNotificationPromptAsSeen();
+    // Don't mark as seen here - only mark when actually subscribed in the modal
   };
 
   // Get user's full name for the typewriter effect

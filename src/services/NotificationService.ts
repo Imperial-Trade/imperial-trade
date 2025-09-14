@@ -157,11 +157,11 @@ class NotificationService {
     }
   }
 
-  // Get user's notification preferences
+  // Get user's notification preferences with new table support
   async getUserNotificationSettings(userId: string) {
     try {
-      // Get notification preferences and push settings
-      const { data: profileData, error: profileError } = await supabase
+      // Get notification preferences from profile (fallback until new tables are available)
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('notification_preferences, push_subscription_active')
         .eq('id', userId)
@@ -178,7 +178,7 @@ class NotificationService {
       }
 
       return {
-        ...profileData,
+        ...profile,
         xeon_stream_subscription: xeonStatus || false
       };
     } catch (error) {
@@ -187,7 +187,7 @@ class NotificationService {
     }
   }
 
-  // Update notification preferences
+  // Update notification preferences (using existing profile table)
   async updateNotificationSettings(userId: string, preferences: any) {
     try {
       const { error } = await supabase
@@ -200,6 +200,54 @@ class NotificationService {
     } catch (error) {
       console.error('Failed to update notification settings:', error);
       return false;
+    }
+  }
+
+  // Check rate limits for notifications (fallback implementation)
+  async checkRateLimit(userId: string, notificationType: string): Promise<boolean> {
+    try {
+      // Use existing notification_delivery_log to check recent activity
+      const { data: recentLogs, error } = await supabase
+        .from('notification_delivery_log')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('notification_type', notificationType)
+        .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
+
+      if (error) throw error;
+
+      // Simple rate limit: max 10 per hour
+      const maxNotifications = 10;
+      return (recentLogs?.length || 0) < maxNotifications;
+    } catch (error) {
+      console.error('Failed to check rate limit:', error);
+      return true; // Allow on error
+    }
+  }
+
+  // Record notification in audit trail (using existing delivery log)
+  async recordNotificationAudit(
+    userId: string,
+    signalId: string | null,
+    notificationType: string,
+    deliveryChannel: string,
+    status: 'sent' | 'delivered' | 'failed',
+    metadata?: Record<string, any>
+  ) {
+    try {
+      await supabase
+        .from('notification_delivery_log')
+        .insert({
+          user_id: userId,
+          signal_id: signalId,
+          notification_type: notificationType,
+          delivery_channel: deliveryChannel,
+          status,
+          metadata: metadata || {},
+          delivered_at: status === 'delivered' ? new Date().toISOString() : null
+        });
+    } catch (error) {
+      console.warn('Failed to record notification audit:', error);
     }
   }
 }

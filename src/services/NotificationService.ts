@@ -113,21 +113,21 @@ class NotificationService {
     }
   }
 
-  // Development mode mock notifications
-  sendMockPushNotification(title: string, message: string, type = 'mock_push') {
-    console.log('🧪 DEV MODE: Mock push notification:', { title, message });
+  // Real notification system - no more mock notifications
+  async sendRealNotification(title: string, message: string, userId?: string) {
+    console.log('🔔 Real notification:', { title, message, userId });
     
-    // Trigger in-app notification instead
+    // Add to in-app notifications system
     if ((window as any).addNotification) {
       (window as any).addNotification({
-        type: type,
-        title: `📱 ${title}`,
-        message: `${message} (Mock Push)`,
+        type: 'system',
+        title: title,
+        message: message,
         timestamp: new Date()
       });
     }
     
-    // Update badge
+    // Update badge for real notifications
     this.incrementUnreadCount(1);
     
     return true;

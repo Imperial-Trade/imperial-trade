@@ -29,16 +29,19 @@ export const useOneSignalPush = () => {
   });
 
   const initializeOneSignal = useCallback(async () => {
-    // Check if we're on a non-production domain - don't initialize OneSignal
+    // Enable OneSignal on production and staging domains
     const hostname = window.location.hostname;
     const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isStaging = hostname.includes('lovableproject.com') || hostname.includes('vercel.app') || hostname.includes('netlify.app');
     const isDev = import.meta.env.DEV;
     
-    if (!isProduction || isDev) {
-      console.log('🔔 OneSignal skipped - not on production domain');
+    if (!isProduction && !isStaging && !isDev) {
+      console.log('🔔 OneSignal skipped - unsupported domain');
       setState(prev => ({ ...prev, isInitialized: true }));
       return;
     }
+
+    console.log('🔔 OneSignal enabled on:', { hostname, isProduction, isStaging, isDev });
 
     console.log('🔔 Initializing OneSignal...');
     
@@ -157,12 +160,23 @@ export const useOneSignalPush = () => {
   };
 
   const requestPermission = useCallback(async () => {
-    // Check production domain before proceeding
+    // Check supported domains before proceeding
     const hostname = window.location.hostname;
     const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isStaging = hostname.includes('lovableproject.com') || hostname.includes('vercel.app') || hostname.includes('netlify.app');
     const isDev = import.meta.env.DEV;
     
-    if (!isProduction || isDev) {
+    if (!isProduction && !isStaging && !isDev) {
+      console.log('🔔 OneSignal not supported on this domain');
+      toast({
+        title: "Domain Not Supported",
+        description: "Push notifications are only available on production and staging domains.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (isDev) {
       console.log('🔔 Development Mode: Using mock push notifications');
       // In development, simulate successful permission grant
       setState(prev => ({ ...prev, isPushEnabled: true, playerId: 'dev_mock_player_id' }));
@@ -205,12 +219,22 @@ export const useOneSignalPush = () => {
   }, [state.isInitialized]);
 
   const subscribeToPush = useCallback(async () => {
-    // Check production domain before proceeding
+    // Check supported domains before proceeding
     const hostname = window.location.hostname;
     const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isStaging = hostname.includes('lovableproject.com') || hostname.includes('vercel.app') || hostname.includes('netlify.app');
     const isDev = import.meta.env.DEV;
     
-    if (!isProduction || isDev) {
+    if (!isProduction && !isStaging && !isDev) {
+      toast({
+        title: "Domain Not Supported",
+        description: "Push notifications are only available on production and staging domains.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (isDev) {
       console.log('🔔 Development Mode: Mock push subscription');
       
       if (user) {
@@ -355,13 +379,23 @@ export const useOneSignalPush = () => {
   }, [state.isInitialized, user]);
 
   const unsubscribeFromPush = useCallback(async () => {
-    // Check production domain before proceeding
+    // Check supported domains before proceeding
     const hostname = window.location.hostname;
     const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+    const isStaging = hostname.includes('lovableproject.com') || hostname.includes('vercel.app') || hostname.includes('netlify.app');
     const isDev = import.meta.env.DEV;
     
-    if (!isProduction || isDev) {
-      console.log('🔔 Push notifications only available on production domain');
+    if (!isProduction && !isStaging && !isDev) {
+      toast({
+        title: "Domain Not Supported", 
+        description: "Push notifications are only available on production and staging domains.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (isDev) {
+      console.log('🔔 Development Mode: Cannot unsubscribe in dev mode');
       return false;
     }
 

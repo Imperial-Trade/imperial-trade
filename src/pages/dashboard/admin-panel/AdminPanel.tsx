@@ -14,6 +14,7 @@ import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosti
 import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
 import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationAnalyticsDashboard";
 import { NotificationRateLimitManager } from "@/components/admin/NotificationRateLimitManager";
+import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 const AdminPanel: React.FC = () => {
@@ -101,6 +102,7 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
+          <NotificationTestPanel />
           <NotificationAnalyticsDashboard />
           <AdminNotificationSystem />
         </TabsContent>

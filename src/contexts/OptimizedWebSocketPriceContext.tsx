@@ -78,6 +78,9 @@ interface OptimizedWebSocketContextType {
   };
   restartConnection: () => void;
   isUsingEnhancedSystem: boolean;
+  // New graceful failure indicators  
+  getDataAge: (symbol: string) => number;
+  getConnectionQuality: () => 'live' | 'cached' | 'stale';
 }
 
 const OptimizedWebSocketContext = createContext<OptimizedWebSocketContextType | null>(null);
@@ -100,7 +103,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
-  const { recordConnection, recordClampActivation } = useRealtimeTelemetry(); // Removed per-message recording
+  const { recordConnection, recordClampActivation } = useRealtimeTelemetry();
   const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   
@@ -108,15 +111,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const channelIdRef = useRef(generateChannelId('prices'));
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
-  // Initialize with cached prices from sessionStorage
+  // 🚀 PHASE 2: Initialize with database-first hydration
   const [prices, setPrices] = useState<Record<string, PriceData>>(() => {
     try {
       const cached = sessionStorage.getItem('cached_prices');
       if (cached) {
         const parsed = JSON.parse(cached);
         const now = Date.now();
-        // Only use cached prices that are less than 5 minutes old
-        if (parsed.timestamp && (now - parsed.timestamp) < 300000) {
+        // Use cached prices that are less than 10 minutes old (increased from 5)
+        if (parsed.timestamp && (now - parsed.timestamp) < 600000) {
           return parsed.prices || {};
         }
       }
@@ -150,6 +153,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const lastErrorLogRef = useRef<string>('');
   const errorLogCountRef = useRef(0);
   const manualCloseRef = useRef(false);
+
   // Stats tracking + PHASE 4: Rate limiting state
   const statsRef = useRef({
     messagesReceived: 0,
@@ -164,6 +168,65 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // PHASE B: BroadcastChannel for leader/follower fanout
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const isFollowerRef = useRef(false);
+
+  // 🚀 PHASE 2: "Hydrate and Subscribe" - Database-first price loading
+  const hydrateFromDatabase = useCallback(async (symbols: string[]) => {
+    if (symbols.length === 0) return;
+    
+    console.log('🔄 Hydrating prices from database for:', symbols);
+    
+    try {
+      const promises = symbols.map(async (symbol) => {
+        const { data, error } = await supabase.rpc('get_latest_market_price', { 
+          p_symbol: symbol.toUpperCase() 
+        });
+        
+        if (error) {
+          console.warn(`❌ Database hydration failed for ${symbol}:`, error);
+          return null;
+        }
+        
+        if (data && data.length > 0) {
+          const priceInfo = data[0];
+          console.log(`💾 Database hydration: ${symbol} = $${priceInfo.price} (${priceInfo.age_seconds}s old)`);
+          
+          return {
+            symbol: priceInfo.symbol,
+            price: parseFloat(priceInfo.price.toString()),
+            change: 0, // We don't calculate change from database
+            changePercent: 0,
+            timestamp: priceInfo.last_updated,
+            bid: priceInfo.bid ? parseFloat(priceInfo.bid.toString()) : undefined,
+            ask: priceInfo.ask ? parseFloat(priceInfo.ask.toString()) : undefined,
+            mid: priceInfo.mid ? parseFloat(priceInfo.mid.toString()) : undefined,
+          };
+        }
+        
+        return null;
+      });
+      
+      const results = await Promise.all(promises);
+      const validPrices = results.filter(Boolean) as PriceData[];
+      
+      if (validPrices.length > 0) {
+        setPrices(prev => {
+          const updated = { ...prev };
+          validPrices.forEach(priceData => {
+            updated[priceData.symbol] = priceData;
+          });
+          return updated;
+        });
+        
+        setLastUpdated(new Date());
+        console.log(`✅ Database hydration complete: ${validPrices.length}/${symbols.length} symbols loaded`);
+      } else {
+        console.log('ℹ️ No prices found in database for requested symbols');
+      }
+      
+    } catch (error) {
+      console.error('❌ Database hydration error:', error);
+    }
+  }, []);
 
   // PHASE 1: Connection State Management with Circuit Breaker
   const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
@@ -442,515 +505,298 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return;
           }
 
+          // Handle connection errors with exponential backoff
+          const newAttempt = state.attempt + 1;
           const newErrorCount = state.errorCount + 1;
           
-          // PHASE 5: Throttle connection error logs
-          const errorMsg = `Connection failed: ${status} (error #${newErrorCount})`;
-          if (lastErrorLogRef.current === errorMsg) {
-            errorLogCountRef.current++;
-            if (errorLogCountRef.current % 5 === 0) {
-              console.error(`❌ ${errorMsg} (repeated ${errorLogCountRef.current} times)`);
-            }
+          if (newErrorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures) {
+            const retryDelay = CIRCUIT_BREAKER_CONFIG.breakerOpenDuration;
+            updateConnectionState({
+              status: 'circuit-breaker',
+              attempt: newAttempt,
+              errorCount: newErrorCount,
+              nextRetryAt: Date.now() + retryDelay
+            });
+            
+            setError(`Connection failed ${newErrorCount} times. Circuit breaker opened. Retrying in ${retryDelay/1000}s`);
+            
+            setTimeout(() => {
+              if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
+                connect();
+              }
+            }, retryDelay);
           } else {
-            console.error('❌', errorMsg);
-            lastErrorLogRef.current = errorMsg;
-            errorLogCountRef.current = 1;
+            updateConnectionState({ 
+              status: 'error', 
+              attempt: newAttempt,
+              errorCount: newErrorCount
+            });
+            
+            const retryDelay = calculateRetryDelay(newAttempt);
+            setError(`Connection ${status.toLowerCase()}. Retrying in ${Math.round(retryDelay/1000)}s (attempt ${newAttempt})`);
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
+                connect();
+              }
+            }, retryDelay);
           }
           
-          // Update error state
-          updateConnectionState({
-            status: newErrorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures ? 'circuit-breaker' : 'error',
-            errorCount: newErrorCount,
-          });
-          
-          setError(`Connection failed: ${status}`);
           isConnectingRef.current = false;
           channelRef.current = null;
-          
-          // Schedule reconnect if under limits
-          if (state.attempt < CIRCUIT_BREAKER_CONFIG.maxReconnectAttempts && !isCircuitBreakerOpen()) {
-            scheduleReconnect();
-          }
         }
       });
 
-    } catch (err) {
-      console.error('❌ Connection setup failed:', err);
-      updateConnectionState({ 
-        status: 'error',
-        errorCount: connectionStateRef.current.errorCount + 1 
-      });
-      setError('Failed to establish connection');
+    } catch (error) {
+      console.error('❌ Connection setup error:', error);
+      updateConnectionState({ status: 'error', errorCount: connectionStateRef.current.errorCount + 1 });
+      setError(`Setup failed: ${error.message}`);
       isConnectingRef.current = false;
-      scheduleReconnect();
+      
+      // Retry with exponential backoff
+      const retryDelay = calculateRetryDelay(connectionStateRef.current.attempt + 1);
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
+          connect();
+        }
+      }, retryDelay);
     }
-  }, [updateConnectionState, isCircuitBreakerOpen]);
+  }, [updateConnectionState, calculateRetryDelay]); // 🔥 LEAK-PROOF: Minimal dependencies
 
-  // PHASE 4: Enhanced reconnection with circuit breaker
-  const scheduleReconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current || isCircuitBreakerOpen()) {
-      return;
-    }
-
-    const state = connectionStateRef.current;
-    const delay = calculateRetryDelay(state.attempt);
-    const nextRetryAt = Date.now() + delay;
-    
-    updateConnectionState({
-      attempt: state.attempt + 1,
-      nextRetryAt,
-    });
-
-    if (isDevToolsEnabled()) {
-      console.log(`🔄 Scheduling reconnect in ${Math.round(delay)}ms (attempt ${state.attempt + 1})`);
-    }
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectTimeoutRef.current = null;
-      disconnect();
-      setTimeout(connect, 100); // Small delay before reconnect
-    }, delay);
-  }, [updateConnectionState, isCircuitBreakerOpen, calculateRetryDelay, disconnect, connect]);
-
-  // PHASE 1: Health monitoring without aggressive reconnections
+  // Health monitoring function
   const startHealthMonitoring = useCallback(() => {
     if (healthCheckIntervalRef.current) {
       clearInterval(healthCheckIntervalRef.current);
     }
-
+    
     healthCheckIntervalRef.current = setInterval(() => {
-      const state = connectionStateRef.current;
+      const now = Date.now();
+      const lastSuccess = connectionStateRef.current.lastSuccessAt;
       
-      if (state.status === 'connected' && lastUpdated) {
-        const staleness = Date.now() - lastUpdated.getTime();
-        
-        // Only trigger reconnect if data is extremely stale and we're not already reconnecting
-        if (staleness > HEALTH_CONFIG.maxSilentPeriod && !isConnectingRef.current) {
-          if (isDevToolsEnabled()) {
-            console.warn(`⚠️ Data silent for ${Math.round(staleness/1000)}s, connection may be dead`);
-          }
-          
-          // Gentle reconnection - don't increment error count for stale data
-          disconnect();
-          setTimeout(connect, 2000); // 2 second delay
+      if (lastSuccess && (now - lastSuccess) > HEALTH_CONFIG.maxSilentPeriod) {
+        if (isDevToolsEnabled()) {
+          console.warn('🔄 Health check: No updates for too long, reconnecting...');
+        }
+        disconnect();
+        if (subscriptionsRef.current.size > 0) {
+          setTimeout(() => connect(), 1000);
         }
       }
     }, HEALTH_CONFIG.healthCheckInterval);
-  }, [lastUpdated, disconnect, connect]);
+  }, [disconnect, connect]);
 
-  // PHASE 1: Ref-counting subscription management with SYMBOL FILTERING + Route Gating (Leadership only affects connection)
+  // PHASE 1: Enhanced subscription management with ref counting
   const subscribe = useCallback((symbols: string[]) => {
-    // 🚦 GATE 1: Route gating - only subscribe if current route allows it
     if (!isPriceSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Price subscription blocked by route gating');
+        console.log('WS-P: subscription blocked by route gate');
       }
       return;
     }
 
-    // 🚦 GATE 3: Background tab detection (non-blocking)
-    if (document.hidden) {
-      if (isDevToolsEnabled()) {
-        console.log('👀 Tab is in background - proceeding with subscription (will auto-pause after 20s if still hidden)');
-      }
-      // Do not block; visibility handler pauses later to avoid race conditions in previews/iframes
-    }
-
-    // ✅ STEP 1: Filter, normalize, and validate symbols - ONLY ALLOW AUTHORIZED SYMBOLS
-    const requestedSymbols = symbols
+    const validSymbols = symbols
       .map(s => normalizeSymbol(s))
-      .filter(Boolean);
-    const allowedSymbols = requestedSymbols.filter(symbol => {
-      if (!ALLOWED_SYMBOLS.includes(symbol as any)) {
-        if (isDevToolsEnabled()) {
-          console.warn(`🚫 Rejected subscription to unauthorized symbol: ${symbol}. Only ${ALLOWED_SYMBOLS.join(', ')} are allowed.`);
-        }
-        return false;
-      }
-      return true;
-    });
+      .filter(s => s && ALLOWED_SYMBOLS.includes(s as any));
 
-    // ✅ STEP 2: Enforce subscription cap with partial acceptance
-    const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
-    const newSymbolsToAdd = allowedSymbols.filter(s => !currentSubscriptions.includes(s));
-    const availableSlots = MAX_SUBSCRIPTIONS - currentSubscriptions.length;
-    
-    if (newSymbolsToAdd.length > availableSlots) {
-      if (availableSlots > 0) {
-        const acceptedSymbols = newSymbolsToAdd.slice(0, availableSlots);
-        console.warn(`⚠️ SUBSCRIPTION LIMIT: Can only accept ${acceptedSymbols.length} of ${newSymbolsToAdd.length} requested symbols. Accepted: ${acceptedSymbols.join(', ')}`);
-        // Continue with partial subscription
-        allowedSymbols.splice(0, allowedSymbols.length, ...acceptedSymbols, ...allowedSymbols.filter(s => currentSubscriptions.includes(s)));
-      } else {
-        console.error(`🛑 SUBSCRIPTION LIMIT EXCEEDED! Cannot subscribe to more than ${MAX_SUBSCRIPTIONS} symbols. Currently: ${currentSubscriptions.length}`);
-        return;
-      }
-    }
-
-    if (allowedSymbols.length === 0) {
+    if (validSymbols.length === 0) {
       if (isDevToolsEnabled()) {
-        console.warn('📭 No valid symbols to subscribe to after filtering');
+        console.warn('WS-P: no valid symbols to subscribe to');
       }
       return;
     }
 
-    let hasNewSubscriptions = false;
-
-    allowedSymbols.forEach(symbol => {
+    // Update subscription ref counts
+    let newSubscriptions = false;
+    validSymbols.forEach(symbol => {
       const currentCount = subscriptionsRef.current.get(symbol) || 0;
-      if (currentCount === 0) hasNewSubscriptions = true;
+      if (currentCount === 0) {
+        newSubscriptions = true;
+      }
       subscriptionsRef.current.set(symbol, currentCount + 1);
     });
 
-    // Connect on demand if we have subscriptions and not connected (only if leader)
-    if (hasNewSubscriptions && subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected' && isLeader) {
-      connect();
-    }
-
-    if (isDevToolsEnabled()) {
-      const newSymbols = allowedSymbols.filter(s => (subscriptionsRef.current.get(s) || 0) === 1);
-      console.log('✅ Subscribed to:', newSymbols, `(${subscriptionsRef.current.size}/${MAX_SUBSCRIPTIONS} total)`);
-      console.log('🔒 Active subscriptions:', Array.from(subscriptionsRef.current.keys()));
-    }
-
-    // Track subscription costs
-    allowedSymbols.forEach(() => costTracker.recordRealtimeMessage('subscription'));
-  }, [connect, isPriceSubscriptionAllowed, isLeader]);
-
-  const unsubscribe = useCallback((symbols: string[]) => {
-    const actuallyRemovedSymbols: string[] = [];
-    
-    // Normalize symbols for consistent handling
-    const normalizedSymbols = symbols
-      .map(s => normalizeSymbol(s))
-      .filter(Boolean);
-    
-    // Always handle ref count decrements (idempotent regardless of leadership)
-    normalizedSymbols.forEach(symbol => {
-      const currentCount = subscriptionsRef.current.get(symbol) || 0;
-      if (currentCount > 0) {
-        const newCount = currentCount - 1;
-        if (newCount === 0) {
-          subscriptionsRef.current.delete(symbol);
-          actuallyRemovedSymbols.push(symbol);
-        } else {
-          subscriptionsRef.current.set(symbol, newCount);
-        }
+    // 🚀 PHASE 2: Hydrate from database FIRST, then connect to Realtime
+    hydrateFromDatabase(validSymbols).then(() => {
+      // Only connect if we have new subscriptions and no active connection
+      if (newSubscriptions && !channelRef.current && !isConnectingRef.current) {
+        connect();
       }
     });
 
-    // Remove prices for unsubscribed symbols
-    if (actuallyRemovedSymbols.length > 0) {
-      setPrices(prev => {
-        const updated = { ...prev };
-        actuallyRemovedSymbols.forEach(symbol => delete updated[symbol]);
-        return updated;
-      });
+    if (isDevToolsEnabled()) {
+      console.log('WS-P: subscribed to:', validSymbols.map(s => 
+        `${s}(${subscriptionsRef.current.get(s)})`
+      ).join(', '));
     }
+  }, [isPriceSubscriptionAllowed, connect, hydrateFromDatabase]);
 
-    // Only leader can trigger actual disconnect
-    if (isLeader && subscriptionsRef.current.size === 0 && channelRef.current) {
+  const unsubscribe = useCallback((symbols: string[]) => {
+    const validSymbols = symbols
+      .map(s => normalizeSymbol(s))
+      .filter(s => s);
+
+    validSymbols.forEach(symbol => {
+      const currentCount = subscriptionsRef.current.get(symbol) || 0;
+      if (currentCount <= 1) {
+        subscriptionsRef.current.delete(symbol);
+      } else {
+        subscriptionsRef.current.set(symbol, currentCount - 1);
+      }
+    });
+
+    // Disconnect if no active subscriptions
+    if (subscriptionsRef.current.size === 0 && channelRef.current) {
       disconnect();
     }
 
     if (isDevToolsEnabled()) {
-      console.log('📝 Unsubscribed from:', actuallyRemovedSymbols, `(${subscriptionsRef.current.size} remaining)${!isLeader ? ' [follower]' : ''}`);
+      console.log('WS-P: unsubscribed from:', validSymbols);
     }
-  }, [disconnect, isLeader]);
+  }, [disconnect]);
 
-  // Light guard against background-disconnect timer
-  const backgroundDisconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Auto-disconnect effect (watches isLeader/route) - depends on stable functions only
-  useEffect(() => {
-    // Clear any pending background disconnect
-    if (backgroundDisconnectTimerRef.current) {
-      clearTimeout(backgroundDisconnectTimerRef.current);
-      backgroundDisconnectTimerRef.current = null;
-    }
-
-    const debounceTimeoutRef = { current: null as NodeJS.Timeout | null };
-    
-    const handleConnectionChange = () => {
-      // Disconnect if we lose leadership or route doesn't allow subscriptions
-      if (!isLeader || !isPriceSubscriptionAllowed) {
-        if (channelRef.current) {
-          if (isDevToolsEnabled()) {
-            console.log('🚦 Disconnecting due to leadership change or route gating', {isLeader, isPriceSubscriptionAllowed});
-          }
-          disconnect();
-        }
-        return;
-      }
-
-      if (!subscriptionsRef.current.size) return;
-      
-      // Guard: do not attempt new connect if background-disconnect timer is pending
-      if (!backgroundDisconnectTimerRef.current) {
-        // Connect on leadership change - if we're leader and have subscriptions
-        if (subscriptionsRef.current.size > 0 && connectionStateRef.current.status === 'disconnected') {
-          connect();
-        }
-      }
-    };
-
-    // Clear any existing timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Debounce connect/disconnect operations
-    debounceTimeoutRef.current = setTimeout(handleConnectionChange, 150);
-
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, [isLeader, isPriceSubscriptionAllowed, disconnect, connect]);
-
-  // Stable utility functions
+  // Get price function
   const getPrice = useCallback((symbol: string): PriceData | null => {
     const normalizedSymbol = normalizeSymbol(symbol);
-    return prices[normalizedSymbol] || null;
+    return normalizedSymbol ? (prices[normalizedSymbol] || null) : null;
   }, [prices]);
 
-  const refreshPrice = useCallback((symbol: string) => {
-    // Simply re-subscribe to refresh
-    if (subscriptionsRef.current.has(symbol)) {
-      unsubscribe([symbol]);
-      setTimeout(() => subscribe([symbol]), 100);
+  // 🚀 PHASE 2: Enhanced data age and connection quality functions
+  const getDataAge = useCallback((symbol: string): number => {
+    const priceData = getPrice(symbol);
+    if (!priceData) return Infinity;
+    
+    const ageMs = Date.now() - new Date(priceData.timestamp).getTime();
+    return Math.floor(ageMs / 1000); // Return age in seconds
+  }, [getPrice]);
+
+  const getConnectionQuality = useCallback((): 'live' | 'cached' | 'stale' => {
+    if (connectionStatus === 'connected' && lastUpdated) {
+      const ageMs = Date.now() - lastUpdated.getTime();
+      if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
+        return 'live';
+      }
     }
-  }, [subscribe, unsubscribe]);
+    
+    if (Object.keys(prices).length > 0) {
+      return 'cached';
+    }
+    
+    return 'stale';
+  }, [connectionStatus, lastUpdated, prices]);
 
-  const getConnectionHealth = useCallback(() => ({
-    isHealthy: connectionStateRef.current.status === 'connected',
-    lastUpdate: lastUpdated
-  }), [lastUpdated]);
+  // Refresh price function with database fallback
+  const refreshPrice = useCallback(async (symbol: string) => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) return;
+    
+    // Try to refresh from database
+    await hydrateFromDatabase([normalizedSymbol]);
+  }, [hydrateFromDatabase]);
 
-  const getStats = useCallback(() => ({
-    messagesReceived: statsRef.current.messagesReceived,
-    reconnections: statsRef.current.reconnections,
-    avgLatency: statsRef.current.latencyCount > 0 
-      ? statsRef.current.latencySum / statsRef.current.latencyCount 
-      : 50
-  }), []);
+  // Connection health function
+  const getConnectionHealth = useCallback(() => {
+    return {
+      isHealthy: connectionStatus === 'connected' && !error,
+      lastUpdate: lastUpdated
+    };
+  }, [connectionStatus, error, lastUpdated]);
 
+  // Get stats function
+  const getStats = useCallback(() => {
+    const stats = statsRef.current;
+    return {
+      messagesReceived: stats.messagesReceived,
+      reconnections: stats.reconnections,
+      avgLatency: stats.latencyCount > 0 ? Math.round(stats.latencySum / stats.latencyCount) : 0
+    };
+  }, []);
+
+  // Restart connection function
   const restartConnection = useCallback(() => {
-    if (isDevToolsEnabled()) {
-      console.log('🔄 Manual connection restart requested');
-    }
-    
-    // Reset circuit breaker
-    updateConnectionState({
-      status: 'disconnected',
-      attempt: 0,
-      errorCount: 0,
-      nextRetryAt: null,
-    });
-    
     disconnect();
-    setTimeout(connect, 500);
-  }, [updateConnectionState, disconnect, connect]);
+    if (subscriptionsRef.current.size > 0) {
+      setTimeout(() => connect(), 1000);
+    }
+  }, [disconnect, connect]);
 
-  // PHASE 3: Page Visibility API for adaptive background disconnect
-  const handleVisibilityChange = useCallback(() => {
-    if (document.hidden) {
-      // Tab went to background - start timer to disconnect after 20 seconds
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-      }
+  // PHASE B: Set up BroadcastChannel for multi-tab coordination
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      broadcastChannelRef.current = new BroadcastChannel('optimized-ws-prices');
       
-      visibilityTimeoutRef.current = setTimeout(() => {
-        if (document.hidden && channelRef.current) {
-          if (isDevToolsEnabled()) {
-            console.log('📱 Background disconnect: Pausing WebSocket to save quota');
-          }
-          disconnect();
-          isBackgroundDisconnected.current = true;
+      broadcastChannelRef.current.onmessage = (event) => {
+        if (!isLeader && event.data.type === 'prices-batch') {
+          // Follower tabs receive price updates from leader
+          setPrices(prev => ({ ...prev, ...event.data.data }));
+          setLastUpdated(new Date(event.data.timestamp));
+          isFollowerRef.current = true;
         }
-      }, 20000); // 20 seconds
+      };
       
-    } else {
-      // Tab came to foreground - cancel disconnect timer and reconnect if needed
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-        visibilityTimeoutRef.current = null;
-      }
-      
-      if (isBackgroundDisconnected.current && subscriptionsRef.current.size > 0) {
-        if (isDevToolsEnabled()) {
-          console.log('📱 Foreground reconnect: Resuming WebSocket');
+      return () => {
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.close();
+          broadcastChannelRef.current = null;
         }
-        isBackgroundDisconnected.current = false;
-        updateConnectionState({ errorCount: 0, attempt: 0 });
-        setTimeout(connect, 500);
-      }
-    }
-  }, [disconnect, updateConnectionState, connect]);
-
-  // PHASE 2: Stable network event handlers (only for recovery, not aggressive reconnection)
-  const handleOnline = useCallback(() => {
-    if (connectionStateRef.current.status === 'disconnected' && subscriptionsRef.current.size > 0 && !document.hidden) {
-      if (isDevToolsEnabled()) {
-        console.log('🌐 Network recovered, reconnecting');
-      }
-      // Reset circuit breaker on network recovery
-      updateConnectionState({ errorCount: 0, attempt: 0 });
-      setTimeout(connect, 1000); // 1 second delay
-    }
-  }, [updateConnectionState, connect]);
-
-  // 🔥 ENHANCED: Heartbeat system for UI listener detection
-  const sendHeartbeat = useCallback(async () => {
-    if (!isLeader || subscriptionsRef.current.size === 0) {
-      return; // Only leader sends heartbeat and only when subscribed
-    }
-    
-    try {
-      await supabase
-        .from('ui_price_listeners')
-        .upsert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          last_seen_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
-        
-      if (isDevToolsEnabled()) {
-        console.log('💗 Heartbeat sent to UI listener system');
-      }
-    } catch (error) {
-      if (isDevToolsEnabled()) {
-        console.warn('⚠️ Failed to send UI heartbeat:', error);
-      }
+      };
     }
   }, [isLeader]);
 
-  // Setup periodic heartbeat when leader with active subscriptions
-  useEffect(() => {
-    let heartbeatInterval: NodeJS.Timeout | null = null;
-    
-    if (isLeader && subscriptionsRef.current.size > 0 && connectionStatus === 'connected') {
-      // Send immediate heartbeat
-      sendHeartbeat();
-      
-      // Setup interval for every 60 seconds
-      heartbeatInterval = setInterval(sendHeartbeat, 60000);
-      
-      if (isDevToolsEnabled()) {
-        console.log('💗 UI heartbeat system activated (60s interval)');
-      }
-    }
-    
-    return () => {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-        
-        if (isDevToolsEnabled()) {
-          console.log('💗 UI heartbeat system deactivated');
-        }
-      }
-    };
-  }, [isLeader, connectionStatus, sendHeartbeat]);
-
-  // Setup event listeners (stable, no dependency array changes)
-  useEffect(() => {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('online', handleOnline);
-    
-    // PHASE B: Initialize BroadcastChannel for tab coordination
-    if (!broadcastChannelRef.current) {
-      try {
-        broadcastChannelRef.current = new BroadcastChannel('prices-bc');
-        
-        // Listen for price updates from leader tab
-        broadcastChannelRef.current.onmessage = (event) => {
-          const { type, data, timestamp } = event.data;
-          
-          if (type === 'prices-batch' && !isLeader && data) {
-            // Followers receive price updates via BroadcastChannel
-            if (isDevToolsEnabled()) {
-              console.log('📻 Received price batch from leader:', Object.keys(data));
-            }
-            
-            setPrices(prev => ({ ...prev, ...data }));
-            setLastUpdated(new Date(timestamp));
-            isFollowerRef.current = true;
-          }
-        };
-        
-        if (isDevToolsEnabled()) {
-          console.log('📡 BroadcastChannel initialized for tab coordination');
-        }
-      } catch (error) {
-        if (isDevToolsEnabled()) {
-          console.warn('⚠️ BroadcastChannel not available:', error);
-        }
-      }
-    }
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('online', handleOnline);
-      
-      // Cleanup BroadcastChannel
-      if (broadcastChannelRef.current) {
-        broadcastChannelRef.current.close();
-        broadcastChannelRef.current = null;
-      }
-    };
-  }, [handleVisibilityChange, handleOnline, isLeader]);
-
-  // Create disconnectRef for mount-only cleanup
-  const disconnectRef = useRef(disconnect);
-  useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
-
-  // Register/unregister and disconnect on unmount - truly mount-only effect
+  // Mount/unmount lifecycle management
   useEffect(() => {
     mountOnlyRef.current = true;
-    
-    realtimeLogger.logStatus('OptimizedWebSocketPriceProvider MOUNT');
-    healthMonitor.registerConnection('OptimizedWebSocketPrice');
-    recordConnection();
 
     return () => {
       mountOnlyRef.current = false;
+      disconnect();
       
-      realtimeLogger.logStatus('OptimizedWebSocketPriceProvider UNMOUNT');
-      
-      // 🔥 LEAK-PROOF: Clear all timers first
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      if (healthCheckIntervalRef.current) {
-        clearInterval(healthCheckIntervalRef.current);
-        healthCheckIntervalRef.current = null;
-      }
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-        visibilityTimeoutRef.current = null;
-      }
+      // Clear all timers
       if (updateBatchTimeoutRef.current) {
         clearTimeout(updateBatchTimeoutRef.current);
-        updateBatchTimeoutRef.current = null;
       }
       
-      // 🔥 LEAK-PROOF: Force disconnect and cleanup
-      disconnect();
-      healthMonitor.unregisterConnection('OptimizedWebSocketPrice');
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+      }
     };
-  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
+  }, [disconnect]);
 
-  // PHASE B: Periodic telemetry sync (90s fixed interval while connected)
-  // 🔥 TELEMETRY SYNC DISABLED: Removed to eliminate message overhead
-  // Periodic telemetry sync has been disabled to reduce realtime message volume
-  // This was contributing to the 37,680+ messages/hour overhead
+  // Page visibility handling for background disconnection
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Start disconnect timer when page becomes hidden
+        visibilityTimeoutRef.current = setTimeout(() => {
+          if (channelRef.current) {
+            disconnect();
+            isBackgroundDisconnected.current = true;
+          }
+        }, 60000); // Disconnect after 1 minute of being hidden
+      } else if (isBackgroundDisconnected.current) {
+        // Clear disconnect timer and reconnect when page becomes visible
+        if (visibilityTimeoutRef.current) {
+          clearTimeout(visibilityTimeoutRef.current);
+          visibilityTimeoutRef.current = null;
+        }
+        
+        if (subscriptionsRef.current.size > 0) {
+          connect();
+        }
+        isBackgroundDisconnected.current = false;
+      }
+    };
 
-  // Stable context value
-  const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+      }
+    };
+  }, [connect, disconnect]);
+
+  // Context value
+  const contextValue: OptimizedWebSocketContextType = useMemo(() => ({
     prices,
     connectionStatus,
     subscribe,
@@ -958,26 +804,31 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getPrice,
     isConnected: connectionStatus === 'connected',
     error,
-    dataSource: 'Optimized Real-Time WebSocket',
+    dataSource: isFollowerRef.current ? 'broadcast-follower' : 'realtime-leader',
     lastUpdated,
-    errors: error ? { connection: error } : {},
+    errors: {},
     refreshPrice,
     getConnectionHealth,
     getStats,
     restartConnection,
-    isUsingEnhancedSystem: true
+    isUsingEnhancedSystem: true,
+    // New graceful failure indicators
+    getDataAge,
+    getConnectionQuality,
   }), [
-    prices, 
-    connectionStatus, 
-    subscribe, 
-    unsubscribe, 
-    getPrice, 
-    error, 
-    lastUpdated, 
-    refreshPrice, 
-    getConnectionHealth, 
-    getStats, 
-    restartConnection
+    prices,
+    connectionStatus,
+    subscribe,
+    unsubscribe,
+    getPrice,
+    error,
+    lastUpdated,
+    refreshPrice,
+    getConnectionHealth,
+    getStats,
+    restartConnection,
+    getDataAge,
+    getConnectionQuality,
   ]);
 
   return (

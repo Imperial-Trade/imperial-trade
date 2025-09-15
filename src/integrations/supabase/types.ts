@@ -3752,6 +3752,18 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      get_latest_market_price: {
+        Args: { p_symbol: string }
+        Returns: {
+          age_seconds: number
+          ask: number
+          bid: number
+          last_updated: string
+          mid: number
+          price: number
+          symbol: string
+        }[]
+      }
       get_market_data_freshness: {
         Args: Record<PropertyKey, never>
         Returns: {

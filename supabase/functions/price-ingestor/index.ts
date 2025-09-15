@@ -10,14 +10,14 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
-// Significance filtering configuration - reduces 85-90% of broadcasts
-const MIN_PRICE_CHANGE_PERCENT = 0.015; // 0.015% for most assets (slightly increased for quality)
-const MIN_PRICE_CHANGE_PIPS = 0.15; // 0.15 pips for Gold (slightly increased)
+// 🎯 ENHANCED SIGNIFICANCE THRESHOLDS - Higher quality, less noise
+const MIN_PRICE_CHANGE_PERCENT = 0.08; // Increased from 0.015% to 0.08% (5x reduction)
+const MIN_PRICE_CHANGE_PIPS = 0.8; // Increased from 0.15 to 0.8 pips for Gold (5x reduction)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-// Per-symbol rate limiting and clamps (NEW: HARDENING)
+// 🔒 GLOBAL RATE LIMITING - Dramatically reduced for quality
 const SYMBOL_RATE_LIMITS: Record<string, { lastBroadcasts: number[], clampCount: number }> = {};
-const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 2;
+const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 0.5; // Reduced from 2 to 0.5 (75% reduction)
 const MAX_UI_BROADCASTS_PER_BATCH = 50;
 const PER_SYMBOL_CLAMP = 10; // Max 10 broadcasts per symbol per batch
 
@@ -31,8 +31,10 @@ let totalPricesUpserted = 0;
 let totalUIBroadcasts = 0;
 let totalClampActivations = 0;
 
-// Phase 1: Enhanced timeout configuration
+// 🔒 GLOBAL LOCK & HEARTBEAT CONFIGURATION  
 const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000; // Increased from 5000ms to 15000ms
+const HEARTBEAT_THRESHOLD_SECONDS = 120; // UI listeners must be seen within 120s
+const BROADCAST_LOCK_DURATION = 25; // Lock duration in seconds
 
 // Initialize Supabase client only
 async function initializeSupabase() {
@@ -96,6 +98,50 @@ async function hasActiveListeners(supabaseClient: any): Promise<boolean> {
   } catch (error) {
     console.warn('⚠️ Listener check error, defaulting to broadcast:', error);
     return true; // Fail open
+  }
+}
+
+// 🔥 ENHANCED: Check for active UI listeners via heartbeat system
+async function hasActiveUIListeners(supabaseClient: any): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseClient.rpc('has_active_ui_listeners', { 
+      p_threshold_seconds: HEARTBEAT_THRESHOLD_SECONDS 
+    });
+    
+    if (error) {
+      console.warn('⚠️ UI heartbeat check failed, defaulting to broadcast:', error);
+      return true; // Fail open to prevent missing real users
+    }
+    
+    return data || false;
+  } catch (error) {
+    console.error('❌ Error checking UI listeners:', error);
+    return false; // Fail safe: assume no listeners to prevent broadcasts
+  }
+}
+
+// 🔒 GLOBAL LOCK: Acquire broadcast lock to prevent multiple instances broadcasting
+async function acquireBroadcastLock(supabaseClient: any): Promise<string | null> {
+  try {
+    const holderId = `price-ingestor-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+    const { data, error } = await supabaseClient.rpc('acquire_broadcast_lock', {
+      p_holder_id: holderId,
+      p_duration_seconds: BROADCAST_LOCK_DURATION
+    });
+    
+    if (error) {
+      console.warn('⚠️ Lock acquisition failed:', error);
+      return null;
+    }
+    
+    if (data) {
+      console.log(`🔒 Acquired broadcast lock: ${holderId}`);
+      return holderId;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error acquiring broadcast lock:', error);
+    return null; // Fail safe: no lock acquired
   }
 }
 
@@ -235,9 +281,38 @@ serve(async (req) => {
       });
     }
 
-    // 🔥 CRITICAL FIX: Check for active listeners before doing any broadcast work
-    const hasListeners = await hasActiveListeners(supabaseClient);
-    if (!hasListeners) {
+    // 🔥 ENHANCED LISTENER GATING SYSTEM
+    let skipBroadcast = false;
+    let lockHolder: string | null = null;
+    
+    // Step 1: Check emergency disable flag
+    if (EMERGENCY_DISABLE_BROADCASTS) {
+      console.log('🚨 EMERGENCY MODE: Broadcasts disabled, processing alerts only');
+      skipBroadcast = true;
+    }
+    
+    // Step 2: Acquire global broadcast lock (prevents multi-instance broadcasting)
+    if (!skipBroadcast) {
+      lockHolder = await acquireBroadcastLock(supabaseClient);
+      if (!lockHolder) {
+        console.log('🔒 No broadcast lock acquired - another instance is broadcasting');
+        skipBroadcast = true;
+      }
+    }
+    
+    // Step 3: Check for active UI listeners via heartbeat system
+    if (!skipBroadcast) {
+      const hasListeners = await hasActiveUIListeners(supabaseClient);
+      if (!hasListeners) {
+        console.log('👥 No active UI listeners detected via heartbeat system - skipping broadcasts');
+        skipBroadcast = true;
+      } else {
+        console.log('👥 Active UI listeners detected - broadcasts will proceed');
+      }
+    }
+    
+    // If no broadcasts needed, process alerts only and exit early
+    if (skipBroadcast) {
       console.log('📡 No active listeners detected - skipping UI broadcast pipeline');
       
       // Still process alerts for business logic

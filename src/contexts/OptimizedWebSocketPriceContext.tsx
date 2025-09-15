@@ -801,6 +801,60 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [updateConnectionState, connect]);
 
+  // 🔥 ENHANCED: Heartbeat system for UI listener detection
+  const sendHeartbeat = useCallback(async () => {
+    if (!isLeader || subscriptionsRef.current.size === 0) {
+      return; // Only leader sends heartbeat and only when subscribed
+    }
+    
+    try {
+      await supabase
+        .from('ui_price_listeners')
+        .upsert({
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          last_seen_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+        
+      if (isDevToolsEnabled()) {
+        console.log('💗 Heartbeat sent to UI listener system');
+      }
+    } catch (error) {
+      if (isDevToolsEnabled()) {
+        console.warn('⚠️ Failed to send UI heartbeat:', error);
+      }
+    }
+  }, [isLeader]);
+
+  // Setup periodic heartbeat when leader with active subscriptions
+  useEffect(() => {
+    let heartbeatInterval: NodeJS.Timeout | null = null;
+    
+    if (isLeader && subscriptionsRef.current.size > 0 && connectionStatus === 'connected') {
+      // Send immediate heartbeat
+      sendHeartbeat();
+      
+      // Setup interval for every 60 seconds
+      heartbeatInterval = setInterval(sendHeartbeat, 60000);
+      
+      if (isDevToolsEnabled()) {
+        console.log('💗 UI heartbeat system activated (60s interval)');
+      }
+    }
+    
+    return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+        
+        if (isDevToolsEnabled()) {
+          console.log('💗 UI heartbeat system deactivated');
+        }
+      }
+    };
+  }, [isLeader, connectionStatus, sendHeartbeat]);
+
   // Setup event listeners (stable, no dependency array changes)
   useEffect(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);

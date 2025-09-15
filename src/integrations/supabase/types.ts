@@ -1162,8 +1162,8 @@ export type Database = {
       }
       market_prices: {
         Row: {
-          ask: number
-          bid: number
+          ask: number | null
+          bid: number | null
           created_at: string
           id: string
           mid: number
@@ -1173,8 +1173,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          ask: number
-          bid: number
+          ask?: number | null
+          bid?: number | null
           created_at?: string
           id?: string
           mid: number
@@ -1184,8 +1184,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          ask?: number
-          bid?: number
+          ask?: number | null
+          bid?: number | null
           created_at?: string
           id?: string
           mid?: number

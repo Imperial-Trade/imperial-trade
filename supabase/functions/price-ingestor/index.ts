@@ -267,7 +267,7 @@ serve(async (req) => {
           const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
           console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
           
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced_midonly', {
+          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
             p_symbol: priceUpdate.symbol,
             p_bid: priceUpdate.bid,
             p_ask: priceUpdate.ask,
@@ -285,7 +285,7 @@ serve(async (req) => {
           // Mid-only data from Digital Ocean WebSocket
           console.log(`💾 Upserting mid-only ${priceUpdate.symbol}: mid=${priceUpdate.price}`);
           
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced_midonly', {
+          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
             p_symbol: priceUpdate.symbol,
             p_bid: null,
             p_ask: null,

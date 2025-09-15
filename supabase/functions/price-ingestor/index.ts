@@ -406,8 +406,8 @@ serve(async (req) => {
     totalAlertsTriggered += totalTriggeredAlerts;
     console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts`);
 
-    // STEP 2: Asynchronously upsert latest prices (non-blocking, full data only)
-    console.log('💾 STEP 2: Asynchronously upserting market prices...');
+    // STEP 2: Synchronously upsert latest prices (blocking to ensure data integrity)
+    console.log('💾 STEP 2: Upserting market prices to database...');
     const upsertPromises = prices.map(async (priceUpdate) => {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
       
@@ -415,32 +415,49 @@ serve(async (req) => {
         if (typeof priceUpdate.price === 'number') {
           console.log(`📊 Upsert skipped for mid-only price: ${priceUpdate.symbol}`);
         }
-        return { skipped: true, reason: 'mid_only_or_invalid' };
+        return { skipped: true, reason: 'mid_only_or_invalid', symbol: priceUpdate.symbol };
       }
 
       try {
         const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
-        await supabaseClient.rpc('upsert_market_price', {
+        console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
+        
+        const { data, error } = await supabaseClient.rpc('upsert_market_price', {
           p_symbol: priceUpdate.symbol,
           p_bid: priceUpdate.bid,
           p_ask: priceUpdate.ask,
           p_mid: mid,
           p_timestamp: priceUpdate.timestamp || new Date().toISOString()
         });
-        return { upserted: true };
+        
+        if (error) {
+          console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
+          return { error: true, symbol: priceUpdate.symbol, errorDetails: error };
+        }
+        
+        console.log(`✅ Successfully upserted ${priceUpdate.symbol}`);
+        return { upserted: true, symbol: priceUpdate.symbol };
       } catch (error) {
-        console.error(`❌ Price upsert error for ${priceUpdate.symbol}:`, error);
-        return { error: true };
+        console.error(`❌ Price upsert exception for ${priceUpdate.symbol}:`, error);
+        return { error: true, symbol: priceUpdate.symbol, errorDetails: error };
       }
     });
 
-    // Don't wait for upserts to complete - they're async by design
-    Promise.all(upsertPromises).then(results => {
-      const upserted = results.filter((r: any) => r.upserted).length;
-      const skipped = results.filter((r: any) => r.skipped).length;
-      totalPricesUpserted += upserted;
-      console.log(`💾 STEP 2 COMPLETE: ${upserted}/${prices.length} prices upserted (${skipped} mid-only skipped)`);
-    });
+    // Wait for upserts to complete to ensure data integrity
+    const upsertResults = await Promise.all(upsertPromises);
+    const upserted = upsertResults.filter((r: any) => r.upserted).length;
+    const skipped = upsertResults.filter((r: any) => r.skipped).length;
+    const failed = upsertResults.filter((r: any) => r.error).length;
+    
+    totalPricesUpserted += upserted;
+    
+    console.log(`💾 STEP 2 COMPLETE: ${upserted}/${prices.length} prices upserted (${skipped} mid-only skipped, ${failed} failed)`);
+    
+    // Log any failures for debugging
+    if (failed > 0) {
+      const failedSymbols = upsertResults.filter((r: any) => r.error).map((r: any) => r.symbol);
+      console.error(`❌ Failed upserts for symbols: ${failedSymbols.join(', ')}`);
+    }
 
     // STEP 3: Apply significance filtering + CLAMPS for UI broadcasts only
     console.log('📡 STEP 3: Filtering significant changes for UI broadcast...');
@@ -644,9 +661,16 @@ serve(async (req) => {
 
     // COMPREHENSIVE SUCCESS RESPONSE  
     const anyClampActivated = perSymbolClampActivated || batchClampActivated || perSymbolFinalClampActivated;
-    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulBroadcasts} UI broadcasts ${anyClampActivated ? '(CLAMPED)' : ''}`;
+    const responseMessage = `IMPERIAL TRADING v3.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${upserted} DB upserts → ${successfulBroadcasts} UI broadcasts ${anyClampActivated ? '(CLAMPED)' : ''}`;
     console.log(`✅ COMPLETE: ${responseMessage}`);
     console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
+    
+    // Enhanced logging for debugging
+    if (failed > 0) {
+      console.error(`❌ DATABASE ISSUES: ${failed} upsert failures detected - this will cause live prices not to display!`);
+    } else {
+      console.log(`✅ DATABASE HEALTH: All ${upserted} price upserts successful`);
+    }
 
     // 🔥 CRITICAL FIX: Always cleanup the channel after broadcasting
     try {
@@ -656,11 +680,17 @@ serve(async (req) => {
       console.warn('⚠️ Channel cleanup warning:', cleanupError);
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       message: responseMessage,
       processed: prices.length,
       alerts_triggered: totalTriggeredAlerts,
+      database_upserts: {
+        successful: upserted,
+        failed: failed,
+        skipped: skipped,
+        total_attempted: prices.length
+      },
       ui_significant: clampedPrices.length,
       ui_broadcasted: successfulBroadcasts,
       efficiency: `${Math.round((prices.length - clampedPrices.length) / prices.length * 100)}% UI filtered`,
@@ -673,7 +703,7 @@ serve(async (req) => {
         ui_broadcasts: totalUIBroadcasts,
         clamp_activations: totalClampActivations
       },
-      version: '3.1-leak-fixed'
+      version: '3.1-db-fixed'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }

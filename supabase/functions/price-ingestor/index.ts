@@ -53,10 +53,11 @@ async function initializeSupabase() {
   return supabaseClient;
 }
 
-// 🔥 CRITICAL FIX: Create fresh channel per invocation + cleanup
+// 🔥 CRITICAL FIX: Create static channel that matches frontend listener
 async function createBroadcastChannel(supabaseClient: any) {
   console.log('📡 Creating new Realtime channel...');
-  const priceChannel = supabaseClient.channel(`live-prices-broadcast-${Date.now()}`);
+  console.log('🎯 Broadcasting to channel: live-prices-broadcast');
+  const priceChannel = supabaseClient.channel('live-prices-broadcast');
   
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {

@@ -78,9 +78,9 @@ interface OptimizedWebSocketContextType {
   };
   restartConnection: () => void;
   isUsingEnhancedSystem: boolean;
-  // New graceful failure indicators  
+  // Enhanced "Hydrate and Highlight" indicators  
   getDataAge: (symbol: string) => number;
-  getConnectionQuality: () => 'live' | 'cached' | 'stale';
+  getConnectionQuality: (symbol?: string) => 'hydrated' | 'live' | 'stale';
 }
 
 const OptimizedWebSocketContext = createContext<OptimizedWebSocketContextType | null>(null);
@@ -168,6 +168,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // PHASE B: BroadcastChannel for leader/follower fanout
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const isFollowerRef = useRef(false);
+  
+  // 🎯 "Hydrate and Highlight" state tracking
+  const realtimeReceivedSymbols = useRef(new Set<string>());
 
   // 🚀 PHASE 2: "Hydrate and Subscribe" - Database-first price loading
   const hydrateFromDatabase = useCallback(async (symbols: string[]) => {
@@ -403,6 +406,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             mid: payload.mid
           };
 
+          // 🎯 Mark symbol as having received realtime update
+          realtimeReceivedSymbols.current.add(normalizedSymbol);
+          
           // PHASE 4: Batch state updates to reduce React renders
           batchedUpdates.current.set(normalizedSymbol, priceData);
               
@@ -660,7 +666,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return normalizedSymbol ? (prices[normalizedSymbol] || null) : null;
   }, [prices]);
 
-  // 🚀 PHASE 2: Enhanced data age and connection quality functions
+  // 🚀 Enhanced "Hydrate and Highlight" data age and connection quality functions
   const getDataAge = useCallback((symbol: string): number => {
     const priceData = getPrice(symbol);
     if (!priceData) return Infinity;
@@ -669,7 +675,29 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return Math.floor(ageMs / 1000); // Return age in seconds
   }, [getPrice]);
 
-  const getConnectionQuality = useCallback((): 'live' | 'cached' | 'stale' => {
+  const getConnectionQuality = useCallback((symbol?: string): 'hydrated' | 'live' | 'stale' => {
+    // Symbol-specific quality detection for "Hydrate and Highlight"
+    if (symbol) {
+      const normalizedSymbol = normalizeSymbol(symbol);
+      if (normalizedSymbol && realtimeReceivedSymbols.current.has(normalizedSymbol)) {
+        // This symbol has received at least one realtime update
+        if (connectionStatus === 'connected' && lastUpdated) {
+          const ageMs = Date.now() - lastUpdated.getTime();
+          if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
+            return 'live';
+          }
+        }
+      }
+      
+      // Symbol has price from database but no realtime update yet
+      if (getPrice(symbol)) {
+        return 'hydrated';
+      }
+      
+      return 'stale';
+    }
+    
+    // Global quality detection (backward compatibility)
     if (connectionStatus === 'connected' && lastUpdated) {
       const ageMs = Date.now() - lastUpdated.getTime();
       if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
@@ -678,11 +706,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     if (Object.keys(prices).length > 0) {
-      return 'cached';
+      return 'hydrated';
     }
     
     return 'stale';
-  }, [connectionStatus, lastUpdated, prices]);
+  }, [connectionStatus, lastUpdated, prices, getPrice]);
 
   // Refresh price function with database fallback
   const refreshPrice = useCallback(async (symbol: string) => {

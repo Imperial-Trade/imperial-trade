@@ -3993,6 +3993,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      upsert_market_price_enhanced_midonly: {
+        Args: {
+          p_ask?: number
+          p_bid?: number
+          p_mid?: number
+          p_symbol: string
+          p_timestamp?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       access_level_enum: "user" | "moderator" | "admin"

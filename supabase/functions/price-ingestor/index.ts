@@ -254,52 +254,71 @@ serve(async (req) => {
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
     const upsertPromises = prices.map(async (priceUpdate) => {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+      const hasMidOnly = typeof priceUpdate.price === 'number' && !hasFullData;
       
-      if (!priceUpdate.symbol || !hasFullData) {
-        if (typeof priceUpdate.price === 'number') {
-          console.log(`📊 Upsert skipped for mid-only price: ${priceUpdate.symbol}`);
-        }
-        return { skipped: true, reason: 'mid_only_or_invalid', symbol: priceUpdate.symbol };
+      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
+        console.log(`📊 Upsert skipped for invalid price: ${priceUpdate.symbol}`);
+        return { skipped: true, reason: 'invalid_data', symbol: priceUpdate.symbol };
       }
 
       try {
-        const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
-        console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
-        
-        const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
-          p_symbol: priceUpdate.symbol,
-          p_bid: priceUpdate.bid,
-          p_ask: priceUpdate.ask,
-          p_mid: mid,
-          p_timestamp: priceUpdate.timestamp || new Date().toISOString()
-        });
-        
-        if (error) {
-          console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
-          return { error: true, symbol: priceUpdate.symbol, errorDetails: error };
+        if (hasFullData) {
+          // Full bid/ask data available
+          const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
+          console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
+          
+          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced_midonly', {
+            p_symbol: priceUpdate.symbol,
+            p_bid: priceUpdate.bid,
+            p_ask: priceUpdate.ask,
+            p_mid: mid,
+            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
+          });
+          
+          if (error) {
+            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
+            return { success: false, error: error.message, symbol: priceUpdate.symbol };
+          }
+          
+          return { success: true, symbol: priceUpdate.symbol, type: 'full_data' };
+        } else {
+          // Mid-only data from Digital Ocean WebSocket
+          console.log(`💾 Upserting mid-only ${priceUpdate.symbol}: mid=${priceUpdate.price}`);
+          
+          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced_midonly', {
+            p_symbol: priceUpdate.symbol,
+            p_bid: null,
+            p_ask: null,
+            p_mid: priceUpdate.price,
+            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
+          });
+          
+          if (error) {
+            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
+            return { success: false, error: error.message, symbol: priceUpdate.symbol };
+          }
+          
+          return { success: true, symbol: priceUpdate.symbol, type: 'mid_only' };
         }
-        
-        console.log(`✅ Successfully upserted ${priceUpdate.symbol}`);
-        return { upserted: true, symbol: priceUpdate.symbol };
       } catch (error) {
-        console.error(`❌ Price upsert exception for ${priceUpdate.symbol}:`, error);
-        return { error: true, symbol: priceUpdate.symbol, errorDetails: error };
+        console.error(`❌ Database upsert exception for ${priceUpdate.symbol}:`, error);
+        return { success: false, symbol: priceUpdate.symbol, error: error.message };
       }
     });
 
     // Wait for upserts to complete to ensure data integrity
     const upsertResults = await Promise.all(upsertPromises);
-    const upserted = upsertResults.filter((r: any) => r.upserted).length;
-    const skipped = upsertResults.filter((r: any) => r.skipped).length;
-    const failed = upsertResults.filter((r: any) => r.error).length;
+    const successfulUpserts = upsertResults.filter((r: any) => r.success).length;
+    const skippedUpserts = upsertResults.filter((r: any) => r.skipped).length;
+    const failedUpserts = upsertResults.filter((r: any) => !r.success && !r.skipped).length;
 
-    totalPricesUpserted += upserted;
-    console.log(`✅ STEP 2 COMPLETE: ${upserted} upserts successful, ${skipped} skipped, ${failed} failed`);
+    totalPricesUpserted += successfulUpserts;
+    console.log(`✅ STEP 2 COMPLETE: ${successfulUpserts} upserts successful, ${skippedUpserts} skipped, ${failedUpserts} failed`);
 
-    if (failed > 0) {
-      console.warn(`⚠️ DATABASE HEALTH: ${failed} price upserts failed out of ${prices.length}`);
+    if (failedUpserts > 0) {
+      console.warn(`⚠️ DATABASE HEALTH: ${failedUpserts} price upserts failed out of ${prices.length}`);
     } else {
-      console.log(`✅ DATABASE HEALTH: All ${upserted} price upserts successful`);
+      console.log(`✅ DATABASE HEALTH: All ${successfulUpserts} price upserts successful`);
     }
 
     // STEP 3: CONDITIONAL UI Broadcasting (removed heartbeat dependency)

@@ -24,7 +24,7 @@ export function useLivePrice(symbol: string) {
   return priceData?.price || null;
 }
 
-// Enhanced hook with full quality indicators and graceful failure states
+// Enhanced hook with "Hydrate and Highlight" quality indicators
 export function useEnhancedLivePrice(symbol: string) {
   const { 
     getPrice, 
@@ -46,10 +46,10 @@ export function useEnhancedLivePrice(symbol: string) {
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Return enhanced price data with quality indicators
+  // Return enhanced price data with symbol-specific quality indicators
   const priceData = getPrice(symbol);
   const dataAge = getDataAge(symbol);
-  const quality = getConnectionQuality();
+  const quality = getConnectionQuality(symbol); // Pass symbol for specific quality detection
   
   return {
     // Backward compatible
@@ -63,7 +63,7 @@ export function useEnhancedLivePrice(symbol: string) {
     isStale: dataAge > 60, // Older than 60 seconds
     refreshPrice: () => refreshPrice(symbol),
     
-    // Graceful failure state indicators
+    // "Hydrate and Highlight" state indicators
     connectionQuality: quality,
     lastUpdated: priceData?.timestamp ? new Date(priceData.timestamp) : null,
   };

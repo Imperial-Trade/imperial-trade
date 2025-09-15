@@ -19,19 +19,19 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
         return {
           variant: 'default' as const,
           label: '●',
-          title: 'Live data - receiving real-time updates'
+          title: 'Live updates active - real-time data'
         };
-      case 'cached':
+      case 'hydrated':
         return {
           variant: 'secondary' as const,
           label: '●',
-          title: `Database data - ${dataAge}s old`
+          title: 'Database data - loading live updates'
         };
       case 'stale':
         return {
           variant: 'destructive' as const,
           label: '●',
-          title: 'Stale data - connection issues'
+          title: 'Connection issues - data may be outdated'
         };
       default:
         return {

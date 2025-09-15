@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 const calculatePips = (entry, current, symbol) => {
@@ -90,13 +91,9 @@ const LivePriceWidgetComponent = ({
 
   // Data age tracking removed to prevent blinking and forced refreshes
 
-  // Grace period for status indicators to prevent flickering
+  // Remove grace period - instant status updates for "Hydrate and Highlight"
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDisplayStatus(connectionStatus);
-    }, 2000); // 2 second grace period before status changes
-
-    return () => clearTimeout(timeoutId);
+    setDisplayStatus(connectionStatus);
   }, [connectionStatus]);
   // Disable price animations to prevent flicker; track last price only
   useEffect(() => {
@@ -386,7 +383,8 @@ const LivePriceWidgetComponent = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
+    // Use the enhanced hook to get proper "Hydrate and Highlight" status
+    const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
     
     if (error) {
       return { 
@@ -398,44 +396,31 @@ const LivePriceWidgetComponent = ({
       };
     }
     
-    if (displayStatus === 'connected') { // Use stable displayStatus instead of connectionStatus
-      switch (priceUpdateSource) {
-        case 'websocket':
-        case 'websocket_institutional':
-          return { 
-            color: 'text-green-400', 
-            icon: Wifi, 
-            text: 'Live',
-            description: 'Live WebSocket updates active',
-            animate: false
-          };
-        case 'http':
-          return { 
-            color: 'text-blue-400', 
-            icon: RefreshCw, 
-            text: 'HTTP',
-            description: 'Using HTTP API fallback mode',
-            animate: false
-          };
-        default:
-          if (dataFreshness < 30) {
-            return { 
-              color: 'text-green-400', 
-              icon: Wifi, 
-              text: 'Live',
-              description: 'Real-time price updates active',
-              animate: false
-            };
-          } else if (dataFreshness < 120) {
-            return { 
-              color: 'text-yellow-400', 
-              icon: Clock, 
-              text: 'Stale',
-              description: 'Price data may be outdated',
-              animate: false
-            };
-          }
-      }
+    switch (connectionQuality) {
+      case 'live':
+        return { 
+          color: 'text-green-400', 
+          icon: Wifi, 
+          text: 'Live',
+          description: 'Live updates active',
+          animate: false
+        };
+      case 'hydrated':
+        return { 
+          color: 'text-yellow-400', 
+          icon: Database, 
+          text: 'Database',
+          description: 'Database data - loading live updates',
+          animate: false
+        };
+      case 'stale':
+        return { 
+          color: 'text-red-400', 
+          icon: WifiOff, 
+          text: 'Stale',
+          description: 'Connection issues - data may be outdated',
+          animate: false
+        };
     }
     
     return { 
@@ -445,7 +430,7 @@ const LivePriceWidgetComponent = ({
       description: 'Price updates active',
       animate: false
     };
-  }, [displayStatus, error, lastUpdated, priceUpdateSource]); // Use displayStatus instead of connectionStatus
+  }, [error, alert.tradermade_symbol]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {

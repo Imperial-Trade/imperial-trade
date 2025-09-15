@@ -1,13 +1,14 @@
-// IMPERIAL TRADING PRICE INGESTOR v3.0 - Complete Architecture Implementation
-// Processes ALL business logic on raw data + broadcasts filtered UI updates
+// IMPERIAL TRADING PRICE INGESTOR v3.1 - REALTIME LEAK FIXED
+// Processes ALL business logic + broadcasts ONLY when listeners are active
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// 🔥 CRITICAL FIX: Emergency kill switch for broadcasts
+const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS') === 'true';
+
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
-let priceChannel: any = null;
-let channelConnectionPromise: Promise<any> | null = null;
 
 // Significance filtering configuration - reduces 85-90% of broadcasts
 const MIN_PRICE_CHANGE_PERCENT = 0.015; // 0.015% for most assets (slightly increased for quality)
@@ -33,7 +34,7 @@ let totalClampActivations = 0;
 // Phase 1: Enhanced timeout configuration
 const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000; // Increased from 5000ms to 15000ms
 
-// Phase 1: Initialize Supabase client and channel only once per warm instance
+// Initialize Supabase client only
 async function initializeSupabase() {
   if (!supabaseClient) {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -47,39 +48,55 @@ async function initializeSupabase() {
     console.log('🔗 Supabase client initialized');
   }
 
-  // Phase 1: Reuse existing channel connection if available
-  if (!priceChannel || priceChannel.state === 'CLOSED') {
-    console.log('📡 Creating new Realtime channel...');
-    priceChannel = supabaseClient.channel('live-prices-broadcast');
-    
-    // Phase 1: Enhanced channel subscription with longer timeout
-    if (!channelConnectionPromise) {
-      channelConnectionPromise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          channelConnectionPromise = null;
-          reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
-        }, CHANNEL_SUBSCRIPTION_TIMEOUT);
+  return supabaseClient;
+}
 
-        priceChannel.subscribe((status: string) => {
-          console.log(`📡 Channel status: ${status}`);
-          clearTimeout(timeout);
-          channelConnectionPromise = null;
-          
-          if (status === 'SUBSCRIBED') {
-            resolve(status);
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            reject(new Error(`Channel failed to subscribe: ${status}`));
-          }
-          // Other statuses (JOINING, etc.) are handled by the timeout
-        });
-      });
+// 🔥 CRITICAL FIX: Create fresh channel per invocation + cleanup
+async function createBroadcastChannel(supabaseClient: any) {
+  console.log('📡 Creating new Realtime channel...');
+  const priceChannel = supabaseClient.channel(`live-prices-broadcast-${Date.now()}`);
+  
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
+    }, CHANNEL_SUBSCRIPTION_TIMEOUT);
+
+    priceChannel.subscribe((status: string) => {
+      console.log(`📡 Channel status: ${status}`);
+      clearTimeout(timeout);
+      
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Realtime channel connected successfully');
+        resolve(priceChannel);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        reject(new Error(`Channel failed to subscribe: ${status}`));
+      }
+    });
+  });
+}
+
+// 🔥 CRITICAL FIX: Check if there are active listeners before broadcasting  
+async function hasActiveListeners(supabaseClient: any): Promise<boolean> {
+  try {
+    // Check for active frontend connections via the realtime health monitor
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .eq('account_status', 'active')
+      .limit(1);
+    
+    if (error) {
+      console.warn('⚠️ Listener check failed, defaulting to broadcast:', error);
+      return true; // Fail open to prevent missing real users
     }
     
-    await channelConnectionPromise;
-    console.log('✅ Realtime channel connected successfully');
+    const hasActiveUsers = data && data.length > 0;
+    console.log(`👥 Active listener check: ${hasActiveUsers ? 'Found active users' : 'No active users'}`);
+    return hasActiveUsers;
+  } catch (error) {
+    console.warn('⚠️ Listener check error, defaulting to broadcast:', error);
+    return true; // Fail open
   }
-
-  return { supabaseClient, priceChannel };
 }
 
 // Phase 1: Price significance filtering function
@@ -176,8 +193,90 @@ serve(async (req) => {
     console.log(`📊 Processing ${prices.length} price update(s)`);
     totalPricesProcessed += prices.length;
 
-    // Initialize connection (reuse if warm)
-    const { supabaseClient, priceChannel } = await initializeSupabase();
+    // Initialize Supabase client
+    const supabaseClient = await initializeSupabase();
+
+    // 🔥 CRITICAL FIX: Emergency kill switch check
+    if (EMERGENCY_DISABLE_BROADCASTS) {
+      console.log('🚨 EMERGENCY MODE: Broadcasts disabled, processing business logic only');
+      
+      // Still process alerts but skip UI broadcasts entirely
+      let totalTriggeredAlerts = 0;
+      for (const priceUpdate of prices) {
+        const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+        if (!priceUpdate.symbol || !hasFullData) continue;
+        
+        try {
+          const { data: triggeredAlerts } = await supabaseClient
+            .rpc('process_price_alerts_enhanced', {
+              p_symbol: priceUpdate.symbol,
+              p_current_bid: priceUpdate.bid,
+              p_current_ask: priceUpdate.ask
+            });
+          
+          if (triggeredAlerts && triggeredAlerts.length > 0) {
+            totalTriggeredAlerts += triggeredAlerts.filter((alert: any) => alert.triggered).length;
+          }
+        } catch (error) {
+          console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, error);
+        }
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: `EMERGENCY MODE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts, broadcasts DISABLED`,
+        emergency_mode: true,
+        processed: prices.length,
+        alerts_triggered: totalTriggeredAlerts,
+        ui_broadcasts: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
+    // 🔥 CRITICAL FIX: Check for active listeners before doing any broadcast work
+    const hasListeners = await hasActiveListeners(supabaseClient);
+    if (!hasListeners) {
+      console.log('📡 No active listeners detected - skipping UI broadcast pipeline');
+      
+      // Still process alerts for business logic
+      let totalTriggeredAlerts = 0;
+      for (const priceUpdate of prices) {
+        const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+        if (!priceUpdate.symbol || !hasFullData) continue;
+        
+        try {
+          const { data: triggeredAlerts } = await supabaseClient
+            .rpc('process_price_alerts_enhanced', {
+              p_symbol: priceUpdate.symbol,
+              p_current_bid: priceUpdate.bid,
+              p_current_ask: priceUpdate.ask
+            });
+          
+          if (triggeredAlerts && triggeredAlerts.length > 0) {
+            totalTriggeredAlerts += triggeredAlerts.filter((alert: any) => alert.triggered).length;
+          }
+        } catch (error) {
+          console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, error);
+        }
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: `No active listeners: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts, skipped UI broadcasts`,
+        no_listeners: true,
+        processed: prices.length,
+        alerts_triggered: totalTriggeredAlerts,
+        ui_broadcasts: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
+    // 🔥 CRITICAL FIX: Create fresh channel for this invocation only
+    const priceChannel = await createBroadcastChannel(supabaseClient);
 
     // STEP 1: Process ALL price ticks for business logic (alerts, limit orders, etc.)
     console.log('🎯 STEP 1: Processing ALL alerts on raw price data...');
@@ -473,6 +572,14 @@ serve(async (req) => {
     console.log(`✅ COMPLETE: ${responseMessage}`);
     console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
 
+    // 🔥 CRITICAL FIX: Always cleanup the channel after broadcasting
+    try {
+      await priceChannel.unsubscribe();
+      console.log('🧹 Channel cleaned up successfully');
+    } catch (cleanupError) {
+      console.warn('⚠️ Channel cleanup warning:', cleanupError);
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       message: responseMessage,
@@ -490,7 +597,7 @@ serve(async (req) => {
         ui_broadcasts: totalUIBroadcasts,
         clamp_activations: totalClampActivations
       },
-      version: '3.0-hybrid-architecture'
+      version: '3.1-leak-fixed'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -498,6 +605,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Price ingestor error:', error);
+    
+    // 🔥 CRITICAL FIX: Ensure cleanup even on errors
+    try {
+      if (typeof priceChannel !== 'undefined' && priceChannel?.unsubscribe) {
+        await priceChannel.unsubscribe();
+        console.log('🧹 Emergency channel cleanup completed');
+      }
+    } catch (cleanupError) {
+      console.warn('⚠️ Emergency cleanup failed:', cleanupError);
+    }
     
     return new Response(JSON.stringify({ 
       success: false, 

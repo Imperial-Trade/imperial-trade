@@ -1829,6 +1829,30 @@ export type Database = {
           },
         ]
       }
+      price_broadcast_lock: {
+        Row: {
+          created_at: string
+          expires_at: string
+          holder_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          holder_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          holder_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           access_level: Database["public"]["Enums"]["access_level_enum"] | null
@@ -2871,6 +2895,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_price_listeners: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_data: Json | null
@@ -3578,6 +3623,10 @@ export type Database = {
       }
     }
     Functions: {
+      acquire_broadcast_lock: {
+        Args: { p_duration_seconds?: number; p_holder_id: string }
+        Returns: boolean
+      }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number
@@ -3791,6 +3840,10 @@ export type Database = {
           p_triggered_price: number
         }
         Returns: Json
+      }
+      has_active_ui_listeners: {
+        Args: { p_threshold_seconds?: number }
+        Returns: boolean
       }
       has_role: {
         Args: {

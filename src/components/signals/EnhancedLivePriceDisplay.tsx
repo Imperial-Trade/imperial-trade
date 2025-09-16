@@ -302,7 +302,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
         </Button>
       </div>
 
@@ -404,7 +404,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             className="h-6 px-2 text-xs"
             title="Refresh price data"
           >
-            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''} mr-1`} />
+            <RefreshCw className="h-3 w-3 mr-1" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
             Refresh
           </Button>
           {onUseCurrentPrice && displayPrice > 0 && (

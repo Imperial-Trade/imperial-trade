@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff } from 'lucide-react';
 import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 
 interface LivePriceIndicatorProps {
   symbol: string;
@@ -13,23 +14,21 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
   className 
 }) => {
   const { connectionQuality, dataAge, isStale } = useEnhancedLivePrice(symbol);
+  const { shouldAllowQualityChange } = useConnectionStability({
+    stabilityThreshold: 10000, // 10 seconds  
+    cooldownPeriod: 2000 // 2 seconds
+  });
 
   // 🚀 Priority 3: Optimize UI Rendering Strategy with useMemo
   const indicatorProps = useMemo(() => {
     switch (connectionQuality) {
       case 'live':
+      case 'hydrated':
         return {
           variant: 'default' as const,
           icon: Wifi,
           color: 'text-green-400',
           title: 'Live updates active - real-time data'
-        };
-      case 'hydrated':
-        return {
-          variant: 'secondary' as const,
-          icon: Wifi,
-          color: 'text-yellow-400',
-          title: 'Database data - loading live updates'
         };
       case 'stale':
         return {

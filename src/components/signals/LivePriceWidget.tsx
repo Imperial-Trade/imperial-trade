@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
 import { LivePriceWidgetProps } from '@/types/components';
@@ -83,6 +84,12 @@ const LivePriceWidgetComponent = ({
 
   // ✅ Get connection quality from consumer hook (no additional subscription)
   const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
+  
+  // ✅ FLICKER ELIMINATION: 10-second stability lock
+  const { shouldAllowQualityChange } = useConnectionStability({
+    stabilityThreshold: 10000, // 10 seconds
+    cooldownPeriod: 2000 // 2 seconds
+  });
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);

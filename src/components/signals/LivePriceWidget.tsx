@@ -409,8 +409,8 @@ const LivePriceWidgetComponent = ({
       case 'hydrated':
         return { 
           color: 'text-yellow-400', 
-          icon: Database, 
-          text: 'Database',
+          icon: Wifi, 
+          text: 'Live',
           description: 'Database data - loading live updates',
           animate: false
         };

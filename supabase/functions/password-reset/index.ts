@@ -1,94 +1,151 @@
-import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders } from '../_shared/cors.ts';
 
 // Enhanced environment variable handling
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
-const WEBHOOK_SECRET = (Deno.env.get('AUTH_WEBHOOK_SECRET') || '').trim()
+const AUTH_SECRET = (Deno.env.get('AUTH_WEBHOOK_SECRET') || '').trim()
 
 // Validate environment variables at startup
 function validateEnvironment() {
   const errors = []
   if (!ONESIGNAL_API_KEY) errors.push('ONESIGNAL_API_KEY is required')
   if (!ONESIGNAL_APP_ID) errors.push('ONESIGNAL_APP_ID is required')
-  if (!WEBHOOK_SECRET) errors.push('AUTH_WEBHOOK_SECRET is required')
+  if (!AUTH_SECRET) errors.push('AUTH_WEBHOOK_SECRET is required')
   
   if (errors.length > 0) {
     console.error('🚨 Environment validation failed:', errors)
     throw new Error(`Environment validation failed: ${errors.join(', ')}`)
   }
   
-  console.log('✅ Environment validation successful - Enhanced password reset function ready')
+  console.log('✅ Environment validation successful - Auth Hook password reset function ready')
 }
 
 const getPasswordResetEmailTemplate = (resetUrl: string): string => {
   return `
     <!DOCTYPE html>
-    <html>
+    <html lang="en" style="margin: 0; padding: 0;">
     <head>
-      <meta charset="utf-8">
+      <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Password Reset - Imperial Trading</title>
+      <title>Reset Your Password</title>
+      <style>
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+          color: #ffffff;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          padding: 40px 20px; 
+        }
+        .card {
+          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+          border-radius: 16px;
+          padding: 40px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+          border: 1px solid #333;
+        }
+        .logo {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .logo h1 {
+          color: #00d4ff;
+          font-size: 28px;
+          font-weight: 700;
+          margin: 0;
+          text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        .title {
+          font-size: 24px;
+          font-weight: 600;
+          margin-bottom: 20px;
+          text-align: center;
+          color: #ffffff;
+        }
+        .message {
+          font-size: 16px;
+          line-height: 1.6;
+          margin-bottom: 30px;
+          color: #cccccc;
+          text-align: center;
+        }
+        .button {
+          display: inline-block;
+          background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+          color: #000000 !important;
+          text-decoration: none;
+          padding: 16px 32px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 16px;
+          text-align: center;
+          margin: 20px auto;
+          display: block;
+          width: fit-content;
+          box-shadow: 0 8px 16px rgba(0, 212, 255, 0.3);
+          transition: all 0.3s ease;
+        }
+        .footer {
+          margin-top: 40px;
+          padding-top: 20px;
+          border-top: 1px solid #333;
+          text-align: center;
+          color: #888;
+          font-size: 14px;
+        }
+        .security-note {
+          background: rgba(255, 193, 7, 0.1);
+          border: 1px solid rgba(255, 193, 7, 0.3);
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 20px;
+          color: #ffc107;
+          font-size: 14px;
+        }
+      </style>
     </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 28px;">Imperial Trading</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Password Reset Request</p>
-      </div>
-      
-      <div style="background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
-        <p>We received a request to reset your password for your Imperial Trading account.</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" 
-             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    color: white; 
-                    text-decoration: none; 
-                    padding: 15px 30px; 
-                    border-radius: 25px; 
-                    display: inline-block; 
-                    font-weight: bold;
-                    transition: transform 0.2s;">
+    <body>
+      <div class="container">
+        <div class="card">
+          <div class="logo">
+            <h1>⚡ Imperial Trading</h1>
+          </div>
+          
+          <h2 class="title">Reset Your Password</h2>
+          
+          <p class="message">
+            We received a request to reset your password. Click the button below to create a new password for your Imperial Trading account.
+          </p>
+          
+          <a href="${resetUrl}" class="button">
             Reset Password
           </a>
+          
+          <div class="security-note">
+            <strong>Security Notice:</strong> This link will expire in 1 hour. If you didn't request this password reset, please ignore this email or contact our support team.
+          </div>
+          
+          <div class="footer">
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #00d4ff;">${resetUrl}</p>
+            <p>© 2024 Imperial Trading Platform. All rights reserved.</p>
+          </div>
         </div>
-        
-        <p style="color: #666; font-size: 14px;">
-          If the button doesn't work, copy and paste this link into your browser:
-        </p>
-        <p style="background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 14px; word-break: break-all;">
-          ${resetUrl}
-        </p>
-        
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <p style="color: #999; font-size: 14px; margin: 0;">
-            🔒 <strong>Security Notice:</strong> This link will expire in 24 hours for your security.
-          </p>
-          <p style="color: #999; font-size: 14px;">
-            If you didn't request this password reset, you can safely ignore this email.
-          </p>
-        </div>
-      </div>
-      
-      <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} Imperial Trading. All rights reserved.</p>
-        <p>Professional Trading Platform</p>
       </div>
     </body>
     </html>
-  `
+  `;
 }
 
 Deno.serve(async (req) => {
   const requestId = crypto.randomUUID()
   const startTime = Date.now()
   
-  console.log(`[${requestId}] 🚀 Enhanced password reset function called: ${req.method} ${req.url}`)
+  console.log(`[${requestId}] 🚀 Auth Hook password reset function called: ${req.method} ${req.url}`)
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -105,7 +162,7 @@ Deno.serve(async (req) => {
         environment: {
           hasOneSignalKey: !!ONESIGNAL_API_KEY,
           hasOneSignalAppId: !!ONESIGNAL_APP_ID,
-          hasWebhookSecret: !!WEBHOOK_SECRET
+          hasAuthSecret: !!AUTH_SECRET
         }
       }), {
         status: 200,
@@ -128,13 +185,13 @@ Deno.serve(async (req) => {
   if (req.method === 'GET') {
     return new Response(
       JSON.stringify({
-        status: 'Enhanced password reset function with OneSignal integration',
+        status: 'Auth Hook password reset function with OneSignal integration',
         timestamp: new Date().toISOString(),
         requestId,
         method: req.method,
         url: req.url,
         onesignal_configured: !!(ONESIGNAL_API_KEY && ONESIGNAL_APP_ID),
-        webhook_configured: !!WEBHOOK_SECRET,
+        auth_configured: !!AUTH_SECRET,
       }),
       {
         status: 200,
@@ -154,28 +211,17 @@ Deno.serve(async (req) => {
     // Validate environment at request time
     validateEnvironment()
 
-    // Enhanced webhook processing with better logging
-    const body = await req.text()
-    const headers = Object.fromEntries(req.headers)
+    // Validate Authorization header for Auth Hook
+    const authHeader = req.headers.get('Authorization')
+    const expectedAuth = `Bearer ${AUTH_SECRET}`
     
-    console.log(`[${requestId}] 📧 Processing webhook payload, size: ${body.length} bytes`)
-
-    // Enhanced webhook verification with better error handling
-    let webhookData
-    try {
-      const wh = new Webhook(WEBHOOK_SECRET)
-      webhookData = wh.verify(body, headers)
-      console.log(`[${requestId}] ✅ Webhook signature verified successfully`)
-    } catch (error) {
-      console.error(`[${requestId}] ❌ Webhook verification failed:`, {
-        error: error.message,
-        webhookSecretPresent: !!WEBHOOK_SECRET,
-        payloadSize: body.length
-      })
+    console.log(`[${requestId}] 🔐 Validating Auth Hook authorization`)
+    
+    if (!authHeader || authHeader !== expectedAuth) {
+      console.error(`[${requestId}] ❌ Invalid or missing Authorization header`)
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid webhook signature',
-          details: error.message,
+          error: 'Unauthorized - Invalid Authorization header',
           timestamp: new Date().toISOString(),
           requestId
         }),
@@ -186,31 +232,55 @@ Deno.serve(async (req) => {
       )
     }
 
+    console.log(`[${requestId}] ✅ Authorization validated successfully`)
 
-    // Extract user email and reset token from webhook
-    const userEmail = webhookData.user?.email
-    const resetToken = webhookData.email_data?.token_hash || webhookData.email_data?.token
-    const actionType = webhookData.email_data?.email_action_type
-    const redirectTo = webhookData.email_data?.redirect_to
+    // Parse JSON payload from Auth Hook
+    const body = await req.text()
+    let authData
+    
+    console.log(`[${requestId}] 📧 Processing Auth Hook payload, size: ${body.length} bytes`)
 
+    try {
+      authData = JSON.parse(body)
+      console.log(`[${requestId}] ✅ Auth Hook payload parsed successfully`)
+    } catch (error) {
+      console.error(`[${requestId}] ❌ Failed to parse Auth Hook payload:`, error.message)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid JSON payload',
+          details: error.message,
+          timestamp: new Date().toISOString(),
+          requestId
+        }),
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      )
+    }
+
+    // Extract user data from Auth Hook payload
+    const user = authData.user
+    const userEmail = user?.email
+    const eventType = authData.event
+    
     console.log(`[${requestId}] 📧 Processing reset for email: ${userEmail?.substring(0, 3)}***`)
-    console.log(`[${requestId}] 🔑 Action type: ${actionType}`)
-    console.log(`[${requestId}] 🎯 Token present: ${!!resetToken}`)
+    console.log(`[${requestId}] 🔑 Event type: ${eventType}`)
 
-    // Only handle password recovery emails
-    if (actionType !== 'recovery') {
-      console.log(`[${requestId}] ⏭️ Skipping non-recovery email type: ${actionType}`)
-      return new Response(JSON.stringify({ skipped: true, actionType }), {
+    // Only handle password recovery events
+    if (eventType !== 'user.password_recovery_requested') {
+      console.log(`[${requestId}] ⏭️ Skipping non-recovery event type: ${eventType}`)
+      return new Response(JSON.stringify({ skipped: true, eventType }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       })
     }
 
     if (!userEmail) {
-      console.error(`[${requestId}] ❌ No user email in webhook payload`)
+      console.error(`[${requestId}] ❌ No user email in Auth Hook payload`)
       return new Response(
         JSON.stringify({ 
-          error: 'No user email found in webhook',
+          error: 'No user email found in payload',
           timestamp: new Date().toISOString(),
           requestId
         }),
@@ -221,32 +291,20 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (!resetToken) {
-      console.error(`[${requestId}] ❌ No reset token in webhook payload`)
-      return new Response(
-        JSON.stringify({ 
-          error: 'No reset token found in webhook',
-          timestamp: new Date().toISOString(),
-          requestId
-        }),
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
-      )
-    }
-
-    // Generate password reset URL
+    // For Auth Hooks, we need to construct the reset URL differently
+    // Auth Hooks don't provide the token directly, but we can use the user ID
     const supabaseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co'
-    const finalRedirectTo = redirectTo || 'https://www.tradeimperial.com/reset-password'
-    const resetUrl = `${supabaseUrl}/auth/v1/verify?token=${resetToken}&type=recovery&redirect_to=${encodeURIComponent(finalRedirectTo)}`
+    const redirectTo = 'https://www.tradeimperial.com/reset-password'
     
-    console.log(`[${requestId}] 🔗 Generated reset URL: ${resetUrl.substring(0, 80)}...`)
+    // For Auth Hook, we direct users to initiate password reset from the frontend
+    const resetUrl = `${redirectTo}?email=${encodeURIComponent(userEmail)}&initiated=true`
+    
+    console.log(`[${requestId}] 🔗 Generated reset redirect URL`)
 
     // Generate HTML email template
     const htmlContent = getPasswordResetEmailTemplate(resetUrl)
 
-    // Enhanced OneSignal payload with better configuration
+    // Enhanced OneSignal payload
     const oneSignalPayload = {
       app_id: ONESIGNAL_APP_ID,
       target_channel: 'email',
@@ -256,17 +314,17 @@ Deno.serve(async (req) => {
       email_from_name: 'Imperial Trading Support',
       email_from_address: 'support@tradeimperial.com',
       email_reply_to_address: 'support@tradeimperial.com',
-      include_unsubscribed: true, // Send even if user unsubscribed from marketing
-      is_transactional: true, // Categorize as transactional email
+      include_unsubscribed: true,
+      is_transactional: true,
       custom_data: {
         email_type: 'password_reset',
-        action_type: actionType,
+        event_type: eventType,
         timestamp: new Date().toISOString(),
         requestId
       }
     }
 
-    console.log(`[${requestId}] 📤 Sending enhanced email via OneSignal to: ${userEmail?.substring(0, 3)}***`)
+    console.log(`[${requestId}] 📤 Sending Auth Hook email via OneSignal to: ${userEmail?.substring(0, 3)}***`)
 
     const oneSignalResponse = await fetch('https://api.onesignal.com/notifications?c=email', {
       method: 'POST',
@@ -284,12 +342,9 @@ Deno.serve(async (req) => {
       console.error(`[${requestId}] ❌ OneSignal API error:`, {
         status: oneSignalResponse.status,
         statusText: oneSignalResponse.statusText,
-        response: oneSignalResult,
-        headers: Object.fromEntries(oneSignalResponse.headers.entries()),
-        requestPayload: oneSignalPayload
+        response: oneSignalResult
       })
       
-      // Return appropriate status code for OneSignal errors
       const statusCode = oneSignalResponse.status >= 400 && oneSignalResponse.status < 500 ? 422 : 500
       return new Response(
         JSON.stringify({ 
@@ -336,9 +391,8 @@ Deno.serve(async (req) => {
       requestId
     })
 
-    // Determine appropriate error status code
     let statusCode = 500
-    if (error?.message?.includes('webhook')) {
+    if (error?.message?.includes('Authorization')) {
       statusCode = 401
     } else if (error?.message?.includes('OneSignal')) {
       statusCode = 422

@@ -8,14 +8,14 @@ const corsHeaders = {
 // Enhanced environment variable handling
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
-const WEBHOOK_SECRET = (Deno.env.get('SUPABASE_AUTH_WEBHOOK_SECRET') || '').trim()
+const WEBHOOK_SECRET = (Deno.env.get('AUTH_WEBHOOK_SECRET') || '').trim()
 
 // Validate environment variables at startup
 function validateEnvironment() {
   const errors = []
   if (!ONESIGNAL_API_KEY) errors.push('ONESIGNAL_API_KEY is required')
   if (!ONESIGNAL_APP_ID) errors.push('ONESIGNAL_APP_ID is required')
-  if (!WEBHOOK_SECRET) errors.push('SUPABASE_AUTH_WEBHOOK_SECRET is required')
+  if (!WEBHOOK_SECRET) errors.push('AUTH_WEBHOOK_SECRET is required')
   
   if (errors.length > 0) {
     console.error('🚨 Environment validation failed:', errors)

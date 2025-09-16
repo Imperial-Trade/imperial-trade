@@ -1,0 +1,171 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  console.log('💰 Price Monitoring Service started');
+  
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+
+  try {
+    // Get current market prices
+    const { data: prices, error: pricesError } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask, mid, timestamp');
+      
+    if (pricesError) {
+      throw new Error(`Failed to fetch market prices: ${pricesError.message}`);
+    }
+
+    console.log(`📊 Processing ${prices?.length || 0} market prices`);
+
+    let triggeredAlerts = 0;
+    let processedSignals = 0;
+
+    for (const price of prices || []) {
+      // Get active alerts for this symbol
+      const { data: alerts, error: alertsError } = await supabase
+        .from('alert_monitoring')
+        .select(`
+          id, signal_id, alert_type, target_price, symbol,
+          trade_alerts!inner(id, trade_type, user_id, asset_name, status)
+        `)
+        .eq('symbol', price.symbol)
+        .eq('is_active', true)
+        .eq('trade_alerts.status', 'active');
+
+      if (alertsError) {
+        console.error(`❌ Error fetching alerts for ${price.symbol}:`, alertsError);
+        continue;
+      }
+
+      for (const alert of alerts || []) {
+        processedSignals++;
+        const currentPrice = price.mid || price.bid; // Use mid price or fallback to bid
+        const tradeType = alert.trade_alerts.trade_type;
+        
+        let shouldTrigger = false;
+        
+        // Check if alert should trigger based on trade type and alert type
+        if (alert.alert_type === 'stop_loss') {
+          shouldTrigger = (tradeType.includes('buy') && currentPrice <= alert.target_price) ||
+                         (tradeType.includes('sell') && currentPrice >= alert.target_price);
+        } else if (alert.alert_type.startsWith('take_profit_')) {
+          shouldTrigger = (tradeType.includes('buy') && currentPrice >= alert.target_price) ||
+                         (tradeType.includes('sell') && currentPrice <= alert.target_price);
+        }
+
+        if (shouldTrigger) {
+          console.log(`🎯 Alert triggered: ${alert.alert_type} for ${alert.symbol} at ${currentPrice}`);
+          triggeredAlerts++;
+
+          // Deactivate the alert
+          await supabase
+            .from('alert_monitoring')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('id', alert.id);
+
+          // Handle the triggered alert
+          if (alert.alert_type === 'stop_loss') {
+            // Close the signal due to stop loss
+            await supabase
+              .from('trade_alerts')
+              .update({ 
+                status: 'closed', 
+                close_reason: 'stop_loss',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', alert.signal_id);
+          } else if (alert.alert_type.startsWith('take_profit_')) {
+            // Add TP hit to the signal
+            const tpLevel = parseInt(alert.alert_type.replace('take_profit_', ''));
+            const { data: currentSignal } = await supabase
+              .from('trade_alerts')
+              .select('tp_hits')
+              .eq('id', alert.signal_id)
+              .single();
+              
+            const currentHits = currentSignal?.tp_hits || [];
+            if (!currentHits.includes(tpLevel)) {
+              await supabase
+                .from('trade_alerts')
+                .update({
+                  tp_hits: [...currentHits, tpLevel],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', alert.signal_id);
+            }
+          }
+
+          // Send notification about the triggered alert
+          const notificationPayload = {
+            notifications: [{
+              signal_id: alert.signal_id,
+              user_id: alert.trade_alerts.user_id,
+              asset_name: alert.trade_alerts.asset_name,
+              trade_type: alert.trade_alerts.trade_type,
+              entry_price: alert.target_price,
+              notification_type: 'price_alert_triggered',
+              alert_type: alert.alert_type,
+              target_price: alert.target_price,
+              triggered_price: currentPrice,
+              status: alert.trade_alerts.status,
+              author_name: 'Price Monitor',
+              delivery_channels: ['in_app', 'push'],
+              include_creator: true
+            }]
+          };
+
+          // Call the notification dispatcher
+          try {
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enhanced-signal-notification-dispatcher`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+              },
+              body: JSON.stringify(notificationPayload)
+            });
+            console.log(`📬 Notification sent for triggered alert ${alert.alert_type}`);
+          } catch (notifyErr) {
+            console.error('❌ Failed to send notification:', notifyErr);
+          }
+        }
+      }
+    }
+
+    console.log(`✅ Price monitoring complete: ${triggeredAlerts} alerts triggered from ${processedSignals} processed`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      processed_signals: processedSignals,
+      triggered_alerts: triggeredAlerts,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Critical error in price monitoring:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+});

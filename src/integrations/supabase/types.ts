@@ -1162,8 +1162,8 @@ export type Database = {
       }
       market_prices: {
         Row: {
-          ask: number
-          bid: number
+          ask: number | null
+          bid: number | null
           created_at: string
           id: string
           mid: number
@@ -1173,8 +1173,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          ask: number
-          bid: number
+          ask?: number | null
+          bid?: number | null
           created_at?: string
           id?: string
           mid: number
@@ -1184,8 +1184,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          ask?: number
-          bid?: number
+          ask?: number | null
+          bid?: number | null
           created_at?: string
           id?: string
           mid?: number
@@ -1282,6 +1282,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notification_audit_trail: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          delivered_at: string | null
+          delivery_channel: string
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          metadata: Json | null
+          notification_type: string
+          signal_id: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_channel: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          notification_type: string
+          signal_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          metadata?: Json | null
+          notification_type?: string
+          signal_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_audit_trail_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_batch_queue: {
         Row: {
@@ -1441,6 +1497,87 @@ export type Database = {
           signal_id?: string | null
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          batch_notifications: boolean | null
+          created_at: string | null
+          delivery_preferences: Json | null
+          id: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          signal_closed: boolean | null
+          signal_created: boolean | null
+          signal_updated: boolean | null
+          stop_loss_hits: boolean | null
+          timezone: string | null
+          tp_hits: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_notifications?: boolean | null
+          created_at?: string | null
+          delivery_preferences?: Json | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          signal_closed?: boolean | null
+          signal_created?: boolean | null
+          signal_updated?: boolean | null
+          stop_loss_hits?: boolean | null
+          timezone?: string | null
+          tp_hits?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_notifications?: boolean | null
+          created_at?: string | null
+          delivery_preferences?: Json | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          signal_closed?: boolean | null
+          signal_created?: boolean | null
+          signal_updated?: boolean | null
+          stop_loss_hits?: boolean | null
+          timezone?: string | null
+          tp_hits?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_rate_limits: {
+        Row: {
+          count_in_window: number | null
+          created_at: string | null
+          id: string
+          last_sent_at: string | null
+          notification_type: string
+          user_id: string
+          window_start: string | null
+        }
+        Insert: {
+          count_in_window?: number | null
+          created_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          notification_type: string
+          user_id: string
+          window_start?: string | null
+        }
+        Update: {
+          count_in_window?: number | null
+          created_at?: string | null
+          id?: string
+          last_sent_at?: string | null
+          notification_type?: string
+          user_id?: string
+          window_start?: string | null
         }
         Relationships: []
       }
@@ -1691,6 +1828,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      price_broadcast_lock: {
+        Row: {
+          created_at: string
+          expires_at: string
+          holder_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          holder_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          holder_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -2734,6 +2895,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_price_listeners: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_data: Json | null
@@ -3441,6 +3623,10 @@ export type Database = {
       }
     }
     Functions: {
+      acquire_broadcast_lock: {
+        Args: { p_duration_seconds?: number; p_holder_id: string }
+        Returns: boolean
+      }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number
@@ -3532,6 +3718,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string[]
       }
+      get_active_notification_triggers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          table_name: string
+          trigger_name: string
+        }[]
+      }
       get_active_users_for_broadcasting: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3557,6 +3751,18 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      get_latest_market_price: {
+        Args: { p_symbol: string }
+        Returns: {
+          age_seconds: number
+          ask: number
+          bid: number
+          last_updated: string
+          mid: number
+          price: number
+          symbol: string
+        }[]
       }
       get_market_data_freshness: {
         Args: Record<PropertyKey, never>
@@ -3647,6 +3853,10 @@ export type Database = {
         }
         Returns: Json
       }
+      has_active_ui_listeners: {
+        Args: { p_threshold_seconds?: number }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3685,6 +3895,10 @@ export type Database = {
       observe_deprecated_function_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      populate_alert_monitoring_for_existing_signals: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
@@ -3774,6 +3988,16 @@ export type Database = {
           p_ask: number
           p_bid: number
           p_mid: number
+          p_symbol: string
+          p_timestamp?: string
+        }
+        Returns: undefined
+      }
+      upsert_market_price_enhanced_midonly: {
+        Args: {
+          p_ask?: number
+          p_bid?: number
+          p_mid?: number
           p_symbol: string
           p_timestamp?: string
         }

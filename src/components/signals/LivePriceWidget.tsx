@@ -3,7 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Timer, Database } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
+import { LivePriceWidgetProps } from '@/types/components';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -58,6 +62,8 @@ const LivePriceWidgetComponent = ({
   const levelHitRef = useRef(globalLevelHitMap);
   const [localClosed, setLocalClosed] = useState(false);
   // Use the optimized live price hook directly
+  // ✅ SINGLE SOURCE OF TRUTH: Use only useOptimizedLivePrice for subscription
+  // This is the AUTHORITATIVE hook that manages the WebSocket subscription
   const {
     price: currentPrice,
     change,
@@ -76,9 +82,14 @@ const LivePriceWidgetComponent = ({
     trackDataAge: false // Prevent data age interval to eliminate flickering
   });
 
-  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
-
-  // price animations disabled
+  // ✅ Get connection quality from consumer hook (no additional subscription)
+  const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
+  
+  // ✅ FLICKER ELIMINATION: 10-second stability lock
+  const { shouldAllowQualityChange } = useConnectionStability({
+    stabilityThreshold: 10000, // 10 seconds
+    cooldownPeriod: 2000 // 2 seconds
+  });
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
@@ -90,13 +101,9 @@ const LivePriceWidgetComponent = ({
 
   // Data age tracking removed to prevent blinking and forced refreshes
 
-  // Grace period for status indicators to prevent flickering
+  // Remove grace period - instant status updates for "Hydrate and Highlight"
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDisplayStatus(connectionStatus);
-    }, 2000); // 2 second grace period before status changes
-
-    return () => clearTimeout(timeoutId);
+    setDisplayStatus(connectionStatus);
   }, [connectionStatus]);
   // Disable price animations to prevent flicker; track last price only
   useEffect(() => {
@@ -385,9 +392,9 @@ const LivePriceWidgetComponent = ({
     });
   }, []);
 
+  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
+
   const connectionStatusInfo = useMemo(() => {
-    const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
-    
     if (error) {
       return { 
         color: 'text-red-400', 
@@ -398,54 +405,35 @@ const LivePriceWidgetComponent = ({
       };
     }
     
-    if (displayStatus === 'connected') { // Use stable displayStatus instead of connectionStatus
-      switch (priceUpdateSource) {
-        case 'websocket':
-        case 'websocket_institutional':
-          return { 
-            color: 'text-green-400', 
-            icon: Wifi, 
-            text: 'Live',
-            description: 'Live WebSocket updates active',
-            animate: false
-          };
-        case 'http':
-          return { 
-            color: 'text-blue-400', 
-            icon: RefreshCw, 
-            text: 'HTTP',
-            description: 'Using HTTP API fallback mode',
-            animate: false
-          };
-        default:
-          if (dataFreshness < 30) {
-            return { 
-              color: 'text-green-400', 
-              icon: Wifi, 
-              text: 'Live',
-              description: 'Real-time price updates active',
-              animate: false
-            };
-          } else if (dataFreshness < 120) {
-            return { 
-              color: 'text-yellow-400', 
-              icon: Clock, 
-              text: 'Stale',
-              description: 'Price data may be outdated',
-              animate: false
-            };
-          }
-      }
+    // ✅ UNIFIED COLORS: Use same green for both 'live' and 'hydrated' to eliminate flicker
+    switch (connectionQuality) {
+      case 'live':
+      case 'hydrated':
+        return { 
+          color: 'text-green-400', 
+          icon: Wifi, 
+          text: 'Live',
+          description: 'Real-time price updates',
+          animate: false
+        };
+      case 'stale':
+        return { 
+          color: 'text-red-400', 
+          icon: WifiOff, 
+          text: 'Stale',
+          description: 'Connection issues - data may be outdated',
+          animate: false
+        };
+      default:
+        return { 
+          color: 'text-muted-foreground', 
+          icon: WifiOff, 
+          text: 'No Data',
+          description: 'No connection to price data',
+          animate: false
+        };
     }
-    
-    return { 
-      color: 'text-gray-400', 
-      icon: Wifi, 
-      text: 'Live',
-      description: 'Price updates active',
-      animate: false
-    };
-  }, [displayStatus, error, lastUpdated, priceUpdateSource]); // Use displayStatus instead of connectionStatus
+   }, [connectionQuality, error]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -501,7 +489,7 @@ const LivePriceWidgetComponent = ({
     const isSellLimit = alert.trade_type === 'sell_limit';
     
     return (
-      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm border-amber-500/30 shadow-amber-500/10 shadow-lg">
         
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
@@ -524,14 +512,14 @@ const LivePriceWidgetComponent = ({
             title="Refresh price"
             disabled={isLoading || isRefreshing}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
           </Button>
         </div>
 
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200`}>
+                <span style={{ willChange: 'transform' }}>
                   ${displayPrice > 0 ? formatPrice(displayPrice) : '---'}
                 </span>
               </div>
@@ -591,7 +579,7 @@ const LivePriceWidgetComponent = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
         </Button>
       </div>
 
@@ -612,7 +600,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
             {displayPrice > 0 ? (
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200 text-accent-green`}>
+                <span className="text-accent-green" style={{ willChange: 'transform' }}>
                   ${formatPrice(displayPrice)}
                 </span>
               </div>
@@ -672,5 +660,13 @@ const LivePriceWidgetComponent = ({
     </div>
   );
 };
-export const LivePriceWidget = memo(LivePriceWidgetComponent);
+
+// 🚀 REACT QUEUE HARDENING: Wrap component with specialized ErrorBoundary
+const LivePriceWidgetWithErrorBoundary = memo((props: LivePriceWidgetProps) => (
+  <LivePriceWidgetErrorBoundary symbol={props.alert?.tradermade_symbol}>
+    <LivePriceWidgetComponent {...props} />
+  </LivePriceWidgetErrorBoundary>
+));
+
+export const LivePriceWidget = LivePriceWidgetWithErrorBoundary;
 export default LivePriceWidget;

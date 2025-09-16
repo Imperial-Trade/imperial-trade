@@ -12,6 +12,10 @@ import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement"
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosticsPanel";
 import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
+import RealtimeOptimizationDashboard from "@/pages/admin/RealtimeOptimizationDashboard";
+import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationAnalyticsDashboard";
+import { NotificationRateLimitManager } from "@/components/admin/NotificationRateLimitManager";
+import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 const AdminPanel: React.FC = () => {
@@ -39,7 +43,7 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-10' : 'grid-cols-8'}`}>
+        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-11' : 'grid-cols-9'}`}>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Requests
@@ -64,13 +68,17 @@ const AdminPanel: React.FC = () => {
             <RefreshCw className="w-4 h-4" />
             Rate Limits
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Settings
-          </TabsTrigger>
           <TabsTrigger value="diagnostics" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
             Diagnostics
+          </TabsTrigger>
+          <TabsTrigger value="optimization" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Optimization
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Settings
           </TabsTrigger>
           {isDevToolsEnabled() && (
             <TabsTrigger value="live-prices" className="flex items-center gap-2">
@@ -99,6 +107,8 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
+          <NotificationTestPanel />
+          <NotificationAnalyticsDashboard />
           <AdminNotificationSystem />
         </TabsContent>
 
@@ -107,6 +117,7 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="rate-limits" className="space-y-4">
+          <NotificationRateLimitManager />
           <RateLimitManager />
         </TabsContent>
 
@@ -120,6 +131,10 @@ const AdminPanel: React.FC = () => {
 
         <TabsContent value="diagnostics" className="space-y-4">
           <RealtimeDiagnostics />
+        </TabsContent>
+
+        <TabsContent value="optimization" className="space-y-4">
+          <RealtimeOptimizationDashboard />
         </TabsContent>
 
         {isDevToolsEnabled() && (

@@ -93,7 +93,7 @@ export function SignalStreamStatus() {
       case 'live':
         return <Wifi className="h-4 w-4" />;
       case 'connecting':
-        return <RefreshCw className="h-4 w-4 animate-spin" />;
+        return <RefreshCw className="h-4 w-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />;
       case 'disconnected':
       case 'inactive':
       case 'stale':
@@ -121,11 +121,7 @@ export function SignalStreamStatus() {
           disabled={isRefreshing}
           className="ml-auto"
         >
-          {isRefreshing ? (
-            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
-          ) : (
-            <RefreshCw className="h-3 w-3 mr-1" />
-          )}
+          <RefreshCw className="h-3 w-3 mr-1" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
           Refresh
         </Button>
       </div>

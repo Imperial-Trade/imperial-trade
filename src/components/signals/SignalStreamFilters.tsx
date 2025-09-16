@@ -140,7 +140,7 @@ export function SignalStreamFilters({
                   <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
                     Xeon alerts
                   </span>
-                  <span className="animate-pulse">...</span>
+                  <span>...</span>
                 </div>
               )}
               

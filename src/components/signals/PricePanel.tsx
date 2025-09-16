@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { ArrowUp, ArrowDown, Target, XOctagon, Check } from 'lucide-react';
 import LivePriceWidget from './LivePriceWidget';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 interface PriceRowProps {
   label: string;
@@ -28,7 +29,7 @@ interface PricePanelProps {
   id: string;
   assetName: string;
   symbol: string;
-  tradeType: string;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
   tp1?: number;
@@ -38,16 +39,16 @@ interface PricePanelProps {
   tp5?: number;
   tpHitsKey: string; // Deduped string like '1,2' or ''
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
-  closeReason?: string;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
   allowAutomation: boolean;
   onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
   onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
-  onOrderActivation?: (alert: any) => void;
+  onOrderActivation?: (alert: any) => Promise<void>;
 }
 
 // Static levels block component - memoized to prevent unnecessary re-renders
 const StaticLevelsBlock = memo<{
-  tradeType: string;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
   tp1?: number;
@@ -56,7 +57,7 @@ const StaticLevelsBlock = memo<{
   tp4?: number;
   tp5?: number;
   tpHitsKey: string;
-  closeReason?: string;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
 }>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, closeReason }) => {
   const isBuy = tradeType.includes('buy');
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
@@ -100,6 +101,8 @@ const PricePanel: React.FC<PricePanelProps> = ({
   tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason, allowAutomation,
   onTakeProfitHit, onStopLossHit, onOrderActivation 
 }) => {
+  // Get connection status and data source from WebSocket context
+  const { connectionStatus, dataSource } = useOptimizedWebSocketPrices();
   // PHASE C: Reconstruct alert object with useMemo - stable reference unless primitives change
   const alert = useMemo(() => ({
     id,
@@ -111,7 +114,9 @@ const PricePanel: React.FC<PricePanelProps> = ({
     tp1, tp2, tp3, tp4, tp5,
     tp_hits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
     status,
-    close_reason: closeReason
+    close_reason: closeReason,
+    created_date: new Date().toISOString(),
+    updated_date: new Date().toISOString()
   }), [id, assetName, symbol, tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason]);
 
   // For active/pending/partially_profited trades, show LivePriceWidget + static levels
@@ -123,7 +128,8 @@ const PricePanel: React.FC<PricePanelProps> = ({
           onTakeProfitHit={onTakeProfitHit}
           onStopLossHit={onStopLossHit}
           onOrderActivation={onOrderActivation}
-          allowAutomation={allowAutomation}
+          connectionStatus={connectionStatus === 'disconnected' ? 'error' : connectionStatus}
+          priceSource={dataSource || 'WebSocket'}
         />
         <StaticLevelsBlock
           tradeType={tradeType}

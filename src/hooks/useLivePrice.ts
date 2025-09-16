@@ -1,24 +1,89 @@
-// src/hooks/useLivePrice.ts - Refactored to use unified context
+// src/hooks/useLivePrice.ts - Pure consumer hook (Single Source of Truth Architecture)
 
-import { useEffect } from 'react';
+import { useOptimizedLivePrice } from './useOptimizedLivePrice';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useState, useEffect, useRef } from 'react';
+import { useRenderThrottling } from '@/hooks/useRenderThrottling';
 
 export function useLivePrice(symbol: string) {
-  const { getPrice, subscribe, unsubscribe } = useOptimizedWebSocketPrices();
+  // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally
+  // This hook is now a pure consumer that never creates its own subscriptions
+  const { price } = useOptimizedLivePrice(symbol);
+  
+  // Return backward compatible price number
+  return price;
+}
 
+// Enhanced hook with quality indicators - Pure consumer (Single Source of Truth Architecture)
+export function useEnhancedLivePrice(symbol: string) {
+  // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally with skipSubscribe
+  // This hook is now a pure consumer that never creates its own subscriptions
+  const optimizedData = useOptimizedLivePrice(symbol, { skipSubscribe: true });
+  
+  // Get connection quality from the context directly (symbol-specific with hysteresis)
+  const { getConnectionQuality } = useOptimizedWebSocketPrices();
+  const rawConnectionQuality = getConnectionQuality(symbol);
+  const { withTransition } = useRenderThrottling();
+  
+  // 🚀 ANTI-FLICKER: Debounced connection quality with minimum state duration + render throttling
+  const [stableConnectionQuality, setStableConnectionQuality] = useState(rawConnectionQuality);
+  const qualityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastQualityChangeRef = useRef<number>(Date.now());
+  
   useEffect(() => {
-    if (!symbol) return;
-
-    // Subscribe to this symbol using the unified context
-    subscribe([symbol]);
-
-    // Cleanup: unsubscribe when component unmounts or symbol changes
+    const now = Date.now();
+    const timeSinceLastChange = now - lastQualityChangeRef.current;
+    const MINIMUM_STATE_DURATION = 500; // 500ms minimum before quality can change
+    
+    // Clear existing timeout
+    if (qualityTimeoutRef.current) {
+      clearTimeout(qualityTimeoutRef.current);
+    }
+    
+    // If quality is different and enough time has passed, update immediately
+    if (rawConnectionQuality !== stableConnectionQuality && timeSinceLastChange > MINIMUM_STATE_DURATION) {
+      withTransition(() => {
+        setStableConnectionQuality(rawConnectionQuality);
+        lastQualityChangeRef.current = now;
+      });
+    } 
+    // Otherwise, wait for minimum duration before allowing change
+    else if (rawConnectionQuality !== stableConnectionQuality) {
+      const remainingTime = MINIMUM_STATE_DURATION - timeSinceLastChange;
+      qualityTimeoutRef.current = setTimeout(() => {
+        withTransition(() => {
+          setStableConnectionQuality(rawConnectionQuality);
+          lastQualityChangeRef.current = Date.now();
+        });
+      }, Math.max(0, remainingTime));
+    }
+    
     return () => {
-      unsubscribe([symbol]);
+      if (qualityTimeoutRef.current) {
+        clearTimeout(qualityTimeoutRef.current);
+      }
     };
-  }, [symbol, subscribe, unsubscribe]);
-
-  // Return the current price for this symbol
-  const priceData = getPrice(symbol);
-  return priceData?.price || null;
+  }, [rawConnectionQuality, stableConnectionQuality, withTransition]);
+  
+  return {
+    // Backward compatible
+    price: optimizedData.price,
+    
+    // Enhanced data  
+    priceData: optimizedData.price ? {
+      symbol,
+      price: optimizedData.price,
+      change: optimizedData.change,
+      timestamp: optimizedData.lastUpdate || new Date().toISOString()
+    } : null,
+    dataAge: Math.floor(optimizedData.dataAge / 1000), // Convert to seconds
+    quality: stableConnectionQuality, // Use debounced quality
+    isLoading: optimizedData.isLoading,
+    isStale: stableConnectionQuality === 'stale',
+    refreshPrice: optimizedData.refreshPrice,
+    
+    // "Hydrate and Highlight" state indicators
+    connectionQuality: stableConnectionQuality, // Use debounced quality
+    lastUpdated: optimizedData.lastUpdated,
+  };
 }

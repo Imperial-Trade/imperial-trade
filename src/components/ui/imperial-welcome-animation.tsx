@@ -79,148 +79,43 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   };
 
   useLayoutEffect(() => {
-    // Prevent StrictMode double-invocation issues
-    let isCleanedUp = false;
+    // Store original scroll position for restoration
+    const originalScrollY = window.scrollY;
     
-    // Store original styles and scroll position
-    const htmlEl = document.documentElement;
-    const bodyEl = document.body;
-    const scrollY = window.scrollY || window.pageYOffset || 0;
+    // Lightweight scroll prevention using CSS classes only
+    document.body.classList.add('overflow-hidden', 'fixed', 'inset-0');
+    document.documentElement.classList.add('overflow-hidden');
     
-    // Store original inline styles with kebab-case properties
-    const originalStyles = {
-      html: {
-        'overflow': htmlEl.style.overflow,
-        'overscroll-behavior': htmlEl.style.overscrollBehavior,
-        'touch-action': htmlEl.style.touchAction,
-        'height': htmlEl.style.height
-      },
-      body: {
-        'overflow': bodyEl.style.overflow,
-        'position': bodyEl.style.position,
-        'top': bodyEl.style.top,
-        'left': bodyEl.style.left,
-        'right': bodyEl.style.right,
-        'width': bodyEl.style.width,
-        'height': bodyEl.style.height,
-        'overscroll-behavior': bodyEl.style.overscrollBehavior,
-        'touch-action': bodyEl.style.touchAction
-      }
-    };
-
-    // Helper function to set CSS with !important
-    const setImportant = (el: HTMLElement, prop: string, val: string) => {
-      el.style.setProperty(prop, val, 'important');
-    };
-
-    // Apply comprehensive scroll lock to both html and body
-    setImportant(htmlEl, 'overflow', 'hidden');
-    setImportant(htmlEl, 'overscroll-behavior', 'none');
-    setImportant(htmlEl, 'touch-action', 'none');
-    setImportant(htmlEl, 'height', '100%');
+    // Minimal event prevention - only essential ones
+    const handleWheel = (e: WheelEvent) => e.preventDefault();
+    const handleTouchMove = (e: TouchEvent) => e.preventDefault();
     
-    setImportant(bodyEl, 'overflow', 'hidden');
-    setImportant(bodyEl, 'position', 'fixed');
-    setImportant(bodyEl, 'top', `-${scrollY}px`);
-    setImportant(bodyEl, 'left', '0');
-    setImportant(bodyEl, 'right', '0');
-    setImportant(bodyEl, 'width', '100%');
-    setImportant(bodyEl, 'height', '100%');
-    setImportant(bodyEl, 'overscroll-behavior', 'none');
-    setImportant(bodyEl, 'touch-action', 'none');
-
-    // Event handlers to prevent scrolling
-    const preventScroll = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const preventKeys = (e: KeyboardEvent) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
-        preventScroll(e as unknown as Event);
-      }
-    };
-
-    const lockScrollPos = () => {
-      if (!isCleanedUp) {
-        window.scrollTo(0, scrollY);
-      }
-    };
-
-    // Add event listeners to both window and document for maximum coverage
-    const addEventListeners = () => {
-      // Window events with capture and non-passive
-      window.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-      window.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-      window.addEventListener('keydown', preventKeys, { passive: false, capture: true });
-      window.addEventListener('scroll', lockScrollPos, { passive: true });
-      
-      // Document events for additional coverage
-      document.addEventListener('wheel', preventScroll, { passive: false, capture: true });
-      document.addEventListener('touchmove', preventScroll, { passive: false, capture: true });
-      document.addEventListener('keydown', preventKeys, { passive: false, capture: true });
-    };
-
-    const removeEventListeners = () => {
-      // Remove window events
-      window.removeEventListener('wheel', preventScroll);
-      window.removeEventListener('touchmove', preventScroll);
-      window.removeEventListener('keydown', preventKeys);
-      window.removeEventListener('scroll', lockScrollPos);
-      
-      // Remove document events
-      document.removeEventListener('wheel', preventScroll);
-      document.removeEventListener('touchmove', preventScroll);
-      document.removeEventListener('keydown', preventKeys);
-    };
-
-    addEventListeners();
+    // Use passive: false only where needed
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    
+    // Start animation
     animationRef.current = requestAnimationFrame(animate);
     
     return () => {
-      isCleanedUp = true;
-      removeEventListeners();
-      
+      // Cleanup animation
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-
-      // Restore original styles exactly using kebab-case
-      Object.entries(originalStyles.html).forEach(([prop, value]) => {
-        if (value) {
-          htmlEl.style.setProperty(prop, value);
-        } else {
-          htmlEl.style.removeProperty(prop);
-        }
-      });
-
-      Object.entries(originalStyles.body).forEach(([prop, value]) => {
-        if (value) {
-          bodyEl.style.setProperty(prop, value);
-        } else {
-          bodyEl.style.removeProperty(prop);
-        }
-      });
-
-      // Restore scroll position after a brief delay to ensure DOM is ready
-      setTimeout(() => {
-        window.scrollTo(0, scrollY);
-      }, 0);
+      
+      // Cleanup - remove classes and listeners
+      document.body.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+      document.documentElement.classList.remove('overflow-hidden');
+      
+      document.removeEventListener('wheel', handleWheel);
+      document.removeEventListener('touchmove', handleTouchMove);
+      
+      // Restore scroll position
+      requestAnimationFrame(() => window.scrollTo(0, originalScrollY));
     };
   }, []);
 
   if (!isVisible) return null;
-
-  // Additional event handlers for the overlay
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
 
   return (
     <div 
@@ -229,15 +124,6 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
         doorwayFade ? 'bg-black animate-fade-out' : 
         'bg-black'
       }`}
-      style={{ 
-        minHeight: '100dvh',
-        ...(doorwayFade ? {
-          opacity: 0,
-          animation: 'professional-fade-out 2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards'
-        } : {})
-      }}
-      onWheel={handleWheel}
-      onTouchMove={handleTouchMove}
     >
       {/* Simple elegant fade - no complex effects */}
 

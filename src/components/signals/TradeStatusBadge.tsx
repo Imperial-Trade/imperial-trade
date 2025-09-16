@@ -36,8 +36,8 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     if (isPending) {
         const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
         return (
-            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase text-xs px-2 py-0.5 animate-pulse">
-                <Hourglass className="w-2.5 h-2.5 mr-0.5 animate-spin" /> {pendingText}
+            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase text-xs px-2 py-0.5" style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+                <Hourglass className="w-2.5 h-2.5 mr-0.5" /> {pendingText}
             </Badge>
         );
     }
@@ -48,10 +48,10 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
             <div className="flex items-center gap-1.5">
-                <Badge variant="outline" className={`${badgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5 animate-pulse`}>
+                <Badge variant="outline" className={`${badgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                     <Target className="w-2.5 h-2.5 mr-0.5" /> TP{highestTP} HIT
                 </Badge>
-                <Badge variant="outline" className={`${badgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5 animate-pulse`}>
+                <Badge variant="outline" className={`${badgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                     {activeText}
                 </Badge>
             </div>
@@ -64,7 +64,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
             `ACTIVE ${typeLabel.toUpperCase()}`;
         const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
-            <Badge variant="outline" className={`${badgeColors} text-xs px-1.5 py-0.5 animate-pulse`}>
+            <Badge variant="outline" className={`${badgeColors} text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                 {activeText}
             </Badge>
         );

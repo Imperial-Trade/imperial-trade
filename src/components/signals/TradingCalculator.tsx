@@ -7,6 +7,7 @@ import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, 
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 export default function TradingCalculator({
   alert,
@@ -15,6 +16,7 @@ export default function TradingCalculator({
   // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
   const { prices, getPrice } = useOptimizedWebSocketPrices();
+  const { shouldAllowQualityChange, getStabilityInfo } = useConnectionStability();
   
   // Subscribe to this symbol and get its price data
   const wsLivePrice = useMemo(() => {
@@ -94,14 +96,20 @@ export default function TradingCalculator({
   const priceChangePercentage = priceChangeFromEntry / alert.entry_price * 100;
   const isPriceUp = priceChangeFromEntry > 0;
 
-  // Enhanced price tracking with trend detection
+  // Enhanced price tracking with trend detection - ✅ Stability controlled
   useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
     if (prevPriceRef.current !== null && prevPriceRef.current !== currentPrice) {
-      // Price change flash effect
-      setPriceChangeFlash(true);
-      const timer = setTimeout(() => setPriceChangeFlash(false), 300);
+      const stabilityInfo = getStabilityInfo(symbol);
+      
+      // Only show flash effects if connection is not stable for a long period
+      if (!stabilityInfo.isStable || stabilityInfo.stableDuration < 10000) {
+        setPriceChangeFlash(true);
+        timer = setTimeout(() => setPriceChangeFlash(false), 300);
+      }
 
-      // Update price history for trend detection
+      // Update price history for trend detection (always track, but don't animate)
       const now = Date.now();
       priceHistoryRef.current = [...priceHistoryRef.current.slice(-4),
       // Keep last 5 prices
@@ -117,10 +125,13 @@ export default function TradingCalculator({
         const isDownTrend = recent.every((item, i) => i === 0 || item.price < recent[i - 1].price);
         if (isUpTrend) setTrendDirection('up');else if (isDownTrend) setTrendDirection('down');else setTrendDirection('neutral');
       }
-      return () => clearTimeout(timer);
     }
     prevPriceRef.current = currentPrice;
-  }, [currentPrice]);
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentPrice, symbol, getStabilityInfo]);
 
   // Enhanced pip distance calculations for all asset types
   const calculatePipDistance = (fromPrice, toPrice) => {
@@ -365,17 +376,20 @@ export default function TradingCalculator({
     };
   }, [accountBalance, lotSize, alert, currentPrice, livePrice, isPending, isUltraFastTick]);
 
-  // Enhanced flash effects for P&L and risk changes
+  // Enhanced flash effects for P&L and risk changes - ✅ Stability controlled
   useEffect(() => {
     if (calculations) {
-      // P&L flash effect
-      if (prevPnLRef.current !== null && prevPnLRef.current !== calculations.currentPnL) {
+      const stabilityInfo = getStabilityInfo(symbol);
+      const isConnectionStable = stabilityInfo.isStable && stabilityInfo.stableDuration >= 10000;
+      
+      // P&L flash effect - only if not in stable state
+      if (!isConnectionStable && prevPnLRef.current !== null && prevPnLRef.current !== calculations.currentPnL) {
         setCalculationFlash(true);
         const timer = setTimeout(() => setCalculationFlash(false), 400);
       }
 
-      // Risk warning flash effect
-      if (prevRiskRef.current !== null && prevRiskRef.current !== calculations.riskPercentage) {
+      // Risk warning flash effect - only if not in stable state
+      if (!isConnectionStable && prevRiskRef.current !== null && prevRiskRef.current !== calculations.riskPercentage) {
         const currentRiskLevel = calculations.riskPercentage > 10 ? 'critical' : calculations.riskPercentage > 5 ? 'high' : 'normal';
         const prevRiskLevel = riskLevelRef.current;
         if (currentRiskLevel !== prevRiskLevel && currentRiskLevel !== 'normal') {
@@ -387,7 +401,7 @@ export default function TradingCalculator({
       prevPnLRef.current = calculations.currentPnL;
       prevRiskRef.current = calculations.riskPercentage;
     }
-  }, [calculations]);
+  }, [calculations, symbol, getStabilityInfo]);
   const formatCurrency = value => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -455,7 +469,7 @@ export default function TradingCalculator({
         </div>
 
         {/* Enhanced Live Price & Market Data Display - Hidden but functions still running */}
-        {livePrice && <div className={`hidden bg-gray-800/50 rounded-md p-3 border transition-all duration-300 ${priceChangeFlash ? isPriceUp ? 'border-emerald-400 bg-emerald-900/20' : 'border-red-400 bg-red-900/20' : 'border-gray-700'}`}>
+        {livePrice && <div className={`hidden bg-gray-800/50 rounded-md p-3 border ${priceChangeFlash ? isPriceUp ? 'border-emerald-400 bg-emerald-900/20' : 'border-red-400 bg-red-900/20' : 'border-gray-700'}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity className={`w-4 h-4 ${livePrice?.connectionStatus === 'connected' ? 'text-emerald-400' : 'text-red-400'}`} />
@@ -475,7 +489,7 @@ export default function TradingCalculator({
               <div>
                 <div className="text-xs text-gray-400 mb-1">Current Price</div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-lg font-bold transition-colors duration-300 ${priceChangeFlash ? isPriceUp ? 'text-emerald-400' : 'text-red-400' : 'text-white'}`}>
+                  <span className={`text-lg font-bold ${priceChangeFlash ? isPriceUp ? 'text-emerald-400' : 'text-red-400' : 'text-white'}`}>
                     ${formatPrice(currentPrice, alert.tradermade_symbol)}
                   </span>
                   {priceChangeFromEntry !== 0 && <div className={`flex items-center gap-1 ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -496,7 +510,7 @@ export default function TradingCalculator({
               {/* Current P&L (only for active trades with position size) */}
               {calculations && !isPending && <div>
                   <div className="text-xs text-gray-400 mb-1">Current P&L</div>
-                  <div className={`transition-all duration-400 ${calculationFlash ? calculations.isCurrentlyProfit ? 'scale-105 text-emerald-300' : 'scale-105 text-red-300' : calculations.isCurrentlyProfit ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <div className={`${calculationFlash ? calculations.isCurrentlyProfit ? 'scale-105 text-emerald-300' : 'scale-105 text-red-300' : calculations.isCurrentlyProfit ? 'text-emerald-400' : 'text-red-400'}`}>
                     <div className="text-lg font-bold">
                       {formatCurrency(calculations.currentPnL)}
                     </div>
@@ -534,7 +548,7 @@ export default function TradingCalculator({
 
                 {/* All Take Profit Levels */}
                 {calculations.rewards.length > 0 && <div className="space-y-2">
-                    {calculations.rewards.map(reward => <div key={reward.level} className={`rounded px-2 py-1 border transition-all duration-300 ${reward.isClose ? 'bg-emerald-800/40 border-emerald-600/70' : 'bg-emerald-900/30 border-emerald-700/50'}`}>
+                    {calculations.rewards.map(reward => <div key={reward.level} className={`rounded px-2 py-1 border ${reward.isClose ? 'bg-emerald-800/40 border-emerald-600/70' : 'bg-emerald-900/30 border-emerald-700/50'}`}>
                         <div className="flex justify-between items-center">
                           <div className="text-emerald-300 font-medium text-xs">
                             TP{reward.level}
@@ -576,7 +590,7 @@ export default function TradingCalculator({
             </div>
             
             {/* Progress to Stop Loss */}
-            <div className={`rounded-md p-3 border transition-all duration-300 ${calculations.stopLossDistance.isVeryClose ? 'bg-red-800/30 border-red-500' : calculations.stopLossDistance.isClose ? 'bg-red-900/20 border-red-600' : 'bg-gray-800/50 border-gray-700'}`}>
+            <div className={`rounded-md p-3 border ${calculations.stopLossDistance.isVeryClose ? 'bg-red-800/30 border-red-500' : calculations.stopLossDistance.isClose ? 'bg-red-900/20 border-red-600' : 'bg-gray-800/50 border-gray-700'}`}>
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <div className="text-sm font-medium text-red-400">Stop Loss</div>
@@ -620,7 +634,7 @@ export default function TradingCalculator({
                   </span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-1.5">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${calculations.stopLossDistance.isHit ? 'bg-red-500' : calculations.stopLossDistance.progressPercent >= 75 ? 'bg-red-400' : calculations.stopLossDistance.progressPercent >= 50 ? 'bg-orange-400' : 'bg-emerald-400'}`} style={{
+                  <div className={`h-1.5 rounded-full ${calculations.stopLossDistance.isHit ? 'bg-red-500' : calculations.stopLossDistance.progressPercent >= 75 ? 'bg-red-400' : calculations.stopLossDistance.progressPercent >= 50 ? 'bg-orange-400' : 'bg-emerald-400'}`} style={{
                 width: `${Math.max(2, calculations.stopLossDistance.progressPercent)}%`
               }}></div>
                 </div>
@@ -643,7 +657,7 @@ export default function TradingCalculator({
               Reward Targets {!isPending && <span className="text-xs text-gray-400">(from current price)</span>}
             </div>
             <div className="space-y-2">
-              {calculations.rewards.map(reward => <div key={reward.level} className={`rounded-md p-3 border transition-all duration-300 ${reward.isClose ? 'bg-emerald-800/20 border-emerald-600' : 'bg-gray-800/50 border-gray-700'}`}>
+              {calculations.rewards.map(reward => <div key={reward.level} className={`rounded-md p-3 border ${reward.isClose ? 'bg-emerald-800/20 border-emerald-600' : 'bg-gray-800/50 border-gray-700'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-medium text-emerald-400">
@@ -688,7 +702,7 @@ export default function TradingCalculator({
                        </span>
                      </div>
                      <div className="w-full bg-gray-700 rounded-full h-1.5">
-                       <div className={`h-1.5 rounded-full transition-all duration-500 ${reward.isPassed ? 'bg-emerald-400' : reward.progressPercent >= 75 ? 'bg-orange-400' : 'bg-blue-400'}`} style={{
+                       <div className={`h-1.5 rounded-full ${reward.isPassed ? 'bg-emerald-400' : reward.progressPercent >= 75 ? 'bg-orange-400' : 'bg-blue-400'}`} style={{
                   width: `${Math.max(2, reward.progressPercent)}%`
                 }}></div>
                      </div>

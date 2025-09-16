@@ -78,13 +78,13 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
     <div className="mb-2">
       {/* Glowing top indicator for closed trades - computed from primitives only */}
       {status === 'closed' && (
-        <div className={`h-1 w-full mb-2 animate-pulse ${
+        <div className={`h-1 w-full mb-2 ${
           closeReason === 'stop_loss' 
             ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
             : (hasTPHits || closeReason?.startsWith('tp'))
               ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
               : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        }`} />
+        }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
       )}
 
       {/* Signal Creator Attribution */}

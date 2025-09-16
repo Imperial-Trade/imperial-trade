@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface TelemetryData {
   totalMessages: number;
@@ -25,8 +25,8 @@ export function useRealtimeTelemetry() {
     clampActivations: 0
   });
 
-  // Record a message
-  const recordMessage = (channel: string = 'price_update') => {
+  // Record a message - memoized for stability
+  const recordMessage = useCallback((channel: string = 'price_update') => {
     telemetryRef.current.messagesReceived++;
     
     // Calculate rate and cost estimate
@@ -41,24 +41,24 @@ export function useRealtimeTelemetry() {
       messageRate,
       costEstimate
     }));
-  };
+  }, []);
 
-  // Record a connection
-  const recordConnection = () => {
+  // Record a connection - memoized for stability  
+  const recordConnection = useCallback(() => {
     telemetryRef.current.connectionsCreated++;
     setTelemetryData(prev => ({
       ...prev,
       totalConnections: telemetryRef.current.connectionsCreated
     }));
-  };
+  }, []);
 
-  // Record clamp activation
-  const recordClampActivation = () => {
+  // Record clamp activation - memoized for stability
+  const recordClampActivation = useCallback(() => {
     telemetryRef.current.clampActivations++;
-  };
+  }, []);
 
-  // Sync to persistent storage
-  const syncTelemetry = async () => {
+  // Sync to persistent storage - memoized for stability
+  const syncTelemetry = useCallback(async () => {
     const elapsedHours = (Date.now() - telemetryRef.current.startTime) / (1000 * 60 * 60);
     const messageRate = telemetryRef.current.messagesReceived / Math.max(elapsedHours, 0.1);
     const costEstimate = (messageRate * 24 * 30 * 2.50) / 1000000;
@@ -75,7 +75,7 @@ export function useRealtimeTelemetry() {
     } catch (error) {
       console.warn('Failed to sync telemetry:', error);
     }
-  };
+  }, []);
 
   return {
     telemetryData,

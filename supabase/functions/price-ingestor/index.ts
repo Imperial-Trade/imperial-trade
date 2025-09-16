@@ -350,10 +350,10 @@ serve(async (req) => {
       
       return new Response(JSON.stringify({ 
         success: true, 
-        message: `Processed ${prices.length} prices → ${totalTriggeredAlerts} alerts → ${upserted} DB upserts → UI broadcasts skipped (${skipReason})`,
+        message: `Processed ${prices.length} prices → ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → UI broadcasts skipped (${skipReason})`,
         processed: prices.length,
         alerts_triggered: totalTriggeredAlerts,
-        db_upserts: upserted,
+        db_upserts: successfulUpserts,
         ui_broadcasts: 0,
         skip_reason: skipReason
       }), {
@@ -422,7 +422,7 @@ serve(async (req) => {
     // Final telemetry and success response
     console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
     
-    const responseMessage = `✅ COMPLETE: IMPERIAL TRADING v4.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${upserted} DB upserts → ${broadcastCount} UI broadcasts`;
+    const responseMessage = `✅ COMPLETE: IMPERIAL TRADING v4.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → ${broadcastCount} UI broadcasts`;
     console.log(responseMessage);
 
     return new Response(JSON.stringify({
@@ -430,7 +430,7 @@ serve(async (req) => {
       message: responseMessage,
       processed: prices.length,
       alerts_triggered: totalTriggeredAlerts,
-      db_upserts: upserted,
+      db_upserts: successfulUpserts,
       ui_broadcasts: broadcastCount,
       session_totals: {
         processed: totalPricesProcessed,

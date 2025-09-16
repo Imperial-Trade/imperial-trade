@@ -382,9 +382,10 @@ const LivePriceWidgetComponent = ({
     });
   }, []);
 
+  // Use enhanced hook at top level to follow Rules of Hooks
+  const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
+
   const connectionStatusInfo = useMemo(() => {
-    // Use the enhanced hook to get proper "Hydrate and Highlight" status
-    const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
     
     if (error) {
       return { 

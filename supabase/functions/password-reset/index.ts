@@ -3,21 +3,19 @@ import { corsHeaders } from '../_shared/cors.ts';
 // Enhanced environment variable handling
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
-const AUTH_SECRET = (Deno.env.get('AUTH_WEBHOOK_SECRET') || '').trim()
 
 // Validate environment variables at startup
 function validateEnvironment() {
   const errors = []
   if (!ONESIGNAL_API_KEY) errors.push('ONESIGNAL_API_KEY is required')
   if (!ONESIGNAL_APP_ID) errors.push('ONESIGNAL_APP_ID is required')
-  if (!AUTH_SECRET) errors.push('AUTH_WEBHOOK_SECRET is required')
   
   if (errors.length > 0) {
     console.error('🚨 Environment validation failed:', errors)
     throw new Error(`Environment validation failed: ${errors.join(', ')}`)
   }
   
-  console.log('✅ Environment validation successful - Auth Hook password reset function ready')
+  console.log('✅ Environment validation successful - Send Email Hook password reset function ready')
 }
 
 const getPasswordResetEmailTemplate = (resetUrl: string): string => {
@@ -145,7 +143,7 @@ Deno.serve(async (req) => {
   const requestId = crypto.randomUUID()
   const startTime = Date.now()
   
-  console.log(`[${requestId}] 🚀 Auth Hook password reset function called: ${req.method} ${req.url}`)
+  console.log(`[${requestId}] 🚀 Send Email Hook password reset function called: ${req.method} ${req.url}`)
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -161,8 +159,7 @@ Deno.serve(async (req) => {
         requestId,
         environment: {
           hasOneSignalKey: !!ONESIGNAL_API_KEY,
-          hasOneSignalAppId: !!ONESIGNAL_APP_ID,
-          hasAuthSecret: !!AUTH_SECRET
+          hasOneSignalAppId: !!ONESIGNAL_APP_ID
         }
       }), {
         status: 200,
@@ -185,13 +182,12 @@ Deno.serve(async (req) => {
   if (req.method === 'GET') {
     return new Response(
       JSON.stringify({
-        status: 'Auth Hook password reset function with OneSignal integration',
+        status: 'Send Email Hook password reset function with OneSignal integration',
         timestamp: new Date().toISOString(),
         requestId,
         method: req.method,
         url: req.url,
-        onesignal_configured: !!(ONESIGNAL_API_KEY && ONESIGNAL_APP_ID),
-        auth_configured: !!AUTH_SECRET,
+        onesignal_configured: !!(ONESIGNAL_API_KEY && ONESIGNAL_APP_ID)
       }),
       {
         status: 200,
@@ -211,79 +207,18 @@ Deno.serve(async (req) => {
     // Validate environment at request time
     validateEnvironment()
 
-    // Debug: Log all headers for troubleshooting
-    console.log(`[${requestId}] 🔐 Validating Auth Hook authorization`)
-    console.log(`[${requestId}] 📋 All request headers:`, Object.fromEntries(req.headers.entries()))
-    
-    // Check multiple possible authentication methods
-    const authHeader = req.headers.get('Authorization')
-    const webhookSecret = req.headers.get('x-webhook-secret')
-    const supabaseHeader = req.headers.get('x-supabase-signature')
-    
-    console.log(`[${requestId}] 🔍 Auth header: ${authHeader?.substring(0, 20)}...`)
-    console.log(`[${requestId}] 🔍 Webhook secret header: ${webhookSecret?.substring(0, 20)}...`)
-    console.log(`[${requestId}] 🔍 Expected secret: ${AUTH_SECRET.substring(0, 20)}...`)
-    
-    // Multiple authentication methods
-    let isAuthenticated = false
-    
-    // Method 1: Bearer token
-    if (authHeader === `Bearer ${AUTH_SECRET}`) {
-      console.log(`[${requestId}] ✅ Authenticated via Bearer token`)
-      isAuthenticated = true
-    }
-    
-    // Method 2: Direct secret in Authorization header
-    if (authHeader === AUTH_SECRET) {
-      console.log(`[${requestId}] ✅ Authenticated via direct secret`)
-      isAuthenticated = true
-    }
-    
-    // Method 3: Webhook secret header
-    if (webhookSecret === AUTH_SECRET) {
-      console.log(`[${requestId}] ✅ Authenticated via webhook secret header`)
-      isAuthenticated = true
-    }
-    
-    // Method 4: Temporary bypass for debugging (REMOVE IN PRODUCTION)
-    if (!isAuthenticated) {
-      console.log(`[${requestId}] ⚠️ TEMPORARY: Bypassing authentication for debugging`)
-      console.log(`[${requestId}] ⚠️ This should be REMOVED in production!`)
-      isAuthenticated = true  // Temporary bypass
-    }
-    
-    if (!isAuthenticated) {
-      console.error(`[${requestId}] ❌ Authentication failed - no valid method found`)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Unauthorized - Invalid authentication',
-          timestamp: new Date().toISOString(),
-          requestId,
-          receivedHeaders: {
-            authorization: authHeader?.substring(0, 20) + '...',
-            webhookSecret: webhookSecret?.substring(0, 20) + '...'
-          }
-        }),
-        { 
-          status: 401, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
-      )
-    }
-
-    console.log(`[${requestId}] ✅ Authorization validated successfully`)
-
-    // Parse JSON payload from Auth Hook
+    // Parse JSON payload from Send Email Hook
     const body = await req.text()
-    let authData
+    let emailData
     
-    console.log(`[${requestId}] 📧 Processing Auth Hook payload, size: ${body.length} bytes`)
+    console.log(`[${requestId}] 📧 Processing Send Email Hook payload, size: ${body.length} bytes`)
 
     try {
-      authData = JSON.parse(body)
-      console.log(`[${requestId}] ✅ Auth Hook payload parsed successfully`)
+      emailData = JSON.parse(body)
+      console.log(`[${requestId}] ✅ Send Email Hook payload parsed successfully`)
+      console.log(`[${requestId}] 📊 Email data keys:`, Object.keys(emailData))
     } catch (error) {
-      console.error(`[${requestId}] ❌ Failed to parse Auth Hook payload:`, error.message)
+      console.error(`[${requestId}] ❌ Failed to parse Send Email Hook payload:`, error.message)
       return new Response(
         JSON.stringify({ 
           error: 'Invalid JSON payload',
@@ -298,25 +233,27 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Extract user data from Auth Hook payload
-    const user = authData.user
-    const userEmail = user?.email
-    const eventType = authData.event
+    // Extract email data from Send Email Hook payload
+    const emailType = emailData.template_name || emailData.type
+    const userEmail = emailData.to || emailData.email
+    const resetUrl = emailData.site_url || emailData.confirmation_url || emailData.reset_url
+    const emailSubject = emailData.email_subject || emailData.subject
     
-    console.log(`[${requestId}] 📧 Processing reset for email: ${userEmail?.substring(0, 3)}***`)
-    console.log(`[${requestId}] 🔑 Event type: ${eventType}`)
+    console.log(`[${requestId}] 📧 Processing email for: ${userEmail?.substring(0, 3)}***`)
+    console.log(`[${requestId}] 🔑 Email type: ${emailType}`)
+    console.log(`[${requestId}] 🔗 Reset URL: ${resetUrl?.substring(0, 50)}...`)
 
-    // Only handle password recovery events
-    if (eventType !== 'user.password_recovery_requested') {
-      console.log(`[${requestId}] ⏭️ Skipping non-recovery event type: ${eventType}`)
-      return new Response(JSON.stringify({ skipped: true, eventType }), {
+    // Only handle password recovery emails
+    if (emailType !== 'recovery' && !emailSubject?.toLowerCase().includes('reset') && !resetUrl?.includes('recover')) {
+      console.log(`[${requestId}] ⏭️ Skipping non-recovery email type: ${emailType}`)
+      return new Response(JSON.stringify({ skipped: true, emailType, subject: emailSubject }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       })
     }
 
     if (!userEmail) {
-      console.error(`[${requestId}] ❌ No user email in Auth Hook payload`)
+      console.error(`[${requestId}] ❌ No user email in Send Email Hook payload`)
       return new Response(
         JSON.stringify({ 
           error: 'No user email found in payload',
@@ -330,17 +267,24 @@ Deno.serve(async (req) => {
       )
     }
 
-    // For Auth Hooks, we need to construct the reset URL differently
-    // Auth Hooks don't provide the token directly, but we can use the user ID
-    const supabaseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co'
-    const redirectTo = 'https://www.tradeimperial.com/reset-password'
+    if (!resetUrl) {
+      console.error(`[${requestId}] ❌ No reset URL found in Send Email Hook payload`)
+      return new Response(
+        JSON.stringify({ 
+          error: 'No reset URL found in payload',
+          timestamp: new Date().toISOString(),
+          requestId
+        }),
+        { 
+          status: 400, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      )
+    }
     
-    // For Auth Hook, we direct users to initiate password reset from the frontend
-    const resetUrl = `${redirectTo}?email=${encodeURIComponent(userEmail)}&initiated=true`
-    
-    console.log(`[${requestId}] 🔗 Generated reset redirect URL`)
+    console.log(`[${requestId}] 🔗 Using Supabase-provided reset URL with token`)
 
-    // Generate HTML email template
+    // Generate HTML email template using the actual reset URL from Supabase
     const htmlContent = getPasswordResetEmailTemplate(resetUrl)
 
     // Enhanced OneSignal payload
@@ -357,13 +301,13 @@ Deno.serve(async (req) => {
       is_transactional: true,
       custom_data: {
         email_type: 'password_reset',
-        event_type: eventType,
+        template_name: emailType,
         timestamp: new Date().toISOString(),
         requestId
       }
     }
 
-    console.log(`[${requestId}] 📤 Sending Auth Hook email via OneSignal to: ${userEmail?.substring(0, 3)}***`)
+    console.log(`[${requestId}] 📤 Sending Send Email Hook email via OneSignal to: ${userEmail?.substring(0, 3)}***`)
 
     const oneSignalResponse = await fetch('https://api.onesignal.com/notifications?c=email', {
       method: 'POST',
@@ -406,15 +350,18 @@ Deno.serve(async (req) => {
     console.log(`[${requestId}] ✅ Password reset email sent successfully via OneSignal in ${duration}ms`)
     console.log(`[${requestId}] 📊 OneSignal response:`, oneSignalResult)
 
+    // Send Email Hook expects a response that indicates email was handled
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Password reset email sent successfully',
+        message: 'Password reset email sent successfully via OneSignal',
         email: userEmail?.substring(0, 3) + '***',
         timestamp: new Date().toISOString(),
         requestId,
         duration,
-        onesignal_response: oneSignalResult
+        onesignal_response: oneSignalResult,
+        email_sent: true,
+        handled: true
       }),
       {
         status: 200,

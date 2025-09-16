@@ -708,12 +708,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       if (priceData && connectionStatus === 'connected') {
         const lastTick = priceUpdateTimestamps.current.get(normalizedSymbol);
+        const hasReceivedRealtime = realtimeReceivedSymbols.current.has(normalizedSymbol);
         
         if (lastTick) {
           const ageMs = now - lastTick;
           
-          // IMMEDIATE PROMOTION: hydrated → live on first realtime tick
-          if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
+          // 🚀 ANTI-FLICKER FIX: Only promote to 'live' if symbol has received real-time updates
+          // This prevents database hydration from causing immediate 'live' promotion
+          if (ageMs < HEALTH_CONFIG.staleDataThreshold && hasReceivedRealtime) {
             if (currentState.quality !== 'live') {
               // Promote to live immediately
               const newState = {

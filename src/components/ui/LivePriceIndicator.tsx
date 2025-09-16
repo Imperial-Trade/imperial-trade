@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff } from 'lucide-react';
 import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
@@ -14,7 +14,8 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
 }) => {
   const { connectionQuality, dataAge, isStale } = useEnhancedLivePrice(symbol);
 
-  const getIndicatorProps = () => {
+  // 🚀 Priority 3: Optimize UI Rendering Strategy with useMemo
+  const indicatorProps = useMemo(() => {
     switch (connectionQuality) {
       case 'live':
         return {
@@ -45,17 +46,22 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
           title: 'No data available'
         };
     }
-  };
+  }, [connectionQuality]);
 
-  const indicator = getIndicatorProps();
+  // 🚀 Priority 5: Performance Monitoring (Dev Mode Only)
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 LivePriceIndicator ${symbol}: ${connectionQuality}`);
+    }
+  }, [symbol, connectionQuality]);
 
   return (
     <Badge 
-      variant={indicator.variant}
-      className={`${className} ${indicator.color} transition-colors duration-200`}
-      title={indicator.title}
+      variant={indicatorProps.variant}
+      className={`${className} ${indicatorProps.color} transition-all duration-300 ease-in-out`}
+      title={indicatorProps.title}
     >
-      <indicator.icon className="w-3 h-3" />
+      <indicatorProps.icon className="w-3 h-3 transition-all duration-300 ease-in-out" />
     </Badge>
   );
 };

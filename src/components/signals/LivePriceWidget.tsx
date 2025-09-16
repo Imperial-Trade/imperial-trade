@@ -398,21 +398,15 @@ const LivePriceWidgetComponent = ({
       };
     }
     
+    // ✅ UNIFIED COLORS: Use same green for both 'live' and 'hydrated' to eliminate flicker
     switch (connectionQuality) {
       case 'live':
+      case 'hydrated':
         return { 
           color: 'text-green-400', 
           icon: Wifi, 
           text: 'Live',
           description: 'Real-time price updates',
-          animate: false
-        };
-      case 'hydrated':
-        return { 
-          color: 'text-yellow-400', 
-          icon: Wifi, 
-          text: 'Live',
-          description: 'Database data - loading live updates',
           animate: false
         };
       case 'stale':

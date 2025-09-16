@@ -706,7 +706,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       
       // 🚀 ANTI-FLICKER: Check 200ms result cache first
       const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
-      if (cachedResult && (now - cachedResult.timestamp) < 200) {
+      if (cachedResult && (now - cachedResult.timestamp) < 500) {
         return cachedResult.quality as 'live' | 'hydrated' | 'stale';
       }
       
@@ -754,25 +754,30 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
       }
       
-      // 🚀 ANTI-FLICKER: 3-sample confirmation before quality transitions
-      const sampleHistory = qualitySampleHistoryRef.current.get(normalizedSymbol) || [];
-      sampleHistory.push(proposedQuality);
-      
-      // Keep only last 3 samples
-      if (sampleHistory.length > 3) {
-        sampleHistory.shift();
+      // Immediate promotion from stale -> hydrated when fresh data present
+      if (currentState.quality === 'stale' && proposedQuality === 'hydrated') {
+        const newState = {
+          quality: 'hydrated' as const,
+          lastPromotedToLive: null,
+          lastDemotedFromLive: null
+        };
+        qualityStateRef.current.set(normalizedSymbol, newState);
+        qualityResultCacheRef.current.set(normalizedSymbol, { quality: newState.quality, timestamp: now });
+        return newState.quality;
       }
-      qualitySampleHistoryRef.current.set(normalizedSymbol, sampleHistory);
-      
-      let finalQuality = currentState.quality || 'stale';
-      
-      // Require 3 consecutive matching samples for quality change (except initial state)
-      if (sampleHistory.length >= 3) {
-        const allSamplesMatch = sampleHistory.every(sample => sample === proposedQuality);
+
+      // 🚀 ANTI-FLICKER: Use sample confirmation only when transitioning to/from live
+      const useSamples = (proposedQuality === 'live' || currentState.quality === 'live');
+      if (useSamples) {
+        const sampleHistory = qualitySampleHistoryRef.current.get(normalizedSymbol) || [];
+        sampleHistory.push(proposedQuality);
+        if (sampleHistory.length > 3) sampleHistory.shift();
+        qualitySampleHistoryRef.current.set(normalizedSymbol, sampleHistory);
+
+        let finalQuality = currentState.quality || 'stale';
+        const allSamplesMatch = sampleHistory.length >= 3 && sampleHistory.every(sample => sample === proposedQuality);
         if (allSamplesMatch && proposedQuality !== currentState.quality) {
           finalQuality = proposedQuality;
-          
-          // Update quality state
           const newState = {
             ...currentState,
             quality: finalQuality,
@@ -781,23 +786,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           };
           qualityStateRef.current.set(normalizedSymbol, newState);
         }
-      } else if (!currentState.quality) {
-        // Initial state - allow immediate transition
-        finalQuality = proposedQuality;
-        qualityStateRef.current.set(normalizedSymbol, {
-          quality: finalQuality,
-          lastPromotedToLive: finalQuality === 'live' ? now : null,
-          lastDemotedFromLive: null
-        });
+        qualityResultCacheRef.current.set(normalizedSymbol, { quality: finalQuality, timestamp: now });
+        return finalQuality;
       }
-      
-      // 🚀 ANTI-FLICKER: Cache result for 200ms
-      qualityResultCacheRef.current.set(normalizedSymbol, {
-        quality: finalQuality,
-        timestamp: now
-      });
-      
-      return finalQuality;
+
+      // For non-live transitions, apply immediate change
+      if (proposedQuality !== currentState.quality) {
+        const newState = {
+          ...currentState,
+          quality: proposedQuality,
+          lastPromotedToLive: proposedQuality === 'live' ? now : currentState.lastPromotedToLive,
+          lastDemotedFromLive: currentState.quality === 'live' && proposedQuality !== 'live' ? now : currentState.lastDemotedFromLive
+        };
+        qualityStateRef.current.set(normalizedSymbol, newState);
+        qualityResultCacheRef.current.set(normalizedSymbol, { quality: newState.quality, timestamp: now });
+        return newState.quality;
+      }
+
+      // No change
+      qualityResultCacheRef.current.set(normalizedSymbol, { quality: currentState.quality, timestamp: now });
+      return currentState.quality;
     }
     
     // Global quality detection (backward compatibility) - no hysteresis for global

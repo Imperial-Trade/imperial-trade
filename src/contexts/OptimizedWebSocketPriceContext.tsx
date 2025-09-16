@@ -171,6 +171,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // 🎯 "Hydrate and Highlight" state tracking
   const realtimeReceivedSymbols = useRef(new Set<string>());
+  
+  // HYSTERESIS: Track quality states to prevent flicker
+  const qualityStateRef = useRef<Map<string, { 
+    quality: 'live' | 'hydrated' | 'stale', 
+    lastPromotedToLive: number | null,
+    lastDemotedFromLive: number | null 
+  }>>(new Map());
 
   // 🚀 PHASE 2: "Hydrate and Subscribe" - Database-first price loading
   const hydrateFromDatabase = useCallback(async (symbols: string[]) => {
@@ -676,28 +683,78 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, [getPrice]);
 
   const getConnectionQuality = useCallback((symbol?: string): 'hydrated' | 'live' | 'stale' => {
-    // Symbol-specific quality detection for "Hydrate and Highlight"
+    // Symbol-specific quality detection with hysteresis (sticky live) logic
     if (symbol) {
       const normalizedSymbol = normalizeSymbol(symbol);
-      if (normalizedSymbol && realtimeReceivedSymbols.current.has(normalizedSymbol)) {
-        // This symbol has received at least one realtime update
-        if (connectionStatus === 'connected' && lastUpdated) {
-          const ageMs = Date.now() - lastUpdated.getTime();
+      const priceData = getPrice(normalizedSymbol);
+      const now = Date.now();
+      
+      // Get or initialize quality state for this symbol
+      const currentState = qualityStateRef.current.get(normalizedSymbol) || {
+        quality: 'stale',
+        lastPromotedToLive: null,
+        lastDemotedFromLive: null
+      };
+
+      if (priceData && connectionStatus === 'connected') {
+        const lastTick = priceUpdateTimestamps.current.get(normalizedSymbol);
+        
+        if (lastTick) {
+          const ageMs = now - lastTick;
+          
+          // IMMEDIATE PROMOTION: hydrated → live on first realtime tick
           if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
+            if (currentState.quality !== 'live') {
+              // Promote to live immediately
+              const newState = {
+                ...currentState,
+                quality: 'live' as const,
+                lastPromotedToLive: now
+              };
+              qualityStateRef.current.set(normalizedSymbol, newState);
+              return 'live';
+            }
             return 'live';
+          }
+          
+          // DELAYED DEMOTION: live → hydrated only after 10+ seconds without ticks
+          if (currentState.quality === 'live') {
+            const liveDemotionGraceMs = 10000; // 10 seconds grace period
+            if (ageMs < liveDemotionGraceMs) {
+              return 'live'; // Stay live during grace period
+            }
+            
+            // Demote after grace period
+            const newState = {
+              ...currentState,
+              quality: 'hydrated' as const,
+              lastDemotedFromLive: now
+            };
+            qualityStateRef.current.set(normalizedSymbol, newState);
+            return 'hydrated';
           }
         }
       }
+
+      // Determine base quality without flicker
+      let baseQuality: 'live' | 'hydrated' | 'stale' = 'stale';
       
-      // Symbol has price from database but no realtime update yet
-      if (getPrice(symbol)) {
-        return 'hydrated';
+      if (priceData) {
+        baseQuality = 'hydrated';
+      }
+
+      // Update state if changed
+      if (currentState.quality !== baseQuality) {
+        qualityStateRef.current.set(normalizedSymbol, {
+          ...currentState,
+          quality: baseQuality
+        });
       }
       
-      return 'stale';
+      return baseQuality;
     }
     
-    // Global quality detection (backward compatibility)
+    // Global quality detection (backward compatibility) - no hysteresis for global
     if (connectionStatus === 'connected' && lastUpdated) {
       const ageMs = Date.now() - lastUpdated.getTime();
       if (ageMs < HEALTH_CONFIG.staleDataThreshold) {

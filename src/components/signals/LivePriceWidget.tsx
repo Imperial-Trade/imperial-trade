@@ -59,6 +59,8 @@ const LivePriceWidgetComponent = ({
   const levelHitRef = useRef(globalLevelHitMap);
   const [localClosed, setLocalClosed] = useState(false);
   // Use the optimized live price hook directly
+  // ✅ SINGLE SOURCE OF TRUTH: Use only useOptimizedLivePrice for subscription
+  // This is the AUTHORITATIVE hook that manages the WebSocket subscription
   const {
     price: currentPrice,
     change,
@@ -77,9 +79,8 @@ const LivePriceWidgetComponent = ({
     trackDataAge: false // Prevent data age interval to eliminate flickering
   });
 
-  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
-
-  // price animations disabled
+  // ✅ Get connection quality from consumer hook (no additional subscription)
+  const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
@@ -382,11 +383,9 @@ const LivePriceWidgetComponent = ({
     });
   }, []);
 
-  // Use enhanced hook at top level to follow Rules of Hooks
-  const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
+  const [displayStatus, setDisplayStatus] = useState(connectionStatus); // Stable status with grace period
 
   const connectionStatusInfo = useMemo(() => {
-    
     if (error) {
       return { 
         color: 'text-red-400', 
@@ -403,7 +402,7 @@ const LivePriceWidgetComponent = ({
           color: 'text-green-400', 
           icon: Wifi, 
           text: 'Live',
-          description: 'Live updates active',
+          description: 'Real-time price updates',
           animate: false
         };
       case 'hydrated':
@@ -422,16 +421,16 @@ const LivePriceWidgetComponent = ({
           description: 'Connection issues - data may be outdated',
           animate: false
         };
+      default:
+        return { 
+          color: 'text-muted-foreground', 
+          icon: WifiOff, 
+          text: 'No Data',
+          description: 'No connection to price data',
+          animate: false
+        };
     }
-    
-    return { 
-      color: 'text-gray-400', 
-      icon: Wifi, 
-      text: 'Live',
-      description: 'Price updates active',
-      animate: false
-    };
-  }, [error, alert.tradermade_symbol]);
+   }, [connectionQuality, error]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {

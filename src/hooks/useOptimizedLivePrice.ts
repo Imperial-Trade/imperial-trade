@@ -16,6 +16,7 @@ interface LivePriceOptions {
   enableSmartPausing?: boolean;
   pauseOnInput?: boolean;
   trackDataAge?: boolean; // New option to guard data age tracking interval
+  skipSubscribe?: boolean; // New option to prevent subscription (for consumer hooks)
 }
 
 interface LivePriceReturn {
@@ -103,9 +104,9 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     return Promise.resolve();
   }, [symbol, ctxRefreshPrice]);
 
-  // Subscribe to the symbol using the unified context
+  // Subscribe to the symbol using the unified context (unless skipSubscribe is true)
   useEffect(() => {
-    if (!symbol) return;
+    if (!symbol || options.skipSubscribe) return;
 
     // Normalize symbol before subscription
     const normalizedSymbol = normalizeSymbol(symbol);
@@ -121,7 +122,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       }
       unsubscribe([normalizedSymbol]);
     };
-  }, [symbol, subscribe, unsubscribe]);
+  }, [symbol, subscribe, unsubscribe, options.skipSubscribe]);
 
   // Update local state when price changes
   useEffect(() => {

@@ -1,70 +1,46 @@
-// src/hooks/useLivePrice.ts - Enhanced with "Hydrate and Subscribe" pattern
+// src/hooks/useLivePrice.ts - Pure consumer hook (Single Source of Truth Architecture)
 
-import { useEffect } from 'react';
+import { useOptimizedLivePrice } from './useOptimizedLivePrice';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 export function useLivePrice(symbol: string) {
-  const { getPrice, subscribe, unsubscribe } = useOptimizedWebSocketPrices();
-
-  useEffect(() => {
-    if (!symbol) return;
-
-    // 🚀 PHASE 2: "Hydrate and Subscribe" pattern
-    // Subscribe immediately triggers database hydration + Realtime subscription
-    subscribe([symbol]);
-
-    // Cleanup: unsubscribe when component unmounts or symbol changes
-    return () => {
-      unsubscribe([symbol]);
-    };
-  }, [symbol, subscribe, unsubscribe]);
-
+  // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally
+  // This hook is now a pure consumer that never creates its own subscriptions
+  const { price } = useOptimizedLivePrice(symbol);
+  
   // Return backward compatible price number
-  const priceData = getPrice(symbol);
-  return priceData?.price || null;
+  return price;
 }
 
-// Enhanced hook with "Hydrate and Highlight" quality indicators
+// Enhanced hook with quality indicators - Pure consumer (Single Source of Truth Architecture)
 export function useEnhancedLivePrice(symbol: string) {
-  const { 
-    getPrice, 
-    subscribe, 
-    unsubscribe, 
-    getDataAge, 
-    getConnectionQuality,
-    refreshPrice 
-  } = useOptimizedWebSocketPrices();
-
-  useEffect(() => {
-    if (!symbol) return;
-
-    // 🚀 PHASE 2: "Hydrate and Subscribe" pattern
-    subscribe([symbol]);
-
-    return () => {
-      unsubscribe([symbol]);
-    };
-  }, [symbol, subscribe, unsubscribe]);
-
-  // Return enhanced price data with symbol-specific quality indicators
-  const priceData = getPrice(symbol);
-  const dataAge = getDataAge(symbol);
-  const quality = getConnectionQuality(symbol); // Pass symbol for specific quality detection
+  // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally with skipSubscribe
+  // This hook is now a pure consumer that never creates its own subscriptions
+  const optimizedData = useOptimizedLivePrice(symbol, { skipSubscribe: true });
+  
+  // Get connection quality from the context directly (symbol-specific with hysteresis)
+  const { getConnectionQuality } = useOptimizedWebSocketPrices();
+  const connectionQuality = getConnectionQuality(symbol);
   
   return {
     // Backward compatible
-    price: priceData?.price || null,
+    price: optimizedData.price,
     
     // Enhanced data  
-    priceData,
-    dataAge,
-    quality,
-    isLoading: !priceData,
-    isStale: dataAge > 60, // Older than 60 seconds
-    refreshPrice: () => refreshPrice(symbol),
+    priceData: optimizedData.price ? {
+      symbol,
+      price: optimizedData.price,
+      change: optimizedData.change,
+      timestamp: optimizedData.lastUpdate || new Date().toISOString()
+    } : null,
+    dataAge: Math.floor(optimizedData.dataAge / 1000), // Convert to seconds
+    quality: connectionQuality,
+    isLoading: optimizedData.isLoading,
+    isStale: connectionQuality === 'stale',
+    refreshPrice: optimizedData.refreshPrice,
     
     // "Hydrate and Highlight" state indicators
-    connectionQuality: quality,
-    lastUpdated: priceData?.timestamp ? new Date(priceData.timestamp) : null,
+    connectionQuality,
+    lastUpdated: optimizedData.lastUpdated,
   };
 }

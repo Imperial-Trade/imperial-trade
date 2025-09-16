@@ -17,7 +17,7 @@ export const LivePriceConnectionStatus: React.FC = () => {
         };
       case 'connecting':
         return {
-          icon: <Loader2 className="h-3 w-3 animate-spin" />,
+          icon: <Loader2 className="h-3 w-3" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />,
           text: 'Connecting...',
           variant: 'secondary' as const,
           className: 'bg-warning text-warning-foreground'

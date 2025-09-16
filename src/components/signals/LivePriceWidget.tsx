@@ -512,7 +512,7 @@ const LivePriceWidgetComponent = ({
             title="Refresh price"
             disabled={isLoading || isRefreshing}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
           </Button>
         </div>
 
@@ -579,7 +579,7 @@ const LivePriceWidgetComponent = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
         </Button>
       </div>
 

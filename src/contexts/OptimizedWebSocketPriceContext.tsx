@@ -312,10 +312,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
     
-    // Guard: Block connect if background disconnect timer is pending
-    if (visibilityTimeoutRef.current) {
+    // Guard: Block connect if actually background disconnected (not just timer pending)
+    if (isBackgroundDisconnected.current) {
       if (isDevToolsEnabled()) {
-        console.log('WS-P: connect blocked (background disconnect pending)');
+        console.log('WS-P: connect blocked (background disconnected)');
       }
       return;
     }
@@ -857,14 +857,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             isBackgroundDisconnected.current = true;
           }
         }, 60000); // Disconnect after 1 minute of being hidden
-      } else if (isBackgroundDisconnected.current) {
+      } else {
         // Clear disconnect timer and reconnect when page becomes visible
         if (visibilityTimeoutRef.current) {
           clearTimeout(visibilityTimeoutRef.current);
           visibilityTimeoutRef.current = null;
         }
         
-        if (subscriptionsRef.current.size > 0) {
+        // Always attempt reconnection if we have subscriptions and aren't connected
+        if (subscriptionsRef.current.size > 0 && connectionStatus !== 'connected') {
           connect();
         }
         isBackgroundDisconnected.current = false;

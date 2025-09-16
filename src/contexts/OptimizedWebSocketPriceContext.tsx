@@ -223,6 +223,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const updated = { ...prev };
           validPrices.forEach(priceData => {
             updated[priceData.symbol] = priceData;
+            
+            // 🚀 CRITICAL FIX: Set timestamp for quality detection to prevent flicker
+            // This ensures getConnectionQuality() sees fresh data from database hydration
+            priceUpdateTimestamps.current.set(priceData.symbol, Date.parse(priceData.timestamp));
           });
           return updated;
         });
@@ -368,10 +372,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return; // Skip unsubscribed symbols
           }
 
-        // 🚨 EMERGENCY RATE LIMITING: Max 0.5 updates/sec per symbol
+        // 🚀 ENHANCED RATE LIMITING: Progressive rate limiting for better initial connections
         const now = Date.now();
         const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
-        if (now - lastUpdate < 2000) { // 2000ms = max 0.5 updates/sec
+        
+        // Progressive rate limiting: 500ms for first messages, then 2000ms 
+        const messageCount = statsRef.current.messagesReceived;
+        const isInitialConnection = messageCount < 10; // First 10 messages per session
+        const rateLimitMs = isInitialConnection ? 500 : 2000; // 2Hz initial, then 0.5Hz
+        
+        if (now - lastUpdate < rateLimitMs) {
           recordClampActivation(); // Record when we drop updates due to rate limiting
           telemetry.record('clamp_activation');
           return;

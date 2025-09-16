@@ -2,6 +2,7 @@
 
 import { useOptimizedLivePrice } from './useOptimizedLivePrice';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useState, useEffect, useRef } from 'react';
 
 export function useLivePrice(symbol: string) {
   // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally
@@ -20,7 +21,43 @@ export function useEnhancedLivePrice(symbol: string) {
   
   // Get connection quality from the context directly (symbol-specific with hysteresis)
   const { getConnectionQuality } = useOptimizedWebSocketPrices();
-  const connectionQuality = getConnectionQuality(symbol);
+  const rawConnectionQuality = getConnectionQuality(symbol);
+  
+  // 🚀 ANTI-FLICKER: Debounced connection quality with minimum state duration
+  const [stableConnectionQuality, setStableConnectionQuality] = useState(rawConnectionQuality);
+  const qualityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastQualityChangeRef = useRef<number>(Date.now());
+  
+  useEffect(() => {
+    const now = Date.now();
+    const timeSinceLastChange = now - lastQualityChangeRef.current;
+    const MINIMUM_STATE_DURATION = 300; // 300ms minimum before quality can change
+    
+    // Clear existing timeout
+    if (qualityTimeoutRef.current) {
+      clearTimeout(qualityTimeoutRef.current);
+    }
+    
+    // If quality is different and enough time has passed, update immediately
+    if (rawConnectionQuality !== stableConnectionQuality && timeSinceLastChange > MINIMUM_STATE_DURATION) {
+      setStableConnectionQuality(rawConnectionQuality);
+      lastQualityChangeRef.current = now;
+    } 
+    // Otherwise, wait for minimum duration before allowing change
+    else if (rawConnectionQuality !== stableConnectionQuality) {
+      const remainingTime = MINIMUM_STATE_DURATION - timeSinceLastChange;
+      qualityTimeoutRef.current = setTimeout(() => {
+        setStableConnectionQuality(rawConnectionQuality);
+        lastQualityChangeRef.current = Date.now();
+      }, Math.max(0, remainingTime));
+    }
+    
+    return () => {
+      if (qualityTimeoutRef.current) {
+        clearTimeout(qualityTimeoutRef.current);
+      }
+    };
+  }, [rawConnectionQuality, stableConnectionQuality]);
   
   return {
     // Backward compatible
@@ -34,13 +71,13 @@ export function useEnhancedLivePrice(symbol: string) {
       timestamp: optimizedData.lastUpdate || new Date().toISOString()
     } : null,
     dataAge: Math.floor(optimizedData.dataAge / 1000), // Convert to seconds
-    quality: connectionQuality,
+    quality: stableConnectionQuality, // Use debounced quality
     isLoading: optimizedData.isLoading,
-    isStale: connectionQuality === 'stale',
+    isStale: stableConnectionQuality === 'stale',
     refreshPrice: optimizedData.refreshPrice,
     
     // "Hydrate and Highlight" state indicators
-    connectionQuality,
+    connectionQuality: stableConnectionQuality, // Use debounced quality
     lastUpdated: optimizedData.lastUpdated,
   };
 }

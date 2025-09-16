@@ -332,7 +332,7 @@ export default function SignalStream() {
           </Badge>;
       case 'connecting':
         return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            <Loader2 className="w-3 h-3 mr-1" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
             Connecting...
           </Badge>;
       case 'error':

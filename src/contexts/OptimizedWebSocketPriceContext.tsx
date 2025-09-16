@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { costTracker } from '@/services/CostTracker';
 import { useRealtimeHealth } from '@/contexts/RealtimeHealthMonitor';
@@ -106,6 +107,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { recordConnection, recordClampActivation } = useRealtimeTelemetry();
   const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
+  const { shouldAllowQualityChange } = useConnectionStability();
   
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));
@@ -704,7 +706,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const normalizedSymbol = normalizeSymbol(symbol);
       const now = Date.now();
       
-      // 🚀 ANTI-FLICKER: Check 200ms result cache first
+      // 🚀 ANTI-FLICKER: Check 500ms result cache first
       const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
       if (cachedResult && (now - cachedResult.timestamp) < 500) {
         return cachedResult.quality as 'live' | 'hydrated' | 'stale';
@@ -754,6 +756,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
       }
       
+      // 🚀 STABILITY CHECK: Only allow quality changes if stability management approves
+      if (!shouldAllowQualityChange(normalizedSymbol, currentState.quality || 'stale', proposedQuality)) {
+        qualityResultCacheRef.current.set(normalizedSymbol, { 
+          quality: currentState.quality || 'stale', 
+          timestamp: now 
+        });
+        return currentState.quality || 'stale';
+      }
+
       // Immediate promotion from stale -> hydrated when fresh data present
       if (currentState.quality === 'stale' && proposedQuality === 'hydrated') {
         const newState = {

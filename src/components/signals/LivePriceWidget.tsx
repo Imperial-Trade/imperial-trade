@@ -488,7 +488,7 @@ const LivePriceWidgetComponent = ({
     const isSellLimit = alert.trade_type === 'sell_limit';
     
     return (
-      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-colors duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm border-amber-500/30 shadow-amber-500/10 shadow-lg">
         
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
@@ -518,7 +518,7 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200`}>
+                <span style={{ willChange: 'transform' }}>
                   ${displayPrice > 0 ? formatPrice(displayPrice) : '---'}
                 </span>
               </div>
@@ -599,7 +599,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
             {displayPrice > 0 ? (
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
-                <span className={`transition-colors duration-200 text-accent-green`}>
+                <span className="text-accent-green" style={{ willChange: 'transform' }}>
                   ${formatPrice(displayPrice)}
                 </span>
               </div>

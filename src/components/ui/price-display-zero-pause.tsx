@@ -87,9 +87,10 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
       {/* Main Price */}
       <div className="flex items-center gap-2">
         <span className={cn(
-          'text-2xl font-bold transition-colors duration-300',
+          'text-2xl font-bold',
           displayPrice ? 'text-accent-green' : 'text-muted-foreground'
-        )}>
+        )}
+        style={{ willChange: 'transform' }}>
           {formatPrice(displayPrice)}
         </span>
         
@@ -97,8 +98,9 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
         <div className="flex items-center gap-1">
           <indicator.icon className={cn('w-3 h-3', indicator.className)} />
           <div 
-            className={cn('w-2 h-2 rounded-full', indicator.bgClassName)}
+            className={cn('w-2 h-2 rounded-full', indicator.bgClassName.replace('animate-pulse', ''))}
             title={indicator.title}
+            style={{ willChange: 'transform' }}
           />
         </div>
       </div>

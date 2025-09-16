@@ -3,6 +3,7 @@
 import { useOptimizedLivePrice } from './useOptimizedLivePrice';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useState, useEffect, useRef } from 'react';
+import { useRenderThrottling } from '@/hooks/useRenderThrottling';
 
 export function useLivePrice(symbol: string) {
   // ✅ SINGLE SOURCE OF TRUTH: Uses useOptimizedLivePrice internally
@@ -22,8 +23,9 @@ export function useEnhancedLivePrice(symbol: string) {
   // Get connection quality from the context directly (symbol-specific with hysteresis)
   const { getConnectionQuality } = useOptimizedWebSocketPrices();
   const rawConnectionQuality = getConnectionQuality(symbol);
+  const { withTransition } = useRenderThrottling();
   
-  // 🚀 ANTI-FLICKER: Debounced connection quality with minimum state duration
+  // 🚀 ANTI-FLICKER: Debounced connection quality with minimum state duration + render throttling
   const [stableConnectionQuality, setStableConnectionQuality] = useState(rawConnectionQuality);
   const qualityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastQualityChangeRef = useRef<number>(Date.now());
@@ -40,15 +42,19 @@ export function useEnhancedLivePrice(symbol: string) {
     
     // If quality is different and enough time has passed, update immediately
     if (rawConnectionQuality !== stableConnectionQuality && timeSinceLastChange > MINIMUM_STATE_DURATION) {
-      setStableConnectionQuality(rawConnectionQuality);
-      lastQualityChangeRef.current = now;
+      withTransition(() => {
+        setStableConnectionQuality(rawConnectionQuality);
+        lastQualityChangeRef.current = now;
+      });
     } 
     // Otherwise, wait for minimum duration before allowing change
     else if (rawConnectionQuality !== stableConnectionQuality) {
       const remainingTime = MINIMUM_STATE_DURATION - timeSinceLastChange;
       qualityTimeoutRef.current = setTimeout(() => {
-        setStableConnectionQuality(rawConnectionQuality);
-        lastQualityChangeRef.current = Date.now();
+        withTransition(() => {
+          setStableConnectionQuality(rawConnectionQuality);
+          lastQualityChangeRef.current = Date.now();
+        });
       }, Math.max(0, remainingTime));
     }
     
@@ -57,7 +63,7 @@ export function useEnhancedLivePrice(symbol: string) {
         clearTimeout(qualityTimeoutRef.current);
       }
     };
-  }, [rawConnectionQuality, stableConnectionQuality]);
+  }, [rawConnectionQuality, stableConnectionQuality, withTransition]);
   
   return {
     // Backward compatible

@@ -58,10 +58,11 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
   return (
     <Badge 
       variant={indicatorProps.variant}
-      className={`${className} ${indicatorProps.color} transition-all duration-300 ease-in-out`}
+      className={`${className} ${indicatorProps.color}`}
       title={indicatorProps.title}
+      style={{ willChange: 'transform' }}
     >
-      <indicatorProps.icon className="w-3 h-3 transition-all duration-300 ease-in-out" />
+      <indicatorProps.icon className="w-3 h-3" />
     </Badge>
   );
 };

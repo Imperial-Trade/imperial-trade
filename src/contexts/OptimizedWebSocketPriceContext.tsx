@@ -178,6 +178,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     lastPromotedToLive: number | null,
     lastDemotedFromLive: number | null 
   }>>(new Map());
+  
+  // 🚀 ANTI-FLICKER: 3-sample confirmation to prevent rapid oscillation
+  const qualitySampleHistoryRef = useRef(new Map<string, string[]>());
+  
+  // 🚀 ANTI-FLICKER: 200ms result cache to prevent render-based micro-flips
+  const qualityResultCacheRef = useRef(new Map<string, { quality: string; timestamp: number }>());
 
   // 🚀 PHASE 2: "Hydrate and Subscribe" - Database-first price loading
   const hydrateFromDatabase = useCallback(async (symbols: string[]) => {
@@ -696,8 +702,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Symbol-specific quality detection with hysteresis (sticky live) logic
     if (symbol) {
       const normalizedSymbol = normalizeSymbol(symbol);
-      const priceData = getPrice(normalizedSymbol);
       const now = Date.now();
+      
+      // 🚀 ANTI-FLICKER: Check 200ms result cache first
+      const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
+      if (cachedResult && (now - cachedResult.timestamp) < 200) {
+        return cachedResult.quality as 'live' | 'hydrated' | 'stale';
+      }
+      
+      const priceData = getPrice(normalizedSymbol);
       
       // Get or initialize quality state for this symbol
       const currentState = qualityStateRef.current.get(normalizedSymbol) || {
@@ -705,6 +718,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         lastPromotedToLive: null,
         lastDemotedFromLive: null
       };
+
+      let proposedQuality: 'live' | 'hydrated' | 'stale' = 'stale';
 
       if (priceData && connectionStatus === 'connected') {
         const lastTick = priceUpdateTimestamps.current.get(normalizedSymbol);
@@ -716,54 +731,73 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           // 🚀 ANTI-FLICKER FIX: Only promote to 'live' if symbol has received real-time updates
           // This prevents database hydration from causing immediate 'live' promotion
           if (ageMs < HEALTH_CONFIG.staleDataThreshold && hasReceivedRealtime) {
-            if (currentState.quality !== 'live') {
-              // Promote to live immediately
-              const newState = {
-                ...currentState,
-                quality: 'live' as const,
-                lastPromotedToLive: now
-              };
-              qualityStateRef.current.set(normalizedSymbol, newState);
-              return 'live';
-            }
-            return 'live';
+            proposedQuality = 'live';
           }
-          
           // DELAYED DEMOTION: live → hydrated only after 10+ seconds without ticks
-          if (currentState.quality === 'live') {
+          else if (currentState.quality === 'live') {
             const liveDemotionGraceMs = 10000; // 10 seconds grace period
             if (ageMs < liveDemotionGraceMs) {
-              return 'live'; // Stay live during grace period
+              proposedQuality = 'live'; // Stay live during grace period
+            } else {
+              proposedQuality = 'hydrated';
             }
-            
-            // Demote after grace period
-            const newState = {
-              ...currentState,
-              quality: 'hydrated' as const,
-              lastDemotedFromLive: now
-            };
-            qualityStateRef.current.set(normalizedSymbol, newState);
-            return 'hydrated';
           }
+          // FRESH DATA: Promote stale to hydrated for fresh data
+          else if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
+            proposedQuality = 'hydrated';
+          } else {
+            proposedQuality = currentState.quality || 'stale';
+          }
+        } else if (priceData) {
+          // Have price data but no recent tick - consider it hydrated
+          proposedQuality = 'hydrated';
         }
       }
-
-      // Determine base quality without flicker
-      let baseQuality: 'live' | 'hydrated' | 'stale' = 'stale';
       
-      if (priceData) {
-        baseQuality = 'hydrated';
+      // 🚀 ANTI-FLICKER: 3-sample confirmation before quality transitions
+      const sampleHistory = qualitySampleHistoryRef.current.get(normalizedSymbol) || [];
+      sampleHistory.push(proposedQuality);
+      
+      // Keep only last 3 samples
+      if (sampleHistory.length > 3) {
+        sampleHistory.shift();
       }
-
-      // Update state if changed
-      if (currentState.quality !== baseQuality) {
+      qualitySampleHistoryRef.current.set(normalizedSymbol, sampleHistory);
+      
+      let finalQuality = currentState.quality || 'stale';
+      
+      // Require 3 consecutive matching samples for quality change (except initial state)
+      if (sampleHistory.length >= 3) {
+        const allSamplesMatch = sampleHistory.every(sample => sample === proposedQuality);
+        if (allSamplesMatch && proposedQuality !== currentState.quality) {
+          finalQuality = proposedQuality;
+          
+          // Update quality state
+          const newState = {
+            ...currentState,
+            quality: finalQuality,
+            ...(finalQuality === 'live' && currentState.quality !== 'live' ? { lastPromotedToLive: now } : {}),
+            ...(finalQuality !== 'live' && currentState.quality === 'live' ? { lastDemotedFromLive: now } : {})
+          };
+          qualityStateRef.current.set(normalizedSymbol, newState);
+        }
+      } else if (!currentState.quality) {
+        // Initial state - allow immediate transition
+        finalQuality = proposedQuality;
         qualityStateRef.current.set(normalizedSymbol, {
-          ...currentState,
-          quality: baseQuality
+          quality: finalQuality,
+          lastPromotedToLive: finalQuality === 'live' ? now : null,
+          lastDemotedFromLive: null
         });
       }
       
-      return baseQuality;
+      // 🚀 ANTI-FLICKER: Cache result for 200ms
+      qualityResultCacheRef.current.set(normalizedSymbol, {
+        quality: finalQuality,
+        timestamp: now
+      });
+      
+      return finalQuality;
     }
     
     // Global quality detection (backward compatibility) - no hysteresis for global

@@ -31,7 +31,7 @@ export function useEnhancedLivePrice(symbol: string) {
   useEffect(() => {
     const now = Date.now();
     const timeSinceLastChange = now - lastQualityChangeRef.current;
-    const MINIMUM_STATE_DURATION = 300; // 300ms minimum before quality can change
+    const MINIMUM_STATE_DURATION = 500; // 500ms minimum before quality can change
     
     // Clear existing timeout
     if (qualityTimeoutRef.current) {

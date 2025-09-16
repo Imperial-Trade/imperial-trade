@@ -5,6 +5,8 @@ import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, R
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
+import { LivePriceWidgetProps } from '@/types/components';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -657,5 +659,13 @@ const LivePriceWidgetComponent = ({
     </div>
   );
 };
-export const LivePriceWidget = memo(LivePriceWidgetComponent);
+
+// 🚀 REACT QUEUE HARDENING: Wrap component with specialized ErrorBoundary
+const LivePriceWidgetWithErrorBoundary = memo((props: LivePriceWidgetProps) => (
+  <LivePriceWidgetErrorBoundary symbol={props.alert?.tradermade_symbol}>
+    <LivePriceWidgetComponent {...props} />
+  </LivePriceWidgetErrorBoundary>
+));
+
+export const LivePriceWidget = LivePriceWidgetWithErrorBoundary;
 export default LivePriceWidget;

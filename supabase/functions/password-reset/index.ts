@@ -111,19 +111,19 @@ serve(async (req) => {
       const payload = await req.json()
       console.log('📦 Received payload:', JSON.stringify(payload, null, 2))
       
-      // Extract email data from Send Email Hook format
-      const userEmail = payload.email_data?.to?.[0] || payload.to?.[0]
-      const subject = payload.email_data?.subject || payload.subject || ''
-      const emailContent = payload.email_data?.html_content || payload.html_content || ''
+      // Extract email data from Auth Hook format
+      const userEmail = payload.user?.email
+      const emailActionType = payload.email_data?.email_action_type || ''
+      const resetUrl = payload.email_data?.redirect_to || '#'
       
       console.log('📧 Email details:', {
         to: userEmail,
-        subject: subject,
-        isPasswordReset: subject.toLowerCase().includes('reset') || subject.toLowerCase().includes('password')
+        emailActionType: emailActionType,
+        isPasswordReset: emailActionType === 'recovery'
       })
       
-      // Only process password reset emails
-      if (!subject.toLowerCase().includes('reset') && !subject.toLowerCase().includes('password')) {
+      // Only process password reset emails (recovery action type)
+      if (emailActionType !== 'recovery') {
         console.log('⏭️ Skipping non-password-reset email')
         return new Response(JSON.stringify({
           success: true,
@@ -145,12 +145,7 @@ serve(async (req) => {
         })
       }
       
-      // Extract reset URL from email content
-      const resetUrlMatch = emailContent.match(/href="([^"]*reset[^"]*)"/) || 
-                           emailContent.match(/https?:\/\/[^\s<>"]*reset[^\s<>"]*/)
-      const resetUrl = resetUrlMatch ? resetUrlMatch[1] || resetUrlMatch[0] : '#'
-      
-      console.log('🔗 Extracted reset URL:', resetUrl)
+      console.log('🔗 Using reset URL from Auth Hook:', resetUrl)
       
       // Send via OneSignal
       const oneSignalPayload = {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { cn } from '@/lib/utils';
 import { Wifi, WifiOff } from 'lucide-react';
 
@@ -19,8 +20,17 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   precision = 2
 }) => {
   const { price, connectionQuality } = useEnhancedLivePrice(symbol);
+  const { shouldAllowQualityChange } = useConnectionStability();
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [displayPrice, setDisplayPrice] = useState<number | null>(null);
+  const [stableQuality, setStableQuality] = useState(connectionQuality);
+
+  // ✅ FLICKER ELIMINATION: Stability-aware quality changes
+  useEffect(() => {
+    if (shouldAllowQualityChange(symbol, stableQuality, connectionQuality)) {
+      setStableQuality(connectionQuality);
+    }
+  }, [connectionQuality, shouldAllowQualityChange, symbol, stableQuality]);
 
   // Update last price when we receive a valid price (no flicker fallback)
   useEffect(() => {
@@ -48,7 +58,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   };
 
   const getStatusIndicator = () => {
-    switch (connectionQuality) {
+    switch (stableQuality) {
       case 'live':
         return {
           icon: Wifi,
@@ -60,7 +70,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
         return {
           icon: Wifi,
           className: 'text-yellow-500',
-          bgClassName: 'bg-yellow-500 animate-pulse',
+          bgClassName: 'bg-yellow-500',
           title: 'Loading live updates...'
         };
       case 'stale':

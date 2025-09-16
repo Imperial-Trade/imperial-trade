@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
+import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isPricePlausibleForSymbol } from '@/utils/priceGuards';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +59,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
   // Critical: Monitor price staleness for trading safety
   const stalenessStatus = usePriceStalenessMonitor(symbol, 15); // 15-second staleness threshold
+  
+  // ✅ FLICKER ELIMINATION: Stability management
+  const { shouldAllowQualityChange } = useConnectionStability();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataAge, setDataAge] = useState<string>('');
@@ -110,14 +114,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
-  // GUARDRAIL: Increased debounce to 2000ms to reduce flickering
+  // ✅ FLICKER ELIMINATION: Stability-aware debouncing
   useEffect(() => {
-    const debounceTimeout = setTimeout(() => {
+    const currentQuality = connectionStatus === 'connected' ? 'live' : 
+                          connectionStatus === 'connecting' ? 'hydrated' : 'stale';
+    const proposedQuality = connectionStatus === 'connected' ? 'live' : 
+                           connectionStatus === 'connecting' ? 'hydrated' : 'stale';
+    
+    if (shouldAllowQualityChange(symbol, currentQuality, proposedQuality)) {
       setDebouncedConnectionStatus(connectionStatus);
-    }, 2000);
-
-    return () => clearTimeout(debounceTimeout);
-  }, [connectionStatus]);
+    }
+  }, [connectionStatus, shouldAllowQualityChange, symbol]);
 
   // Price update effect with validation
   useEffect(() => {
@@ -252,11 +259,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
 
   return (
-    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm transition-all duration-500 ${
+    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm ${
       debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
-    } ${className}`}>
+    } ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -321,14 +328,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
-              <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-7 w-32 bg-gray-600 rounded"></div>
+              <div className="h-4 w-4 bg-gray-600 rounded"></div>
             </div>
-            <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-6 w-20 bg-gray-600 rounded"></div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
-            <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-4 w-24 bg-gray-600 rounded"></div>
+            <div className="h-6 w-24 bg-gray-600 rounded"></div>
           </div>
         </div>
       )}
@@ -339,13 +346,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {displayPrice > 0 ? (
-            <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-              isLoading || isRefreshing ? 'animate-pulse' : ''
-            } ${
-              priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-              priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+            <div className={`font-mono text-xl font-bold ${
               'text-accent-green'
-            }`}>
+            }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
               ${formatPrice(displayPrice)}
             </div>
           ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
@@ -353,7 +356,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
                <span>Invalid Price</span>
              </div>
           ) : (
-            <div className={`text-gray-500 font-mono text-xl ${isLoading ? 'animate-pulse' : ''}`}>
+            <div className="text-gray-500 font-mono text-xl">
               {isLoading ? 'Loading...' : '---.--'}
             </div>
           )}

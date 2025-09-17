@@ -86,12 +86,51 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Check for password reset flow BEFORE any providers load
+  const isPasswordResetFlow = React.useMemo(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Check for recovery type in hash or search params
+    const hashType = hashParams.get('type');
+    const searchType = searchParams.get('type');
+    
+    // Check for various token formats
+    const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
+    const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
+    const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
+    
+    return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+  }, []);
+
   // Initialize app state on startup
   React.useEffect(() => {
     initializeAppState();
     verifyServiceWorkerSafety();
   }, []);
 
+  // If password reset flow detected, render ONLY the reset page with minimal providers
+  if (isPasswordResetFlow) {
+    console.log('🔐 App: Password reset flow detected, rendering isolated reset page');
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <Sonner />
+          <BrowserRouter>
+            <ScrollToTop />
+            <AuthProvider>
+              <Routes>
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="*" element={<Navigate to="/reset-password" replace />} />
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  // Normal app flow with all providers
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

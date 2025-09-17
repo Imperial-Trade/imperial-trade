@@ -96,9 +96,12 @@ function App() {
     const searchParams = new URLSearchParams(window.location.search);
     
     console.log('📍 URL Analysis:', {
+      fullURL: window.location.href,
       hash: window.location.hash,
       search: window.location.search,
-      pathname: window.location.pathname
+      pathname: window.location.pathname,
+      hashParamsEntries: Array.from(hashParams.entries()),
+      searchParamsEntries: Array.from(searchParams.entries())
     });
     
     // Check for recovery type in hash or search params
@@ -112,14 +115,19 @@ function App() {
     
     const isReset = hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
     
-    console.log('🔐 Password reset detection:', {
+    console.log('🔐 Password reset detection DETAILED:', {
       hashType,
       searchType,
       hasAccessToken,
       hasRefreshToken,
       hasTokenHash,
-      finalResult: isReset
+      finalResult: isReset,
+      willIsolate: isReset ? 'YES - Isolated flow will activate' : 'NO - Normal app flow'
     });
+    
+    if (isReset) {
+      console.log('🚨 ISOLATED RESET FLOW WILL ACTIVATE 🚨');
+    }
     
     return isReset;
   }, []);
@@ -138,7 +146,12 @@ function App() {
 
   // If password reset flow detected, render ONLY the reset page with minimal providers
   if (isPasswordResetFlow) {
-    console.log('🔐 App: Password reset flow detected, rendering completely isolated reset page');
+    console.log('🔐 App: Password reset flow detected!');
+    console.log('🔍 URL Debug:', { 
+      pathname: window.location.pathname, 
+      hash: window.location.hash, 
+      search: window.location.search 
+    });
     
     try {
       return (

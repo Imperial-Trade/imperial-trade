@@ -33,7 +33,7 @@ const AppBar: React.FC = () => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === "/account-request";
   const isSigninPage = location.pathname === "/signin";
-  const isResetPasswordPage = location.pathname === "/reset-password";
+  const isResetPasswordPage = false; // No longer used since reset is handled by isolated flow
   const { user, loading, isPasswordResetFlow } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 

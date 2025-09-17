@@ -65,7 +65,7 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("🔍 Hash params:", Object.fromEntries(hashParams.entries()));
         console.log("🔍 Search params:", Object.fromEntries(searchParams.entries()));
         
-        // Extract tokens with fallbacks
+        // Extract tokens with fallbacks - Supabase uses various parameter names
         const accessToken = hashParams.get('access_token') || searchParams.get('access_token') || 
                            hashParams.get('token') || searchParams.get('token');
         const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
@@ -73,12 +73,19 @@ export const ResetPasswordForm: React.FC = () => {
         const error = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
         
+        // Additional Supabase parameters that might be present
+        const expiresAt = hashParams.get('expires_at') || searchParams.get('expires_at');
+        const expiresIn = hashParams.get('expires_in') || searchParams.get('expires_in');
+        
         console.log("🎯 Extracted data:", {
           hasAccessToken: !!accessToken,
           hasRefreshToken: !!refreshToken,
           type,
           error,
-          errorDescription
+          errorDescription,
+          expiresAt,
+          expiresIn,
+          tokenLength: accessToken?.length || 0
         });
         
         // Check for explicit errors first

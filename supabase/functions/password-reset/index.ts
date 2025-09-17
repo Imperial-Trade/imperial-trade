@@ -114,11 +114,27 @@ serve(async (req) => {
       // Extract email data from Auth Hook format
       const userEmail = payload.user?.email
       const emailActionType = payload.email_data?.email_action_type || ''
-      const resetUrl = payload.email_data?.redirect_to || '#'
+      let resetUrl = payload.email_data?.redirect_to || '#'
+      
+      // Ensure the reset URL points to the correct reset page path
+      if (resetUrl && resetUrl !== '#') {
+        try {
+          const url = new URL(resetUrl)
+          // If the pathname is not /reset-password, update it
+          if (url.pathname !== '/reset-password') {
+            url.pathname = '/reset-password'
+            resetUrl = url.toString()
+            console.log('🔧 Updated reset URL path to /reset-password:', resetUrl)
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not parse reset URL, using as-is:', resetUrl)
+        }
+      }
       
       console.log('📧 Email details:', {
         to: userEmail,
         emailActionType: emailActionType,
+        resetUrl: resetUrl,
         isPasswordReset: emailActionType === 'recovery'
       })
       

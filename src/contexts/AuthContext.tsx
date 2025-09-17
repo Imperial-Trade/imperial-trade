@@ -212,6 +212,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('🔄 Token refreshed');
+      } else if (event === 'PASSWORD_RECOVERY') {
+        console.log('🔐 Password recovery session detected - allowing reset flow');
+        // Don't interfere with password recovery process
+        // The ResetPasswordForm will handle this event
+        return;
       }
     };
 

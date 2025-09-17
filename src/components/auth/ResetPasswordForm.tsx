@@ -90,9 +90,9 @@ export const ResetPasswordForm: React.FC = () => {
           toast({
             variant: "destructive",
             title: "Reset Link Error",
-            description: errorDescription || `Authentication error: ${error}`,
+            description: errorDescription || `Authentication error: ${error}. Please request a new reset email.`,
           });
-          setTimeout(() => navigate('/signin'), 2000);
+          setIsValidating(false);
           return;
         }
         
@@ -107,14 +107,14 @@ export const ResetPasswordForm: React.FC = () => {
           });
           
           // Basic token format validation (without calling Supabase)
-          if (tokenHash.length < 20) {
+          if (tokenHash.length < 10) {
             console.error("❌ Token hash appears too short");
             toast({
               variant: "destructive",
-              title: "Invalid Reset Link",
-              description: "The reset link appears to be corrupted. Please copy the entire URL from your email and try again.",
+              title: "Invalid Reset Link", 
+              description: "The reset link appears to be corrupted. Please request a new reset email.",
             });
-            setTimeout(() => navigate('/signin'), 3000);
+            setIsValidating(false);
             return;
           }
           
@@ -124,14 +124,15 @@ export const ResetPasswordForm: React.FC = () => {
           console.log("✅ Password reset tokens validated and stored (no session established)");
           
         } else if (!tokenHash && !type) {
-          // No tokens at all - invalid access
-          console.log("❌ No tokens found - invalid access");
+          // No tokens at all - show message but don't redirect immediately
+          console.log("❌ No tokens found - waiting for potential redirect from email");
           toast({
-            variant: "destructive",
-            title: "Invalid Access",
-            description: "Please use the reset link from your email to access this page.",
+            variant: "destructive", 
+            title: "No Reset Token Found",
+            description: "Please click the reset link from your email. If you don't have an email, request a new password reset.",
           });
-          navigate('/signin');
+          setIsValidating(false);
+          // Don't redirect - user might be coming from email link that hasn't loaded tokens yet
         } else {
           // Enhanced error handling for malformed links
           const urlLength = window.location.href.length;
@@ -160,19 +161,20 @@ export const ResetPasswordForm: React.FC = () => {
           toast({
             variant: "destructive",
             title: "Invalid Reset Link",
-            description: errorMessage,
+            description: errorMessage + " Please request a new reset email.",
           });
-          setTimeout(() => navigate('/signin'), 3000);
+          setIsValidating(false);
+          // Don't redirect to signin - show error and let user request new reset
         }
         
       } catch (error) {
         console.error("💥 Reset link processing error:", error);
         toast({
-          variant: "destructive",
+          variant: "destructive", 
           title: "Processing Error",
-          description: `Failed to process reset link: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: `Failed to process reset link: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or request a new reset email.`,
         });
-        setTimeout(() => navigate('/signin'), 2000);
+        setIsValidating(false);
       } finally {
         setIsValidating(false);
       }
@@ -318,7 +320,37 @@ export const ResetPasswordForm: React.FC = () => {
     );
   }
 
-  // Don't render the form until we have a valid session
+  // Show message when no valid link found (don't hide the component entirely)
+  if (!isValidLink && !isValidating) {
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-lime-200">
+            Password Reset Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center space-y-4">
+            <p className="text-slate-50">
+              Please click the password reset link from your email to continue.
+            </p>
+            <p className="text-sm text-slate-300">
+              If you don't have a reset email, please go to the sign-in page and click "Forgot Password".
+            </p>
+            <Button 
+              onClick={() => navigate('/signin')} 
+              variant="outline"
+              className="mt-4"
+            >
+              Go to Sign In
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Don't render the form until we have a valid link  
   if (!isValidLink) {
     return null;
   }

@@ -15,6 +15,15 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   // Routes that should not redirect authenticated users
   const excludedPaths = ['/reset-password', '/signin'];
   const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
+  
+  // Check if current URL has password reset tokens (hash or search params)
+  const hasResetTokens = () => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const searchParams = new URLSearchParams(window.location.search);
+    const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
+    const type = hashParams.get('type') || searchParams.get('type');
+    return tokenHash && type === 'recovery';
+  };
 
   // Add timeout for loading states to prevent infinite loading
   useEffect(() => {
@@ -39,7 +48,8 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   }
 
   // If user is authenticated and not on excluded path, redirect to dashboard
-  if (user && !isExcludedPath) {
+  // BUT: Don't redirect if user is on reset-password page with valid tokens
+  if (user && !isExcludedPath && !(location.pathname === '/reset-password' && hasResetTokens())) {
     return <Navigate to="/dashboard/home" replace />;
   }
 

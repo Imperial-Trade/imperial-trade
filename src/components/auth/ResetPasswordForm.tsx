@@ -55,6 +55,9 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("📍 Current URL:", window.location.href);
         console.log("📍 Hash:", window.location.hash);
         console.log("📍 Search:", window.location.search);
+        console.log("📍 Hostname:", window.location.hostname);
+        console.log("📍 Protocol:", window.location.protocol);
+        console.log("📍 Pathname:", window.location.pathname);
         
         // Parse URL parameters - Supabase typically uses hash fragments
         const hashParams = new URLSearchParams(window.location.hash.substring(1));

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
@@ -10,6 +10,11 @@ interface AuthenticatedRedirectProps {
 export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const [hasTimeout, setHasTimeout] = useState(false);
+  const location = useLocation();
+
+  // Routes that should not redirect authenticated users
+  const excludedPaths = ['/reset-password', '/signin'];
+  const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
 
   // Add timeout for loading states to prevent infinite loading
   useEffect(() => {
@@ -33,12 +38,12 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
     );
   }
 
-  // If user is authenticated, redirect to dashboard
-  if (user) {
+  // If user is authenticated and not on excluded path, redirect to dashboard
+  if (user && !isExcludedPath) {
     return <Navigate to="/dashboard/home" replace />;
   }
 
-  // If not authenticated or timeout reached, show the landing content
+  // If not authenticated, timeout reached, or on excluded path, show the content
   return (
     <div data-current-component="AuthenticatedRedirect-Content">
       {children}

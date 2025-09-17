@@ -186,7 +186,7 @@ export const ResetPasswordForm: React.FC = () => {
         throw new Error("No reset token available");
       }
 
-      console.log("🔄 Updating password with stored tokens...");
+      console.log("🔄 Starting password reset process...");
       
       // First verify the token and establish session
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
@@ -195,7 +195,7 @@ export const ResetPasswordForm: React.FC = () => {
       });
 
       if (verifyError) {
-        console.error("❌ Token verification failed during password update:", verifyError);
+        console.error("❌ Token verification failed:", verifyError);
         
         if (verifyError.message?.includes('expired') || verifyError.message?.includes('Token has expired')) {
           toast({
@@ -223,38 +223,44 @@ export const ResetPasswordForm: React.FC = () => {
         throw new Error("Failed to establish session for password update");
       }
 
-      console.log("✅ Token verified and session established, updating password...");
+      console.log("✅ Token verified, updating password...");
       
-      // Now update the password
+      // Now update the password - this should complete the reset process
       const { error: updateError } = await supabase.auth.updateUser({
         password: data.password
       });
 
       if (updateError) {
+        console.error("❌ Password update failed:", updateError);
         toast({
           variant: "destructive",
-          title: "Error",
+          title: "Password Update Failed",
           description: updateError.message,
         });
         return;
       }
 
+      console.log("✅ Password updated successfully");
       setResetComplete(true);
       toast({
-        title: "Password Updated",
-        description: "Your password has been successfully updated.",
+        title: "Password Updated Successfully",
+        description: "Your password has been updated. Redirecting to dashboard...",
       });
 
-      // Redirect to dashboard after a short delay
+      // Clear URL parameters to prevent any redirect conflicts
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Redirect to dashboard after showing success message
       setTimeout(() => {
-        navigate('/dashboard/home');
+        navigate('/dashboard/home', { replace: true });
       }, 2000);
+
     } catch (error) {
-      console.error("Password reset error:", error);
+      console.error("💥 Password reset error:", error);
       toast({
         variant: "destructive",
-        title: "Error", 
-        description: "An unexpected error occurred. Please try again.",
+        title: "Reset Failed", 
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsSubmitting(false);

@@ -134,6 +134,14 @@ serve(async (req) => {
         try {
           const url = new URL(resetUrl)
           
+          // Force production domain for all password reset URLs
+          if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.port) {
+            console.log('⚠️ Detected localhost URL, converting to production')
+            url.hostname = 'www.tradeimperial.com'
+            url.port = ''
+            url.protocol = 'https:'
+          }
+          
           // Ensure the pathname is /reset-password
           if (url.pathname !== '/reset-password') {
             url.pathname = '/reset-password'
@@ -161,12 +169,21 @@ serve(async (req) => {
           console.log('🔧 Constructed reset URL with auth tokens:', {
             baseUrl: url.toString(),
             hasAuthParams: true,
-            finalUrl: resetUrl
+            isProduction: url.hostname === 'www.tradeimperial.com',
+            finalUrl: resetUrl.substring(0, 150) + '...'
           })
           
         } catch (error) {
           console.error('❌ Failed to construct reset URL:', error)
-          console.warn('⚠️ Using original URL without auth tokens:', resetUrl)
+          console.warn('⚠️ Using fallback production URL with auth tokens')
+          
+          // Fallback to production URL with auth tokens
+          const authParams = new URLSearchParams({
+            token_hash: tokenHash,
+            type: 'recovery',
+            ...(token && { token: token })
+          })
+          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
         }
       } else {
         console.warn('⚠️ Missing required data for token construction:', {
@@ -174,6 +191,17 @@ serve(async (req) => {
           hasTokenHash: !!tokenHash,
           hasToken: !!token
         })
+        
+        // If we have tokens but no proper reset URL, construct one
+        if (tokenHash && token && (!resetUrl || resetUrl === '#')) {
+          const authParams = new URLSearchParams({
+            token_hash: tokenHash,
+            type: 'recovery',
+            token: token
+          })
+          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
+          console.log('🔧 Constructed fallback reset URL with tokens')
+        }
       }
       
       console.log('📧 Email details:', {

@@ -27,3 +27,49 @@ export const getOrderFlowAppUrl = (): string => {
 export const getAcademyAppUrl = (): string => {
   return "https://www.tradeimperial.com/academy";
 };
+
+/**
+ * Get the correct password reset redirect URL for the current environment
+ */
+export const getPasswordResetUrl = (): string => {
+  // Always use production URL for password reset emails
+  // This ensures emails work for external users even when sent from development
+  return "https://www.tradeimperial.com/reset-password";
+};
+
+/**
+ * Get the current application base URL
+ */
+export const getAppBaseUrl = (): string => {
+  if (isProduction() || isProductionDomain()) {
+    return "https://www.tradeimperial.com";
+  }
+  
+  // In development, still use production URL for password resets
+  // but localhost for other features
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  
+  // Fallback to production
+  return "https://www.tradeimperial.com";
+};
+
+/**
+ * Validate if we're using the correct production configuration
+ */
+export const validateProductionConfig = (): { isValid: boolean; issues: string[] } => {
+  const issues: string[] = [];
+  
+  if (!isProduction() && typeof window !== "undefined") {
+    const currentOrigin = window.location.origin;
+    if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
+      issues.push("Development environment detected - ensure Supabase Site URL is set to production");
+    }
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
+};

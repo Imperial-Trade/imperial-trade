@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getPasswordResetUrl, validateProductionConfig } from "@/utils/environment";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -43,30 +44,60 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
     setIsSubmitting(true);
     
     try {
+      // Validate production configuration
+      const configValidation = validateProductionConfig();
+      if (!configValidation.isValid) {
+        console.warn("⚠️ Production config issues detected:", configValidation.issues);
+      }
+      
+      // Always use production URL for password reset to ensure emails work for external users
+      const resetUrl = getPasswordResetUrl();
+      
+      console.log("🔄 Sending password reset email:", {
+        email: data.email,
+        redirectTo: resetUrl,
+        timestamp: new Date().toISOString()
+      });
+      
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: resetUrl,
       });
 
       if (error) {
+        console.error("❌ Password reset error:", error);
+        
+        // Enhanced error handling for common production issues
+        let errorMessage = error.message;
+        
+        if (error.message?.includes('redirectTo') || error.message?.includes('redirect')) {
+          errorMessage = "The redirect URL is not configured properly. Please contact support.";
+        } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+          errorMessage = "Too many reset attempts. Please wait a few minutes and try again.";
+        } else if (error.message?.includes('invalid') || error.message?.includes('not found')) {
+          errorMessage = "Please check your email address and try again.";
+        }
+        
         toast({
           variant: "destructive",
-          title: "Error",
-          description: error.message,
+          title: "Password Reset Error",
+          description: errorMessage,
         });
         return;
       }
 
+      console.log("✅ Password reset email sent successfully");
+      
       setEmailSent(true);
       toast({
-        title: "Email Sent",
-        description: "If an account with that email exists, we've sent you a password reset link.",
+        title: "Reset Email Sent",
+        description: "If an account with that email exists, we've sent you a password reset link. Please check your inbox and spam folder.",
       });
     } catch (error) {
-      console.error("Password reset error:", error);
+      console.error("💥 Unexpected password reset error:", error);
       toast({
         variant: "destructive", 
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Service Error",
+        description: "An unexpected error occurred. Please try again or contact support if the problem persists.",
       });
     } finally {
       setIsSubmitting(false);

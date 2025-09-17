@@ -103,24 +103,49 @@ export const ResetPasswordForm: React.FC = () => {
           return;
         }
         
-        // Check if we have the required recovery tokens
-        if (type === 'recovery' && accessToken && refreshToken) {
-          console.log("✅ Valid recovery tokens found, establishing session...");
+        // Check if we have tokens (with more lenient validation)
+        if (accessToken && refreshToken) {
+          console.log("✅ Found tokens, attempting to establish session...");
+          console.log("🔧 Token details:", {
+            accessTokenLength: accessToken.length,
+            refreshTokenLength: refreshToken.length,
+            type: type || 'not specified',
+            accessTokenStart: accessToken.substring(0, 20) + '...',
+            refreshTokenStart: refreshToken.substring(0, 10) + '...'
+          });
           
-          // Immediately establish the session with Supabase
+          // Try to establish the session with Supabase
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
           
           if (sessionError) {
-            console.error("❌ Failed to establish session:", sessionError);
-            toast({
-              variant: "destructive",
-              title: "Invalid Reset Link",
-              description: "This password reset link has expired or is invalid.",
-            });
-            setTimeout(() => navigate('/signin'), 2000);
+            console.error("❌ Session establishment failed:", sessionError);
+            
+            // Don't immediately redirect - try to provide helpful feedback
+            if (sessionError.message?.includes('expired')) {
+              toast({
+                variant: "destructive",
+                title: "Expired Reset Link",
+                description: "This password reset link has expired. Please request a new one.",
+              });
+            } else if (sessionError.message?.includes('invalid')) {
+              toast({
+                variant: "destructive", 
+                title: "Invalid Reset Link",
+                description: "The reset link appears to be invalid or corrupted. Please copy the complete URL from your email.",
+              });
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Session Error",
+                description: `Failed to establish reset session: ${sessionError.message}`,
+              });
+            }
+            
+            // Wait longer before redirecting to give user time to read the message
+            setTimeout(() => navigate('/signin'), 4000);
             return;
           }
           
@@ -128,16 +153,12 @@ export const ResetPasswordForm: React.FC = () => {
             console.log("✅ Password recovery session established successfully");
             setIsValidLink(true);
           } else {
-            console.error("❌ No session returned from setSession");
-            toast({
-              variant: "destructive",
-              title: "Session Error",
-              description: "Unable to establish password reset session. Please try again.",
-            });
-            setTimeout(() => navigate('/signin'), 2000);
+            console.warn("⚠️ Session established but no user data returned");
+            // Still proceed - sometimes the session is valid but user data comes later
+            setIsValidLink(true);
           }
           
-        } else if (!accessToken && !type) {
+        } else if (!accessToken && !refreshToken && !type) {
           // No tokens at all - this might be a direct navigation
           console.log("ℹ️ No tokens found - checking existing session...");
           

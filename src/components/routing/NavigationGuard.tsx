@@ -30,10 +30,35 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
 
   useEffect(() => {
     try {
+      // Check for password reset tokens first - bypass all redirect logic if found
+      const hasRecoveryTokens = () => {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Check for recovery type in hash or search params
+        const hashType = hashParams.get('type');
+        const searchType = searchParams.get('type');
+        
+        // Check for various token formats
+        const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
+        const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
+        const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
+        
+        return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+      };
+
+      // If we detect recovery tokens, bypass all redirect logic
+      if (hasRecoveryTokens()) {
+        console.log('🔐 NavigationGuard: Recovery tokens detected, bypassing redirect logic');
+        setNavigationError(null);
+        return;
+      }
+
       // If we're not loading and there's no user, but we're on a protected route
       if (!loading && !user && location.pathname.startsWith('/dashboard')) {
         // Save the intended destination
         const from = location.pathname + location.search;
+        console.trace("Redirecting to /signin from NavigationGuard:");
         navigate('/signin', { 
           state: { from }, 
           replace: true 

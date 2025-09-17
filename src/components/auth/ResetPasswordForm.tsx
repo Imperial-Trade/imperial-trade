@@ -188,7 +188,7 @@ export const ResetPasswordForm: React.FC = () => {
 
       console.log("🔄 Updating password with stored tokens...");
       
-      // First verify the token and establish session
+      // Verify OTP and update password in one step to establish proper session
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: tokenData.tokenHash,
         type: 'recovery'
@@ -239,13 +239,15 @@ export const ResetPasswordForm: React.FC = () => {
         return;
       }
 
+      console.log("✅ Password updated successfully - user now properly authenticated");
       setResetComplete(true);
+      
       toast({
         title: "Password Updated",
-        description: "Your password has been successfully updated.",
+        description: "Your password has been successfully updated. Redirecting to dashboard...",
       });
 
-      // Redirect to dashboard after a short delay
+      // Redirect to dashboard after successful password update
       setTimeout(() => {
         navigate('/dashboard/home');
       }, 2000);

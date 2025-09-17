@@ -126,29 +126,29 @@ function App() {
                           <Route path="features" element={<AuthenticatedRedirect><Features /></AuthenticatedRedirect>} />
                           <Route
                             path="advanced-tools"
-                            element={<AuthenticatedRedirect><AdvancedToolsPage /></AuthenticatedRedirect>}
+                            element={<AdvancedToolsPage />}
                           />
-                          <Route path="signals" element={<AuthenticatedRedirect><SignalsPage /></AuthenticatedRedirect>} />
-                          <Route path="education" element={<AuthenticatedRedirect><EducationPage /></AuthenticatedRedirect>} />
+                          <Route path="signals" element={<SignalsPage />} />
+                          <Route path="education" element={<EducationPage />} />
                           <Route
                             path="live-sessions"
-                            element={<AuthenticatedRedirect><LiveSessionsPage /></AuthenticatedRedirect>}
+                            element={<LiveSessionsPage />}
                           />
                           <Route
                             path="community-forum"
-                            element={<AuthenticatedRedirect><CommunityForumPage /></AuthenticatedRedirect>}
+                            element={<CommunityForumPage />}
                           />
 <Route
                             path="ib-partnership"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                           <Route
                             path="ib-partnership-new"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                           <Route
                             path="imperial-partnership"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />

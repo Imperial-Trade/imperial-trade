@@ -2,13 +2,20 @@
 import { User } from '@supabase/supabase-js';
 
 export const cleanupAuthState = () => {
+  console.log('🧹 Cleaning up all authentication state...');
+  
   // Remove standard auth tokens
   localStorage.removeItem('supabase.auth.token');
   
   // Remove all Supabase auth keys from localStorage
   Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+    if (key.startsWith('supabase.auth.') || 
+        key.includes('sb-') || 
+        key.includes('auth') ||
+        key.includes('imperial_auth') ||
+        key.includes('session')) {
       localStorage.removeItem(key);
+      console.log(`🧹 Removed localStorage key: ${key}`);
     }
   });
   
@@ -19,12 +26,15 @@ export const cleanupAuthState = () => {
     }
   });
   
-  // Remove from sessionStorage if in use
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      sessionStorage.removeItem(key);
-    }
-  });
+  // Clear all sessionStorage
+  try {
+    sessionStorage.clear();
+    console.log('🧹 Cleared all sessionStorage');
+  } catch (error) {
+    console.warn('Failed to clear sessionStorage:', error);
+  }
+  
+  console.log('✅ Authentication state cleanup complete');
 };
 
 export const handleAuthRedirect = (path: string) => {

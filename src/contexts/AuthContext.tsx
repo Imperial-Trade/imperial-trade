@@ -167,8 +167,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return resetFlow;
     };
     
+    // Check if we're on a public page that should not auto-authenticate
+    const isPublicPage = () => {
+      const publicPaths = [
+        '/', 
+        '/signin', 
+        '/advanced-tools', 
+        '/signals', 
+        '/education', 
+        '/live-sessions', 
+        '/community-forum', 
+        '/ib-partnership', 
+        '/ib-partnership-new', 
+        '/imperial-partnership',
+        '/about',
+        '/features'
+      ];
+      return publicPaths.includes(window.location.pathname);
+    };
+    
     // Initial check
     const isResetFlow = checkPasswordResetFlow();
+    const shouldSkipAutoAuth = isPublicPage() && !isResetFlow;
     
     // Listen for location changes
     const handleLocationChange = () => {
@@ -269,9 +289,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    // THEN check for existing session
+    // THEN check for existing session (only if not on public page)
     const initializeAuth = async () => {
       try {
+        // If on public page, clear auth and don't restore session
+        if (shouldSkipAutoAuth) {
+          console.log('🏠 On public page - clearing auth and skipping session restoration');
+          await supabase.auth.signOut({ scope: 'local' });
+          cleanupAuthState();
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+            setAuthInitialized(true);
+          }
+          return;
+        }
+
         console.log('🚀 Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         

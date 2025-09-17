@@ -302,19 +302,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // THEN check for existing session (only if not on public page)
     const initializeAuth = async () => {
       try {
-        // If on public page, clear auth and don't restore session
+        // Check if we're in a password reset flow with recovery tokens
+        const hasRecoveryTokens = () => {
+          const hash = window.location.hash;
+          const search = window.location.search;
+          return (hash.includes('token_hash=') && hash.includes('type=recovery')) ||
+                 (search.includes('token_hash=') && search.includes('type=recovery'));
+        };
+
+        // If on public page, clear auth UNLESS we're in password reset flow
         if (shouldSkipAutoAuth) {
-          console.log('🏠 On public page - clearing auth and skipping session restoration');
-          await supabase.auth.signOut({ scope: 'local' });
-          cleanupAuthState();
-          if (mounted) {
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-            setAuthInitialized(true);
+          const currentPath = window.location.pathname;
+          const isResetWithTokens = currentPath === '/reset-password' && hasRecoveryTokens();
+          
+          if (isResetWithTokens) {
+            console.log('🔑 Password reset flow detected - preserving recovery session');
+            // Don't sign out, preserve the recovery session for password reset
+            if (mounted) {
+              setLoading(false);
+              setAuthInitialized(true);
+            }
+            return;
+          } else {
+            console.log('🏠 On public page - clearing auth and skipping session restoration');
+            await supabase.auth.signOut({ scope: 'local' });
+            cleanupAuthState();
+            if (mounted) {
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setLoading(false);
+              setAuthInitialized(true);
+            }
+            return;
           }
-          return;
         }
 
         console.log('🚀 Initializing auth...');

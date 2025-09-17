@@ -231,7 +231,6 @@ function App() {
                             element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
-                           <Route path="reset-password" element={<ResetPasswordPage />} />
                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
                            <Route path="legal/terms" element={<TermsPage />} />
                            <Route path="legal/privacy" element={<PrivacyPage />} />

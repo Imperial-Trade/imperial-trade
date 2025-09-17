@@ -111,19 +111,17 @@ function App() {
 
   // If password reset flow detected, render ONLY the reset page with minimal providers
   if (isPasswordResetFlow) {
-    console.log('🔐 App: Password reset flow detected, rendering isolated reset page');
+    console.log('🔐 App: Password reset flow detected, rendering completely isolated reset page');
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
-            <AuthProvider>
-              <Routes>
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="*" element={<Navigate to="/reset-password" replace />} />
-              </Routes>
-            </AuthProvider>
+            <Routes>
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="*" element={<Navigate to="/reset-password" replace />} />
+            </Routes>
           </BrowserRouter>
         </ThemeProvider>
       </QueryClientProvider>

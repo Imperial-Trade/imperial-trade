@@ -116,26 +116,73 @@ serve(async (req) => {
       const emailActionType = payload.email_data?.email_action_type || ''
       let resetUrl = payload.email_data?.redirect_to || '#'
       
-      // Ensure the reset URL points to the correct reset page path
-      if (resetUrl && resetUrl !== '#') {
+      // Extract authentication tokens from Auth Hook payload
+      const tokenHash = payload.token_hash
+      const token = payload.token
+      const expiresAt = payload.expires_at
+      
+      console.log('🔐 Auth Hook token data:', {
+        hasTokenHash: !!tokenHash,
+        hasToken: !!token,
+        expiresAt: expiresAt,
+        tokenHashLength: tokenHash?.length || 0,
+        tokenLength: token?.length || 0
+      })
+      
+      // Construct proper reset URL with authentication parameters
+      if (resetUrl && resetUrl !== '#' && tokenHash && token) {
         try {
           const url = new URL(resetUrl)
-          // If the pathname is not /reset-password, update it
+          
+          // Ensure the pathname is /reset-password
           if (url.pathname !== '/reset-password') {
             url.pathname = '/reset-password'
-            resetUrl = url.toString()
-            console.log('🔧 Updated reset URL path to /reset-password:', resetUrl)
           }
+          
+          // Clear any existing auth parameters to avoid conflicts
+          url.hash = ''
+          url.searchParams.delete('access_token')
+          url.searchParams.delete('refresh_token')
+          url.searchParams.delete('token')
+          url.searchParams.delete('type')
+          url.searchParams.delete('expires_at')
+          
+          // Add authentication parameters that Supabase expects
+          // Use fragment (#) for auth parameters as per Supabase standards
+          const authParams = new URLSearchParams({
+            access_token: token,
+            refresh_token: tokenHash, 
+            type: 'recovery',
+            expires_at: expiresAt ? expiresAt.toString() : (Math.floor(Date.now() / 1000) + 3600).toString()
+          })
+          
+          // Append auth parameters as fragment
+          resetUrl = url.toString() + '#' + authParams.toString()
+          
+          console.log('🔧 Constructed reset URL with auth tokens:', {
+            baseUrl: url.toString(),
+            hasAuthParams: true,
+            finalUrl: resetUrl
+          })
+          
         } catch (error) {
-          console.warn('⚠️ Could not parse reset URL, using as-is:', resetUrl)
+          console.error('❌ Failed to construct reset URL:', error)
+          console.warn('⚠️ Using original URL without auth tokens:', resetUrl)
         }
+      } else {
+        console.warn('⚠️ Missing required data for token construction:', {
+          hasResetUrl: !!resetUrl && resetUrl !== '#',
+          hasTokenHash: !!tokenHash,
+          hasToken: !!token
+        })
       }
       
       console.log('📧 Email details:', {
         to: userEmail,
         emailActionType: emailActionType,
-        resetUrl: resetUrl,
-        isPasswordReset: emailActionType === 'recovery'
+        resetUrl: resetUrl.substring(0, 100) + '...', // Truncate for logging
+        isPasswordReset: emailActionType === 'recovery',
+        hasAuthTokens: !!(tokenHash && token)
       })
       
       // Only process password reset emails (recovery action type)

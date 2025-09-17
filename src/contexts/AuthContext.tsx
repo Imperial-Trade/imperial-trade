@@ -181,6 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const publicPaths = [
         '/', 
         '/signin', 
+        '/reset-password',  // CRITICAL: Allow password reset page without auth clearing
         '/advanced-tools', 
         '/signals', 
         '/education', 

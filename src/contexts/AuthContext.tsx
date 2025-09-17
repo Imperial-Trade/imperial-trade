@@ -155,10 +155,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
+    // Check if we're on reset password route with recovery tokens
+    const isPasswordResetFlow = () => {
+      const isResetRoute = window.location.pathname === '/reset-password';
+      const hasRecoveryTokens = window.location.hash.includes('type=recovery') || 
+                               window.location.search.includes('type=recovery');
+      return isResetRoute && hasRecoveryTokens;
+    };
+    
     const handleAuthStateChange = (event: string, session: Session | null) => {
       if (!mounted) return;
       
       console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
+      
+      // Special handling for password recovery flow
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('🔐 Password recovery session detected - allowing reset flow');
+        setSession(session);
+        setUser(session?.user ?? null);
+        // Don't load profile during password recovery to avoid interference
+        if (mounted && !authInitialized) {
+          setLoading(false);
+          setAuthInitialized(true);
+          console.log('✅ Auth initialization complete (password recovery)');
+        }
+        return;
+      }
+      
+      // If we're in password reset flow, let ResetPasswordForm handle the session
+      if (isPasswordResetFlow() && event === 'INITIAL_SESSION') {
+        console.log('🔄 Delaying auth initialization for password reset flow');
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (mounted && !authInitialized) {
+          setLoading(false);
+          setAuthInitialized(true);
+          console.log('✅ Auth initialization complete (reset flow)');
+        }
+        return;
+      }
       
       setSession(session);
       setUser(session?.user ?? null);
@@ -212,11 +247,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('🔄 Token refreshed');
-      } else if (event === 'PASSWORD_RECOVERY') {
-        console.log('🔐 Password recovery session detected - allowing reset flow');
-        // Don't interfere with password recovery process
-        // The ResetPasswordForm will handle this event
-        return;
       }
     };
 

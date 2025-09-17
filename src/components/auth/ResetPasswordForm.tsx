@@ -101,39 +101,38 @@ export const ResetPasswordForm: React.FC = () => {
         }
         
         // Check if we have the required recovery tokens
-        if (type === 'recovery' && accessToken) {
-          console.log("✅ Valid recovery tokens found, proceeding...");
+        if (type === 'recovery' && accessToken && refreshToken) {
+          console.log("✅ Valid recovery tokens found, establishing session...");
           
-          // Don't manually set session - let Supabase handle it
-          // The auth state change listener will catch the PASSWORD_RECOVERY event
-          setIsValidLink(true);
+          // Immediately establish the session with Supabase
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
           
-          // Set a timeout in case the auth state change doesn't fire
-          timeoutId = setTimeout(() => {
-            console.log("⏰ Timeout waiting for auth state change, checking session...");
-            supabase.auth.getSession().then(({ data: { session }, error }) => {
-              if (error) {
-                console.error("❌ Session check error:", error);
-                toast({
-                  variant: "destructive",
-                  title: "Invalid Reset Link",
-                  description: "This password reset link has expired or is invalid.",
-                });
-                navigate('/signin');
-              } else if (session?.user) {
-                console.log("✅ Valid session found via timeout check");
-                setIsValidLink(true);
-              } else {
-                console.log("❌ No session found via timeout check");
-                toast({
-                  variant: "destructive", 
-                  title: "Session Error",
-                  description: "Unable to establish password reset session. Please try again.",
-                });
-                navigate('/signin');
-              }
+          if (sessionError) {
+            console.error("❌ Failed to establish session:", sessionError);
+            toast({
+              variant: "destructive",
+              title: "Invalid Reset Link",
+              description: "This password reset link has expired or is invalid.",
             });
-          }, 3000);
+            setTimeout(() => navigate('/signin'), 2000);
+            return;
+          }
+          
+          if (sessionData?.session?.user) {
+            console.log("✅ Password recovery session established successfully");
+            setIsValidLink(true);
+          } else {
+            console.error("❌ No session returned from setSession");
+            toast({
+              variant: "destructive",
+              title: "Session Error",
+              description: "Unable to establish password reset session. Please try again.",
+            });
+            setTimeout(() => navigate('/signin'), 2000);
+          }
           
         } else if (!accessToken && !type) {
           // No tokens at all - this might be a direct navigation
@@ -153,7 +152,11 @@ export const ResetPasswordForm: React.FC = () => {
             navigate('/signin');
           }
         } else {
-          console.log("❌ Invalid token combination:", { accessToken: !!accessToken, type });
+          console.log("❌ Invalid token combination:", { 
+            accessToken: !!accessToken, 
+            refreshToken: !!refreshToken, 
+            type 
+          });
           toast({
             variant: "destructive",
             title: "Invalid Reset Link",

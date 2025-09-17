@@ -88,48 +88,19 @@ const queryClient = new QueryClient({
 function App() {
   console.log('🏗️ App component initializing...');
   
-  // Check for password reset flow BEFORE any providers load
+  // Simplified password reset detection - only activate for actual /reset-password route with tokens
   const isPasswordResetFlow = React.useMemo(() => {
-    console.log('🔍 Checking password reset flow...');
+    const isResetRoute = window.location.pathname === '/reset-password';
+    const hasResetTokens = window.location.hash.includes('token_hash') || 
+                          window.location.search.includes('token_hash');
     
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const searchParams = new URLSearchParams(window.location.search);
-    
-    console.log('📍 URL Analysis:', {
-      fullURL: window.location.href,
-      hash: window.location.hash,
-      search: window.location.search,
-      pathname: window.location.pathname,
-      hashParamsEntries: Array.from(hashParams.entries()),
-      searchParamsEntries: Array.from(searchParams.entries())
+    console.log('🔍 Password reset flow check:', {
+      isResetRoute,
+      hasResetTokens,
+      willActivate: isResetRoute && hasResetTokens
     });
     
-    // Check for recovery type in hash or search params
-    const hashType = hashParams.get('type');
-    const searchType = searchParams.get('type');
-    
-    // Check for various token formats
-    const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
-    const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
-    const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
-    
-    const isReset = hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
-    
-    console.log('🔐 Password reset detection DETAILED:', {
-      hashType,
-      searchType,
-      hasAccessToken,
-      hasRefreshToken,
-      hasTokenHash,
-      finalResult: isReset,
-      willIsolate: isReset ? 'YES - Isolated flow will activate' : 'NO - Normal app flow'
-    });
-    
-    if (isReset) {
-      console.log('🚨 ISOLATED RESET FLOW WILL ACTIVATE 🚨');
-    }
-    
-    return isReset;
+    return isResetRoute && hasResetTokens;
   }, []);
 
   // Initialize app state on startup
@@ -244,16 +215,7 @@ function App() {
                             element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
-                           {/* Fallback route for direct /reset-password navigation */}
-                           <Route 
-                             path="reset-password" 
-                             element={
-                               <Navigate 
-                                 to={`/signin${window.location.hash}${window.location.search}`} 
-                                 replace 
-                               />
-                             } 
-                           />
+                           <Route path="reset-password" element={<ResetPasswordPage />} />
                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
                            <Route path="legal/terms" element={<TermsPage />} />
                            <Route path="legal/privacy" element={<PrivacyPage />} />

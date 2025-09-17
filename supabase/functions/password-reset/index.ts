@@ -1,308 +1,193 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface EmailPayload {
+  user: {
+    id: string;
+    email: string;
+    user_metadata: Record<string, any>;
+  };
+  email_data: {
+    token: string;
+    token_hash: string;
+    redirect_to?: string;
+    email_action_type: string;
+    site_url: string;
+  };
 }
 
-// Environment validation
-const validateEnvironment = () => {
-  const apiKey = Deno.env.get('ONESIGNAL_API_KEY')
-  const appId = Deno.env.get('ONESIGNAL_APP_ID')
+interface OneSignalEmailRequest {
+  app_id: string;
+  template_id: string;
+  recipient_email: string;
+  custom_data: {
+    user_name: string;
+    reset_url: string;
+    user_email: string;
+  };
+}
+
+const ONESIGNAL_APP_ID = "7cd646c9-8a9d-4296-9979-c64a53074bcc";
+const ONESIGNAL_EMAIL_TEMPLATE_ID = "bb9bdc05-5ef5-4e26-87f8-563f9c992bc2";
+
+async function sendPasswordResetEmail(email: string, resetUrl: string, userName: string): Promise<any> {
+  const oneSignalApiKey = Deno.env.get('ONESIGNAL_API_KEY');
   
-  if (!apiKey || !appId) {
-    throw new Error('Missing required OneSignal environment variables')
+  if (!oneSignalApiKey) {
+    throw new Error('OneSignal API key not configured');
   }
-  
-  return { apiKey, appId }
+
+  const emailPayload: OneSignalEmailRequest = {
+    app_id: ONESIGNAL_APP_ID,
+    template_id: ONESIGNAL_EMAIL_TEMPLATE_ID,
+    recipient_email: email,
+    custom_data: {
+      user_name: userName,
+      reset_url: resetUrl,
+      user_email: email,
+    },
+  };
+
+  console.log(`📧 Sending password reset email to: ${email}`);
+  console.log(`🔗 Reset URL: ${resetUrl}`);
+
+  const response = await fetch('https://api.onesignal.com/notifications', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Basic ${oneSignalApiKey}`,
+    },
+    body: JSON.stringify(emailPayload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ OneSignal API error (${response.status}):`, errorText);
+    throw new Error(`OneSignal API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log(`✅ OneSignal email sent successfully:`, result);
+  return result;
 }
 
-// Clean HTML email template for password reset
-const getPasswordResetEmailTemplate = (resetUrl: string) => `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Your Password - Imperial Trading</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0a; color: #ffffff;">
-    <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="color: #00D2FF; margin: 0; font-size: 28px; font-weight: bold;">Imperial Trading</h1>
-        </div>
-        
-        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px; border-radius: 12px; border: 1px solid #333;">
-            <h2 style="color: #ffffff; margin: 0 0 20px 0; font-size: 24px;">Reset Your Password</h2>
-            
-            <p style="color: #cccccc; line-height: 1.6; margin: 0 0 30px 0; font-size: 16px;">
-                You requested to reset your password for your Imperial Trading account. Click the button below to create a new password.
-            </p>
-            
-            <div style="text-align: center; margin: 40px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #00D2FF 0%, #0099CC 100%); color: #000000; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                    Reset Password
-                </a>
-            </div>
-            
-            <p style="color: #999999; font-size: 14px; line-height: 1.5; margin: 30px 0 0 0;">
-                If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #333; margin: 30px 0;">
-            
-            <p style="color: #666666; font-size: 12px; margin: 0;">
-                This link will expire in 24 hours for security reasons.<br>
-                If you're having trouble clicking the button, copy and paste this URL into your browser:<br>
-                <span style="color: #00D2FF; word-break: break-all;">${resetUrl}</span>
-            </p>
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-            <p style="color: #666666; font-size: 12px; margin: 0;">
-                © 2024 Imperial Trading. All rights reserved.
-            </p>
-        </div>
-    </div>
-</body>
-</html>
-`
+function buildSecureResetUrl(tokenHash: string, token: string): string {
+  // Always use production domain for password reset emails
+  const baseUrl = 'https://www.tradeimperial.com/reset-password';
+  
+  // Use hash parameters for better security and compatibility
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type: 'recovery',
+    token: token,
+  });
+  
+  const resetUrl = `${baseUrl}#${params.toString()}`;
+  
+  console.log(`🔧 Built secure reset URL: ${resetUrl}`);
+  return resetUrl;
+}
 
-serve(async (req) => {
-  // Handle CORS preflight
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
-  // Health check endpoint
-  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
-    try {
-      const { apiKey, appId } = validateEnvironment()
-      return new Response(JSON.stringify({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        environment: {
-          hasApiKey: !!apiKey,
-          hasAppId: !!appId,
-          keyLength: apiKey?.length || 0
-        }
-      }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      })
-    } catch (error) {
-      return new Response(JSON.stringify({
-        status: 'unhealthy',
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      })
+  try {
+    console.log('📧 Password Reset Hook triggered');
+    
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { 
+        status: 405, 
+        headers: corsHeaders 
+      });
     }
-  }
 
-  // Handle Send Email Hook payload
-  if (req.method === 'POST') {
-    try {
-      const { apiKey, appId } = validateEnvironment()
-      
-      console.log('📧 Send Email Hook triggered')
-      
-      const payload = await req.json()
-      console.log('📦 Received payload:', JSON.stringify(payload, null, 2))
-      
-      // Extract email data from Auth Hook format
-      const userEmail = payload.user?.email
-      const emailActionType = payload.email_data?.email_action_type || ''
-      let resetUrl = payload.email_data?.redirect_to || '#'
-      
-      // Extract authentication tokens from Auth Hook payload (correct nested path)
-      const tokenHash = payload.email_data?.token_hash
-      const token = payload.email_data?.token
-      const expiresAt = payload.email_data?.expires_at
-      
-      console.log('🔐 Auth Hook token data:', {
-        hasTokenHash: !!tokenHash,
-        hasToken: !!token,
-        expiresAt: expiresAt,
-        tokenHashLength: tokenHash?.length || 0,
-        tokenLength: token?.length || 0
-      })
-      
-      // Construct proper reset URL with authentication parameters
-      if (resetUrl && resetUrl !== '#' && tokenHash && token) {
-        try {
-          const url = new URL(resetUrl)
-          
-          // Force production domain for all password reset URLs
-          if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.port) {
-            console.log('⚠️ Detected localhost URL, converting to production')
-            url.hostname = 'www.tradeimperial.com'
-            url.port = ''
-            url.protocol = 'https:'
-          }
-          
-          // Ensure the pathname is /reset-password where isolation logic catches tokens
-          if (url.pathname !== '/reset-password') {
-            url.pathname = '/reset-password'
-          }
-          
-          // Clear any existing auth parameters to avoid conflicts
-          url.hash = ''
-          url.searchParams.delete('access_token')
-          url.searchParams.delete('refresh_token')
-          url.searchParams.delete('token')
-          url.searchParams.delete('type')
-          url.searchParams.delete('expires_at')
-          
-          // Use standard Supabase password reset URL format
-          // Use fragment (#) for auth parameters as per Supabase standards
-          const authParams = new URLSearchParams({
-            token_hash: tokenHash,
-            type: 'recovery',
-            ...(token && { token: token })
-          })
-          
-          // Append auth parameters as fragment
-          resetUrl = url.toString() + '#' + authParams.toString()
-          
-          console.log('🔧 Constructed reset URL with auth tokens:', {
-            baseUrl: url.toString(),
-            hasAuthParams: true,
-            isProduction: url.hostname === 'www.tradeimperial.com',
-            finalUrl: resetUrl.substring(0, 150) + '...'
-          })
-          
-        } catch (error) {
-          console.error('❌ Failed to construct reset URL:', error)
-          console.warn('⚠️ Using fallback production URL with auth tokens')
-          
-          // Fallback to production URL with auth tokens
-          const authParams = new URLSearchParams({
-            token_hash: tokenHash,
-            type: 'recovery',
-            ...(token && { token: token })
-          })
-          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
-        }
-      } else {
-        console.warn('⚠️ Missing required data for token construction:', {
-          hasResetUrl: !!resetUrl && resetUrl !== '#',
-          hasTokenHash: !!tokenHash,
-          hasToken: !!token
-        })
-        
-        // If we have tokens but no proper reset URL, construct one
-        if (tokenHash && token && (!resetUrl || resetUrl === '#')) {
-          const authParams = new URLSearchParams({
-            token_hash: tokenHash,
-            type: 'recovery',
-            token: token
-          })
-          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
-          console.log('🔧 Constructed fallback reset URL with tokens')
-        }
-      }
-      
-      console.log('📧 Email details:', {
-        to: userEmail,
-        emailActionType: emailActionType,
-        resetUrl: resetUrl.substring(0, 100) + '...', // Truncate for logging
-        isPasswordReset: emailActionType === 'recovery',
-        hasAuthTokens: !!(tokenHash && token)
-      })
-      
-      // Only process password reset emails (recovery action type)
-      if (emailActionType !== 'recovery') {
-        console.log('⏭️ Skipping non-password-reset email')
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'Email not a password reset, skipped',
-          email_sent: false
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        })
-      }
-      
-      if (!userEmail) {
-        console.error('❌ No recipient email found in payload')
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'No recipient email found'
-        }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        })
-      }
-      
-      console.log('🔗 Using reset URL from Auth Hook:', resetUrl)
-      
-      // Send via OneSignal
-      const oneSignalPayload = {
-        app_id: appId,
-        include_email_tokens: [userEmail],
-        email_subject: "Reset Your Imperial Trading Password",
-        email_body: getPasswordResetEmailTemplate(resetUrl),
-        email_from_name: "Imperial Trading",
-        email_from_address: "support@tradeimperial.com"
-      }
-      
-      console.log('📤 Sending to OneSignal for:', userEmail)
-      
-      const oneSignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {
-        method: 'POST',
+    // Parse the request payload
+    const payload: EmailPayload = await req.json();
+    
+    console.log('📦 Received auth hook payload:', {
+      userId: payload.user?.id,
+      email: payload.user?.email,
+      actionType: payload.email_data?.email_action_type,
+      hasTokenHash: !!payload.email_data?.token_hash,
+      hasToken: !!payload.email_data?.token,
+    });
+
+    // Validate required fields
+    if (!payload.user?.email || !payload.email_data?.token_hash || !payload.email_data?.token) {
+      console.error('❌ Missing required fields in payload');
+      return new Response('Invalid payload', { 
+        status: 400, 
+        headers: corsHeaders 
+      });
+    }
+
+    // Only process recovery emails
+    if (payload.email_data.email_action_type !== 'recovery') {
+      console.log(`⏭️ Skipping non-recovery email type: ${payload.email_data.email_action_type}`);
+      return new Response('OK', { 
+        status: 200, 
+        headers: corsHeaders 
+      });
+    }
+
+    const { user, email_data } = payload;
+    
+    // Build secure reset URL
+    const resetUrl = buildSecureResetUrl(email_data.token_hash, email_data.token);
+    
+    // Get user's display name
+    const userName = user.user_metadata?.full_name || 
+                    user.user_metadata?.display_name || 
+                    user.email.split('@')[0] || 
+                    'User';
+
+    // Send password reset email
+    const emailResult = await sendPasswordResetEmail(
+      user.email,
+      resetUrl,
+      userName
+    );
+
+    console.log('✅ Password reset email sent successfully');
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Password reset email sent',
+        emailId: emailResult.id,
+        recipient: user.email,
+      }),
+      {
+        status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${apiKey}`
+          ...corsHeaders,
         },
-        body: JSON.stringify(oneSignalPayload)
-      })
-      
-      const oneSignalResult = await oneSignalResponse.json()
-      
-      if (!oneSignalResponse.ok) {
-        console.error('❌ OneSignal API error:', oneSignalResult)
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'OneSignal delivery failed',
-          details: oneSignalResult
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        })
       }
-      
-      console.log('✅ OneSignal email sent successfully:', oneSignalResult)
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Password reset email sent via OneSignal',
-        email_sent: true,
-        recipient: userEmail,
-        oneSignalId: oneSignalResult.id
-      }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      })
-      
-    } catch (error) {
-      console.error('💥 Function error:', error)
-      return new Response(JSON.stringify({
+    );
+
+  } catch (error) {
+    console.error('💥 Password reset hook error:', error);
+    
+    return new Response(
+      JSON.stringify({
         success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }), {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }),
+      {
         status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      })
-    }
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
+    );
   }
-  
-  // Method not allowed
-  return new Response(JSON.stringify({
-    error: 'Method not allowed',
-    allowed: ['GET', 'POST', 'OPTIONS']
-  }), {
-    status: 405,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders }
-  })
-})
+});

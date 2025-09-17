@@ -142,9 +142,9 @@ serve(async (req) => {
             url.protocol = 'https:'
           }
           
-          // Ensure the pathname is /signin where isolation logic catches tokens
-          if (url.pathname !== '/signin') {
-            url.pathname = '/signin'
+          // Ensure the pathname is /reset-password where isolation logic catches tokens
+          if (url.pathname !== '/reset-password') {
+            url.pathname = '/reset-password'
           }
           
           // Clear any existing auth parameters to avoid conflicts
@@ -183,7 +183,7 @@ serve(async (req) => {
             type: 'recovery',
             ...(token && { token: token })
           })
-          resetUrl = `https://www.tradeimperial.com/signin#${authParams.toString()}`
+          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
         }
       } else {
         console.warn('⚠️ Missing required data for token construction:', {
@@ -199,7 +199,7 @@ serve(async (req) => {
             type: 'recovery',
             token: token
           })
-          resetUrl = `https://www.tradeimperial.com/signin#${authParams.toString()}`
+          resetUrl = `https://www.tradeimperial.com/reset-password#${authParams.toString()}`
           console.log('🔧 Constructed fallback reset URL with tokens')
         }
       }

@@ -148,8 +148,7 @@ function App() {
             <BrowserRouter>
               <ScrollToTop />
               <Routes>
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="*" element={<Navigate to="/reset-password" replace />} />
+                <Route path="*" element={<ResetPasswordPage />} />
               </Routes>
             </BrowserRouter>
           </ThemeProvider>

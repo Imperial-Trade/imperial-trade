@@ -30,6 +30,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isPasswordResetFlow: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [isPasswordResetFlow, setIsPasswordResetFlow] = useState(false);
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     console.log('🔄 Fetching profile for user:', userId);
@@ -156,12 +158,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let mounted = true;
     
     // Check if we're on reset password route with recovery tokens
-    const isPasswordResetFlow = () => {
+    const checkPasswordResetFlow = () => {
       const isResetRoute = window.location.pathname === '/reset-password';
       const hasRecoveryTokens = window.location.hash.includes('type=recovery') || 
                                window.location.search.includes('type=recovery');
-      return isResetRoute && hasRecoveryTokens;
+      const resetFlow = isResetRoute && hasRecoveryTokens;
+      setIsPasswordResetFlow(resetFlow);
+      return resetFlow;
     };
+    
+    // Initial check
+    const isResetFlow = checkPasswordResetFlow();
+    
+    // Listen for location changes
+    const handleLocationChange = () => {
+      checkPasswordResetFlow();
+    };
+    
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('pushstate', handleLocationChange);
+    window.addEventListener('replacestate', handleLocationChange);
     
     const handleAuthStateChange = (event: string, session: Session | null) => {
       if (!mounted) return;
@@ -183,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // If we're in password reset flow, let ResetPasswordForm handle the session
-      if (isPasswordResetFlow() && event === 'INITIAL_SESSION') {
+      if (isPasswordResetFlow && event === 'INITIAL_SESSION') {
         console.log('🔄 Delaying auth initialization for password reset flow');
         setSession(session);
         setUser(session?.user ?? null);
@@ -283,6 +299,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('pushstate', handleLocationChange);
+      window.removeEventListener('replacestate', handleLocationChange);
     };
   }, [authInitialized, isSigningOut]);
 
@@ -327,7 +346,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileLoading,
         signOut, 
         refreshSession, 
-        refreshProfile 
+        refreshProfile,
+        isPasswordResetFlow
       }}
     >
       <div data-auth-provider="true">

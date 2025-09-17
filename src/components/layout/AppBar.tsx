@@ -33,7 +33,8 @@ const AppBar: React.FC = () => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === "/account-request";
   const isSigninPage = location.pathname === "/signin";
-  const { user, loading } = useAuth();
+  const isResetPasswordPage = location.pathname === "/reset-password";
+  const { user, loading, isPasswordResetFlow } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const navigationItems = [
@@ -83,8 +84,33 @@ const AppBar: React.FC = () => {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  // Show "Get Started" by default, "Dashboard" when authenticated
+  // Show "Get Started" by default, "Dashboard" when authenticated (except during password reset)
   const renderAuthButton = () => {
+    // During password reset, always show unauthenticated buttons
+    if (isResetPasswordPage || isPasswordResetFlow) {
+      return (
+        <div className="flex gap-2">
+          <Link to="/account-request">
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Get Started
+            </Button>
+          </Link>
+          <Link to="/signin">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10"
+            >
+              Sign In
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
     if (user) {
       return (
         <Link to="/dashboard/home">
@@ -298,56 +324,56 @@ const AppBar: React.FC = () => {
                     Account Access
                   </h3>
                   
-                  {user ? (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                            {user.email?.[0]?.toUpperCase() || 'U'}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{user.email}</p>
-                            <p className="text-xs text-muted-foreground">Welcome back!</p>
-                          </div>
-                        </div>
-                      </div>
-                      <Link to="/dashboard/home" onClick={closeMobileMenu}>
-                        <Button
-                          size="lg"
-                          className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
-                          aria-label="Go to Dashboard"
-                        >
-                          <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-                          Go to Dashboard
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {!isAccountRequestPage && (
-                        <Link to="/account-request" onClick={closeMobileMenu}>
-                          <Button
-                            size="lg"
-                            className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                            aria-label="Get Started - Request Account"
-                          >
-                            Get Started
-                          </Button>
-                        </Link>
-                      )}
-                      {!isSigninPage && (
-                        <Link to="/signin" onClick={closeMobileMenu}>
-                          <Button
-                            size="lg"
-                            variant="outline"
-                            className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                            aria-label="Sign In to Account"
-                          >
-                            Sign In
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
+                   {user && !isResetPasswordPage && !isPasswordResetFlow ? (
+                     <div className="space-y-3">
+                       <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                         <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                             {user.email?.[0]?.toUpperCase() || 'U'}
+                           </div>
+                           <div>
+                             <p className="font-medium text-sm">{user.email}</p>
+                             <p className="text-xs text-muted-foreground">Welcome back!</p>
+                           </div>
+                         </div>
+                       </div>
+                       <Link to="/dashboard/home" onClick={closeMobileMenu}>
+                         <Button
+                           size="lg"
+                           className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
+                           aria-label="Go to Dashboard"
+                         >
+                           <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+                           Go to Dashboard
+                         </Button>
+                       </Link>
+                     </div>
+                   ) : (
+                     <div className="space-y-3">
+                       {!isAccountRequestPage && (
+                         <Link to="/account-request" onClick={closeMobileMenu}>
+                           <Button
+                             size="lg"
+                             className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                             aria-label="Get Started - Request Account"
+                           >
+                             Get Started
+                           </Button>
+                         </Link>
+                       )}
+                       {!isSigninPage && !isResetPasswordPage && (
+                         <Link to="/signin" onClick={closeMobileMenu}>
+                           <Button
+                             size="lg"
+                             variant="outline"
+                             className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                             aria-label="Sign In to Account"
+                           >
+                             Sign In
+                           </Button>
+                         </Link>
+                       )}
+                     </div>
                   )}
                 </div>
 

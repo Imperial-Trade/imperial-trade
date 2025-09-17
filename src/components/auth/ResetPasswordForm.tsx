@@ -36,6 +36,7 @@ export const ResetPasswordForm: React.FC = () => {
   const [resetComplete, setResetComplete] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [isValidLink, setIsValidLink] = useState(false);
+  const [tokenData, setTokenData] = useState<{ tokenHash: string; token?: string } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -48,8 +49,6 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
     const processResetLink = async () => {
       try {
         console.log("🔐 Processing password reset link...");
@@ -94,9 +93,9 @@ export const ResetPasswordForm: React.FC = () => {
           return;
         }
         
-        // Check if we have proper password reset tokens
+        // Check if we have proper password reset tokens WITHOUT auto-authenticating
         if (tokenHash && type === 'recovery') {
-          console.log("✅ Found password reset tokens, verifying with Supabase...");
+          console.log("✅ Found password reset tokens, storing for later use...");
           console.log("🔧 Token details:", {
             tokenHashLength: tokenHash.length,
             hasToken: !!token,
@@ -104,71 +103,32 @@ export const ResetPasswordForm: React.FC = () => {
             type
           });
           
-          // Use verifyOtp for password recovery tokens
-          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery'
-          });
-          
-          if (verifyError) {
-            console.error("❌ Token verification failed:", verifyError);
-            
-            // Provide specific error messages based on the error type
-            if (verifyError.message?.includes('expired') || verifyError.message?.includes('Token has expired')) {
-              toast({
-                variant: "destructive",
-                title: "Expired Reset Link",
-                description: "This password reset link has expired. Please request a new one.",
-              });
-            } else if (verifyError.message?.includes('invalid') || verifyError.message?.includes('Invalid token')) {
-              toast({
-                variant: "destructive", 
-                title: "Invalid Reset Link",
-                description: "The reset link is invalid. Please check that you used the complete URL from your email.",
-              });
-            } else {
-              toast({
-                variant: "destructive",
-                title: "Verification Error",
-                description: `Failed to verify reset link: ${verifyError.message}`,
-              });
-            }
-            
-            setTimeout(() => navigate('/signin'), 3000);
-            return;
-          }
-          
-          if (verifyData?.session?.user) {
-            console.log("✅ Password recovery verification successful");
-            setIsValidLink(true);
-          } else {
-            console.error("❌ Verification succeeded but no session returned");
+          // Basic token format validation (without calling Supabase)
+          if (tokenHash.length < 20) {
+            console.error("❌ Token hash appears too short");
             toast({
               variant: "destructive",
-              title: "Session Error",
-              description: "Reset link verified but failed to establish session. Please try again.",
+              title: "Invalid Reset Link",
+              description: "The reset link appears to be corrupted. Please copy the entire URL from your email and try again.",
             });
             setTimeout(() => navigate('/signin'), 3000);
             return;
           }
+          
+          // Store tokens for password update WITHOUT establishing session
+          setTokenData({ tokenHash, token });
+          setIsValidLink(true);
+          console.log("✅ Password reset tokens validated and stored (no session established)");
           
         } else if (!tokenHash && !type) {
-          // No tokens at all - this might be a direct navigation
-          console.log("ℹ️ No tokens found - checking existing session...");
-          
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            console.log("✅ Existing valid session found");
-            setIsValidLink(true);
-          } else {
-            console.log("❌ No tokens and no existing session");
-            toast({
-              variant: "destructive",
-              title: "Invalid Access",
-              description: "Please use the reset link from your email to access this page.",
-            });
-            navigate('/signin');
-          }
+          // No tokens at all - invalid access
+          console.log("❌ No tokens found - invalid access");
+          toast({
+            variant: "destructive",
+            title: "Invalid Access",
+            description: "Please use the reset link from your email to access this page.",
+          });
+          navigate('/signin');
         } else {
           // Enhanced error handling for malformed links
           const urlLength = window.location.href.length;
@@ -215,49 +175,66 @@ export const ResetPasswordForm: React.FC = () => {
       }
     };
 
-    // Set up auth state change listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("🔄 Auth state change:", event, session?.user?.email || 'no user');
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log("🎯 PASSWORD_RECOVERY event detected - valid reset session!");
-        setIsValidLink(true);
-        setIsValidating(false);
-        if (timeoutId) clearTimeout(timeoutId);
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        console.log("✅ User signed in during reset process");
-        setIsValidLink(true);
-        setIsValidating(false);
-        if (timeoutId) clearTimeout(timeoutId);
-      } else if (event === 'SIGNED_OUT') {
-        console.log("👋 User signed out - redirecting to signin");
-        setIsValidLink(false);
-        navigate('/signin');
-      }
-    });
-
-    // Process the reset link after setting up the listener
     processResetLink();
-
-    return () => {
-      subscription.unsubscribe();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, [navigate, toast]);
 
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase.auth.updateUser({
+      if (!tokenData) {
+        throw new Error("No reset token available");
+      }
+
+      console.log("🔄 Updating password with stored tokens...");
+      
+      // First verify the token and establish session
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: tokenData.tokenHash,
+        type: 'recovery'
+      });
+
+      if (verifyError) {
+        console.error("❌ Token verification failed during password update:", verifyError);
+        
+        if (verifyError.message?.includes('expired') || verifyError.message?.includes('Token has expired')) {
+          toast({
+            variant: "destructive",
+            title: "Expired Reset Link",
+            description: "This password reset link has expired. Please request a new one.",
+          });
+        } else if (verifyError.message?.includes('invalid') || verifyError.message?.includes('Invalid token')) {
+          toast({
+            variant: "destructive", 
+            title: "Invalid Reset Link",
+            description: "The reset link is invalid. Please request a new reset email.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Verification Error",
+            description: `Failed to verify reset link: ${verifyError.message}`,
+          });
+        }
+        return;
+      }
+
+      if (!verifyData?.session?.user) {
+        throw new Error("Failed to establish session for password update");
+      }
+
+      console.log("✅ Token verified and session established, updating password...");
+      
+      // Now update the password
+      const { error: updateError } = await supabase.auth.updateUser({
         password: data.password
       });
 
-      if (error) {
+      if (updateError) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: updateError.message,
         });
         return;
       }

@@ -104,8 +104,8 @@ serve(async (req) => {
       email_subject: 'Welcome to Imperial Trading - Exclusive Access Granted',
       email_body: html,
       email_from_name: 'Imperial Trading',
-      email_from_address: 'welcome@tradeimperial.com',
-      email_reply_to_address: 'welcome@tradeimperial.com',
+      email_from_address: 'support@tradeimperial.com',
+      email_reply_to_address: 'support@tradeimperial.com',
       include_unsubscribed: true,
       is_transactional: true
     }

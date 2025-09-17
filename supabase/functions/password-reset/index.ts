@@ -154,7 +154,7 @@ serve(async (req) => {
         email_subject: "Reset Your Imperial Trading Password",
         email_body: getPasswordResetEmailTemplate(resetUrl),
         email_from_name: "Imperial Trading",
-        email_from_address: "noreply@tradeimperial.com"
+        email_from_address: "support@tradeimperial.com"
       }
       
       console.log('📤 Sending to OneSignal for:', userEmail)

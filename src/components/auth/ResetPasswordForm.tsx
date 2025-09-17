@@ -50,43 +50,68 @@ export const ResetPasswordForm: React.FC = () => {
   useEffect(() => {
     const processResetLink = async () => {
       try {
-        // Extract URL parameters from the reset link
-        const urlParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = urlParams.get('access_token');
-        const refreshToken = urlParams.get('refresh_token');
-        const type = urlParams.get('type');
+        console.log("Processing reset link...");
+        console.log("Current URL:", window.location.href);
+        
+        // Check both hash parameters and query parameters
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Log all parameters for debugging
+        console.log("Hash parameters:", Object.fromEntries(hashParams.entries()));
+        console.log("Search parameters:", Object.fromEntries(searchParams.entries()));
+        
+        // Try to get tokens from both sources
+        let accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+        let refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+        let type = hashParams.get('type') || searchParams.get('type');
+        
+        // Also check for alternative parameter names that Supabase might use
+        if (!accessToken) {
+          accessToken = hashParams.get('token') || searchParams.get('token');
+        }
+        
+        console.log("Extracted tokens:", { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
         
         // Check if this is a password recovery request
-        if (type === 'recovery' && accessToken && refreshToken) {
+        if ((type === 'recovery' || type === 'password_recovery') && accessToken) {
+          console.log("Valid recovery type detected, setting up session...");
+          
+          // Prepare session data
+          const sessionData: any = { access_token: accessToken };
+          if (refreshToken) {
+            sessionData.refresh_token = refreshToken;
+          }
+          
           // Set the session using the tokens from the URL
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+          const { data, error } = await supabase.auth.setSession(sessionData);
           
           if (error) {
             console.error("Session setup error:", error);
             toast({
               variant: "destructive",
               title: "Invalid Reset Link",
-              description: "This password reset link is invalid or has expired.",
+              description: `This password reset link is invalid or has expired. Error: ${error.message}`,
             });
             navigate('/signin');
             return;
           }
           
-          // Verify the session is valid and for password reset
+          console.log("Session created:", !!data.session?.user);
+          
+          // Verify the session is valid
           if (data.session?.user) {
+            console.log("Valid session established for user:", data.session.user.email);
             setIsValidLink(true);
           } else {
-            throw new Error("No valid session created");
+            throw new Error("No valid session created - no user found");
           }
         } else {
-          // No valid reset parameters found
+          console.log("No valid reset parameters found or wrong type");
           toast({
             variant: "destructive",
             title: "Invalid Reset Link", 
-            description: "This password reset link is invalid or has expired.",
+            description: "This password reset link is invalid or has expired. Missing required parameters.",
           });
           navigate('/signin');
         }
@@ -95,7 +120,7 @@ export const ResetPasswordForm: React.FC = () => {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Unable to process reset link. Please try again.",
+          description: `Unable to process reset link: ${error instanceof Error ? error.message : 'Unknown error'}`,
         });
         navigate('/signin');
       } finally {
@@ -103,7 +128,26 @@ export const ResetPasswordForm: React.FC = () => {
       }
     };
 
+    // Also listen to auth state changes to handle automatic authentication
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, !!session?.user);
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log("Password recovery event detected");
+        setIsValidLink(true);
+        setIsValidating(false);
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        console.log("User signed in during reset process");
+        setIsValidLink(true);
+        setIsValidating(false);
+      }
+    });
+
     processResetLink();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate, toast]);
 
   const onSubmit = async (data: ResetPasswordData) => {

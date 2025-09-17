@@ -150,8 +150,8 @@ serve(async (req) => {
           // Add authentication parameters that Supabase expects
           // Use fragment (#) for auth parameters as per Supabase standards
           const authParams = new URLSearchParams({
-            access_token: token,
-            refresh_token: tokenHash, 
+            access_token: tokenHash,
+            refresh_token: token, 
             type: 'recovery',
             expires_at: expiresAt ? expiresAt.toString() : (Math.floor(Date.now() / 1000) + 3600).toString()
           })

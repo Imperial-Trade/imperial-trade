@@ -168,14 +168,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
       
-      // Block authentication during password reset flow to keep user unauthenticated
-      if (isPasswordResetFlow()) {
-        console.log('🔐 Password reset flow detected - blocking authentication until reset complete');
-        // Don't set session/user, keep them unauthenticated
+      // Special handling for password recovery flow
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('🔐 Password recovery session detected - allowing reset flow');
+        setSession(session);
+        setUser(session?.user ?? null);
+        // Don't load profile during password recovery to avoid interference
         if (mounted && !authInitialized) {
           setLoading(false);
           setAuthInitialized(true);
-          console.log('✅ Auth initialization complete (blocked for password reset)');
+          console.log('✅ Auth initialization complete (password recovery)');
+        }
+        return;
+      }
+      
+      // If we're in password reset flow, let ResetPasswordForm handle the session
+      if (isPasswordResetFlow() && event === 'INITIAL_SESSION') {
+        console.log('🔄 Delaying auth initialization for password reset flow');
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (mounted && !authInitialized) {
+          setLoading(false);
+          setAuthInitialized(true);
+          console.log('✅ Auth initialization complete (reset flow)');
         }
         return;
       }

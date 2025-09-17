@@ -65,30 +65,21 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("🔍 Hash params:", Object.fromEntries(hashParams.entries()));
         console.log("🔍 Search params:", Object.fromEntries(searchParams.entries()));
         
-        // Extract tokens with fallbacks - including compact parameter names
-        const accessToken = hashParams.get('access_token') || searchParams.get('access_token') || 
-                           hashParams.get('token') || searchParams.get('token') ||
-                           hashParams.get('t') || searchParams.get('t'); // Compact form
-        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token') ||
-                            hashParams.get('r') || searchParams.get('r'); // Compact form
+        // Extract proper Supabase password reset tokens
+        const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
+        const token = hashParams.get('token') || searchParams.get('token');
         const type = hashParams.get('type') || searchParams.get('type');
         const error = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
         
-        // Additional Supabase parameters that might be present (including compact forms)
-        const expiresAt = hashParams.get('expires_at') || searchParams.get('expires_at') ||
-                         hashParams.get('exp') || searchParams.get('exp'); // Compact form
-        const expiresIn = hashParams.get('expires_in') || searchParams.get('expires_in');
-        
         console.log("🎯 Extracted data:", {
-          hasAccessToken: !!accessToken,
-          hasRefreshToken: !!refreshToken,
+          hasTokenHash: !!tokenHash,
+          hasToken: !!token,
           type,
           error,
           errorDescription,
-          expiresAt,
-          expiresIn,
-          tokenLength: accessToken?.length || 0
+          tokenHashLength: tokenHash?.length || 0,
+          tokenLength: token?.length || 0
         });
         
         // Check for explicit errors first
@@ -103,62 +94,65 @@ export const ResetPasswordForm: React.FC = () => {
           return;
         }
         
-        // Check if we have tokens (with more lenient validation)
-        if (accessToken && refreshToken) {
-          console.log("✅ Found tokens, attempting to establish session...");
+        // Check if we have proper password reset tokens
+        if (tokenHash && type === 'recovery') {
+          console.log("✅ Found password reset tokens, verifying with Supabase...");
           console.log("🔧 Token details:", {
-            accessTokenLength: accessToken.length,
-            refreshTokenLength: refreshToken.length,
-            type: type || 'not specified',
-            accessTokenStart: accessToken.substring(0, 20) + '...',
-            refreshTokenStart: refreshToken.substring(0, 10) + '...'
+            tokenHashLength: tokenHash.length,
+            hasToken: !!token,
+            tokenLength: token?.length || 0,
+            type
           });
           
-          // Try to establish the session with Supabase
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
+          // Use verifyOtp for password recovery tokens
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery'
           });
           
-          if (sessionError) {
-            console.error("❌ Session establishment failed:", sessionError);
+          if (verifyError) {
+            console.error("❌ Token verification failed:", verifyError);
             
-            // Don't immediately redirect - try to provide helpful feedback
-            if (sessionError.message?.includes('expired')) {
+            // Provide specific error messages based on the error type
+            if (verifyError.message?.includes('expired') || verifyError.message?.includes('Token has expired')) {
               toast({
                 variant: "destructive",
                 title: "Expired Reset Link",
                 description: "This password reset link has expired. Please request a new one.",
               });
-            } else if (sessionError.message?.includes('invalid')) {
+            } else if (verifyError.message?.includes('invalid') || verifyError.message?.includes('Invalid token')) {
               toast({
                 variant: "destructive", 
                 title: "Invalid Reset Link",
-                description: "The reset link appears to be invalid or corrupted. Please copy the complete URL from your email.",
+                description: "The reset link is invalid. Please check that you used the complete URL from your email.",
               });
             } else {
               toast({
                 variant: "destructive",
-                title: "Session Error",
-                description: `Failed to establish reset session: ${sessionError.message}`,
+                title: "Verification Error",
+                description: `Failed to verify reset link: ${verifyError.message}`,
               });
             }
             
-            // Wait longer before redirecting to give user time to read the message
-            setTimeout(() => navigate('/signin'), 4000);
+            setTimeout(() => navigate('/signin'), 3000);
             return;
           }
           
-          if (sessionData?.session?.user) {
-            console.log("✅ Password recovery session established successfully");
+          if (verifyData?.session?.user) {
+            console.log("✅ Password recovery verification successful");
             setIsValidLink(true);
           } else {
-            console.warn("⚠️ Session established but no user data returned");
-            // Still proceed - sometimes the session is valid but user data comes later
-            setIsValidLink(true);
+            console.error("❌ Verification succeeded but no session returned");
+            toast({
+              variant: "destructive",
+              title: "Session Error",
+              description: "Reset link verified but failed to establish session. Please try again.",
+            });
+            setTimeout(() => navigate('/signin'), 3000);
+            return;
           }
           
-        } else if (!accessToken && !refreshToken && !type) {
+        } else if (!tokenHash && !type) {
           // No tokens at all - this might be a direct navigation
           console.log("ℹ️ No tokens found - checking existing session...");
           
@@ -176,24 +170,26 @@ export const ResetPasswordForm: React.FC = () => {
             navigate('/signin');
           }
         } else {
-          // Enhanced error handling for truncated URLs
+          // Enhanced error handling for malformed links
           const urlLength = window.location.href.length;
-          const hasPartialTokens = !!accessToken || !!refreshToken;
+          const hasPartialTokens = !!tokenHash || !!token;
           
           console.log("❌ Invalid token combination:", { 
-            accessToken: !!accessToken, 
-            refreshToken: !!refreshToken, 
+            tokenHash: !!tokenHash, 
+            token: !!token, 
             type,
             urlLength,
             hasPartialTokens,
-            accessTokenLength: accessToken?.length || 0,
-            refreshTokenLength: refreshToken?.length || 0
+            tokenHashLength: tokenHash?.length || 0,
+            tokenLength: token?.length || 0
           });
           
-          let errorMessage = "This password reset link is malformed or incomplete.";
+          let errorMessage = "This password reset link is incomplete or invalid.";
           
-          if (hasPartialTokens && (!accessToken || accessToken.length < 30 || !refreshToken || refreshToken.length < 6)) {
-            errorMessage = "The reset link appears to be truncated. Please copy the entire URL from your email and try again.";
+          if (hasPartialTokens && (!tokenHash || tokenHash.length < 20)) {
+            errorMessage = "The reset link appears to be corrupted. Please copy the entire URL from your email and try again.";
+          } else if (type !== 'recovery' && type) {
+            errorMessage = `Invalid link type '${type}'. This is not a password reset link.`;
           } else if (urlLength > 2000) {
             errorMessage = "The reset link is too long and may have been corrupted. Please request a new reset email.";
           }
@@ -203,7 +199,7 @@ export const ResetPasswordForm: React.FC = () => {
             title: "Invalid Reset Link",
             description: errorMessage,
           });
-          setTimeout(() => navigate('/signin'), 2000);
+          setTimeout(() => navigate('/signin'), 3000);
         }
         
       } catch (error) {

@@ -59,6 +59,9 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("📍 Protocol:", window.location.protocol);
         console.log("📍 Pathname:", window.location.pathname);
         
+        // Set session flag to indicate we're in password reset flow
+        sessionStorage.setItem('password-reset-flow', 'true');
+        
         // Parse URL parameters - Supabase typically uses hash fragments
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const searchParams = new URLSearchParams(window.location.search);
@@ -251,6 +254,9 @@ export const ResetPasswordForm: React.FC = () => {
         title: "Password Updated Successfully",
         description: "Your password has been updated. Redirecting to dashboard...",
       });
+
+      // Clear password reset flow flag
+      sessionStorage.removeItem('password-reset-flow');
 
       // Clear URL parameters to prevent any redirect conflicts
       window.history.replaceState({}, document.title, window.location.pathname);

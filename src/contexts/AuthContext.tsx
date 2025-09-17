@@ -157,12 +157,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
-    // Check if we're on reset password route with recovery tokens
+    // Enhanced password reset flow detection
     const checkPasswordResetFlow = () => {
       const isResetRoute = window.location.pathname === '/reset-password';
       const hasRecoveryTokens = window.location.hash.includes('type=recovery') || 
                                window.location.search.includes('type=recovery');
-      const resetFlow = isResetRoute && hasRecoveryTokens;
+      const hasSessionFlag = sessionStorage.getItem('password-reset-flow') === 'true';
+      const resetFlow = isResetRoute || hasRecoveryTokens || hasSessionFlag;
+      
+      console.log('🔐 Password reset flow check:', {
+        isResetRoute,
+        hasRecoveryTokens,
+        hasSessionFlag,
+        resetFlow
+      });
+      
       setIsPasswordResetFlow(resetFlow);
       return resetFlow;
     };

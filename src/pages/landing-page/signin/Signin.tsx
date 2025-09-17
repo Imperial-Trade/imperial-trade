@@ -27,9 +27,19 @@ export default function SigninPage() {
   } = useLoginForm();
   const navigate = useNavigate();
 
-  // Clear any existing authentication state when signin page loads
+  // Clear auth state only if not coming from password reset flow
   useEffect(() => {
     const clearAuthOnSignin = async () => {
+      // Check if we're in a password reset flow by looking at referrer or navigation state
+      const isFromPasswordReset = window.document.referrer.includes('/reset-password') ||
+                                  window.location.pathname.includes('reset-password') ||
+                                  sessionStorage.getItem('password-reset-flow');
+      
+      if (isFromPasswordReset) {
+        console.log('🔐 Skipping auth cleanup - coming from password reset flow');
+        return;
+      }
+      
       console.log('🏠 Signin page loaded - clearing existing auth state');
       try {
         await supabase.auth.signOut({ scope: 'local' });

@@ -22,7 +22,15 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
     const searchParams = new URLSearchParams(window.location.search);
     const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
     const type = hashParams.get('type') || searchParams.get('type');
-    return tokenHash && type === 'recovery';
+    const isRecovery = tokenHash && type === 'recovery';
+    
+    if (isRecovery) {
+      console.log('🔐 Password reset tokens detected:', { tokenHash: !!tokenHash, type });
+      // Mark that we're in a password reset flow
+      sessionStorage.setItem('password-reset-flow', 'true');
+    }
+    
+    return isRecovery;
   };
 
   // Add timeout for loading states to prevent infinite loading
@@ -47,10 +55,21 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
     );
   }
 
+  // Enhanced password reset flow protection
+  const isPasswordResetFlow = hasResetTokens() || 
+                              sessionStorage.getItem('password-reset-flow') === 'true' ||
+                              location.pathname === '/reset-password';
+  
   // If user is authenticated and not on excluded path, redirect to dashboard
-  // BUT: Don't redirect if user is on reset-password page with valid tokens
-  if (user && !isExcludedPath && !(location.pathname === '/reset-password' && hasResetTokens())) {
+  // BUT: Don't redirect if we're in any part of the password reset flow
+  if (user && !isExcludedPath && !isPasswordResetFlow) {
+    console.log('🔄 Redirecting authenticated user to dashboard');
     return <Navigate to="/dashboard/home" replace />;
+  }
+  
+  // Don't redirect if we're in password reset flow, even without user
+  if (isPasswordResetFlow) {
+    console.log('🔐 Allowing access to password reset flow');
   }
 
   // If not authenticated, timeout reached, or on excluded path, show the content

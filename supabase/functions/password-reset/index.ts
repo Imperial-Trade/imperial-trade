@@ -147,13 +147,13 @@ serve(async (req) => {
           url.searchParams.delete('type')
           url.searchParams.delete('expires_at')
           
-          // Add authentication parameters that Supabase expects
+          // Add authentication parameters that Supabase expects (using compact names)
           // Use fragment (#) for auth parameters as per Supabase standards
           const authParams = new URLSearchParams({
-            access_token: tokenHash,
-            refresh_token: token, 
+            t: tokenHash,     // access_token (compact)
+            r: token,         // refresh_token (compact)
             type: 'recovery',
-            expires_at: expiresAt ? expiresAt.toString() : (Math.floor(Date.now() / 1000) + 3600).toString()
+            exp: expiresAt ? expiresAt.toString() : (Math.floor(Date.now() / 1000) + 3600).toString()
           })
           
           // Append auth parameters as fragment

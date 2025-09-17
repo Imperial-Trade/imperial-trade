@@ -65,16 +65,19 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("🔍 Hash params:", Object.fromEntries(hashParams.entries()));
         console.log("🔍 Search params:", Object.fromEntries(searchParams.entries()));
         
-        // Extract tokens with fallbacks - Supabase uses various parameter names
+        // Extract tokens with fallbacks - including compact parameter names
         const accessToken = hashParams.get('access_token') || searchParams.get('access_token') || 
-                           hashParams.get('token') || searchParams.get('token');
-        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+                           hashParams.get('token') || searchParams.get('token') ||
+                           hashParams.get('t') || searchParams.get('t'); // Compact form
+        const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token') ||
+                            hashParams.get('r') || searchParams.get('r'); // Compact form
         const type = hashParams.get('type') || searchParams.get('type');
         const error = hashParams.get('error') || searchParams.get('error');
         const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
         
-        // Additional Supabase parameters that might be present
-        const expiresAt = hashParams.get('expires_at') || searchParams.get('expires_at');
+        // Additional Supabase parameters that might be present (including compact forms)
+        const expiresAt = hashParams.get('expires_at') || searchParams.get('expires_at') ||
+                         hashParams.get('exp') || searchParams.get('exp'); // Compact form
         const expiresIn = hashParams.get('expires_in') || searchParams.get('expires_in');
         
         console.log("🎯 Extracted data:", {
@@ -152,15 +155,32 @@ export const ResetPasswordForm: React.FC = () => {
             navigate('/signin');
           }
         } else {
+          // Enhanced error handling for truncated URLs
+          const urlLength = window.location.href.length;
+          const hasPartialTokens = !!accessToken || !!refreshToken;
+          
           console.log("❌ Invalid token combination:", { 
             accessToken: !!accessToken, 
             refreshToken: !!refreshToken, 
-            type 
+            type,
+            urlLength,
+            hasPartialTokens,
+            accessTokenLength: accessToken?.length || 0,
+            refreshTokenLength: refreshToken?.length || 0
           });
+          
+          let errorMessage = "This password reset link is malformed or incomplete.";
+          
+          if (hasPartialTokens && (!accessToken || accessToken.length < 30 || !refreshToken || refreshToken.length < 6)) {
+            errorMessage = "The reset link appears to be truncated. Please copy the entire URL from your email and try again.";
+          } else if (urlLength > 2000) {
+            errorMessage = "The reset link is too long and may have been corrupted. Please request a new reset email.";
+          }
+          
           toast({
             variant: "destructive",
             title: "Invalid Reset Link",
-            description: "This password reset link is malformed or incomplete.",
+            description: errorMessage,
           });
           setTimeout(() => navigate('/signin'), 2000);
         }

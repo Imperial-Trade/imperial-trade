@@ -176,29 +176,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return resetFlow;
     };
     
-    // Check if we're on a public page that should not auto-authenticate
-    const isPublicPage = () => {
-      const publicPaths = [
-        '/', 
-        '/signin', 
-        '/reset-password',  // CRITICAL: Allow password reset page without auth clearing
-        '/advanced-tools', 
-        '/signals', 
-        '/education', 
-        '/live-sessions', 
-        '/community-forum', 
-        '/ib-partnership', 
-        '/ib-partnership-new', 
-        '/imperial-partnership',
-        '/about',
-        '/features'
-      ];
+    // Separate public pages from session-sensitive public pages
+    const publicPaths = [
+      '/', 
+      '/signin', 
+      '/advanced-tools', 
+      '/signals', 
+      '/education', 
+      '/live-sessions', 
+      '/community-forum', 
+      '/ib-partnership', 
+      '/ib-partnership-new', 
+      '/imperial-partnership',
+      '/about',
+      '/features'
+    ];
+    
+    // Pages that are public but need to preserve auth sessions
+    const sessionSensitivePublicPaths = ['/reset-password'];
+    
+    const isTruePublicPage = () => {
       return publicPaths.includes(window.location.pathname);
     };
     
-    // Initial check
+    const isSessionSensitivePage = () => {
+      return sessionSensitivePublicPaths.includes(window.location.pathname);
+    };
+    
+    // Enhanced recovery token detection
+    const hasRecoveryTokens = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      
+      // Check for all possible recovery token formats
+      const hasTokenHash = hash.includes('token_hash=') || search.includes('token_hash=');
+      const hasRecoveryType = hash.includes('type=recovery') || search.includes('type=recovery');
+      const hasAccessToken = hash.includes('access_token=') || search.includes('access_token=');
+      const hasRefreshToken = hash.includes('refresh_token=') || search.includes('refresh_token=');
+      
+      return (hasTokenHash && hasRecoveryType) || (hasAccessToken && hasRefreshToken);
+    };
+    
+    // Initial check - only clear auth for true public pages
     const isResetFlow = checkPasswordResetFlow();
-    const shouldSkipAutoAuth = isPublicPage() && !isResetFlow;
+    const shouldSkipAutoAuth = isTruePublicPage() && !isResetFlow;
     
     // Listen for location changes
     const handleLocationChange = () => {
@@ -214,12 +235,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
       
-      // Special handling for password recovery flow
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('🔐 Password recovery session detected - allowing reset flow');
+      // FAILSAFE: Explicit protection for password recovery flow
+      if (event === 'PASSWORD_RECOVERY' || (session && hasRecoveryTokens())) {
+        console.log('🔐 Password recovery session detected - preserving recovery session');
         setSession(session);
         setUser(session?.user ?? null);
-        // Don't load profile during password recovery to avoid interference
+        setIsPasswordResetFlow(true);
+        
+        // Mark the flow in session storage for persistence
+        sessionStorage.setItem('password-reset-flow', 'true');
+        
         if (mounted && !authInitialized) {
           setLoading(false);
           setAuthInitialized(true);
@@ -299,43 +324,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    // THEN check for existing session (only if not on public page)
+    // THEN check for existing session (only if not on true public page)
     const initializeAuth = async () => {
       try {
-        // Check if we're in a password reset flow with recovery tokens
-        const hasRecoveryTokens = () => {
-          const hash = window.location.hash;
-          const search = window.location.search;
-          return (hash.includes('token_hash=') && hash.includes('type=recovery')) ||
-                 (search.includes('token_hash=') && search.includes('type=recovery'));
-        };
-
-        // If on public page, clear auth UNLESS we're in password reset flow
-        if (shouldSkipAutoAuth) {
-          const currentPath = window.location.pathname;
-          const isResetWithTokens = currentPath === '/reset-password' && hasRecoveryTokens();
+        // FAILSAFE: Always check for recovery tokens first
+        if (hasRecoveryTokens()) {
+          console.log('🔑 Recovery tokens detected - bypassing all auth clearing logic');
+          setIsPasswordResetFlow(true);
+          sessionStorage.setItem('password-reset-flow', 'true');
           
-          if (isResetWithTokens) {
-            console.log('🔑 Password reset flow detected - preserving recovery session');
-            // Don't sign out, preserve the recovery session for password reset
-            if (mounted) {
-              setLoading(false);
-              setAuthInitialized(true);
-            }
-            return;
+          // Let Supabase handle the recovery session naturally
+          const { data: { session }, error } = await supabase.auth.getSession();
+          if (!error && session) {
+            handleAuthStateChange('PASSWORD_RECOVERY', session);
           } else {
-            console.log('🏠 On public page - clearing auth and skipping session restoration');
-            await supabase.auth.signOut({ scope: 'local' });
-            cleanupAuthState();
             if (mounted) {
-              setSession(null);
-              setUser(null);
-              setProfile(null);
               setLoading(false);
               setAuthInitialized(true);
             }
-            return;
           }
+          return;
+        }
+
+        // Only clear auth for true public pages (not session-sensitive ones)
+        if (shouldSkipAutoAuth) {
+          console.log('🏠 On true public page - clearing auth and skipping session restoration');
+          await supabase.auth.signOut({ scope: 'local' });
+          cleanupAuthState();
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+            setAuthInitialized(true);
+          }
+          return;
+        }
+
+        // Session-sensitive pages (like /reset-password) preserve existing sessions
+        if (isSessionSensitivePage()) {
+          console.log('🔐 On session-sensitive page - preserving existing session');
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('❌ Error getting session on sensitive page:', error);
+          }
+          
+          // Let the auth state handler process the session
+          handleAuthStateChange('INITIAL_SESSION', session);
+          return;
         }
 
         console.log('🚀 Initializing auth...');

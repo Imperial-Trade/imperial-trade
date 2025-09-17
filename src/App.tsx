@@ -86,10 +86,20 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log('🏗️ App component initializing...');
+  
   // Check for password reset flow BEFORE any providers load
   const isPasswordResetFlow = React.useMemo(() => {
+    console.log('🔍 Checking password reset flow...');
+    
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const searchParams = new URLSearchParams(window.location.search);
+    
+    console.log('📍 URL Analysis:', {
+      hash: window.location.hash,
+      search: window.location.search,
+      pathname: window.location.pathname
+    });
     
     // Check for recovery type in hash or search params
     const hashType = hashParams.get('type');
@@ -100,57 +110,91 @@ function App() {
     const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
     const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
     
-    return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+    const isReset = hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+    
+    console.log('🔐 Password reset detection:', {
+      hashType,
+      searchType,
+      hasAccessToken,
+      hasRefreshToken,
+      hasTokenHash,
+      finalResult: isReset
+    });
+    
+    return isReset;
   }, []);
 
   // Initialize app state on startup
   React.useEffect(() => {
-    initializeAppState();
-    verifyServiceWorkerSafety();
+    console.log('🔧 Initializing app state...');
+    try {
+      initializeAppState();
+      verifyServiceWorkerSafety();
+      console.log('✅ App state initialized successfully');
+    } catch (error) {
+      console.error('❌ Error during app state initialization:', error);
+    }
   }, []);
 
   // If password reset flow detected, render ONLY the reset page with minimal providers
   if (isPasswordResetFlow) {
     console.log('🔐 App: Password reset flow detected, rendering completely isolated reset page');
+    
+    try {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="*" element={<Navigate to="/reset-password" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </ThemeProvider>
+        </QueryClientProvider>
+      );
+    } catch (error) {
+      console.error('❌ Error rendering password reset flow:', error);
+      // Fallback for password reset
+      return (
+        <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+          <h1>Password Reset</h1>
+          <p>There was an error loading the password reset page. Please try refreshing.</p>
+          <button onClick={() => window.location.reload()}>Refresh Page</button>
+        </div>
+      );
+    }
+  }
+
+  console.log('🚀 App: Rendering normal application flow...');
+
+  // Normal app flow with all providers
+  try {
+    console.log('🌐 Rendering main application with all providers...');
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
+          <RealtimeShutdownGuard />
+          <VersionChecker />
+          <CacheCleanerMount />
           <Sonner />
           <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="*" element={<Navigate to="/reset-password" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </ThemeProvider>
-      </QueryClientProvider>
-    );
-  }
-
-  // Normal app flow with all providers
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <RealtimeShutdownGuard />
-        <VersionChecker />
-        <CacheCleanerMount />
-        <Sonner />
-        <BrowserRouter>
-            <ScrollToTop />
-            <AuthProvider>
-              <WelcomeProvider>
-                <NotificationPromptProvider>
-                  <NavigationGuard>
-                     <RealtimeHealthProvider>
-                       <RealtimeConnectionManagerProvider>
-                         <TelemetryProvider>
-                        <GlobalPreviewControlProvider>
-                        <OptimizedWebSocketPriceProvider>
-                        <WebSocketErrorBoundary>
-                          <ContextErrorBoundary>
-                            <SharedRealtimeProvider>
-                              <SignalRealtimeProvider>
+              <ScrollToTop />
+              <AuthProvider>
+                <WelcomeProvider>
+                  <NotificationPromptProvider>
+                    <NavigationGuard>
+                       <RealtimeHealthProvider>
+                         <RealtimeConnectionManagerProvider>
+                           <TelemetryProvider>
+                          <GlobalPreviewControlProvider>
+                          <OptimizedWebSocketPriceProvider>
+                          <WebSocketErrorBoundary>
+                            <ContextErrorBoundary>
+                              <SharedRealtimeProvider>
+                                <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -366,6 +410,38 @@ function App() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+  } catch (error) {
+    console.error('❌ Critical error rendering main application:', error);
+    
+    // Ultimate fallback - simple app that works
+    return (
+      <div style={{ padding: '20px', fontFamily: 'sans-serif', background: '#1a1a1a', color: '#fff', minHeight: '100vh' }}>
+        <h1 style={{ color: '#ff6b6b' }}>Trade Imperial - Loading Error</h1>
+        <p>The application failed to load properly.</p>
+        <p><strong>Error:</strong> {error instanceof Error ? error.message : String(error)}</p>
+        <div style={{ marginTop: '20px' }}>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer', marginRight: '10px' }}
+          >
+            Reload Page
+          </button>
+          <button 
+            onClick={() => window.location.href = '/signin'} 
+            style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Go to Sign In
+          </button>
+        </div>
+        <details style={{ marginTop: '20px' }}>
+          <summary style={{ cursor: 'pointer', color: '#ffc107' }}>Technical Details</summary>
+          <pre style={{ background: '#2a2a2a', padding: '10px', marginTop: '10px', overflow: 'auto' }}>
+            {error instanceof Error ? error.stack : 'No stack trace available'}
+          </pre>
+        </details>
+      </div>
+    );
+  }
 }
 
 export default App;

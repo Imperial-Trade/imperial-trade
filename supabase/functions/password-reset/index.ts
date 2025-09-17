@@ -116,10 +116,10 @@ serve(async (req) => {
       const emailActionType = payload.email_data?.email_action_type || ''
       let resetUrl = payload.email_data?.redirect_to || '#'
       
-      // Extract authentication tokens from Auth Hook payload
-      const tokenHash = payload.token_hash
-      const token = payload.token
-      const expiresAt = payload.expires_at
+      // Extract authentication tokens from Auth Hook payload (correct nested path)
+      const tokenHash = payload.email_data?.token_hash
+      const token = payload.email_data?.token
+      const expiresAt = payload.email_data?.expires_at
       
       console.log('🔐 Auth Hook token data:', {
         hasTokenHash: !!tokenHash,

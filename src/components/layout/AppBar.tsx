@@ -82,6 +82,11 @@ const AppBar: React.FC = () => {
     },
   ];
 
+  // During password reset, redirect all navigation to safe landing page
+  const getSafeNavigation = (item: typeof navigationItems[0]) => {
+    return isResetPasswordPage || isPasswordResetFlow ? "/" : item.to;
+  };
+
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   // Show "Get Started" by default, "Dashboard" when authenticated (except during password reset)
@@ -197,7 +202,7 @@ const AppBar: React.FC = () => {
                 onMouseEnter={() => setActiveDropdown(item.label)}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
-                <Link to={item.to}>
+                <Link to={getSafeNavigation(item)}>
                   <Button
                     variant="ghost"
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
@@ -230,11 +235,11 @@ const AppBar: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      <Link to={item.to}>
+                       <Link to={getSafeNavigation(item)}>
                         <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                           Explore {item.label}
                         </Button>
-                      </Link>
+                       </Link>
                     </div>
                   </div>
                 )}
@@ -244,7 +249,7 @@ const AppBar: React.FC = () => {
         ) : (
           <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map((item) => (
-              <Link key={item.to} to={item.to}>
+              <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button
                   variant="ghost"
                   className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
@@ -300,7 +305,7 @@ const AppBar: React.FC = () => {
                   {navigationItems.map((item) => (
                     <Link
                       key={item.to}
-                      to={item.to}
+                      to={getSafeNavigation(item)}
                       onClick={closeMobileMenu}
                       className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
                       aria-label={`Navigate to ${item.label}`}

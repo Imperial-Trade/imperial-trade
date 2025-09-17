@@ -244,6 +244,16 @@ function App() {
                             element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
+                           {/* Fallback route for direct /reset-password navigation */}
+                           <Route 
+                             path="reset-password" 
+                             element={
+                               <Navigate 
+                                 to={`/signin${window.location.hash}${window.location.search}`} 
+                                 replace 
+                               />
+                             } 
+                           />
                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
                            <Route path="legal/terms" element={<TermsPage />} />
                            <Route path="legal/privacy" element={<PrivacyPage />} />

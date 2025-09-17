@@ -58,6 +58,8 @@ export const ResetPasswordForm: React.FC = () => {
         console.log("📍 Hostname:", window.location.hostname);
         console.log("📍 Protocol:", window.location.protocol);
         console.log("📍 Pathname:", window.location.pathname);
+        console.log("🔍 URL Length:", window.location.href.length);
+        console.log("🕐 Timestamp:", new Date().toISOString());
         
         // Set session flag to indicate we're in password reset flow
         sessionStorage.setItem('password-reset-flow', 'true');
@@ -197,10 +199,28 @@ export const ResetPasswordForm: React.FC = () => {
       console.log("🔄 Starting password reset process...");
       
       // First verify the token and establish session
-      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      const verifyPayload: any = {
         token_hash: tokenData.tokenHash,
         type: 'recovery'
+      };
+      
+      // Include token if available (required for some Supabase versions)
+      if (tokenData.token) {
+        verifyPayload.token = tokenData.token;
+        console.log("🔑 Using both token_hash and token for verification");
+      } else {
+        console.log("🔑 Using token_hash only for verification");
+      }
+      
+      console.log("🔧 Verify payload:", { 
+        hasTokenHash: !!verifyPayload.token_hash, 
+        hasToken: !!verifyPayload.token,
+        type: verifyPayload.type,
+        tokenHashLength: verifyPayload.token_hash?.length || 0,
+        tokenLength: verifyPayload.token?.length || 0
       });
+      
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp(verifyPayload);
 
       if (verifyError) {
         console.error("❌ Token verification failed:", verifyError);

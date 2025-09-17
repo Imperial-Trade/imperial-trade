@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { PasswordStrengthMeter } from "@/components/security/PasswordStrengthMeter";
 
 const resetPasswordSchema = z.object({
@@ -48,26 +48,54 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    const validateSession = async () => {
+    const processResetLink = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Extract URL parameters from the reset link
+        const urlParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = urlParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token');
+        const type = urlParams.get('type');
         
-        if (error || !session) {
+        // Check if this is a password recovery request
+        if (type === 'recovery' && accessToken && refreshToken) {
+          // Set the session using the tokens from the URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error("Session setup error:", error);
+            toast({
+              variant: "destructive",
+              title: "Invalid Reset Link",
+              description: "This password reset link is invalid or has expired.",
+            });
+            navigate('/signin');
+            return;
+          }
+          
+          // Verify the session is valid and for password reset
+          if (data.session?.user) {
+            setIsValidLink(true);
+          } else {
+            throw new Error("No valid session created");
+          }
+        } else {
+          // No valid reset parameters found
           toast({
             variant: "destructive",
-            title: "Invalid Reset Link",
+            title: "Invalid Reset Link", 
             description: "This password reset link is invalid or has expired.",
           });
           navigate('/signin');
-        } else {
-          setIsValidLink(true);
         }
       } catch (error) {
-        console.error("Session validation error:", error);
+        console.error("Reset link processing error:", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Unable to validate reset link. Please try again.",
+          description: "Unable to process reset link. Please try again.",
         });
         navigate('/signin');
       } finally {
@@ -75,7 +103,7 @@ export const ResetPasswordForm: React.FC = () => {
       }
     };
 
-    validateSession();
+    processResetLink();
   }, [navigate, toast]);
 
   const onSubmit = async (data: ResetPasswordData) => {

@@ -82,9 +82,9 @@ const AppBar: React.FC = () => {
     },
   ];
 
-  // During password reset, redirect all navigation to safe landing page
+  // During password reset page, redirect all navigation to safe landing page
   const getSafeNavigation = (item: typeof navigationItems[0]) => {
-    return isResetPasswordPage || isPasswordResetFlow ? "/" : item.to;
+    return isResetPasswordPage ? "/" : item.to;
   };
 
   const closeMobileMenu = () => setMobileMenuOpen(false);

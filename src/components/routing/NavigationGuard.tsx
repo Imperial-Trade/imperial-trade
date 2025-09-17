@@ -30,11 +30,12 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
 
   useEffect(() => {
     try {
+      // Parse URL parameters once
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+      
       // Check for password reset tokens first - bypass all redirect logic if found
       const hasRecoveryTokens = () => {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const searchParams = new URLSearchParams(window.location.search);
-        
         // Check for recovery type in hash or search params
         const hashType = hashParams.get('type');
         const searchType = searchParams.get('type');
@@ -50,6 +51,14 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
       // If we detect recovery tokens, bypass all redirect logic
       if (hasRecoveryTokens()) {
         console.log('🔐 NavigationGuard: Recovery tokens detected, bypassing redirect logic');
+        console.log('📍 NavigationGuard: Token details:', {
+          hashType: hashParams.get('type'),
+          searchType: searchParams.get('type'),
+          hasAccessToken: hashParams.has('access_token') || searchParams.has('access_token'),
+          hasRefreshToken: hashParams.has('refresh_token') || searchParams.has('refresh_token'),
+          hasTokenHash: hashParams.has('token_hash') || searchParams.has('token_hash'),
+          currentPath: location.pathname
+        });
         setNavigationError(null);
         return;
       }
@@ -58,7 +67,8 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
       if (!loading && !user && location.pathname.startsWith('/dashboard')) {
         // Save the intended destination
         const from = location.pathname + location.search;
-        console.trace("Redirecting to /signin from NavigationGuard:");
+        console.log("🚫 NavigationGuard: Redirecting unauthenticated user to signin");
+        console.log("📍 NavigationGuard: From location:", from);
         navigate('/signin', { 
           state: { from }, 
           replace: true 

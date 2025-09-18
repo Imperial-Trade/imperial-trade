@@ -33,8 +33,8 @@ export const getAcademyAppUrl = (): string => {
  */
 export const getPasswordResetUrl = (): string => {
   // Always use production URL for password reset emails
-  // Point to /signin where isolation logic will catch recovery tokens
-  return "https://www.tradeimperial.com/signin";
+  // Point to /reset-password for dedicated password reset flow
+  return "https://www.tradeimperial.com/reset-password";
 };
 
 /**

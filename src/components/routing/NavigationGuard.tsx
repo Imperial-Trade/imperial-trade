@@ -63,6 +63,21 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
         return;
       }
 
+      // Special handling for authenticated users on reset-password page
+      if (!loading && user && location.pathname === '/reset-password') {
+        // Check if they have recovery tokens in the URL - if so, allow them to stay
+        if (hasRecoveryTokens()) {
+          console.log('🔐 NavigationGuard: Authenticated user with recovery tokens on reset-password page - allowing access');
+          setNavigationError(null);
+          return;
+        } else {
+          // Authenticated user on reset-password without tokens - redirect to dashboard
+          console.log('🔄 NavigationGuard: Authenticated user on reset-password without tokens - redirecting to dashboard');
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      }
+
       // If we're not loading and there's no user, but we're on a protected route
       if (!loading && !user && location.pathname.startsWith('/dashboard')) {
         // Save the intended destination

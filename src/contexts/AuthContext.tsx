@@ -172,8 +172,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       '/features'
     ];
     
+    const hasRecoveryTokens = () => {
+      const params = new URLSearchParams(window.location.search);
+      const fragment = new URLSearchParams(window.location.hash.substring(1));
+      
+      // Check for recovery-related tokens in URL parameters or fragments
+      const recoveryIndicators = [
+        'access_token',
+        'refresh_token', 
+        'token_hash',
+        'type'
+      ];
+      
+      const hasTokensInParams = recoveryIndicators.some(param => params.has(param));
+      const hasTokensInFragment = recoveryIndicators.some(param => fragment.has(param));
+      const isRecoveryType = params.get('type') === 'recovery' || fragment.get('type') === 'recovery';
+      
+      return hasTokensInParams || hasTokensInFragment || isRecoveryType;
+    };
+    
     const isTruePublicPage = () => {
-      return publicPaths.includes(window.location.pathname);
+      const isPublicPath = publicPaths.includes(window.location.pathname);
+      
+      // If we're on reset-password page with recovery tokens, don't treat as public page
+      if (window.location.pathname === '/reset-password' && hasRecoveryTokens()) {
+        console.log('🔐 Reset password page with recovery tokens detected - preserving auth session');
+        return false;
+      }
+      
+      return isPublicPath;
     };
     
     const handleAuthStateChange = (event: string, session: Session | null) => {

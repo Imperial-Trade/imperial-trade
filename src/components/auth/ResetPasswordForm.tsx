@@ -33,8 +33,8 @@ const resetPasswordSchema = z.object({
 type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 
 interface TokenData {
-  tokenHash: string;
-  token: string;
+  access_token: string;
+  refresh_token: string;
   type: string;
 }
 
@@ -60,56 +60,62 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   const extractTokensFromUrl = (): TokenData | null => {
-    try {
-      const url = window.location.href;
-      console.log('🔍 Extracting tokens from URL:', url);
-      
-      // For Supabase native flow, tokens are typically in URL hash after redirect
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const tokenHash = hashParams.get('access_token'); // Supabase uses access_token in hash
-      const token = hashParams.get('refresh_token'); 
-      const type = hashParams.get('type');
-      
-      // Also check for explicit recovery tokens
-      const recoveryTokenHash = hashParams.get('token_hash');
-      const recoveryToken = hashParams.get('token');
-      
-      console.log('🔑 Extracted tokens:', { 
-        hasAccessToken: !!tokenHash, 
-        hasRefreshToken: !!token,
-        hasRecoveryTokenHash: !!recoveryTokenHash,
-        hasRecoveryToken: !!recoveryToken,
-        type 
-      });
-      
-      // Use recovery tokens if available, otherwise access tokens
-      if (recoveryTokenHash && recoveryToken && type === 'recovery') {
-        console.log('✅ Using recovery tokens');
-        return { tokenHash: recoveryTokenHash, token: recoveryToken, type };
-      }
-      
-      if (tokenHash && type === 'recovery') {
-        console.log('✅ Using access token for recovery');
-        return { tokenHash, token: tokenHash, type: 'recovery' };
-      }
-      
-      console.log('❌ No valid recovery tokens found');
-      return null;
-    } catch (error) {
-      console.error('❌ Error extracting tokens:', error);
+    console.log('🔍 Reset Password URL Debug:', {
+      fullUrl: window.location.href,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash
+    });
+
+    // Try hash parameters first (Supabase native format)
+    let params: URLSearchParams;
+    let source = '';
+    
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      params = new URLSearchParams(hash);
+      source = 'hash';
+      console.log('📍 Checking hash parameters:', hash);
+    } else if (window.location.search) {
+      // Try query parameters as fallback
+      params = new URLSearchParams(window.location.search);
+      source = 'query';
+      console.log('📍 Checking query parameters:', window.location.search);
+    } else {
+      console.log('❌ No hash or query parameters found');
       return null;
     }
+    
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const type = params.get('type');
+    
+    console.log('🔑 Token extraction results:', {
+      source,
+      access_token: access_token ? 'found' : 'missing',
+      refresh_token: refresh_token ? 'found' : 'missing',
+      type,
+      hasValidTokens: !!(access_token && refresh_token && type === 'recovery')
+    });
+    
+    if (!access_token || !refresh_token || type !== 'recovery') {
+      console.log('❌ Invalid tokens:', { access_token: !!access_token, refresh_token: !!refresh_token, type });
+      return null;
+    }
+    
+    return { access_token, refresh_token, type };
   };
 
-  const validateTokenFormat = (tokenData: TokenData): boolean => {
-    // Basic format validation
-    if (tokenData.tokenHash.length < 32) {
+  const validateTokenFormat = (access_token: string): boolean => {
+    // Basic format validation for JWT token
+    if (access_token.length < 32) {
       setErrorMessage("Invalid reset link format. The token appears to be corrupted.");
       return false;
     }
     
-    if (tokenData.token.length < 6) {
-      setErrorMessage("Invalid reset link format. The verification code is incomplete.");
+    // Check if it looks like a JWT (has dots)
+    if (!access_token.includes('.')) {
+      setErrorMessage("Invalid reset link format. The token format is incorrect.");
       return false;
     }
     
@@ -117,39 +123,50 @@ export const ResetPasswordForm: React.FC = () => {
   };
 
   const processResetLink = async () => {
+    console.log('🚀 Starting password reset link processing...');
     setIsValidating(true);
     setErrorMessage(null);
     
     try {
-      console.log('🔐 Processing password reset link...');
+      // Check if user is already authenticated
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Check if we already have a session (user clicked the email link)
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (session?.session?.user) {
-        console.log('✅ User already authenticated via email link');
+      if (user) {
+        console.log('✅ User already authenticated, allowing password reset');
         setIsValidLink(true);
-        setTokenData({ tokenHash: 'session', token: 'session', type: 'recovery' });
+        setTokenData({ access_token: 'session', refresh_token: 'session', type: 'recovery' });
+        setIsValidating(false);
         return;
       }
+
+      // Try to extract tokens from URL
+      const tokens = extractTokensFromUrl();
       
-      // Try to extract tokens from URL for manual verification
-      const extractedTokens = extractTokensFromUrl();
-      
-      if (!extractedTokens) {
-        console.log('❌ No session or tokens found');
-        setErrorMessage("This reset link is invalid or has expired. Please request a new password reset.");
+      if (!tokens) {
+        console.log('❌ No valid tokens found in URL');
+        setErrorMessage("The password reset link is invalid or malformed. Please request a new one.");
         setIsValidLink(false);
+        setIsValidating(false);
         return;
       }
-      
-      console.log('✅ Tokens extracted, storing for verification');
-      setTokenData(extractedTokens);
+
+      // Validate token format
+      if (!validateTokenFormat(tokens.access_token)) {
+        console.log('❌ Invalid token format');
+        setErrorMessage("The reset token format is invalid. Please request a new password reset.");
+        setIsValidLink(false);
+        setIsValidating(false);
+        return;
+      }
+
+      console.log('✅ Tokens validated successfully');
+      // Store tokens for later use
+      setTokenData(tokens);
       setIsValidLink(true);
       
     } catch (error) {
-      console.error('💥 Error processing reset link:', error);
-      setErrorMessage("Failed to process the reset link. Please try again or request a new reset email.");
+      console.error('❌ Error processing reset link:', error);
+      setErrorMessage("An error occurred while processing the reset link. Please try again.");
       setIsValidLink(false);
     } finally {
       setIsValidating(false);
@@ -161,91 +178,96 @@ export const ResetPasswordForm: React.FC = () => {
   }, []);
 
   const onSubmit = async (data: ResetPasswordData) => {
+    console.log('🔄 Starting password reset submission...');
     setIsSubmitting(true);
-    
+
     try {
-      console.log('🔄 Starting password reset process...');
+      // Check if user is already authenticated
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Check if we already have an active session
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (session?.session?.user) {
-        console.log('✅ Using existing authenticated session');
-        
-        // Update the password directly
-        const { error: updateError } = await supabase.auth.updateUser({
+      if (user) {
+        console.log('✅ User authenticated, updating password directly');
+        // User is authenticated, update password directly
+        const { error } = await supabase.auth.updateUser({
           password: data.password
         });
 
-        if (updateError) {
-          console.error('❌ Password update failed:', updateError);
+        if (error) {
+          console.error('❌ Password update error:', error);
           toast({
+            title: "Error",
+            description: error.message || "Failed to update password. Please try again.",
             variant: "destructive",
-            title: "Password Update Failed",
-            description: updateError.message || "Failed to update password. Please try again.",
-          });
-          return;
-        }
-      } else if (tokenData && tokenData.tokenHash !== 'session') {
-        // Try to verify tokens manually if no session
-        console.log('🔄 Verifying tokens manually...');
-        
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: tokenData.tokenHash,
-          token: tokenData.token,
-          type: 'recovery'
-        });
-
-        if (verifyError) {
-          console.error('❌ Token verification failed:', verifyError);
-          toast({
-            variant: "destructive",
-            title: "Reset Link Error",
-            description: "This reset link is invalid or has expired. Please request a new password reset.",
-          });
-          return;
-        }
-
-        // Update password after verification
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: data.password
-        });
-
-        if (updateError) {
-          console.error('❌ Password update failed:', updateError);
-          toast({
-            variant: "destructive",
-            title: "Password Update Failed",
-            description: updateError.message || "Failed to update password. Please try again.",
           });
           return;
         }
       } else {
-        throw new Error("No valid session or tokens available for password reset");
+        console.log('🔑 No authenticated user, using stored tokens');
+        // Use stored tokens to verify session
+        if (!tokenData || tokenData.access_token === 'session') {
+          console.log('❌ No token data available');
+          toast({
+            title: "Error",
+            description: "No authentication tokens found. Please request a new password reset.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('🔐 Setting session with tokens...');
+        // Set the session using the tokens
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+        });
+
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          toast({
+            title: "Authentication Error",
+            description: sessionError.message || "Failed to authenticate. Please request a new password reset.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('✅ Session established, updating password...');
+        // Update password
+        const { error } = await supabase.auth.updateUser({
+          password: data.password
+        });
+
+        if (error) {
+          console.error('❌ Password update error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to update password. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      console.log('✅ Password updated successfully');
-      setResetComplete(true);
-      
+      console.log('✅ Password updated successfully!');
       toast({
-        title: "Password Updated Successfully",
-        description: "Your password has been updated. You will be redirected to the dashboard.",
+        title: "Success",
+        description: "Your password has been updated successfully!",
       });
 
-      // Clean up and redirect
-      sessionStorage.removeItem('password-reset-flow');
-      window.history.replaceState({}, document.title, '/reset-password');
-
+      setResetComplete(true);
+      
+      // Redirect to dashboard after a short delay
       setTimeout(() => {
+        console.log('🔄 Redirecting to dashboard...');
         navigate('/dashboard/home', { replace: true });
       }, 2000);
 
     } catch (error) {
-      console.error('💥 Password reset error:', error);
+      console.error('❌ Unexpected error:', error);
       toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
-        title: "Reset Failed", 
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -322,6 +344,16 @@ export const ResetPasswordForm: React.FC = () => {
             </AlertDescription>
           </Alert>
           
+          <details className="mt-4 p-3 bg-muted/50 rounded-lg text-sm">
+            <summary className="cursor-pointer font-medium text-white">Debug Information</summary>
+            <div className="mt-2 space-y-1 text-xs font-mono text-slate-300">
+              <div>URL: {window.location.href}</div>
+              <div>Hash: {window.location.hash || 'none'}</div>
+              <div>Search: {window.location.search || 'none'}</div>
+              <div>Path: {window.location.pathname}</div>
+            </div>
+          </details>
+          
           <div className="space-y-3">
             <p className="text-slate-50 text-sm text-center">
               Please check that you used the complete link from your email, or request a new password reset.
@@ -340,10 +372,18 @@ export const ResetPasswordForm: React.FC = () => {
               )}
               
               <Button 
-                onClick={() => navigate('/signin')}
+                onClick={() => window.location.href = '/forgot-password'}
                 className="w-full bg-lime-300 hover:bg-lime-200 text-black font-semibold"
               >
-                Go to Sign In
+                Request New Reset Link
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/signin')}
+                variant="outline"
+                className="w-full border-white/20 text-white bg-black/20 hover:bg-white/20"
+              >
+                Back to Sign In
               </Button>
             </div>
           </div>

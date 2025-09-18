@@ -40,57 +40,40 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
   });
 
   const onSubmit = async (data: ForgotPasswordData) => {
+    console.log('📧 Sending password reset email...');
     setIsSubmitting(true);
-    
+
     try {
-      // Use absolute URL for password reset 
-      const resetUrl = "https://www.tradeimperial.com/reset-password";
-      
-      console.log("🔄 Sending password reset email:", {
-        email: data.email,
-        redirectTo: resetUrl,
-        timestamp: new Date().toISOString()
-      });
-      
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      console.log('🔗 Reset redirect URL:', redirectUrl);
+
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: resetUrl,
+        redirectTo: redirectUrl,
       });
 
       if (error) {
-        console.error("❌ Password reset error:", error);
-        
-        // Enhanced error handling for common production issues
-        let errorMessage = error.message;
-        
-        if (error.message?.includes('redirectTo') || error.message?.includes('redirect')) {
-          errorMessage = "The redirect URL is not configured properly. Please contact support.";
-        } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
-          errorMessage = "Too many reset attempts. Please wait a few minutes and try again.";
-        } else if (error.message?.includes('invalid') || error.message?.includes('not found')) {
-          errorMessage = "Please check your email address and try again.";
-        }
-        
+        console.error('❌ Password reset error:', error);
         toast({
+          title: "Error",
+          description: error.message || "Failed to send reset email. Please try again.",
           variant: "destructive",
-          title: "Password Reset Error",
-          description: errorMessage,
         });
         return;
       }
 
-      console.log("✅ Password reset email sent successfully");
-      
-      setEmailSent(true);
+      console.log('✅ Password reset email sent successfully');
       toast({
-        title: "Reset Email Sent",
-        description: "If an account with that email exists, we've sent you a password reset link. Please check your inbox and spam folder.",
+        title: "Success",
+        description: "Password reset email sent! Check your inbox and spam folder.",
       });
+
+      setEmailSent(true);
     } catch (error) {
-      console.error("💥 Unexpected password reset error:", error);
+      console.error('❌ Unexpected error:', error);
       toast({
-        variant: "destructive", 
-        title: "Service Error",
-        description: "An unexpected error occurred. Please try again or contact support if the problem persists.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

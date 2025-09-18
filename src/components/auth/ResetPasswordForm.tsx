@@ -186,10 +186,10 @@ export const ResetPasswordForm: React.FC = () => {
 
     try {
       // Check if user is already authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const user = currentSession?.user;
       
-      if (user && session) {
+      if (user && currentSession) {
         console.log('✅ User authenticated, updating password directly');
         // User is authenticated, update password directly
         const { error } = await supabase.auth.updateUser({
@@ -256,6 +256,14 @@ export const ResetPasswordForm: React.FC = () => {
       
       // Clear password reset flow flags
       sessionStorage.removeItem('password-reset-flow');
+      
+      // Force refresh the auth context to properly authenticate the user after password reset
+      const { data: { session: newSession } } = await supabase.auth.getSession();
+      if (newSession) {
+        console.log('🔄 Refreshing authentication after password reset');
+        // This will trigger the auth context to properly authenticate the user
+        await supabase.auth.refreshSession();
+      }
       
       toast({
         title: "Success",

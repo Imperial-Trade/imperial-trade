@@ -13,7 +13,7 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   const location = useLocation();
 
   // Routes that should not redirect authenticated users
-  const excludedPaths = ['/signin'];
+  const excludedPaths = ['/signin', '/reset-password'];
   const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
   
   // Check if current URL has password reset tokens (hash or search params)

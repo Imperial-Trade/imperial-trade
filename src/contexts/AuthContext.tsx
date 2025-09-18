@@ -237,9 +237,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // FAILSAFE: Explicit protection for password recovery flow
       if (event === 'PASSWORD_RECOVERY' || (session && hasRecoveryTokens())) {
-        console.log('🔐 Password recovery session detected - preserving recovery session');
+        console.log('🔐 Password recovery session detected - storing session WITHOUT authenticating user');
+        // Store session for password reset but DON'T authenticate user yet
         setSession(session);
-        setUser(session?.user ?? null);
+        setUser(null); // Keep user null until password is actually reset
         setIsPasswordResetFlow(true);
         
         // Mark the flow in session storage for persistence
@@ -248,20 +249,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (mounted && !authInitialized) {
           setLoading(false);
           setAuthInitialized(true);
-          console.log('✅ Auth initialization complete (password recovery)');
+          console.log('✅ Auth initialization complete (password recovery - user NOT authenticated yet)');
         }
         return;
       }
       
-      // If we're in password reset flow, let ResetPasswordForm handle the session
+      // If we're in password reset flow, store session but don't authenticate user
       if (isPasswordResetFlow && event === 'INITIAL_SESSION') {
-        console.log('🔄 Delaying auth initialization for password reset flow');
+        console.log('🔄 Password reset flow - storing session WITHOUT authenticating user');
         setSession(session);
-        setUser(session?.user ?? null);
+        setUser(null); // Keep user null until password is reset
         if (mounted && !authInitialized) {
           setLoading(false);
           setAuthInitialized(true);
-          console.log('✅ Auth initialization complete (reset flow)');
+          console.log('✅ Auth initialization complete (reset flow - user NOT authenticated)');
         }
         return;
       }
@@ -333,7 +334,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsPasswordResetFlow(true);
           sessionStorage.setItem('password-reset-flow', 'true');
           
-          // Let Supabase handle the recovery session naturally
+          // Store recovery session but don't authenticate user yet
           const { data: { session }, error } = await supabase.auth.getSession();
           if (!error && session) {
             handleAuthStateChange('PASSWORD_RECOVERY', session);

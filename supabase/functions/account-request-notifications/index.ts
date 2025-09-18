@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts"
 import { isEmailEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
-
-const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
-const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
+// Initialize Resend
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -33,9 +33,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Validate OneSignal credentials
-    if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
-      throw new Error('Missing OneSignal credentials')
+    // Validate Resend API key
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      throw new Error('Missing Resend API key')
     }
 
     switch (type) {
@@ -136,34 +137,30 @@ async function sendNewRequestNotification(
   `;
 
   const emailPromises = adminEmails.map(async (adminEmail) => {
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      target_channel: 'email',
-      include_email_tokens: [adminEmail],
-      email_subject: '🚨 New Account Request - Action Required',
-      email_body: html,
-      email_from_name: 'Imperial Trading',
-      email_from_address: 'admin@tradeimperial.com',
-      email_reply_to_address: 'admin@tradeimperial.com',
-      include_unsubscribed: true,
-      is_transactional: true
-    };
-
-    const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    const result = await resend.emails.send({
+      from: "Imperial Trading <admin@tradeimperial.com>",
+      to: [adminEmail],
+      subject: "🚨 New Account Request - Action Required",
+      html: html,
+      text: `
+        New Account Request - Action Required
+        
+        A new account request requires your attention.
+        
+        Request Details:
+        • Name: ${userName || "Not provided"}
+        • Email: ${userEmail}
+        • Submitted: ${new Date().toLocaleString()}
+        
+        Please review this request in the admin dashboard.
+        
+        Review Request: ${Deno.env.get("SITE_URL") || "https://tradeimperial.com"}/dashboard/admin
+        
+        You're receiving this because you're an administrator for Imperial Trading.
+      `
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-    }
-
-    return await response.json();
+    return result;
   });
 
   await Promise.all(emailPromises);
@@ -220,34 +217,29 @@ async function sendResubmissionNotification(
   `;
 
   const emailPromises = adminEmails.map(async (adminEmail) => {
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      target_channel: 'email',
-      include_email_tokens: [adminEmail],
-      email_subject: '🔄 Account Request Resubmitted - Review Required',
-      email_body: html,
-      email_from_name: 'Imperial Trading',
-      email_from_address: 'admin@tradeimperial.com',
-      email_reply_to_address: 'admin@tradeimperial.com',
-      include_unsubscribed: true,
-      is_transactional: true
-    };
-
-    const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    const result = await resend.emails.send({
+      from: "Imperial Trading <admin@tradeimperial.com>",
+      to: [adminEmail],
+      subject: "🔄 Account Request Resubmitted - Review Required",
+      html: html,
+      text: `
+        Request Resubmitted - Review Required
+        
+        A previously rejected request has been resubmitted with updates.
+        
+        Resubmission Details:
+        • Name: ${userName || "Not provided"}
+        • Email: ${userEmail}
+        • Resubmitted: ${new Date().toLocaleString()}
+        • Request ID: ${requestId}
+        
+        This user has addressed the previous rejection reasons and resubmitted their application. Please review the updated information.
+        
+        Review Resubmission: ${Deno.env.get("SITE_URL") || "https://tradeimperial.com"}/dashboard/admin
+      `
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-    }
-
-    return await response.json();
+    return result;
   });
 
   await Promise.all(emailPromises);
@@ -320,36 +312,31 @@ async function sendApprovalNotification({ userEmail, userName }: any) {
     </div>
   `;
 
-  const payload = {
-    app_id: ONESIGNAL_APP_ID,
-    target_channel: 'email',
-    include_email_tokens: [userEmail],
-    email_subject: '🎉 Welcome to Imperial Trading - Account Approved!',
-    email_body: html,
-    email_from_name: 'Imperial Trading',
-    email_from_address: 'welcome@tradeimperial.com',
-    email_reply_to_address: 'welcome@tradeimperial.com',
-    include_unsubscribed: true,
-    is_transactional: true
-  };
-
-  const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+  const result = await resend.emails.send({
+    from: "Imperial Trading <welcome@tradeimperial.com>",
+    to: [userEmail],
+    subject: "🎉 Welcome to Imperial Trading - Account Approved!",
+    html: html,
+    text: `
+      Congratulations, ${userName || "Trader"}!
+      
+      Your Account Has Been Approved!
+      
+      Welcome to Imperial Trading! Your account has been approved and you now have full access to our premium trading platform.
+      
+      What's next:
+      • Access your trading dashboard
+      • Join live trading sessions
+      • Connect with our trading community
+      • Access premium trading tools and signals
+      
+      Access Your Dashboard: ${Deno.env.get("SITE_URL") || "https://tradeimperial.com"}/dashboard/home
+      
+      © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+    `
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  return new Response(JSON.stringify({ success: true, data }), {
+  return new Response(JSON.stringify({ success: true, data: result }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
@@ -394,36 +381,30 @@ async function sendRejectionNotification({ userEmail, userName, reason }: any) {
     </div>
   `;
 
-  const payload = {
-    app_id: ONESIGNAL_APP_ID,
-    target_channel: 'email',
-    include_email_tokens: [userEmail],
-    email_subject: 'Imperial Trading - Account Request Update',
-    email_body: html,
-    email_from_name: 'Imperial Trading',
-    email_from_address: 'support@tradeimperial.com',
-    email_reply_to_address: 'support@tradeimperial.com',
-    include_unsubscribed: true,
-    is_transactional: true
-  };
-
-  const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+  const result = await resend.emails.send({
+    from: "Imperial Trading <support@tradeimperial.com>",
+    to: [userEmail],
+    subject: "Imperial Trading - Account Request Update",
+    html: html,
+    text: `
+      Account Request Update
+      
+      Hello ${userName || "there"},
+      
+      Thank you for your interest in joining Imperial Trading. After careful review, we're unable to approve your account request at this time.
+      
+      Reason for rejection: ${reason}
+      
+      You can resubmit your application
+      Please address the feedback above and feel free to submit a new application. We encourage you to review our requirements and try again.
+      
+      Submit New Application: ${Deno.env.get("SITE_URL") || "https://tradeimperial.com"}/access-request
+      
+      If you have any questions about this decision or need clarification on the requirements, please don't hesitate to contact our support team.
+    `
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  return new Response(JSON.stringify({ success: true, data }), {
+  return new Response(JSON.stringify({ success: true, data: result }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
@@ -475,34 +456,27 @@ async function sendDailyDigest(supabase: any) {
   `;
 
   const emailPromises = adminEmails.map(async (adminEmail) => {
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      target_channel: 'email',
-      include_email_tokens: [adminEmail],
-      email_subject: `📊 Daily Digest - ${count} Pending Account Request${count > 1 ? "s" : ""}`,
-      email_body: html,
-      email_from_name: 'Imperial Trading',
-      email_from_address: 'digest@tradeimperial.com',
-      email_reply_to_address: 'digest@tradeimperial.com',
-      include_unsubscribed: true,
-      is_transactional: true
-    };
-
-    const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    const result = await resend.emails.send({
+      from: "Imperial Trading <digest@tradeimperial.com>",
+      to: [adminEmail],
+      subject: `📊 Daily Digest - ${count} Pending Account Request${count > 1 ? "s" : ""}`,
+      html: html,
+      text: `
+        Daily Digest - ${count} Pending Account Request${count > 1 ? "s" : ""}
+        
+        Hello Admin,
+        
+        You have ${count} pending account request${count > 1 ? "s" : ""} that require your attention.
+        
+        Please review and process these requests when you have a moment.
+        
+        Review Requests: ${Deno.env.get("SITE_URL") || "https://tradeimperial.com"}/dashboard/admin
+        
+        This digest is sent daily at 9:00 AM. You can modify your notification preferences in the admin panel.
+      `
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-    }
-
-    return await response.json();
+    return result;
   });
 
   await Promise.all(emailPromises);
@@ -548,36 +522,24 @@ async function sendTestNotification() {
     </div>
   `;
 
-  const payload = {
-    app_id: ONESIGNAL_APP_ID,
-    target_channel: 'email',
-    include_email_tokens: ['admin@tradeimperial.com'],
-    email_subject: '🧪 Test Notification - Imperial Trading Admin',
-    email_body: html,
-    email_from_name: 'Imperial Trading',
-    email_from_address: 'test@tradeimperial.com',
-    email_reply_to_address: 'test@tradeimperial.com',
-    include_unsubscribed: true,
-    is_transactional: true
-  };
-
-  const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+  const result = await resend.emails.send({
+    from: "Imperial Trading <test@tradeimperial.com>",
+    to: ['admin@tradeimperial.com'],
+    subject: "🧪 Test Notification - Imperial Trading Admin",
+    html: html,
+    text: `
+      Test Notification - Imperial Trading Admin
+      
+      This is a test notification to verify that the email system is working correctly.
+      
+      Status: All systems operational
+      Timestamp: ${new Date().toLocaleString()}
+      
+      This test was triggered from the admin panel notification settings.
+    `
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OneSignal API error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  return new Response(JSON.stringify({ success: true, data }), {
+  return new Response(JSON.stringify({ success: true, data: result }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

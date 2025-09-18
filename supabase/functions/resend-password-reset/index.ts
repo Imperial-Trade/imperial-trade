@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,22 +21,12 @@ interface EmailPayload {
   };
 }
 
-interface OneSignalEmailRequest {
-  app_id: string;
-  template_id: string;
-  recipient_email: string;
-  custom_data: {
-    user_name: string;
-    reset_url: string;
-    user_email: string;
-  };
-}
-
 // Configuration
-const ONESIGNAL_APP_ID = "7cd646c9-8a9d-4296-9979-c64a53074bcc";
-const ONESIGNAL_EMAIL_TEMPLATE_ID = "bb9bdc05-5ef5-4e26-87f8-563f9c992bc2";
-const MAX_RETRY_ATTEMPTS = 2;
-const REQUEST_TIMEOUT_MS = 10000;
+const MAX_RETRY_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 15000;
+
+// Initialize Resend
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 // Enhanced error types
 class ConfigurationError extends Error {
@@ -53,15 +44,15 @@ class EmailDeliveryError extends Error {
 }
 
 // Validate environment and configuration
-function validateConfiguration(): { oneSignalApiKey: string; isProduction: boolean } {
-  const oneSignalApiKey = Deno.env.get('ONESIGNAL_API_KEY');
+function validateConfiguration(): { resendApiKey: string; isProduction: boolean } {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
   
-  if (!oneSignalApiKey) {
-    throw new ConfigurationError('OneSignal API key is not configured. Please set ONESIGNAL_API_KEY environment variable.');
+  if (!resendApiKey) {
+    throw new ConfigurationError('Resend API key is not configured. Please set RESEND_API_KEY environment variable.');
   }
 
-  if (oneSignalApiKey.length < 10) {
-    throw new ConfigurationError('OneSignal API key appears to be invalid (too short).');
+  if (resendApiKey.length < 10) {
+    throw new ConfigurationError('Resend API key appears to be invalid (too short).');
   }
 
   const isProduction = Deno.env.get('ENVIRONMENT') === 'production' || 
@@ -69,13 +60,12 @@ function validateConfiguration(): { oneSignalApiKey: string; isProduction: boole
 
   console.log('🔧 Configuration validated:', {
     hasApiKey: true,
-    keyLength: oneSignalApiKey.length,
+    keyLength: resendApiKey.length,
     isProduction,
-    appId: ONESIGNAL_APP_ID,
-    templateId: ONESIGNAL_EMAIL_TEMPLATE_ID
+    provider: 'Resend'
   });
 
-  return { oneSignalApiKey, isProduction };
+  return { resendApiKey, isProduction };
 }
 
 // Build secure password reset URL
@@ -107,82 +97,98 @@ function buildSecureResetUrl(tokenHash: string, token: string): string {
   }
 }
 
-// Send email with retry logic and comprehensive error handling
+// Create professional password reset email HTML
+function createPasswordResetEmailHtml(userName: string, resetUrl: string): string {
+  return `
+    <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #ffffff;">
+      <div style="background: linear-gradient(135deg, #c09a58, #e6d3b3); padding: 40px 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Imperial Trading</h1>
+        <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">Elite Trading Community</p>
+      </div>
+      
+      <div style="padding: 40px 20px;">
+        <h2 style="color: #c09a58; font-size: 24px; margin-bottom: 20px;">🔐 Password Reset Request</h2>
+        
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+          Hello ${userName},
+        </p>
+        
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+          We received a request to reset your password for your Imperial Trading account. If you made this request, click the button below to reset your password.
+        </p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" 
+             style="background: #c09a58; color: #0a0a0a; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+            Reset Your Password
+          </a>
+        </div>
+        
+        <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #c09a58; margin-top: 0;">🛡️ Security Information:</h3>
+          <ul style="list-style: none; padding: 0; color: #cccccc;">
+            <li style="margin: 8px 0;">• This link will expire in 24 hours</li>
+            <li style="margin: 8px 0;">• If you didn't request this, you can safely ignore this email</li>
+            <li style="margin: 8px 0;">• Your account remains secure</li>
+          </ul>
+        </div>
+        
+        <p style="font-size: 14px; color: #888888; margin-top: 30px;">
+          If the button doesn't work, copy and paste this link into your browser:
+        </p>
+        <p style="font-size: 12px; color: #666666; word-break: break-all; background: #1a1a1a; padding: 10px; border-radius: 4px;">
+          ${resetUrl}
+        </p>
+      </div>
+      
+      <div style="background: #1a1a1a; padding: 20px; text-align: center; border-top: 1px solid #333;">
+        <p style="margin: 0; color: #888; font-size: 14px;">
+          © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+// Send email with retry logic using Resend
 async function sendPasswordResetEmail(
   email: string, 
   resetUrl: string, 
-  userName: string, 
-  apiKey: string
+  userName: string
 ): Promise<any> {
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
     try {
-      console.log(`📧 Sending password reset email (attempt ${attempt}/${MAX_RETRY_ATTEMPTS})`, {
+      console.log(`📧 Sending password reset email via Resend (attempt ${attempt}/${MAX_RETRY_ATTEMPTS})`, {
         recipient: email,
         userName,
         resetUrlLength: resetUrl.length
       });
 
-      const emailPayload: OneSignalEmailRequest = {
-        app_id: ONESIGNAL_APP_ID,
-        template_id: ONESIGNAL_EMAIL_TEMPLATE_ID,
-        recipient_email: email,
-        custom_data: {
-          user_name: userName,
-          reset_url: resetUrl,
-          user_email: email,
-        },
-      };
+      const emailHtml = createPasswordResetEmailHtml(userName, resetUrl);
 
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-      const response = await fetch('https://api.onesignal.com/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${apiKey}`,
-        },
-        body: JSON.stringify(emailPayload),
-        signal: controller.signal,
+      const result = await resend.emails.send({
+        from: "Imperial Trading <security@tradeimperial.com>",
+        to: [email],
+        subject: "🔐 Reset Your Imperial Trading Password",
+        html: emailHtml,
+        text: `
+          Hello ${userName},
+          
+          We received a request to reset your password for your Imperial Trading account.
+          
+          Click this link to reset your password: ${resetUrl}
+          
+          This link will expire in 24 hours. If you didn't request this, you can safely ignore this email.
+          
+          Best regards,
+          Imperial Trading Security Team
+        `
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ OneSignal API error (${response.status}):`, errorText);
-        
-        // Don't retry on certain errors
-        if (response.status === 400 || response.status === 401 || response.status === 403) {
-          throw new EmailDeliveryError(
-            `OneSignal API authentication/validation error: ${response.status} - ${errorText}`,
-            response.status,
-            { responseText: errorText }
-          );
-        }
-        
-        // Retry on server errors
-        lastError = new EmailDeliveryError(
-          `OneSignal API server error: ${response.status} - ${errorText}`,
-          response.status,
-          { responseText: errorText }
-        );
-        
-        if (attempt < MAX_RETRY_ATTEMPTS) {
-          console.log(`⏳ Retrying in ${attempt * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-          continue;
-        }
-        
-        throw lastError;
-      }
-
-      const result = await response.json();
-      console.log('✅ OneSignal email sent successfully:', {
-        id: result.id,
+      console.log('✅ Resend email sent successfully:', {
+        id: result.data?.id,
         recipient: email,
         attempt
       });
@@ -193,11 +199,7 @@ async function sendPasswordResetEmail(
       console.error(`❌ Email attempt ${attempt} failed:`, error);
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      // Don't retry on abort/timeout or configuration errors
-      if (error.name === 'AbortError' || error instanceof ConfigurationError) {
-        throw error;
-      }
-      
+      // For Resend, we can retry on most errors
       if (attempt < MAX_RETRY_ATTEMPTS) {
         console.log(`⏳ Retrying in ${attempt * 1000}ms...`);
         await new Promise(resolve => setTimeout(resolve, attempt * 1000));
@@ -208,28 +210,14 @@ async function sendPasswordResetEmail(
   throw lastError || new Error('Failed to send email after all retry attempts');
 }
 
-// Fallback email mechanism (log-based for now, could be extended)
-async function handleEmailFallback(email: string, resetUrl: string, error: Error): Promise<void> {
-  console.warn('📧 Primary email delivery failed, implementing fallback:', {
+// Development mode support - log reset URLs for testing
+function handleDevelopmentMode(email: string, resetUrl: string, userName: string): void {
+  console.log('🔧 DEVELOPMENT MODE - Password Reset URL:', {
     recipient: email,
-    error: error.message,
-    resetUrl: resetUrl.substring(0, 100) + '...'
-  });
-  
-  // In a production environment, you might:
-  // - Store the reset request in a database for manual processing
-  // - Send to a backup email service
-  // - Queue for retry later
-  // - Alert administrators
-  
-  // For now, we'll just log it comprehensively
-  console.error('🚨 EMAIL DELIVERY FAILURE ALERT 🚨', {
+    userName,
+    resetUrl,
     timestamp: new Date().toISOString(),
-    recipient: email,
-    errorType: error.name,
-    errorMessage: error.message,
-    resetUrl: resetUrl,
-    action: 'ADMIN_INTERVENTION_REQUIRED'
+    message: 'In development, check logs for reset URLs'
   });
 }
 
@@ -242,17 +230,16 @@ serve(async (req: Request) => {
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
     try {
-      const { oneSignalApiKey, isProduction } = validateConfiguration();
+      const { resendApiKey, isProduction } = validateConfiguration();
       
       return new Response(JSON.stringify({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         environment: isProduction ? 'production' : 'development',
+        provider: 'Resend',
         configuration: {
           hasApiKey: true,
-          keyLength: oneSignalApiKey.length,
-          appId: ONESIGNAL_APP_ID,
-          templateId: ONESIGNAL_EMAIL_TEMPLATE_ID
+          keyLength: resendApiKey.length
         }
       }), {
         status: 200,
@@ -290,7 +277,7 @@ serve(async (req: Request) => {
     });
     
     // Validate configuration first
-    const { oneSignalApiKey } = validateConfiguration();
+    const { isProduction } = validateConfiguration();
     
     // Parse and validate request payload
     let payload: EmailPayload;
@@ -366,23 +353,28 @@ serve(async (req: Request) => {
                     user.email.split('@')[0] || 
                     'User';
 
+    // Development mode support
+    if (!isProduction) {
+      handleDevelopmentMode(user.email, resetUrl, userName);
+    }
+
     // Attempt to send password reset email
     try {
       const emailResult = await sendPasswordResetEmail(
         user.email,
         resetUrl,
-        userName,
-        oneSignalApiKey
+        userName
       );
 
-      console.log('✅ Password reset email sent successfully');
+      console.log('✅ Password reset email sent successfully via Resend');
       
       return new Response(JSON.stringify({
         success: true,
         message: 'Password reset email sent successfully',
         email_sent: true,
         recipient: user.email,
-        email_id: emailResult.id,
+        email_id: emailResult.data?.id,
+        provider: 'Resend',
         timestamp: new Date().toISOString()
       }), {
         status: 200,
@@ -390,23 +382,23 @@ serve(async (req: Request) => {
       });
 
     } catch (emailError) {
-      console.error('❌ Email delivery failed:', emailError);
+      console.error('❌ Email delivery failed via Resend:', emailError);
       
-      // Implement fallback handling
-      await handleEmailFallback(user.email, resetUrl, emailError);
+      // In development, still log the URL
+      if (!isProduction) {
+        handleDevelopmentMode(user.email, resetUrl, userName);
+      }
       
-      // For now, we'll still return success to prevent Supabase from blocking
-      // In production, you might want to return an error depending on your requirements
       return new Response(JSON.stringify({
-        success: true, // Changed to true to prevent blocking
-        message: 'Password reset initiated - if email delivery fails, please contact support',
+        success: false,
+        message: 'Failed to send password reset email',
         email_sent: false,
         recipient: user.email,
         error: emailError.message,
-        fallback_activated: true,
+        provider: 'Resend',
         timestamp: new Date().toISOString()
       }), {
-        status: 200, // Changed to 200 to prevent hook failure
+        status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
@@ -421,9 +413,10 @@ serve(async (req: Request) => {
              'Service configuration error' : 
              'Internal server error',
       code: error instanceof ConfigurationError ? 'CONFIG_ERROR' : 'INTERNAL_ERROR',
+      provider: 'Resend',
       timestamp: new Date().toISOString(),
       ...(error instanceof ConfigurationError && { 
-        details: 'Please check OneSignal configuration' 
+        details: 'Please check Resend API key configuration' 
       })
     };
     

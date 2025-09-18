@@ -61,9 +61,39 @@ export const ResetPasswordForm: React.FC = () => {
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
     const type = searchParams.get('type');
+    const error = searchParams.get('error');
+    const errorCode = searchParams.get('error_code');
+    const errorDescription = searchParams.get('error_description');
 
+    console.log('🔍 Reset password URL params:', {
+      accessToken: accessToken ? 'present' : 'missing',
+      refreshToken: refreshToken ? 'present' : 'missing',
+      type,
+      error,
+      errorCode,
+      errorDescription
+    });
+
+    // Handle specific error cases from the URL
+    if (error) {
+      let errorMessage = 'Password reset failed.';
+      
+      if (errorCode === 'otp_expired') {
+        errorMessage = 'This password reset link has expired. Please request a new one.';
+      } else if (error === 'access_denied') {
+        errorMessage = 'Invalid password reset link. Please request a new one.';
+      } else if (errorDescription) {
+        errorMessage = decodeURIComponent(errorDescription);
+      }
+      
+      toast.error(errorMessage);
+      navigate('/signin');
+      return;
+    }
+
+    // Validate required tokens
     if (!accessToken || !refreshToken || type !== 'recovery') {
-      toast.error('Invalid or expired reset link. Please request a new password reset.');
+      toast.error('Invalid or missing reset tokens. Please request a new password reset.');
       navigate('/signin');
     }
   }, [searchParams, navigate]);

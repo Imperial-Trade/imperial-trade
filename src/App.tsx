@@ -87,21 +87,6 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🏗️ App component initializing...');
-  
-  // Simplified password reset detection - only activate for actual /reset-password route with tokens
-  const isPasswordResetFlow = React.useMemo(() => {
-    const isResetRoute = window.location.pathname === '/reset-password';
-    const hasResetTokens = window.location.hash.includes('token_hash') || 
-                          window.location.search.includes('token_hash');
-    
-    console.log('🔍 Password reset flow check:', {
-      isResetRoute,
-      hasResetTokens,
-      willActivate: isResetRoute && hasResetTokens
-    });
-    
-    return isResetRoute && hasResetTokens;
-  }, []);
 
   // Initialize app state on startup
   React.useEffect(() => {
@@ -114,42 +99,6 @@ function App() {
       console.error('❌ Error during app state initialization:', error);
     }
   }, []);
-
-  // If password reset flow detected, render ONLY the reset page with minimal providers
-  if (isPasswordResetFlow) {
-    console.log('🔐 App: Password reset flow detected!');
-    console.log('🔍 URL Debug:', { 
-      pathname: window.location.pathname, 
-      hash: window.location.hash, 
-      search: window.location.search 
-    });
-    
-    try {
-      return (
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <Sonner />
-            <BrowserRouter>
-              <ScrollToTop />
-              <Routes>
-                <Route path="*" element={<ResetPasswordPage />} />
-              </Routes>
-            </BrowserRouter>
-          </ThemeProvider>
-        </QueryClientProvider>
-      );
-    } catch (error) {
-      console.error('❌ Error rendering password reset flow:', error);
-      // Fallback for password reset
-      return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-          <h1>Password Reset</h1>
-          <p>There was an error loading the password reset page. Please try refreshing.</p>
-          <button onClick={() => window.location.reload()}>Refresh Page</button>
-        </div>
-      );
-    }
-  }
 
   console.log('🚀 App: Rendering normal application flow...');
 

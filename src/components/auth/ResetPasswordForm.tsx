@@ -61,34 +61,52 @@ export const ResetPasswordForm: React.FC = () => {
 
   const extractTokensFromUrl = (): TokenData | null => {
     try {
-      console.log('🔍 Extracting tokens from URL:', window.location.href);
+      const url = window.location.href;
+      console.log('🔍 Extracting tokens from URL:', url);
+      console.log('🔍 URL Components:', {
+        pathname: window.location.pathname,
+        hash: window.location.hash,
+        search: window.location.search,
+        href: url
+      });
       
-      // Check hash parameters first (primary method)
+      // Check hash parameters first (Supabase auth URLs use hash)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       let tokenHash = hashParams.get('token_hash');
       let token = hashParams.get('token');
       let type = hashParams.get('type');
       
+      console.log('🔑 Hash params extracted:', { tokenHash: !!tokenHash, token: !!token, type });
+      
       // Fallback to search parameters
       if (!tokenHash || !token) {
+        console.log('🔄 Trying search parameters as fallback...');
         const searchParams = new URLSearchParams(window.location.search);
         tokenHash = tokenHash || searchParams.get('token_hash');
         token = token || searchParams.get('token');
         type = type || searchParams.get('type');
+        console.log('🔑 Search params extracted:', { tokenHash: !!tokenHash, token: !!token, type });
       }
       
-      console.log('🎯 Token extraction result:', {
+      console.log('🎯 Final token extraction result:', {
         hasTokenHash: !!tokenHash,
         hasToken: !!token,
         type,
         tokenHashLength: tokenHash?.length || 0,
-        tokenLength: token?.length || 0
+        tokenLength: token?.length || 0,
+        typeValid: type === 'recovery'
       });
       
       if (tokenHash && token && type === 'recovery') {
+        console.log('✅ Valid recovery tokens found for password reset');
         return { tokenHash, token, type };
       }
       
+      console.log('❌ Missing or invalid tokens for password reset:', {
+        missingTokenHash: !tokenHash,
+        missingToken: !token, 
+        invalidType: type !== 'recovery'
+      });
       return null;
     } catch (error) {
       console.error('❌ Error extracting tokens:', error);
@@ -117,15 +135,24 @@ export const ResetPasswordForm: React.FC = () => {
     
     try {
       console.log('🔐 Processing password reset link...');
+      console.log('📍 Current URL state:', {
+        href: window.location.href,
+        pathname: window.location.pathname,
+        hash: window.location.hash,
+        search: window.location.search
+      });
       
       // Extract tokens from URL
       const extractedTokens = extractTokensFromUrl();
       
       if (!extractedTokens) {
+        console.log('❌ No tokens found - displaying error message');
         setErrorMessage("No valid reset tokens found in the URL. Please use the complete link from your email.");
         setIsValidLink(false);
         return;
       }
+      
+      console.log('✅ Tokens extracted successfully, validating format...');
       
       // Validate token format
       if (!validateTokenFormat(extractedTokens)) {

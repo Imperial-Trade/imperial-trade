@@ -155,6 +155,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
+    // Public pages that should clear auth
+    const publicPaths = [
+      '/', 
+      '/signin', 
+      '/reset-password',
+      '/advanced-tools', 
+      '/signals', 
+      '/education', 
+      '/live-sessions', 
+      '/community-forum', 
+      '/ib-partnership', 
+      '/ib-partnership-new', 
+      '/imperial-partnership',
+      '/about',
+      '/features'
+    ];
+    
+    const hasRecoveryTokens = () => {
+      const params = new URLSearchParams(window.location.search);
+      const fragment = new URLSearchParams(window.location.hash.substring(1));
+      
+      // Check for recovery-related tokens in URL parameters or fragments
+      const recoveryIndicators = [
+        'access_token',
+        'refresh_token', 
+        'token_hash',
+        'type'
+      ];
+      
+      const hasTokensInParams = recoveryIndicators.some(param => params.has(param));
+      const hasTokensInFragment = recoveryIndicators.some(param => fragment.has(param));
+      const isRecoveryType = params.get('type') === 'recovery' || fragment.get('type') === 'recovery';
+      
+      return hasTokensInParams || hasTokensInFragment || isRecoveryType;
+    };
+    
+    const isTruePublicPage = () => {
+      const isPublicPath = publicPaths.includes(window.location.pathname);
+      
+      // If we're on reset-password page with recovery tokens, don't treat as public page
+      if (window.location.pathname === '/reset-password' && hasRecoveryTokens()) {
+        console.log('🔐 Reset password page with recovery tokens detected - preserving auth session');
+        return false;
+      }
+      
+      return isPublicPath;
+    };
+    
     const handleAuthStateChange = (event: string, session: Session | null) => {
       if (!mounted) return;
       
@@ -218,9 +266,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    // THEN check for existing session
+    // THEN check for existing session (only if not on true public page)
     const initializeAuth = async () => {
       try {
+        // Only clear auth for true public pages
+        if (isTruePublicPage()) {
+          console.log('🏠 On true public page - clearing auth and skipping session restoration');
+          await supabase.auth.signOut({ scope: 'local' });
+          cleanupAuthState();
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+            setAuthInitialized(true);
+          }
+          return;
+        }
+
         console.log('🚀 Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -292,7 +355,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileLoading,
         signOut, 
         refreshSession, 
-        refreshProfile 
+        refreshProfile
       }}
     >
       <div data-auth-provider="true">

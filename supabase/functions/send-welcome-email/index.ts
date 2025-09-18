@@ -1,10 +1,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts"
 import { isEmailEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
-const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
-const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
+// Initialize Resend
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -24,9 +25,10 @@ serve(async (req) => {
       )
     }
 
-    // Validate OneSignal credentials
-    if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
-      throw new Error('Missing OneSignal credentials')
+    // Validate Resend API key
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      throw new Error('Missing Resend API key')
     }
 
     if (!email || !name) {
@@ -39,7 +41,7 @@ serve(async (req) => {
     const html = `
       <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #ffffff;">
         <div style="background: linear-gradient(135deg, #c09a58, #e6d3b3); padding: 40px 20px; text-align: center;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Imperial Trading</h1>
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Trade Imperial</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">Elite Trading Community</p>
         </div>
         
@@ -47,7 +49,7 @@ serve(async (req) => {
           <h2 style="color: #c09a58; font-size: 24px; margin-bottom: 20px;">Welcome to Exclusive Access, ${name}!</h2>
           
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Congratulations! Your account has been approved and you now have exclusive access to Imperial Trading's premium features.
+            Congratulations! Your account has been approved and you now have exclusive access to Trade Imperial's premium features.
           </p>
           
           <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -90,47 +92,43 @@ serve(async (req) => {
         
         <div style="background: #1a1a1a; padding: 20px; text-align: center; border-top: 1px solid #333;">
           <p style="margin: 0; color: #888; font-size: 14px;">
-            © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+            © ${new Date().getFullYear()} Trade Imperial. All rights reserved.
           </p>
         </div>
       </div>
     `;
 
-    // Send via OneSignal
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      target_channel: 'email',
-      include_email_tokens: [email],
-      email_subject: 'Welcome to Imperial Trading - Exclusive Access Granted',
-      email_body: html,
-      email_from_name: 'Imperial Trading',
-      email_from_address: 'welcome@tradeimperial.com',
-      email_reply_to_address: 'welcome@tradeimperial.com',
-      include_unsubscribed: true,
-      is_transactional: true
-    }
+    // Send via Resend
+    const result = await resend.emails.send({
+      from: "Trade Imperial <welcome@tradeimperial.com>",
+      to: [email],
+      subject: "🎉 Welcome to Trade Imperial - Exclusive Access Granted",
+      html: html,
+      text: `
+        Welcome to Exclusive Access, ${name}!
+        
+        Congratulations! Your account has been approved and you now have exclusive access to Trade Imperial's premium features.
+        
+        What's included in your membership:
+        • Live trading sessions with professional traders
+        • Advanced trading tools and analytics
+        • Exclusive market insights and signals
+        • Community forum access
+        • Educational resources and courses
+        
+        You can now access your dashboard and start your journey to trading mastery.
+        
+        Access Your Dashboard: ${Deno.env.get('SITE_URL') || 'https://tradeimperial.com'}/dashboard/home
+        
+        © ${new Date().getFullYear()} Trade Imperial. All rights reserved.
+      `
+    });
 
-    const response = await fetch('https://api.onesignal.com/notifications?c=email', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      const sanitizedError = sanitizeError(`OneSignal API error: ${response.status} ${errorText}`);
-      throw new Error(sanitizedError)
-    }
-
-    const data = await response.json()
     const hashedEmail = await hashId(email);
-    console.log(`event=EMAIL_SUCCESS hashed_email=${hashedEmail} provider=OneSignal`);
+    console.log(`event=EMAIL_SUCCESS hashed_email=${hashedEmail} provider=Resend`);
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: result }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 

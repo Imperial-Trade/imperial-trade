@@ -44,6 +44,3 @@ verify_jwt = false
 
 [functions.test-notification]
 verify_jwt = false
-
-[functions.password-reset]
-verify_jwt = false

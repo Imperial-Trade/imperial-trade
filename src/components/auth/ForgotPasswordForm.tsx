@@ -40,33 +40,40 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
   });
 
   const onSubmit = async (data: ForgotPasswordData) => {
+    console.log('📧 Sending password reset email...');
     setIsSubmitting(true);
-    
+
     try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      console.log('🔗 Reset redirect URL:', redirectUrl);
+
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectUrl,
       });
 
       if (error) {
+        console.error('❌ Password reset error:', error);
         toast({
-          variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: error.message || "Failed to send reset email. Please try again.",
+          variant: "destructive",
         });
         return;
       }
 
-      setEmailSent(true);
+      console.log('✅ Password reset email sent successfully');
       toast({
-        title: "Email Sent",
-        description: "If an account with that email exists, we've sent you a password reset link.",
+        title: "Success",
+        description: "Password reset email sent! Check your inbox and spam folder.",
       });
+
+      setEmailSent(true);
     } catch (error) {
-      console.error("Password reset error:", error);
+      console.error('❌ Unexpected error:', error);
       toast({
-        variant: "destructive", 
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

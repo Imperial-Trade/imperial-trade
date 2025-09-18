@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
@@ -11,6 +11,9 @@ import { LoginForm } from "@/components/login/LoginForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
+import { cleanupAuthState } from "@/utils/authUtils";
+import { supabase } from "@/integrations/supabase/client";
+
 export default function SigninPage() {
   const [status, setStatus] = useState({
     type: "",
@@ -23,6 +26,32 @@ export default function SigninPage() {
     isSubmitting,
   } = useLoginForm();
   const navigate = useNavigate();
+
+  // Clear auth state only if not coming from password reset flow
+  useEffect(() => {
+    const clearAuthOnSignin = async () => {
+      // Check if we're in a password reset flow by looking at referrer or navigation state
+      const isFromPasswordReset = window.document.referrer.includes('/reset-password') ||
+                                  window.location.pathname.includes('reset-password') ||
+                                  sessionStorage.getItem('password-reset-flow');
+      
+      if (isFromPasswordReset) {
+        console.log('🔐 Skipping auth cleanup - coming from password reset flow');
+        return;
+      }
+      
+      console.log('🏠 Signin page loaded - clearing existing auth state');
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+        cleanupAuthState();
+      } catch (error) {
+        console.warn('Error clearing auth state on signin:', error);
+      }
+    };
+    
+    clearAuthOnSignin();
+  }, []);
+
   const handleFormSubmit = async (data: any) => {
     try {
       // Login logic will be handled in the hook

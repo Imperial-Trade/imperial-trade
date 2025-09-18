@@ -1,7 +1,7 @@
 // Route-Gated Subscriptions Hook - Only subscribe to data needed for current route
 // This prevents unnecessary realtime connections and reduces costs significantly
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
@@ -120,6 +120,7 @@ export function useRouteGatedSubscriptions(): RouteSubscriptionConfig {
 // Helper hook for components to check if they should establish realtime connections
 export function useRealtimeGate(subscriptionType: string): boolean {
   const { isSubscriptionAllowed } = useRouteGatedSubscriptions();
+  
   const allowed = isSubscriptionAllowed(subscriptionType);
   
   useEffect(() => {

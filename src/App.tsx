@@ -21,7 +21,7 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
-import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
+
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
@@ -86,34 +86,47 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log('🏗️ App component initializing...');
+
   // Initialize app state on startup
   React.useEffect(() => {
-    initializeAppState();
-    verifyServiceWorkerSafety();
+    console.log('🔧 Initializing app state...');
+    try {
+      initializeAppState();
+      verifyServiceWorkerSafety();
+      console.log('✅ App state initialized successfully');
+    } catch (error) {
+      console.error('❌ Error during app state initialization:', error);
+    }
   }, []);
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <RealtimeShutdownGuard />
-        <VersionChecker />
-        <CacheCleanerMount />
-        <Sonner />
-        <BrowserRouter>
-            <ScrollToTop />
-            <AuthProvider>
-              <WelcomeProvider>
-                <NotificationPromptProvider>
-                  <NavigationGuard>
-                     <RealtimeHealthProvider>
-                       <RealtimeConnectionManagerProvider>
-                         <TelemetryProvider>
-                        <GlobalPreviewControlProvider>
-                        <OptimizedWebSocketPriceProvider>
-                        <WebSocketErrorBoundary>
-                          <ContextErrorBoundary>
-                            <SharedRealtimeProvider>
-                              <SignalRealtimeProvider>
+  console.log('🚀 App: Rendering normal application flow...');
+
+  // Normal app flow with all providers
+  try {
+    console.log('🌐 Rendering main application with all providers...');
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <RealtimeShutdownGuard />
+          <VersionChecker />
+          <CacheCleanerMount />
+          <Sonner />
+          <BrowserRouter>
+              <ScrollToTop />
+              <AuthProvider>
+                <WelcomeProvider>
+                  <NotificationPromptProvider>
+                    <NavigationGuard>
+                       <RealtimeHealthProvider>
+                         <RealtimeConnectionManagerProvider>
+                           <TelemetryProvider>
+                          <GlobalPreviewControlProvider>
+                          <OptimizedWebSocketPriceProvider>
+                          <WebSocketErrorBoundary>
+                            <ContextErrorBoundary>
+                              <SharedRealtimeProvider>
+                                <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -121,34 +134,34 @@ function App() {
                           element={<LandingLayout />}
                           errorElement={<RouteErrorBoundary />}
                         >
-                          <Route index element={<AuthenticatedRedirect><Landing /></AuthenticatedRedirect>} />
-                          <Route path="about" element={<AuthenticatedRedirect><About /></AuthenticatedRedirect>} />
-                          <Route path="features" element={<AuthenticatedRedirect><Features /></AuthenticatedRedirect>} />
+                          <Route index element={<Landing />} />
+                          <Route path="about" element={<About />} />
+                          <Route path="features" element={<Features />} />
                           <Route
                             path="advanced-tools"
-                            element={<AuthenticatedRedirect><AdvancedToolsPage /></AuthenticatedRedirect>}
+                            element={<AdvancedToolsPage />}
                           />
-                          <Route path="signals" element={<AuthenticatedRedirect><SignalsPage /></AuthenticatedRedirect>} />
-                          <Route path="education" element={<AuthenticatedRedirect><EducationPage /></AuthenticatedRedirect>} />
+                          <Route path="signals" element={<SignalsPage />} />
+                          <Route path="education" element={<EducationPage />} />
                           <Route
                             path="live-sessions"
-                            element={<AuthenticatedRedirect><LiveSessionsPage /></AuthenticatedRedirect>}
+                            element={<LiveSessionsPage />}
                           />
                           <Route
                             path="community-forum"
-                            element={<AuthenticatedRedirect><CommunityForumPage /></AuthenticatedRedirect>}
+                            element={<CommunityForumPage />}
                           />
 <Route
                             path="ib-partnership"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                           <Route
                             path="ib-partnership-new"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                           <Route
                             path="imperial-partnership"
-                            element={<AuthenticatedRedirect><ImperialPartnership /></AuthenticatedRedirect>}
+                            element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />
@@ -329,6 +342,38 @@ function App() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+  } catch (error) {
+    console.error('❌ Critical error rendering main application:', error);
+    
+    // Ultimate fallback - simple app that works
+    return (
+      <div style={{ padding: '20px', fontFamily: 'sans-serif', background: '#1a1a1a', color: '#fff', minHeight: '100vh' }}>
+        <h1 style={{ color: '#ff6b6b' }}>Trade Imperial - Loading Error</h1>
+        <p>The application failed to load properly.</p>
+        <p><strong>Error:</strong> {error instanceof Error ? error.message : String(error)}</p>
+        <div style={{ marginTop: '20px' }}>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer', marginRight: '10px' }}
+          >
+            Reload Page
+          </button>
+          <button 
+            onClick={() => window.location.href = '/signin'} 
+            style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Go to Sign In
+          </button>
+        </div>
+        <details style={{ marginTop: '20px' }}>
+          <summary style={{ cursor: 'pointer', color: '#ffc107' }}>Technical Details</summary>
+          <pre style={{ background: '#2a2a2a', padding: '10px', marginTop: '10px', overflow: 'auto' }}>
+            {error instanceof Error ? error.stack : 'No stack trace available'}
+          </pre>
+        </details>
+      </div>
+    );
+  }
 }
 
 export default App;

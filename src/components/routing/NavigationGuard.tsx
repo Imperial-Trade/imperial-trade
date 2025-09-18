@@ -30,10 +30,60 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
 
   useEffect(() => {
     try {
+      // Parse URL parameters once
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      // Check for password reset tokens first - bypass all redirect logic if found
+      const hasRecoveryTokens = () => {
+        // Check for recovery type in hash or search params
+        const hashType = hashParams.get('type');
+        const searchType = searchParams.get('type');
+        
+        // Check for various token formats
+        const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
+        const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
+        const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
+        
+        return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+      };
+
+      // If we detect recovery tokens, bypass all redirect logic
+      if (hasRecoveryTokens()) {
+        console.log('🔐 NavigationGuard: Recovery tokens detected, bypassing redirect logic');
+        console.log('📍 NavigationGuard: Token details:', {
+          hashType: hashParams.get('type'),
+          searchType: searchParams.get('type'),
+          hasAccessToken: hashParams.has('access_token') || searchParams.has('access_token'),
+          hasRefreshToken: hashParams.has('refresh_token') || searchParams.has('refresh_token'),
+          hasTokenHash: hashParams.has('token_hash') || searchParams.has('token_hash'),
+          currentPath: location.pathname
+        });
+        setNavigationError(null);
+        return;
+      }
+
+      // Special handling for authenticated users on reset-password page
+      if (!loading && user && location.pathname === '/reset-password') {
+        // Check if they have recovery tokens in the URL - if so, allow them to stay
+        if (hasRecoveryTokens()) {
+          console.log('🔐 NavigationGuard: Authenticated user with recovery tokens on reset-password page - allowing access');
+          setNavigationError(null);
+          return;
+        } else {
+          // Authenticated user on reset-password without tokens - redirect to dashboard
+          console.log('🔄 NavigationGuard: Authenticated user on reset-password without tokens - redirecting to dashboard');
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      }
+
       // If we're not loading and there's no user, but we're on a protected route
       if (!loading && !user && location.pathname.startsWith('/dashboard')) {
         // Save the intended destination
         const from = location.pathname + location.search;
+        console.log("🚫 NavigationGuard: Redirecting unauthenticated user to signin");
+        console.log("📍 NavigationGuard: From location:", from);
         navigate('/signin', { 
           state: { from }, 
           replace: true 

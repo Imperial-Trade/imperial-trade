@@ -112,8 +112,40 @@ if (POSTHOG_KEY && POSTHOG_HOST) {
 console.log('🔍 React version:', React.version);
 console.log('🔍 React-DOM loaded:', !!document.getElementById("root"));
 
-createRoot(document.getElementById("root")!).render(
-  <RootErrorBoundary>
-    <App />
-  </RootErrorBoundary>
-);
+// Add comprehensive error handling for app mounting
+try {
+  console.log('🚀 Attempting to render React app...');
+  const rootElement = document.getElementById("root");
+  
+  if (!rootElement) {
+    throw new Error('Root element not found in DOM');
+  }
+  
+  console.log('✅ Root element found, creating React root...');
+  const root = createRoot(rootElement);
+  
+  console.log('✅ React root created, rendering app...');
+  root.render(
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
+  );
+  console.log('✅ App rendered successfully');
+} catch (error) {
+  console.error('❌ Critical error during app mounting:', error);
+  
+  // Fallback rendering for debugging
+  const rootElement = document.getElementById("root");
+  if (rootElement) {
+    rootElement.innerHTML = `
+      <div style="padding: 20px; font-family: monospace; background: #1a1a1a; color: #fff; min-height: 100vh;">
+        <h1 style="color: #ff6b6b;">Application Failed to Load</h1>
+        <p>Error: ${error instanceof Error ? error.message : String(error)}</p>
+        <p>Please check the browser console for more details.</p>
+        <button onclick="window.location.reload()" style="padding: 10px; margin-top: 10px; background: #007bff; color: white; border: none; cursor: pointer;">
+          Reload Page
+        </button>
+      </div>
+    `;
+  }
+}

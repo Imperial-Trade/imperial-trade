@@ -33,6 +33,7 @@ const AppBar: React.FC = () => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === "/account-request";
   const isSigninPage = location.pathname === "/signin";
+  const isResetPasswordPage = false; // No longer used since reset is handled by isolated flow
   const { user, loading } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -81,10 +82,31 @@ const AppBar: React.FC = () => {
     },
   ];
 
+  // During password reset page, redirect all navigation to safe landing page
+  const getSafeNavigation = (item: typeof navigationItems[0]) => {
+    return isResetPasswordPage ? "/" : item.to;
+  };
+
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  // Show "Get Started" by default, "Dashboard" when authenticated
+  // Show "Get Started" by default, "Dashboard" when authenticated (except during password reset)
   const renderAuthButton = () => {
+    // During password reset, always show unauthenticated buttons
+    if (isResetPasswordPage) {
+      return (
+        <div className="flex gap-2">
+          <Link to="/account-request">
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Get Started
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
     if (user) {
       return (
         <Link to="/dashboard/home">
@@ -120,7 +142,7 @@ const AppBar: React.FC = () => {
             variant="outline"
             className="border-primary text-primary hover:bg-primary/10"
           >
-            Signin
+            Sign In
           </Button>
         </Link>
       </div>
@@ -171,7 +193,7 @@ const AppBar: React.FC = () => {
                 onMouseEnter={() => setActiveDropdown(item.label)}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
-                <Link to={item.to}>
+                <Link to={getSafeNavigation(item)}>
                   <Button
                     variant="ghost"
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
@@ -204,11 +226,11 @@ const AppBar: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      <Link to={item.to}>
+                       <Link to={getSafeNavigation(item)}>
                         <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                           Explore {item.label}
                         </Button>
-                      </Link>
+                       </Link>
                     </div>
                   </div>
                 )}
@@ -218,7 +240,7 @@ const AppBar: React.FC = () => {
         ) : (
           <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map((item) => (
-              <Link key={item.to} to={item.to}>
+              <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button
                   variant="ghost"
                   className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
@@ -274,7 +296,7 @@ const AppBar: React.FC = () => {
                   {navigationItems.map((item) => (
                     <Link
                       key={item.to}
-                      to={item.to}
+                      to={getSafeNavigation(item)}
                       onClick={closeMobileMenu}
                       className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
                       aria-label={`Navigate to ${item.label}`}
@@ -298,56 +320,56 @@ const AppBar: React.FC = () => {
                     Account Access
                   </h3>
                   
-                  {user ? (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                            {user.email?.[0]?.toUpperCase() || 'U'}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{user.email}</p>
-                            <p className="text-xs text-muted-foreground">Welcome back!</p>
-                          </div>
-                        </div>
-                      </div>
-                      <Link to="/dashboard/home" onClick={closeMobileMenu}>
-                        <Button
-                          size="lg"
-                          className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
-                          aria-label="Go to Dashboard"
-                        >
-                          <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-                          Go to Dashboard
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {!isAccountRequestPage && (
-                        <Link to="/account-request" onClick={closeMobileMenu}>
-                          <Button
-                            size="lg"
-                            className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                            aria-label="Get Started - Request Account"
-                          >
-                            Get Started
-                          </Button>
-                        </Link>
-                      )}
-                      {!isSigninPage && (
-                        <Link to="/signin" onClick={closeMobileMenu}>
-                          <Button
-                            size="lg"
-                            variant="outline"
-                            className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                            aria-label="Sign In to Account"
-                          >
-                            Sign In
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
+                   {user && !isResetPasswordPage ? (
+                     <div className="space-y-3">
+                       <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                         <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                             {user.email?.[0]?.toUpperCase() || 'U'}
+                           </div>
+                           <div>
+                             <p className="font-medium text-sm">{user.email}</p>
+                             <p className="text-xs text-muted-foreground">Welcome back!</p>
+                           </div>
+                         </div>
+                       </div>
+                       <Link to="/dashboard/home" onClick={closeMobileMenu}>
+                         <Button
+                           size="lg"
+                           className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
+                           aria-label="Go to Dashboard"
+                         >
+                           <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+                           Go to Dashboard
+                         </Button>
+                       </Link>
+                     </div>
+                   ) : (
+                     <div className="space-y-3">
+                       {!isAccountRequestPage && (
+                         <Link to="/account-request" onClick={closeMobileMenu}>
+                           <Button
+                             size="lg"
+                             className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                             aria-label="Get Started - Request Account"
+                           >
+                             Get Started
+                           </Button>
+                         </Link>
+                       )}
+                       {!isSigninPage && !isResetPasswordPage && (
+                         <Link to="/signin" onClick={closeMobileMenu}>
+                           <Button
+                             size="lg"
+                             variant="outline"
+                             className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                             aria-label="Sign In to Account"
+                           >
+                             Sign In
+                           </Button>
+                         </Link>
+                       )}
+                     </div>
                   )}
                 </div>
 

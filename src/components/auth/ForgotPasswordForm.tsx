@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getPasswordResetUrl, validateProductionConfig } from "@/utils/environment";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -44,14 +43,8 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
     setIsSubmitting(true);
     
     try {
-      // Validate production configuration
-      const configValidation = validateProductionConfig();
-      if (!configValidation.isValid) {
-        console.warn("⚠️ Production config issues detected:", configValidation.issues);
-      }
-      
-      // Always use production URL for password reset to ensure emails work for external users
-      const resetUrl = getPasswordResetUrl();
+      // Use absolute URL for password reset 
+      const resetUrl = "https://www.tradeimperial.com/reset-password";
       
       console.log("🔄 Sending password reset email:", {
         email: data.email,

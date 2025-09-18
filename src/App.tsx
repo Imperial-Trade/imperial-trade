@@ -21,7 +21,7 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
-import { AuthenticatedRedirect } from "@/components/routing/AuthenticatedRedirect";
+
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
@@ -134,9 +134,9 @@ function App() {
                           element={<LandingLayout />}
                           errorElement={<RouteErrorBoundary />}
                         >
-                          <Route index element={<AuthenticatedRedirect><Landing /></AuthenticatedRedirect>} />
-                          <Route path="about" element={<AuthenticatedRedirect><About /></AuthenticatedRedirect>} />
-                          <Route path="features" element={<AuthenticatedRedirect><Features /></AuthenticatedRedirect>} />
+                          <Route index element={<Landing />} />
+                          <Route path="about" element={<About />} />
+                          <Route path="features" element={<Features />} />
                           <Route
                             path="advanced-tools"
                             element={<AdvancedToolsPage />}

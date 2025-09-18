@@ -106,28 +106,6 @@ const AppBar: React.FC = () => {
         </div>
       );
     }
-      return (
-        <div className="flex gap-2">
-          <Link to="/account-request">
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              Get Started
-            </Button>
-          </Link>
-          <Link to="/signin">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-primary text-primary hover:bg-primary/10"
-            >
-              Sign In
-            </Button>
-          </Link>
-        </div>
-      );
-    }
 
     if (user) {
       return (
@@ -164,7 +142,7 @@ const AppBar: React.FC = () => {
             variant="outline"
             className="border-primary text-primary hover:bg-primary/10"
           >
-            Signin
+            Sign In
           </Button>
         </Link>
       </div>

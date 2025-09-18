@@ -13,25 +13,8 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   const location = useLocation();
 
   // Routes that should not redirect authenticated users
-  const excludedPaths = ['/signin', '/reset-password'];
+  const excludedPaths = ['/signin'];
   const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
-  
-  // Check if current URL has password reset tokens (hash or search params)
-  const hasResetTokens = () => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const searchParams = new URLSearchParams(window.location.search);
-    const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
-    const type = hashParams.get('type') || searchParams.get('type');
-    const isRecovery = tokenHash && type === 'recovery';
-    
-    if (isRecovery) {
-      console.log('🔐 Password reset tokens detected:', { tokenHash: !!tokenHash, type });
-      // Mark that we're in a password reset flow
-      sessionStorage.setItem('password-reset-flow', 'true');
-    }
-    
-    return isRecovery;
-  };
 
   // Add timeout for loading states to prevent infinite loading
   useEffect(() => {
@@ -55,21 +38,10 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
     );
   }
 
-  // Enhanced password reset flow protection
-  const isPasswordResetFlow = hasResetTokens() || 
-                              sessionStorage.getItem('password-reset-flow') === 'true' ||
-                              location.pathname === '/reset-password';
-  
   // If user is authenticated and not on excluded path, redirect to dashboard
-  // BUT: Don't redirect if we're in any part of the password reset flow
-  if (user && !isExcludedPath && !isPasswordResetFlow) {
+  if (user && !isExcludedPath) {
     console.log('🔄 Redirecting authenticated user to dashboard');
     return <Navigate to="/dashboard/home" replace />;
-  }
-  
-  // Don't redirect if we're in password reset flow, even without user
-  if (isPasswordResetFlow) {
-    console.log('🔐 Allowing access to password reset flow');
   }
 
   // If not authenticated, timeout reached, or on excluded path, show the content

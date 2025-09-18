@@ -34,7 +34,7 @@ const AppBar: React.FC = () => {
   const isAccountRequestPage = location.pathname === "/account-request";
   const isSigninPage = location.pathname === "/signin";
   const isResetPasswordPage = false; // No longer used since reset is handled by isolated flow
-  const { user, loading, isPasswordResetFlow } = useAuth();
+  const { user, loading } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const navigationItems = [
@@ -92,7 +92,20 @@ const AppBar: React.FC = () => {
   // Show "Get Started" by default, "Dashboard" when authenticated (except during password reset)
   const renderAuthButton = () => {
     // During password reset, always show unauthenticated buttons
-    if (isResetPasswordPage || isPasswordResetFlow) {
+    if (isResetPasswordPage) {
+      return (
+        <div className="flex gap-2">
+          <Link to="/account-request">
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Get Started
+            </Button>
+          </Link>
+        </div>
+      );
+    }
       return (
         <div className="flex gap-2">
           <Link to="/account-request">
@@ -329,7 +342,7 @@ const AppBar: React.FC = () => {
                     Account Access
                   </h3>
                   
-                   {user && !isResetPasswordPage && !isPasswordResetFlow ? (
+                   {user && !isResetPasswordPage ? (
                      <div className="space-y-3">
                        <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
                          <div className="flex items-center gap-3">

@@ -18,32 +18,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Check for password reset flow - bypass all authentication checks if detected
-  const isPasswordResetFlow = React.useMemo(() => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const searchParams = new URLSearchParams(window.location.search);
-    
-    // Check for recovery type in hash or search params
-    const hashType = hashParams.get('type');
-    const searchType = searchParams.get('type');
-    
-    // Check for various token formats
-    const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
-    const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
-    const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
-    
-    return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
-  }, []);
-
-  // If password reset flow detected, render children WITHOUT authentication checks
-  if (isPasswordResetFlow) {
-    console.log('🔐 ProtectedRoute: Password reset flow detected, bypassing authentication checks');
-    return (
-      <div data-current-component="ProtectedRoute-PasswordReset">
-        {children}
-      </div>
-    );
-  }
 
   if (loading) {
     console.log('🔄 ProtectedRoute: Loading authentication state...');

@@ -30,7 +30,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  isPasswordResetFlow: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,7 +69,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
-  const [isPasswordResetFlow, setIsPasswordResetFlow] = useState(false);
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     console.log('🔄 Fetching profile for user:', userId);
@@ -157,26 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
-    // Enhanced password reset flow detection
-    const checkPasswordResetFlow = () => {
-      const isResetRoute = window.location.pathname === '/reset-password';
-      const hasRecoveryTokens = window.location.hash.includes('type=recovery') || 
-                               window.location.search.includes('type=recovery');
-      const hasSessionFlag = sessionStorage.getItem('password-reset-flow') === 'true';
-      const resetFlow = isResetRoute || hasRecoveryTokens || hasSessionFlag;
-      
-      console.log('🔐 Password reset flow check:', {
-        isResetRoute,
-        hasRecoveryTokens,
-        hasSessionFlag,
-        resetFlow
-      });
-      
-      setIsPasswordResetFlow(resetFlow);
-      return resetFlow;
-    };
-    
-    // Separate public pages from session-sensitive public pages
+    // Public pages that should clear auth
     const publicPaths = [
       '/', 
       '/signin', 
@@ -192,80 +171,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       '/features'
     ];
     
-    // Pages that are public but need to preserve auth sessions
-    const sessionSensitivePublicPaths = ['/reset-password'];
-    
     const isTruePublicPage = () => {
       return publicPaths.includes(window.location.pathname);
     };
-    
-    const isSessionSensitivePage = () => {
-      return sessionSensitivePublicPaths.includes(window.location.pathname);
-    };
-    
-    // Enhanced recovery token detection
-    const hasRecoveryTokens = () => {
-      const hash = window.location.hash;
-      const search = window.location.search;
-      
-      // Check for all possible recovery token formats
-      const hasTokenHash = hash.includes('token_hash=') || search.includes('token_hash=');
-      const hasRecoveryType = hash.includes('type=recovery') || search.includes('type=recovery');
-      const hasAccessToken = hash.includes('access_token=') || search.includes('access_token=');
-      const hasRefreshToken = hash.includes('refresh_token=') || search.includes('refresh_token=');
-      
-      return (hasTokenHash && hasRecoveryType) || (hasAccessToken && hasRefreshToken);
-    };
-    
-    // Initial check - only clear auth for true public pages
-    const isResetFlow = checkPasswordResetFlow();
-    const shouldSkipAutoAuth = isTruePublicPage() && !isResetFlow;
-    
-    // Listen for location changes
-    const handleLocationChange = () => {
-      checkPasswordResetFlow();
-    };
-    
-    window.addEventListener('popstate', handleLocationChange);
-    window.addEventListener('pushstate', handleLocationChange);
-    window.addEventListener('replacestate', handleLocationChange);
     
     const handleAuthStateChange = (event: string, session: Session | null) => {
       if (!mounted) return;
       
       console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
-      
-      // FAILSAFE: Explicit protection for password recovery flow
-      if (event === 'PASSWORD_RECOVERY' || (session && hasRecoveryTokens())) {
-        console.log('🔐 Password recovery session detected - storing session WITHOUT authenticating user');
-        // Store session for password reset but DON'T authenticate user yet
-        setSession(session);
-        setUser(null); // Keep user null until password is actually reset
-        setIsPasswordResetFlow(true);
-        
-        // Mark the flow in session storage for persistence
-        sessionStorage.setItem('password-reset-flow', 'true');
-        
-        if (mounted && !authInitialized) {
-          setLoading(false);
-          setAuthInitialized(true);
-          console.log('✅ Auth initialization complete (password recovery - user NOT authenticated yet)');
-        }
-        return;
-      }
-      
-      // If we're in password reset flow, store session but don't authenticate user
-      if (isPasswordResetFlow && event === 'INITIAL_SESSION') {
-        console.log('🔄 Password reset flow - storing session WITHOUT authenticating user');
-        setSession(session);
-        setUser(null); // Keep user null until password is reset
-        if (mounted && !authInitialized) {
-          setLoading(false);
-          setAuthInitialized(true);
-          console.log('✅ Auth initialization complete (reset flow - user NOT authenticated)');
-        }
-        return;
-      }
       
       setSession(session);
       setUser(session?.user ?? null);
@@ -328,27 +241,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // THEN check for existing session (only if not on true public page)
     const initializeAuth = async () => {
       try {
-        // FAILSAFE: Always check for recovery tokens first
-        if (hasRecoveryTokens()) {
-          console.log('🔑 Recovery tokens detected - bypassing all auth clearing logic');
-          setIsPasswordResetFlow(true);
-          sessionStorage.setItem('password-reset-flow', 'true');
-          
-          // Store recovery session but don't authenticate user yet
-          const { data: { session }, error } = await supabase.auth.getSession();
-          if (!error && session) {
-            handleAuthStateChange('PASSWORD_RECOVERY', session);
-          } else {
-            if (mounted) {
-              setLoading(false);
-              setAuthInitialized(true);
-            }
-          }
-          return;
-        }
-
-        // Only clear auth for true public pages (not session-sensitive ones)
-        if (shouldSkipAutoAuth) {
+        // Only clear auth for true public pages
+        if (isTruePublicPage()) {
           console.log('🏠 On true public page - clearing auth and skipping session restoration');
           await supabase.auth.signOut({ scope: 'local' });
           cleanupAuthState();
@@ -359,20 +253,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setLoading(false);
             setAuthInitialized(true);
           }
-          return;
-        }
-
-        // Session-sensitive pages (like /reset-password) preserve existing sessions
-        if (isSessionSensitivePage()) {
-          console.log('🔐 On session-sensitive page - preserving existing session');
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('❌ Error getting session on sensitive page:', error);
-          }
-          
-          // Let the auth state handler process the session
-          handleAuthStateChange('INITIAL_SESSION', session);
           return;
         }
 
@@ -403,9 +283,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      window.removeEventListener('popstate', handleLocationChange);
-      window.removeEventListener('pushstate', handleLocationChange);
-      window.removeEventListener('replacestate', handleLocationChange);
     };
   }, [authInitialized, isSigningOut]);
 
@@ -450,8 +327,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileLoading,
         signOut, 
         refreshSession, 
-        refreshProfile,
-        isPasswordResetFlow
+        refreshProfile
       }}
     >
       <div data-auth-provider="true">

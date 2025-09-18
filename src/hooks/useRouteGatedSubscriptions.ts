@@ -121,25 +121,6 @@ export function useRouteGatedSubscriptions(): RouteSubscriptionConfig {
 export function useRealtimeGate(subscriptionType: string): boolean {
   const { isSubscriptionAllowed } = useRouteGatedSubscriptions();
   
-  // Failsafe: Block ALL realtime connections during password reset flow
-  const isPasswordResetFlow = useMemo(() => {
-    const sessionFlag = sessionStorage.getItem('password-reset-flow');
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const searchParams = new URLSearchParams(window.location.search);
-    const hasRecoveryType = hashParams.get('type') === 'recovery' || searchParams.get('type') === 'recovery';
-    const hasTokens = hashParams.has('access_token') || hashParams.has('token_hash') || 
-                     searchParams.has('access_token') || searchParams.has('token_hash');
-    
-    return sessionFlag === 'true' || hasRecoveryType || hasTokens;
-  }, []);
-  
-  if (isPasswordResetFlow) {
-    if (isDevToolsEnabled()) {
-      console.log(`🚦 Realtime connection blocked for "${subscriptionType}" - password reset flow detected`);
-    }
-    return false;
-  }
-  
   const allowed = isSubscriptionAllowed(subscriptionType);
   
   useEffect(() => {

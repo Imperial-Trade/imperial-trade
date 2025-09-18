@@ -128,18 +128,22 @@ export const ResetPasswordForm: React.FC = () => {
     setErrorMessage(null);
     
     try {
-      // Check if user is already authenticated
-      const { data: { user } } = await supabase.auth.getUser();
+      // Always show the password reset form - never auto-redirect
+      console.log('🔐 Password reset page loaded - showing form for manual password entry');
       
-      if (user) {
-        console.log('✅ User already authenticated, allowing password reset');
-        setIsValidLink(true);
+      // Check if user is already authenticated with a recovery session
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
+      if (user && session) {
+        console.log('✅ User authenticated with recovery session - form will use session');
         setTokenData({ access_token: 'session', refresh_token: 'session', type: 'recovery' });
+        setIsValidLink(true);
         setIsValidating(false);
         return;
       }
 
-      // Try to extract tokens from URL
+      // Try to extract tokens from URL for manual session setup
       const tokens = extractTokensFromUrl();
       
       if (!tokens) {
@@ -159,8 +163,7 @@ export const ResetPasswordForm: React.FC = () => {
         return;
       }
 
-      console.log('✅ Tokens validated successfully');
-      // Store tokens for later use
+      console.log('✅ Tokens validated successfully - form ready for manual password entry');
       setTokenData(tokens);
       setIsValidLink(true);
       
@@ -183,9 +186,10 @@ export const ResetPasswordForm: React.FC = () => {
 
     try {
       // Check if user is already authenticated
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       
-      if (user) {
+      if (user && session) {
         console.log('✅ User authenticated, updating password directly');
         // User is authenticated, update password directly
         const { error } = await supabase.auth.updateUser({
@@ -249,6 +253,10 @@ export const ResetPasswordForm: React.FC = () => {
       }
 
       console.log('✅ Password updated successfully!');
+      
+      // Clear password reset flow flags
+      sessionStorage.removeItem('password-reset-flow');
+      
       toast({
         title: "Success",
         description: "Your password has been updated successfully!",
@@ -256,7 +264,7 @@ export const ResetPasswordForm: React.FC = () => {
 
       setResetComplete(true);
       
-      // Redirect to dashboard after a short delay
+      // Redirect to dashboard after user sees success message
       setTimeout(() => {
         console.log('🔄 Redirecting to dashboard...');
         navigate('/dashboard/home', { replace: true });

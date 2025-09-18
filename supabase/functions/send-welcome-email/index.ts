@@ -41,7 +41,7 @@ serve(async (req) => {
     const html = `
       <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #ffffff;">
         <div style="background: linear-gradient(135deg, #c09a58, #e6d3b3); padding: 40px 20px; text-align: center;">
-          <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Imperial Trading</h1>
+          <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Trade Imperial</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">Elite Trading Community</p>
         </div>
         
@@ -49,7 +49,7 @@ serve(async (req) => {
           <h2 style="color: #c09a58; font-size: 24px; margin-bottom: 20px;">Welcome to Exclusive Access, ${name}!</h2>
           
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Congratulations! Your account has been approved and you now have exclusive access to Imperial Trading's premium features.
+            Congratulations! Your account has been approved and you now have exclusive access to Trade Imperial's premium features.
           </p>
           
           <div style="background: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -92,7 +92,7 @@ serve(async (req) => {
         
         <div style="background: #1a1a1a; padding: 20px; text-align: center; border-top: 1px solid #333;">
           <p style="margin: 0; color: #888; font-size: 14px;">
-            © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+            © ${new Date().getFullYear()} Trade Imperial. All rights reserved.
           </p>
         </div>
       </div>
@@ -100,14 +100,14 @@ serve(async (req) => {
 
     // Send via Resend
     const result = await resend.emails.send({
-      from: "Imperial Trading <welcome@tradeimperial.com>",
+      from: "Trade Imperial <welcome@tradeimperial.com>",
       to: [email],
-      subject: "🎉 Welcome to Imperial Trading - Exclusive Access Granted",
+      subject: "🎉 Welcome to Trade Imperial - Exclusive Access Granted",
       html: html,
       text: `
         Welcome to Exclusive Access, ${name}!
         
-        Congratulations! Your account has been approved and you now have exclusive access to Imperial Trading's premium features.
+        Congratulations! Your account has been approved and you now have exclusive access to Trade Imperial's premium features.
         
         What's included in your membership:
         • Live trading sessions with professional traders
@@ -120,7 +120,7 @@ serve(async (req) => {
         
         Access Your Dashboard: ${Deno.env.get('SITE_URL') || 'https://tradeimperial.com'}/dashboard/home
         
-        © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+        © ${new Date().getFullYear()} Trade Imperial. All rights reserved.
       `
     });
 

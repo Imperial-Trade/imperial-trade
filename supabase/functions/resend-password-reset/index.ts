@@ -102,7 +102,7 @@ function createPasswordResetEmailHtml(userName: string, resetUrl: string): strin
   return `
     <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #ffffff;">
       <div style="background: linear-gradient(135deg, #c09a58, #e6d3b3); padding: 40px 20px; text-align: center;">
-        <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Imperial Trading</h1>
+        <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #0a0a0a;">Trade Imperial</h1>
         <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">Elite Trading Community</p>
       </div>
       
@@ -114,7 +114,7 @@ function createPasswordResetEmailHtml(userName: string, resetUrl: string): strin
         </p>
         
         <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-          We received a request to reset your password for your Imperial Trading account. If you made this request, click the button below to reset your password.
+          A password reset was requested for your Trade Imperial account. Click the button below to reset your password:
         </p>
         
         <div style="text-align: center; margin: 30px 0;">
@@ -143,7 +143,7 @@ function createPasswordResetEmailHtml(userName: string, resetUrl: string): strin
       
       <div style="background: #1a1a1a; padding: 20px; text-align: center; border-top: 1px solid #333;">
         <p style="margin: 0; color: #888; font-size: 14px;">
-          © ${new Date().getFullYear()} Imperial Trading. All rights reserved.
+          © ${new Date().getFullYear()} Trade Imperial. All rights reserved.
         </p>
       </div>
     </div>
@@ -169,21 +169,21 @@ async function sendPasswordResetEmail(
       const emailHtml = createPasswordResetEmailHtml(userName, resetUrl);
 
       const result = await resend.emails.send({
-        from: "Imperial Trading <security@tradeimperial.com>",
+        from: "Trade Imperial <security@tradeimperial.com>",
         to: [email],
-        subject: "🔐 Reset Your Imperial Trading Password",
+        subject: "🔒 Reset Your Trade Imperial Password",
         html: emailHtml,
         text: `
           Hello ${userName},
           
-          We received a request to reset your password for your Imperial Trading account.
+          We received a request to reset your password for your Trade Imperial account.
           
           Click this link to reset your password: ${resetUrl}
           
           This link will expire in 24 hours. If you didn't request this, you can safely ignore this email.
           
-          Best regards,
-          Imperial Trading Security Team
+        Best regards,
+        Trade Imperial Security Team
         `
       });
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Password strength checker
 const getPasswordStrength = (password: string): number => {
@@ -39,6 +41,9 @@ type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 export const ResetPasswordForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -51,10 +56,63 @@ export const ResetPasswordForm: React.FC = () => {
 
   const password = watch("password", "");
 
-  // Handle form submission - placeholder for custom implementation
+  // Validate reset tokens on component mount
+  useEffect(() => {
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    const type = searchParams.get('type');
+
+    if (!accessToken || !refreshToken || type !== 'recovery') {
+      toast.error('Invalid or expired reset link. Please request a new password reset.');
+      navigate('/signin');
+    }
+  }, [searchParams, navigate]);
+
+  // Handle form submission
   const onSubmit = async (data: ResetPasswordData) => {
-    console.log("Reset password form submitted:", data);
-    // Custom reset password logic will be implemented here
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+
+    if (!accessToken || !refreshToken) {
+      toast.error('Invalid reset tokens. Please request a new password reset.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Set the session with the tokens from the URL
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      // Update the user's password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success('Password updated successfully! Redirecting to dashboard...');
+      
+      // Small delay to show success message before redirect
+      setTimeout(() => {
+        navigate('/dashboard/home');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Password reset error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const passwordStrength = getPasswordStrength(password);
@@ -143,8 +201,8 @@ export const ResetPasswordForm: React.FC = () => {
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full">
-            Update Password
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Updating Password...' : 'Update Password'}
           </Button>
 
           <Link

@@ -159,6 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const publicPaths = [
       '/', 
       '/signin', 
+      '/reset-password',
       '/advanced-tools', 
       '/signals', 
       '/education', 

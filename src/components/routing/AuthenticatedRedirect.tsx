@@ -13,7 +13,7 @@ export const AuthenticatedRedirect: React.FC<AuthenticatedRedirectProps> = ({ ch
   const location = useLocation();
 
   // Routes that should not redirect authenticated users
-  const excludedPaths = ['/signin'];
+  const excludedPaths = ['/signin', '/reset-password'];
   const isExcludedPath = excludedPaths.some(path => location.pathname.startsWith(path));
 
   // Add timeout for loading states to prevent infinite loading

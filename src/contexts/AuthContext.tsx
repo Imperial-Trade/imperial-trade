@@ -157,20 +157,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Checks if the current URL contains password recovery tokens from Supabase.
-   * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
+   * Uses the enhanced TokenValidator for robust validation.
    */
   const hasRecoveryTokens = () => {
     try {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const hasRecoveryType = hashParams.get('type') === 'recovery';
-      
-      if (hasRecoveryType) {
-        console.log('🔍 Recovery token type found in URL hash.');
-      }
-      return hasRecoveryType;
+      // Use the enhanced token validator for more robust checking
+      const { TokenValidator } = require('@/utils/tokenValidation');
+      return TokenValidator.hasRecoveryTokens();
     } catch (error) {
-      console.error('❌ Error parsing URL for recovery tokens:', error);
-      return false;
+      console.error('❌ Error checking recovery tokens:', error);
+      // Fallback to basic check
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        return hashParams.get('type') === 'recovery';
+      } catch (fallbackError) {
+        console.error('❌ Fallback token check failed:', fallbackError);
+        return false;
+      }
     }
   };
 

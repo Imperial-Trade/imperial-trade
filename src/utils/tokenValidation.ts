@@ -31,9 +31,15 @@ export class TokenValidator {
   private static readonly MAX_TOKEN_AGE = 24 * 60 * 60; // 24 hours max token age
 
   /**
-   * Comprehensive token validation with integrity and security checks
+   * Comprehensive token validation with enhanced debugging and recovery
    */
   static async validateRecoveryTokens(): Promise<TokenValidationResult> {
+    console.log('🔐 === PRODUCTION PASSWORD RESET TOKEN INVESTIGATION ===');
+    console.log('🌐 Current URL:', window.location.href);
+    console.log('📍 URL Hash:', window.location.hash);
+    console.log('📍 URL Search:', window.location.search);
+    console.log('🕰️ Current Time:', new Date().toISOString());
+    
     const result: TokenValidationResult = {
       isValid: false,
       tokenType: null,
@@ -46,10 +52,34 @@ export class TokenValidator {
     };
 
     try {
-      // Phase 1: URL Parameter Extraction and Basic Validation
+      // Phase 1: Enhanced URL Parameter Extraction with debugging
+      console.log('📍 Phase 1: Enhanced token extraction with debugging...');
       const tokens = this.extractTokensFromUrl();
+      
       if (!tokens) {
+        console.log('🔄 Primary extraction failed, attempting recovery strategies...');
+        
+        // Strategy 1: Check backup storage
+        const backupTokens = this.tryRecoverTokensFromStorage();
+        if (backupTokens) {
+          console.log('✅ Recovered tokens from backup storage');
+          return this.validateRecoveredTokens(backupTokens, result);
+        }
+        
+        // Strategy 2: Check for existing recovery session
+        const sessionRecovery = await this.trySessionRecovery();
+        if (sessionRecovery.success) {
+          console.log('✅ Found existing recovery session');
+          result.warnings.push('Using existing recovery session (tokens may have been stripped from URL)');
+          result.isValid = true;
+          result.metadata.recoveryMethod = 'existing_session';
+          return result;
+        }
+        
         result.errors.push('No recovery tokens found in URL');
+        result.errors.push('No backup tokens available');
+        result.errors.push('No existing recovery session found');
+        result.metadata.debugInfo = this.generateDebugInfo();
         return result;
       }
 
@@ -110,34 +140,263 @@ export class TokenValidator {
   }
 
   /**
-   * Extract and parse tokens from URL hash parameters
+   * Enhanced token extraction with multiple strategies and debugging
    */
   private static extractTokensFromUrl(): RecoveryTokens | null {
     try {
+      // Try hash first (standard Supabase method)
+      console.log('🔍 Attempting hash extraction...');
       const hash = window.location.hash.substring(1);
-      if (!hash) return null;
+      console.log('📋 Hash content:', hash || '(empty)');
 
-      const params = new URLSearchParams(hash);
+      if (hash) {
+        const hashTokens = this.parseTokensFromString(hash, 'hash');
+        if (hashTokens) {
+          console.log('✅ Successfully extracted tokens from hash');
+          this.storeTokensAsBackup(hashTokens);
+          return hashTokens;
+        }
+      }
+
+      // Fallback: try query parameters
+      console.log('🔄 Hash extraction failed, trying query parameters...');
+      const search = window.location.search.substring(1);
+      console.log('📋 Query content:', search || '(empty)');
+      
+      if (search) {
+        const queryTokens = this.parseTokensFromString(search, 'query');
+        if (queryTokens) {
+          console.log('✅ Successfully extracted tokens from query parameters');
+          this.storeTokensAsBackup(queryTokens);
+          return queryTokens;
+        }
+      }
+
+      console.log('❌ No valid tokens found in URL hash or query parameters');
+      return null;
+    } catch (error) {
+      console.error('❌ Error during token extraction:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse tokens from a parameter string with enhanced debugging
+   */
+  private static parseTokensFromString(paramString: string, source: 'hash' | 'query'): RecoveryTokens | null {
+    try {
+      const params = new URLSearchParams(paramString);
       const tokens: Partial<RecoveryTokens> = {};
 
-      // Extract all relevant parameters
+      console.log(`🔍 Parsing parameters from ${source}:`);
+      
+      // Extract all relevant parameters with detailed logging
       for (const [key, value] of params.entries()) {
+        console.log(`  ${key}: ${key.includes('token') ? '***REDACTED***' : value}`);
         if (['type', 'access_token', 'refresh_token', 'expires_in', 'token_type'].includes(key)) {
           (tokens as any)[key] = value;
         }
       }
 
-      // Check if we have minimum required parameters
-      const hasRequiredParams = this.REQUIRED_RECOVERY_PARAMS.every(param => 
-        params.has(param) && params.get(param)
-      );
+      // Check required parameters with detailed feedback
+      const requiredCheck = this.REQUIRED_RECOVERY_PARAMS.map(param => ({
+        param,
+        present: params.has(param) && params.get(param),
+        value: params.get(param)
+      }));
 
-      if (!hasRequiredParams) return null;
+      console.log(`📊 Required parameter check for ${source}:`, requiredCheck.map(check => 
+        `${check.param}: ${check.present ? '✅' : '❌'}`
+      ).join(', '));
+
+      const hasAllRequired = requiredCheck.every(check => check.present);
+      if (!hasAllRequired) {
+        console.log(`❌ Missing required parameters in ${source}`);
+        return null;
+      }
 
       return tokens as RecoveryTokens;
     } catch (error) {
-      console.error('❌ Failed to extract tokens from URL:', error);
+      console.error(`❌ Error parsing tokens from ${source}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Store tokens in sessionStorage as backup
+   */
+  private static storeTokensAsBackup(tokens: RecoveryTokens): void {
+    try {
+      const backupData = {
+        tokens,
+        timestamp: Date.now(),
+        url: window.location.href
+      };
+      sessionStorage.setItem('password_reset_tokens_backup', JSON.stringify(backupData));
+      console.log('💾 Stored tokens as backup in sessionStorage');
+    } catch (error) {
+      console.warn('⚠️ Failed to store token backup:', error);
+    }
+  }
+
+  /**
+   * Try to recover tokens from sessionStorage
+   */
+  private static tryRecoverTokensFromStorage(): RecoveryTokens | null {
+    try {
+      console.log('📥 Checking sessionStorage for backup tokens...');
+      const backupData = sessionStorage.getItem('password_reset_tokens_backup');
+      
+      if (!backupData) {
+        console.log('📭 No token backup found in sessionStorage');
+        return null;
+      }
+
+      const backup = JSON.parse(backupData);
+      const tokens = backup.tokens;
+      const timestamp = backup.timestamp;
+      const originalUrl = backup.url;
+      
+      console.log('📥 Found token backup:', { 
+        age: Math.round((Date.now() - timestamp) / 1000) + 's',
+        originalUrl: originalUrl,
+        hasTokens: !!(tokens?.access_token && tokens?.refresh_token)
+      });
+
+      // Validate backup age (within 1 hour)
+      const backupAge = Date.now() - timestamp;
+      if (backupAge > 3600000) { // 1 hour
+        console.log('🕰️ Token backup too old, discarding');
+        this.clearTokenBackup();
+        return null;
+      }
+
+      return tokens;
+    } catch (error) {
+      console.error('❌ Error recovering tokens from storage:', error);
+      this.clearTokenBackup();
+      return null;
+    }
+  }
+
+  /**
+   * Try to use existing recovery session
+   */
+  private static async trySessionRecovery(): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔄 Checking for existing recovery session...');
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.log('❌ Session check error:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      if (!session || !session.user) {
+        console.log('❌ No active session found');
+        return { success: false, error: 'No active session' };
+      }
+
+      // Check if this is a recovery session
+      const isRecoverySession = session.user.recovery_sent_at || 
+                               session.user.app_metadata?.recovery_sent_at ||
+                               session.user.user_metadata?.recovery_sent_at;
+
+      console.log('🔍 Session analysis:', {
+        hasUser: !!session.user,
+        userId: session.user.id,
+        isRecovery: !!isRecoverySession,
+        email: session.user.email
+      });
+
+      if (isRecoverySession) {
+        console.log('✅ Found valid recovery session');
+        return { success: true };
+      }
+
+      console.log('⚠️ Found session but not a recovery session');
+      return { success: false, error: 'Session is not a recovery session' };
+    } catch (error) {
+      console.error('❌ Session recovery check failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
+   * Validate recovered tokens using standard flow
+   */
+  private static async validateRecoveredTokens(tokens: RecoveryTokens, result: TokenValidationResult): Promise<TokenValidationResult> {
+    console.log('🔄 Validating recovered tokens using standard flow...');
+    
+    result.tokenType = tokens.type;
+    result.accessToken = tokens.access_token;
+    result.refreshToken = tokens.refresh_token;
+    result.metadata.rawTokens = tokens;
+    result.warnings.push('Tokens recovered from backup storage');
+
+    // Continue with standard validation phases
+    const structureValidation = this.validateTokenStructure(tokens);
+    result.errors.push(...structureValidation.errors);
+    result.warnings.push(...structureValidation.warnings);
+
+    if (structureValidation.isValid) {
+      const freshnessValidation = this.validateTokenFreshness(tokens);
+      result.errors.push(...freshnessValidation.errors);
+      result.warnings.push(...freshnessValidation.warnings);
+      result.expiresAt = freshnessValidation.expiresAt;
+
+      if (freshnessValidation.isValid) {
+        const domainValidation = this.validateTokenDomain();
+        result.errors.push(...domainValidation.errors);
+        result.warnings.push(...domainValidation.warnings);
+
+        if (domainValidation.isValid) {
+          const sessionValidation = await this.validateSessionIntegrity(tokens);
+          result.errors.push(...sessionValidation.errors);
+          result.warnings.push(...sessionValidation.warnings);
+          result.metadata.sessionData = sessionValidation.sessionData;
+
+          result.isValid = sessionValidation.isValid;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Generate comprehensive debug information
+   */
+  private static generateDebugInfo(): Record<string, any> {
+    return {
+      url: {
+        full: window.location.href,
+        hash: window.location.hash,
+        search: window.location.search,
+        pathname: window.location.pathname,
+        hostname: window.location.hostname
+      },
+      storage: {
+        hasBackup: !!sessionStorage.getItem('password_reset_tokens_backup'),
+        sessionStorageKeys: Object.keys(sessionStorage)
+      },
+      timing: {
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent
+      }
+    };
+  }
+
+  /**
+   * Clear token backup from storage
+   */
+  private static clearTokenBackup(): void {
+    try {
+      sessionStorage.removeItem('password_reset_tokens_backup');
+      console.log('🧹 Cleared token backup from storage');
+    } catch (error) {
+      console.warn('⚠️ Failed to clear token backup:', error);
     }
   }
 

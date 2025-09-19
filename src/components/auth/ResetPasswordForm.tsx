@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle, AlertCircle, Bug } from "lucide-react";
 import { Link } from "react-router-dom";
 import { RecoveryFlowSecurity, RecoveryFlowState } from '@/utils/recoveryFlowSecurity';
+import { TokenDebugDashboard } from '@/components/debug/TokenDebugDashboard';
+import { isProduction } from '@/utils/environment';
 
 export const ResetPasswordForm = () => {
   const [password, setPassword] = useState('');
@@ -18,6 +20,7 @@ export const ResetPasswordForm = () => {
   const [message, setMessage] = useState('');
   const [flowState, setFlowState] = useState<RecoveryFlowState | null>(null);
   const [validating, setValidating] = useState(true);
+  const [showDebugDashboard, setShowDebugDashboard] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -125,49 +128,72 @@ export const ResetPasswordForm = () => {
   // Show security status and errors
   if (flowState && !flowState.isSecure) {
     return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <AlertTriangle className="h-12 w-12 text-red-500" />
+      <>
+        {/* Debug Dashboard for development */}
+        {!isProduction() && (
+          <div className="mb-4">
+            <Button
+              onClick={() => setShowDebugDashboard(!showDebugDashboard)}
+              variant="outline"
+              size="sm"
+              className="w-full mb-4"
+            >
+              <Bug className="h-4 w-4 mr-2" />
+              {showDebugDashboard ? 'Hide' : 'Show'} Debug Dashboard
+            </Button>
+            
+            {showDebugDashboard && (
+              <div className="mb-4">
+                <TokenDebugDashboard />
+              </div>
+            )}
           </div>
-          <CardTitle className="text-2xl font-bold">Security Validation Failed</CardTitle>
-          <CardDescription className="text-center">
-            The recovery link validation failed for security reasons.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-            <h4 className="font-semibold text-red-800 dark:text-red-200 mb-2">Security Issues:</h4>
-            <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-300 space-y-1">
-              {flowState.errors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-          {flowState.warnings.length > 0 && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Warnings:</h4>
-              <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
-                {flowState.warnings.map((warning, index) => (
-                  <li key={index}>{warning}</li>
+        )}
+        
+        <Card className="w-full max-w-md mx-auto">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <AlertTriangle className="h-12 w-12 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Security Validation Failed</CardTitle>
+            <CardDescription className="text-center">
+              The recovery link validation failed for security reasons.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+              <h4 className="font-semibold text-red-800 dark:text-red-200 mb-2">Security Issues:</h4>
+              <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-300 space-y-1">
+                {flowState.errors.map((error, index) => (
+                  <li key={index}>{error}</li>
                 ))}
               </ul>
             </div>
-          )}
-          <div className="text-sm text-muted-foreground">
-            Security Score: {flowState.securityScore}/100
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Link
-            to="/signin"
-            className="flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors w-full"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Sign In
-          </Link>
-        </CardFooter>
-      </Card>
+            {flowState.warnings.length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Warnings:</h4>
+                <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                  {flowState.warnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="text-sm text-muted-foreground">
+              Security Score: {flowState.securityScore}/100
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Link
+              to="/signin"
+              className="flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors w-full"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Sign In
+            </Link>
+          </CardFooter>
+        </Card>
+      </>
     );
   }
 

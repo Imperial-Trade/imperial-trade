@@ -173,34 +173,85 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ];
     
     const hasRecoveryTokens = () => {
-      const params = new URLSearchParams(window.location.search);
-      const fragment = new URLSearchParams(window.location.hash.substring(1));
-      
-      // Check for recovery-related tokens in URL parameters or fragments
-      const recoveryIndicators = [
-        'access_token',
-        'refresh_token', 
-        'token_hash',
-        'type'
-      ];
-      
-      const hasTokensInParams = recoveryIndicators.some(param => params.has(param));
-      const hasTokensInFragment = recoveryIndicators.some(param => fragment.has(param));
-      const isRecoveryType = params.get('type') === 'recovery' || fragment.get('type') === 'recovery';
-      
-      return hasTokensInParams || hasTokensInFragment || isRecoveryType;
+      try {
+        // Parse both search params and hash fragment
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        
+        console.log('🔍 Checking for recovery tokens:', {
+          search: window.location.search,
+          hash: window.location.hash,
+          pathname: window.location.pathname
+        });
+        
+        // Enhanced recovery token detection
+        const recoveryIndicators = [
+          'access_token',
+          'refresh_token', 
+          'token_hash',
+          'recovery_token'
+        ];
+        
+        // Check for type=recovery specifically
+        const searchType = searchParams.get('type');
+        const hashType = hashParams.get('type');
+        const isRecoveryType = searchType === 'recovery' || hashType === 'recovery';
+        
+        // Check for any recovery tokens in search params
+        const hasTokensInSearch = recoveryIndicators.some(token => {
+          const hasToken = searchParams.has(token) && searchParams.get(token);
+          if (hasToken) {
+            console.log(`🔐 Found ${token} in search params`);
+          }
+          return hasToken;
+        });
+        
+        // Check for any recovery tokens in hash fragment
+        const hasTokensInHash = recoveryIndicators.some(token => {
+          const hasToken = hashParams.has(token) && hashParams.get(token);
+          if (hasToken) {
+            console.log(`🔐 Found ${token} in hash fragment`);
+          }
+          return hasToken;
+        });
+        
+        const hasRecoveryTokens = isRecoveryType || hasTokensInSearch || hasTokensInHash;
+        
+        console.log('🔍 Recovery token check result:', {
+          isRecoveryType,
+          hasTokensInSearch,
+          hasTokensInHash,
+          hasRecoveryTokens
+        });
+        
+        return hasRecoveryTokens;
+      } catch (error) {
+        console.error('❌ Error checking recovery tokens:', error);
+        return false;
+      }
     };
     
     const isTruePublicPage = () => {
-      const isPublicPath = publicPaths.includes(window.location.pathname);
+      const currentPath = window.location.pathname;
+      const isPublicPath = publicPaths.includes(currentPath);
       
-      // If we're on reset-password page with recovery tokens, don't treat as public page
-      if (window.location.pathname === '/reset-password' && hasRecoveryTokens()) {
-        console.log('🔐 Reset password page with recovery tokens detected - preserving auth session');
+      console.log('🔍 Checking if true public page:', {
+        currentPath,
+        isPublicPath,
+        hasRecoveryTokens: hasRecoveryTokens()
+      });
+      
+      // Critical: If we're on reset-password page with recovery tokens, 
+      // this is NOT a public page - user needs their recovery session preserved
+      if (currentPath === '/reset-password' && hasRecoveryTokens()) {
+        console.log('🔐 Reset-password page with recovery tokens - NOT treating as public page');
         return false;
       }
       
-      return isPublicPath;
+      // All other public paths are treated as public pages
+      const result = isPublicPath;
+      console.log('📄 Public page check result:', result);
+      return result;
     };
     
     const handleAuthStateChange = (event: string, session: Session | null) => {
@@ -269,8 +320,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // THEN check for existing session (only if not on true public page)
     const initializeAuth = async () => {
       try {
-        // Only clear auth for true public pages
-        if (isTruePublicPage()) {
+        const currentPath = window.location.pathname;
+        const isPublicPage = isTruePublicPage();
+        
+        console.log('🚀 Initializing auth...', {
+          currentPath,
+          isPublicPage,
+          hasRecoveryTokens: hasRecoveryTokens()
+        });
+        
+        // Only clear auth for true public pages (not reset-password with tokens)
+        if (isPublicPage) {
           console.log('🏠 On true public page - clearing auth and skipping session restoration');
           await supabase.auth.signOut({ scope: 'local' });
           cleanupAuthState();
@@ -284,7 +344,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        console.log('🚀 Initializing auth...');
+        // For protected pages or reset-password with tokens, get session normally
+        console.log('🔒 On protected page or reset-password with tokens - initializing session');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -295,6 +356,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           return;
         }
+
+        console.log('📋 Session check result:', {
+          hasSession: !!session,
+          userEmail: session?.user?.email,
+          currentPath
+        });
 
         handleAuthStateChange('INITIAL_SESSION', session);
       } catch (error) {

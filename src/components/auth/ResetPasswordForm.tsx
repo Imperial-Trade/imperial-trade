@@ -58,60 +58,68 @@ export const ResetPasswordForm: React.FC = () => {
 
   // Validate reset tokens on component mount
   useEffect(() => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
-    const error = searchParams.get('error');
-    const errorCode = searchParams.get('error_code');
-    const errorDescription = searchParams.get('error_description');
+    try {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+      const error = hashParams.get('error');
+      const errorCode = hashParams.get('error_code');
+      const errorDescription = hashParams.get('error_description');
 
-    console.log('🔍 Reset password URL params:', {
-      accessToken: accessToken ? 'present' : 'missing',
-      refreshToken: refreshToken ? 'present' : 'missing',
-      type,
-      error,
-      errorCode,
-      errorDescription
-    });
+      console.log('🔍 Reset password URL hash params:', {
+        accessToken: accessToken ? 'present' : 'missing',
+        refreshToken: refreshToken ? 'present' : 'missing',
+        type,
+        error,
+        errorCode,
+        errorDescription
+      });
 
-    // Handle specific error cases from the URL
-    if (error) {
-      let errorMessage = 'Password reset failed.';
-      
-      if (errorCode === 'otp_expired') {
-        errorMessage = 'This password reset link has expired. Please request a new one.';
-      } else if (error === 'access_denied') {
-        errorMessage = 'Invalid password reset link. Please request a new one.';
-      } else if (errorDescription) {
-        errorMessage = decodeURIComponent(errorDescription);
+      // Handle specific error cases from the URL
+      if (error) {
+        let errorMessage = 'Password reset failed.';
+        
+        if (errorCode === 'otp_expired') {
+          errorMessage = 'This password reset link has expired. Please request a new one.';
+        } else if (error === 'access_denied') {
+          errorMessage = 'Invalid password reset link. Please request a new one.';
+        } else if (errorDescription) {
+          errorMessage = decodeURIComponent(errorDescription);
+        }
+        
+        toast.error(errorMessage);
+        navigate('/signin');
+        return;
       }
-      
-      toast.error(errorMessage);
-      navigate('/signin');
-      return;
-    }
 
-    // Validate required tokens
-    if (!accessToken || !refreshToken || type !== 'recovery') {
-      toast.error('Invalid or missing reset tokens. Please request a new password reset.');
+      // Validate required tokens
+      if (!accessToken || !refreshToken || type !== 'recovery') {
+        toast.error('Invalid or missing reset tokens. Please request a new password reset.');
+        navigate('/signin');
+      }
+    } catch (error) {
+      console.error('❌ Error parsing recovery tokens from URL hash:', error);
+      toast.error('Invalid recovery link format. Please request a new password reset.');
       navigate('/signin');
     }
-  }, [searchParams, navigate]);
+  }, [navigate]);
 
   // Handle form submission
   const onSubmit = async (data: ResetPasswordData) => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-
-    if (!accessToken || !refreshToken) {
-      toast.error('Invalid reset tokens. Please request a new password reset.');
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
-      // Set the session with the tokens from the URL
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (!accessToken || !refreshToken) {
+        toast.error('Invalid reset tokens. Please request a new password reset.');
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Set the session with the tokens from the URL hash
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,

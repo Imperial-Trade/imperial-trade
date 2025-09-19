@@ -159,7 +159,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const publicPaths = [
       '/', 
       '/signin', 
-      '/reset-password',
       '/advanced-tools', 
       '/signals', 
       '/education', 
@@ -174,59 +173,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     const hasRecoveryTokens = () => {
       try {
-        // Parse both search params and hash fragment
-        const searchParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasRecoveryType = hashParams.get('type') === 'recovery';
         
-        console.log('🔍 Checking for recovery tokens:', {
-          search: window.location.search,
-          hash: window.location.hash,
-          pathname: window.location.pathname
-        });
-        
-        // Enhanced recovery token detection
-        const recoveryIndicators = [
-          'access_token',
-          'refresh_token', 
-          'token_hash',
-          'recovery_token'
-        ];
-        
-        // Check for type=recovery specifically
-        const searchType = searchParams.get('type');
-        const hashType = hashParams.get('type');
-        const isRecoveryType = searchType === 'recovery' || hashType === 'recovery';
-        
-        // Check for any recovery tokens in search params
-        const hasTokensInSearch = recoveryIndicators.some(token => {
-          const hasToken = searchParams.has(token) && searchParams.get(token);
-          if (hasToken) {
-            console.log(`🔐 Found ${token} in search params`);
-          }
-          return hasToken;
-        });
-        
-        // Check for any recovery tokens in hash fragment
-        const hasTokensInHash = recoveryIndicators.some(token => {
-          const hasToken = hashParams.has(token) && hashParams.get(token);
-          if (hasToken) {
-            console.log(`🔐 Found ${token} in hash fragment`);
-          }
-          return hasToken;
-        });
-        
-        const hasRecoveryTokens = isRecoveryType || hasTokensInSearch || hasTokensInHash;
-        
-        console.log('🔍 Recovery token check result:', {
-          isRecoveryType,
-          hasTokensInSearch,
-          hasTokensInHash,
-          hasRecoveryTokens
-        });
-        
-        return hasRecoveryTokens;
+        if (hasRecoveryType) {
+          console.log('🔍 Recovery token type found in URL hash.');
+        }
+        return hasRecoveryType;
       } catch (error) {
-        console.error('❌ Error checking recovery tokens:', error);
+        console.error('❌ Error parsing URL for recovery tokens:', error);
         return false;
       }
     };

@@ -152,30 +152,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-    
-    // Define which paths are truly public
-    const publicPaths = ['/', '/signin', '/advanced-tools', '/signals', '/education', '/live-sessions', '/community-forum', '/ib-partnership', '/ib-partnership-new', '/imperial-partnership', '/about', '/features'];
+  // Define which paths are truly public
+  const publicPaths = ['/', '/signin', '/signup'];
 
-    /**
-     * Checks if the current URL contains password recovery tokens from Supabase.
-     * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
-     */
-    const hasRecoveryTokens = () => {
+  /**
+   * Checks if the current URL contains password recovery tokens from Supabase.
+   * Uses the enhanced TokenValidator for robust validation.
+   */
+  const hasRecoveryTokens = () => {
+    try {
+      // Use the enhanced token validator for more robust checking
+      const { TokenValidator } = require('@/utils/tokenValidation');
+      return TokenValidator.hasRecoveryTokens();
+    } catch (error) {
+      console.error('❌ Error checking recovery tokens:', error);
+      // Fallback to basic check
       try {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hasRecoveryType = hashParams.get('type') === 'recovery';
-        
-        if (hasRecoveryType) {
-          console.log('🔍 Recovery token type found in URL hash.');
-        }
-        return hasRecoveryType;
-      } catch (error) {
-        console.error('❌ Error parsing URL for recovery tokens:', error);
+        return hashParams.get('type') === 'recovery';
+      } catch (fallbackError) {
+        console.error('❌ Fallback token check failed:', fallbackError);
         return false;
       }
-    };
+    }
+  };
+
+  useEffect(() => {
 
     /**
      * Determines if the current page should be treated as a public page,
@@ -196,135 +198,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log(`📄 Path "${currentPath}" is considered public: ${isPublic}`);
       return isPublic;
     };
-    
-    const handleAuthStateChange = (event: string, session: Session | null) => {
-      if (!mounted) return;
-      
-      console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
-      
-      setSession(session);
-      setUser(session?.user ?? null);
 
-      if (session?.user) {
-        console.log('👤 User authenticated, loading profile...');
-        // Defer Supabase calls to avoid deadlocks in the auth callback
-        setTimeout(() => {
-          fetchProfile(session.user!.id)
-            .then((profileData) => {
-              if (mounted) {
-                setProfile(profileData);
-              }
-            })
-            .catch((error) => {
-              console.error('❌ Failed to load profile:', error);
-              if (mounted) {
-                setProfile(null);
-              }
-            })
-            .finally(() => {
-              if (mounted && !authInitialized) {
-                setLoading(false);
-                setAuthInitialized(true);
-                console.log('✅ Auth initialization complete');
-              }
-            });
-        }, 0);
-      } else {
-        console.log('❌ No user session');
-        if (mounted) {
-          setProfile(null);
-          if (!authInitialized) {
-            setLoading(false);
-            setAuthInitialized(true);
-            console.log('✅ Auth initialization complete (no user)');
-          }
-        }
-      }
-
-      // Handle specific auth events
-      if (event === 'SIGNED_IN') {
-        console.log('✅ User signed in successfully');
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👋 User signed out');
-        if (!isSigningOut && mounted) {
-          cleanupAuthState();
-        }
-        if (mounted) {
-          setProfile(null);
-        }
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('🔄 Token refreshed');
-      }
-    };
-
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-
-    // THEN check for existing session (only if not on true public page)
     const initializeAuth = async () => {
       try {
-        const currentPath = window.location.pathname;
-        const isPublicPage = isTruePublicPage();
-        
-        console.log('🚀 Initializing auth...', {
-          currentPath,
-          isPublicPage,
-          hasRecoveryTokens: hasRecoveryTokens()
-        });
-        
+        setLoading(true);
+
         // If on a true public page, sign out any local session and stop.
-        if (isPublicPage) {
+        if (isTruePublicPage()) {
           console.log('🏠 On a true public page - clearing any local auth state.');
           // Use 'local' scope to only clear browser state without invalidating JWTs on the server.
           await supabase.auth.signOut({ scope: 'local' }); 
-          cleanupAuthState();
-          if (mounted) {
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-            setAuthInitialized(true);
-          }
+          setSession(null);
+          setUser(null);
+          setProfile(null);
           return;
         }
 
         // For protected pages OR the reset-password page with tokens,
         // allow Supabase to establish a session.
         console.log('🔒 On a protected page or recovery page - attempting to establish session.');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Error getting initial session:', error);
-          if (mounted) {
-            setLoading(false);
-            setAuthInitialized(true);
-          }
-          return;
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        // Only fetch profile for non-recovery sessions
+        if (session?.user && !hasRecoveryTokens()) {
+          const profileData = await fetchProfile(session.user.id);
+          setProfile(profileData);
         }
 
-        console.log('📋 Session check result:', {
-          hasSession: !!session,
-          userEmail: session?.user?.email,
-          currentPath
-        });
-
-        handleAuthStateChange('INITIAL_SESSION', session);
       } catch (error) {
         console.error('❌ Auth initialization failed:', error);
-        if (mounted) {
-          setLoading(false);
-          setAuthInitialized(true);
-        }
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        setLoading(false);
       }
     };
 
     initializeAuth();
 
+    // Listen for auth state changes (e.g., login, logout, password recovery)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        console.log(`🔄 Supabase auth event: ${_event}`);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        
+        // Only fetch profile for non-recovery sessions
+        if (session?.user && !hasRecoveryTokens()) {
+          fetchProfile(session.user.id).then(setProfile);
+        } else if (!session?.user) {
+          setProfile(null);
+        }
+      }
+    );
+
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
-  }, [authInitialized, isSigningOut]);
+  }, []);
 
   const signOut = async () => {
     try {
@@ -370,9 +305,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         refreshProfile
       }}
     >
-      <div data-auth-provider="true">
-        {children}
-      </div>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

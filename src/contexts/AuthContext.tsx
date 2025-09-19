@@ -155,22 +155,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
-    // Public pages that should clear auth
-    const publicPaths = [
-      '/', 
-      '/signin', 
-      '/advanced-tools', 
-      '/signals', 
-      '/education', 
-      '/live-sessions', 
-      '/community-forum', 
-      '/ib-partnership', 
-      '/ib-partnership-new', 
-      '/imperial-partnership',
-      '/about',
-      '/features'
-    ];
-    
+    // Define which paths are truly public
+    const publicPaths = ['/', '/signin', '/advanced-tools', '/signals', '/education', '/live-sessions', '/community-forum', '/ib-partnership', '/ib-partnership-new', '/imperial-partnership', '/about', '/features'];
+
+    /**
+     * Checks if the current URL contains password recovery tokens from Supabase.
+     * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
+     */
     const hasRecoveryTokens = () => {
       try {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -185,28 +176,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return false;
       }
     };
-    
+
+    /**
+     * Determines if the current page should be treated as a public page,
+     * where any existing user session should be cleared.
+     */
     const isTruePublicPage = () => {
       const currentPath = window.location.pathname;
-      const isPublicPath = publicPaths.includes(currentPath);
-      
-      console.log('🔍 Checking if true public page:', {
-        currentPath,
-        isPublicPath,
-        hasRecoveryTokens: hasRecoveryTokens()
-      });
-      
-      // Critical: If we're on reset-password page with recovery tokens, 
-      // this is NOT a public page - user needs their recovery session preserved
+
+      // CRITICAL: The reset-password page is NOT a public page if it contains
+      // recovery tokens, as it requires a temporary authenticated session.
       if (currentPath === '/reset-password' && hasRecoveryTokens()) {
-        console.log('🔐 Reset-password page with recovery tokens - NOT treating as public page');
+        console.log('🔐 Reset password page with tokens detected - preserving auth session.');
         return false;
       }
       
-      // All other public paths are treated as public pages
-      const result = isPublicPath;
-      console.log('📄 Public page check result:', result);
-      return result;
+      // Otherwise, check if the path is in our defined list of public paths.
+      const isPublic = publicPaths.includes(currentPath);
+      console.log(`📄 Path "${currentPath}" is considered public: ${isPublic}`);
+      return isPublic;
     };
     
     const handleAuthStateChange = (event: string, session: Session | null) => {
@@ -284,10 +272,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           hasRecoveryTokens: hasRecoveryTokens()
         });
         
-        // Only clear auth for true public pages (not reset-password with tokens)
+        // If on a true public page, sign out any local session and stop.
         if (isPublicPage) {
-          console.log('🏠 On true public page - clearing auth and skipping session restoration');
-          await supabase.auth.signOut({ scope: 'local' });
+          console.log('🏠 On a true public page - clearing any local auth state.');
+          // Use 'local' scope to only clear browser state without invalidating JWTs on the server.
+          await supabase.auth.signOut({ scope: 'local' }); 
           cleanupAuthState();
           if (mounted) {
             setSession(null);
@@ -299,8 +288,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // For protected pages or reset-password with tokens, get session normally
-        console.log('🔒 On protected page or reset-password with tokens - initializing session');
+        // For protected pages OR the reset-password page with tokens,
+        // allow Supabase to establish a session.
+        console.log('🔒 On a protected page or recovery page - attempting to establish session.');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {

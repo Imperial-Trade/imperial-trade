@@ -152,28 +152,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    // Define which paths are truly public
-    const publicPaths = ['/', '/signin', '/signup'];
+  // Define which paths are truly public
+  const publicPaths = ['/', '/signin', '/signup'];
 
-    /**
-     * Checks if the current URL contains password recovery tokens from Supabase.
-     * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
-     */
-    const hasRecoveryTokens = () => {
-      try {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hasRecoveryType = hashParams.get('type') === 'recovery';
-        
-        if (hasRecoveryType) {
-          console.log('🔍 Recovery token type found in URL hash.');
-        }
-        return hasRecoveryType;
-      } catch (error) {
-        console.error('❌ Error parsing URL for recovery tokens:', error);
-        return false;
+  /**
+   * Checks if the current URL contains password recovery tokens from Supabase.
+   * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
+   */
+  const hasRecoveryTokens = () => {
+    try {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hasRecoveryType = hashParams.get('type') === 'recovery';
+      
+      if (hasRecoveryType) {
+        console.log('🔍 Recovery token type found in URL hash.');
       }
-    };
+      return hasRecoveryType;
+    } catch (error) {
+      console.error('❌ Error parsing URL for recovery tokens:', error);
+      return false;
+    }
+  };
+
+  useEffect(() => {
 
     /**
      * Determines if the current page should be treated as a public page,
@@ -217,7 +218,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
+        // Only fetch profile for non-recovery sessions
+        if (session?.user && !hasRecoveryTokens()) {
           const profileData = await fetchProfile(session.user.id);
           setProfile(profileData);
         }
@@ -242,9 +244,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        if (session?.user) {
+        // Only fetch profile for non-recovery sessions
+        if (session?.user && !hasRecoveryTokens()) {
           fetchProfile(session.user.id).then(setProfile);
-        } else {
+        } else if (!session?.user) {
           setProfile(null);
         }
       }
@@ -299,9 +302,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         refreshProfile
       }}
     >
-      <div data-auth-provider="true">
-        {children}
-      </div>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

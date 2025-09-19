@@ -34,6 +34,16 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const searchParams = new URLSearchParams(window.location.search);
       
+      // Handle /verify endpoint redirects (when Supabase redirects from email links)
+      if (location.pathname === '/reset-password' && 
+          (searchParams.has('error') || hashParams.has('error') || 
+           document.referrer.includes('/verify') ||
+           sessionStorage.getItem('supabase_verify_redirect'))) {
+        console.log('🔄 NavigationGuard: Detected redirect from /verify endpoint');
+        sessionStorage.setItem('verify_redirect', 'true');
+        sessionStorage.removeItem('supabase_verify_redirect');
+      }
+      
       // Check for password reset tokens first - bypass all redirect logic if found
       const hasRecoveryTokens = () => {
         // Check for recovery type in hash or search params
@@ -44,8 +54,10 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
         const hasAccessToken = hashParams.has('access_token') || searchParams.has('access_token');
         const hasRefreshToken = hashParams.has('refresh_token') || searchParams.has('refresh_token');
         const hasTokenHash = hashParams.has('token_hash') || searchParams.has('token_hash');
+        const hasToken = hashParams.has('token') || searchParams.has('token');
         
-        return hashType === 'recovery' || searchType === 'recovery' || hasAccessToken || hasRefreshToken || hasTokenHash;
+        return hashType === 'recovery' || searchType === 'recovery' || 
+               hasAccessToken || hasRefreshToken || hasTokenHash || hasToken;
       };
 
       // If we detect recovery tokens, bypass all redirect logic

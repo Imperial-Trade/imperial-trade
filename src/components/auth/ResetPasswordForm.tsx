@@ -62,34 +62,72 @@ export const ResetPasswordForm: React.FC = () => {
 
   const password = watch("password", "");
 
-  // Validate reset tokens and session on component mount
+  // Enhanced token detection: Check both hash fragments AND query parameters
   useEffect(() => {
     const validateTokens = async () => {
       try {
         setTokenState('validating');
         
+        // Enhanced token detection - check multiple sources
+        const currentUrl = new URL(window.location.href);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-        const error = hashParams.get('error');
-        const errorCode = hashParams.get('error_code');
-        const errorDescription = hashParams.get('error_description');
+        const queryParams = currentUrl.searchParams;
+        
+        // Check if we're coming from a failed /verify endpoint
+        const isVerifyRedirect = sessionStorage.getItem('verify_redirect') === 'true';
+        if (isVerifyRedirect) {
+          sessionStorage.removeItem('verify_redirect');
+          console.log('🔄 Detected redirect from failed /verify endpoint');
+        }
 
-        console.log('🔍 Reset password URL hash params:', {
-          accessToken: accessToken ? 'present' : 'missing',
-          refreshToken: refreshToken ? 'present' : 'missing',
-          type,
-          error,
-          errorCode,
-          errorDescription
+        // Extract tokens from both hash and query parameters
+        const getTokenFromSources = (param: string) => {
+          return hashParams.get(param) || queryParams.get(param);
+        };
+
+        const accessToken = getTokenFromSources('access_token');
+        const refreshToken = getTokenFromSources('refresh_token');
+        const type = getTokenFromSources('type');
+        const error = getTokenFromSources('error');
+        const errorCode = getTokenFromSources('error_code');
+        const errorDescription = getTokenFromSources('error_description');
+        
+        // Additional Supabase token formats
+        const token = getTokenFromSources('token');
+        const tokenHash = getTokenFromSources('token_hash');
+        const verificationToken = getTokenFromSources('verification_token');
+
+        console.log('🔍 Enhanced token detection results:', {
+          currentUrl: window.location.href,
+          hashFragment: window.location.hash,
+          queryString: window.location.search,
+          tokens: {
+            accessToken: accessToken ? 'present' : 'missing',
+            refreshToken: refreshToken ? 'present' : 'missing',
+            token: token ? 'present' : 'missing',
+            tokenHash: tokenHash ? 'present' : 'missing',
+            verificationToken: verificationToken ? 'present' : 'missing',
+          },
+          metadata: { type, error, errorCode, errorDescription },
+          isVerifyRedirect
         });
+
+        // Clear any existing sessions that might interfere
+        const { data: currentSession } = await supabase.auth.getSession();
+        if (currentSession?.session && !accessToken && !token) {
+          console.log('🔄 Clearing existing session to avoid conflicts');
+          await supabase.auth.signOut({ scope: 'local' });
+        }
 
         // Handle specific error cases from the URL
         if (error) {
-          if (errorCode === 'otp_expired' || error === 'token_expired') {
+          console.log('❌ Error detected in URL:', { error, errorCode, errorDescription });
+          
+          if (errorCode === 'otp_expired' || error === 'token_expired' || errorDescription?.includes('expired')) {
             setTokenState('expired');
-          } else if (error === 'access_denied' || error === 'invalid_request') {
+          } else if (error === 'access_denied' || error === 'invalid_request' || errorDescription?.includes('invalid')) {
+            setTokenState('invalid');
+          } else if (error === 'verification_error') {
             setTokenState('invalid');
           } else {
             setTokenState('invalid');
@@ -97,42 +135,80 @@ export const ResetPasswordForm: React.FC = () => {
           return;
         }
 
-        // Check for missing tokens
-        if (!accessToken || !refreshToken || type !== 'recovery') {
-          setTokenState('missing');
-          return;
+        // Try different token validation approaches
+        let validationSuccess = false;
+
+        // Approach 1: Standard access/refresh token flow
+        if (accessToken && refreshToken && type === 'recovery') {
+          console.log('🔑 Attempting validation with access/refresh tokens');
+          try {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (!sessionError) {
+              validationSuccess = true;
+              console.log('✅ Access/refresh token validation successful');
+            } else {
+              console.log('❌ Access/refresh token validation failed:', sessionError.message);
+              if (sessionError.message.includes('expired') || sessionError.message.includes('Invalid')) {
+                setTokenState('expired');
+                return;
+              }
+            }
+          } catch (error) {
+            console.log('❌ Access/refresh token validation error:', error);
+          }
         }
 
-        // Try to set the session to validate tokens
-        try {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+        // Approach 2: OTP/verification token flow (for email links)
+        if (!validationSuccess && (token || tokenHash || verificationToken)) {
+          console.log('🔑 Attempting validation with OTP/verification tokens');
+          try {
+            const otpToken = token || tokenHash || verificationToken;
+            const { error: verifyError } = await supabase.auth.verifyOtp({
+              token_hash: otpToken!,
+              type: 'recovery'
+            });
 
-          if (sessionError) {
-            if (sessionError.message.includes('expired') || sessionError.message.includes('Invalid')) {
-              setTokenState('expired');
+            if (!verifyError) {
+              validationSuccess = true;
+              console.log('✅ OTP token validation successful');
             } else {
-              setTokenState('invalid');
+              console.log('❌ OTP token validation failed:', verifyError.message);
+              if (verifyError.message.includes('expired') || verifyError.message.includes('Token has expired')) {
+                setTokenState('expired');
+                return;
+              } else if (verifyError.message.includes('invalid') || verifyError.message.includes('not found')) {
+                setTokenState('invalid');
+                return;
+              }
             }
-            return;
+          } catch (error) {
+            console.log('❌ OTP token validation error:', error);
           }
+        }
 
+        if (validationSuccess) {
           // Get user info to show email
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.email) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (user?.email && !userError) {
             setUserEmail(user.email);
+            setTokenState('valid');
+            console.log('✅ Token validation complete, user authenticated');
+          } else {
+            console.log('❌ Could not get user after token validation:', userError);
+            setTokenState('invalid');
           }
-
-          setTokenState('valid');
-        } catch (error) {
-          console.error('❌ Session validation error:', error);
-          setTokenState('invalid');
+        } else {
+          // No valid tokens found
+          console.log('❌ No valid tokens found in URL');
+          setTokenState('missing');
         }
 
       } catch (error) {
-        console.error('❌ Error parsing recovery tokens from URL hash:', error);
+        console.error('❌ Critical error during token validation:', error);
         setTokenState('invalid');
       }
     };

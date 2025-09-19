@@ -155,15 +155,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     
-    // Define which paths are truly public - /reset-password is NOT included
+    // Define which paths are truly public
     const publicPaths = ['/', '/signin', '/advanced-tools', '/signals', '/education', '/live-sessions', '/community-forum', '/ib-partnership', '/ib-partnership-new', '/imperial-partnership', '/about', '/features'];
 
     /**
-     * Determines if the current page should be treated as a public page.
-     * The logic is now clean and simple, with no special exceptions.
+     * Checks if the current URL contains password recovery tokens from Supabase.
+     * Supabase puts `type=recovery` in the URL hash fragment. This is the most reliable indicator.
+     */
+    const hasRecoveryTokens = () => {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasRecoveryType = hashParams.get('type') === 'recovery';
+        
+        if (hasRecoveryType) {
+          console.log('🔍 Recovery token type found in URL hash.');
+        }
+        return hasRecoveryType;
+      } catch (error) {
+        console.error('❌ Error parsing URL for recovery tokens:', error);
+        return false;
+      }
+    };
+
+    /**
+     * Determines if the current page should be treated as a public page,
+     * where any existing user session should be cleared.
      */
     const isTruePublicPage = () => {
       const currentPath = window.location.pathname;
+
+      // CRITICAL: The reset-password page is NOT a public page if it contains
+      // recovery tokens, as it requires a temporary authenticated session.
+      if (currentPath === '/reset-password' && hasRecoveryTokens()) {
+        console.log('🔐 Reset password page with tokens detected - preserving auth session.');
+        return false;
+      }
+      
+      // Otherwise, check if the path is in our defined list of public paths.
       const isPublic = publicPaths.includes(currentPath);
       console.log(`📄 Path "${currentPath}" is considered public: ${isPublic}`);
       return isPublic;
@@ -240,7 +268,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         console.log('🚀 Initializing auth...', {
           currentPath,
-          isPublicPage
+          isPublicPage,
+          hasRecoveryTokens: hasRecoveryTokens()
         });
         
         // If on a true public page, sign out any local session and stop.

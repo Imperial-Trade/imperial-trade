@@ -1,238 +1,148 @@
-import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 
-// Password strength checker
-const getPasswordStrength = (password: string): number => {
-  let strength = 0;
-  if (password.length >= 8) strength += 25;
-  if (/[A-Z]/.test(password)) strength += 25;
-  if (/[a-z]/.test(password)) strength += 25;
-  if (/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) strength += 25;
-  return strength;
-};
-
-// Schema and types
-const resetPasswordSchema = z.object({
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password must contain at least one number or special character"),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
-
-export const ResetPasswordForm: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
+export const ResetPasswordForm = () => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<ResetPasswordData>({
-    resolver: zodResolver(resetPasswordSchema),
-  });
-
-  const password = watch("password", "");
-
-  // Validate reset tokens on component mount
-  useEffect(() => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
-    const error = searchParams.get('error');
-    const errorCode = searchParams.get('error_code');
-    const errorDescription = searchParams.get('error_description');
-
-    console.log('🔍 Reset password URL params:', {
-      accessToken: accessToken ? 'present' : 'missing',
-      refreshToken: refreshToken ? 'present' : 'missing',
-      type,
-      error,
-      errorCode,
-      errorDescription
-    });
-
-    // Handle specific error cases from the URL
-    if (error) {
-      let errorMessage = 'Password reset failed.';
-      
-      if (errorCode === 'otp_expired') {
-        errorMessage = 'This password reset link has expired. Please request a new one.';
-      } else if (error === 'access_denied') {
-        errorMessage = 'Invalid password reset link. Please request a new one.';
-      } else if (errorDescription) {
-        errorMessage = decodeURIComponent(errorDescription);
-      }
-      
-      toast.error(errorMessage);
-      navigate('/signin');
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
 
-    // Validate required tokens
-    if (!accessToken || !refreshToken || type !== 'recovery') {
-      toast.error('Invalid or missing reset tokens. Please request a new password reset.');
-      navigate('/signin');
-    }
-  }, [searchParams, navigate]);
-
-  // Handle form submission
-  const onSubmit = async (data: ResetPasswordData) => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-
-    if (!accessToken || !refreshToken) {
-      toast.error('Invalid reset tokens. Please request a new password reset.');
-      return;
-    }
-
-    setIsLoading(true);
+    setLoading(true);
+    setError('');
+    setMessage('');
 
     try {
-      // Set the session with the tokens from the URL
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
+      // Supabase's updateUser function is used to set the new password.
+      // This only works if the user is in the temporary authenticated state
+      // after clicking the recovery link.
+      const { error } = await supabase.auth.updateUser({
+        password: password,
       });
 
-      if (sessionError) {
-        throw sessionError;
+      if (error) {
+        throw error;
       }
 
-      // Update the user's password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.password,
-      });
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success('Password updated successfully! Redirecting to dashboard...');
+      setMessage('Your password has been reset successfully! Redirecting to your dashboard...');
       
-      // Small delay to show success message before redirect
+      // Redirect to the dashboard after a short delay
       setTimeout(() => {
         navigate('/dashboard/home');
-      }, 1500);
+      }, 2000);
 
-    } catch (error) {
-      console.error('Password reset error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to reset password. Please try again.');
+    } catch (err) {
+      console.error('Error resetting password:', err instanceof Error ? err.message : 'Unknown error');
+      setError('Failed to reset password. The link may have expired or is invalid. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const passwordStrength = getPasswordStrength(password);
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="flex items-center space-x-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <span>Loading...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error if user is not authenticated (no recovery session)
+  if (!user) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <AlertTriangle className="h-12 w-12 text-red-500" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Invalid Reset Link</CardTitle>
+          <CardDescription className="text-center">
+            You must access this page from a password reset email link. The link may have expired or is invalid.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Link
+            to="/signin"
+            className="flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors w-full"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Sign In
+          </Link>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Set New Password</CardTitle>
-        <CardDescription className="text-center">
-          Enter your new password below
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Set a New Password</CardTitle>
+        <CardDescription>
+          You have been authenticated from your recovery link. Please enter a new password below.
         </CardDescription>
       </CardHeader>
-
-      <form onSubmit={handleSubmit(onSubmit)}>
+      
+      <form onSubmit={handlePasswordReset}>
         <CardContent className="space-y-4">
-          {/* New Password Field */}
           <div className="space-y-2">
             <Label htmlFor="password">New Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your new password"
-                {...register("password")}
-                className={errors.password ? "border-red-500" : ""}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-            
-            {/* Password Strength Indicator */}
-            {password && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Password Strength:</span>
-                  <span className={`font-medium ${
-                    passwordStrength < 50 ? 'text-red-500' : 
-                    passwordStrength < 75 ? 'text-yellow-500' : 
-                    'text-green-500'
-                  }`}>
-                    {passwordStrength < 25 ? 'Very Weak' : 
-                     passwordStrength < 50 ? 'Weak' : 
-                     passwordStrength < 75 ? 'Good' : 'Strong'}
-                  </span>
-                </div>
-                <Progress value={passwordStrength} className="h-2" />
-              </div>
-            )}
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="Enter your new password"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              placeholder="Confirm your new password"
+            />
           </div>
 
-          {/* Confirm Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm your new password"
-                {...register("confirmPassword")}
-                className={errors.confirmPassword ? "border-red-500" : ""}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
-            )}
-          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          {message && <p className="text-sm text-green-600">{message}</p>}
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Updating Password...' : 'Update Password'}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Updating...' : 'Set New Password'}
           </Button>
 
           <Link

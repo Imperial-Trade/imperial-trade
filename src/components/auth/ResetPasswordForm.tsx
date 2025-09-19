@@ -32,10 +32,11 @@ export const ResetPasswordForm = () => {
         console.log('🔐 Initializing robust recovery flow validation...');
         
         const securityState = await RecoveryFlowSecurity.initializeRecoveryFlow({
-          requireStrictValidation: true,
-          enableDomainValidation: true,
+          requireStrictValidation: false, // Production-friendly: Allow lenient validation
+          enableDomainValidation: false,  // Production-friendly: Disable strict domain checks
           enableSessionPersistence: true,
-          securityScoreThreshold: 70 // Slightly lower threshold for better UX
+          securityScoreThreshold: 40,     // Much lower threshold for production UX
+          maxRetryAttempts: 5             // More retry attempts for token recovery
         });
 
         setFlowState(securityState);

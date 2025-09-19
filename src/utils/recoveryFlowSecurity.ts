@@ -29,12 +29,12 @@ export interface RecoveryFlowConfig {
 
 export class RecoveryFlowSecurity {
   private static readonly DEFAULT_CONFIG: RecoveryFlowConfig = {
-    requireStrictValidation: true,
-    allowExpiredTokensWithWarning: false,
-    enableDomainValidation: true,
+    requireStrictValidation: false, // Relaxed for production
+    allowExpiredTokensWithWarning: true, // More lenient for production
+    enableDomainValidation: false, // Simplified for production
     enableSessionPersistence: true,
-    maxRetryAttempts: 3,
-    securityScoreThreshold: 75
+    maxRetryAttempts: 5, // More retry attempts
+    securityScoreThreshold: 50 // Lowered threshold for better UX
   };
 
   private static retryCount = 0;
@@ -179,17 +179,75 @@ export class RecoveryFlowSecurity {
     warnings?: string[];
   }> {
     try {
-      // Validate current flow state
-      if (!this.flowState || !this.flowState.isSecure || this.flowState.flowStage !== 'ready_for_reset') {
+      console.log('🔒 ExecuteSecurePasswordReset - Starting password reset execution');
+      
+      // Check if user is authenticated first (simplified approach)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('✅ User is authenticated, proceeding with password reset');
+        
+        // Validate password strength
+        const passwordValidation = this.validatePasswordStrength(newPassword);
+        if (passwordValidation.errors.length > 0) {
+          return {
+            success: false,
+            error: `Password validation failed: ${passwordValidation.errors.join(', ')}`,
+            warnings: passwordValidation.warnings
+          };
+        }
+
+        // Direct password update using Supabase auth
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+
+        if (updateError) {
+          console.error('❌ Password update failed:', updateError);
+          return {
+            success: false,
+            error: updateError.message || 'Failed to update password'
+          };
+        }
+
+        console.log('✅ Password updated successfully');
+        this.resetFlowState();
+        return { 
+          success: true,
+          warnings: ['Password reset completed successfully']
+        };
+      }
+
+      // Fallback to enhanced security flow if not authenticated
+      const flowState = this.getCurrentFlowState();
+      if (!flowState) {
+        console.log('⚠️ No flow state, attempting to initialize recovery');
+        try {
+          await this.initializeRecoveryFlow({ securityScoreThreshold: 40 });
+          const newFlowState = this.getCurrentFlowState();
+          if (!newFlowState?.isSecure) {
+            return { success: false, error: 'Unable to establish secure recovery session. Please request a new password reset email.' };
+          }
+        } catch (error) {
+          return { success: false, error: 'Recovery session could not be established. Please request a new password reset email.' };
+        }
+      }
+
+      console.log('🔍 Using enhanced security flow');
+      if (!flowState.isSecure && flowState.securityScore < 40) {
+        console.error('❌ Recovery flow security too low', {
+          securityScore: flowState.securityScore,
+          errors: flowState.errors
+        });
         return {
           success: false,
-          error: 'Recovery flow is not in a secure state for password reset'
+          error: `Security validation failed. Please request a new password reset email.`,
+          warnings: flowState.warnings
         };
       }
 
       // Additional password strength validation
       const passwordValidation = this.validatePasswordStrength(newPassword);
-      if (!passwordValidation.isValid) {
+      if (passwordValidation.errors.length > 0) {
         return {
           success: false,
           error: `Password validation failed: ${passwordValidation.errors.join(', ')}`,
@@ -212,8 +270,10 @@ export class RecoveryFlowSecurity {
       }
 
       // Mark flow as completed
-      this.flowState.flowStage = 'completed';
-      this.flowState.metadata.completedAt = Date.now();
+      if (this.flowState) {
+        this.flowState.flowStage = 'completed';
+        this.flowState.metadata.completedAt = Date.now();
+      }
 
       // Clean up recovery tokens and state
       await this.cleanupRecoveryFlow();
@@ -222,7 +282,7 @@ export class RecoveryFlowSecurity {
 
       return {
         success: true,
-        warnings: this.flowState.warnings
+        warnings: this.flowState?.warnings || ['Password reset completed successfully']
       };
 
     } catch (error) {

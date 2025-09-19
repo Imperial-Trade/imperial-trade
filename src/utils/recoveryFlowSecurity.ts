@@ -41,7 +41,7 @@ export class RecoveryFlowSecurity {
   private static flowState: RecoveryFlowState | null = null;
 
   /**
-   * Initialize and validate the complete recovery flow
+   * Enhanced recovery flow initialization with comprehensive debugging
    */
   static async initializeRecoveryFlow(config: Partial<RecoveryFlowConfig> = {}): Promise<RecoveryFlowState> {
     const flowConfig = { ...this.DEFAULT_CONFIG, ...config };
@@ -57,27 +57,60 @@ export class RecoveryFlowSecurity {
       metadata: {
         config: flowConfig,
         startTime: Date.now(),
-        retryCount: this.retryCount
+        retryCount: this.retryCount,
+        investigation: {
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        }
       }
     };
 
     try {
-      console.log('🔐 Initializing secure recovery flow...');
+      console.log('🔐 === ENHANCED RECOVERY FLOW INITIALIZATION ===');
+      console.log('🔧 Flow config:', flowConfig);
+      console.log('🌐 Current environment:', {
+        url: window.location.href,
+        hash: window.location.hash,
+        search: window.location.search
+      });
 
-      // Stage 1: Token Validation
+      // Stage 1: Enhanced Token Validation with Recovery Strategies
+      console.log('📍 Stage 1: Enhanced token validation...');
       state.flowStage = 'token_validation';
       const tokenValidation = await TokenValidator.validateRecoveryTokens();
       state.tokenValidation = tokenValidation;
 
+      console.log('📊 Token validation results:', {
+        isValid: tokenValidation.isValid,
+        errorCount: tokenValidation.errors.length,
+        warningCount: tokenValidation.warnings.length,
+        recoveryMethod: tokenValidation.metadata.recoveryMethod
+      });
+
       if (!tokenValidation.isValid) {
-        state.errors.push('Token validation failed');
+        console.log('⚠️ Token validation failed, attempting enhanced recovery...');
+        state.errors.push('Primary token validation failed');
         state.errors.push(...tokenValidation.errors);
         state.warnings.push(...tokenValidation.warnings);
         
-        if (!this.shouldRetry(flowConfig)) {
-          state.flowStage = 'failed';
-          this.flowState = state;
-          return state;
+        // Enhanced recovery attempts
+        const enhancedRecovery = await this.attemptEnhancedRecovery(flowConfig);
+        if (enhancedRecovery.success) {
+          console.log('✅ Enhanced recovery successful');
+          state.warnings.push(`Recovery successful: ${enhancedRecovery.method}`);
+          // Re-validate with recovered session
+          const revalidation = await TokenValidator.validateRecoveryTokens();
+          state.tokenValidation = revalidation;
+        } else {
+          console.log('❌ All recovery attempts failed:', enhancedRecovery.error);
+          
+          if (!this.shouldRetry(flowConfig)) {
+            state.flowStage = 'failed';
+            state.errors.push('Maximum recovery attempts exceeded');
+            this.flowState = state;
+            return state;
+          }
         }
       }
 
@@ -264,30 +297,119 @@ export class RecoveryFlowSecurity {
   }
 
   /**
-   * Attempt to recover session state
+   * Enhanced recovery with multiple strategies
    */
-  private static async attemptSessionRecovery(tokenValidation: TokenValidationResult): Promise<{
+  private static async attemptEnhancedRecovery(config: RecoveryFlowConfig): Promise<{
+    success: boolean;
+    method?: string;
+    error?: string;
+  }> {
+    console.log('🔄 Attempting enhanced recovery strategies...');
+
+    // Strategy 1: Token-based session recovery
+    try {
+      console.log('🔄 Strategy 1: Token-based session recovery...');
+      const sessionRecovery = await this.attemptSessionRecovery(this.flowState?.tokenValidation);
+      if (sessionRecovery.success) {
+        return { success: true, method: 'token-based session recovery' };
+      }
+      console.log('❌ Token-based recovery failed:', sessionRecovery.error);
+    } catch (error) {
+      console.log('❌ Token-based recovery error:', error);
+    }
+
+    // Strategy 2: Existing session validation
+    try {
+      console.log('🔄 Strategy 2: Existing session validation...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (!error && session && session.user) {
+        // Check if session is recovery-related
+        const isRecovery = session.user.recovery_sent_at || 
+                          session.user.app_metadata?.recovery_sent_at;
+        
+        if (isRecovery) {
+          console.log('✅ Found existing recovery session');
+          return { success: true, method: 'existing recovery session' };
+        }
+        
+        // Try refreshing session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshData.session) {
+          console.log('✅ Successfully refreshed session');
+          return { success: true, method: 'session refresh' };
+        }
+      }
+    } catch (error) {
+      console.log('❌ Existing session validation error:', error);
+    }
+
+    // Strategy 3: Backup token restoration
+    try {
+      console.log('🔄 Strategy 3: Backup token restoration...');
+      const backupData = sessionStorage.getItem('password_reset_tokens_backup');
+      
+      if (backupData) {
+        const backup = JSON.parse(backupData);
+        const tokens = backup.tokens;
+        
+        if (tokens && tokens.access_token && tokens.refresh_token) {
+          const { error } = await supabase.auth.setSession({
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token
+          });
+          
+          if (!error) {
+            console.log('✅ Successfully restored from backup tokens');
+            return { success: true, method: 'backup token restoration' };
+          }
+        }
+      }
+    } catch (error) {
+      console.log('❌ Backup token restoration error:', error);
+    }
+
+    return { 
+      success: false, 
+      error: 'All enhanced recovery strategies failed' 
+    };
+  }
+
+  /**
+   * Attempt to recover session state (original method enhanced)
+   */
+  private static async attemptSessionRecovery(tokenValidation: TokenValidationResult | null | undefined): Promise<{
     success: boolean;
     error?: string;
   }> {
     try {
-      if (!tokenValidation.isValid || !tokenValidation.accessToken || !tokenValidation.refreshToken) {
+      console.log('🔄 Attempting session recovery with tokens...');
+      
+      if (!tokenValidation?.isValid || !tokenValidation?.accessToken || !tokenValidation?.refreshToken) {
+        console.log('❌ No valid tokens available for session recovery');
         return { success: false, error: 'No valid tokens available for session recovery' };
       }
 
       // Attempt to establish session with tokens
-      const { error } = await supabase.auth.setSession({
+      const { data, error } = await supabase.auth.setSession({
         access_token: tokenValidation.accessToken,
         refresh_token: tokenValidation.refreshToken
       });
 
       if (error) {
+        console.log('❌ Session recovery failed:', error.message);
         return { success: false, error: error.message };
       }
 
-      return { success: true };
+      if (data.session && data.session.user) {
+        console.log('✅ Session recovery successful');
+        return { success: true };
+      }
+
+      return { success: false, error: 'Session established but no user data' };
 
     } catch (error) {
+      console.error('❌ Session recovery exception:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown session recovery error' 

@@ -15,8 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { getPasswordResetUrl } from "@/utils/environment";
+import { EmailRedirectFix } from "@/utils/emailRedirectFix";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -45,19 +44,13 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
     setIsSubmitting(true);
 
     try {
-      const redirectUrl = getPasswordResetUrl();
-      console.log('🔗 Reset redirect URL:', redirectUrl);
+      const result = await EmailRedirectFix.sendPasswordResetEmail(data.email);
 
-      // Use the correct parameter name for Supabase Auth
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        console.error('❌ Password reset error:', error);
+      if (!result.success) {
+        console.error('❌ Password reset error:', result.error);
         toast({
           title: "Error",
-          description: error.message || "Failed to send reset email. Please try again.",
+          description: result.error || "Failed to send reset email. Please try again.",
           variant: "destructive",
         });
         return;

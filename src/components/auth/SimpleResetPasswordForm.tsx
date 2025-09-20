@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft, Shield, CheckCircle, AlertTriangle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SimplePasswordReset, ResetSession } from '@/utils/simplePasswordReset';
-import { SimpleDebugDashboard } from '@/components/debug/SimpleDebugDashboard';
-import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { toast } from 'sonner';
 
 export const SimpleResetPasswordForm = () => {
@@ -129,11 +127,7 @@ export const SimpleResetPasswordForm = () => {
 
   // Valid session - show reset form
   return (
-    <>
-      {/* Debug Dashboard for Development */}
-      {isDevToolsEnabled() && <SimpleDebugDashboard />}
-      
-      <Card className="w-full max-w-md mx-auto glass-effect border-default backdrop-blur-md bg-surface/90">
+    <Card className="w-full max-w-md mx-auto glass-effect border-default backdrop-blur-md bg-surface/90">
       <CardHeader>
         <div className="flex items-center justify-center mb-4">
           <Shield className="h-8 w-8 text-primary" />
@@ -215,6 +209,5 @@ export const SimpleResetPasswordForm = () => {
         </CardFooter>
       </form>
     </Card>
-    </>
   );
 };

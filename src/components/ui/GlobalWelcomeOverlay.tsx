@@ -18,6 +18,7 @@ export const GlobalWelcomeOverlay: React.FC = () => {
   const isPublicPage = location.pathname === '/' || 
                        location.pathname.startsWith('/signin') || 
                        location.pathname.startsWith('/account-request') ||
+                       location.pathname.startsWith('/reset-password') ||
                        location.pathname.startsWith('/legal/');
 
   if (!user || isPublicPage || hasSeenWelcome) {

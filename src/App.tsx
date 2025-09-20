@@ -29,6 +29,7 @@ import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
+import ResetPasswordLayout from "@/pages/layouts/ResetPasswordLayout";
 import Layout from "@/components/Layout";
 
 // Landing Pages
@@ -162,10 +163,9 @@ function App() {
                           <Route
                             path="imperial-partnership"
                             element={<ImperialPartnership />}
-                          />
-                           <Route path="signin" element={<Signin />} />
-                           <Route path="reset-password" element={<ResetPasswordPage />} />
-                           <Route path="legal/disclaimers" element={<DisclaimersPage />} />
+                           />
+                            <Route path="signin" element={<Signin />} />
+                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
                            <Route path="legal/terms" element={<TermsPage />} />
                            <Route path="legal/privacy" element={<PrivacyPage />} />
                           <Route
@@ -176,11 +176,20 @@ function App() {
                             path="account-request-status"
                             element={<AccountRequestStatus />}
                           />
+                          </Route>
+
+                        {/* Reset Password Route - Clean Layout */}
+                        <Route
+                          path="reset-password" 
+                          element={<ResetPasswordLayout />}
+                          errorElement={<RouteErrorBoundary />}
+                        >
+                          <Route index element={<ResetPasswordPage />} />
                         </Route>
 
-                        {/* Dashboard Routes */}
-                        <Route
-                          path="/dashboard"
+                         {/* Dashboard Routes */}
+                         <Route
+                           path="/dashboard"
                           element={
                             <ProtectedRoute>
                               <TooltipProvider>

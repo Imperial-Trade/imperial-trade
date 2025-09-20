@@ -1,5 +1,5 @@
 import React from "react";
-import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
+import { SimpleResetPasswordForm } from "@/components/auth/SimpleResetPasswordForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { PageStyles } from "@/components/account-request/PageStyles";
@@ -18,7 +18,7 @@ export default function ResetPasswordPage() {
         </ErrorBoundary>
 
         <ErrorBoundary componentName="Reset Password Form">
-          <ResetPasswordForm />
+          <SimpleResetPasswordForm />
         </ErrorBoundary>
       </div>
 

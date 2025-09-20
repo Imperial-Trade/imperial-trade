@@ -8,6 +8,7 @@ import { ArrowLeft, Shield, CheckCircle, AlertTriangle, Loader2, Eye, EyeOff } f
 import { Link } from "react-router-dom";
 import { SimplePasswordReset, ResetSession } from '@/utils/simplePasswordReset';
 import { SimpleDebugDashboard } from '@/components/debug/SimpleDebugDashboard';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { toast } from 'sonner';
 
 export const SimpleResetPasswordForm = () => {
@@ -130,7 +131,7 @@ export const SimpleResetPasswordForm = () => {
   return (
     <>
       {/* Debug Dashboard for Development */}
-      <SimpleDebugDashboard />
+      {isDevToolsEnabled() && <SimpleDebugDashboard />}
       
       <Card className="w-full max-w-md mx-auto glass-effect border-default backdrop-blur-md bg-surface/90">
       <CardHeader>
@@ -193,7 +194,7 @@ export const SimpleResetPasswordForm = () => {
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-black font-semibold" disabled={loading}>
+          <Button type="submit" className="w-full bg-lime-300 hover:bg-lime-200 text-black font-semibold py-3 h-12" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

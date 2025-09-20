@@ -10,9 +10,15 @@ export class EmailRedirectFix {
    * Get the correct password reset URL for the current environment
    */
   static getPasswordResetUrl(): string {
-    // Always use current domain to avoid cross-domain issues
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/reset-password`;
+    // Use environment-aware URL generation
+    if (typeof window !== 'undefined') {
+      // Browser environment - use current domain for consistency
+      const baseUrl = window.location.origin;
+      return `${baseUrl}/reset-password`;
+    }
+    
+    // Fallback for server-side rendering or other environments
+    return '/reset-password';
   }
 
   /**

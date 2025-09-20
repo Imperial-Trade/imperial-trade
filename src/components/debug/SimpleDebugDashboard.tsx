@@ -8,6 +8,7 @@ import { SimplePasswordReset } from '@/utils/simplePasswordReset';
 import { EmailRedirectFix } from '@/utils/emailRedirectFix';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface DebugInfo {
   url: {
@@ -24,6 +25,11 @@ interface DebugInfo {
 }
 
 export const SimpleDebugDashboard = () => {
+  // Hide in production - only show when dev tools are enabled
+  if (!isDevToolsEnabled()) {
+    return null;
+  }
+
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);

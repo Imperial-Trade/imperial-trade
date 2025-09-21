@@ -42,6 +42,9 @@ export default function SignalStream() {
     educator: ''
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // 🔒 Anti-flicker: hydrate once, then never show skeleton again
+  const hasHydratedRef = useRef(false);
 
   // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
   const {
@@ -54,6 +57,12 @@ export default function SignalStream() {
     updateAlert,
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
+  
+  useEffect(() => {
+    if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
+      hasHydratedRef.current = true;
+    }
+  }, [allAlerts.length, connectionStatus, lastUpdated]);
   
   // Local state for operations
   const isLoading = realtimeLoading;
@@ -622,7 +631,7 @@ export default function SignalStream() {
                 <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
               </div>
               
-              {isLoading || connectionStatus !== 'connected' && allAlerts.length === 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+{(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({
                 length: 6
               }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">

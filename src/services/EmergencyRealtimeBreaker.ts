@@ -23,19 +23,24 @@ class EmergencyRealtimeBreaker {
     costExceeded: false
   };
 
-  // 🚨 PRODUCTION LIMITS: Optimized for 100-500 users with sliding window
-  private readonly HOURLY_MESSAGE_LIMIT = 100; // Tightened from 500 to 100 messages/hour
-  private readonly DAILY_MESSAGE_LIMIT = 2000; // Reduced from 5K to 2K messages/day
-  private readonly COST_LIMIT_USD = 0.50; // Reduced from $1 to $0.50/day absolute limit
+  // 🚨 PER-TYPE LIMITS: Different caps for DB vs price updates (per user/session)
+  private readonly HOURLY_LIMITS: Record<string, number> = {
+    db_change: 600,             // ~10/min per user is plenty
+    price_update: 18000,        // up to 5 per second
+    price_update_v3: 18000,     // up to 5 per second
+    default: 1000               // fallback for unknown types
+  };
+  private readonly DAILY_MESSAGE_LIMIT = 20000; // global soft cap
+  private readonly COST_LIMIT_USD = 1.00; // soft cost cap (not enforced here)
   private readonly MAX_CONSECUTIVE_FAILURES = 3;
   private readonly EMERGENCY_COOLDOWN = 300000; // 5 minutes cooldown
   
-  // 🚀 SLIDING WINDOW: Track message timestamps for precise rate limiting
-  private readonly messageTimestamps: number[] = [];
+  // 🚀 SLIDING WINDOWS PER TYPE
+  private readonly messageWindows: Map<string, number[]> = new Map();
 
   private constructor() {
     this.startHourlyReset();
-    console.log('🚨 Emergency Realtime Breaker initialized - Ultra-aggressive cost protection');
+    console.log('🚨 Emergency Realtime Breaker initialized - Per-type rate limits active');
   }
 
   static getInstance(): EmergencyRealtimeBreaker {
@@ -58,7 +63,7 @@ class EmergencyRealtimeBreaker {
     }, 3600000); // Every hour
   }
 
-  // 🚀 OPTIMIZED: Sliding window rate limiting check
+  // 🚀 OPTIMIZED: Keep only global/emergency checks here; per-type rate limit happens in recordMessage
   canAllowRealtimeOperation(operationType: 'connection' | 'message' | 'subscription'): boolean {
     // Emergency mode blocks all operations
     if (this.metrics.emergencyModeActive) {
@@ -70,24 +75,7 @@ class EmergencyRealtimeBreaker {
       }
     }
 
-    // For message operations, use sliding window check
-    if (operationType === 'message') {
-      const now = Date.now();
-      const oneHourAgo = now - 3600000;
-      
-      // Clean sliding window first
-      while (this.messageTimestamps.length > 0 && this.messageTimestamps[0] < oneHourAgo) {
-        this.messageTimestamps.shift();
-      }
-      
-      // Check sliding window limit
-      if (this.messageTimestamps.length >= this.HOURLY_MESSAGE_LIMIT) {
-        this.activateEmergencyMode('Sliding window hourly message limit exceeded');
-        return false;
-      }
-    }
-
-    // Legacy checks for other operations
+    // Global soft daily cap
     if (this.metrics.dailyMessages >= this.DAILY_MESSAGE_LIMIT) {
       this.activateEmergencyMode('Daily message limit exceeded');
       return false;
@@ -101,34 +89,43 @@ class EmergencyRealtimeBreaker {
     return true;
   }
 
-  // 🚀 OPTIMIZED: Sliding window rate limiting for precise message control
+  // 🚀 OPTIMIZED: Per-type sliding window rate limiting for precise control
   recordMessage(messageType?: string): boolean {
     if (!this.canAllowRealtimeOperation('message')) {
       console.warn(`🚨 Emergency Breaker: Message blocked (${messageType})`);
       return false;
     }
 
+    const type = messageType || 'default';
+    const window = this.messageWindows.get(type) || [];
     const now = Date.now();
-    
-    // Add current message to sliding window
-    this.messageTimestamps.push(now);
-    
-    // Clean up old timestamps (older than 1 hour)
     const oneHourAgo = now - 3600000;
-    while (this.messageTimestamps.length > 0 && this.messageTimestamps[0] < oneHourAgo) {
-      this.messageTimestamps.shift();
+
+    // Clean old timestamps
+    const pruned = window.filter(ts => ts >= oneHourAgo);
+    const limit = this.HOURLY_LIMITS[type] ?? this.HOURLY_LIMITS.default;
+
+    if (pruned.length >= limit) {
+      // Do NOT trigger global emergency for high-frequency price updates; just drop
+      if (type.startsWith('price_update')) {
+        return false;
+      }
+      // For DB changes, activate emergency to protect costs
+      this.activateEmergencyMode(`Hourly limit exceeded for ${type}`);
+      return false;
     }
-    
-    // Update metrics with sliding window counts
-    this.metrics.hourlyMessages = this.messageTimestamps.length;
-    this.metrics.dailyMessages++; // Keep daily as cumulative for cost tracking
-    
-    // Reset failure count on successful message
+
+    pruned.push(now);
+    this.messageWindows.set(type, pruned);
+
+    // Update aggregate metrics
+    this.metrics.hourlyMessages = Array.from(this.messageWindows.values()).reduce((sum, arr) => sum + arr.length, 0);
+    this.metrics.dailyMessages++;
     this.metrics.consecutiveFailures = 0;
 
-    // Check if we're approaching limits
-    if (this.metrics.hourlyMessages >= this.HOURLY_MESSAGE_LIMIT * 0.9) {
-      console.warn(`⚠️ Emergency Breaker: Approaching hourly limit (${this.metrics.hourlyMessages}/${this.HOURLY_MESSAGE_LIMIT})`);
+    // Soft warning as we approach limits (non-blocking)
+    if (pruned.length >= limit * 0.9 && type !== 'price_update' && type !== 'price_update_v3') {
+      console.warn(`⚠️ Emergency Breaker: Approaching hourly limit for ${type} (${pruned.length}/${limit})`);
     }
 
     return true;
@@ -196,7 +193,7 @@ class EmergencyRealtimeBreaker {
       isEmergency: this.metrics.emergencyModeActive,
       metrics: { ...this.metrics },
       limitsStatus: {
-        hourlyUsage: (this.metrics.hourlyMessages / this.HOURLY_MESSAGE_LIMIT) * 100,
+        hourlyUsage: (this.metrics.hourlyMessages / (this.HOURLY_LIMITS.db_change + this.HOURLY_LIMITS.price_update + this.HOURLY_LIMITS.price_update_v3)) * 100,
         dailyUsage: (this.metrics.dailyMessages / this.DAILY_MESSAGE_LIMIT) * 100,
         hoursUntilReset
       }

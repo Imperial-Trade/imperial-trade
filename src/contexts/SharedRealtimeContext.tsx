@@ -78,6 +78,9 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
   // 🔥 LEAK-PROOF: Additional refs for connection serialization
   const isConnectingRef = useRef(false);
   const connectionStateRef = useRef(connectionState);
+  // 🚀 THROTTLED UI UPDATES: Batch sessionMessages/lastUpdated to 1Hz to avoid flicker
+  const pendingMessagesRef = useRef(0);
+  const flushTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Keep connectionStateRef in sync
   useEffect(() => {
@@ -113,12 +116,20 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
           return; // Message blocked by emergency breaker
         }
 
-        // Update session messages and lastUpdated
-        setConnectionState(prev => ({
-          ...prev,
-          sessionMessages: prev.sessionMessages + 1,
-          lastUpdated: new Date()
-        }));
+        // Throttle UI updates to once per second to prevent render storms
+        pendingMessagesRef.current += 1;
+        if (!flushTimerRef.current) {
+          flushTimerRef.current = setTimeout(() => {
+            const toApply = pendingMessagesRef.current;
+            pendingMessagesRef.current = 0;
+            flushTimerRef.current = null;
+            setConnectionState(prev => ({
+              ...prev,
+              sessionMessages: prev.sessionMessages + toApply,
+              lastUpdated: new Date()
+            }));
+          }, 1000);
+        }
         
         callback(payload);
       };

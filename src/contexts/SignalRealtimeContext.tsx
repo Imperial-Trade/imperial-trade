@@ -454,7 +454,8 @@ unstable_batchedUpdates(() => {
         {
           table: 'trade_alerts', 
           event: 'UPDATE',
-          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=in.(closed,closed_tp,closed_sl,cancelled) OR tp_hits=neq.'{}')`
+          // Narrow to meaningful changes: status closures, TP hits, or notes changes
+          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=in.(closed,closed_tp,closed_sl,cancelled) OR tp_hits=neq.'{}' OR notes=is.not.null)`
         },
         handleRealtimeUpdate
       );

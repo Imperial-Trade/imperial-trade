@@ -234,23 +234,16 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, []);
 
-  // 🔥 ADD THROTTLING: Track last update time per signal to prevent spam
-  const lastUpdateRef = useRef<Map<string, number>>(new Map());
-  
+  // 🔥 EMERGENCY: Add console logging to track flickering
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
-    const now = Date.now();
     const signalId = payload?.new?.id || payload?.old?.id;
     
-    // 🔥 THROTTLE UPDATES: Max 1 update per signal per 5 seconds
-    if (signalId) {
-      const lastUpdate = lastUpdateRef.current.get(signalId) || 0;
-      if (now - lastUpdate < 5000) {
-        if (isDevToolsEnabled()) {
-          console.log('🛑 Update throttled for signal:', signalId);
-        }
-        return;
-      }
-      lastUpdateRef.current.set(signalId, now);
+    if (isDevToolsEnabled()) {
+      console.log('🔄 SignalRealtime event:', {
+        type: payload.eventType,
+        signalId,
+        timestamp: new Date().toISOString()
+      });
     }
     
       if (isDevToolsEnabled()) {
@@ -435,15 +428,31 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // 🔥 CRITICAL: Subscribe to UPDATES as well but with reduced frequency
-      const unsubscribe = subscribeToTable(
+      // 🔥 EMERGENCY FIX: Use specific events to prevent message storm
+      const unsubscribeInsert = subscribeToTable(
         {
           table: 'trade_alerts',
-          event: '*', // All events but processed with heavy throttling
+          event: 'INSERT',
           filter: `user_id=in.(${educatorUserIds.join(',')})`
         },
         handleRealtimeUpdate
       );
+      
+      // Subscribe to critical UPDATE events only
+      const unsubscribeUpdate = subscribeToTable(
+        {
+          table: 'trade_alerts', 
+          event: 'UPDATE',
+          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=neq.${''} OR tp_hits=neq.{})`
+        },
+        handleRealtimeUpdate
+      );
+      
+      // Combine unsubscribe functions
+      const unsubscribe = () => {
+        unsubscribeInsert();
+        unsubscribeUpdate();
+      };
       
       unsubscribeRef.current = unsubscribe;
       recordConnection(); // PHASE C: Record successful subscription

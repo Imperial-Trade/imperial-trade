@@ -23,12 +23,15 @@ class EmergencyRealtimeBreaker {
     costExceeded: false
   };
 
-  // 🚨 EMERGENCY LIMITS: Ultra-aggressive to prevent cost explosion
-  private readonly HOURLY_MESSAGE_LIMIT = 500; // 500 messages/hour max
-  private readonly DAILY_MESSAGE_LIMIT = 5000; // 5K messages/day max
-  private readonly COST_LIMIT_USD = 1.00; // $1/day absolute limit
+  // 🚨 PRODUCTION LIMITS: Optimized for 100-500 users with sliding window
+  private readonly HOURLY_MESSAGE_LIMIT = 100; // Tightened from 500 to 100 messages/hour
+  private readonly DAILY_MESSAGE_LIMIT = 2000; // Reduced from 5K to 2K messages/day
+  private readonly COST_LIMIT_USD = 0.50; // Reduced from $1 to $0.50/day absolute limit
   private readonly MAX_CONSECUTIVE_FAILURES = 3;
   private readonly EMERGENCY_COOLDOWN = 300000; // 5 minutes cooldown
+  
+  // 🚀 SLIDING WINDOW: Track message timestamps for precise rate limiting
+  private readonly messageTimestamps: number[] = [];
 
   private constructor() {
     this.startHourlyReset();
@@ -55,9 +58,7 @@ class EmergencyRealtimeBreaker {
     }, 3600000); // Every hour
   }
 
-  /**
-   * Check if realtime operations should be allowed
-   */
+  // 🚀 OPTIMIZED: Sliding window rate limiting check
   canAllowRealtimeOperation(operationType: 'connection' | 'message' | 'subscription'): boolean {
     // Emergency mode blocks all operations
     if (this.metrics.emergencyModeActive) {
@@ -69,12 +70,24 @@ class EmergencyRealtimeBreaker {
       }
     }
 
-    // Check limits
-    if (this.metrics.hourlyMessages >= this.HOURLY_MESSAGE_LIMIT) {
-      this.activateEmergencyMode('Hourly message limit exceeded');
-      return false;
+    // For message operations, use sliding window check
+    if (operationType === 'message') {
+      const now = Date.now();
+      const oneHourAgo = now - 3600000;
+      
+      // Clean sliding window first
+      while (this.messageTimestamps.length > 0 && this.messageTimestamps[0] < oneHourAgo) {
+        this.messageTimestamps.shift();
+      }
+      
+      // Check sliding window limit
+      if (this.messageTimestamps.length >= this.HOURLY_MESSAGE_LIMIT) {
+        this.activateEmergencyMode('Sliding window hourly message limit exceeded');
+        return false;
+      }
     }
 
+    // Legacy checks for other operations
     if (this.metrics.dailyMessages >= this.DAILY_MESSAGE_LIMIT) {
       this.activateEmergencyMode('Daily message limit exceeded');
       return false;
@@ -88,17 +101,27 @@ class EmergencyRealtimeBreaker {
     return true;
   }
 
-  /**
-   * Record a realtime message
-   */
+  // 🚀 OPTIMIZED: Sliding window rate limiting for precise message control
   recordMessage(messageType?: string): boolean {
     if (!this.canAllowRealtimeOperation('message')) {
       console.warn(`🚨 Emergency Breaker: Message blocked (${messageType})`);
       return false;
     }
 
-    this.metrics.hourlyMessages++;
-    this.metrics.dailyMessages++;
+    const now = Date.now();
+    
+    // Add current message to sliding window
+    this.messageTimestamps.push(now);
+    
+    // Clean up old timestamps (older than 1 hour)
+    const oneHourAgo = now - 3600000;
+    while (this.messageTimestamps.length > 0 && this.messageTimestamps[0] < oneHourAgo) {
+      this.messageTimestamps.shift();
+    }
+    
+    // Update metrics with sliding window counts
+    this.metrics.hourlyMessages = this.messageTimestamps.length;
+    this.metrics.dailyMessages++; // Keep daily as cumulative for cost tracking
     
     // Reset failure count on successful message
     this.metrics.consecutiveFailures = 0;

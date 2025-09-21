@@ -31,12 +31,12 @@ export const useRealTimeRequests = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'account_requests'
         },
         (payload) => {
-          console.log('Real-time update:', payload);
+          console.log('Account request INSERT:', payload);
           
           if (payload.eventType === 'INSERT') {
             setNewRequestCount(prev => prev + 1);
@@ -50,7 +50,21 @@ export const useRealTimeRequests = () => {
                 userName: payload.new.full_name
               }
             }).catch(console.error);
-          } else if (payload.eventType === 'UPDATE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'account_requests',
+          filter: 'status=in.(pending,approved,rejected)'
+        },
+        (payload) => {
+          console.log('Account request UPDATE:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
             setRequests(prev => 
               prev.map(req => 
                 req.id === payload.new.id ? payload.new : req
@@ -68,7 +82,18 @@ export const useRealTimeRequests = () => {
                 }
               }).catch(console.error);
             }
-          } else if (payload.eventType === 'DELETE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'account_requests'
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
             setRequests(prev => prev.filter(req => req.id !== payload.old.id));
           }
         }

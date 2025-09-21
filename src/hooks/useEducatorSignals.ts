@@ -121,16 +121,28 @@ export function useEducatorSignals() {
 
       const channelId = `educator-${Date.now()}-${Math.random().toString(36).slice(-4)}`;
       
-      // Set up real-time subscriptions for trade_alerts table
+      // Set up targeted real-time subscriptions for trade_alerts table
       const analyticsChannel = supabase
         .channel('educator-analytics')
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
             schema: 'public',
             table: 'trade_alerts',
             filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            loadAnalytics();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'trade_alerts',
+            filter: `user_id=eq.${user.id}.and.status=in.(active,closed,closed_tp,closed_sl)`
           },
           () => {
             loadAnalytics();

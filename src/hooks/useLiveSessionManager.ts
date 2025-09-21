@@ -216,17 +216,16 @@ export const useLiveSessionManager = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'live_sessions'
         },
         (payload) => {
-          console.log('Live session change detected:', payload);
+          console.log('Live session INSERT:', payload);
           
           if (payload.eventType === 'INSERT') {
             setSessions(prev => {
               const newSession = payload.new as LiveSession;
-              // Check if session already exists to prevent duplicates
               if (sessionExists(newSession.id, prev)) {
                 console.log('Session already exists, skipping duplicate:', newSession.id);
                 return prev;
@@ -235,11 +234,36 @@ export const useLiveSessionManager = () => {
                 new Date(a.session_date).getTime() - new Date(b.session_date).getTime()
               );
             });
-          } else if (payload.eventType === 'UPDATE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_sessions',
+          filter: 'status=in.(scheduled,live,completed)'
+        },
+        (payload) => {
+          console.log('Live session UPDATE:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
             setSessions(prev => prev.map(session => 
               session.id === payload.new.id ? payload.new as LiveSession : session
             ));
-          } else if (payload.eventType === 'DELETE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'live_sessions'
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
             setSessions(prev => prev.filter(session => session.id !== payload.old.id));
           }
         }

@@ -199,9 +199,10 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabaseClient = await initializeSupabase();
 
-    // STEP 1: Process ALL price ticks for business logic (alerts, limit orders, etc.)
-    console.log('🎯 STEP 1: Processing ALL alerts on raw price data...');
+    // 🚀 STEP 3: Enhanced alert processing with notification detection
+    console.log('🎯 STEP 3: Processing alerts and detecting notification triggers...');
     let totalTriggeredAlerts = 0;
+    let notificationTriggers: any[] = [];
     
     for (const priceUpdate of prices) {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
@@ -227,8 +228,8 @@ serve(async (req) => {
       }
 
       try {
-        // Call enhanced alert processing with bid/ask precision
-        const { data: triggeredAlerts, error: alertError } = await supabaseClient
+        // Process alerts with enhanced notification detection
+        const { data: alertResults, error: alertError } = await supabaseClient
           .rpc('process_price_alerts_enhanced', {
             p_symbol: priceUpdate.symbol,
             p_current_bid: priceUpdate.bid,
@@ -237,18 +238,65 @@ serve(async (req) => {
 
         if (alertError) {
           console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, alertError);
-        } else if (triggeredAlerts && triggeredAlerts.length > 0) {
-          const triggeredCount = triggeredAlerts.filter((alert: any) => alert.triggered).length;
-          totalTriggeredAlerts += triggeredCount;
-          console.log(`🚨 ${triggeredCount} alerts triggered for ${priceUpdate.symbol}`);
+        } else if (alertResults && alertResults.length > 0) {
+          const triggeredAlerts = alertResults.filter((alert: any) => alert.triggered);
+          totalTriggeredAlerts += triggeredAlerts.length;
+          
+          // 🚀 NEW: Detect notification-worthy events
+          for (const alert of triggeredAlerts) {
+            if (alert.alert_type === 'stop_loss' || alert.alert_type.startsWith('take_profit_')) {
+              notificationTriggers.push({
+                signal_id: alert.signal_id,
+                alert_type: alert.alert_type,
+                triggered_price: alert.alert_type === 'stop_loss' ? priceUpdate.bid : priceUpdate.ask,
+                symbol: priceUpdate.symbol,
+                timestamp: priceUpdate.timestamp || new Date().toISOString()
+              });
+            }
+          }
+          
+          console.log(`🚨 ${triggeredAlerts.length} alerts triggered for ${priceUpdate.symbol}`);
         }
       } catch (error) {
         console.error(`❌ Critical alert processing error for ${priceUpdate.symbol}:`, error);
       }
     }
 
+    // 🚀 NEW: Send enhanced notifications for significant events
+    if (notificationTriggers.length > 0) {
+      console.log(`📢 NOTIFICATION DISPATCH: Sending ${notificationTriggers.length} trading notifications...`);
+      
+      try {
+        const { data: notifyResult, error: notifyError } = await supabaseClient.functions.invoke(
+          'enhanced-signal-notification-dispatcher',
+          {
+            body: {
+              notifications: notificationTriggers.map(trigger => ({
+                signal_id: trigger.signal_id,
+                notification_type: trigger.alert_type === 'stop_loss' ? 'stop_loss_hit' : 'take_profit_hit',
+                alert_type: trigger.alert_type,
+                triggered_price: trigger.triggered_price,
+                symbol: trigger.symbol,
+                timestamp: trigger.timestamp,
+                priority_level: trigger.alert_type === 'stop_loss' ? 3 : 2, // Higher priority for SL
+                delivery_channels: ['push', 'in_app']
+              }))
+            }
+          }
+        );
+        
+        if (notifyError) {
+          console.error('❌ Notification dispatch failed:', notifyError);
+        } else {
+          console.log(`✅ Successfully dispatched ${notificationTriggers.length} trading notifications`);
+        }
+      } catch (error) {
+        console.error('❌ Notification dispatch exception:', error);
+      }
+    }
+
     totalAlertsTriggered += totalTriggeredAlerts;
-    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts`);
+    console.log(`✅ STEP 3 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
 
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');

@@ -105,7 +105,7 @@ export const useTradeJournalEntries = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'trade_journal_entries',
           filter: `user_id=eq.${user.id}`
@@ -114,10 +114,34 @@ export const useTradeJournalEntries = () => {
           if (payload.eventType === 'INSERT') {
             const newEntry = mapDbRowToEntry(payload.new);
             addOptimisticEntry(newEntry);
-          } else if (payload.eventType === 'UPDATE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'trade_journal_entries',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
             const updatedEntry = mapDbRowToEntry(payload.new);
             updateOptimisticEntry(updatedEntry.id, updatedEntry);
-          } else if (payload.eventType === 'DELETE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'trade_journal_entries',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
             const deletedEntry = payload.old as TradeJournalEntry;
             removeOptimisticEntry(deletedEntry.id);
           }

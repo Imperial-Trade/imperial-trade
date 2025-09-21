@@ -67,6 +67,8 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionsRef = useRef<Map<string, { config: TableSubscriptionConfig; callback: RealtimeCallback }>>(new Map());
+  // Add subscription debounce ref
+  const subscriptionDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 1; // 🚨 EMERGENCY: Only 1 reconnect attempt
@@ -160,22 +162,56 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     return channel;
   }, [healthMonitor, recordConnection]);
 
-  // 🔥 LEAK-PROOF: rebuildChannel - removes old channel and builds new one
-  const rebuildChannel = useCallback(() => {
-    if (channelRef.current) {
-      // 🔥 DEFINITIVE LOGGING: Log removal of old channel
-      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SharedRealtimeProvider - rebuild');
+  // 🚀 OPTIMIZED: Differential channel registry - no full rebuilds
+  const addSubscriptionsToChannel = useCallback((newSubscriptions: Map<string, TableSubscriptionConfig>) => {
+    if (!channelRef.current) {
+      if (subscriptionsRef.current.size > 0) {
+        channelIdRef.current = generateChannelId('shared');
+        realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider - build');
+        buildChannel();
+      }
+      return;
+    }
+
+    // Add only new subscriptions without rebuilding entire channel
+    for (const [key, config] of newSubscriptions) {
+      if (!subscriptionsRef.current.has(key)) {
+        console.log(`➕ Adding subscription: ${config.table} - ${config.event}`);
+        
+        (channelRef.current as any).on(
+          'postgres_changes',
+          {
+            event: config.event,
+            schema: config.schema || 'public',
+            table: config.table,
+            filter: config.filter
+          },
+          (payload: any) => {
+            const callback = subscriptionsRef.current.get(key)?.callback;
+            if (callback) {
+              callback(payload);
+            }
+          }
+        );
+      }
+    }
+  }, [buildChannel]);
+
+  // 🚀 OPTIMIZED: Remove subscriptions without full channel rebuild
+  const removeSubscriptionsFromChannel = useCallback((removedKeys: string[]) => {
+    if (!channelRef.current || removedKeys.length === 0) return;
+    
+    console.log(`➖ Removing ${removedKeys.length} subscriptions (keeping channel alive)`);
+    
+    // For now, we can't selectively remove listeners from Supabase channel
+    // But this structure prevents the massive rebuilds
+    if (subscriptionsRef.current.size === 0) {
+      // Only disconnect if no subscriptions remain
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SharedRealtimeProvider - cleanup');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    
-    if (subscriptionsRef.current.size > 0) {
-      // 🔥 DEFINITIVE LOGGING: Log creation of new channel
-      channelIdRef.current = generateChannelId('shared'); // New ID for new channel
-      realtimeLogger.logSubscribe(channelIdRef.current, 'shared-realtime-connection', 'SharedRealtimeProvider - rebuild');
-      buildChannel();
-    }
-  }, [buildChannel]);
+  }, []);
 
   // 🔥 LEAK-PROOF: Connection with mount guards and emergency breaker
   const connect = useCallback(() => {
@@ -264,54 +300,36 @@ export const SharedRealtimeProvider: React.FC<SharedRealtimeProviderProps> = ({ 
     }, totalDelay);
   }, [connect]);
 
-  // 🔥 LEAK-PROOF: Subscription management with rebuild logic
-  const subscribeToTable = useCallback((
-    config: TableSubscriptionConfig, 
-    callback: RealtimeCallback
-  ): (() => void) => {
-    const key = `${config.table}|${config.event || 'INSERT'}|${config.filter || ''}`;
+  // 🚀 OPTIMIZED: Subscription management with debouncing to prevent storms  
+  const subscribeToTable = useCallback((config: TableSubscriptionConfig, callback: RealtimeCallback) => {
+    const key = `${config.table}-${config.event}-${config.filter || 'all'}`;
     
-    // Add to subscriptions map
+    // Add subscription to registry
     subscriptionsRef.current.set(key, { config, callback });
     
-    // Update subscriber count
-    setConnectionState(prev => ({
-      ...prev,
-      subscribers: subscriptionsRef.current.size
-    }));
-
-    // 🔥 LEAK-PROOF: Rebuild channel if exists, otherwise connect
-    if (channelRef.current) {
-      rebuildChannel();
-    } else if (subscriptionsRef.current.size === 1) {
-      connect();
+    // Debounce subscription changes to prevent rapid rebuilds
+    if (subscriptionDebounceRef.current) {
+      clearTimeout(subscriptionDebounceRef.current);
     }
-
-    if (isDevToolsEnabled()) {
-      console.log(`📝 SharedRealtime: Subscribed to ${config.table} (${subscriptionsRef.current.size} total)`);
-    }
-
+    
+    subscriptionDebounceRef.current = setTimeout(() => {
+      const newSubscriptions = new Map([[key, config]]);
+      addSubscriptionsToChannel(newSubscriptions);
+    }, 200); // 200ms debounce
+    
     // Return unsubscribe function
     return () => {
       subscriptionsRef.current.delete(key);
       
-      setConnectionState(prev => ({
-        ...prev,
-        subscribers: Math.max(0, subscriptionsRef.current.size)
-      }));
-
-      // 🔥 LEAK-PROOF: Disconnect if no subscribers, otherwise rebuild
-      if (subscriptionsRef.current.size === 0) {
-        disconnect();
-      } else {
-        rebuildChannel();
+      if (subscriptionDebounceRef.current) {
+        clearTimeout(subscriptionDebounceRef.current);
       }
-
-      if (isDevToolsEnabled()) {
-        console.log(`📝 SharedRealtime: Unsubscribed from ${config.table} (${subscriptionsRef.current.size} remaining)`);
-      }
+      
+      subscriptionDebounceRef.current = setTimeout(() => {
+        removeSubscriptionsFromChannel([key]);
+      }, 200);
     };
-  }, [connect, disconnect, rebuildChannel]);
+  }, [addSubscriptionsToChannel, removeSubscriptionsFromChannel]);
 
   const getConnectionHealth = useCallback(() => ({
     isHealthy: connectionState.isConnected,

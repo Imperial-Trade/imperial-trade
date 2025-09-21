@@ -380,14 +380,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return; // Skip unsubscribed symbols
           }
 
-        // 🚀 ENHANCED RATE LIMITING: Progressive rate limiting for better initial connections
+        // 🚀 STATIC 1Hz RATE LIMITING: Consistent 1-second updates for professional trading experience
         const now = Date.now();
         const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
         
-        // Progressive rate limiting: 500ms for first messages, then 2000ms 
-        const messageCount = statsRef.current.messagesReceived;
-        const isInitialConnection = messageCount < 10; // First 10 messages per session
-        const rateLimitMs = isInitialConnection ? 500 : 2000; // 2Hz initial, then 0.5Hz
+        // Static 1-second rate limiting for smooth, predictable updates
+        const rateLimitMs = 1000; // Consistent 1Hz updates
         
         if (now - lastUpdate < rateLimitMs) {
           recordClampActivation(); // Record when we drop updates due to rate limiting

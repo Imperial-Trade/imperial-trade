@@ -328,15 +328,30 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 };
 
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // Optimized comparison to prevent flickering
+  // 🚀 COMPREHENSIVE memo comparison to prevent unnecessary re-renders while allowing smooth price updates
+  const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
+  const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
+  
   return (
     prevProps.alert.id === nextProps.alert.id &&
     prevProps.alert.status === nextProps.alert.status &&
+    prevProps.alert.asset_name === nextProps.alert.asset_name &&
+    prevProps.alert.trade_type === nextProps.alert.trade_type &&
+    prevProps.alert.entry_price === nextProps.alert.entry_price &&
+    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.tp1 === nextProps.alert.tp1 &&
+    prevProps.alert.tp2 === nextProps.alert.tp2 &&
+    prevProps.alert.tp3 === nextProps.alert.tp3 &&
+    prevProps.alert.tp4 === nextProps.alert.tp4 &&
+    prevProps.alert.tp5 === nextProps.alert.tp5 &&
     prevProps.alert.notes === nextProps.alert.notes &&
-    JSON.stringify(prevProps.alert.tp_hits) === JSON.stringify(nextProps.alert.tp_hits) &&
+    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevHitsKey === nextHitsKey &&
     prevProps.isAdmin === nextProps.isAdmin &&
     prevProps.isCreator === nextProps.isCreator &&
-    prevProps.justAdded === nextProps.justAdded
-    // Exclude livePrice to allow smooth price updates
+    prevProps.justAdded === nextProps.justAdded &&
+    prevProps.className === nextProps.className &&
+    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
+    // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
   );
 });

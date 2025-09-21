@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
-import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
+import { useSignalRealtime } from '@/hooks/useSignalRealtime';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
@@ -42,19 +43,36 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Use the optimized trading hook with real-time updates for all signals
-  // Pass the actual user ID for proper authorization, even when showing all signals
+  // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
   const {
     alerts: allAlerts,
-    isLoading,
-    error,
-    updateAlert,
-    createAlert,
-    refreshAlerts,
+    isLoading: realtimeLoading,
+    error: realtimeError,
     connectionStatus,
     lastUpdated,
-    nextRetryAt
-  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
+    nextRetryAt,
+    updateAlert,
+    refreshAlerts
+  } = useSignalRealtime(user?.id || '', true);
+  
+  // Local state for operations
+  const isLoading = realtimeLoading;
+  const error = realtimeError;
+  
+  // 🚀 CREATE ALERT: Direct API call with optimistic updates
+  const createAlert = useCallback(async (dto: any) => {
+    try {
+      const result = await tradingApiService.createAlert(dto, user?.id || '');
+      if (result.success) {
+        await refreshAlerts();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to create alert:', err);
+      return false;
+    }
+  }, [refreshAlerts, user?.id]);
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {

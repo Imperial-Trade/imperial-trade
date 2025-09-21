@@ -234,7 +234,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
   }, []);
 
-  // 🔥 EMERGENCY: Add console logging to track flickering
+  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms  
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const signalId = payload?.new?.id || payload?.old?.id;
     
@@ -246,12 +246,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       });
     }
     
-      if (isDevToolsEnabled()) {
-        console.log('SignalRealtimeContext - Processing real-time update:', payload.eventType, signalId);
-      }
-      
-      healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
-      telemetry.record('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
+    if (isDevToolsEnabled()) {
+      console.log('SignalRealtimeContext - Processing real-time update:', payload.eventType, signalId);
+    }
+    
+    healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
+    telemetry.record('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
@@ -438,12 +438,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         handleRealtimeUpdate
       );
       
-      // Subscribe to critical UPDATE events only
+      // 🚀 NARROW UPDATE FILTER: Only status changes and TP hits to prevent field update spam
       const unsubscribeUpdate = subscribeToTable(
         {
           table: 'trade_alerts', 
           event: 'UPDATE',
-          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=neq.${''} OR tp_hits=neq.{})`
+          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=in.(closed,closed_tp,closed_sl,cancelled) OR tp_hits=neq.'{}')`
         },
         handleRealtimeUpdate
       );

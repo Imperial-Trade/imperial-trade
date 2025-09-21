@@ -9,6 +9,7 @@ import { useTelemetry } from '@/contexts/TelemetryContext';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
+import { unstable_batchedUpdates } from 'react-dom';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -118,9 +119,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         if (isDevToolsEnabled()) {
           console.log('📊 Using comprehensive cached signals, skipping all database queries');
         }
-        setSignals(cache.data);
-        setLastUpdated(new Date());
-        return;
+unstable_batchedUpdates(() => {
+  setSignals(cache.data);
+  setLastUpdated(new Date());
+  setError(null);
+});
+return;
       }
       
       // PHASE 3: Use cached educator IDs or fetch fresh ones
@@ -146,11 +150,14 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
       console.log('SignalRealtimeContext - Fetched educator alerts:', alertsData?.length || 0);
 
-      if (!alertsData || alertsData.length === 0) {
-        console.log('SignalRealtimeContext - No educator alerts found');
-        setSignals([]);
-        return;
-      }
+if (!alertsData || alertsData.length === 0) {
+  console.log('SignalRealtimeContext - No educator alerts found');
+  unstable_batchedUpdates(() => {
+    setLastUpdated(new Date());
+    setError(null);
+  });
+  return;
+}
 
       // Get profiles for these alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
@@ -224,9 +231,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
-      setSignals(allAlertsWithProfiles);
-      setLastUpdated(new Date());
-      setError(null);
+unstable_batchedUpdates(() => {
+  setSignals(allAlertsWithProfiles);
+  setLastUpdated(new Date());
+  setError(null);
+});
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
@@ -380,8 +389,10 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         }
       }
 
-      setLastUpdated(new Date());
-      setError(null);
+unstable_batchedUpdates(() => {
+  setLastUpdated(new Date());
+  setError(null);
+});
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to handle realtime update:', err);
     }

@@ -39,7 +39,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // Use standardized symbol mapping
   const apiSymbol = getStandardSymbol(symbol) || symbol;
   
-  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice } = useOptimizedLivePrice(symbol, {
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(symbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
     enableSmartPausing: false
   });
@@ -57,8 +57,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return price;
   }, [price, symbol]);
 
-  // Critical: Monitor price staleness for trading safety
-  const stalenessStatus = usePriceStalenessMonitor(symbol, 15); // 15-second staleness threshold
+  // Critical: Monitor price staleness for trading safety - Sub-2s Live Guarantee
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 2); // 2-second staleness threshold
   
   // ✅ FLICKER ELIMINATION: Stability management
   const { shouldAllowQualityChange } = useConnectionStability();
@@ -69,28 +69,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
-  // Update data age every second
+  // Sub-2s Live Guarantee: Update data age using arrival time
   useEffect(() => {
     const updateAge = () => {
-      if (!lastUpdated) {
-        setDataAge('');
-        return;
-      }
+      // Use arrival age for ultra-responsive freshness display
+      const ageSeconds = arrivalAgeSeconds || 0;
       
-      const now = new Date();
-      const diffMs = now.getTime() - lastUpdated.getTime();
-      const diffSeconds = Math.floor(diffMs / 1000);
-      
-      if (diffSeconds < 1) {
+      if (ageSeconds < 1) {
         setDataAge('Ultra Live');
-      } else if (diffSeconds < 3) {
+      } else if (ageSeconds < 2) {
         setDataAge('Live');
-      } else if (diffSeconds < 15) {
-        setDataAge('Live'); // PATH A: Show as Live instead of Delayed for 3-15s data
-      } else if (diffSeconds < 60) {
-        setDataAge(`${diffSeconds}s ago`);
-      } else if (diffSeconds < 3600) {
-        const minutes = Math.floor(diffSeconds / 60);
+      } else if (ageSeconds < 60) {
+        setDataAge(`${ageSeconds}s ago`); // Only show "Xs ago" when >= 2s
+      } else if (ageSeconds < 3600) {
+        const minutes = Math.floor(ageSeconds / 60);
         setDataAge(`${minutes}m ago`);
       } else {
         setDataAge('Stale');
@@ -98,9 +90,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 250); // PATH A: Real-time updates - 250ms for smooth countdown
+    const interval = setInterval(updateAge, 250); // Ultra-responsive updates every 250ms
     return () => clearInterval(interval);
-  }, [lastUpdated]);
+  }, [arrivalAgeSeconds]);
 
   // Optimized price change animation effect
   useEffect(() => {
@@ -168,7 +160,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
+    // Sub-2s Live Guarantee: Use arrival age for status calculation
+    const dataFreshness = arrivalAgeMs ? arrivalAgeMs / 1000 : Infinity;
     
     if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 
@@ -211,23 +204,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // PATH A: Live indicator for 1-3 second fresh data  
-    if (dataFreshness < 3 && price > 0) {
+    // Sub-2s Live Guarantee: Live indicator for sub-2-second fresh data  
+    if (dataFreshness < 2 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 
         text: 'Live',
-        description: 'Real-time price updates active',
-        animate: false
-      };
-    }
-    
-    if (dataFreshness < 15 && price > 0) {
-      return { 
-        color: 'text-green-400', 
-        icon: Wifi, 
-        text: 'Live',
-        description: 'PATH A: Professional trading - data up to 15s shows as Live',
+        description: 'Sub-2s guarantee: Ultra-responsive real-time updates',
         animate: false
       };
     }
@@ -239,7 +222,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       description: 'No recent price updates',
       animate: false
     };
-  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price, arrivalAgeMs, arrivalAgeSeconds]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -296,13 +279,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               <Badge variant="outline" className={`text-xs px-2 py-1 ${connectionStatusInfo.color}`}>
                 {connectionStatusInfo.text}
               </Badge>
-              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && dataAge !== 'Ultra Live' && dataAge !== 'Live' && (
+              {/* Sub-2s Live Guarantee: Only show timestamps when data is >= 2s old */}
+              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && dataAge !== 'Ultra Live' && dataAge !== 'Live' && arrivalAgeSeconds >= 2 && (
                 <span className={`text-xs ${
-                  dataAge === 'Live' ? 'text-green-400' : 
-                  dataAge === 'Ultra Live' ? 'text-emerald-400' :
-                  dataAge === 'Delayed' ? 'text-yellow-400' :
-                  dataAge === 'Stale' ? 'text-red-400' : 
-                  'text-yellow-400'
+                  dataAge === 'Stale' ? 'text-red-400' : 'text-yellow-400'
                 }`}>
                   {dataAge}
                 </span>
@@ -403,9 +383,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
           </div>
-          {/* Critical: Price timestamp for trading safety */}
-          {stalenessStatus.ageInSeconds !== null && (
-            <Badge variant={stalenessStatus.ageInSeconds <= 5 ? "default" : stalenessStatus.ageInSeconds <= 15 ? "secondary" : "destructive"} className="text-xs px-1 py-0">
+          {/* Sub-2s Live Guarantee: Only show staleness badge when >= 2s */}
+          {stalenessStatus.ageInSeconds !== null && stalenessStatus.ageInSeconds >= 2 && (
+            <Badge variant={stalenessStatus.ageInSeconds <= 2 ? "default" : stalenessStatus.ageInSeconds <= 5 ? "secondary" : "destructive"} className="text-xs px-1 py-0">
               {stalenessStatus.ageInSeconds}s
             </Badge>
           )}

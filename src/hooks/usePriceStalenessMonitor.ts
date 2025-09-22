@@ -9,8 +9,8 @@ interface PriceStalenessStatus {
   stalePrices: string[];
 }
 
-export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 15) {
-  const { getConnectionHealth, lastUpdated, prices } = useOptimizedWebSocketPrices();
+export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 2) {
+  const { getConnectionHealth, lastUpdated, prices, getArrivalAge } = useOptimizedWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,
@@ -24,10 +24,9 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
       const health = getConnectionHealth();
       
       if (symbol) {
-        const priceData = prices[symbol];
-        const now = Date.now();
-        const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
-        const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
+        // Sub-2s Live Guarantee: Use arrival age for ultra-responsive staleness detection
+        const arrivalAge = getArrivalAge(symbol);
+        const ageInSeconds = arrivalAge !== Infinity ? Math.floor(arrivalAge / 1000) : null;
         const isStale = ageInSeconds ? ageInSeconds > maxAgeSeconds : true;
         
         setStalenessStatus({
@@ -55,7 +54,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices]);
+  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices, getArrivalAge]);
 
   return stalenessStatus;
 }

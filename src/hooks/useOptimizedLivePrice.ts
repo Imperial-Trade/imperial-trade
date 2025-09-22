@@ -38,15 +38,20 @@ interface LivePriceReturn {
   dataAge: number;
   isStale: boolean;
   isVeryStale: boolean;
+  // Sub-2s Live Guarantee properties
+  arrivalAgeMs: number;
+  arrivalAgeSeconds: number;
 }
 
 export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions = {}): LivePriceReturn {
-  const { prices, connectionStatus, subscribe, unsubscribe, error, lastUpdated, refreshPrice: ctxRefreshPrice } = useOptimizedWebSocketPrices();
+  const { prices, connectionStatus, subscribe, unsubscribe, error, lastUpdated, refreshPrice: ctxRefreshPrice, getArrivalAge } = useOptimizedWebSocketPrices();
   
   const [localState, setLocalState] = useState({
     change: 0,
     changePercent: 0,
-    dataAge: 0
+    dataAge: 0,
+    arrivalAgeMs: 0, // New: Arrival-based age in milliseconds
+    arrivalAgeSeconds: 0 // New: Arrival-based age in seconds
   });
 
   // PATH A: Phase 3 Complete - Zero throttling for ultra-responsive updates
@@ -55,21 +60,27 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   const currentPrice = prices[normalizeSymbol(symbol)];
 
   const applyImmediateUpdate = useCallback((price: number, timestamp: string) => {
-    // PATH A: Phase 3 Complete - Immediate state updates with zero throttling
+    // PATH A: Phase 3 Complete - Immediate state updates with zero throttling + Sub-2s guarantee
     const prevPrice = previousPriceRef.current;
     const change = prevPrice ? price - prevPrice : 0;
     const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+    
+    // Calculate arrival-based age for ultra-responsive freshness
+    const arrivalAgeMs = getArrivalAge(normalizeSymbol(symbol));
+    const arrivalAgeSeconds = Math.floor(arrivalAgeMs / 1000);
 
     setLocalState({
       change,
       changePercent,
-      dataAge: Date.now() - new Date(timestamp).getTime()
+      dataAge: Date.now() - new Date(timestamp).getTime(),
+      arrivalAgeMs,
+      arrivalAgeSeconds
     });
 
     previousPriceRef.current = price;
     pricePerformanceMonitor.recordUIUpdate();
     pricePerformanceMonitor.recordPriceUpdate(false);
-  }, []);
+  }, [symbol, getArrivalAge]);
 
   const refreshPrice = useCallback(async () => {
     ctxRefreshPrice(symbol);
@@ -103,19 +114,24 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyImmediateUpdate]);
 
-  // PATH A: Real-time data age tracking with faster interval
+  // PATH A: Real-time data age tracking with faster interval + Sub-2s arrival age tracking
   useEffect(() => {
     if (!currentPrice || options.trackDataAge === false) return;
 
     const interval = setInterval(() => {
+      const arrivalAgeMs = getArrivalAge(normalizeSymbol(symbol));
+      const arrivalAgeSeconds = Math.floor(arrivalAgeMs / 1000);
+      
       setLocalState(prev => ({
         ...prev,
-        dataAge: Date.now() - new Date(currentPrice.timestamp).getTime()
+        dataAge: Date.now() - new Date(currentPrice.timestamp).getTime(),
+        arrivalAgeMs,
+        arrivalAgeSeconds
       }));
-    }, 1000); // PATH A: Reduced from 5000ms to 1000ms for real-time updates
+    }, 250); // Sub-2s guarantee: Even faster updates at 250ms for ultra-responsive feel
 
     return () => clearInterval(interval);
-  }, [currentPrice, options.trackDataAge]);
+  }, [currentPrice, options.trackDataAge, symbol, getArrivalAge]);
 
 
   return {
@@ -135,7 +151,10 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     lastUpdate: lastUpdated?.toISOString() || null,
     isConnected: connectionStatus === 'connected',
     dataAge: localState.dataAge,
-    isStale: localState.dataAge > 60000,
-    isVeryStale: localState.dataAge > 300000
+    isStale: localState.arrivalAgeMs > 2000, // Sub-2s guarantee: Use arrival age for staleness
+    isVeryStale: localState.arrivalAgeMs > 10000, // Very stale after 10s
+    // Sub-2s Live Guarantee properties
+    arrivalAgeMs: localState.arrivalAgeMs,
+    arrivalAgeSeconds: localState.arrivalAgeSeconds
   };
 }

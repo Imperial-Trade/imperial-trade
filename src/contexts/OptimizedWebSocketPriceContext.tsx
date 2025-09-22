@@ -19,13 +19,14 @@ import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
 const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
 
-// Enhanced price data interface with bid/ask support
+// Enhanced price data interface with bid/ask support and arrival tracking
 interface PriceData {
   symbol: string;
   price: number;
   change: number;
   changePercent: number;
   timestamp: string;
+  receivedAt: number; // New: Client arrival timestamp for ultra-responsive freshness tracking
   bid?: number;
   ask?: number;
   mid?: number;
@@ -51,9 +52,9 @@ const CIRCUIT_BREAKER_CONFIG = {
   jitterRange: 0.3, // ±30% jitter
 };
 
-// Health monitoring configuration
+// Health monitoring configuration - Sub-2s Live Guarantee
 const HEALTH_CONFIG = {
-  staleDataThreshold: 15000, // 15 seconds before considering data stale (optimized)
+  staleDataThreshold: 2000, // 2 seconds before considering data stale (ULTRA-RESPONSIVE)
   healthCheckInterval: 30000, // Check health every 30 seconds
   maxSilentPeriod: 180000, // 3 minutes of no data before concern (was 60s)
 };
@@ -82,6 +83,8 @@ interface OptimizedWebSocketContextType {
   // Enhanced "Hydrate and Highlight" indicators  
   getDataAge: (symbol: string) => number;
   getConnectionQuality: (symbol?: string) => 'hydrated' | 'live' | 'stale';
+  // Sub-2s Live Guarantee - Arrival-based age tracking
+  getArrivalAge: (symbol: string) => number;
 }
 
 const OptimizedWebSocketContext = createContext<OptimizedWebSocketContextType | null>(null);
@@ -164,8 +167,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     latencyCount: 0,
   });
   const priceUpdateTimestamps = useRef(new Map<string, number>());
+  const arrivalTimestamps = useRef(new Map<string, number>()); // New: Track arrival times for sub-2s guarantee
   const batchedUpdates = useRef(new Map<string, PriceData>());
   const updateBatchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const watchdogIntervalRef = useRef<NodeJS.Timeout | null>(null); // New: Staleness watchdog
+  const watchdogStaleCountRef = useRef(new Map<string, number>()); // New: Track consecutive stale checks
   
   // PHASE B: BroadcastChannel for leader/follower fanout
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -234,7 +240,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
             // 🚀 CRITICAL FIX: Set timestamp for quality detection to prevent flicker
             // This ensures getConnectionQuality() sees fresh data from database hydration
+            const arrivalTime = Date.now();
             priceUpdateTimestamps.current.set(priceData.symbol, Date.parse(priceData.timestamp));
+            arrivalTimestamps.current.set(priceData.symbol, arrivalTime); // Track arrival time for sub-2s guarantee
           });
           return updated;
         });
@@ -418,16 +426,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             pricePerformanceMonitor.recordLatency(latency);
           }
           
+          const arrivalTime = now; // Capture arrival time for sub-2s guarantee
           const priceData: PriceData = {
             symbol: normalizedSymbol,
             price: payload.price,
             change: payload.change || 0,
             changePercent: payload.changePercent || 0,
             timestamp: payload.ts || new Date().toISOString(),
+            receivedAt: arrivalTime, // New: Track client arrival time
             bid: payload.bid,
             ask: payload.ask,
             mid: payload.mid
           };
+          
+          // Track arrival timestamp for ultra-responsive age calculation
+          arrivalTimestamps.current.set(normalizedSymbol, arrivalTime);
 
           // 🎯 Mark symbol as having received realtime update
           realtimeReceivedSymbols.current.add(normalizedSymbol);
@@ -446,12 +459,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                     pricePerformanceMonitor.recordUIUpdate();
                   }
                   
-                  // Cache prices to sessionStorage with timestamp
+                  // Cache prices to sessionStorage with timestamp and arrival times
                   try {
-                    sessionStorage.setItem('cached_prices', JSON.stringify({
+                    const cacheData = {
                       prices: updatedPrices,
-                      timestamp: Date.now()
-                    }));
+                      timestamp: Date.now(),
+                      arrivalTimes: Object.fromEntries(arrivalTimestamps.current) // Cache arrival times for freshness
+                    };
+                    sessionStorage.setItem('cached_prices', JSON.stringify(cacheData));
                   } catch (error) {
                     // Ignore sessionStorage errors (quota exceeded, etc.)
                   }
@@ -733,9 +748,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           if (ageMs < HEALTH_CONFIG.staleDataThreshold && hasReceivedRealtime) {
             proposedQuality = 'live';
           }
-          // DELAYED DEMOTION: live → hydrated only after 10+ seconds without ticks
+          // DELAYED DEMOTION: live → hydrated only after 2.5+ seconds without ticks (Sub-2s guarantee)
           else if (currentState.quality === 'live') {
-            const liveDemotionGraceMs = 10000; // 10 seconds grace period
+            const liveDemotionGraceMs = 2500; // 2.5 seconds grace period for ultra-responsive feel
             if (ageMs < liveDemotionGraceMs) {
               proposedQuality = 'live'; // Stay live during grace period
             } else {
@@ -849,6 +864,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     };
   }, [connectionStatus, error, lastUpdated]);
 
+  // Get arrival age function for sub-2s guarantee
+  const getArrivalAge = useCallback((symbol: string): number => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    if (!normalizedSymbol) return Infinity;
+    
+    const arrivalTime = arrivalTimestamps.current.get(normalizedSymbol);
+    if (!arrivalTime) return Infinity;
+    
+    return Date.now() - arrivalTime; // Return age in milliseconds
+  }, []);
+
   // Get stats function
   const getStats = useCallback(() => {
     const stats = statsRef.current;
@@ -890,6 +916,45 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [isLeader]);
 
+  // Sub-2s Live Guarantee: Staleness watchdog
+  useEffect(() => {
+    if (connectionStatus === 'connected' && subscriptionsRef.current.size > 0) {
+      watchdogIntervalRef.current = setInterval(() => {
+        const now = Date.now();
+        
+        subscriptionsRef.current.forEach((_, symbol) => {
+          const arrivalAge = getArrivalAge(symbol);
+          const currentStaleCount = watchdogStaleCountRef.current.get(symbol) || 0;
+          
+          if (arrivalAge > 2000) { // More than 2 seconds old
+            const newStaleCount = currentStaleCount + 1;
+            watchdogStaleCountRef.current.set(symbol, newStaleCount);
+            
+            // If stale for 3 consecutive checks (3 seconds), restart connection
+            if (newStaleCount >= 3) {
+              if (isDevToolsEnabled()) {
+                console.log(`🚨 Watchdog: Symbol ${symbol} stale for ${arrivalAge}ms, restarting connection`);
+              }
+              watchdogStaleCountRef.current.clear(); // Reset all counters
+              restartConnection();
+              return; // Exit early to prevent multiple restarts
+            }
+          } else {
+            // Reset stale count if data is fresh
+            watchdogStaleCountRef.current.set(symbol, 0);
+          }
+        });
+      }, 1000); // Check every second
+
+      return () => {
+        if (watchdogIntervalRef.current) {
+          clearInterval(watchdogIntervalRef.current);
+          watchdogIntervalRef.current = null;
+        }
+      };
+    }
+  }, [connectionStatus, getArrivalAge, restartConnection]);
+
   // Mount/unmount lifecycle management
   useEffect(() => {
     mountOnlyRef.current = true;
@@ -905,6 +970,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       
       if (visibilityTimeoutRef.current) {
         clearTimeout(visibilityTimeoutRef.current);
+      }
+      
+      if (watchdogIntervalRef.current) {
+        clearInterval(watchdogIntervalRef.current);
+        watchdogIntervalRef.current = null;
       }
     };
   }, [disconnect]);
@@ -964,6 +1034,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // New graceful failure indicators
     getDataAge,
     getConnectionQuality,
+    // Sub-2s Live Guarantee
+    getArrivalAge,
   }), [
     prices,
     connectionStatus,
@@ -978,6 +1050,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     restartConnection,
     getDataAge,
     getConnectionQuality,
+    getArrivalAge,
   ]);
 
   return (

@@ -9,7 +9,7 @@ interface PriceStalenessStatus {
   stalePrices: string[];
 }
 
-export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
+export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 15) {
   const { getConnectionHealth, lastUpdated, prices } = useOptimizedWebSocketPrices();
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,

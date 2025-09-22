@@ -81,10 +81,12 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       const diffMs = now.getTime() - lastUpdated.getTime();
       const diffSeconds = Math.floor(diffMs / 1000);
       
-      if (diffSeconds < 30) {
+      if (diffSeconds < 2) {
+        setDataAge('Ultra Live');
+      } else if (diffSeconds < 3) {
         setDataAge('Live');
-      } else if (diffSeconds < 60) {
-        setDataAge(`${diffSeconds}s ago`);
+      } else if (diffSeconds < 15) {
+        setDataAge('Delayed');
       } else if (diffSeconds < 3600) {
         const minutes = Math.floor(diffSeconds / 60);
         setDataAge(`${minutes}m ago`);
@@ -196,8 +198,19 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 30s)
-    if (dataFreshness < 30 && price > 0) {
+    // Ultra Live indicator for sub-2-second data
+    if (dataFreshness < 2 && price > 0) {
+      return { 
+        color: 'text-emerald-400', 
+        icon: Zap, 
+        text: 'Ultra Live',
+        description: 'Ultra-fast real-time updates',
+        animate: false
+      };
+    }
+    
+    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 3s)
+    if (dataFreshness < 3 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 
@@ -207,7 +220,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (dataFreshness < 60 && price > 0) {
+    if (dataFreshness < 15 && price > 0) {
       return { 
         color: 'text-yellow-400', 
         icon: Clock, 
@@ -281,9 +294,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               <Badge variant="outline" className={`text-xs px-2 py-1 ${connectionStatusInfo.color}`}>
                 {connectionStatusInfo.text}
               </Badge>
-              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && (
+              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && dataAge !== 'Ultra Live' && dataAge !== 'Live' && (
                 <span className={`text-xs ${
                   dataAge === 'Live' ? 'text-green-400' : 
+                  dataAge === 'Ultra Live' ? 'text-emerald-400' :
+                  dataAge === 'Delayed' ? 'text-yellow-400' :
                   dataAge === 'Stale' ? 'text-red-400' : 
                   'text-yellow-400'
                 }`}>

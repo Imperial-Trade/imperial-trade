@@ -53,7 +53,7 @@ const CIRCUIT_BREAKER_CONFIG = {
 
 // Health monitoring configuration
 const HEALTH_CONFIG = {
-  staleDataThreshold: 45000, // 45 seconds before considering data stale
+  staleDataThreshold: 15000, // 15 seconds before considering data stale (optimized)
   healthCheckInterval: 30000, // Check health every 30 seconds
   maxSilentPeriod: 180000, // 3 minutes of no data before concern (was 60s)
 };
@@ -384,8 +384,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         const now = Date.now();
         const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
         
-        // Static 1-second rate limiting for smooth, predictable updates
-        const rateLimitMs = 1000; // Consistent 1Hz updates
+        // Boosted to 500ms for ultra-smooth professional experience  
+        const rateLimitMs = 500; // Enhanced 2Hz updates
         
         if (now - lastUpdate < rateLimitMs) {
           recordClampActivation(); // Record when we drop updates due to rate limiting

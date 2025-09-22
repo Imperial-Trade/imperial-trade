@@ -13,8 +13,8 @@ interface StabilityState {
 }
 
 const DEFAULT_CONFIG: StabilityConfig = {
-  stabilityThreshold: 10000, // 10 seconds
-  cooldownPeriod: 2000, // 2 seconds
+  stabilityThreshold: 3000, // PATH A: Reduced from 10s to 3s for faster response
+  cooldownPeriod: 1000, // PATH A: Reduced from 2s to 1s
 };
 
 /**

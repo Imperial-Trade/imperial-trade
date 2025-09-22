@@ -49,55 +49,30 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     dataAge: 0
   });
 
-  // Phase 3: Throttling configuration
+  // PATH A: Ultra-Responsive - Remove UI throttling for sub-second updates
   const throttledUpdateRef = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdateRef = useRef<{ price: number; timestamp: string } | null>(null);
   const previousPriceRef = useRef<number | null>(null);
-  const THROTTLE_DELAY_MS = options.debounceMs || 250;
+  const THROTTLE_DELAY_MS = options.debounceMs || 50; // Reduced from 250ms to 50ms
 
   const currentPrice = prices[normalizeSymbol(symbol)];
 
   const applyThrottledUpdate = useCallback((price: number, timestamp: string) => {
-    pendingUpdateRef.current = { price, timestamp };
+    // PATH A: Smart batching with minimal throttling for ultra-responsive updates
+    const prevPrice = previousPriceRef.current;
+    const change = prevPrice ? price - prevPrice : 0;
+    const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+
+    setLocalState({
+      change,
+      changePercent,
+      dataAge: Date.now() - new Date(timestamp).getTime()
+    });
+
+    previousPriceRef.current = price;
+    pricePerformanceMonitor.recordUIUpdate();
     pricePerformanceMonitor.recordPriceUpdate(false);
-    
-    if (!throttledUpdateRef.current) {
-      // Immediate update for first price
-      const prevPrice = previousPriceRef.current;
-      const change = prevPrice ? price - prevPrice : 0;
-      const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-
-      setLocalState({
-        change,
-        changePercent,
-        dataAge: Date.now() - new Date(timestamp).getTime()
-      });
-
-      previousPriceRef.current = price;
-      pricePerformanceMonitor.recordUIUpdate();
-
-      // Set up throttling for subsequent updates
-      throttledUpdateRef.current = setTimeout(() => {
-        const pending = pendingUpdateRef.current;
-        if (pending) {
-          const prevPrice = previousPriceRef.current;
-          const change = prevPrice ? pending.price - prevPrice : 0;
-          const changePercent = prevPrice && prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-
-          setLocalState({
-            change,
-            changePercent,
-            dataAge: Date.now() - new Date(pending.timestamp).getTime()
-          });
-
-          previousPriceRef.current = pending.price;
-          pricePerformanceMonitor.recordUIUpdate();
-        }
-        throttledUpdateRef.current = null;
-        pendingUpdateRef.current = null;
-      }, THROTTLE_DELAY_MS);
-    }
-  }, [THROTTLE_DELAY_MS]);
+  }, []);
 
   const refreshPrice = useCallback(async () => {
     ctxRefreshPrice(symbol);

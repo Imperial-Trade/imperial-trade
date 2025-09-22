@@ -81,12 +81,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       const diffMs = now.getTime() - lastUpdated.getTime();
       const diffSeconds = Math.floor(diffMs / 1000);
       
-      if (diffSeconds < 2) {
+      if (diffSeconds < 1) {
         setDataAge('Ultra Live');
       } else if (diffSeconds < 3) {
         setDataAge('Live');
       } else if (diffSeconds < 15) {
         setDataAge('Delayed');
+      } else if (diffSeconds < 60) {
+        setDataAge(`${diffSeconds}s ago`);
       } else if (diffSeconds < 3600) {
         const minutes = Math.floor(diffSeconds / 60);
         setDataAge(`${minutes}m ago`);
@@ -198,8 +200,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // Ultra Live indicator for sub-2-second data
-    if (dataFreshness < 2 && price > 0) {
+    // PATH A: Ultra Live indicator for sub-1-second data
+    if (dataFreshness < 1 && price > 0) {
       return { 
         color: 'text-emerald-400', 
         icon: Zap, 
@@ -209,7 +211,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // GUARDRAIL: Single source of truth - show "Live" when fresh (< 3s)
+    // PATH A: Live indicator for 1-3 second fresh data  
     if (dataFreshness < 3 && price > 0) {
       return { 
         color: 'text-green-400', 

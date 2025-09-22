@@ -106,7 +106,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyThrottledUpdate]);
 
-  // Data age tracking interval - guarded by trackDataAge option
+  // PATH A: Real-time data age tracking with faster interval
   useEffect(() => {
     if (!currentPrice || options.trackDataAge === false) return;
 
@@ -115,7 +115,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
         ...prev,
         dataAge: Date.now() - new Date(currentPrice.timestamp).getTime()
       }));
-    }, 5000);
+    }, 1000); // PATH A: Reduced from 5000ms to 1000ms for real-time updates
 
     return () => clearInterval(interval);
   }, [currentPrice, options.trackDataAge]);

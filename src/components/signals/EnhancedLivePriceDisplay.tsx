@@ -86,7 +86,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       } else if (diffSeconds < 3) {
         setDataAge('Live');
       } else if (diffSeconds < 15) {
-        setDataAge('Delayed');
+        setDataAge('Live'); // PATH A: Show as Live instead of Delayed for 3-15s data
       } else if (diffSeconds < 60) {
         setDataAge(`${diffSeconds}s ago`);
       } else if (diffSeconds < 3600) {
@@ -98,7 +98,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 1000);
+    const interval = setInterval(updateAge, 250); // PATH A: Real-time updates - 250ms for smooth countdown
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
@@ -224,10 +224,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     
     if (dataFreshness < 15 && price > 0) {
       return { 
-        color: 'text-yellow-400', 
-        icon: Clock, 
-        text: 'Delayed',
-        description: 'Price data is slightly delayed',
+        color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'PATH A: Professional trading - data up to 15s shows as Live',
         animate: false
       };
     }

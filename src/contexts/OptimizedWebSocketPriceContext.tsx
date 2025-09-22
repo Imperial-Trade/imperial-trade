@@ -704,9 +704,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const normalizedSymbol = normalizeSymbol(symbol);
       const now = Date.now();
       
-      // 🚀 ANTI-FLICKER: Check 500ms result cache first
+      // PATH A: Eliminate quality cache delay for ultra-responsive updates
       const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
-      if (cachedResult && (now - cachedResult.timestamp) < 500) {
+      if (cachedResult && (now - cachedResult.timestamp) < 0) { // 0ms cache = instant updates
         return cachedResult.quality as 'live' | 'hydrated' | 'stale';
       }
       

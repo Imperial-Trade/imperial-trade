@@ -904,6 +904,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           setPrices(prev => ({ ...prev, ...event.data.data }));
           setLastUpdated(new Date(event.data.timestamp));
           isFollowerRef.current = true;
+          
+          // CRITICAL FIX: Update arrival timestamps for follower tabs to prevent false staleness
+          const now = Date.now();
+          Object.keys(event.data.data).forEach(symbol => {
+            arrivalTimestamps.current.set(symbol, now);
+          });
         }
       };
       
@@ -916,35 +922,54 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [isLeader]);
 
-  // Sub-2s Live Guarantee: Staleness watchdog
+  // Stabilized watchdog with 30s cooldown and individual symbol refresh
+  const lastRestartTimeRef = useRef(0);
+  
   useEffect(() => {
     if (connectionStatus === 'connected' && subscriptionsRef.current.size > 0) {
       watchdogIntervalRef.current = setInterval(() => {
         const now = Date.now();
+        let allSymbolsStale = true;
+        const staleSymbols: string[] = [];
         
+        // Check all subscribed symbols
         subscriptionsRef.current.forEach((_, symbol) => {
           const arrivalAge = getArrivalAge(symbol);
           const currentStaleCount = watchdogStaleCountRef.current.get(symbol) || 0;
           
-          if (arrivalAge > 2000) { // More than 2 seconds old
+          if (arrivalAge > 6000) { // More than 6 seconds old (less aggressive)
             const newStaleCount = currentStaleCount + 1;
             watchdogStaleCountRef.current.set(symbol, newStaleCount);
+            staleSymbols.push(symbol);
             
-            // If stale for 3 consecutive checks (3 seconds), restart connection
-            if (newStaleCount >= 3) {
-              if (isDevToolsEnabled()) {
-                console.log(`🚨 Watchdog: Symbol ${symbol} stale for ${arrivalAge}ms, restarting connection`);
+            // Individual symbol refresh before restarting connection
+            if (newStaleCount >= 2 && newStaleCount < 4) {
+              if (Math.random() < 0.1 && isDevToolsEnabled()) { // 10% sampling
+                console.log(`🔄 Refreshing stale symbol: ${symbol} (age: ${arrivalAge}ms)`);
               }
-              watchdogStaleCountRef.current.clear(); // Reset all counters
-              restartConnection();
-              return; // Exit early to prevent multiple restarts
+              refreshPrice(symbol);
             }
           } else {
-            // Reset stale count if data is fresh
+            // Fresh data found - not all symbols are stale
+            allSymbolsStale = false;
             watchdogStaleCountRef.current.set(symbol, 0);
           }
         });
-      }, 1000); // Check every second
+        
+        // Only restart if ALL symbols are stale for 4+ checks (24s total) and no recent restart
+        if (allSymbolsStale && staleSymbols.length > 0 && now - lastRestartTimeRef.current > 30000) {
+          const worstStaleCount = Math.max(...staleSymbols.map(s => watchdogStaleCountRef.current.get(s) || 0));
+          
+          if (worstStaleCount >= 4) {
+            if (Math.random() < 0.1 && isDevToolsEnabled()) { // 10% sampling
+              console.log(`🚨 Watchdog: All ${staleSymbols.length} symbols stale for 24s+, restarting connection`);
+            }
+            watchdogStaleCountRef.current.clear();
+            lastRestartTimeRef.current = now;
+            restartConnection();
+          }
+        }
+      }, 6000); // Check every 6 seconds (less frequent)
 
       return () => {
         if (watchdogIntervalRef.current) {
@@ -953,7 +978,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
       };
     }
-  }, [connectionStatus, getArrivalAge, restartConnection]);
+  }, [connectionStatus, getArrivalAge, restartConnection, refreshPrice]);
 
   // Mount/unmount lifecycle management
   useEffect(() => {

@@ -269,25 +269,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             <div className="text-white font-medium">
               Live Price for {assetName}
             </div>
-            {priceUpdateSource === 'websocket_institutional' && (
-              <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
-                ⚡ Ultra-Fast
-              </div>
-            )}
           </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`text-xs px-2 py-1 ${connectionStatusInfo.color}`}>
-                {connectionStatusInfo.text}
-              </Badge>
-              {/* Sub-2s Live Guarantee: Only show timestamps when data is >= 2s old */}
-              {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && dataAge && dataAge !== 'Ultra Live' && dataAge !== 'Live' && arrivalAgeSeconds >= 2 && (
-                <span className={`text-xs ${
-                  dataAge === 'Stale' ? 'text-red-400' : 'text-yellow-400'
-                }`}>
-                  {dataAge}
-                </span>
-              )}
-            </div>
         </div>
         
         <Button
@@ -383,12 +365,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
           </div>
-          {/* Sub-2s Live Guarantee: Only show staleness badge when >= 2s */}
-          {stalenessStatus.ageInSeconds !== null && stalenessStatus.ageInSeconds >= 2 && (
-            <Badge variant={stalenessStatus.ageInSeconds <= 2 ? "default" : stalenessStatus.ageInSeconds <= 5 ? "secondary" : "destructive"} className="text-xs px-1 py-0">
-              {stalenessStatus.ageInSeconds}s
-            </Badge>
-          )}
         </div>
         
         <div className="flex items-center gap-1">

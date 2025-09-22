@@ -10,8 +10,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   RefreshCw, 
   TrendingUp, 
-  TrendingDown,
-  AlertTriangle
+  TrendingDown, 
+  Wifi, 
+  WifiOff, 
+  Clock,
+  AlertTriangle,
+  Zap,
+  Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
 // Market status imports removed
@@ -59,9 +64,35 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const { shouldAllowQualityChange } = useConnectionStability();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataAge, setDataAge] = useState<string>('');
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
+  const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
+  // Sub-2s Live Guarantee: Update data age using arrival time
+  useEffect(() => {
+    const updateAge = () => {
+      // Use arrival age for ultra-responsive freshness display
+      const ageSeconds = arrivalAgeSeconds || 0;
+      
+      if (ageSeconds < 1) {
+        setDataAge('Ultra Live');
+      } else if (ageSeconds < 2) {
+        setDataAge('Live');
+      } else if (ageSeconds < 60) {
+        setDataAge(`${ageSeconds}s ago`); // Only show "Xs ago" when >= 2s
+      } else if (ageSeconds < 3600) {
+        const minutes = Math.floor(ageSeconds / 60);
+        setDataAge(`${minutes}m ago`);
+      } else {
+        setDataAge('Stale');
+      }
+    };
+
+    updateAge();
+    const interval = setInterval(updateAge, 250); // Ultra-responsive updates every 250ms
+    return () => clearInterval(interval);
+  }, [arrivalAgeSeconds]);
 
   // Optimized price change animation effect
   useEffect(() => {
@@ -79,6 +110,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
   }, [price, prevPrice]);
 
+  // ✅ FLICKER ELIMINATION: Stability-aware debouncing
+  useEffect(() => {
+    const currentQuality = connectionStatus === 'connected' ? 'live' : 
+                          connectionStatus === 'connecting' ? 'hydrated' : 'stale';
+    const proposedQuality = connectionStatus === 'connected' ? 'live' : 
+                           connectionStatus === 'connecting' ? 'hydrated' : 'stale';
+    
+    if (shouldAllowQualityChange(symbol, currentQuality, proposedQuality)) {
+      setDebouncedConnectionStatus(connectionStatus);
+    }
+  }, [connectionStatus, shouldAllowQualityChange, symbol]);
 
   // Price update effect with validation
   useEffect(() => {
@@ -117,6 +159,70 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     });
   }, []);
 
+  const connectionStatusInfo = useMemo(() => {
+    // Sub-2s Live Guarantee: Use arrival age for status calculation
+    const dataFreshness = arrivalAgeMs ? arrivalAgeMs / 1000 : Infinity;
+    
+    if (isLoading || debouncedConnectionStatus === 'connecting') {
+      return { 
+        color: 'text-yellow-400', 
+        icon: RefreshCw, 
+        text: 'Fetching',
+        description: 'Fetching latest price data...',
+        animate: true
+      };
+    }
+    
+    // GUARDRAIL: Only surface real errors (network/auth), not benign ones
+    const isBenignError = error && (
+      error.includes('timed out') || 
+      error.includes('closed') || 
+      error.includes('CHANNEL_ERROR') ||
+      error.includes('TIMED_OUT') ||
+      error.includes('connection') ||
+      error.includes('Price data is')
+    );
+    
+    if (error && !isBenignError) {
+      return { 
+        color: 'text-red-400', 
+        icon: AlertTriangle, 
+        text: 'Error',
+        description: error,
+        animate: false
+      };
+    }
+    
+    // PATH A: Ultra Live indicator for sub-1-second data
+    if (dataFreshness < 1 && price > 0) {
+      return { 
+        color: 'text-emerald-400', 
+        icon: Zap, 
+        text: 'Ultra Live',
+        description: 'Ultra-fast real-time updates',
+        animate: false
+      };
+    }
+    
+    // Sub-2s Live Guarantee: Live indicator for sub-2-second fresh data  
+    if (dataFreshness < 2 && price > 0) {
+      return { 
+        color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'Sub-2s guarantee: Ultra-responsive real-time updates',
+        animate: false
+      };
+    }
+    
+    return { 
+      color: 'text-red-400', 
+      icon: WifiOff, 
+      text: 'Offline',
+      description: 'No recent price updates',
+      animate: false
+    };
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price, arrivalAgeMs, arrivalAgeSeconds]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -151,7 +257,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
 
   return (
-    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm border-border ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm ${
+      debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
+      debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
+      'border-border'
+    } ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -246,8 +356,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         )}
       </div>
 
-      {/* Footer with Action Buttons */}
-      <div className="flex items-center justify-end">
+      {/* Enhanced Footer with Trading Safety */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>
+              {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
+            </span>
+          </div>
+        </div>
+        
         <div className="flex items-center gap-1">
           {/* Critical: Manual refresh button for trading decisions */}
           <Button

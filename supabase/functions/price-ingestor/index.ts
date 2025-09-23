@@ -182,7 +182,7 @@ serve(async (req) => {
 
   try {
     // 🚀 ACTIVITY-BASED GATING: Check if any UI listeners are active before processing
-    const supabaseClient = await initializeSupabase();
+    await initializeSupabase();
     const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
       p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
     });
@@ -219,7 +219,7 @@ serve(async (req) => {
     totalPricesProcessed += prices.length;
 
     // Initialize Supabase client
-    const supabaseClient = await initializeSupabase();
+    await initializeSupabase();
 
     // 🚀 STEP 3: Enhanced alert processing with notification detection
     console.log('🎯 STEP 3: Processing alerts and detecting notification triggers...');

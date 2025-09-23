@@ -52,11 +52,11 @@ const CIRCUIT_BREAKER_CONFIG = {
   jitterRange: 0.3, // ±30% jitter
 };
 
-// Health monitoring configuration - Sub-2s Live Guarantee
+// 🚀 WATCHDOG FIX: Prevent flicker with stable thresholds
 const HEALTH_CONFIG = {
-  staleDataThreshold: 2000, // 2 seconds before considering data stale (ULTRA-RESPONSIVE)
+  staleDataThreshold: 10000, // 10 seconds (INCREASED to prevent flicker)
   healthCheckInterval: 30000, // Check health every 30 seconds
-  maxSilentPeriod: 180000, // 3 minutes of no data before concern (was 60s)
+  maxSilentPeriod: 300000, // 5 minutes of no data before concern (INCREASED from 3min)
 };
 
 interface OptimizedWebSocketContextType {
@@ -392,8 +392,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         const now = Date.now();
         const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
         
-        // Boosted to 500ms for ultra-smooth professional experience  
-        const rateLimitMs = 500; // Enhanced 2Hz updates
+        // 🚀 ULTRA-FAST: 200ms for professional 5Hz updates
+        const rateLimitMs = 200; // Enhanced 5Hz updates for institutional feel
         
         if (now - lastUpdate < rateLimitMs) {
           recordClampActivation(); // Record when we drop updates due to rate limiting

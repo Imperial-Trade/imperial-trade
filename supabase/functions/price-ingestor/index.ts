@@ -10,15 +10,15 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
-// 🎯 AGGRESSIVE PROFESSIONAL THRESHOLDS - For 2-second UI updates
-// These thresholds deliver institutional-grade responsiveness for professional trading
-const MIN_PRICE_CHANGE_PERCENT = 0.03; // 0.03% for non-gold assets (2.67x more sensitive)
-const MIN_PRICE_CHANGE_PIPS = 0.3;      // 0.3 pips for gold assets (2.67x more sensitive)
+// 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
+// These thresholds deliver maximum responsiveness matching top-tier trading platforms
+const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for non-gold assets (ULTRA-SENSITIVE)
+const MIN_PRICE_CHANGE_PIPS = 0.1;      // 0.1 pips for gold assets (ULTRA-SENSITIVE)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-// 🔒 GLOBAL RATE LIMITING - For UI broadcasts only
+// 🚀 ENHANCED RATE LIMITING - For professional 5Hz UI updates
 const SYMBOL_RATE_LIMITS: Record<string, { lastBroadcasts: number[], clampCount: number }> = {};
-const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 0.5;
+const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 5.0; // Enhanced to 5Hz (200ms intervals)
 const MAX_UI_BROADCASTS_PER_BATCH = 50;
 const PER_SYMBOL_CLAMP = 10;
 
@@ -181,6 +181,27 @@ serve(async (req) => {
   console.log('✅ Authentication successful');
 
   try {
+    // 🚀 ACTIVITY-BASED GATING: Check if any UI listeners are active before processing
+    const supabaseClient = await initializeSupabase();
+    const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
+      p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
+    });
+    
+    if (activityError) {
+      console.warn('⚠️ Activity check failed, proceeding with processing:', activityError);
+    } else if (!hasActiveUsers) {
+      console.log('⏸️ No active users - skipping price processing for cost optimization');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No active users - processing skipped',
+        processed: 0,
+        skip_reason: 'no_active_users'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
     // Parse request payload
     const requestBody = await req.json();
     const { prices } = requestBody;
@@ -194,7 +215,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📊 Processing ${prices.length} price update(s)`);
+    console.log(`📊 Processing ${prices.length} price update(s) for ${hasActiveUsers ? 'active' : 'inactive'} users`);
     totalPricesProcessed += prices.length;
 
     // Initialize Supabase client

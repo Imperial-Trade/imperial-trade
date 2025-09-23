@@ -17,8 +17,6 @@ import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
-
-
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
@@ -196,6 +194,8 @@ export default function SignalStream() {
     hasPendingLimits: hasPendingLimitOrders,
     intervalMs: 15000 // 15 seconds
   });
+  
+  // Define symbols first for UI activity registration
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     
@@ -223,6 +223,10 @@ export default function SignalStream() {
     }
     return symbolList;
   }, [activeAlerts, alerts]);
+
+  // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
+  const { registerInteraction } = useUIActivityRegistration(symbols);
+
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
@@ -231,9 +235,6 @@ export default function SignalStream() {
     unsubscribe,
     getPrice
   } = useOptimizedWebSocketPrices();
-
-  // 🎯 UI Activity Registration: Register this session for price ingestor activation
-  const { registerInteraction } = useUIActivityRegistration(symbols);
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {

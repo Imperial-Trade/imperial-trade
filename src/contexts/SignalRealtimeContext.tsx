@@ -343,7 +343,21 @@ unstable_batchedUpdates(() => {
           cache.data = [newSignal, ...cache.data];
         }
         
-        // Dispatch custom event for notifications
+        // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'signal_created',
+            title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
+            message: `${profile?.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
+            signalId: newRecord.id,
+            assetName: newRecord.asset_name,
+            authorName: profile?.display_name || 'Educator',
+            priority: 'high',
+            autoRemove: true,
+          });
+        }
+        
+        // Also dispatch custom event for backwards compatibility
         window.dispatchEvent(new CustomEvent('signal-posted'));
       } 
       else if (eventType === 'UPDATE' && newRecord) {
@@ -439,7 +453,7 @@ unstable_batchedUpdates(() => {
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // 🔥 EMERGENCY FIX: Use specific events to prevent message storm
+      // 🚀 OPTIMIZED: Subscribe to ALL relevant signal events for immediate updates
       const unsubscribeInsert = subscribeToTable(
         {
           table: 'trade_alerts',
@@ -449,13 +463,13 @@ unstable_batchedUpdates(() => {
         handleRealtimeUpdate
       );
       
-      // 🚀 NARROW UPDATE FILTER: Only status changes and TP hits to prevent field update spam
+      // 🚀 ENHANCED UPDATE FILTER: All meaningful updates for comprehensive coverage
       const unsubscribeUpdate = subscribeToTable(
         {
           table: 'trade_alerts', 
           event: 'UPDATE',
-          // Narrow to meaningful changes: status closures, TP hits, or notes changes
-          filter: `user_id=in.(${educatorUserIds.join(',')}) AND (status=in.(closed,closed_tp,closed_sl,cancelled) OR tp_hits=neq.'{}' OR notes=is.not.null)`
+          // Capture all significant changes: status changes, TP hits, notes, activations
+          filter: `user_id=in.(${educatorUserIds.join(',')})`
         },
         handleRealtimeUpdate
       );

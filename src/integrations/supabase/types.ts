@@ -4129,6 +4129,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      verify_signal_triggers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          enabled: boolean
+          table_name: string
+          trigger_name: string
+        }[]
+      }
     }
     Enums: {
       access_level_enum: "user" | "moderator" | "admin"

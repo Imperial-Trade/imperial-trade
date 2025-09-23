@@ -26,9 +26,12 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       }
 
       try {
+        // CRITICAL FIX: Always provide a user_id, use a default if not authenticated
+        const userId = user?.id || '00000000-0000-0000-0000-000000000000'; // Default for anonymous users
+        
         const { error } = await supabase.rpc('register_ui_activity', {
           p_session_id: sessionIdRef.current,
-          p_user_id: user?.id || null,
+          p_user_id: userId,
           p_symbols: symbols.filter(s => s && s.trim().length > 0)
         });
         
@@ -65,9 +68,12 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     }
 
     try {
+      // CRITICAL FIX: Always provide a user_id, use a default if not authenticated
+      const userId = user?.id || '00000000-0000-0000-0000-000000000000'; // Default for anonymous users
+      
       const { error } = await supabase.rpc('register_ui_activity', {
         p_session_id: sessionIdRef.current,
-        p_user_id: user?.id || null,
+        p_user_id: userId,
         p_symbols: symbols.filter(s => s && s.trim().length > 0)
       });
       

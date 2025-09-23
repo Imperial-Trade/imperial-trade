@@ -5,7 +5,7 @@ import { tradingApiService } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import NotificationSystem from '@/components/notifications/NotificationSystem';
+import InAppNotificationSystem from '@/components/notifications/InAppNotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -596,7 +596,7 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
-        <NotificationSystem />
+        <InAppNotificationSystem />
         
         {/* Header - Mobile Optimized spacing */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

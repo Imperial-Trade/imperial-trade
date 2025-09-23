@@ -2906,7 +2906,7 @@ export type Database = {
           created_at: string
           id: string
           last_seen_at: string
-          session_id: string | null
+          session_id: string
           symbols: string[] | null
           user_id: string
         }
@@ -2914,7 +2914,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string
-          session_id?: string | null
+          session_id?: string
           symbols?: string[] | null
           user_id: string
         }
@@ -2922,7 +2922,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string
-          session_id?: string | null
+          session_id?: string
           symbols?: string[] | null
           user_id?: string
         }

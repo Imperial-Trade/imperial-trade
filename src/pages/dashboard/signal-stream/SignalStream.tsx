@@ -16,6 +16,7 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 
 
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
@@ -230,6 +231,9 @@ export default function SignalStream() {
     unsubscribe,
     getPrice
   } = useOptimizedWebSocketPrices();
+
+  // 🎯 UI Activity Registration: Register this session for price ingestor activation
+  const { registerInteraction } = useUIActivityRegistration(symbols);
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {

@@ -3780,6 +3780,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_old_ui_listeners: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_stale_market_prices: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -4042,6 +4046,10 @@ export type Database = {
       reconcile_signal_consistency: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      register_ui_activity: {
+        Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
+        Returns: undefined
       }
       should_show_onesignal_prompt: {
         Args: { p_device_fingerprint: string; p_user_id: string }

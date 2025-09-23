@@ -14,6 +14,7 @@ import { useGlobalPreviewControl } from '@/contexts/GlobalPreviewControlContext'
 import { normalizeSymbol } from '@/utils/symbolUtils';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
+import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -158,6 +159,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const lastErrorLogRef = useRef<string>('');
   const errorLogCountRef = useRef(0);
   const manualCloseRef = useRef(false);
+  
+  // 🚀 ACTIVITY-BASED RESOURCE MANAGEMENT: Register UI activity for cost optimization
+  const { registerInteraction } = useUIActivityRegistration(Array.from(subscriptionsRef.current.keys()));
 
   // Stats tracking + PHASE 4: Rate limiting state
   const statsRef = useRef({

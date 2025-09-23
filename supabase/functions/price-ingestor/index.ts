@@ -10,9 +10,10 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
-// 🎯 ENHANCED SIGNIFICANCE THRESHOLDS - For UI broadcasts only
-const MIN_PRICE_CHANGE_PERCENT = 0.08;
-const MIN_PRICE_CHANGE_PIPS = 0.8;
+// 🎯 AGGRESSIVE PROFESSIONAL THRESHOLDS - For 2-second UI updates
+// These thresholds deliver institutional-grade responsiveness for professional trading
+const MIN_PRICE_CHANGE_PERCENT = 0.03; // 0.03% for non-gold assets (2.67x more sensitive)
+const MIN_PRICE_CHANGE_PIPS = 0.3;      // 0.3 pips for gold assets (2.67x more sensitive)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
 // 🔒 GLOBAL RATE LIMITING - For UI broadcasts only

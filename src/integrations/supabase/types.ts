@@ -530,6 +530,7 @@ export type Database = {
       }
       course_modules: {
         Row: {
+          ai_metadata: Json | null
           course_id: string
           created_at: string
           created_by: string | null
@@ -544,6 +545,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_metadata?: Json | null
           course_id: string
           created_at?: string
           created_by?: string | null
@@ -558,6 +560,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_metadata?: Json | null
           course_id?: string
           created_at?: string
           created_by?: string | null
@@ -1890,6 +1893,7 @@ export type Database = {
           onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
+          progress_hash: string | null
           push_subscription_active: boolean | null
           real_name: string | null
           registration_source:
@@ -1940,6 +1944,7 @@ export type Database = {
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          progress_hash?: string | null
           push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
@@ -1990,6 +1995,7 @@ export type Database = {
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          progress_hash?: string | null
           push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
@@ -3242,7 +3248,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_page_visit: string | null
+          page_time_minutes: number | null
+          session_data: Json | null
           status: Database["public"]["Enums"]["progress_status"]
+          total_sessions: number | null
           updated_at: string
           user_email: string
           user_id: string
@@ -3252,7 +3262,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_page_visit?: string | null
+          page_time_minutes?: number | null
+          session_data?: Json | null
           status: Database["public"]["Enums"]["progress_status"]
+          total_sessions?: number | null
           updated_at?: string
           user_email: string
           user_id: string
@@ -3262,7 +3276,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_page_visit?: string | null
+          page_time_minutes?: number | null
+          session_data?: Json | null
           status?: Database["public"]["Enums"]["progress_status"]
+          total_sessions?: number | null
           updated_at?: string
           user_email?: string
           user_id?: string
@@ -3496,6 +3514,7 @@ export type Database = {
           video_metadata: Json | null
           video_segments: Json | null
           video_url: string
+          youtube_id: string | null
         }
         Insert: {
           access_settings?: Json | null
@@ -3525,6 +3544,7 @@ export type Database = {
           video_metadata?: Json | null
           video_segments?: Json | null
           video_url: string
+          youtube_id?: string | null
         }
         Update: {
           access_settings?: Json | null
@@ -3554,6 +3574,67 @@ export type Database = {
           video_metadata?: Json | null
           video_segments?: Json | null
           video_url?: string
+          youtube_id?: string | null
+        }
+        Relationships: []
+      }
+      webhook_debounce: {
+        Row: {
+          created_at: string
+          id: string
+          last_triggered_at: string
+          module_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+          module_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_triggered_at?: string
+          module_id?: string
+        }
+        Relationships: []
+      }
+      webhook_metrics: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_summary: string | null
+          http_status: number | null
+          id: string
+          module_id: string
+          request_id: string
+          retry_count: number
+          status: string
+          view_youtube_id_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          http_status?: number | null
+          id?: string
+          module_id: string
+          request_id: string
+          retry_count?: number
+          status: string
+          view_youtube_id_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_summary?: string | null
+          http_status?: number | null
+          id?: string
+          module_id?: string
+          request_id?: string
+          retry_count?: number
+          status?: string
+          view_youtube_id_count?: number | null
         }
         Relationships: []
       }
@@ -3600,6 +3681,21 @@ export type Database = {
       }
     }
     Views: {
+      module_youtube_ids_v1: {
+        Row: {
+          module_id: string | null
+          youtube_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_videos_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xeon_subscribers_public: {
         Row: {
           display_name: string | null
@@ -3652,6 +3748,10 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: boolean
       }
+      cleanup_expired_coach_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_inactive_symbol_cache: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -3684,6 +3784,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_webhook_debounce: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_smart_notification_batch: {
         Args: {
           p_asset_symbol?: string
@@ -3706,9 +3810,17 @@ export type Database = {
         Args: { p_post_id: string }
         Returns: number
       }
+      disable_course_module_webhook: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       disable_economic_events_processing: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      enable_course_module_webhook: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>

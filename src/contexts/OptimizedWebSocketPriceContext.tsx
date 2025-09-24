@@ -20,6 +20,14 @@ import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
 const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
 
+// 🚀 FRONTEND THROTTLING (SMART TV STATION) CONFIGURATION
+const UI_UPDATE_THROTTLE_MS = 3500; // 3.5 seconds for calm, professional trading experience
+const SIGNIFICANCE_THRESHOLDS = {
+  CRITICAL: 0.005, // 0.5% change bypasses throttling for immediate updates
+  MAJOR: 0.003,    // 0.3% change gets priority in next UI update
+  NORMAL: 0.001,   // Normal threshold for batch updates
+};
+
 // Enhanced price data interface with bid/ask support and arrival tracking
 interface PriceData {
   symbol: string;
@@ -86,6 +94,10 @@ interface OptimizedWebSocketContextType {
   getConnectionQuality: (symbol?: string) => 'hydrated' | 'live' | 'stale';
   // Sub-2s Live Guarantee - Arrival-based age tracking
   getArrivalAge: (symbol: string) => number;
+  // 🚀 FRONTEND THROTTLING: New methods for dual-layer price management
+  getInternalPrice: (symbol: string) => PriceData | null;
+  internalPrices: Record<string, PriceData>;
+  uiThrottleMs: number;
 }
 
 const OptimizedWebSocketContext = createContext<OptimizedWebSocketContextType | null>(null);
@@ -117,8 +129,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const channelIdRef = useRef(generateChannelId('prices'));
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
-  // 🚀 PHASE 2: Initialize with database-first hydration
-  const [prices, setPrices] = useState<Record<string, PriceData>>(() => {
+  // 🚀 FRONTEND THROTTLING: Dual-layer price state management
+  // Internal prices: Always fresh, updated immediately from backend (for data integrity)
+  const [internalPrices, setInternalPrices] = useState<Record<string, PriceData>>(() => {
     try {
       const cached = sessionStorage.getItem('cached_prices');
       if (cached) {
@@ -134,6 +147,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     return {};
   });
+  
+  // UI prices: Throttled updates for calm user experience (exposed to components)
+  const [prices, setPrices] = useState<Record<string, PriceData>>(internalPrices);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
@@ -176,6 +192,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const updateBatchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const watchdogIntervalRef = useRef<NodeJS.Timeout | null>(null); // New: Staleness watchdog
   const watchdogStaleCountRef = useRef(new Map<string, number>()); // New: Track consecutive stale checks
+  
+  // 🚀 FRONTEND THROTTLING: Smart UI update management
+  const uiUpdateBuffer = useRef(new Map<string, PriceData>());
+  const uiUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUIUpdateRef = useRef(new Map<string, number>());
+  const significantUpdatesRef = useRef(new Set<string>()); // Track symbols with critical changes
   
   // PHASE B: BroadcastChannel for leader/follower fanout
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -237,7 +259,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const validPrices = results.filter(Boolean) as PriceData[];
       
       if (validPrices.length > 0) {
-        setPrices(prev => {
+        // 🚀 FRONTEND THROTTLING: Update both internal and UI prices immediately for database hydration
+        setInternalPrices(prev => {
           const updated = { ...prev };
           validPrices.forEach(priceData => {
             updated[priceData.symbol] = priceData;
@@ -247,6 +270,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             const arrivalTime = Date.now();
             priceUpdateTimestamps.current.set(priceData.symbol, Date.parse(priceData.timestamp));
             arrivalTimestamps.current.set(priceData.symbol, arrivalTime); // Track arrival time for sub-2s guarantee
+          });
+          return updated;
+        });
+        
+        // For initial hydration, update UI prices immediately
+        setPrices(prev => {
+          const updated = { ...prev };
+          validPrices.forEach(priceData => {
+            updated[priceData.symbol] = priceData;
           });
           return updated;
         });
@@ -449,21 +481,59 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           // 🎯 Mark symbol as having received realtime update
           realtimeReceivedSymbols.current.add(normalizedSymbol);
           
-          // PHASE 4: Batch state updates to reduce React renders
+          // 🚀 FRONTEND THROTTLING: Update internal prices immediately (maintain data freshness)
           batchedUpdates.current.set(normalizedSymbol, priceData);
               
               if (!updateBatchTimeoutRef.current) {
                 updateBatchTimeoutRef.current = setTimeout(() => {
                   const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
-                  setPrices(prev => ({ ...prev, ...updatedPrices }));
+                  
+                  // Always update internal prices immediately for data integrity
+                  setInternalPrices(prev => ({ ...prev, ...updatedPrices }));
                   setLastUpdated(new Date());
+                  
+                  // 🚀 SMART UI THROTTLING: Determine which updates need immediate UI visibility
+                  Object.entries(updatedPrices).forEach(([symbol, newPrice]) => {
+                    const previousPrice = prices[symbol]?.price;
+                    let shouldUpdateUI = false;
+                    
+                    if (previousPrice) {
+                      const changePercent = Math.abs((newPrice.price - previousPrice) / previousPrice);
+                      
+                      // Critical changes bypass throttling for immediate UI updates
+                      if (changePercent >= SIGNIFICANCE_THRESHOLDS.CRITICAL) {
+                        significantUpdatesRef.current.add(symbol);
+                        shouldUpdateUI = true;
+                      }
+                      // Major changes get priority in next scheduled update
+                      else if (changePercent >= SIGNIFICANCE_THRESHOLDS.MAJOR) {
+                        significantUpdatesRef.current.add(symbol);
+                      }
+                    } else {
+                      // First time receiving this symbol - show immediately
+                      shouldUpdateUI = true;
+                    }
+                    
+                    // Add to UI buffer for throttled updates
+                    uiUpdateBuffer.current.set(symbol, newPrice);
+                    
+                    // Immediate UI update for critical changes
+                    if (shouldUpdateUI) {
+                      setPrices(prev => ({ ...prev, [symbol]: newPrice }));
+                      lastUIUpdateRef.current.set(symbol, Date.now());
+                      uiUpdateBuffer.current.delete(symbol); // Remove from buffer since we updated immediately
+                    }
+                  });
+                  
+                  // Schedule throttled UI updates for non-critical changes
+                  scheduleUIUpdate();
                   
                   // 🔥 SAMPLED UI TRACKING: Only record 1 in 10 UI updates
                   if (Math.random() < 0.1) {
                     pricePerformanceMonitor.recordUIUpdate();
                   }
                   
-                  // Cache prices to sessionStorage with timestamp and arrival times
+                  // Cache internal prices to sessionStorage with timestamp and arrival times
                   try {
                     const cacheData = {
                       prices: updatedPrices,
@@ -702,11 +772,59 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [disconnect]);
 
-  // Get price function
+  // 🚀 FRONTEND THROTTLING: Smart UI update scheduler
+  const scheduleUIUpdate = useCallback(() => {
+    if (uiUpdateTimeoutRef.current) return; // Already scheduled
+    
+    uiUpdateTimeoutRef.current = setTimeout(() => {
+      if (uiUpdateBuffer.current.size > 0) {
+        const bufferedUpdates = Object.fromEntries(uiUpdateBuffer.current);
+        
+        // Prioritize significant updates
+        const prioritizedUpdates: Record<string, PriceData> = {};
+        const normalUpdates: Record<string, PriceData> = {};
+        
+        Object.entries(bufferedUpdates).forEach(([symbol, priceData]) => {
+          if (significantUpdatesRef.current.has(symbol)) {
+            prioritizedUpdates[symbol] = priceData;
+            significantUpdatesRef.current.delete(symbol);
+          } else {
+            normalUpdates[symbol] = priceData;
+          }
+        });
+        
+        // Update UI with prioritized updates first, then normal updates
+        const allUpdates = { ...normalUpdates, ...prioritizedUpdates };
+        
+        setPrices(prev => ({ ...prev, ...allUpdates }));
+        
+        // Update timestamps for UI updates
+        Object.keys(allUpdates).forEach(symbol => {
+          lastUIUpdateRef.current.set(symbol, Date.now());
+        });
+        
+        uiUpdateBuffer.current.clear();
+        
+        if (isDevToolsEnabled()) {
+          console.log(`📺 UI Update: ${Object.keys(allUpdates).length} symbols (${Object.keys(prioritizedUpdates).length} priority)`);
+        }
+      }
+      
+      uiUpdateTimeoutRef.current = null;
+    }, UI_UPDATE_THROTTLE_MS);
+  }, []);
+
+  // Get price function (returns UI-throttled prices for user experience)
   const getPrice = useCallback((symbol: string): PriceData | null => {
     const normalizedSymbol = normalizeSymbol(symbol);
     return normalizedSymbol ? (prices[normalizedSymbol] || null) : null;
   }, [prices]);
+
+  // Get internal price function (always fresh data for trading logic)
+  const getInternalPrice = useCallback((symbol: string): PriceData | null => {
+    const normalizedSymbol = normalizeSymbol(symbol);
+    return normalizedSymbol ? (internalPrices[normalizedSymbol] || null) : null;
+  }, [internalPrices]);
 
   // 🚀 Enhanced "Hydrate and Highlight" data age and connection quality functions
   const getDataAge = useCallback((symbol: string): number => {
@@ -1044,11 +1162,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // Context value
   const contextValue: OptimizedWebSocketContextType = useMemo(() => ({
-    prices,
+    prices, // UI-throttled prices for calm user experience
     connectionStatus,
     subscribe,
     unsubscribe,
-    getPrice,
+    getPrice, // Returns UI-throttled prices
     isConnected: connectionStatus === 'connected',
     error,
     dataSource: isFollowerRef.current ? 'broadcast-follower' : 'realtime-leader',
@@ -1064,6 +1182,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getConnectionQuality,
     // Sub-2s Live Guarantee
     getArrivalAge,
+    // 🚀 FRONTEND THROTTLING: Internal price access for trading logic
+    getInternalPrice, // Returns always-fresh internal prices
+    internalPrices, // Direct access to internal prices for advanced use cases
+    uiThrottleMs: UI_UPDATE_THROTTLE_MS, // Expose throttling configuration
   }), [
     prices,
     connectionStatus,
@@ -1079,6 +1201,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getDataAge,
     getConnectionQuality,
     getArrivalAge,
+    getInternalPrice,
+    internalPrices,
   ]);
 
   return (

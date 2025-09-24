@@ -13,8 +13,8 @@ interface StabilityState {
 }
 
 const DEFAULT_CONFIG: StabilityConfig = {
-  stabilityThreshold: 3000, // PATH A: Reduced from 10s to 3s for faster response
-  cooldownPeriod: 1000, // PATH A: Reduced from 2s to 1s
+  stabilityThreshold: 2000, // 🔥 OPTIMIZED: Reduced to 2s for even faster response
+  cooldownPeriod: 500, // 🔥 OPTIMIZED: Reduced to 500ms for responsiveness
 };
 
 /**

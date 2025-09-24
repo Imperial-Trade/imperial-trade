@@ -44,7 +44,17 @@ interface LivePriceReturn {
 }
 
 export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions = {}): LivePriceReturn {
-  const { prices, connectionStatus, subscribe, unsubscribe, error, lastUpdated, refreshPrice: ctxRefreshPrice, getArrivalAge } = useOptimizedWebSocketPrices();
+  const { 
+    prices, 
+    connectionStatus, 
+    subscribe, 
+    unsubscribe, 
+    error, 
+    lastUpdated, 
+    refreshPrice: ctxRefreshPrice, 
+    getArrivalAge,
+    getInternalPrice // 🔥 CRITICAL: Access internal prices for accurate age calculation
+  } = useOptimizedWebSocketPrices();
   
   const [localState, setLocalState] = useState({
     change: 0,
@@ -122,16 +132,22 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       const arrivalAgeMs = getArrivalAge(normalizeSymbol(symbol));
       const arrivalAgeSeconds = Math.floor(arrivalAgeMs / 1000);
       
+      // 🔥 CRITICAL FIX: Use internal price for accurate data age calculation
+      const internalPrice = getInternalPrice(normalizeSymbol(symbol));
+      const dataAgeMs = internalPrice 
+        ? Date.now() - new Date(internalPrice.timestamp).getTime()
+        : Date.now() - new Date(currentPrice.timestamp).getTime();
+      
       setLocalState(prev => ({
         ...prev,
-        dataAge: Date.now() - new Date(currentPrice.timestamp).getTime(),
+        dataAge: dataAgeMs,
         arrivalAgeMs,
         arrivalAgeSeconds
       }));
     }, 250); // Sub-2s guarantee: Even faster updates at 250ms for ultra-responsive feel
 
     return () => clearInterval(interval);
-  }, [currentPrice, options.trackDataAge, symbol, getArrivalAge]);
+  }, [currentPrice, options.trackDataAge, symbol, getArrivalAge, getInternalPrice]);
 
 
   return {

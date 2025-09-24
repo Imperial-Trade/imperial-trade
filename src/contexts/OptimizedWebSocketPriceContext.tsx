@@ -32,7 +32,8 @@ const SIGNIFICANCE_THRESHOLDS = {
 const CRITICAL_TRADING_EVENTS = {
   ORDER_STATUS_CHANGE: true, // pending → active, active → closed
   TP_HIT: true,             // Take profit hits
-  SL_HIT: true              // Stop loss hits
+  SL_HIT: true,             // Stop loss hits
+  LIVE_PRICE_WIDGET: true   // Live price displays for professional trading interface
 };
 
 // Enhanced price data interface with bid/ask support and arrival tracking
@@ -498,6 +499,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             else if (changePercent >= SIGNIFICANCE_THRESHOLDS.MAJOR) {
               significantUpdatesRef.current.add(normalizedSymbol);
             }
+            // 🔥 LIVE PRICE WIDGET BYPASS: Always update immediately for live price displays
+            else if (CRITICAL_TRADING_EVENTS.LIVE_PRICE_WIDGET) {
+              shouldUpdateUI = true;
+            }
           } else {
             // First time receiving this symbol - show immediately
             shouldUpdateUI = true;
@@ -818,12 +823,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // 🚀 Enhanced "Hydrate and Highlight" data age and connection quality functions
   const getDataAge = useCallback((symbol: string): number => {
-    const priceData = getPrice(symbol);
+    // 🔥 CRITICAL FIX: Use internal price for accurate data age (not throttled UI price)
+    const priceData = getInternalPrice(symbol);
     if (!priceData) return Infinity;
     
     const ageMs = Date.now() - new Date(priceData.timestamp).getTime();
     return Math.floor(ageMs / 1000); // Return age in seconds
-  }, [getPrice]);
+  }, [getInternalPrice]);
 
   const getConnectionQuality = useCallback((symbol?: string): 'hydrated' | 'live' | 'stale' => {
     // Symbol-specific quality detection with hysteresis (sticky live) logic
@@ -831,9 +837,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const normalizedSymbol = normalizeSymbol(symbol);
       const now = Date.now();
       
-      // PATH A: Eliminate quality cache delay for ultra-responsive updates
+      // 🔥 OPTIMIZED: Reduced quality cache duration for faster responsiveness
       const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
-      if (cachedResult && (now - cachedResult.timestamp) < 0) { // 0ms cache = instant updates
+      if (cachedResult && (now - cachedResult.timestamp) < 100) { // 100ms cache for faster updates (down from 200ms)
         return cachedResult.quality as 'live' | 'hydrated' | 'stale';
       }
       
@@ -901,16 +907,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         return newState.quality;
       }
 
-      // 🚀 ANTI-FLICKER: Use sample confirmation only when transitioning to/from live
+      // 🚀 ANTI-FLICKER: Use sample confirmation only when transitioning to/from live (OPTIMIZED)
       const useSamples = (proposedQuality === 'live' || currentState.quality === 'live');
       if (useSamples) {
         const sampleHistory = qualitySampleHistoryRef.current.get(normalizedSymbol) || [];
         sampleHistory.push(proposedQuality);
-        if (sampleHistory.length > 3) sampleHistory.shift();
+        if (sampleHistory.length > 2) sampleHistory.shift(); // 🔥 OPTIMIZED: Reduced from 3 to 2 samples
         qualitySampleHistoryRef.current.set(normalizedSymbol, sampleHistory);
 
         let finalQuality = currentState.quality || 'stale';
-        const allSamplesMatch = sampleHistory.length >= 3 && sampleHistory.every(sample => sample === proposedQuality);
+        const allSamplesMatch = sampleHistory.length >= 2 && sampleHistory.every(sample => sample === proposedQuality); // 🔥 OPTIMIZED: 2-sample confirmation
         if (allSamplesMatch && proposedQuality !== currentState.quality) {
           finalQuality = proposedQuality;
           const newState = {

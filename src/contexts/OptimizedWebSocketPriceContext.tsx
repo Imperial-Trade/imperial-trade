@@ -188,8 +188,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   });
   const priceUpdateTimestamps = useRef(new Map<string, number>());
   const arrivalTimestamps = useRef(new Map<string, number>()); // New: Track arrival times for sub-2s guarantee
-  const batchedUpdates = useRef(new Map<string, PriceData>());
-  const updateBatchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const watchdogIntervalRef = useRef<NodeJS.Timeout | null>(null); // New: Staleness watchdog
   const watchdogStaleCountRef = useRef(new Map<string, number>()); // New: Track consecutive stale checks
   
@@ -424,19 +422,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return; // Skip unsubscribed symbols
           }
 
-        // 🚀 STATIC 1Hz RATE LIMITING: Consistent 1-second updates for professional trading experience
+        // 🚀 FRONTEND THROTTLING: No rate limiting here - let all backend data through
         const now = Date.now();
-        const lastUpdate = priceUpdateTimestamps.current.get(normalizedSymbol) || 0;
-        
-        // 🚀 ULTRA-FAST: 200ms for professional 5Hz updates
-        const rateLimitMs = 200; // Enhanced 5Hz updates for institutional feel
-        
-        if (now - lastUpdate < rateLimitMs) {
-          recordClampActivation(); // Record when we drop updates due to rate limiting
-          telemetry.record('clamp_activation');
-          return;
-        }
-        priceUpdateTimestamps.current.set(normalizedSymbol, now);
 
         // 🚨 EMERGENCY MESSAGE FILTER: Block messages not allowed by breaker
         if (!emergencyRealtimeBreaker.recordMessage(eventVersion)) {
@@ -482,87 +469,83 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           realtimeReceivedSymbols.current.add(normalizedSymbol);
           
           // 🚀 FRONTEND THROTTLING: Update internal prices immediately (maintain data freshness)
-          batchedUpdates.current.set(normalizedSymbol, priceData);
-              
-              if (!updateBatchTimeoutRef.current) {
-                updateBatchTimeoutRef.current = setTimeout(() => {
-                  const updatedPrices = { ...Object.fromEntries(batchedUpdates.current) };
-                  
-                  // Always update internal prices immediately for data integrity
-                  setInternalPrices(prev => ({ ...prev, ...updatedPrices }));
-                  setLastUpdated(new Date());
-                  
-                  // 🚀 SMART UI THROTTLING: Determine which updates need immediate UI visibility
-                  Object.entries(updatedPrices).forEach(([symbol, newPrice]) => {
-                    const previousPrice = prices[symbol]?.price;
-                    let shouldUpdateUI = false;
-                    
-                    if (previousPrice) {
-                      const changePercent = Math.abs((newPrice.price - previousPrice) / previousPrice);
-                      
-                      // Critical changes bypass throttling for immediate UI updates
-                      if (changePercent >= SIGNIFICANCE_THRESHOLDS.CRITICAL) {
-                        significantUpdatesRef.current.add(symbol);
-                        shouldUpdateUI = true;
-                      }
-                      // Major changes get priority in next scheduled update
-                      else if (changePercent >= SIGNIFICANCE_THRESHOLDS.MAJOR) {
-                        significantUpdatesRef.current.add(symbol);
-                      }
-                    } else {
-                      // First time receiving this symbol - show immediately
-                      shouldUpdateUI = true;
-                    }
-                    
-                    // Add to UI buffer for throttled updates
-                    uiUpdateBuffer.current.set(symbol, newPrice);
-                    
-                    // Immediate UI update for critical changes
-                    if (shouldUpdateUI) {
-                      setPrices(prev => ({ ...prev, [symbol]: newPrice }));
-                      lastUIUpdateRef.current.set(symbol, Date.now());
-                      uiUpdateBuffer.current.delete(symbol); // Remove from buffer since we updated immediately
-                    }
-                  });
-                  
-                  // Schedule throttled UI updates for non-critical changes
-                  scheduleUIUpdate();
-                  
-                  // 🔥 SAMPLED UI TRACKING: Only record 1 in 10 UI updates
-                  if (Math.random() < 0.1) {
-                    pricePerformanceMonitor.recordUIUpdate();
-                  }
-                  
-                  // Cache internal prices to sessionStorage with timestamp and arrival times
-                  try {
-                    const cacheData = {
-                      prices: updatedPrices,
-                      timestamp: Date.now(),
-                      arrivalTimes: Object.fromEntries(arrivalTimestamps.current) // Cache arrival times for freshness
-                    };
-                    sessionStorage.setItem('cached_prices', JSON.stringify(cacheData));
-                  } catch (error) {
-                    // Ignore sessionStorage errors (quota exceeded, etc.)
-                  }
-              
-              // PHASE B: BroadcastChannel fanout - Leader broadcasts to followers
-              if (isLeader && broadcastChannelRef.current) {
-                try {
-                  broadcastChannelRef.current.postMessage({
-                    type: 'prices-batch',
-                    data: updatedPrices,
-                    timestamp: Date.now()
-                  });
-                } catch (error) {
-                  if (isDevToolsEnabled()) {
-                    console.warn('📡 BroadcastChannel send failed:', error);
-                  }
-                }
+          setInternalPrices(prev => ({ ...prev, [normalizedSymbol]: priceData }));
+          setLastUpdated(new Date());
+          
+          // Track price update timestamp for quality detection
+          priceUpdateTimestamps.current.set(normalizedSymbol, Date.parse(priceData.timestamp));
+          
+          // 🚀 SMART UI THROTTLING: Determine if this update needs immediate UI visibility
+          const previousPrice = prices[normalizedSymbol]?.price;
+          let shouldUpdateUI = false;
+          
+          if (previousPrice) {
+            const changePercent = Math.abs((priceData.price - previousPrice) / previousPrice);
+            
+            // Critical changes bypass throttling for immediate UI updates
+            if (changePercent >= SIGNIFICANCE_THRESHOLDS.CRITICAL) {
+              significantUpdatesRef.current.add(normalizedSymbol);
+              shouldUpdateUI = true;
+            }
+            // Major changes get priority in next scheduled update
+            else if (changePercent >= SIGNIFICANCE_THRESHOLDS.MAJOR) {
+              significantUpdatesRef.current.add(normalizedSymbol);
+            }
+          } else {
+            // First time receiving this symbol - show immediately
+            shouldUpdateUI = true;
+          }
+          
+          // Add to UI buffer for throttled updates
+          uiUpdateBuffer.current.set(normalizedSymbol, priceData);
+          
+          // Immediate UI update for critical changes
+          if (shouldUpdateUI) {
+            setPrices(prev => ({ ...prev, [normalizedSymbol]: priceData }));
+            lastUIUpdateRef.current.set(normalizedSymbol, Date.now());
+            uiUpdateBuffer.current.delete(normalizedSymbol); // Remove from buffer since we updated immediately
+          } else {
+            // Schedule throttled UI updates for non-critical changes
+            scheduleUIUpdate();
+          }
+          
+          // 🔥 SAMPLED UI TRACKING: Only record 1 in 10 UI updates
+          if (Math.random() < 0.1) {
+            pricePerformanceMonitor.recordUIUpdate();
+          }
+          
+          // Cache internal prices to sessionStorage with timestamp and arrival times
+          try {
+            const cacheData = {
+              prices: { [normalizedSymbol]: priceData },
+              timestamp: Date.now(),
+              arrivalTimes: { [normalizedSymbol]: arrivalTimestamps.current.get(normalizedSymbol) }
+            };
+            const existingCache = sessionStorage.getItem('cached_prices');
+            const existingData = existingCache ? JSON.parse(existingCache) : { prices: {}, arrivalTimes: {} };
+            
+            sessionStorage.setItem('cached_prices', JSON.stringify({
+              prices: { ...existingData.prices, ...cacheData.prices },
+              timestamp: cacheData.timestamp,
+              arrivalTimes: { ...existingData.arrivalTimes, ...cacheData.arrivalTimes }
+            }));
+          } catch (error) {
+            // Ignore sessionStorage errors (quota exceeded, etc.)
+          }
+      
+          // PHASE B: BroadcastChannel fanout - Leader broadcasts to followers
+          if (isLeader && broadcastChannelRef.current) {
+            try {
+              broadcastChannelRef.current.postMessage({
+                type: 'price-update',
+                data: { [normalizedSymbol]: priceData },
+                timestamp: Date.now()
+              });
+            } catch (error) {
+              if (isDevToolsEnabled()) {
+                console.warn('📡 BroadcastChannel send failed:', error);
               }
-              
-              batchedUpdates.current.clear();
-              updateBatchTimeoutRef.current = null;
-            }, 200); // 🔥 SLOWER BATCHING: Every 200ms instead of 50ms
+            }
           }
           
         } catch (err) {
@@ -1110,8 +1093,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       disconnect();
       
       // Clear all timers
-      if (updateBatchTimeoutRef.current) {
-        clearTimeout(updateBatchTimeoutRef.current);
+      if (uiUpdateTimeoutRef.current) {
+        clearTimeout(uiUpdateTimeoutRef.current);
       }
       
       if (visibilityTimeoutRef.current) {

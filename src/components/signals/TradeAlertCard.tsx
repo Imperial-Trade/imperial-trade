@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
-import { ActivationStatus } from './ActivationStatus';
+
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
@@ -298,34 +298,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         onOrderActivation={onOrderActivation}
       />
       
-      {/* Enhanced Live Price Display with Activation Status */}
-      {(alert.trade_type === 'buy_limit' || alert.trade_type === 'sell_limit') && (
-        <div className="px-3 pb-2 border-t border-border/50">
-          <div className="flex flex-col gap-2 pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground">Live Price & Status</span>
-              <LivePriceWidgetPriority 
-                symbol={alert.tradermade_symbol || alert.asset_name?.toUpperCase() || 'UNKNOWN'} 
-                showDetails={true}
-                className="text-xs"
-              />
-            </div>
-            
-            <ActivationStatus
-              alert={alert}
-              currentPrice={livePrice}
-              onActivationDetected={(signalId) => {
-                console.log(`🎯 Activation detected for signal: ${signalId}`);
-                // Trigger optimistic activation if user can edit
-                if (isCreator && onOrderActivation) {
-                  console.log(`🚀 Triggering optimistic activation for ${alert.asset_name}`);
-                  onOrderActivation(alert);
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
       
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">

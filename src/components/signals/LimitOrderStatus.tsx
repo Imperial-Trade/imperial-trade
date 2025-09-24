@@ -138,12 +138,6 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
     if (shouldTrigger() && isPending) {
       console.log(`🎯 ORDER ACTIVATION CONDITION MET: ${alert.assetName} - Current: ${currentPrice}, Entry: ${entryPrice}`);
       
-      // Show immediate toast
-      toast({
-        title: "🎯 Order Activating!",
-        description: `${alert.assetName} ${alert.tradeType} conditions met - Activating...`,
-        duration: 4000,
-      });
 
       // Dispatch optimistic activation event for immediate UI feedback
       window.dispatchEvent(new CustomEvent('order-activation-detected', {
@@ -179,24 +173,18 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
         <div className="flex items-center gap-2">
           {isPending ? (
             <>
-              <Clock className="h-4 w-4 text-yellow-500" />
-              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-                🟡 Pending Activation
-              </Badge>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Badge variant="outline">Pending</Badge>
             </>
           ) : alert.status === 'active' ? (
             <>
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400">
-                🟢 Active Order
-              </Badge>
+              <Badge variant="default">Active</Badge>
             </>
           ) : (
             <>
-              <XCircle className="h-4 w-4 text-gray-500" />
-              <Badge variant="outline" className="bg-gray-500/10">
-                ⚫ {alert.status}
-              </Badge>
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+              <Badge variant="outline">{alert.status}</Badge>
             </>
           )}
         </div>
@@ -222,39 +210,6 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
         )}
       </div>
 
-      {isPending && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Distance to Activation:</span>
-            <span className={`font-medium ${getProximityColor()}`}>
-              {isBuyLimit && <TrendingDown className="inline h-3 w-3 mr-1" />}
-              {isSellLimit && <TrendingUp className="inline h-3 w-3 mr-1" />}
-              ${distanceToActivation.toFixed(4)} ({distancePercentage.toFixed(2)}%)
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>
-                {isBuyLimit ? 'Current ASK' : isSellLimit ? 'Current BID' : 'Current'}: ${currentPrice.toFixed(4)}
-              </span>
-              <span>Target: ${entryPrice.toFixed(4)}</span>
-            </div>
-            <Progress 
-              value={getActivationProgress()} 
-              className="h-2"
-            />
-          </div>
-
-          {shouldTrigger() && (
-            <div className="text-center p-2 bg-green-500/10 border border-green-500/20 rounded-md">
-              <span className="text-green-600 dark:text-green-400 font-medium">
-                🎯 Ready to trigger! Price condition met.
-              </span>
-            </div>
-          )}
-        </div>
-      )}
 
       {alert.status === 'active' && (alert as any).activatedAt && (
         <div className="text-sm text-muted-foreground">

@@ -110,10 +110,35 @@ interface OptimizedWebSocketContextType {
 
 const OptimizedWebSocketContext = createContext<OptimizedWebSocketContextType | null>(null);
 
-export const useOptimizedWebSocketPrices = () => {
+export const useOptimizedWebSocketPrices = (): OptimizedWebSocketContextType => {
   const context = useContext(OptimizedWebSocketContext);
   if (!context) {
-    throw new Error('useOptimizedWebSocketPrices must be used within OptimizedWebSocketPriceProvider');
+    console.warn('🚨 useOptimizedWebSocketPrices: Context not available, returning fallback');
+    
+    // Return fallback context to prevent crashes
+    return {
+      prices: {},
+      connectionStatus: 'disconnected',
+      error: 'Context not available',
+      lastUpdated: null,
+      dataSource: 'none',
+      uiThrottleMs: 3500,
+      subscribe: () => {},
+      unsubscribe: () => {},
+      getPrice: () => null,
+      getInternalPrice: () => null,
+      getDataAge: () => Infinity,
+      getConnectionQuality: () => 'stale',
+      getArrivalAge: () => Infinity,
+      internalPrices: {},
+      restartConnection: () => Promise.resolve(),
+      // Add missing properties from interface
+      isConnected: false,
+      errors: {},
+      refreshPrice: () => {},
+      getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+      isUsingEnhancedSystem: false
+    };
   }
   return context;
 };
@@ -125,6 +150,11 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
+  console.log('🚀 OptimizedWebSocketPriceProvider initializing...');
+  
+  // Provider initialization state
+  const [isProviderReady, setIsProviderReady] = useState(false);
+  
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
   const isPriceSubscriptionAllowed = useRealtimeGate('prices');
@@ -155,6 +185,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     return {};
   });
+  
+  // Mark provider as ready after initial state setup
+  useEffect(() => {
+    setIsProviderReady(true);
+    console.log('✅ OptimizedWebSocketPriceProvider ready');
+  }, []);
   
   // UI prices: Throttled updates for calm user experience (exposed to components)
   const [prices, setPrices] = useState<Record<string, PriceData>>(internalPrices);
@@ -1200,6 +1236,36 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getInternalPrice,
     internalPrices,
   ]);
+
+  // Show loading state until provider is ready
+  if (!isProviderReady) {
+    return (
+      <OptimizedWebSocketContext.Provider value={{
+        prices: {},
+        connectionStatus: 'connecting',
+        error: null,
+        lastUpdated: null,
+        dataSource: 'initializing',
+        uiThrottleMs: UI_UPDATE_THROTTLE_MS,
+        subscribe: () => {},
+        unsubscribe: () => {},
+        getPrice: () => null,
+        getInternalPrice: () => null,
+        getDataAge: () => 0,
+        getConnectionQuality: () => 'stale',
+        getArrivalAge: () => 0,
+        internalPrices: {},
+        restartConnection: () => Promise.resolve(),
+        isConnected: false,
+        errors: {},
+        refreshPrice: () => {},
+        getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+        isUsingEnhancedSystem: false
+      }}>
+        {children}
+      </OptimizedWebSocketContext.Provider>
+    );
+  }
 
   return (
     <OptimizedWebSocketContext.Provider value={contextValue}>

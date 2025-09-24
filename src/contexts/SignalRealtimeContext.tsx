@@ -383,6 +383,24 @@ unstable_batchedUpdates(() => {
           if (isDevToolsEnabled() && isNotesUpdate) {
             console.log(`📝 NOTES UPDATE: "${currentSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
           }
+
+          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
+          if (isOrderActivation) {
+            console.log(`🎯 ACTIVATION DETECTED: Forcing immediate UI update for ${newRecord.asset_name} (${newRecord.id})`);
+            
+            // Dispatch activation event with high priority
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+                detail: {
+                  signalId: newRecord.id,
+                  assetName: newRecord.asset_name,
+                  status: 'active',
+                  timestamp: new Date().toISOString(),
+                  priority: 'high'
+                }
+              }));
+            }, 0);
+          }
           
           const updatedSignals = prev.map(signal => 
             signal.id === newRecord.id ? {
@@ -407,13 +425,26 @@ unstable_batchedUpdates(() => {
           
           // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
           if (isOrderActivation) {
+            // Enhanced activation notification
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                type: 'order_activated',
+                title: `🚀 Order Activated!`,
+                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                priority: 'high',
+                autoRemove: true,
+                duration: 5000
+              });
+            }
+            
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('order-activated', {
                 detail: {
                   signalId: newRecord.id,
                   assetName: newRecord.asset_name,
                   status: newRecord.status,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  priority: 'high'
                 }
               }));
             }, 0);

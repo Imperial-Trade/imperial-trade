@@ -133,16 +133,43 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
     }
   };
 
-  // Show activation alert when very close
+  // Enhanced activation detection with optimistic UI
   useEffect(() => {
     if (shouldTrigger() && isPending) {
+      console.log(`🎯 ORDER ACTIVATION CONDITION MET: ${alert.assetName} - Current: ${currentPrice}, Entry: ${entryPrice}`);
+      
+      // Show immediate toast
       toast({
-        title: "🎯 Order Ready to Trigger!",
-        description: `${alert.assetName} ${alert.tradeType} at $${entryPrice}`,
-        duration: 3000,
+        title: "🎯 Order Activating!",
+        description: `${alert.assetName} ${alert.tradeType} conditions met - Activating...`,
+        duration: 4000,
       });
+
+      // Dispatch optimistic activation event for immediate UI feedback
+      window.dispatchEvent(new CustomEvent('order-activation-detected', {
+        detail: {
+          signalId: alert.id,
+          assetName: alert.assetName,
+          currentPrice,
+          entryPrice,
+          tradeType: alert.tradeType,
+          timestamp: new Date().toISOString()
+        }
+      }));
+
+      // Add notification for cross-component awareness
+      if ((window as any).addNotification) {
+        (window as any).addNotification({
+          type: 'activation_detected',
+          title: '🎯 Activation in Progress',
+          message: `${alert.assetName} activation conditions met`,
+          priority: 'high',
+          autoRemove: true,
+          duration: 3000
+        });
+      }
     }
-  }, [shouldTrigger(), isPending]);
+  }, [shouldTrigger(), isPending, alert.id, alert.assetName, alert.tradeType, currentPrice, entryPrice]);
 
   if (!isLimitOrder) return null;
 

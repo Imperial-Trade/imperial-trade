@@ -181,26 +181,19 @@ serve(async (req) => {
   console.log('✅ Authentication successful');
 
   try {
-    // 🚀 ACTIVITY-BASED GATING: Check if any UI listeners are active before processing
+    // Initialize Supabase client
     await initializeSupabase();
+    
+    // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
     const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
       p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
     });
     
     if (activityError) {
-      console.warn('⚠️ Activity check failed, proceeding with processing:', activityError);
-    } else if (!hasActiveUsers) {
-      console.log('⏸️ No active users - skipping price processing for cost optimization');
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'No active users - processing skipped',
-        processed: 0,
-        skip_reason: 'no_active_users'
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      console.warn('⚠️ Activity check failed, proceeding with full processing:', activityError);
     }
+    
+    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
 
     // Parse request payload
     const requestBody = await req.json();
@@ -215,23 +208,91 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📊 Processing ${prices.length} price update(s) for ${hasActiveUsers ? 'active' : 'inactive'} users`);
     totalPricesProcessed += prices.length;
 
-    // Initialize Supabase client
-    await initializeSupabase();
-
-    // 🚀 STEP 3: Enhanced alert processing with notification detection
-    console.log('🎯 STEP 3: Processing alerts and detecting notification triggers...');
+    // 🚀 STEP 1: INTEGRATED LIMIT ORDER ACTIVATION + Enhanced alert processing
+    console.log('🎯 STEP 1: Processing limit orders, alerts, and detecting notification triggers...');
     let totalTriggeredAlerts = 0;
+    let limitOrdersActivated = 0;
     let notificationTriggers: any[] = [];
     
+    // First, process limit order activations using mid prices
+    const symbolsWithPrices = new Map();
     for (const priceUpdate of prices) {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
       const hasMidOnly = typeof priceUpdate.price === 'number';
       
       if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
         console.warn(`⚠️ Skipping invalid price data: ${JSON.stringify(priceUpdate)}`);
+        continue;
+      }
+
+      // Store current prices for limit order processing
+      const currentPrice = hasFullData ? (priceUpdate.bid + priceUpdate.ask) / 2 : priceUpdate.price;
+      symbolsWithPrices.set(priceUpdate.symbol, currentPrice);
+    }
+
+    // Process limit order activations
+    if (symbolsWithPrices.size > 0) {
+      console.log(`🔄 Checking limit orders for ${symbolsWithPrices.size} symbols...`);
+      
+      const { data: pendingLimits, error: fetchError } = await supabaseClient
+        .from('trade_alerts')
+        .select('id, tradermade_symbol, entry_price, trade_type, asset_name, user_id')
+        .eq('status', 'pending')
+        .in('trade_type', ['buy_limit', 'sell_limit'])
+        .in('tradermade_symbol', Array.from(symbolsWithPrices.keys()));
+
+      if (fetchError) {
+        console.error('❌ Error fetching pending limits:', fetchError);
+      } else if (pendingLimits && pendingLimits.length > 0) {
+        for (const alert of pendingLimits) {
+          const currentPrice = symbolsWithPrices.get(alert.tradermade_symbol);
+          if (!currentPrice) continue;
+
+          const shouldTrigger = 
+            (alert.trade_type === 'buy_limit' && currentPrice <= alert.entry_price) ||
+            (alert.trade_type === 'sell_limit' && currentPrice >= alert.entry_price);
+
+          if (shouldTrigger) {
+            const { error: updateError } = await supabaseClient
+              .from('trade_alerts')
+              .update({
+                status: 'active',
+                activated_at: new Date().toISOString(),
+                activation_price: currentPrice,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', alert.id);
+
+            if (!updateError) {
+              limitOrdersActivated++;
+              console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice}`);
+              
+              // Add to notification triggers
+              notificationTriggers.push({
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                asset_name: alert.asset_name,
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                activation_price: currentPrice,
+                notification_type: 'limit_order_activated',
+                alert_type: 'limit_order_activated',
+                priority_level: 2
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Now process regular alerts for full price data
+    for (const priceUpdate of prices) {
+      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+      const hasMidOnly = typeof priceUpdate.price === 'number';
+      
+      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
         continue;
       }
 
@@ -318,7 +379,7 @@ serve(async (req) => {
     }
 
     totalAlertsTriggered += totalTriggeredAlerts;
-    console.log(`✅ STEP 3 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
+    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
 
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
@@ -414,14 +475,15 @@ serve(async (req) => {
       }
     }
     
-    // If no broadcasts needed, return early with success
+    // ENHANCED: Skip UI broadcast only if no active users (always process alerts/notifications)
     if (skipBroadcast) {
       console.log(`📡 UI broadcast skipped: ${skipReason}`);
       
       return new Response(JSON.stringify({ 
         success: true, 
-        message: `Processed ${prices.length} prices → ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → UI broadcasts skipped (${skipReason})`,
+        message: `Processed ${prices.length} prices → ${limitOrdersActivated} limit orders activated → ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → UI broadcasts skipped (${skipReason})`,
         processed: prices.length,
+        limit_orders_activated: limitOrdersActivated,
         alerts_triggered: totalTriggeredAlerts,
         db_upserts: successfulUpserts,
         ui_broadcasts: 0,

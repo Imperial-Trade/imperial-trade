@@ -374,9 +374,14 @@ unstable_batchedUpdates(() => {
           const currentSignal = prev.find(signal => signal.id === newRecord.id);
           const isOrderActivation = currentSignal?.status === 'pending' && newRecord.status === 'active';
           const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
+          const isNotesUpdate = currentSignal?.notes !== newRecord.notes;
           
           if (isDevToolsEnabled() && isCriticalStatusChange) {
             console.log(`🚀 ORDER STATUS BYPASS: ${currentSignal?.status} → ${newRecord.status} for ${newRecord.asset_name}`);
+          }
+          
+          if (isDevToolsEnabled() && isNotesUpdate) {
+            console.log(`📝 NOTES UPDATE: "${currentSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
           }
           
           const updatedSignals = prev.map(signal => 

@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { NotesSyncIndicator } from './NotesSyncIndicator';
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
@@ -39,11 +40,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [notesDraft, setNotesDraft] = useState(alert.notes || '');
   const [localNotes, setLocalNotes] = useState(alert.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
   useEffect(() => {
-    setLocalNotes(alert.notes || '');
-    setNotesDraft(alert.notes || '');
-  }, [alert.id, alert.notes]);
+    console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
+    
+    // Only update local state if not currently editing to avoid overwriting user input
+    if (!isEditingNotes) {
+      setLocalNotes(alert.notes || '');
+      setNotesDraft(alert.notes || '');
+      
+      // Show brief sync confirmation when notes change from real-time updates
+      if (alert.notes !== localNotes) {
+        setNotesSyncStatus('saved');
+        setTimeout(() => setNotesSyncStatus('idle'), 1500);
+      }
+    }
+  }, [alert.id, alert.notes, isEditingNotes, localNotes]);
   
   // Type-safe derivations
   const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
@@ -94,6 +107,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const handleNotesSave = async () => {
     try {
       setIsSavingNotes(true);
+      setNotesSyncStatus('saving');
+      
+      // Optimistic update - immediately show new notes locally
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
+      
+      console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
+      
       const { error } = await supabase
         .from('trade_alerts')
         .update({ notes: notesDraft })
@@ -101,10 +122,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       if (error) throw error;
 
-      setLocalNotes(notesDraft);
-      setIsEditingNotes(false);
+      console.log(`✅ Notes saved successfully for alert ${alert.id}`);
+      setNotesSyncStatus('saved');
+      
+      // Clear success status after 2 seconds
+      setTimeout(() => setNotesSyncStatus('idle'), 2000);
+      
       toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
     } catch (e: any) {
+      console.error(`❌ Failed to save notes for alert ${alert.id}:`, e);
+      // Revert optimistic update on error
+      setLocalNotes(alert.notes || '');
+      setIsEditingNotes(true);
+      setNotesSyncStatus('error');
+      
+      // Clear error status after 3 seconds
+      setTimeout(() => setNotesSyncStatus('idle'), 3000);
+      
       toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
     } finally {
       setIsSavingNotes(false);
@@ -264,7 +298,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+            <NotesSyncIndicator status={notesSyncStatus} />
+          </div>
           {canEditNotes && !isEditingNotes && (
             <Button 
               variant="ghost" 

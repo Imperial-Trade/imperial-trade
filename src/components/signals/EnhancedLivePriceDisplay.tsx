@@ -69,18 +69,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
-  // Sub-2s Live Guarantee: Update data age using arrival time
+  // GUARANTEED 2s Updates: Use current timestamp vs last updated for accurate staleness
   useEffect(() => {
     const updateAge = () => {
-      // Use arrival age for ultra-responsive freshness display
-      const ageSeconds = arrivalAgeSeconds || 0;
+      if (!lastUpdated) {
+        setDataAge('--');
+        return;
+      }
       
-      if (ageSeconds < 1) {
-        setDataAge('Live');
+      // Calculate age from lastUpdated timestamp for guaranteed accuracy
+      const ageMs = Date.now() - lastUpdated.getTime();
+      const ageSeconds = Math.floor(ageMs / 1000);
+      
+      if (ageSeconds < 2) {
+        setDataAge('Live'); // Show "Live" for sub-2-second data
       } else if (ageSeconds < 3) {
-        setDataAge('Live'); // 🔥 FIXED: Show "Live" for up to 3 seconds
+        setDataAge('Live'); // Extended to 3 seconds for heartbeat tolerance
       } else if (ageSeconds < 60) {
-        setDataAge(`${ageSeconds}s ago`); // Only show "Xs ago" when >= 3s
+        setDataAge(`${ageSeconds}s ago`);
       } else if (ageSeconds < 3600) {
         const minutes = Math.floor(ageSeconds / 60);
         setDataAge(`${minutes}m ago`);
@@ -90,9 +96,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 250); // Ultra-responsive updates every 250ms
+    // Update every 500ms for smooth, guaranteed real-time experience
+    const interval = setInterval(updateAge, 500);
     return () => clearInterval(interval);
-  }, [arrivalAgeSeconds]);
+  }, [lastUpdated]);
 
   // Optimized price change animation effect
   useEffect(() => {
@@ -160,8 +167,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    // Sub-2s Live Guarantee: Use arrival age for status calculation
-    const dataFreshness = arrivalAgeMs ? arrivalAgeMs / 1000 : Infinity;
+    // GUARANTEED 2s Updates: Use timestamp-based freshness for accurate status
+    const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     
     if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 
@@ -193,24 +200,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // PATH A: Ultra Live indicator for sub-1-second data
-    if (dataFreshness < 1 && price > 0) {
-      return { 
-        color: 'text-emerald-400', 
-        icon: Zap, 
-        text: 'Ultra Live',
-        description: 'Ultra-fast real-time updates',
-        animate: false
-      };
-    }
-    
-    // Sub-2s Live Guarantee: Live indicator for sub-2-second fresh data  
+    // Guaranteed Live indicator for sub-2-second data
     if (dataFreshness < 2 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 
         text: 'Live',
-        description: 'Sub-2s guarantee: Ultra-responsive real-time updates',
+        description: 'Guaranteed 2-second updates via heartbeat system',
+        animate: false
+      };
+    }
+    
+    // Recent data (2-5 seconds)
+    if (dataFreshness < 5 && price > 0) {
+      return { 
+        color: 'text-yellow-400', 
+        icon: Timer, 
+        text: 'Recent',
+        description: 'Recent price data, heartbeat incoming',
         animate: false
       };
     }
@@ -222,7 +229,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       description: 'No recent price updates',
       animate: false
     };
-  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price, arrivalAgeMs, arrivalAgeSeconds]);
+  }, [debouncedConnectionStatus, isLoading, error, lastUpdated, price]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {

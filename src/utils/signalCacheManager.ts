@@ -1,6 +1,12 @@
 /**
- * 🔥 SIGNAL CACHE MANAGER: Intelligent cache management for closed signals
- * Prevents closed signals from reappearing and optimizes memory usage
+ * 🔥 SIGNAL CACHE MANAGER: Flicker prevention for closed signals during WebSocket updates
+ * 
+ * PURPOSE CHANGE: No longer used for hiding closed signals from users.
+ * Now only prevents brief reappearance flicker during real-time WebSocket updates.
+ * 
+ * - CLOSED_SIGNAL_TTL: Reduced to 10 seconds (flicker prevention only)
+ * - Used only in handleRealtimeUpdate(), NOT in refreshSignals()
+ * - Database 1-hour window handles user-facing closed signal filtering
  */
 
 interface CachedSignal {
@@ -12,8 +18,8 @@ interface CachedSignal {
 
 class SignalCacheManager {
   private closedSignalsCache = new Map<string, CachedSignal>();
-  private readonly CLOSED_SIGNAL_TTL = 3 * 60 * 1000; // 3 minutes
-  private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private readonly CLOSED_SIGNAL_TTL = 10 * 1000; // 10 seconds - only for flicker prevention
+  private readonly CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
 
   constructor() {
     // Auto-cleanup old closed signals

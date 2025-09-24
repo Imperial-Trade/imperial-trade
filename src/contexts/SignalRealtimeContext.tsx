@@ -223,15 +223,9 @@ if (!alertsData || alertsData.length === 0) {
         };
       });
 
-      // 🔥 FIX CLOSED SIGNALS: Apply intelligent filtering to prevent reappearance
-      const filteredAlerts = signalCacheManager.filterExpiredClosedSignals(allAlertsWithProfiles);
-      
-      if (isDevToolsEnabled()) {
-        const filteredCount = allAlertsWithProfiles.length - filteredAlerts.length;
-        if (filteredCount > 0) {
-          console.log(`🧹 Filtered out ${filteredCount} expired closed signals`);
-        }
-      }
+      // 🔥 RESTORED: Let database 1-hour window handle closed signals filtering
+      // SignalCacheManager now only prevents flicker during WebSocket updates
+      const filteredAlerts = allAlertsWithProfiles;
       
       // PHASE 3: Update comprehensive local cache with filtered results
       localCacheRef.current = {
@@ -375,26 +369,54 @@ unstable_batchedUpdates(() => {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         }
         
-        setSignals(prev => prev.map(signal => 
-          signal.id === newRecord.id ? {
-            ...signal,
-            assetName: newRecord.asset_name,
-            tradermadeSymbol: newRecord.tradermade_symbol,
-            tradeType: newRecord.trade_type,
-            entryPrice: Number(newRecord.entry_price),
-            stopLoss: Number(newRecord.stop_loss),
-            status: newRecord.status,
-            tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-            tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-            tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-            tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-            tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
-            tpHits: newRecord.tp_hits || [],
-            notes: newRecord.notes,
-            closeReason: newRecord.close_reason,
-            updatedAt: newRecord.updated_at
-          } : signal
-        ));
+        setSignals(prev => {
+          // 🚀 ORDER ACTIVATION BYPASS: Detect critical order status changes
+          const currentSignal = prev.find(signal => signal.id === newRecord.id);
+          const isOrderActivation = currentSignal?.status === 'pending' && newRecord.status === 'active';
+          const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
+          
+          if (isDevToolsEnabled() && isCriticalStatusChange) {
+            console.log(`🚀 ORDER STATUS BYPASS: ${currentSignal?.status} → ${newRecord.status} for ${newRecord.asset_name}`);
+          }
+          
+          const updatedSignals = prev.map(signal => 
+            signal.id === newRecord.id ? {
+              ...signal,
+              assetName: newRecord.asset_name,
+              tradermadeSymbol: newRecord.tradermade_symbol,
+              tradeType: newRecord.trade_type,
+              entryPrice: Number(newRecord.entry_price),
+              stopLoss: Number(newRecord.stop_loss),
+              status: newRecord.status,
+              tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+              tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+              tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+              tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+              tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
+              tpHits: newRecord.tp_hits || [],
+              notes: newRecord.notes,
+              closeReason: newRecord.close_reason,
+              updatedAt: newRecord.updated_at
+            } : signal
+          );
+          
+          // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
+          if (isOrderActivation) {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('order-activated', {
+                detail: {
+                  signalId: newRecord.id,
+                  assetName: newRecord.asset_name,
+                  status: newRecord.status,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }, 0);
+          }
+          
+          // 🔥 FLICKER PREVENTION: Apply cache filtering only during WebSocket updates
+          return signalCacheManager.filterExpiredClosedSignals(updatedSignals);
+        });
         
         // 🔥 FIX CLOSED SIGNALS: Mark signal as closed in cache manager
         if (eventType === 'UPDATE' && newRecord?.status === 'closed') {

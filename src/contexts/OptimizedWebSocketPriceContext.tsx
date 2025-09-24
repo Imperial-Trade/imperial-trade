@@ -28,6 +28,13 @@ const SIGNIFICANCE_THRESHOLDS = {
   NORMAL: 0.001,   // Normal threshold for batch updates
 };
 
+// 🚀 ORDER ACTIVATION BYPASS: Critical trading events that bypass throttling
+const CRITICAL_TRADING_EVENTS = {
+  ORDER_STATUS_CHANGE: true, // pending → active, active → closed
+  TP_HIT: true,             // Take profit hits
+  SL_HIT: true              // Stop loss hits
+};
+
 // Enhanced price data interface with bid/ask support and arrival tracking
 interface PriceData {
   symbol: string;

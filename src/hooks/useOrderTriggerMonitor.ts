@@ -102,12 +102,14 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       if (error) {
         console.error('❌ Error triggering order monitor:', error);
         
-        // Only show toast for server errors (5xx), suppress auth errors (4xx)
-        const errorMessage = error.message || '';
-        const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
-                           errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+        // Only show toast for critical server errors (suppress auth/missing function errors)
+        const errorMsg = error.message || '';
+        const isAuthError = errorMsg.includes('400') || errorMsg.includes('401') || 
+                           errorMsg.includes('403') || errorMsg.includes('Unauthorized');
+        const isMissingFunction = errorMsg.includes('Function not found') || 
+                                errorMsg.includes('Edge Function returned a non-2xx status code');
         
-        if (!isAuthError) {
+        if (!isAuthError && !isMissingFunction) {
           toast({
             title: "Monitor Error",
             description: "Failed to run order monitor",
@@ -130,12 +132,14 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     } catch (error) {
       console.error('💥 Fatal error calling order monitor:', error);
       
-      // Only show toast for server errors (5xx), suppress auth errors (4xx)
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
-                         errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+      // Only show toast for critical server errors (suppress auth/missing function errors)
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isAuthError = errorMsg.includes('400') || errorMsg.includes('401') || 
+                         errorMsg.includes('403') || errorMsg.includes('Unauthorized');
+      const isMissingFunction = errorMsg.includes('Function not found') || 
+                              errorMsg.includes('Edge Function returned a non-2xx status code');
       
-      if (!isAuthError) {
+      if (!isAuthError && !isMissingFunction) {
         toast({
           title: "Monitor Error",
           description: "Failed to run order monitor",

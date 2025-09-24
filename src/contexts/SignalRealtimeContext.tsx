@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
@@ -9,7 +10,7 @@ import { useTelemetry } from '@/contexts/TelemetryContext';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
-import { unstable_batchedUpdates } from 'react-dom';
+import { signalCacheManager } from '@/utils/signalCacheManager';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -222,20 +223,26 @@ if (!alertsData || alertsData.length === 0) {
         };
       });
 
+      // 🔥 FIX CLOSED SIGNALS: Apply intelligent filtering to prevent reappearance
+      const filteredAlerts = signalCacheManager.filterExpiredClosedSignals(allAlertsWithProfiles);
+      
       if (isDevToolsEnabled()) {
-        console.log('📊 PHASE 3: Final educator signals with enhanced caching:', allAlertsWithProfiles.length);
+        const filteredCount = allAlertsWithProfiles.length - filteredAlerts.length;
+        if (filteredCount > 0) {
+          console.log(`🧹 Filtered out ${filteredCount} expired closed signals`);
+        }
       }
       
-      // PHASE 3: Update comprehensive local cache
+      // PHASE 3: Update comprehensive local cache with filtered results
       localCacheRef.current = {
-        data: allAlertsWithProfiles,
+        data: filteredAlerts,
         expiry: now + LOCAL_CACHE_TTL,
         educatorIds: educatorUserIds,
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
 unstable_batchedUpdates(() => {
-  setSignals(allAlertsWithProfiles);
+  setSignals(filteredAlerts);
   setLastUpdated(new Date());
   setError(null);
 });
@@ -388,6 +395,11 @@ unstable_batchedUpdates(() => {
             updatedAt: newRecord.updated_at
           } : signal
         ));
+        
+        // 🔥 FIX CLOSED SIGNALS: Mark signal as closed in cache manager
+        if (eventType === 'UPDATE' && newRecord?.status === 'closed') {
+          signalCacheManager.markSignalClosed(newRecord.id, newRecord.updated_at);
+        }
         
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);

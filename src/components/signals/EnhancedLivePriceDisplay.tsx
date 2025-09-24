@@ -76,11 +76,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       const ageSeconds = arrivalAgeSeconds || 0;
       
       if (ageSeconds < 1) {
-        setDataAge('Ultra Live');
-      } else if (ageSeconds < 2) {
         setDataAge('Live');
+      } else if (ageSeconds < 3) {
+        setDataAge('Live'); // 🔥 FIXED: Show "Live" for up to 3 seconds
       } else if (ageSeconds < 60) {
-        setDataAge(`${ageSeconds}s ago`); // Only show "Xs ago" when >= 2s
+        setDataAge(`${ageSeconds}s ago`); // Only show "Xs ago" when >= 3s
       } else if (ageSeconds < 3600) {
         const minutes = Math.floor(ageSeconds / 60);
         setDataAge(`${minutes}m ago`);

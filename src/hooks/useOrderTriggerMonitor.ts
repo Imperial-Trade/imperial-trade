@@ -81,74 +81,46 @@ export const useOrderTriggerMonitor = (userId?: string) => {
 
   // Manual trigger function for testing/manual activation
   const triggerOrderMonitor = useCallback(async () => {
+    if (!userId) return false;
+
     try {
       console.log('🚀 Manually triggering order monitor...');
       
-      // Get current session for auth header
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Skip if no session or access token (not authenticated)
-      if (!session?.access_token) {
-        console.log('⏸️ No session or access token - skipping monitor call');
-        return false;
-      }
-      
       const { data, error } = await supabase.functions.invoke('order-trigger-monitor', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
+        body: { 
+          triggered_by: 'manual_ui_request',
+          user_id: userId,
+          timestamp: new Date().toISOString()
         }
       });
-      
+
       if (error) {
         console.error('❌ Error triggering order monitor:', error);
-        
-        // Only show toast for critical server errors (suppress auth/missing function errors)
-        const errorMsg = error.message || '';
-        const isAuthError = errorMsg.includes('400') || errorMsg.includes('401') || 
-                           errorMsg.includes('403') || errorMsg.includes('Unauthorized');
-        const isMissingFunction = errorMsg.includes('Function not found') || 
-                                errorMsg.includes('Edge Function returned a non-2xx status code');
-        
-        if (!isAuthError && !isMissingFunction) {
-          toast({
-            title: "Monitor Error",
-            description: "Failed to run order monitor",
-            variant: "destructive",
-          });
-        }
+        // Don't show error toast to users - system handles this automatically via CRON
+        console.log('ℹ️ Order monitor handled by automated system - manual trigger failed silently');
         return false;
       }
 
-      console.log('✅ Order monitor completed:', data);
-      
-      if (data.triggered > 0) {
-        toast({
-          title: "Orders Processed",
-          description: `${data.triggered} limit orders were triggered`,
-        });
+      if (data) {
+        console.log('✅ Order monitor response:', data);
+        if (data.triggered > 0) {
+          toast({
+            title: "Order Monitor",
+            description: `Processed ${data.processed || 0} orders, activated ${data.triggered || 0}`,
+            duration: 3000,
+          });
+        }
+        return true;
       }
-
-      return true;
+      
+      return false;
     } catch (error) {
-      console.error('💥 Fatal error calling order monitor:', error);
-      
-      // Only show toast for critical server errors (suppress auth/missing function errors)
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      const isAuthError = errorMsg.includes('400') || errorMsg.includes('401') || 
-                         errorMsg.includes('403') || errorMsg.includes('Unauthorized');
-      const isMissingFunction = errorMsg.includes('Function not found') || 
-                              errorMsg.includes('Edge Function returned a non-2xx status code');
-      
-      if (!isAuthError && !isMissingFunction) {
-        toast({
-          title: "Monitor Error",
-          description: "Failed to run order monitor",
-          variant: "destructive",
-        });
-      }
+      console.error('❌ Exception in order monitor:', error);
+      // Silent failure - CRON jobs handle the monitoring automatically
+      console.log('ℹ️ Manual trigger failed - automated system continues monitoring');
       return false;
     }
-  }, [toast]);
+  }, [userId, toast]);
 
   return {
     triggerOrderMonitor,

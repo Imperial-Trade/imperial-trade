@@ -3874,6 +3874,17 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      get_cron_job_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          job_name: string
+          last_run_ended_at: string
+          last_run_started_at: string
+          last_run_status: string
+          schedule: string
+        }[]
+      }
       get_latest_market_price: {
         Args: { p_symbol: string }
         Returns: {

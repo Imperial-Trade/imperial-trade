@@ -363,14 +363,12 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         )}
       </div>
 
-      {/* Enhanced Footer with Trading Safety */}
+      {/* Enhanced Footer with Trading Safety and Real-time Data Age */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <Clock className="w-3 h-3" />
-            <span>
-              {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
-            </span>
+            <span>{dataAge}</span>
           </div>
         </div>
         

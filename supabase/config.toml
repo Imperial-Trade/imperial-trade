@@ -45,8 +45,5 @@ verify_jwt = false
 [functions.test-notification]
 verify_jwt = false
 
-[functions.ui-price-heartbeat]
-verify_jwt = false
-
 [functions.order-trigger-monitor]
 verify_jwt = false

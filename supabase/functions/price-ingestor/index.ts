@@ -193,11 +193,11 @@ serve(async (req) => {
       console.warn('⚠️ Activity check failed, proceeding with full processing:', activityError);
     }
     
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
-
-    // Parse request payload
+    // Parse request payload FIRST
     const requestBody = await req.json();
     const { prices } = requestBody;
+    
+    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
 
     // Validate payload
     if (!prices || !Array.isArray(prices) || prices.length === 0) {

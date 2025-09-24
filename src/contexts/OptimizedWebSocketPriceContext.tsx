@@ -55,7 +55,7 @@ const CIRCUIT_BREAKER_CONFIG = {
 
 // 🚀 WATCHDOG FIX: Prevent flicker with stable thresholds
 const HEALTH_CONFIG = {
-  staleDataThreshold: 10000, // 10 seconds (INCREASED to prevent flicker)
+  staleDataThreshold: 3000, // 🔥 FIXED: 3 seconds for "Live" status (down from 10s)
   healthCheckInterval: 30000, // Check health every 30 seconds
   maxSilentPeriod: 300000, // 5 minutes of no data before concern (INCREASED from 3min)
 };
@@ -747,9 +747,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         if (lastTick) {
           const ageMs = now - lastTick;
           
-          // 🚀 ANTI-FLICKER FIX: Only promote to 'live' if symbol has received real-time updates
-          // This prevents database hydration from causing immediate 'live' promotion
-          if (ageMs < HEALTH_CONFIG.staleDataThreshold && hasReceivedRealtime) {
+          // 🔥 FIXED: Use 3 second threshold instead of stale threshold
+          if (ageMs < 3000 && hasReceivedRealtime) {
             proposedQuality = 'live';
           }
           // DELAYED DEMOTION: live → hydrated only after 2.5+ seconds without ticks (Sub-2s guarantee)

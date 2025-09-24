@@ -16,8 +16,8 @@ import { unstable_batchedUpdates } from 'react-dom';
 let educatorUserIdsCache: string[] = [];
 let educatorCacheExpiry = 0;
 const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
-const LOCAL_CACHE_TTL = 10 * 60 * 1000; // 🔥 DOUBLED to 10 minute cache
-const SIGNAL_REFRESH_THROTTLE = 120000; // 🔥 INCREASED to 2 minutes between refreshes
+const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
+const SIGNAL_REFRESH_THROTTLE = 30000; // 🔥 OPTIMIZED to 30 seconds for better responsiveness
 
 async function getEducatorUserIds(): Promise<string[]> {
   const now = Date.now();
@@ -135,11 +135,14 @@ return;
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // First get alerts from educator users
+      // 🔥 FIX CLOSED SIGNALS: Filter out old closed signals to prevent reappearing
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
         .in('user_id', educatorUserIds)
+        .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
         .order('created_at', { ascending: false })
         .limit(50);
 

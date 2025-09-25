@@ -181,12 +181,12 @@ function createRichNotificationContent(notification: NotificationPayload): {
     {
       id: 'view_signal',
       text: '👁️ View Signal',
-      url: `https://imperial-trading.com/dashboard/signals/${notification.signal_id}`
+      url: `https://www.tradeimperial.com/dashboard/signals/${notification.signal_id}`
     },
     {
       id: 'view_all_signals',
       text: '📊 All Signals',
-      url: 'https://imperial-trading.com/dashboard/signals'
+      url: 'https://www.tradeimperial.com/dashboard/signals'
     }
   ];
 

@@ -3,10 +3,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Hash function for PII sanitization in logs
-function hashIdentifier(identifier: string): string {
+async function hashIdentifier(identifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(identifier);
-  const hashBuffer = crypto.subtle.digestSync('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 8);
 }
@@ -46,7 +46,7 @@ serve(async (req) => {
       const { data: { user } } = await supabaseClient.auth.getUser(token)
       if (user) {
         approvedBy = user.email || 'admin'
-        approverHash = hashIdentifier(user.email || 'admin')
+        approverHash = await hashIdentifier(user.email || 'admin')
       }
     }
 
@@ -69,7 +69,7 @@ serve(async (req) => {
     }
 
     // Sanitized logging with hashed identifiers only
-    const requestHash = hashIdentifier(request.email)
+    const requestHash = await hashIdentifier(request.email)
     console.log(`Account request ${status}: email_hash=${requestHash} by approver_hash=${approverHash} request_id=${requestId}`)
 
     return new Response(
@@ -80,7 +80,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error processing account approval:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

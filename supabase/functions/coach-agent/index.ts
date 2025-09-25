@@ -302,7 +302,7 @@ serve(async (req) => {
           updateException
         );
         return new Response(
-          `Feedback generated but update failed due to exception: ${updateException.message}`,
+          `Feedback generated but update failed due to exception: ${(updateException as Error).message}`,
           {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "text/plain" },
@@ -315,9 +315,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "text/plain" },
     });
   } catch (error) {
-    console.error("Coach Agent Error:", error.message);
+    console.error("Coach Agent Error:", (error as Error).message);
     return new Response(
-      `Coach Agent failed: ${error.message}`,
+      `Coach Agent failed: ${(error as Error).message}`,
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "text/plain" },

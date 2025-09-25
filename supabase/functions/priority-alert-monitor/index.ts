@@ -295,7 +295,7 @@ serve(async (req) => {
         };
       }
     } catch (error) {
-      console.log('⚠️ Redis unavailable, using database only:', error.message);
+      console.log('⚠️ Redis unavailable, using database only:', (error as Error).message);
     }
 
     await refreshActiveSymbols(supabase);
@@ -356,9 +356,9 @@ serve(async (req) => {
       }
     }
 
-    const criticalSymbols = requestedSymbols.filter(s => slActiveSymbols.has(s));
-    const highSymbols = requestedSymbols.filter(s => tpActiveSymbols.has(s) && !slActiveSymbols.has(s));
-    const normalSymbols = requestedSymbols.filter(s => !slActiveSymbols.has(s) && !tpActiveSymbols.has(s));
+    const criticalSymbols = requestedSymbols.filter((s: string) => slActiveSymbols.has(s));
+    const highSymbols = requestedSymbols.filter((s: string) => tpActiveSymbols.has(s) && !slActiveSymbols.has(s));
+    const normalSymbols = requestedSymbols.filter((s: string) => !slActiveSymbols.has(s) && !tpActiveSymbols.has(s));
 
     return new Response(
       JSON.stringify({
@@ -381,7 +381,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Enhanced monitoring failed',
-        details: error.message 
+        details: (error as Error).message 
       }),
       { 
         status: 500,

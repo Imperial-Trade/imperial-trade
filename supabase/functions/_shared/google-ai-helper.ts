@@ -68,7 +68,7 @@ export async function callGoogleAI(
 
   const data = await response.json();
   console.log('Google AI API Response structure:', JSON.stringify({
-    candidates: data.candidates?.map(c => ({
+    candidates: data.candidates?.map((c: any) => ({
       finishReason: c.finishReason,
       hasContent: !!c.content,
       hasParts: !!c.content?.parts,

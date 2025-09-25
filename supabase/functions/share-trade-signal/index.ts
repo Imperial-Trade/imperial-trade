@@ -71,7 +71,7 @@ ${signal.notes ? `📝 Notes: ${signal.notes}` : ''}
         results.push({
           platform,
           success: false,
-          error: error.message,
+          error: (error as Error).message,
         });
       }
     }
@@ -98,7 +98,7 @@ ${signal.notes ? `📝 Notes: ${signal.notes}` : ''}
     return new Response(
       JSON.stringify({ 
         error: 'Failed to share signal',
-        details: error.message 
+        details: (error as Error).message 
       }),
       { 
         status: 500,

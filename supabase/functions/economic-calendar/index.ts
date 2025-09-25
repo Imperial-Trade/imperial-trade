@@ -184,7 +184,7 @@ serve(async (req) => {
         // Apply impact filtering with case conversion
         if (impacts && impacts.length > 0) {
           // Convert lowercase impacts to capitalized format for database
-          const capitalizedImpacts = impacts.map(impact => 
+          const capitalizedImpacts = impacts.map((impact: string) => 
             impact.charAt(0).toUpperCase() + impact.slice(1).toLowerCase()
           );
           query = query.in('impact', capitalizedImpacts);
@@ -244,7 +244,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch economic events',
-        details: error.message 
+        details: (error as Error).message 
       }),
       { 
         status: 500,

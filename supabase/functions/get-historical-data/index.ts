@@ -95,7 +95,7 @@ serve(async (req) => {
         }
       }
     } catch (error) {
-      console.log('TraderMade historical API failed, using enhanced mock:', error.message);
+      console.log('TraderMade historical API failed, using enhanced mock:', (error as Error).message);
     }
     
     // Enhanced mock data if TraderMade fails
@@ -150,7 +150,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch historical data',
-        details: error.message 
+        details: (error as Error).message 
       }),
       { 
         status: 500,

@@ -222,7 +222,7 @@ async function getEligibleUsers(supabase: any, userIds?: string[]): Promise<Arra
     logProfessional('info', `Found ${data?.length || 0} eligible users for notification`);
     return data || [];
   } catch (error) {
-    logProfessional('error', 'Error in getEligibleUsers', { error: error.message });
+    logProfessional('error', 'Error in getEligibleUsers', { error: (error as Error).message });
     return [];
   }
 }
@@ -304,10 +304,10 @@ async function sendOneSignalNotification(
     return { success: true, response: responseData };
   } catch (error) {
     logProfessional('error', 'Failed to send OneSignal notification', { 
-      error: error.message,
+      error: (error as Error).message,
       playerIds: playerIds.length 
     });
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 
@@ -352,11 +352,11 @@ async function sendRealtimeNotification(
     return { success: true };
   } catch (error) {
     logProfessional('error', 'Failed to send realtime notification', { 
-      error: error.message,
+      error: (error as Error).message,
       eventKey,
       signalId: notification.signal_id 
     });
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 
@@ -392,7 +392,7 @@ async function logNotificationDelivery(
       });
   } catch (error) {
     logProfessional('error', 'Failed to log notification delivery', { 
-      error: error.message,
+      error: (error as Error).message,
       userId,
       channel,
       status 
@@ -530,9 +530,9 @@ serve(async (req) => {
 
       } catch (notificationError) {
         metrics.failed++;
-        metrics.errors.push(`Notification ${notification.signal_id}: ${notificationError.message}`);
+        metrics.errors.push(`Notification ${notification.signal_id}: ${(notificationError as Error).message}`);
         logProfessional('error', `Failed to process notification ${notification.signal_id}`, {
-          error: notificationError.message
+          error: (notificationError as Error).message
         });
       }
     }
@@ -562,8 +562,8 @@ serve(async (req) => {
     const processingTime = Date.now() - startTime;
     
     logProfessional('error', 'Critical error in notification dispatcher', {
-      error: error.message,
-      stack: error.stack,
+      error: (error as Error).message,
+      stack: (error as Error).stack,
       processingTimeMs: processingTime
     });
 

@@ -433,7 +433,7 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error(`❌ Database upsert exception for ${priceUpdate.symbol}:`, error);
-        return { success: false, symbol: priceUpdate.symbol, error: error.message };
+        return { success: false, symbol: priceUpdate.symbol, error: (error as Error).message };
       }
     });
 
@@ -520,7 +520,7 @@ serve(async (req) => {
     let broadcastCount = 0;
     for (const priceData of finalBroadcastPrices) {
       try {
-        await priceChannel.send({
+        await (priceChannel as any).send({
           type: 'broadcast',
           event: 'price_update_v3',
           payload: {
@@ -544,7 +544,7 @@ serve(async (req) => {
 
     // Cleanup
     try {
-      console.log(`📡 Channel status: ${priceChannel.state}`);
+      console.log(`📡 Channel status: ${(priceChannel as any).state}`);
       supabaseClient.removeChannel(priceChannel);
       console.log('🧹 Channel cleaned up successfully');
     } catch (cleanupError) {
@@ -582,7 +582,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       error: 'Internal server error',
-      details: error.message
+      details: (error as Error).message
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }

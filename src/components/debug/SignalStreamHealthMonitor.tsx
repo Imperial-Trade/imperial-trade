@@ -13,13 +13,13 @@ const SignalStreamHealthMonitor: React.FC<SignalStreamHealthMonitorProps> = ({ c
   const getStatusColor = () => {
     switch (connectionStatus) {
       case 'connected':
-        return 'bg-success text-success-foreground';
+        return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
       case 'connecting':
-        return 'bg-warning text-warning-foreground';
+        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'disconnected':
-        return 'bg-destructive text-destructive-foreground';
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -42,7 +42,7 @@ const SignalStreamHealthMonitor: React.FC<SignalStreamHealthMonitorProps> = ({ c
       <CardContent className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span>Connection:</span>
-          <Badge className={getStatusColor()}>
+          <Badge variant="outline" className={getStatusColor()}>
             {connectionStatus}
           </Badge>
         </div>

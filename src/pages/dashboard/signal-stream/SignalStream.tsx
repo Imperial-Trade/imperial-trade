@@ -23,7 +23,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
-import SignalStreamHealthMonitor from '@/components/debug/SignalStreamHealthMonitor';
+
 
 
 export default function SignalStream() {

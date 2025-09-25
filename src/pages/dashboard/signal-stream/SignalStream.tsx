@@ -728,7 +728,6 @@ export default function SignalStream() {
 
             {/* Economic Sidebar - Protected positioning */}
             <div data-prevent-widget-open="true" className="space-y-4">
-              <SignalStreamHealthMonitor className="w-full" />
               <EconomicSidebar />
             </div>
           </div>

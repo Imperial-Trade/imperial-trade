@@ -423,6 +423,33 @@ unstable_batchedUpdates(() => {
             } : signal
           );
           
+          // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
+          const validatedSignals = updatedSignals.map(signal => {
+            if (signal.id === newRecord.id && newRecord.tp_hits) {
+              // Ensure TP hits are sequential and valid
+              const validTpHits = [];
+              const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
+              
+              // Only allow sequential TP hits (1, then 2, then 3, etc.)
+              for (let i = 0; i < sortedTpHits.length; i++) {
+                const expectedTp = i + 1;
+                if (sortedTpHits[i] === expectedTp) {
+                  validTpHits.push(expectedTp);
+                } else {
+                  // Invalid TP sequence detected, break
+                  console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${signal.id}`);
+                  break;
+                }
+              }
+              
+              return {
+                ...signal,
+                tpHits: validTpHits // Use validated TP hits
+              };
+            }
+            return signal;
+          });
+          
           // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
           if (isOrderActivation) {
             // Enhanced activation notification

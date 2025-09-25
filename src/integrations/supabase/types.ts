@@ -4056,7 +4056,22 @@ export type Database = {
           triggered: boolean
         }[]
       }
+      process_price_alerts_enhanced_v2: {
+        Args: { p_current_ask: number; p_current_bid: number; p_symbol: string }
+        Returns: {
+          alert_id: string
+          alert_type: string
+          priority_level: number
+          signal_id: string
+          target_price: number
+          triggered: boolean
+        }[]
+      }
       process_tp_hits: {
+        Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
+        Returns: Json
+      }
+      process_tp_hits_sequential: {
         Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
         Returns: Json
       }

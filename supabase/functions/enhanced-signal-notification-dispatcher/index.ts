@@ -112,10 +112,13 @@ function logProfessional(level: 'info' | 'warn' | 'error', message: string, data
   console.log(JSON.stringify(logEntry));
 }
 
+// PHASE 3: CRITICAL FIX - Enhanced event key generation with millisecond precision + sequence
+let eventSequence = 0;
 function generateEventKey(notification: NotificationPayload): string {
   const baseKey = `${notification.notification_type}_${notification.signal_id}`;
-  const timestamp = Math.floor(Date.now() / 1000);
-  return `${baseKey}_${timestamp}`;
+  const timestamp = Date.now(); // Use milliseconds for precision
+  const sequence = ++eventSequence % 10000; // Add sequence number to prevent collisions
+  return `${baseKey}_${timestamp}_${sequence}`;
 }
 
 function createRichNotificationContent(notification: NotificationPayload): {
@@ -130,12 +133,15 @@ function createRichNotificationContent(notification: NotificationPayload): {
   let body = '';
   let urgencyIcon = '';
 
+  // PHASE 3: CRITICAL FIX - Ensure author_name is never undefined
+  const safeAuthorName = author_name || 'Educator';
+
   // Determine urgency and content based on notification type
   switch (notification_type) {
     case 'signal_created':
       urgencyIcon = '🚨';
       title = `${urgencyIcon} New ${trade_type.toUpperCase()} Signal`;
-      body = `${author_name} created ${asset_name} at ${entry_price}`;
+      body = `${safeAuthorName} created ${asset_name} at ${entry_price}`;
       break;
     case 'signal_updated':
       if (notification.change_types?.includes('tp_hits')) {
@@ -145,17 +151,32 @@ function createRichNotificationContent(notification: NotificationPayload): {
       } else if (notification.change_types?.includes('status_change')) {
         urgencyIcon = status === 'closed' ? '🔒' : '✅';
         title = `${urgencyIcon} Signal ${status.toUpperCase()} - ${asset_name}`;
-        body = `Status changed by ${author_name}`;
+        body = `Status changed by ${safeAuthorName}`;
       } else {
         urgencyIcon = '📊';
         title = `${urgencyIcon} Signal Updated - ${asset_name}`;
-        body = `${author_name} updated the signal`;
+        body = `${safeAuthorName} updated the signal`;
       }
+      break;
+    case 'stop_loss_hit':
+      urgencyIcon = '🛑';
+      title = `${urgencyIcon} Stop Loss Hit - ${asset_name}`;
+      body = `Stop loss triggered at ${notification.triggered_price || 'market price'}`;
+      break;
+    case 'take_profit_hit':
+      urgencyIcon = '🎯';
+      title = `${urgencyIcon} Take Profit Hit - ${asset_name}`;
+      body = `TP level reached at ${notification.triggered_price || 'market price'}`;
+      break;
+    case 'limit_order_activated':
+      urgencyIcon = '⚡';
+      title = `${urgencyIcon} Order Activated - ${asset_name}`;
+      body = `${trade_type.replace('_', ' ').toUpperCase()} order now ACTIVE at ${notification.triggered_price || entry_price}`;
       break;
     default:
       urgencyIcon = '📈';
       title = `${urgencyIcon} Trading Alert - ${asset_name}`;
-      body = `${author_name}: ${trade_type.toUpperCase()} at ${entry_price}`;
+      body = `${safeAuthorName}: ${trade_type.toUpperCase()} at ${entry_price}`;
   }
 
   // Rich data payload for deep linking and UI enhancement
@@ -165,7 +186,7 @@ function createRichNotificationContent(notification: NotificationPayload): {
     notification_type: notification.notification_type,
     priority_level: notification.priority_level,
     author_id: notification.author_id,
-    author_name: notification.author_name,
+    author_name: safeAuthorName, // Use safe author name
     trade_type: notification.trade_type,
     entry_price: notification.entry_price.toString(),
     status: notification.status,
@@ -224,6 +245,37 @@ async function getEligibleUsers(supabase: any, userIds?: string[]): Promise<Arra
   } catch (error) {
     logProfessional('error', 'Error in getEligibleUsers', { error: (error as Error).message });
     return [];
+  }
+}
+
+async function checkNotificationDeduplication(
+  supabase: any,
+  eventKey: string,
+  signalId: string
+): Promise<boolean> {
+  try {
+    // PHASE 3: CRITICAL FIX - Check for existing notifications with same event key
+    const { data: existingNotifications, error } = await supabase
+      .from('notification_delivery_log')
+      .select('id')
+      .eq('event_key', eventKey)
+      .eq('signal_id', signalId)
+      .limit(1);
+
+    if (error) {
+      logProfessional('warn', 'Deduplication check failed, allowing notification', { error: error.message });
+      return false; // Allow notification on error
+    }
+
+    const isDuplicate = existingNotifications && existingNotifications.length > 0;
+    if (isDuplicate) {
+      logProfessional('info', 'Duplicate notification detected, skipping', { eventKey, signalId });
+    }
+
+    return isDuplicate;
+  } catch (error) {
+    logProfessional('warn', 'Deduplication check exception, allowing notification', { error: (error as Error).message });
+    return false; // Allow notification on error
   }
 }
 
@@ -326,7 +378,7 @@ async function sendRealtimeNotification(
       asset_name: notification.asset_name,
       trade_type: notification.trade_type,
       entry_price: notification.entry_price,
-      author_name: notification.author_name,
+      author_name: notification.author_name || 'Educator', // Safe fallback
       status: notification.status,
       priority_level: notification.priority_level,
       created_at: notification.created_at,
@@ -377,17 +429,19 @@ async function logNotificationDelivery(
         signal_id: notification.signal_id,
         notification_type: notification.notification_type,
         delivery_channel: channel,
-        delivery_status: status,
+        status: status,
         event_key: eventKey,
-        priority_level: notification.priority_level,
-        asset_symbol: notification.asset_name,
-        author_id: notification.author_id,
+        sent_at: new Date().toISOString(),
+        delivered_at: status === 'sent' ? new Date().toISOString() : null,
         error_message: errorMessage,
         metadata: {
           trade_type: notification.trade_type,
           entry_price: notification.entry_price,
           notification_version: '2.0',
-          change_types: notification.change_types || []
+          change_types: notification.change_types || [],
+          priority_level: notification.priority_level,
+          asset_symbol: notification.asset_name,
+          author_id: notification.author_id
         }
       });
   } catch (error) {
@@ -454,8 +508,16 @@ serve(async (req) => {
         logProfessional('info', `Processing notification for signal ${notification.signal_id}`, {
           notificationType: notification.notification_type,
           priorityLevel: notification.priority_level,
-          deliveryChannels: notification.delivery_channels
+          deliveryChannels: notification.delivery_channels,
+          eventKey
         });
+
+        // PHASE 3: CRITICAL FIX - Check for duplicates before processing
+        const isDuplicate = await checkNotificationDeduplication(supabase, eventKey, notification.signal_id);
+        if (isDuplicate) {
+          logProfessional('info', `Skipping duplicate notification for signal ${notification.signal_id}`);
+          continue;
+        }
 
         // Get eligible users
         const eligibleUsers = await getEligibleUsers(supabase, notification.user_ids);
@@ -471,6 +533,18 @@ serve(async (req) => {
           if (realtimeResult.success) {
             metrics.in_app_sent++;
             metrics.sent++;
+            
+            // Log successful in-app delivery for each user
+            for (const user of eligibleUsers) {
+              await logNotificationDelivery(
+                supabase,
+                notification,
+                user.id,
+                'in_app',
+                'sent',
+                eventKey
+              );
+            }
           } else {
             metrics.failed++;
             metrics.errors.push(`Realtime failed: ${realtimeResult.error}`);
@@ -497,30 +571,34 @@ serve(async (req) => {
 
               // Log successful deliveries
               for (const user of eligibleUsers) {
-                await logNotificationDelivery(
-                  supabase,
-                  notification,
-                  user.id,
-                  'push',
-                  'sent',
-                  eventKey
-                );
+                if (user.onesignal_player_id) {
+                  await logNotificationDelivery(
+                    supabase,
+                    notification,
+                    user.id,
+                    'push',
+                    'sent',
+                    eventKey
+                  );
+                }
               }
             } else {
               metrics.failed += playerIds.length;
-              metrics.errors.push(`Push failed: ${pushResult.error}`);
-
+              metrics.errors.push(`Push notification failed: ${pushResult.error}`);
+              
               // Log failed deliveries
               for (const user of eligibleUsers) {
-                await logNotificationDelivery(
-                  supabase,
-                  notification,
-                  user.id,
-                  'push',
-                  'failed',
-                  eventKey,
-                  pushResult.error
-                );
+                if (user.onesignal_player_id) {
+                  await logNotificationDelivery(
+                    supabase,
+                    notification,
+                    user.id,
+                    'push',
+                    'failed',
+                    eventKey,
+                    pushResult.error
+                  );
+                }
               }
             }
           } else {
@@ -528,29 +606,33 @@ serve(async (req) => {
           }
         }
 
-      } catch (notificationError) {
+        logProfessional('info', `Completed processing notification for signal ${notification.signal_id}`, {
+          eventKey,
+          eligibleUsers: eligibleUsers.length,
+          deliveryChannels: notification.delivery_channels
+        });
+
+      } catch (error) {
         metrics.failed++;
-        metrics.errors.push(`Notification ${notification.signal_id}: ${(notificationError as Error).message}`);
-        logProfessional('error', `Failed to process notification ${notification.signal_id}`, {
-          error: (notificationError as Error).message
+        metrics.errors.push(`Processing error: ${(error as Error).message}`);
+        logProfessional('error', `Failed to process notification for signal ${notification.signal_id}`, {
+          error: (error as Error).message
         });
       }
     }
 
     const processingTime = Date.now() - startTime;
-    
-    logProfessional('info', 'Notification processing completed', {
-      metrics,
+    logProfessional('info', 'Notification batch processing completed', {
+      ...metrics,
       processingTimeMs: processingTime,
-      avgTimePerNotification: Math.round(processingTime / notifications.length)
+      avgTimePerNotification: processingTime / notifications.length
     });
 
     return new Response(
       JSON.stringify({
         success: true,
         metrics,
-        processing_time_ms: processingTime,
-        notifications_processed: notifications.length
+        processingTimeMs: processingTime
       }),
       {
         status: 200,
@@ -560,18 +642,16 @@ serve(async (req) => {
 
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    
-    logProfessional('error', 'Critical error in notification dispatcher', {
+    logProfessional('error', 'Critical error in notification processing', {
       error: (error as Error).message,
-      stack: (error as Error).stack,
       processingTimeMs: processingTime
     });
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Internal server error during notification processing',
-        processing_time_ms: processingTime
+        error: (error as Error).message,
+        metrics: { processed: 0, sent: 0, failed: 0, in_app_sent: 0, push_sent: 0, errors: [(error as Error).message] }
       }),
       {
         status: 500,

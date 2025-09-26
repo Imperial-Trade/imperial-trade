@@ -14,6 +14,7 @@ import {
   Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { NotificationDuplicateMonitor } from '@/components/admin/NotificationDuplicateMonitor';
 
 interface AdminStatProps {
   title: string;
@@ -165,6 +166,22 @@ export const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Emergency Notification Monitor */}
+      <Card className="border-amber-200 bg-amber-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="w-5 h-5" />
+            🚨 Emergency Notification Duplicate Monitor
+          </CardTitle>
+          <CardDescription className="text-amber-700">
+            Real-time monitoring of notification duplicates and system health after emergency fixes
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotificationDuplicateMonitor />
+        </CardContent>
+      </Card>
 
       {/* Recent Activity */}
       <Card>

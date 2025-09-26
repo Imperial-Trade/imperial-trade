@@ -29,22 +29,25 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   const lastRegistrationRef = useRef(0);
 
   useEffect(() => {
+    // CRITICAL FIX: Skip registration for unauthenticated users to prevent foreign key failures
+    if (!user?.id) {
+      console.log('🚫 UI activity registration skipped - user not authenticated');
+      return;
+    }
+
     // Register initial activity
     const registerActivity = async () => {
       const now = Date.now();
       
-      // 🚨 PHASE 2: Reduced registration frequency to prevent spam
-      if (now - lastRegistrationRef.current < 60000) { // Increased to 60 seconds
+      // 🚨 PHASE 2: Increased registration frequency to reduce message volume
+      if (now - lastRegistrationRef.current < 120000) { // Increased to 120 seconds (2 minutes)
         return;
       }
 
       try {
-        // CRITICAL FIX: Always provide a user_id, use a default if not authenticated
-        const userId = user?.id || '00000000-0000-0000-0000-000000000000'; // Default for anonymous users
-        
         const { error } = await supabase.rpc('register_ui_activity_enhanced', {
           p_session_id: sessionIdRef.current,
-          p_user_id: userId,
+          p_user_id: user.id, // Only authenticated users now
           p_symbols: symbols.filter(s => s && s.trim().length > 0)
         });
         
@@ -62,8 +65,8 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     // Register activity immediately
     registerActivity();
 
-    // 🚨 PHASE 2: Increased to 5 minutes to reduce message frequency
-    intervalRef.current = setInterval(registerActivity, 300000); // 5 minutes
+    // 🚨 PHASE 2: Increased to 10 minutes to drastically reduce message frequency
+    intervalRef.current = setInterval(registerActivity, 600000); // 10 minutes
 
     return () => {
       if (intervalRef.current) {
@@ -75,18 +78,21 @@ export function useUIActivityRegistration(symbols: string[] = []) {
 
   // Register activity on user interactions
   const registerInteraction = async () => {
+    // CRITICAL FIX: Skip registration for unauthenticated users to prevent foreign key failures
+    if (!user?.id) {
+      console.log('🚫 UI interaction registration skipped - user not authenticated');
+      return;
+    }
+
     const now = Date.now();
-    if (now - lastRegistrationRef.current < 30000) { // Rate limit to 30 seconds
+    if (now - lastRegistrationRef.current < 60000) { // Rate limit increased to 60 seconds
       return;
     }
 
     try {
-      // CRITICAL FIX: Always provide a user_id, use a default if not authenticated
-      const userId = user?.id || '00000000-0000-0000-0000-000000000000'; // Default for anonymous users
-      
       const { error } = await supabase.rpc('register_ui_activity_enhanced', {
         p_session_id: sessionIdRef.current,
-        p_user_id: userId,
+        p_user_id: user.id, // Only authenticated users now
         p_symbols: symbols.filter(s => s && s.trim().length > 0)
       });
       

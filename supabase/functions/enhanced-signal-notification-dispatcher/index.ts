@@ -248,18 +248,20 @@ async function getEligibleUsers(supabase: any, userIds?: string[]): Promise<Arra
   }
 }
 
+// EMERGENCY FIX: Enhanced deduplication with circuit breaker
 async function checkNotificationDeduplication(
   supabase: any,
   eventKey: string,
   signalId: string
 ): Promise<boolean> {
   try {
-    // PHASE 3: CRITICAL FIX - Check for existing notifications with same event key
+    // Check for existing notifications with same event key
     const { data: existingNotifications, error } = await supabase
       .from('notification_delivery_log')
-      .select('id')
+      .select('id, created_at')
       .eq('event_key', eventKey)
       .eq('signal_id', signalId)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) {
@@ -269,13 +271,109 @@ async function checkNotificationDeduplication(
 
     const isDuplicate = existingNotifications && existingNotifications.length > 0;
     if (isDuplicate) {
-      logProfessional('info', 'Duplicate notification detected, skipping', { eventKey, signalId });
+      const lastSent = new Date(existingNotifications[0].created_at);
+      const timeSinceLastSent = Date.now() - lastSent.getTime();
+      
+      logProfessional('warn', 'EMERGENCY: Duplicate notification blocked by enhanced deduplication', { 
+        eventKey, 
+        signalId, 
+        timeSinceLastSentMs: timeSinceLastSent,
+        lastSentAt: lastSent.toISOString()
+      });
     }
 
     return isDuplicate;
   } catch (error) {
-    logProfessional('warn', 'Deduplication check exception, allowing notification', { error: (error as Error).message });
-    return false; // Allow notification on error
+    logProfessional('error', 'Deduplication check exception', { error: (error as Error).message });
+    return false; // Allow notification on error to prevent blocking legitimate notifications
+  }
+}
+
+// EMERGENCY FIX: Request-level deduplication
+async function checkRequestDeduplication(
+  supabase: any,
+  requestPayload: any,
+  signalId: string,
+  notificationType: string
+): Promise<boolean> {
+  try {
+    // Create hash of the request payload
+    const requestString = JSON.stringify({
+      signal_id: signalId,
+      notification_type: notificationType,
+      change_types: requestPayload.change_types || [],
+      priority_level: requestPayload.priority_level,
+      timestamp_hour: Math.floor(Date.now() / (1000 * 60 * 60)) // Hour-based grouping
+    });
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(requestString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const requestHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Check if this request was processed recently
+    const { data: duplicateCheck, error } = await supabase.rpc(
+      'check_request_deduplication', 
+      {
+        p_request_hash: requestHash,
+        p_signal_id: signalId,
+        p_notification_type: notificationType
+      }
+    );
+
+    if (error) {
+      logProfessional('warn', 'Request deduplication check failed', { error: error.message });
+      return true; // Allow on error
+    }
+
+    if (!duplicateCheck) {
+      logProfessional('warn', 'EMERGENCY: Duplicate request blocked', { 
+        requestHash: requestHash.substring(0, 16) + '...',
+        signalId,
+        notificationType
+      });
+    }
+
+    return duplicateCheck;
+  } catch (error) {
+    logProfessional('error', 'Request deduplication exception', { error: (error as Error).message });
+    return true; // Allow on error
+  }
+}
+
+// EMERGENCY FIX: Circuit breaker check
+async function checkCircuitBreaker(
+  supabase: any,
+  signalId: string,
+  userId: string
+): Promise<boolean> {
+  try {
+    const { data: canSend, error } = await supabase.rpc(
+      'check_notification_circuit_breaker',
+      {
+        p_signal_id: signalId,
+        p_user_id: userId,
+        p_cooldown_minutes: 5
+      }
+    );
+
+    if (error) {
+      logProfessional('warn', 'Circuit breaker check failed', { error: error.message });
+      return true; // Allow on error
+    }
+
+    if (!canSend) {
+      logProfessional('info', 'EMERGENCY: Notification blocked by circuit breaker', { 
+        signalId,
+        userId
+      });
+    }
+
+    return canSend;
+  } catch (error) {
+    logProfessional('error', 'Circuit breaker exception', { error: (error as Error).message });
+    return true; // Allow on error
   }
 }
 
@@ -292,10 +390,36 @@ async function sendOneSignalNotification(
     return { success: false, error: 'No player IDs provided' };
   }
 
+  // EMERGENCY FIX: Filter out invalid OneSignal player IDs
+  const validPlayerIds = playerIds.filter(id => {
+    if (!id || typeof id !== 'string') return false;
+    if (id === 'dev_mock_player_id') return false;
+    if (id.length < 36) return false;
+    // Check UUID format
+    const uuidRegex = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+    return uuidRegex.test(id);
+  });
+
+  if (validPlayerIds.length === 0) {
+    logProfessional('warn', 'EMERGENCY: All OneSignal player IDs invalid, skipping push notification', { 
+      originalCount: playerIds.length,
+      invalidIds: playerIds.slice(0, 3)
+    });
+    return { success: false, error: 'All player IDs are invalid' };
+  }
+
+  if (validPlayerIds.length < playerIds.length) {
+    logProfessional('warn', 'EMERGENCY: Filtered out invalid OneSignal player IDs', { 
+      originalCount: playerIds.length,
+      validCount: validPlayerIds.length,
+      filteredOut: playerIds.length - validPlayerIds.length
+    });
+  }
+
   try {
     const payload: OneSignalNotificationPayload = {
       app_id: ONESIGNAL_APP_ID,
-      include_player_ids: playerIds,
+      include_player_ids: validPlayerIds,
       headings: { en: content.title },
       contents: { en: content.body },
       data: content.data,
@@ -499,6 +623,31 @@ serve(async (req) => {
       errors: []
     };
 
+    // EMERGENCY FIX: Request-level deduplication for entire batch
+    const batchRequestHash = await (async () => {
+      try {
+        const batchString = JSON.stringify({
+          notification_count: notifications.length,
+          signal_ids: notifications.map(n => n.signal_id).sort(),
+          types: notifications.map(n => n.notification_type).sort(),
+          timestamp_minute: Math.floor(Date.now() / (1000 * 60))
+        });
+        
+        const encoder = new TextEncoder();
+        const data = encoder.encode(batchString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+      } catch {
+        return `batch_${Date.now()}_${Math.random().toString(36)}`;
+      }
+    })();
+
+    logProfessional('info', 'EMERGENCY: Batch processing started', { 
+      batchHash: batchRequestHash,
+      notificationCount: notifications.length
+    });
+
     // Process each notification
     for (const notification of notifications) {
       try {
@@ -512,10 +661,24 @@ serve(async (req) => {
           eventKey
         });
 
-        // PHASE 3: CRITICAL FIX - Check for duplicates before processing
+        // EMERGENCY FIX: Multi-layer deduplication and circuit breaker checks
+        
+        // 1. Request-level deduplication
+        const allowRequest = await checkRequestDeduplication(
+          supabase, 
+          notification, 
+          notification.signal_id, 
+          notification.notification_type
+        );
+        if (!allowRequest) {
+          logProfessional('warn', `EMERGENCY: Request blocked by deduplication for signal ${notification.signal_id}`);
+          continue;
+        }
+
+        // 2. Event-level deduplication (existing)
         const isDuplicate = await checkNotificationDeduplication(supabase, eventKey, notification.signal_id);
         if (isDuplicate) {
-          logProfessional('info', `Skipping duplicate notification for signal ${notification.signal_id}`);
+          logProfessional('warn', `EMERGENCY: Event blocked by deduplication for signal ${notification.signal_id}`);
           continue;
         }
 
@@ -534,16 +697,25 @@ serve(async (req) => {
             metrics.in_app_sent++;
             metrics.sent++;
             
-            // Log successful in-app delivery for each user
+            // Log successful in-app delivery for each user (with circuit breaker check)
             for (const user of eligibleUsers) {
-              await logNotificationDelivery(
-                supabase,
-                notification,
-                user.id,
-                'in_app',
-                'sent',
-                eventKey
-              );
+              // 3. Circuit breaker check per user
+              const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
+              if (canSend) {
+                await logNotificationDelivery(
+                  supabase,
+                  notification,
+                  user.id,
+                  'in_app',
+                  'sent',
+                  eventKey
+                );
+              } else {
+                logProfessional('info', `EMERGENCY: In-app notification blocked by circuit breaker`, {
+                  signalId: notification.signal_id,
+                  userId: user.id
+                });
+              }
             }
           } else {
             metrics.failed++;
@@ -566,22 +738,33 @@ serve(async (req) => {
             );
 
             if (pushResult.success) {
-              metrics.push_sent += playerIds.length;
-              metrics.sent += playerIds.length;
-
-              // Log successful deliveries
+              // Log successful deliveries (with circuit breaker check)
+              let actualSentCount = 0;
               for (const user of eligibleUsers) {
                 if (user.onesignal_player_id) {
-                  await logNotificationDelivery(
-                    supabase,
-                    notification,
-                    user.id,
-                    'push',
-                    'sent',
-                    eventKey
-                  );
+                  // 3. Circuit breaker check per user for push notifications
+                  const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
+                  if (canSend) {
+                    await logNotificationDelivery(
+                      supabase,
+                      notification,
+                      user.id,
+                      'push',
+                      'sent',
+                      eventKey
+                    );
+                    actualSentCount++;
+                  } else {
+                    logProfessional('info', `EMERGENCY: Push notification blocked by circuit breaker`, {
+                      signalId: notification.signal_id,
+                      userId: user.id
+                    });
+                  }
                 }
               }
+              
+              metrics.push_sent += actualSentCount;
+              metrics.sent += actualSentCount;
             } else {
               metrics.failed += playerIds.length;
               metrics.errors.push(`Push notification failed: ${pushResult.error}`);
@@ -602,7 +785,7 @@ serve(async (req) => {
               }
             }
           } else {
-            logProfessional('warn', `No OneSignal player IDs found for signal ${notification.signal_id}`);
+            logProfessional('warn', `No valid OneSignal player IDs found for signal ${notification.signal_id}`);
           }
         }
 

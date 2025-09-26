@@ -1438,6 +1438,33 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_circuit_breaker: {
+        Row: {
+          created_at: string
+          id: string
+          last_notification_at: string
+          notification_count: number
+          signal_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_notification_at?: string
+          notification_count?: number
+          signal_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_notification_at?: string
+          notification_count?: number
+          signal_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_delivery_attempts: {
         Row: {
           attempt_at: string
@@ -1641,6 +1668,33 @@ export type Database = {
           event_type?: string
           read_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_request_cache: {
+        Row: {
+          expires_at: string
+          id: string
+          notification_type: string
+          processed_at: string
+          request_hash: string
+          signal_id: string
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+          notification_type: string
+          processed_at?: string
+          request_hash: string
+          signal_id: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          notification_type?: string
+          processed_at?: string
+          request_hash?: string
+          signal_id?: string
         }
         Relationships: []
       }
@@ -3786,8 +3840,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_notification_circuit_breaker: {
+        Args: {
+          p_cooldown_minutes?: number
+          p_signal_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       check_notification_rate_limit: {
         Args: { p_max_per_minute?: number; p_signal_id: string }
+        Returns: boolean
+      }
+      check_request_deduplication: {
+        Args: {
+          p_notification_type: string
+          p_request_hash: string
+          p_signal_id: string
+        }
         Returns: boolean
       }
       check_user_xeon_subscription: {
@@ -3799,6 +3869,10 @@ export type Database = {
         Returns: number
       }
       cleanup_inactive_symbol_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_notification_cache: {
         Args: Record<PropertyKey, never>
         Returns: number
       }

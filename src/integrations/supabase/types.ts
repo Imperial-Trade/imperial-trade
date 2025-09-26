@@ -2991,6 +2991,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_activity_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          last_activity_at: string
+          session_id: string
+          symbols: string[] | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          session_id: string
+          symbols?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          session_id?: string
+          symbols?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ui_price_listeners: {
         Row: {
           created_at: string

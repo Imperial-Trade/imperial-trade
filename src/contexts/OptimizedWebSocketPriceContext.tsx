@@ -153,13 +153,16 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
-  // 🚨 PHASE 1: Provider stability tracking
+  // 🚨 PHASE 1: Provider stability tracking - moved BEFORE any hooks
   const mountTimeRef = useRef(Date.now());
   const initCountRef = useRef(0);
   
   initCountRef.current++;
   const initTime = Date.now();
   const timeSinceMount = initTime - mountTimeRef.current;
+  
+  // 🚨 CRITICAL: Check provider stability BEFORE any hooks to prevent hook violations
+  const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
   
   // 🚨 CRITICAL: Detect rapid re-initialization (restart loop)
   if (initCountRef.current > 1 && timeSinceMount < 10000) {
@@ -168,9 +171,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }
   
   console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
-  
-  // 🚨 PHASE 1: Check provider stability
-  const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
   
   // Provider initialization state
   const [isProviderReady, setIsProviderReady] = useState(false);
@@ -183,33 +183,33 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   const { shouldAllowQualityChange } = useConnectionStability();
   
-  // 🚨 PHASE 1: If provider can't mount due to restart loop, render minimal fallback
+  // 🚨 PHASE 1: Use conditional rendering instead of early return to prevent hook violations
+  const fallbackValue: OptimizedWebSocketContextType = {
+    prices: {},
+    connectionStatus: 'disconnected',
+    error: canMount ? null : 'Provider restart loop detected - temporarily disabled',
+    lastUpdated: null,
+    dataSource: 'fallback',
+    uiThrottleMs: 3500,
+    subscribe: () => {},
+    unsubscribe: () => {},
+    getPrice: () => null,
+    getInternalPrice: () => null,
+    getDataAge: () => Infinity,
+    getConnectionQuality: () => 'stale',
+    getArrivalAge: () => Infinity,
+    internalPrices: {},
+    restartConnection: () => Promise.resolve(),
+    isConnected: false,
+    errors: {},
+    refreshPrice: () => {},
+    getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+    isUsingEnhancedSystem: false
+  };
+
+  // If provider can't mount, log and use fallback rendering
   if (!canMount) {
     console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
-    
-    // Return fallback context to prevent crashes
-    const fallbackValue: OptimizedWebSocketContextType = {
-      prices: {},
-      connectionStatus: 'disconnected',
-      error: 'Provider restart loop detected - temporarily disabled',
-      lastUpdated: null,
-      dataSource: 'fallback',
-      uiThrottleMs: 3500,
-      subscribe: () => {},
-      unsubscribe: () => {},
-      getPrice: () => null,
-      getInternalPrice: () => null,
-      getDataAge: () => Infinity,
-      getConnectionQuality: () => 'stale',
-      getArrivalAge: () => Infinity,
-      internalPrices: {},
-      restartConnection: () => Promise.resolve(),
-      isConnected: false,
-      errors: {},
-      refreshPrice: () => {},
-      getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
-      isUsingEnhancedSystem: false
-    };
     
     return (
       <OptimizedWebSocketContext.Provider value={fallbackValue}>

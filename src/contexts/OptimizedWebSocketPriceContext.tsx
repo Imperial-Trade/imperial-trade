@@ -172,18 +172,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
   
-  // Provider initialization state
-  const [isProviderReady, setIsProviderReady] = useState(false);
-  
-  const healthMonitor = useRealtimeHealth();
-  const { isLeader, tabId, tabCount } = useSingleTabLeadership();
-  const isPriceSubscriptionAllowed = useRealtimeGate('prices');
-  const { recordConnection, recordClampActivation } = useRealtimeTelemetry();
-  const telemetry = useTelemetry();
-  const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
-  const { shouldAllowQualityChange } = useConnectionStability();
-  
-  // 🚨 PHASE 1: Use conditional rendering instead of early return to prevent hook violations
+  // 🚨 CRITICAL FIX: Create fallback value before hooks to avoid hook violations
   const fallbackValue: OptimizedWebSocketContextType = {
     prices: {},
     connectionStatus: 'disconnected',
@@ -207,7 +196,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isUsingEnhancedSystem: false
   };
 
-  // If provider can't mount, log and use fallback rendering
+  // 🚨 CRITICAL FIX: Return fallback BEFORE any hooks if can't mount
   if (!canMount) {
     console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
     
@@ -217,6 +206,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       </OptimizedWebSocketContext.Provider>
     );
   }
+  
+  // Provider initialization state
+  const [isProviderReady, setIsProviderReady] = useState(false);
+  
+  const healthMonitor = useRealtimeHealth();
+  const { isLeader, tabId, tabCount } = useSingleTabLeadership();
+  const isPriceSubscriptionAllowed = useRealtimeGate('prices');
+  const { recordConnection, recordClampActivation } = useRealtimeTelemetry();
+  const telemetry = useTelemetry();
+  const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
+  const { shouldAllowQualityChange } = useConnectionStability();
   
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));

@@ -20,6 +20,32 @@ const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
 const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
 const SIGNAL_REFRESH_THROTTLE = 30000; // 🔥 OPTIMIZED to 30 seconds for better responsiveness
 
+// PHASE 6: PRODUCTION-READY RELIABILITY - Connection Management & Fallbacks
+const CONNECTION_CONFIG = {
+  maxConsecutiveFailures: 5,
+  breakerOpenDuration: 30000, // 30 seconds
+  maxReconnectAttempts: 10,
+  baseRetryDelay: 2000, // Start with 2 seconds
+  maxRetryDelay: 30000, // Cap at 30 seconds
+  retryMultiplier: 1.8, // Gentle exponential backoff
+  jitterRange: 0.3, // ±30% jitter
+  heartbeatInterval: 30000, // 30 second heartbeat
+  pollingFallbackInterval: 10000, // 10 second polling when real-time fails
+  healthCheckInterval: 60000, // 1 minute health check
+};
+
+// PHASE 6: Connection state interface for production reliability
+interface ConnectionState {
+  status: 'disconnected' | 'connecting' | 'connected' | 'error' | 'circuit-breaker' | 'polling-fallback';
+  attempt: number;
+  nextRetryAt: number | null;
+  errorCount: number;
+  lastSuccessAt: number | null;
+  consecutiveFailures: number;
+  isPollingMode: boolean;
+  lastHeartbeatAt: number | null;
+}
+
 async function getEducatorUserIds(): Promise<string[]> {
   const now = Date.now();
   
@@ -49,13 +75,18 @@ async function getEducatorUserIds(): Promise<string[]> {
 
 interface SignalRealtimeContextType {
   signals: TradeAlertWithProfile[];
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   lastUpdated: Date | null;
   error: string | null;
   nextRetryAt: number | null;
   subscribe: () => void;
   unsubscribe: () => void;
   refreshSignals: () => Promise<void>;
+  // PHASE 6: Enhanced reliability methods
+  restartConnection: () => void;
+  getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null; mode: string };
+  forcePollingMode: () => void;
+  isInPollingMode: boolean;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | null>(null);
@@ -73,6 +104,23 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+
+  // PHASE 6: Enhanced connection state management for production reliability
+  const connectionStateRef = useRef<ConnectionState>({
+    status: 'disconnected',
+    attempt: 0,
+    nextRetryAt: null,
+    errorCount: 0,
+    lastSuccessAt: null,
+    consecutiveFailures: 0,
+    isPollingMode: false,
+    lastHeartbeatAt: null,
+  });
+  
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback'>('disconnected');
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // PHASE 3: Use shared Realtime connection to eliminate duplicate channels + HEALTH MONITORING
   const { connectionState, subscribeToTable } = useSharedRealtime();
@@ -246,6 +294,82 @@ unstable_batchedUpdates(() => {
       setError(err instanceof Error ? err.message : 'Failed to refresh signals');
     }
   }, []);
+
+  // PHASE 6: Connection state management utilities
+  const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
+    connectionStateRef.current = { ...connectionStateRef.current, ...updates };
+    const newStatus = connectionStateRef.current.status === 'circuit-breaker' ? 'error' : connectionStateRef.current.status;
+    setConnectionStatus(newStatus);
+  }, []);
+
+  const isCircuitBreakerOpen = useCallback(() => {
+    const state = connectionStateRef.current;
+    return state.status === 'circuit-breaker' || 
+           (state.consecutiveFailures >= CONNECTION_CONFIG.maxConsecutiveFailures &&
+            Date.now() < (state.nextRetryAt || 0));
+  }, []);
+
+  const calculateRetryDelay = useCallback((attempt: number): number => {
+    const baseDelay = Math.min(
+      CONNECTION_CONFIG.baseRetryDelay * Math.pow(CONNECTION_CONFIG.retryMultiplier, attempt),
+      CONNECTION_CONFIG.maxRetryDelay
+    );
+    
+    const jitter = baseDelay * CONNECTION_CONFIG.jitterRange * (Math.random() - 0.5);
+    return Math.max(baseDelay + jitter, 1000); // Minimum 1 second
+  }, []);
+
+  // PHASE 6: Enhanced reliability methods
+  const restartConnection = useCallback(() => {
+    console.log('🔄 SignalRealtime: Manual connection restart requested');
+    unsubscribe();
+    // Reset connection state
+    connectionStateRef.current = {
+      status: 'disconnected',
+      attempt: 0,
+      nextRetryAt: null,
+      errorCount: 0,
+      lastSuccessAt: null,
+      consecutiveFailures: 0,
+      isPollingMode: false,
+      lastHeartbeatAt: null,
+    };
+    setError(null);
+    setTimeout(() => subscribe(), 1000);
+  }, []);
+
+  const getConnectionHealth = useCallback(() => {
+    const state = connectionStateRef.current;
+    const now = Date.now();
+    const isHealthy = state.status === 'connected' && 
+                     state.lastSuccessAt && 
+                     (now - state.lastSuccessAt) < CONNECTION_CONFIG.healthCheckInterval;
+    
+    return {
+      isHealthy,
+      lastUpdate: lastUpdated,
+      mode: state.isPollingMode ? 'polling' : 'realtime'
+    };
+  }, [lastUpdated]);
+
+  const forcePollingMode = useCallback(() => {
+    console.log('🔄 SignalRealtime: Forcing polling mode');
+    connectionStateRef.current.isPollingMode = true;
+    setConnectionStatus('polling-fallback');
+    
+    // Start polling interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    pollingIntervalRef.current = setInterval(() => {
+      if (mountOnlyRef.current && !isCircuitBreakerOpen()) {
+        refreshSignals();
+      }
+    }, CONNECTION_CONFIG.pollingFallbackInterval);
+  }, [refreshSignals, isCircuitBreakerOpen]);
+
+  const isInPollingMode = connectionStateRef.current.isPollingMode;
 
   // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms  
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
@@ -593,8 +717,12 @@ unstable_batchedUpdates(() => {
     } catch (error) {
       console.error('❌ Failed to subscribe to signals:', error);
       setError('Failed to initialize realtime connection');
+      updateConnectionState({
+        status: 'error',
+        consecutiveFailures: connectionStateRef.current.consecutiveFailures + 1
+      });
     }
-  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed]);
+  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed, updateConnectionState]);
 
   // 🔥 LEAK-PROOF: Deterministic unsubscribe with definitive logging
   const unsubscribe = useCallback(() => {
@@ -662,13 +790,18 @@ unstable_batchedUpdates(() => {
 
   const contextValue: SignalRealtimeContextType = {
     signals,
-    connectionStatus: connectionState.connectionStatus,
+    connectionStatus: connectionStateRef.current.status === 'circuit-breaker' ? 'error' : connectionStateRef.current.status,
     lastUpdated,
-    error: error || connectionState.error,
+    error: error || connectionStateRef.current?.status === 'error' ? 'Connection error' : null,
     nextRetryAt,
     subscribe,
     unsubscribe,
-    refreshSignals
+    refreshSignals,
+    // PHASE 6: Enhanced reliability methods
+    restartConnection,
+    getConnectionHealth,
+    forcePollingMode,
+    isInPollingMode
   };
 
   return (

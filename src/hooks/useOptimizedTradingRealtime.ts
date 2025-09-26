@@ -12,7 +12,7 @@ interface UseOptimizedTradingRealtimeReturn {
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   lastUpdated: Date | null;
   nextRetryAt: number | null;
 }

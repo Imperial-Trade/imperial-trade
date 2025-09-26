@@ -8,7 +8,7 @@ interface UseSignalRealtimeReturn {
   alerts: TradeAlertWithProfile[];
   isLoading: boolean;
   error: string | null;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   nextRetryAt: number | null;
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   refreshAlerts: () => Promise<void>;

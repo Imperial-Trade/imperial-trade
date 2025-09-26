@@ -628,7 +628,57 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [connectToRealtimeChannel]);
 
-  // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system
+  // 🚀 INSTANT DATABASE HYDRATION: Fetch prices immediately for new symbols
+  const fetchPricesFromDatabase = useCallback(async (targetSymbols: string[]) => {
+    if (targetSymbols.length === 0) return;
+
+    try {
+      console.log(`💾 Instant hydration fetching prices for: ${targetSymbols.join(', ')}`);
+      const { data } = await supabase
+        .from('market_prices')
+        .select('symbol, bid, ask, mid, updated_at')
+        .in('symbol', targetSymbols);
+        
+      if (data) {
+        const hydratedPrices: Record<string, PriceData> = {};
+        const timestampUpdates: Record<string, number> = {};
+        
+        data.forEach(row => {
+          const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
+          if (price) {
+            const dbTimestamp = new Date(row.updated_at).getTime();
+            hydratedPrices[row.symbol] = {
+              symbol: row.symbol,
+              price,
+              change: 0,
+              changePercent: 0,
+              timestamp: row.updated_at,
+              receivedAt: Date.now(),
+              bid: row.bid,
+              ask: row.ask,
+              mid: row.mid
+            };
+            
+            // 🚨 PHASE 2: Track database timestamp for race condition prevention
+            timestampUpdates[row.symbol] = dbTimestamp;
+            console.log(`⚡ INSTANT hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()} (price: ${price})`);
+          }
+        });
+        
+        if (Object.keys(hydratedPrices).length > 0) {
+          setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
+          setPrices(prev => ({ ...prev, ...hydratedPrices }));
+          setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+          setLastUpdated(new Date());
+          console.log(`⚡ INSTANT hydration complete: ${Object.keys(hydratedPrices).length} prices loaded immediately`);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Instant hydration error:', error);
+    }
+  }, []);
+
+  // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system with instant hydration
   const subscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;
 
@@ -637,6 +687,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     let needsConnection = false;
     let newSymbolsAdded = false;
+    const newSymbolsForHydration: string[] = [];
     
     symbols.forEach(symbol => {
       const normalizedSymbol = normalizeSymbol(symbol);
@@ -651,6 +702,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (currentCount === 0) {
         needsConnection = true;
         newSymbolsAdded = true;
+        newSymbolsForHydration.push(normalizedSymbol);
         console.log(`➕ New subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
       } else {
         console.log(`🔄 Existing subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
@@ -658,6 +710,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     });
 
     console.log(`📊 Current subscriptions after: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (count: ${subscriptionsRef.current.size})`);
+
+    // 🚀 INSTANT DATABASE HYDRATION: Immediately fetch prices for new symbols
+    if (newSymbolsForHydration.length > 0) {
+      console.log(`⚡ Triggering instant hydration for new symbols: ${newSymbolsForHydration.join(', ')}`);
+      fetchPricesFromDatabase(newSymbolsForHydration);
+    }
 
     // Establish connection if we have new symbols and no connection
     if (needsConnection && !channelRef.current && newSymbolsAdded) {
@@ -670,7 +728,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Register activity for cost tracking
     registerInteraction();
-  }, [connectToRealtimeChannel, registerInteraction]);
+  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;

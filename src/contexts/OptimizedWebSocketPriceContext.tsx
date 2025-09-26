@@ -322,6 +322,193 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // 🚀 ANTI-FLICKER: 200ms result cache to prevent render-based micro-flips
   const qualityResultCacheRef = useRef(new Map<string, { quality: string; timestamp: number }>());
 
+  // CORE WEBSOCKET CONNECTION: Establish realtime channel with price broadcasts
+  const connectToRealtimeChannel = useCallback(() => {
+    if (channelRef.current || isConnectingRef.current) {
+      console.log('🚫 Connection already exists or in progress');
+      return;
+    }
+
+    console.log('🔗 Establishing realtime connection for price broadcasts');
+    isConnectingRef.current = true;
+    setConnectionStatus('connecting');
+
+    const channel = supabase
+      .channel('price_broadcast_channel', {
+        config: { 
+          broadcast: { self: false },
+          presence: { key: tabId }
+        }
+      })
+      .on('broadcast', { event: 'price_update' }, (payload: any) => {
+        statsRef.current.messagesReceived++;
+        
+        const { symbol, bid, ask, mid, timestamp } = payload.payload;
+        if (!symbol || !subscriptionsRef.current.has(symbol)) return;
+
+        const priceData: PriceData = {
+          symbol,
+          price: parseFloat(mid || ask || bid),
+          change: 0,
+          changePercent: 0,
+          timestamp: timestamp || new Date().toISOString(),
+          receivedAt: Date.now(),
+          bid: bid ? parseFloat(bid) : undefined,
+          ask: ask ? parseFloat(ask) : undefined,
+          mid: mid ? parseFloat(mid) : undefined
+        };
+
+        // Calculate change if we have previous price
+        const previousPrice = internalPrices[symbol]?.price;
+        if (previousPrice) {
+          priceData.change = priceData.price - previousPrice;
+          priceData.changePercent = (priceData.change / previousPrice) * 100;
+        }
+
+        setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
+        setPrices(prev => ({ ...prev, [symbol]: priceData }));
+        setLastUpdated(new Date());
+        arrivalTimestamps.current.set(symbol, Date.now());
+        realtimeReceivedSymbols.current.add(symbol);
+
+        console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
+      })
+      .subscribe((status) => {
+        console.log(`📡 Realtime channel status: ${status}`);
+        
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+          connectionStateRef.current.status = 'connected';
+          connectionStateRef.current.lastSuccessAt = Date.now();
+          connectionStateRef.current.errorCount = 0;
+          isConnectingRef.current = false;
+          console.log('✅ Connected to price broadcast channel');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setConnectionStatus('error');
+          setError('Failed to connect to price stream');
+          isConnectingRef.current = false;
+        }
+      });
+
+    channelRef.current = channel;
+  }, [tabId, internalPrices]);
+
+  // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system
+  const subscribe = useCallback((symbols: string[]) => {
+    if (!symbols?.length) return;
+
+    console.log(`📊 Subscribing to symbols: ${symbols.join(', ')}`);
+    
+    let needsConnection = false;
+    symbols.forEach(symbol => {
+      const normalizedSymbol = normalizeSymbol(symbol);
+      if (!normalizedSymbol || !ALLOWED_SYMBOLS.includes(normalizedSymbol as any)) {
+        console.warn(`⚠️ Symbol ${symbol} not in allowed list`);
+        return;
+      }
+
+      const currentCount = subscriptionsRef.current.get(normalizedSymbol) || 0;
+      subscriptionsRef.current.set(normalizedSymbol, currentCount + 1);
+      
+      if (currentCount === 0) {
+        needsConnection = true;
+        console.log(`➕ New subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
+      } else {
+        console.log(`🔄 Existing subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
+      }
+    });
+
+    // Establish connection if we have new symbols and no connection
+    if (needsConnection && !channelRef.current) {
+      connectToRealtimeChannel();
+    }
+
+    // Register activity for cost tracking
+    registerInteraction();
+  }, [connectToRealtimeChannel, registerInteraction]);
+
+  const unsubscribe = useCallback((symbols: string[]) => {
+    if (!symbols?.length) return;
+
+    console.log(`📊 Unsubscribing from symbols: ${symbols.join(', ')}`);
+    
+    let hasActiveSubscriptions = false;
+    symbols.forEach(symbol => {
+      const normalizedSymbol = normalizeSymbol(symbol);
+      if (!normalizedSymbol) return;
+
+      const currentCount = subscriptionsRef.current.get(normalizedSymbol) || 0;
+      if (currentCount > 1) {
+        subscriptionsRef.current.set(normalizedSymbol, currentCount - 1);
+        hasActiveSubscriptions = true;
+        console.log(`➖ Decremented subscription: ${normalizedSymbol} (refs: ${currentCount - 1})`);
+      } else if (currentCount === 1) {
+        subscriptionsRef.current.delete(normalizedSymbol);
+        console.log(`🗑️ Removed subscription: ${normalizedSymbol} (refs: 0)`);
+      }
+    });
+
+    // Check if we still have active subscriptions
+    hasActiveSubscriptions = hasActiveSubscriptions || subscriptionsRef.current.size > 0;
+
+    // Disconnect if no active subscriptions
+    if (!hasActiveSubscriptions && channelRef.current) {
+      console.log('🔌 No active subscriptions, disconnecting...');
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+      setConnectionStatus('disconnected');
+    }
+  }, []);
+
+  // CONNECTION MANAGEMENT: Restart and emergency functions
+  const restartConnection = useCallback(() => {
+    console.log('🔄 Restarting WebSocket connection...');
+    
+    // Close existing connection
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+    }
+    
+    // Clear state
+    isConnectingRef.current = false;
+    setConnectionStatus('disconnected');
+    setError(null);
+    
+    // Reconnect if we have subscriptions
+    if (subscriptionsRef.current.size > 0) {
+      setTimeout(() => connectToRealtimeChannel(), 1000);
+    }
+  }, [connectToRealtimeChannel]);
+
+  const emergencyRestart = useCallback(() => {
+    console.log('🚨 EMERGENCY RESTART: Clearing all state and restarting...');
+    
+    // Close all connections
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+    }
+    if (fallbackChannelRef.current) {
+      fallbackChannelRef.current.unsubscribe();
+      fallbackChannelRef.current = null;
+    }
+    
+    // Reset all state
+    subscriptionsRef.current.clear();
+    setInternalPrices({});
+    setPrices({});
+    setConnectionStatus('disconnected');
+    setError(null);
+    setLastUpdated(null);
+    isConnectingRef.current = false;
+    
+    // Reset stability service
+    providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
+    
+    console.log('🔄 Emergency restart complete');
+  }, []);
+
   // Setup realtime fallback for postgres_changes subscription
   const setupRealtimeFallback = useCallback(() => {
     if (fallbackChannelRef.current) return;
@@ -361,6 +548,84 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     fallbackChannelRef.current = fallbackChannel;
   }, []);
 
+  // 🚨 CRITICAL FIX: Add cleanup for reconnect timeout
+  useEffect(() => {
+    // Cleanup any existing timeouts when component unmounts
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current);
+        healthCheckIntervalRef.current = null;
+      }
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+        visibilityTimeoutRef.current = null;
+      }
+      if (uiUpdateTimeoutRef.current) {
+        clearTimeout(uiUpdateTimeoutRef.current);
+        uiUpdateTimeoutRef.current = null;
+      }
+      if (watchdogIntervalRef.current) {
+        clearInterval(watchdogIntervalRef.current);
+        watchdogIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // 🚨 FALLBACK TO DIRECT DATABASE POLLING: If no broadcasts, poll database
+  useEffect(() => {
+    if (connectionStatus === 'connected' && subscriptionsRef.current.size > 0) {
+      const pollDatabase = async () => {
+        try {
+          const symbolsArray = Array.from(subscriptionsRef.current.keys());
+          const { data, error } = await supabase
+            .from('market_prices')
+            .select('symbol, bid, ask, mid, timestamp')
+            .in('symbol', symbolsArray);
+            
+          if (data && !error) {
+            data.forEach(row => {
+              const priceData: PriceData = {
+                symbol: row.symbol,
+                price: parseFloat(String(row.mid || row.ask || row.bid || 0)),
+                change: 0,
+                changePercent: 0,
+                timestamp: row.timestamp || new Date().toISOString(),
+                receivedAt: Date.now(),
+                bid: row.bid ? parseFloat(row.bid.toString()) : undefined,
+                ask: row.ask ? parseFloat(row.ask.toString()) : undefined,
+                mid: row.mid ? parseFloat(row.mid.toString()) : undefined
+              };
+              
+              // Calculate change if we have previous price
+              const previousPrice = internalPrices[row.symbol]?.price;
+              if (previousPrice) {
+                priceData.change = priceData.price - previousPrice;
+                priceData.changePercent = (priceData.change / previousPrice) * 100;
+              }
+              
+              setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+            });
+            setLastUpdated(new Date());
+          }
+        } catch (error) {
+          console.error('Database polling error:', error);
+        }
+      };
+      
+      // Poll every 2 seconds for fresh data
+      const pollInterval = setInterval(pollDatabase, 2000);
+      // Initial poll
+      pollDatabase();
+      
+      return () => clearInterval(pollInterval);
+    }
+  }, [connectionStatus, internalPrices]);
+
   // Start fallback timer when connected but no messages received
   useEffect(() => {
     if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
@@ -369,7 +634,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           console.log('🔄 No broadcast messages received, activating fallback');
           setupRealtimeFallback();
         }
-      }, 10000);
+      }, 5000); // Reduced to 5 seconds
       
       return () => clearTimeout(timer);
     }
@@ -386,8 +651,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     uiThrottleMs: UI_UPDATE_THROTTLE_MS,
     isConnected: connectionStatus === 'connected',
     errors: {},
-    subscribe: () => {},
-    unsubscribe: () => {},
+    subscribe,
+    unsubscribe,
     getPrice: (symbol: string) => prices[normalizeSymbol(symbol) || ''] || null,
     getInternalPrice: (symbol: string) => internalPrices[normalizeSymbol(symbol) || ''] || null,
     refreshPrice: async () => {},
@@ -399,8 +664,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         ? statsRef.current.latencySum / statsRef.current.latencyCount 
         : 0
     }),
-    restartConnection: () => {},
-    emergencyRestart: () => {},
+    restartConnection,
+    emergencyRestart,
     getProviderStabilityStatus: () => ({ 
       isBlocked: false, 
       canMount: true, 

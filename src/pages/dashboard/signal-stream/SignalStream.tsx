@@ -23,6 +23,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import LiveDataStatus from '@/components/testing/LiveDataStatus';
 
 
 
@@ -728,6 +729,7 @@ export default function SignalStream() {
 
             {/* Economic Sidebar - Protected positioning */}
             <div data-prevent-widget-open="true" className="space-y-4">
+              <LiveDataStatus />
               <EconomicSidebar />
             </div>
           </div>

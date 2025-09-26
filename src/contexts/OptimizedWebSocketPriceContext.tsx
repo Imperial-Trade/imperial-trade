@@ -319,15 +319,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isConnectingRef.current = true;
     setConnectionStatus('connecting');
 
+    // 🚨 PHASE 1 FIX: Correct channel name to match backend broadcast
     const channel = supabase
-      .channel('price_broadcast_channel', {
+      .channel('live-prices-broadcast', {
         config: { 
           broadcast: { self: false },
           presence: { key: tabId }
         }
       })
       .on('broadcast', { event: 'price_update' }, (payload: any) => {
+        // 🚨 PHASE 2: Enhanced connection diagnostics
         statsRef.current.messagesReceived++;
+        console.log(`📈 Live broadcast received:`, payload.payload);
         
         const { symbol, bid, ask, mid, timestamp } = payload.payload;
         if (!symbol || !subscriptionsRef.current.has(symbol)) return;
@@ -360,7 +363,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
       })
       .subscribe((status) => {
-        console.log(`📡 Realtime channel status: ${status}`);
+        // 🚨 PHASE 2: Enhanced connection status logging
+        console.log(`📡 Channel subscription status: ${status} (Channel: live-prices-broadcast)`);
         
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
@@ -368,11 +372,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           connectionStateRef.current.lastSuccessAt = Date.now();
           connectionStateRef.current.errorCount = 0;
           isConnectingRef.current = false;
-          console.log('✅ Connected to price broadcast channel');
+          // 🚨 PHASE 3: Enhanced success logging with channel verification
+          console.log(`✅ WebSocket connection established successfully on 'live-prices-broadcast'`);
+          console.log(`📊 Active subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (${subscriptionsRef.current.size} symbols)`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionStatus('error');
           setError('Failed to connect to price stream');
           isConnectingRef.current = false;
+          console.error(`❌ WebSocket connection failed: ${status} on 'live-prices-broadcast'`);
         }
       });
 
@@ -653,8 +660,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getInternalPrice: (symbol: string) => internalPrices[normalizeSymbol(symbol) || ''] || null,
     refreshPrice: async () => {},
     getConnectionHealth: () => ({ isHealthy: connectionStatus === 'connected', lastUpdate: lastUpdated }),
-    getActiveSymbolsCount: () => subscriptionsRef.current.size,
-    getActiveSymbols: () => Array.from(subscriptionsRef.current.keys()),
+    // 🚨 PHASE 3: Enhanced Active Symbols tracking with logging
+    getActiveSymbolsCount: () => {
+      const count = subscriptionsRef.current.size;
+      console.log(`📊 Active symbols count: ${count}`, Array.from(subscriptionsRef.current.keys()));
+      return count;
+    },
+    getActiveSymbols: () => {
+      const symbols = Array.from(subscriptionsRef.current.keys());
+      console.log(`📋 Active symbols:`, symbols);
+      return symbols;
+    },
     getStats: () => ({
       messagesReceived: statsRef.current.messagesReceived,
       reconnections: statsRef.current.reconnections,

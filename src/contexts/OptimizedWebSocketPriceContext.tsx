@@ -99,6 +99,9 @@ interface OptimizedWebSocketContextType {
     avgLatency: number;
   };
   restartConnection: () => void;
+  // EMERGENCY FUNCTIONS: Force provider restart and stability reset
+  emergencyRestart: () => void;
+  getProviderStabilityStatus: () => { isBlocked: boolean; canMount: boolean; metrics: any };
   isUsingEnhancedSystem: boolean;
   // Enhanced "Hydrate and Highlight" indicators  
   getDataAge: (symbol: string) => number;
@@ -140,7 +143,10 @@ export const useOptimizedWebSocketPrices = (): OptimizedWebSocketContextType => 
       errors: {},
       refreshPrice: () => {},
       getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
-      isUsingEnhancedSystem: false
+      isUsingEnhancedSystem: false,
+      // Emergency functions
+      emergencyRestart: () => {},
+      getProviderStabilityStatus: () => ({ isBlocked: true, canMount: false, metrics: null })
     };
   }
   return context;
@@ -183,7 +189,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     errors: {},
     refreshPrice: () => {},
     getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
-    isUsingEnhancedSystem: false
+    isUsingEnhancedSystem: false,
+    // Emergency functions
+    emergencyRestart: () => {},
+    getProviderStabilityStatus: () => ({ isBlocked: !canMount, canMount, metrics: null })
   };
 
   // 🚨 CRITICAL FIX: Return fallback BEFORE any hooks if can't mount
@@ -1310,6 +1319,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getInternalPrice, // Returns always-fresh internal prices
     internalPrices, // Direct access to internal prices for advanced use cases
     uiThrottleMs: UI_UPDATE_THROTTLE_MS, // Expose throttling configuration
+    // Emergency functions
+    emergencyRestart: async () => {
+      console.log('🚨 EMERGENCY RESTART: Forcing provider stability reset and connection restart...');
+      providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
+      await restartConnection();
+    },
+    getProviderStabilityStatus: () => {
+      const metrics = providerStabilityService.getProviderMetrics('OptimizedWebSocketPriceProvider');
+      return {
+        isBlocked: !providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider'),
+        canMount: true,
+        metrics
+      };
+    }
   }), [
     prices,
     connectionStatus,
@@ -1356,7 +1379,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         errors: {},
         refreshPrice: () => {},
         getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
-        isUsingEnhancedSystem: false
+        isUsingEnhancedSystem: false,
+        // Emergency functions
+        emergencyRestart: () => {},
+        getProviderStabilityStatus: () => ({ isBlocked: !canMount, canMount, metrics: null })
       }}>
         {children}
       </OptimizedWebSocketContext.Provider>

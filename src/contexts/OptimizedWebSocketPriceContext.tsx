@@ -153,24 +153,8 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
-  // 🚨 PHASE 1: Provider stability tracking - moved BEFORE any hooks
-  const mountTimeRef = useRef(Date.now());
-  const initCountRef = useRef(0);
-  
-  initCountRef.current++;
-  const initTime = Date.now();
-  const timeSinceMount = initTime - mountTimeRef.current;
-  
   // 🚨 CRITICAL: Check provider stability BEFORE any hooks to prevent hook violations
   const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
-  
-  // 🚨 CRITICAL: Detect rapid re-initialization (restart loop)
-  if (initCountRef.current > 1 && timeSinceMount < 10000) {
-    console.error(`🚨 PROVIDER RESTART LOOP DETECTED: Init #${initCountRef.current} after only ${timeSinceMount}ms`);
-    console.error('🔍 Restart cause investigation needed - parent component re-rendering');
-  }
-  
-  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
   
   // 🚨 CRITICAL FIX: Create fallback value before hooks to avoid hook violations
   const fallbackValue: OptimizedWebSocketContextType = {
@@ -206,6 +190,22 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       </OptimizedWebSocketContext.Provider>
     );
   }
+
+  // 🚨 PHASE 1: Provider stability tracking - moved AFTER canMount check
+  const mountTimeRef = useRef(Date.now());
+  const initCountRef = useRef(0);
+  
+  initCountRef.current++;
+  const initTime = Date.now();
+  const timeSinceMount = initTime - mountTimeRef.current;
+  
+  // 🚨 CRITICAL: Detect rapid re-initialization (restart loop)
+  if (initCountRef.current > 1 && timeSinceMount < 10000) {
+    console.error(`🚨 PROVIDER RESTART LOOP DETECTED: Init #${initCountRef.current} after only ${timeSinceMount}ms`);
+    console.error('🔍 Restart cause investigation needed - parent component re-rendering');
+  }
+  
+  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
   
   // Provider initialization state
   const [isProviderReady, setIsProviderReady] = useState(false);

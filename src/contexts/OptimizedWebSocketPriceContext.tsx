@@ -17,6 +17,7 @@ import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 import { providerStabilityService } from '@/services/ProviderStabilityService';
 import { realtimeMessageRateMonitor } from '@/services/RealtimeMessageRateMonitor';
+import { realtimeMessageDiagnostics } from '@/services/RealtimeMessageDiagnostics';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -168,13 +169,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
   
+  // 🚨 PHASE 1: Log diagnostic event
+  realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'initialize', {
+    initCount: initCountRef.current,
+    timeSinceMount,
+    mountTime: mountTimeRef.current
+  });
+  
   // 🚨 PHASE 1: Check provider stability
   const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
-  if (!canMount) {
-    console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
-    // Return minimal fallback to prevent cascade failures
-    return <>{children}</>;
-  }
   
   // Provider initialization state
   const [isProviderReady, setIsProviderReady] = useState(false);
@@ -186,6 +189,41 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const telemetry = useTelemetry();
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   const { shouldAllowQualityChange } = useConnectionStability();
+  
+  // 🚨 PHASE 1: If provider can't mount due to restart loop, render minimal fallback
+  if (!canMount) {
+    console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
+    
+    // Return fallback context to prevent crashes
+    const fallbackValue: OptimizedWebSocketContextType = {
+      prices: {},
+      connectionStatus: 'disconnected',
+      error: 'Provider restart loop detected - temporarily disabled',
+      lastUpdated: null,
+      dataSource: 'fallback',
+      uiThrottleMs: 3500,
+      subscribe: () => {},
+      unsubscribe: () => {},
+      getPrice: () => null,
+      getInternalPrice: () => null,
+      getDataAge: () => Infinity,
+      getConnectionQuality: () => 'stale',
+      getArrivalAge: () => Infinity,
+      internalPrices: {},
+      restartConnection: () => Promise.resolve(),
+      isConnected: false,
+      errors: {},
+      refreshPrice: () => {},
+      getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+      isUsingEnhancedSystem: false
+    };
+    
+    return (
+      <OptimizedWebSocketContext.Provider value={fallbackValue}>
+        {children}
+      </OptimizedWebSocketContext.Provider>
+    );
+  }
   
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));
@@ -214,6 +252,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   useEffect(() => {
     console.log(`🔧 Provider mounting... (Init #${initCountRef.current})`);
     
+    // 🚨 PHASE 1: Log mount event
+    realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'mount', {
+      initCount: initCountRef.current,
+      tabId,
+      tabCount,
+      isLeader
+    });
+    
     // 🚨 PHASE 1: Track mount/unmount cycles
     mountOnlyRef.current = true;
     setIsProviderReady(true);
@@ -223,6 +269,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // 🚨 PHASE 1: Cleanup tracking on unmount
     return () => {
       console.log(`🧹 OptimizedWebSocketPriceProvider unmounting (Init #${initCountRef.current})`);
+      realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'unmount', {
+        initCount: initCountRef.current
+      });
       mountOnlyRef.current = false;
       providerStabilityService.registerProviderUnmount('OptimizedWebSocketPriceProvider');
     };

@@ -3864,6 +3864,10 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: boolean
       }
+      cleanup_duplicate_ui_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_expired_coach_cache: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -4202,6 +4206,10 @@ export type Database = {
         Returns: Json
       }
       register_ui_activity: {
+        Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
+        Returns: undefined
+      }
+      register_ui_activity_enhanced: {
         Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
         Returns: undefined
       }

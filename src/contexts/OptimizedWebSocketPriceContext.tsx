@@ -328,38 +328,65 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
       })
       .on('broadcast', { event: 'price_update' }, (payload: any) => {
-        // 🚨 PHASE 2: Enhanced connection diagnostics
+        // 🚨 PHASE 2: Enhanced connection diagnostics + robust payload parsing
         statsRef.current.messagesReceived++;
-        console.log(`📈 Live broadcast received:`, payload.payload);
+        const msg = payload?.payload ?? payload;
+        console.log('📈 Live broadcast received:', msg);
         
-        const { symbol, bid, ask, mid, timestamp } = payload.payload;
+        const {
+          symbol,
+          bid,
+          ask,
+          mid,
+          price: rawPrice,
+          timestamp,
+        } = msg || {};
+        
         if (!symbol || !subscriptionsRef.current.has(symbol)) return;
-
+        
+        const toNum = (v: any) => (v === null || v === undefined || v === '' ? undefined : Number(v));
+        const nBid = toNum(bid);
+        const nAsk = toNum(ask);
+        const nMid = toNum(mid);
+        const nPrice = toNum(rawPrice);
+        
+        const computedPrice =
+          (typeof nMid === 'number' ? nMid : undefined) ??
+          (typeof nBid === 'number' && typeof nAsk === 'number'
+            ? (nBid + nAsk) / 2
+            : undefined) ??
+          (typeof nPrice === 'number' ? nPrice : undefined);
+        
+        if (typeof computedPrice !== 'number' || isNaN(computedPrice)) {
+          console.warn('⚠️ Broadcast payload missing usable price fields:', msg);
+          return;
+        }
+        
         const priceData: PriceData = {
           symbol,
-          price: parseFloat(mid || ask || bid),
+          price: computedPrice,
           change: 0,
           changePercent: 0,
           timestamp: timestamp || new Date().toISOString(),
           receivedAt: Date.now(),
-          bid: bid ? parseFloat(bid) : undefined,
-          ask: ask ? parseFloat(ask) : undefined,
-          mid: mid ? parseFloat(mid) : undefined
+          bid: nBid,
+          ask: nAsk,
+          mid: nMid ?? (typeof nBid === 'number' && typeof nAsk === 'number' ? (nBid + nAsk) / 2 : undefined)
         };
-
+        
         // Calculate change if we have previous price
         const previousPrice = internalPrices[symbol]?.price;
-        if (previousPrice) {
+        if (typeof previousPrice === 'number') {
           priceData.change = priceData.price - previousPrice;
           priceData.changePercent = (priceData.change / previousPrice) * 100;
         }
-
+        
         setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
         setPrices(prev => ({ ...prev, [symbol]: priceData }));
         setLastUpdated(new Date());
         arrivalTimestamps.current.set(symbol, Date.now());
         realtimeReceivedSymbols.current.add(symbol);
-
+        
         console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
       })
       .subscribe((status) => {

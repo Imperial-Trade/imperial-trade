@@ -10,7 +10,6 @@ import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
 import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
-import { LivePriceDiagnosticsPanel } from "@/components/admin/LivePriceDiagnosticsPanel";
 import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
 import RealtimeOptimizationDashboard from "@/pages/admin/RealtimeOptimizationDashboard";
 import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationAnalyticsDashboard";
@@ -43,7 +42,7 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-11' : 'grid-cols-9'}`}>
+        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-10' : 'grid-cols-9'}`}>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Requests
@@ -80,12 +79,6 @@ const AdminPanel: React.FC = () => {
             <Shield className="w-4 h-4" />
             Settings
           </TabsTrigger>
-          {isDevToolsEnabled() && (
-            <TabsTrigger value="live-prices" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Live Prices
-            </TabsTrigger>
-          )}
           {isDevToolsEnabled() && (
             <TabsTrigger value="dev-tools" className="flex items-center gap-2">
               <Code className="w-4 h-4" />
@@ -136,12 +129,6 @@ const AdminPanel: React.FC = () => {
         <TabsContent value="optimization" className="space-y-4">
           <RealtimeOptimizationDashboard />
         </TabsContent>
-
-        {isDevToolsEnabled() && (
-          <TabsContent value="live-prices" className="space-y-4">
-            <LivePriceDiagnosticsPanel />
-          </TabsContent>
-        )}
 
         {isDevToolsEnabled() && (
           <TabsContent value="dev-tools" className="space-y-4">

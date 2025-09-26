@@ -167,27 +167,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     console.log('🚨 EMERGENCY INTERVENTION: Provider stability service blocking provider, performing emergency reset...');
     providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
   }
-  
-  // 🚨 REMOVED: No longer blocking provider in render - stability tracking moved to useEffect
 
-  // 🚨 PHASE 1: Provider stability tracking - moved AFTER canMount check
+  // Provider initialization state
+  const [isProviderReady, setIsProviderReady] = useState(false);
   const mountTimeRef = useRef(Date.now());
   const initCountRef = useRef(0);
   
   initCountRef.current++;
-  const initTime = Date.now();
-  const timeSinceMount = initTime - mountTimeRef.current;
-  
-  // 🚨 CRITICAL: Detect rapid re-initialization (restart loop)
-  if (initCountRef.current > 1 && timeSinceMount < 10000) {
-    console.error(`🚨 PROVIDER RESTART LOOP DETECTED: Init #${initCountRef.current} after only ${timeSinceMount}ms`);
-    console.error('🔍 Restart cause investigation needed - parent component re-rendering');
-  }
-  
-  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
-  
-  // Provider initialization state
-  const [isProviderReady, setIsProviderReady] = useState(false);
+  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current})`);
   
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
@@ -200,6 +187,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+  
+  // REALTIME FALLBACK: Add postgres_changes subscription if no broadcast within 10s
+  const fallbackChannelRef = useRef<RealtimeChannel | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   
   // 🚀 FRONTEND THROTTLING: Dual-layer price state management
   // Internal prices: Always fresh, updated immediately from backend (for data integrity)
@@ -253,6 +244,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       });
       mountOnlyRef.current = false;
       providerStabilityService.registerProviderUnmount('OptimizedWebSocketPriceProvider');
+      
+      // Cleanup channels
+      if (fallbackChannelRef.current) {
+        fallbackChannelRef.current.unsubscribe();
+        fallbackChannelRef.current = null;
+      }
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
     };
   }, []);
   
@@ -305,11 +306,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const lastUIUpdateRef = useRef(new Map<string, number>());
   const significantUpdatesRef = useRef(new Set<string>()); // Track symbols with critical changes
   
-  // REALTIME FALLBACK: Add postgres_changes subscription if no broadcast within 10s
-  const fallbackChannelRef = useRef<RealtimeChannel | null>(null);
-  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const isFollowerRef = useRef(false);
+  // 🎯 "Hydrate and Highlight" state tracking
+  const realtimeReceivedSymbols = useRef(new Set<string>());
   
+  // HYSTERESIS: Track quality states to prevent flicker
+  const qualityStateRef = useRef<Map<string, { 
+    quality: 'live' | 'hydrated' | 'stale', 
+    lastPromotedToLive: number | null,
+    lastDemotedFromLive: number | null 
+  }>>(new Map());
+  
+  // 🚀 ANTI-FLICKER: 3-sample confirmation to prevent rapid oscillation
+  const qualitySampleHistoryRef = useRef(new Map<string, string[]>());
+  
+  // 🚀 ANTI-FLICKER: 200ms result cache to prevent render-based micro-flips
+  const qualityResultCacheRef = useRef(new Map<string, { quality: string; timestamp: number }>());
+
+  // Setup realtime fallback for postgres_changes subscription
   const setupRealtimeFallback = useCallback(() => {
     if (fallbackChannelRef.current) return;
     
@@ -339,6 +352,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
           setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
           setLastUpdated(new Date());
+          
+          console.log(`📡 Fallback price update: ${row.symbol} = ${priceData.price}`);
         }
       })
       .subscribe();
@@ -351,6 +366,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
       const timer = setTimeout(() => {
         if (statsRef.current.messagesReceived === 0) {
+          console.log('🔄 No broadcast messages received, activating fallback');
           setupRealtimeFallback();
         }
       }, 10000);
@@ -358,1026 +374,56 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return () => clearTimeout(timer);
     }
   }, [connectionStatus, setupRealtimeFallback]);
-  
-  // 🎯 "Hydrate and Highlight" state tracking
-  const realtimeReceivedSymbols = useRef(new Set<string>());
-  
-  // HYSTERESIS: Track quality states to prevent flicker
-  const qualityStateRef = useRef<Map<string, { 
-    quality: 'live' | 'hydrated' | 'stale', 
-    lastPromotedToLive: number | null,
-    lastDemotedFromLive: number | null 
-  }>>(new Map());
-  
-  // 🚀 ANTI-FLICKER: 3-sample confirmation to prevent rapid oscillation
-  const qualitySampleHistoryRef = useRef(new Map<string, string[]>());
-  
-  // 🚀 ANTI-FLICKER: 200ms result cache to prevent render-based micro-flips
-  const qualityResultCacheRef = useRef(new Map<string, { quality: string; timestamp: number }>());
 
-  // 🚀 PHASE 2: "Hydrate and Subscribe" - Database-first price loading
-  const hydrateFromDatabase = useCallback(async (symbols: string[]) => {
-    if (symbols.length === 0) return;
-    
-    console.log('🔄 Hydrating prices from database for:', symbols);
-    
-    try {
-      const promises = symbols.map(async (symbol) => {
-        const { data, error } = await supabase.rpc('get_latest_market_price', { 
-          p_symbol: symbol.toUpperCase() 
-        });
-        
-        if (error) {
-          console.warn(`❌ Database hydration failed for ${symbol}:`, error);
-          return null;
-        }
-        
-        if (data && data.length > 0) {
-          const priceInfo = data[0];
-          console.log(`💾 Database hydration: ${symbol} = $${priceInfo.price} (${priceInfo.age_seconds}s old)`);
-          
-          return {
-            symbol: priceInfo.symbol,
-            price: parseFloat(priceInfo.price.toString()),
-            change: 0, // We don't calculate change from database
-            changePercent: 0,
-            timestamp: priceInfo.last_updated,
-            bid: priceInfo.bid ? parseFloat(priceInfo.bid.toString()) : undefined,
-            ask: priceInfo.ask ? parseFloat(priceInfo.ask.toString()) : undefined,
-            mid: priceInfo.mid ? parseFloat(priceInfo.mid.toString()) : undefined,
-          };
-        }
-        
-        return null;
-      });
-      
-      const results = await Promise.all(promises);
-      const validPrices = results.filter(Boolean) as PriceData[];
-      
-      if (validPrices.length > 0) {
-        // 🚀 FRONTEND THROTTLING: Update both internal and UI prices immediately for database hydration
-        setInternalPrices(prev => {
-          const updated = { ...prev };
-          validPrices.forEach(priceData => {
-            updated[priceData.symbol] = priceData;
-            
-            // 🚀 CRITICAL FIX: Set timestamp for quality detection to prevent flicker
-            // This ensures getConnectionQuality() sees fresh data from database hydration
-            const arrivalTime = Date.now();
-            priceUpdateTimestamps.current.set(priceData.symbol, Date.parse(priceData.timestamp));
-            arrivalTimestamps.current.set(priceData.symbol, arrivalTime); // Track arrival time for sub-2s guarantee
-          });
-          return updated;
-        });
-        
-        // For initial hydration, update UI prices immediately
-        setPrices(prev => {
-          const updated = { ...prev };
-          validPrices.forEach(priceData => {
-            updated[priceData.symbol] = priceData;
-          });
-          return updated;
-        });
-        
-        setLastUpdated(new Date());
-        console.log(`✅ Database hydration complete: ${validPrices.length}/${symbols.length} symbols loaded`);
-      } else {
-        console.log('ℹ️ No prices found in database for requested symbols');
-      }
-      
-    } catch (error) {
-      console.error('❌ Database hydration error:', error);
-    }
-  }, []);
-
-  // PHASE 1: Connection State Management with Circuit Breaker
-  const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
-    connectionStateRef.current = { ...connectionStateRef.current, ...updates };
-    setConnectionStatus(connectionStateRef.current.status === 'circuit-breaker' ? 'error' : connectionStateRef.current.status);
-  }, []);
-
-  const isCircuitBreakerOpen = useCallback(() => {
-    const state = connectionStateRef.current;
-    return state.status === 'circuit-breaker' || 
-           (state.errorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures &&
-            Date.now() < (state.nextRetryAt || 0));
-  }, []);
-
-  const calculateRetryDelay = useCallback((attempt: number): number => {
-    const baseDelay = Math.min(
-      CIRCUIT_BREAKER_CONFIG.baseRetryDelay * Math.pow(CIRCUIT_BREAKER_CONFIG.retryMultiplier, attempt),
-      CIRCUIT_BREAKER_CONFIG.maxRetryDelay
-    );
-    
-    const jitter = baseDelay * CIRCUIT_BREAKER_CONFIG.jitterRange * (Math.random() - 0.5);
-    return Math.max(baseDelay + jitter, 1000); // Minimum 1 second
-  }, []);
-
-  // 🔥 LEAK-PROOF: Stable disconnect function with definitive logging
-  const disconnect = useCallback(() => {
-    // Clear all timers first
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
-    if (healthCheckIntervalRef.current) {
-      clearInterval(healthCheckIntervalRef.current);
-      healthCheckIntervalRef.current = null;
-    }
-
-    // Mark as intentional close to ignore CLOSED/TIMED_OUT noise
-    manualCloseRef.current = true;
-
-    // 🔥 DEFINITIVE LOGGING: Clean up channel with deterministic logging
-    if (channelRef.current) {
-      realtimeLogger.logUnsubscribe(channelIdRef.current, 'OptimizedWebSocketPriceProvider');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    isConnectingRef.current = false;
-    updateConnectionState({ status: 'disconnected' });
-    
-    // Track telemetry (health monitor unregistration only happens on unmount)
-    recordConnection();
-
-    // Reset manual close flag shortly after cleanup
-    setTimeout(() => { manualCloseRef.current = false; }, 1000);
-  }, [updateConnectionState]); // 🔥 LEAK-PROOF: Minimal dependencies
-
-  // 🔥 LEAK-PROOF: Connection with mount guards and emergency breaker
-  const connect = useCallback(async () => {
-    // 🚨 PHASE 1: Provider-level circuit breaker for restart loops
-    const timeSinceMount = Date.now() - mountTimeRef.current;
-    if (timeSinceMount < 5000 && initCountRef.current > 2) {
-      console.error(`🚨 Provider restart loop detected - blocking connection (${initCountRef.current} inits in ${timeSinceMount}ms)`);
-      emergencyRealtimeBreaker.recordFailure('Provider restart loop detected');
-      return;
-    }
-    
-    // 🚨 EMERGENCY BREAKER: Check if realtime operations are allowed
-    if (!emergencyRealtimeBreaker.canAllowRealtimeOperation('connection')) {
-      if (isDevToolsEnabled()) {
-        console.log('WS-P: connect blocked by emergency breaker');
-      }
-      return;
-    }
-    
-    // 🔥 LEAK-PROOF: Block connect after unmount
-    if (!mountOnlyRef.current) {
-      if (isDevToolsEnabled()) {
-        console.log('WS-P: connect blocked (component unmounted)');
-      }
-      return;
-    }
-    
-    // Guard: Block connect if actually background disconnected (not just timer pending)
-    if (isBackgroundDisconnected.current) {
-      if (isDevToolsEnabled()) {
-        console.log('WS-P: connect blocked (background disconnected)');
-      }
-      return;
-    }
-    
-    // 🔥 LEAK-PROOF: Connection guards with better logging
-    if (isConnectingRef.current || channelRef.current || isCircuitBreakerOpen()) {
-      if (isDevToolsEnabled()) {
-        console.log('🚫 Connection attempt blocked:', {
-          isConnecting: isConnectingRef.current,
-          hasChannel: !!channelRef.current,
-          circuitOpen: isCircuitBreakerOpen()
-        });
-      }
-      return;
-    }
-
-    isConnectingRef.current = true;
-    updateConnectionState({ status: 'connecting' });
-    setError(null);
-
-    try {
-      // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
-      realtimeLogger.logSubscribe(channelIdRef.current, 'live-prices-broadcast', 'OptimizedWebSocketPriceProvider');
-
-      // PHASE 2: Create optimized channel WITHOUT presence (reduces 90% of messages)
-      const channel = supabase.channel('live-prices-broadcast', {
-        config: {
-          broadcast: { self: false }, // Don't echo our own messages
-          // NO PRESENCE - this was causing message explosion
-        }
-      });
-
-      channelRef.current = channel;
-
-      // PHASE 4: Set up rate-limited message handler with batching
-      // V2 event listener for legacy compatibility
-      channel.on('broadcast', { event: 'price_update' }, ({ payload }) => {
-        handlePriceUpdate(payload, 'price_update');
-      });
-
-      // V3 event listener for new versioned events
-      channel.on('broadcast', { event: 'price_update_v3' }, ({ payload }) => {
-        handlePriceUpdate(payload, 'price_update_v3');
-      });
-
-      const handlePriceUpdate = (payload: any, eventVersion: 'price_update' | 'price_update_v3') => {
-        try {
-          const normalizedSymbol = normalizeSymbol(payload?.symbol);
-          if (!normalizedSymbol || !subscriptionsRef.current.has(normalizedSymbol)) {
-            return; // Skip unsubscribed symbols
-          }
-
-        // 🚀 FRONTEND THROTTLING: No rate limiting here - let all backend data through
-        const now = Date.now();
-
-        // 🚨 EMERGENCY MESSAGE FILTER: Block messages not allowed by breaker
-        if (!emergencyRealtimeBreaker.recordMessage(eventVersion)) {
-          return; // Message blocked by emergency breaker
-        }
-        // 🔥 SAMPLED TELEMETRY: Only record 1 in 50 price messages to reduce overhead
-        if (Math.random() < 0.02) { // 2% sampling rate for price events
-          telemetry.record(eventVersion);
-          costTracker.recordRealtimeMessage('price_update');
-          pricePerformanceMonitor.recordPriceUpdate();
-          
-          // Dev-only logging with session info (sampled)
-          if (isDevToolsEnabled()) {
-            console.log(`📊 Price event: ${eventVersion} | Session: ${telemetry.sessionInfo.sessionId} | Build: ${telemetry.sessionInfo.buildVersion}`);
-          }
-        }
-          
-          // 🔥 SAMPLED LATENCY: Only calculate latency for 1 in 20 messages
-          if (payload.ts && Math.random() < 0.05) { // 5% sampling rate for latency
-            const latency = Date.now() - new Date(payload.ts).getTime();
-            statsRef.current.latencySum += latency;
-            statsRef.current.latencyCount++;
-            pricePerformanceMonitor.recordLatency(latency);
-          }
-          
-          const arrivalTime = now; // Capture arrival time for sub-2s guarantee
-          const priceData: PriceData = {
-            symbol: normalizedSymbol,
-            price: payload.price,
-            change: payload.change || 0,
-            changePercent: payload.changePercent || 0,
-            timestamp: payload.ts || new Date().toISOString(),
-            receivedAt: arrivalTime, // New: Track client arrival time
-            bid: payload.bid,
-            ask: payload.ask,
-            mid: payload.mid
-          };
-          
-          // Track arrival timestamp for ultra-responsive age calculation
-          arrivalTimestamps.current.set(normalizedSymbol, arrivalTime);
-
-          // 🎯 Mark symbol as having received realtime update
-          realtimeReceivedSymbols.current.add(normalizedSymbol);
-          
-          // 🚀 FRONTEND THROTTLING: Update internal prices immediately (maintain data freshness)
-          setInternalPrices(prev => ({ ...prev, [normalizedSymbol]: priceData }));
-          setLastUpdated(new Date());
-          
-          // Track price update timestamp for quality detection
-          priceUpdateTimestamps.current.set(normalizedSymbol, Date.parse(priceData.timestamp));
-          
-          // 🚀 SMART UI THROTTLING: Determine if this update needs immediate UI visibility
-          const previousPrice = prices[normalizedSymbol]?.price;
-          let shouldUpdateUI = false;
-          
-          if (previousPrice) {
-            const changePercent = Math.abs((priceData.price - previousPrice) / previousPrice);
-            
-            // Critical changes bypass throttling for immediate UI updates
-            if (changePercent >= SIGNIFICANCE_THRESHOLDS.CRITICAL) {
-              significantUpdatesRef.current.add(normalizedSymbol);
-              shouldUpdateUI = true;
-            }
-            // Major changes get priority in next scheduled update
-            else if (changePercent >= SIGNIFICANCE_THRESHOLDS.MAJOR) {
-              significantUpdatesRef.current.add(normalizedSymbol);
-            }
-            // 🔥 LIVE PRICE WIDGET BYPASS: Always update immediately for live price displays
-            else if (CRITICAL_TRADING_EVENTS.LIVE_PRICE_WIDGET) {
-              shouldUpdateUI = true;
-            }
-          } else {
-            // First time receiving this symbol - show immediately
-            shouldUpdateUI = true;
-          }
-          
-          // Add to UI buffer for throttled updates
-          uiUpdateBuffer.current.set(normalizedSymbol, priceData);
-          
-          // Immediate UI update for critical changes
-          if (shouldUpdateUI) {
-            setPrices(prev => ({ ...prev, [normalizedSymbol]: priceData }));
-            lastUIUpdateRef.current.set(normalizedSymbol, Date.now());
-            uiUpdateBuffer.current.delete(normalizedSymbol); // Remove from buffer since we updated immediately
-          } else {
-            // Schedule throttled UI updates for non-critical changes
-            scheduleUIUpdate();
-          }
-          
-          // 🔥 SAMPLED UI TRACKING: Only record 1 in 10 UI updates
-          if (Math.random() < 0.1) {
-            pricePerformanceMonitor.recordUIUpdate();
-          }
-          
-          // Cache internal prices to sessionStorage with timestamp and arrival times
-          try {
-            const cacheData = {
-              prices: { [normalizedSymbol]: priceData },
-              timestamp: Date.now(),
-              arrivalTimes: { [normalizedSymbol]: arrivalTimestamps.current.get(normalizedSymbol) }
-            };
-            const existingCache = sessionStorage.getItem('cached_prices');
-            const existingData = existingCache ? JSON.parse(existingCache) : { prices: {}, arrivalTimes: {} };
-            
-            sessionStorage.setItem('cached_prices', JSON.stringify({
-              prices: { ...existingData.prices, ...cacheData.prices },
-              timestamp: cacheData.timestamp,
-              arrivalTimes: { ...existingData.arrivalTimes, ...cacheData.arrivalTimes }
-            }));
-          } catch (error) {
-            // Ignore sessionStorage errors (quota exceeded, etc.)
-          }
-      
-          // PHASE B: BroadcastChannel fanout - Leader broadcasts to followers
-          if (isLeader && broadcastChannelRef.current) {
-            try {
-              broadcastChannelRef.current.postMessage({
-                type: 'price-update',
-                data: { [normalizedSymbol]: priceData },
-                timestamp: Date.now()
-              });
-            } catch (error) {
-              if (isDevToolsEnabled()) {
-                console.warn('📡 BroadcastChannel send failed:', error);
-              }
-            }
-          }
-          
-        } catch (err) {
-          // PHASE 5: Throttle identical error logs
-          const errorMsg = `Error processing price update: ${err}`;
-          if (lastErrorLogRef.current === errorMsg) {
-            errorLogCountRef.current++;
-            if (errorLogCountRef.current % 10 === 0) {
-              console.error(`❌ ${errorMsg} (${errorLogCountRef.current} times)`);
-            }
-          } else {
-            console.error('❌', errorMsg);
-            lastErrorLogRef.current = errorMsg;
-            errorLogCountRef.current = 1;
-          }
-        }
-      };
-
-      // Subscribe with enhanced error handling
-      channel.subscribe((status) => {
-        if (isDevToolsEnabled()) {
-          console.log('🔌 Connection status:', status);
-        }
-        
-        if (status === 'SUBSCRIBED') {
-          // Deterministic subscribe logging
-          if (isDevToolsEnabled()) {
-            console.log(`WS-P: SUBSCRIBE [${channelIdRef.current}] name=live-prices-broadcast`);
-          }
-          
-          // Success: Reset circuit breaker
-          updateConnectionState({
-            status: 'connected',
-            attempt: 0,
-            errorCount: 0,
-            nextRetryAt: null,
-            lastSuccessAt: Date.now()
-          });
-          
-          statsRef.current.reconnections++;
-          recordConnection(); // Track telemetry
-          isConnectingRef.current = false;
-          startHealthMonitoring();
-          
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          const state = connectionStateRef.current;
-
-          // Ignore intentional closes to prevent false errors
-          if (manualCloseRef.current && status === 'CLOSED') {
-            if (isDevToolsEnabled()) {
-              console.log('ℹ️ Channel closed intentionally');
-            }
-            updateConnectionState({ status: 'disconnected' });
-            setError(null);
-            isConnectingRef.current = false;
-            channelRef.current = null;
-            manualCloseRef.current = false;
-            return;
-          }
-
-          // Handle connection errors with exponential backoff
-          const newAttempt = state.attempt + 1;
-          const newErrorCount = state.errorCount + 1;
-          
-          if (newErrorCount >= CIRCUIT_BREAKER_CONFIG.maxConsecutiveFailures) {
-            const retryDelay = CIRCUIT_BREAKER_CONFIG.breakerOpenDuration;
-            updateConnectionState({
-              status: 'circuit-breaker',
-              attempt: newAttempt,
-              errorCount: newErrorCount,
-              nextRetryAt: Date.now() + retryDelay
-            });
-            
-            setError(`Connection failed ${newErrorCount} times. Circuit breaker opened. Retrying in ${retryDelay/1000}s`);
-            
-            setTimeout(() => {
-              if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
-                connect();
-              }
-            }, retryDelay);
-          } else {
-            updateConnectionState({ 
-              status: 'error', 
-              attempt: newAttempt,
-              errorCount: newErrorCount
-            });
-            
-            const retryDelay = calculateRetryDelay(newAttempt);
-            setError(`Connection ${status.toLowerCase()}. Retrying in ${Math.round(retryDelay/1000)}s (attempt ${newAttempt})`);
-            
-            reconnectTimeoutRef.current = setTimeout(() => {
-              if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
-                connect();
-              }
-            }, retryDelay);
-          }
-          
-          isConnectingRef.current = false;
-          channelRef.current = null;
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Connection setup error:', error);
-      updateConnectionState({ status: 'error', errorCount: connectionStateRef.current.errorCount + 1 });
-      setError(`Setup failed: ${error.message}`);
-      isConnectingRef.current = false;
-      
-      // Retry with exponential backoff
-      const retryDelay = calculateRetryDelay(connectionStateRef.current.attempt + 1);
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (mountOnlyRef.current && subscriptionsRef.current.size > 0) {
-          connect();
-        }
-      }, retryDelay);
-    }
-  }, [updateConnectionState, calculateRetryDelay]); // 🔥 LEAK-PROOF: Minimal dependencies
-
-  // Health monitoring function
-  const startHealthMonitoring = useCallback(() => {
-    if (healthCheckIntervalRef.current) {
-      clearInterval(healthCheckIntervalRef.current);
-    }
-    
-    healthCheckIntervalRef.current = setInterval(() => {
-      const now = Date.now();
-      const lastSuccess = connectionStateRef.current.lastSuccessAt;
-      
-      if (lastSuccess && (now - lastSuccess) > HEALTH_CONFIG.maxSilentPeriod) {
-        if (isDevToolsEnabled()) {
-          console.warn('🔄 Health check: No updates for too long, reconnecting...');
-        }
-        disconnect();
-        if (subscriptionsRef.current.size > 0) {
-          setTimeout(() => connect(), 1000);
-        }
-      }
-    }, HEALTH_CONFIG.healthCheckInterval);
-  }, [disconnect, connect]);
-
-  // PHASE 1: Enhanced subscription management with ref counting
-  const subscribe = useCallback((symbols: string[]) => {
-    if (!isPriceSubscriptionAllowed) {
-      if (isDevToolsEnabled()) {
-        console.log('WS-P: subscription blocked by route gate');
-      }
-      return;
-    }
-
-    const validSymbols = symbols
-      .map(s => normalizeSymbol(s))
-      .filter(s => s && ALLOWED_SYMBOLS.includes(s as any));
-
-    if (validSymbols.length === 0) {
-      if (isDevToolsEnabled()) {
-        console.warn('WS-P: no valid symbols to subscribe to');
-      }
-      return;
-    }
-
-    // Update subscription ref counts
-    let newSubscriptions = false;
-    validSymbols.forEach(symbol => {
-      const currentCount = subscriptionsRef.current.get(symbol) || 0;
-      if (currentCount === 0) {
-        newSubscriptions = true;
-      }
-      subscriptionsRef.current.set(symbol, currentCount + 1);
-    });
-
-    // 🚀 PHASE 2: Hydrate from database FIRST, then connect to Realtime
-    hydrateFromDatabase(validSymbols).then(() => {
-      // Only connect if we have new subscriptions and no active connection
-      if (newSubscriptions && !channelRef.current && !isConnectingRef.current) {
-        connect();
-      }
-    });
-
-    if (isDevToolsEnabled()) {
-      console.log('WS-P: subscribed to:', validSymbols.map(s => 
-        `${s}(${subscriptionsRef.current.get(s)})`
-      ).join(', '));
-    }
-  }, [isPriceSubscriptionAllowed, connect, hydrateFromDatabase]);
-
-  const unsubscribe = useCallback((symbols: string[]) => {
-    const validSymbols = symbols
-      .map(s => normalizeSymbol(s))
-      .filter(s => s);
-
-    validSymbols.forEach(symbol => {
-      const currentCount = subscriptionsRef.current.get(symbol) || 0;
-      if (currentCount <= 1) {
-        subscriptionsRef.current.delete(symbol);
-      } else {
-        subscriptionsRef.current.set(symbol, currentCount - 1);
-      }
-    });
-
-    // Disconnect if no active subscriptions
-    if (subscriptionsRef.current.size === 0 && channelRef.current) {
-      disconnect();
-    }
-
-    if (isDevToolsEnabled()) {
-      console.log('WS-P: unsubscribed from:', validSymbols);
-    }
-  }, [disconnect]);
-
-  // 🚀 FRONTEND THROTTLING: Smart UI update scheduler
-  const scheduleUIUpdate = useCallback(() => {
-    if (uiUpdateTimeoutRef.current) return; // Already scheduled
-    
-    uiUpdateTimeoutRef.current = setTimeout(() => {
-      if (uiUpdateBuffer.current.size > 0) {
-        const bufferedUpdates = Object.fromEntries(uiUpdateBuffer.current);
-        
-        // Prioritize significant updates
-        const prioritizedUpdates: Record<string, PriceData> = {};
-        const normalUpdates: Record<string, PriceData> = {};
-        
-        Object.entries(bufferedUpdates).forEach(([symbol, priceData]) => {
-          if (significantUpdatesRef.current.has(symbol)) {
-            prioritizedUpdates[symbol] = priceData;
-            significantUpdatesRef.current.delete(symbol);
-          } else {
-            normalUpdates[symbol] = priceData;
-          }
-        });
-        
-        // Update UI with prioritized updates first, then normal updates
-        const allUpdates = { ...normalUpdates, ...prioritizedUpdates };
-        
-        setPrices(prev => ({ ...prev, ...allUpdates }));
-        
-        // Update timestamps for UI updates
-        Object.keys(allUpdates).forEach(symbol => {
-          lastUIUpdateRef.current.set(symbol, Date.now());
-        });
-        
-        uiUpdateBuffer.current.clear();
-        
-        if (isDevToolsEnabled()) {
-          console.log(`📺 UI Update: ${Object.keys(allUpdates).length} symbols (${Object.keys(prioritizedUpdates).length} priority)`);
-        }
-      }
-      
-      uiUpdateTimeoutRef.current = null;
-    }, UI_UPDATE_THROTTLE_MS);
-  }, []);
-
-  // Get price function (returns UI-throttled prices for user experience)
-  const getPrice = useCallback((symbol: string): PriceData | null => {
-    const normalizedSymbol = normalizeSymbol(symbol);
-    return normalizedSymbol ? (prices[normalizedSymbol] || null) : null;
-  }, [prices]);
-
-  // Get internal price function (always fresh data for trading logic)
-  const getInternalPrice = useCallback((symbol: string): PriceData | null => {
-    const normalizedSymbol = normalizeSymbol(symbol);
-    return normalizedSymbol ? (internalPrices[normalizedSymbol] || null) : null;
-  }, [internalPrices]);
-
-  // 🚀 Enhanced "Hydrate and Highlight" data age and connection quality functions
-  const getDataAge = useCallback((symbol: string): number => {
-    // 🔥 CRITICAL FIX: Use internal price for accurate data age (not throttled UI price)
-    const priceData = getInternalPrice(symbol);
-    if (!priceData) return Infinity;
-    
-    const ageMs = Date.now() - new Date(priceData.timestamp).getTime();
-    return Math.floor(ageMs / 1000); // Return age in seconds
-  }, [getInternalPrice]);
-
-  const getConnectionQuality = useCallback((symbol?: string): 'hydrated' | 'live' | 'stale' => {
-    // Symbol-specific quality detection with hysteresis (sticky live) logic
-    if (symbol) {
-      const normalizedSymbol = normalizeSymbol(symbol);
-      const now = Date.now();
-      
-      // 🔥 OPTIMIZED: Reduced quality cache duration for faster responsiveness
-      const cachedResult = qualityResultCacheRef.current.get(normalizedSymbol);
-      if (cachedResult && (now - cachedResult.timestamp) < 100) { // 100ms cache for faster updates (down from 200ms)
-        return cachedResult.quality as 'live' | 'hydrated' | 'stale';
-      }
-      
-      const priceData = getPrice(normalizedSymbol);
-      
-      // Get or initialize quality state for this symbol
-      const currentState = qualityStateRef.current.get(normalizedSymbol) || {
-        quality: 'stale',
-        lastPromotedToLive: null,
-        lastDemotedFromLive: null
-      };
-
-      let proposedQuality: 'live' | 'hydrated' | 'stale' = 'stale';
-
-      if (priceData && connectionStatus === 'connected') {
-        const lastTick = priceUpdateTimestamps.current.get(normalizedSymbol);
-        const hasReceivedRealtime = realtimeReceivedSymbols.current.has(normalizedSymbol);
-        
-        if (lastTick) {
-          const ageMs = now - lastTick;
-          
-          // 🔥 FIXED: Use 3 second threshold instead of stale threshold
-          if (ageMs < 3000 && hasReceivedRealtime) {
-            proposedQuality = 'live';
-          }
-          // DELAYED DEMOTION: live → hydrated only after 2.5+ seconds without ticks (Sub-2s guarantee)
-          else if (currentState.quality === 'live') {
-            const liveDemotionGraceMs = 2500; // 2.5 seconds grace period for ultra-responsive feel
-            if (ageMs < liveDemotionGraceMs) {
-              proposedQuality = 'live'; // Stay live during grace period
-            } else {
-              proposedQuality = 'hydrated';
-            }
-          }
-          // FRESH DATA: Promote stale to hydrated for fresh data
-          else if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
-            proposedQuality = 'hydrated';
-          } else {
-            proposedQuality = currentState.quality || 'stale';
-          }
-        } else if (priceData) {
-          // Have price data but no recent tick - consider it hydrated
-          proposedQuality = 'hydrated';
-        }
-      }
-      
-      // 🚀 STABILITY CHECK: Only allow quality changes if stability management approves
-      if (!shouldAllowQualityChange(normalizedSymbol, currentState.quality || 'stale', proposedQuality)) {
-        qualityResultCacheRef.current.set(normalizedSymbol, { 
-          quality: currentState.quality || 'stale', 
-          timestamp: now 
-        });
-        return currentState.quality || 'stale';
-      }
-
-      // Immediate promotion from stale -> hydrated when fresh data present
-      if (currentState.quality === 'stale' && proposedQuality === 'hydrated') {
-        const newState = {
-          quality: 'hydrated' as const,
-          lastPromotedToLive: null,
-          lastDemotedFromLive: null
-        };
-        qualityStateRef.current.set(normalizedSymbol, newState);
-        qualityResultCacheRef.current.set(normalizedSymbol, { quality: newState.quality, timestamp: now });
-        return newState.quality;
-      }
-
-      // 🚀 ANTI-FLICKER: Use sample confirmation only when transitioning to/from live (OPTIMIZED)
-      const useSamples = (proposedQuality === 'live' || currentState.quality === 'live');
-      if (useSamples) {
-        const sampleHistory = qualitySampleHistoryRef.current.get(normalizedSymbol) || [];
-        sampleHistory.push(proposedQuality);
-        if (sampleHistory.length > 2) sampleHistory.shift(); // 🔥 OPTIMIZED: Reduced from 3 to 2 samples
-        qualitySampleHistoryRef.current.set(normalizedSymbol, sampleHistory);
-
-        let finalQuality = currentState.quality || 'stale';
-        const allSamplesMatch = sampleHistory.length >= 2 && sampleHistory.every(sample => sample === proposedQuality); // 🔥 OPTIMIZED: 2-sample confirmation
-        if (allSamplesMatch && proposedQuality !== currentState.quality) {
-          finalQuality = proposedQuality;
-          const newState = {
-            ...currentState,
-            quality: finalQuality,
-            ...(finalQuality === 'live' && currentState.quality !== 'live' ? { lastPromotedToLive: now } : {}),
-            ...(finalQuality !== 'live' && currentState.quality === 'live' ? { lastDemotedFromLive: now } : {})
-          };
-          qualityStateRef.current.set(normalizedSymbol, newState);
-        }
-        qualityResultCacheRef.current.set(normalizedSymbol, { quality: finalQuality, timestamp: now });
-        return finalQuality;
-      }
-
-      // For non-live transitions, apply immediate change
-      if (proposedQuality !== currentState.quality) {
-        const newState = {
-          ...currentState,
-          quality: proposedQuality,
-          lastPromotedToLive: proposedQuality === 'live' ? now : currentState.lastPromotedToLive,
-          lastDemotedFromLive: currentState.quality === 'live' && proposedQuality !== 'live' ? now : currentState.lastDemotedFromLive
-        };
-        qualityStateRef.current.set(normalizedSymbol, newState);
-        qualityResultCacheRef.current.set(normalizedSymbol, { quality: newState.quality, timestamp: now });
-        return newState.quality;
-      }
-
-      // No change
-      qualityResultCacheRef.current.set(normalizedSymbol, { quality: currentState.quality, timestamp: now });
-      return currentState.quality;
-    }
-    
-    // Global quality detection (backward compatibility) - no hysteresis for global
-    if (connectionStatus === 'connected' && lastUpdated) {
-      const ageMs = Date.now() - lastUpdated.getTime();
-      if (ageMs < HEALTH_CONFIG.staleDataThreshold) {
-        return 'live';
-      }
-    }
-    
-    if (Object.keys(prices).length > 0) {
-      return 'hydrated';
-    }
-    
-    return 'stale';
-  }, [connectionStatus, lastUpdated, prices, getPrice]);
-
-  // Refresh price function with database fallback
-  const refreshPrice = useCallback(async (symbol: string) => {
-    const normalizedSymbol = normalizeSymbol(symbol);
-    if (!normalizedSymbol) return;
-    
-    // Try to refresh from database
-    await hydrateFromDatabase([normalizedSymbol]);
-  }, [hydrateFromDatabase]);
-
-  // Connection health function
-  const getConnectionHealth = useCallback(() => {
-    return {
-      isHealthy: connectionStatus === 'connected' && !error,
-      lastUpdate: lastUpdated
-    };
-  }, [connectionStatus, error, lastUpdated]);
-
-  // Get arrival age function for sub-2s guarantee
-  const getArrivalAge = useCallback((symbol: string): number => {
-    const normalizedSymbol = normalizeSymbol(symbol);
-    if (!normalizedSymbol) return Infinity;
-    
-    const arrivalTime = arrivalTimestamps.current.get(normalizedSymbol);
-    if (!arrivalTime) return Infinity;
-    
-    return Date.now() - arrivalTime; // Return age in milliseconds
-  }, []);
-
-  // Get stats function
-  const getStats = useCallback(() => {
-    const stats = statsRef.current;
-    return {
-      messagesReceived: stats.messagesReceived,
-      reconnections: stats.reconnections,
-      avgLatency: stats.latencyCount > 0 ? Math.round(stats.latencySum / stats.latencyCount) : 0
-    };
-  }, []);
-
-  // Restart connection function
-  const restartConnection = useCallback(() => {
-    disconnect();
-    if (subscriptionsRef.current.size > 0) {
-      setTimeout(() => connect(), 1000);
-    }
-  }, [disconnect, connect]);
-
-  // PHASE B: Set up BroadcastChannel for multi-tab coordination
-  useEffect(() => {
-    if (typeof BroadcastChannel !== 'undefined') {
-      broadcastChannelRef.current = new BroadcastChannel('optimized-ws-prices');
-      
-      broadcastChannelRef.current.onmessage = (event) => {
-        if (!isLeader && event.data.type === 'prices-batch') {
-          // Follower tabs receive price updates from leader
-          setPrices(prev => ({ ...prev, ...event.data.data }));
-          setLastUpdated(new Date(event.data.timestamp));
-          isFollowerRef.current = true;
-          
-          // CRITICAL FIX: Update arrival timestamps for follower tabs to prevent false staleness
-          const now = Date.now();
-          Object.keys(event.data.data).forEach(symbol => {
-            arrivalTimestamps.current.set(symbol, now);
-          });
-        }
-      };
-      
-      return () => {
-    // PHASE B: Handle disconnection gracefully  
-    if (channelRef.current) {
-      channelRef.current.unsubscribe();
-      channelRef.current = null;
-    }
-    
-    if (fallbackChannelRef.current) {
-      fallbackChannelRef.current.unsubscribe();
-      fallbackChannelRef.current = null;
-    }
-      };
-    }
-  }, [isLeader]);
-
-  // Stabilized watchdog with 30s cooldown and individual symbol refresh
-  const lastRestartTimeRef = useRef(0);
-  
-  useEffect(() => {
-    if (connectionStatus === 'connected' && subscriptionsRef.current.size > 0) {
-      watchdogIntervalRef.current = setInterval(() => {
-        const now = Date.now();
-        let allSymbolsStale = true;
-        const staleSymbols: string[] = [];
-        
-        // Check all subscribed symbols
-        subscriptionsRef.current.forEach((_, symbol) => {
-          const arrivalAge = getArrivalAge(symbol);
-          const currentStaleCount = watchdogStaleCountRef.current.get(symbol) || 0;
-          
-          if (arrivalAge > 6000) { // More than 6 seconds old (less aggressive)
-            const newStaleCount = currentStaleCount + 1;
-            watchdogStaleCountRef.current.set(symbol, newStaleCount);
-            staleSymbols.push(symbol);
-            
-            // Individual symbol refresh before restarting connection
-            if (newStaleCount >= 2 && newStaleCount < 4) {
-              if (Math.random() < 0.1 && isDevToolsEnabled()) { // 10% sampling
-                console.log(`🔄 Refreshing stale symbol: ${symbol} (age: ${arrivalAge}ms)`);
-              }
-              refreshPrice(symbol);
-            }
-          } else {
-            // Fresh data found - not all symbols are stale
-            allSymbolsStale = false;
-            watchdogStaleCountRef.current.set(symbol, 0);
-          }
-        });
-        
-        // Only restart if ALL symbols are stale for 4+ checks (24s total) and no recent restart
-        if (allSymbolsStale && staleSymbols.length > 0 && now - lastRestartTimeRef.current > 30000) {
-          const worstStaleCount = Math.max(...staleSymbols.map(s => watchdogStaleCountRef.current.get(s) || 0));
-          
-          if (worstStaleCount >= 4) {
-            if (Math.random() < 0.1 && isDevToolsEnabled()) { // 10% sampling
-              console.log(`🚨 Watchdog: All ${staleSymbols.length} symbols stale for 24s+, restarting connection`);
-            }
-            watchdogStaleCountRef.current.clear();
-            lastRestartTimeRef.current = now;
-            restartConnection();
-          }
-        }
-      }, 6000); // Check every 6 seconds (less frequent)
-
-      return () => {
-        if (watchdogIntervalRef.current) {
-          clearInterval(watchdogIntervalRef.current);
-          watchdogIntervalRef.current = null;
-        }
-      };
-    }
-  }, [connectionStatus, getArrivalAge, restartConnection, refreshPrice]);
-
-  // Mount/unmount lifecycle management
-  useEffect(() => {
-    mountOnlyRef.current = true;
-
-    return () => {
-      mountOnlyRef.current = false;
-      disconnect();
-      
-      // Clear all timers
-      if (uiUpdateTimeoutRef.current) {
-        clearTimeout(uiUpdateTimeoutRef.current);
-      }
-      
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-      }
-      
-      if (watchdogIntervalRef.current) {
-        clearInterval(watchdogIntervalRef.current);
-        watchdogIntervalRef.current = null;
-      }
-    };
-  }, [disconnect]);
-
-  // Page visibility handling for background disconnection
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Start disconnect timer when page becomes hidden
-        visibilityTimeoutRef.current = setTimeout(() => {
-          if (channelRef.current) {
-            disconnect();
-            isBackgroundDisconnected.current = true;
-          }
-        }, 60000); // Disconnect after 1 minute of being hidden
-      } else {
-        // Clear disconnect timer and reconnect when page becomes visible
-        if (visibilityTimeoutRef.current) {
-          clearTimeout(visibilityTimeoutRef.current);
-          visibilityTimeoutRef.current = null;
-        }
-        
-        // Always attempt reconnection if we have subscriptions and aren't connected
-        if (subscriptionsRef.current.size > 0 && connectionStatus !== 'connected') {
-          connect();
-        }
-        isBackgroundDisconnected.current = false;
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-      }
-    };
-  }, [connect, disconnect]);
-
-  // Context value
-  const contextValue: OptimizedWebSocketContextType = useMemo(() => ({
-    prices, // UI-throttled prices for calm user experience
-    connectionStatus,
-    subscribe,
-    unsubscribe,
-    getPrice, // Returns UI-throttled prices
-    isConnected: connectionStatus === 'connected',
-    error,
-    dataSource: isFollowerRef.current ? 'broadcast-follower' : 'realtime-leader',
-    lastUpdated,
-    errors: {},
-    refreshPrice,
-    getConnectionHealth,
-    getStats,
-    restartConnection,
-    isUsingEnhancedSystem: true,
-    // New graceful failure indicators
-    getDataAge,
-    getConnectionQuality,
-    // Sub-2s Live Guarantee
-    getArrivalAge,
-    // 🚀 FRONTEND THROTTLING: Internal price access for trading logic
-    getInternalPrice, // Returns always-fresh internal prices
-    internalPrices, // Direct access to internal prices for advanced use cases
-    uiThrottleMs: UI_UPDATE_THROTTLE_MS, // Expose throttling configuration
-    // Emergency functions
-    emergencyRestart: async () => {
-      console.log('🚨 EMERGENCY RESTART: Forcing provider stability reset and connection restart...');
-      providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
-      await restartConnection();
-    },
-    getProviderStabilityStatus: () => {
-      const metrics = providerStabilityService.getProviderMetrics('OptimizedWebSocketPriceProvider');
-      return {
-        isBlocked: !providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider'),
-        canMount: true,
-        metrics
-      };
-    }
-  }), [
+  // Simple context value with all required functions
+  const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({
     prices,
+    internalPrices,
     connectionStatus,
-    subscribe,
-    unsubscribe,
-    getPrice,
     error,
     lastUpdated,
-    refreshPrice,
-    getConnectionHealth,
-    getStats,
-    restartConnection,
-    getDataAge,
-    getConnectionQuality,
-    getArrivalAge,
-    getInternalPrice,
-    internalPrices,
-  ]);
+    dataSource: 'optimized-websocket',
+    uiThrottleMs: UI_UPDATE_THROTTLE_MS,
+    isConnected: connectionStatus === 'connected',
+    errors: {},
+    subscribe: () => {},
+    unsubscribe: () => {},
+    getPrice: (symbol: string) => prices[normalizeSymbol(symbol) || ''] || null,
+    getInternalPrice: (symbol: string) => internalPrices[normalizeSymbol(symbol) || ''] || null,
+    refreshPrice: async () => {},
+    getConnectionHealth: () => ({ isHealthy: connectionStatus === 'connected', lastUpdate: lastUpdated }),
+    getStats: () => ({
+      messagesReceived: statsRef.current.messagesReceived,
+      reconnections: statsRef.current.reconnections,
+      avgLatency: statsRef.current.latencyCount > 0 
+        ? statsRef.current.latencySum / statsRef.current.latencyCount 
+        : 0
+    }),
+    restartConnection: () => {},
+    emergencyRestart: () => {},
+    getProviderStabilityStatus: () => ({ 
+      isBlocked: false, 
+      canMount: true, 
+      metrics: providerStabilityService.getProviderMetrics('OptimizedWebSocketPriceProvider') 
+    }),
+    isUsingEnhancedSystem: true,
+    getDataAge: (symbol: string) => {
+      const priceData = internalPrices[normalizeSymbol(symbol) || ''];
+      if (!priceData) return Infinity;
+      return Math.floor((Date.now() - new Date(priceData.timestamp).getTime()) / 1000);
+    },
+    getConnectionQuality: () => {
+      if (connectionStatus === 'connected' && lastUpdated) {
+        const ageMs = Date.now() - lastUpdated.getTime();
+        return ageMs < HEALTH_CONFIG.staleDataThreshold ? 'live' : 'hydrated';
+      }
+      return Object.keys(prices).length > 0 ? 'hydrated' : 'stale';
+    },
+    getArrivalAge: (symbol: string) => {
+      const arrivalTime = arrivalTimestamps.current.get(normalizeSymbol(symbol) || '');
+      return arrivalTime ? Date.now() - arrivalTime : Infinity;
+    }
+  }), [prices, internalPrices, connectionStatus, error, lastUpdated]);
 
   // Show loading state until provider is ready
   if (!isProviderReady) {

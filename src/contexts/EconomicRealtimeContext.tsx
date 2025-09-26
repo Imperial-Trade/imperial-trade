@@ -34,7 +34,7 @@ interface EconomicRealtimeProviderProps {
 
 export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> = ({
   children,
-  enabled = true,
+  enabled = false, // 🚨 EMERGENCY FIX: Default to false to prevent automatic subscription
   notificationsEnabled = true
 }) => {
   const [events, setEvents] = useState<EconomicEvent[]>([]);

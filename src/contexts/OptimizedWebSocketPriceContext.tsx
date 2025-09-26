@@ -247,6 +247,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
+  // 🚨 PHASE 2: Timestamp State Lock - Track database hydration timestamp to prevent race conditions
+  const [lastDatabaseTimestamp, setLastDatabaseTimestamp] = useState<Record<string, number>>({});
+  
   // Connection state management
   const connectionStateRef = useRef<ConnectionState>({
     status: 'disconnected',
@@ -351,6 +354,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         if (!symbol || !subscriptionsRef.current.has(symbol)) return;
         
+        // 🚨 PHASE 2: Timestamp State Lock - Only update if message is newer than database hydration
+        const messageTimestamp = timestamp ? new Date(timestamp).getTime() : Date.now();
+        const lastDbTimestamp = lastDatabaseTimestamp[symbol];
+        
+        if (lastDbTimestamp && messageTimestamp <= lastDbTimestamp) {
+          console.log(`⏭️ Discarding old WebSocket message for ${symbol}: ${new Date(messageTimestamp).toISOString()} <= ${new Date(lastDbTimestamp).toISOString()}`);
+          return;
+        }
+        
         const toNum = (v: any) => (v === null || v === undefined || v === '' ? undefined : Number(v));
         const nBid = toNum(bid);
         const nAsk = toNum(ask);
@@ -388,6 +400,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           priceData.changePercent = (priceData.change / previousPrice) * 100;
         }
         
+        console.log(`✅ Accepting newer WebSocket message for ${symbol}: ${new Date(messageTimestamp).toISOString()}`);
         setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
         setPrices(prev => ({ ...prev, [symbol]: priceData }));
         setLastUpdated(new Date());
@@ -530,9 +543,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           
         if (data) {
           const polledPrices: Record<string, PriceData> = {};
+          const timestampUpdates: Record<string, number> = {};
+          
           data.forEach(row => {
             const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
             if (price) {
+              const dbTimestamp = new Date(row.updated_at).getTime();
               polledPrices[row.symbol] = {
                 symbol: row.symbol,
                 price,
@@ -544,12 +560,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 ask: row.ask,
                 mid: row.mid
               };
+              
+              // 🚨 PHASE 2: Track database timestamp for race condition prevention
+              timestampUpdates[row.symbol] = dbTimestamp;
+              console.log(`📊 Database hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           });
           
           if (Object.keys(polledPrices).length > 0) {
             setInternalPrices(prev => ({ ...prev, ...polledPrices }));
             setPrices(prev => ({ ...prev, ...polledPrices }));
+            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
             setLastUpdated(new Date());
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');
           }

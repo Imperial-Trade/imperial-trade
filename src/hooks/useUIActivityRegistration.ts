@@ -46,7 +46,7 @@ export function useUIActivityRegistration(symbols: string[] = []) {
           return; // Silently skip - don't log to avoid spam
         }
 
-        await supabase.rpc('register_ui_activity', {
+        await supabase.rpc('register_ui_activity_enhanced', {
           p_session_id: sessionId,
           p_user_id: user.id,
           p_symbols: symbols.length > 0 ? symbols : []
@@ -108,7 +108,7 @@ export function useUIActivityRegistration(symbols: string[] = []) {
 
       const sessionId = sessionStorage.getItem('ui-session-id') || `manual-${Date.now()}`;
       
-      await supabase.rpc('register_ui_activity', {
+      await supabase.rpc('register_ui_activity_enhanced', {
         p_session_id: sessionId,
         p_user_id: user.id,
         p_symbols: symbols.length > 0 ? symbols : []

@@ -53,29 +53,48 @@ async function initializeSupabase() {
   return supabaseClient;
 }
 
-// 🔥 SIMPLIFIED: Create static channel for UI broadcasts
-async function createBroadcastChannel(supabaseClient: any): Promise<any> {
-  console.log('📡 Creating new Realtime channel...');
-  console.log('🎯 Broadcasting to channel: live-prices-broadcast');
-  const priceChannel = supabaseClient.channel('live-prices-broadcast');
+// 🚀 PHASE 1: Create channel first with retries, then acquire lock
+async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 2): Promise<any> {
+  console.log('📡 Creating broadcast channel with retries...');
   
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
-    }, CHANNEL_SUBSCRIPTION_TIMEOUT);
-
-    priceChannel.subscribe((status: string) => {
-      console.log(`📡 Channel status: ${status}`);
-      clearTimeout(timeout);
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      console.log(`📡 Channel subscription attempt ${attempt}/${maxRetries + 1}...`);
+      const priceChannel = supabaseClient.channel('live-prices-broadcast');
       
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Realtime channel connected successfully');
-        resolve(priceChannel);
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        reject(new Error(`Channel failed to subscribe: ${status}`));
+      const channelResult = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
+        }, CHANNEL_SUBSCRIPTION_TIMEOUT);
+
+        priceChannel.subscribe((status: string) => {
+          console.log(`📡 Channel status: ${status} (attempt ${attempt})`);
+          clearTimeout(timeout);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Channel SUBSCRIBED successfully on attempt ${attempt}`);
+            resolve(priceChannel);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            reject(new Error(`Channel failed: ${status}`));
+          }
+        });
+      });
+      
+      return channelResult; // Success - return the channel
+      
+      } catch (error: any) {
+        console.warn(`⚠️ Channel subscription failed on attempt ${attempt}: ${error?.message || error}`);
+        
+        if (attempt <= maxRetries) {
+          const delay = 500 * attempt; // 500ms, 1000ms backoff
+          console.log(`⏱️ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error(`❌ All ${maxRetries + 1} channel subscription attempts failed`);
+          throw error;
+        }
       }
-    });
-  });
+  }
 }
 
 // 🔒 COOPERATIVE LOCK: Acquire broadcast lock with reduced duration
@@ -604,7 +623,7 @@ serve(async (req) => {
 
     // Create broadcast channel and send updates
     try {
-      const priceChannel: any = await createBroadcastChannel(supabaseClient);
+      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 2);
       
       let broadcastCount = 0;
       for (const priceData of significantPrices) {

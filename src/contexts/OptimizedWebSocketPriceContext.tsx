@@ -192,7 +192,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
   // REALTIME FALLBACK: Add postgres_changes subscription if no broadcast within 10s
-  const fallbackChannelRef = useRef<RealtimeChannel | null>(null);
+  const privateFallbackChannelRef = useRef<RealtimeChannel | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   
   // 🚀 FRONTEND THROTTLING: Dual-layer price state management
@@ -231,9 +231,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       hasInitialized.current = false; // Reset for next mount
       
       // Cleanup channels
-      if (fallbackChannelRef.current) {
-        fallbackChannelRef.current.unsubscribe();
-        fallbackChannelRef.current = null;
+      if (privateFallbackChannelRef.current) {
+        privateFallbackChannelRef.current.unsubscribe();
+        privateFallbackChannelRef.current = null;
       }
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
@@ -272,6 +272,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // 🚀 ACTIVITY-BASED RESOURCE MANAGEMENT: Register UI activity for cost optimization
   const { registerInteraction } = useUIActivityRegistration(Array.from(subscriptionsRef.current.keys()));
+
+  // 🚀 PHASE 2: Fallback mechanism refs
+  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fallbackPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const fallbackChannelRef = useRef<RealtimeChannel | null>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTriggeredFallback = useRef(false);
 
   // Stats tracking + PHASE 4: Rate limiting state
   const statsRef = useRef({
@@ -391,7 +398,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       })
       .subscribe((status) => {
         // 🚨 PHASE 2: Enhanced connection status logging
-        console.log(`📡 Channel subscription status: ${status} (Channel: live-prices-broadcast)`);
+        console.log(`📡 Channel subscription status: ${status}`);
         
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
@@ -399,19 +406,196 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           connectionStateRef.current.lastSuccessAt = Date.now();
           connectionStateRef.current.errorCount = 0;
           isConnectingRef.current = false;
-          // 🚨 PHASE 3: Enhanced success logging with channel verification
-          console.log(`✅ WebSocket connection established successfully on 'live-prices-broadcast'`);
+          // 🚨 PHASE 2: Clear any pending fallback timers on successful connection
+          if (fallbackTimerRef.current) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+          }
+          console.log(`✅ SUBSCRIBED on live-prices-broadcast`);
           console.log(`📊 Active subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (${subscriptionsRef.current.size} symbols)`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionStatus('error');
           setError('Failed to connect to price stream');
           isConnectingRef.current = false;
           console.error(`❌ WebSocket connection failed: ${status} on 'live-prices-broadcast'`);
+          // 🚀 PHASE 2: Trigger fallback immediately on error
+          enableFallbackMechanisms();
         }
       });
 
     channelRef.current = channel;
-  }, [tabId, internalPrices]);
+    
+    // 🚀 PHASE 2: Start fallback timer - if not SUBSCRIBED within 5s, enable fallback
+    fallbackTimerRef.current = setTimeout(() => {
+      if (connectionStatus !== 'connected') {
+        console.log('📡 Fallback activated: Not SUBSCRIBED within 5s');
+        enableFallbackMechanisms();
+      }
+    }, 5000);
+    
+    // 🚀 PHASE 2: Start message watchdog - if SUBSCRIBED but no messages within 5s, enable fallback
+    const messageWatchdog = setTimeout(() => {
+      if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
+        console.log('📡 Fallback activated: SUBSCRIBED but no messages received');
+        enableFallbackMechanisms();
+      }
+    }, 5000);
+    
+    // 🚀 PHASE 2: Connection status watchdog - if stuck in connecting/error >10s, restart
+    watchdogTimerRef.current = setTimeout(() => {
+      if (connectionStatus === 'connecting' || connectionStatus === 'error') {
+        console.log('🧯 Self-heal: restarting connection (stuck >10s)');
+        restartConnection();
+      }
+    }, 10000);
+    
+    // Cleanup watchdogs when connection succeeds or fails
+    const cleanupTimers = () => {
+      clearTimeout(messageWatchdog);
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+    };
+    
+    // Store cleanup for later use
+    (channel as any)._customCleanup = cleanupTimers;
+  }, [tabId, internalPrices, connectionStatus]);
+
+  // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
+  const enableFallbackMechanisms = useCallback(() => {
+    if (hasTriggeredFallback.current) return;
+    hasTriggeredFallback.current = true;
+    
+    console.log('📡 Fallback activated: postgres_changes');
+    
+    // Enable postgres_changes fallback for subscribed symbols
+    const activeSymbols = Array.from(subscriptionsRef.current.keys());
+    if (activeSymbols.length > 0) {
+      fallbackChannelRef.current = supabase
+        .channel('market_prices_fallback')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'market_prices',
+          filter: `symbol=in.(${activeSymbols.join(',')})`
+        }, (payload: any) => {
+          console.log('📡 Fallback: postgres_changes received', payload);
+          
+          if (payload.new && payload.new.symbol) {
+            const { symbol, bid, ask, mid, updated_at } = payload.new as any;
+            const price = mid || (bid && ask ? (bid + ask) / 2 : bid || ask);
+            
+            if (price && subscriptionsRef.current.has(symbol)) {
+              const priceData: PriceData = {
+                symbol,
+                price,
+                change: 0,
+                changePercent: 0,
+                timestamp: updated_at,
+                receivedAt: Date.now(),
+                bid,
+                ask,
+                mid
+              };
+              
+              setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
+              setPrices(prev => ({ ...prev, [symbol]: priceData }));
+              setLastUpdated(new Date());
+            }
+          }
+        })
+        .subscribe();
+    }
+    
+    // Start 2s DB polling as additional fallback
+    const pollDatabase = async () => {
+      const activeSymbols = Array.from(subscriptionsRef.current.keys());
+      if (activeSymbols.length === 0) return;
+      
+      try {
+        const { data } = await supabase
+          .from('market_prices')
+          .select('symbol, bid, ask, mid, updated_at')
+          .in('symbol', activeSymbols);
+          
+        if (data) {
+          const polledPrices: Record<string, PriceData> = {};
+          data.forEach(row => {
+            const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
+            if (price) {
+              polledPrices[row.symbol] = {
+                symbol: row.symbol,
+                price,
+                change: 0,
+                changePercent: 0,
+                timestamp: row.updated_at,
+                receivedAt: Date.now(),
+                bid: row.bid,
+                ask: row.ask,
+                mid: row.mid
+              };
+            }
+          });
+          
+          if (Object.keys(polledPrices).length > 0) {
+            setInternalPrices(prev => ({ ...prev, ...polledPrices }));
+            setPrices(prev => ({ ...prev, ...polledPrices }));
+            setLastUpdated(new Date());
+            console.log('📡 Fallback: db_poll updated prices');
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ DB polling error:', error);
+      }
+    };
+    
+    // Poll every 2 seconds until live broadcast returns
+    fallbackPollingRef.current = setInterval(pollDatabase, 2000);
+    
+  }, []);
+
+  // 🚀 PHASE 2: Connection restart with cleanup
+  const connectionRestart = useCallback(() => {
+    console.log('🔄 Restarting connection...');
+    
+    // Clear all timers and reset state
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+    if (fallbackPollingRef.current) {
+      clearInterval(fallbackPollingRef.current);
+      fallbackPollingRef.current = null;
+    }
+    if (fallbackChannelRef.current) {
+      fallbackChannelRef.current.unsubscribe();
+      fallbackChannelRef.current = null;
+    }
+    
+    // Reset flags
+    hasTriggeredFallback.current = false;
+    statsRef.current.messagesReceived = 0;
+    
+    // Disconnect and reconnect
+    if (channelRef.current) {
+      (channelRef.current as any)._customCleanup?.();
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+    }
+    
+    isConnectingRef.current = false;
+    setConnectionStatus('disconnected');
+    
+    // Reconnect if we have active subscriptions
+    if (subscriptionsRef.current.size > 0) {
+      setTimeout(() => connectToRealtimeChannel(), 1000);
+    }
+  }, [connectToRealtimeChannel]);
 
   // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system
   const subscribe = useCallback((symbols: string[]) => {
@@ -490,18 +674,54 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, []);
 
-  // CONNECTION MANAGEMENT: Restart and emergency functions
+  // CONNECTION MANAGEMENT: Enhanced restart and emergency functions
   const restartConnection = useCallback(() => {
-    console.log('🔄 Restarting WebSocket connection...');
+    console.log('🔄 Restarting connection...');
     
-    // Close existing connection
+    // Clear all timers and reset state
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+    if (fallbackPollingRef.current) {
+      clearInterval(fallbackPollingRef.current);
+      fallbackPollingRef.current = null;
+    }
+    if (fallbackChannelRef.current) {
+      fallbackChannelRef.current.unsubscribe();
+      fallbackChannelRef.current = null;
+    }
+    
+    // Reset flags
+    hasTriggeredFallback.current = false;
+    statsRef.current.messagesReceived = 0;
+    
+    // Disconnect and reconnect
     if (channelRef.current) {
+      (channelRef.current as any)._customCleanup?.();
       channelRef.current.unsubscribe();
       channelRef.current = null;
     }
     
-    // Clear state
     isConnectingRef.current = false;
+    setConnectionStatus('disconnected');
+    
+    // Reconnect if we have active subscriptions
+    if (subscriptionsRef.current.size > 0) {
+      setTimeout(() => connectToRealtimeChannel(), 1000);
+    }
+  }, [connectToRealtimeChannel]);
+
+  // Emergency restart function
+  const emergencyRestart = useCallback(() => {
+    console.log('🚨 Emergency restart initiated');
+    providerStabilityService.resetStability();
+    restartConnection();
+  }, [restartConnection]);
     setConnectionStatus('disconnected');
     setError(null);
     

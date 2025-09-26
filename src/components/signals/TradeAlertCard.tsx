@@ -44,6 +44,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
+  // 🚀 PHASE 2: Enhanced activation listener for instant UI updates
+  useEffect(() => {
+    const handleActivation = (event: CustomEvent) => {
+      const { signalId, status } = event.detail;
+      if (signalId === alert.id && status === 'active') {
+        console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
+        // Force immediate local state refresh
+        if (onStatusUpdate && alert.status !== 'active') {
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+        }
+      }
+    };
+
+    window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
+    return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
+  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+
   useEffect(() => {
     console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
     

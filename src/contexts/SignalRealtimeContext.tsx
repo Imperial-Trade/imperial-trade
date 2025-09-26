@@ -524,6 +524,18 @@ unstable_batchedUpdates(() => {
                 }
               }));
             }, 0);
+
+            // 🚀 PHASE 2: Enhanced activation reliability - Force delayed refresh
+            setTimeout(() => {
+              console.log(`🔄 ACTIVATION REFRESH: Triggering delayed UI sync for ${newRecord.asset_name}`);
+              setSignals(current => current.map(s => 
+                s.id === newRecord.id ? {
+                  ...s,
+                  status: 'active',
+                  updatedAt: new Date().toISOString()
+                } : s
+              ));
+            }, 100);
           }
           
           const updatedSignals = prev.map(signal => 

@@ -573,6 +573,23 @@ serve(async (req) => {
       });
     }
 
+    // 🚀 CRITICAL: ACTIVITY-BASED GATING - Skip UI broadcast if no active users
+    if (!hasActiveUsers) {
+      console.log('📡 UI broadcast skipped: no_active_users');
+      return new Response(JSON.stringify({
+        success: true,
+        processed: prices.length,
+        upserted: successfulUpserts,
+        alerts_triggered: totalTriggeredAlerts,
+        notifications_sent: notificationTriggers.length,
+        ui_broadcasts: 0,
+        broadcast_status: 'no_active_users'
+      }), {
+        status: 200,
+        headers: corsHeaders
+      });
+    }
+
     // Try to acquire broadcast lock
     const lockId = await acquireBroadcastLock(supabaseClient);
     if (!lockId) {

@@ -93,10 +93,14 @@ interface OptimizedWebSocketContextType {
   errors: Record<string, string>;
   refreshPrice: (symbol: string) => void;
   getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null };
+  getActiveSymbolsCount: () => number;
+  getActiveSymbols: () => string[];
   getStats?: () => { 
     messagesReceived: number; 
     reconnections: number; 
     avgLatency: number;
+    activeSymbols: number;
+    connectionStatus: string;
   };
   restartConnection: () => void;
   // EMERGENCY FUNCTIONS: Force provider restart and stability reset
@@ -133,6 +137,8 @@ export const useOptimizedWebSocketPrices = (): OptimizedWebSocketContextType => 
       unsubscribe: () => {},
       getPrice: () => null,
       getInternalPrice: () => null,
+      getActiveSymbolsCount: () => 0,
+      getActiveSymbols: () => [],
       getDataAge: () => Infinity,
       getConnectionQuality: () => 'stale',
       getArrivalAge: () => Infinity,
@@ -143,6 +149,7 @@ export const useOptimizedWebSocketPrices = (): OptimizedWebSocketContextType => 
       errors: {},
       refreshPrice: () => {},
       getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+      getStats: () => ({ messagesReceived: 0, reconnections: 0, avgLatency: 0, activeSymbols: 0, connectionStatus: 'disconnected' }),
       isUsingEnhancedSystem: false,
       // Emergency functions
       emergencyRestart: () => {},
@@ -159,22 +166,18 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
-  // 🚨 FIX: Read-only stability check without side effects in render
-  const isInitiallyStable = providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider');
-  
-  // 🚨 CRITICAL: Emergency reset if truly blocked, but don't call registerProviderMount in render
-  if (!isInitiallyStable) {
-    console.log('🚨 EMERGENCY INTERVENTION: Provider stability service blocking provider, performing emergency reset...');
-    providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
-  }
-
-  // Provider initialization state
+  // 🚨 FIX: Stable initialization - prevent re-render loops
   const [isProviderReady, setIsProviderReady] = useState(false);
   const mountTimeRef = useRef(Date.now());
   const initCountRef = useRef(0);
+  const hasInitialized = useRef(false);
   
-  initCountRef.current++;
-  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current})`);
+  // Only log initialization once per mount
+  if (!hasInitialized.current) {
+    initCountRef.current++;
+    console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current})`);
+    hasInitialized.current = true;
+  }
   
   const healthMonitor = useRealtimeHealth();
   const { isLeader, tabId, tabCount } = useSingleTabLeadership();
@@ -213,22 +216,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // 🚨 FIX: Provider stability tracking moved to useEffect (not render)
   useEffect(() => {
-    console.log(`🔧 Provider mounting... (Init #${initCountRef.current})`);
-    
-    // 🚨 CRITICAL FIX: Proper mount registration in useEffect
-    const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
-    if (!canMount) {
-      console.error('🚨 Provider blocked by stability service after mount - this should not happen');
-      return;
-    }
-    
-    // 🚨 PHASE 1: Log mount event
-    realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'mount', {
-      initCount: initCountRef.current,
-      tabId,
-      tabCount,
-      isLeader
-    });
+    console.log(`🔧 Provider mounting (stable)... (Init #${initCountRef.current})`);
     
     // 🚨 PHASE 1: Track mount/unmount cycles
     mountOnlyRef.current = true;
@@ -239,11 +227,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // 🚨 PHASE 1: Cleanup tracking on unmount
     return () => {
       console.log(`🧹 OptimizedWebSocketPriceProvider unmounting (Init #${initCountRef.current})`);
-      realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'unmount', {
-        initCount: initCountRef.current
-      });
       mountOnlyRef.current = false;
-      providerStabilityService.registerProviderUnmount('OptimizedWebSocketPriceProvider');
+      hasInitialized.current = false; // Reset for next mount
       
       // Cleanup channels
       if (fallbackChannelRef.current) {
@@ -329,7 +314,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    console.log('🔗 Establishing realtime connection for price broadcasts');
+    const activeSymbols = Array.from(subscriptionsRef.current.keys());
+    console.log(`🔗 Establishing realtime connection for symbols: ${activeSymbols.join(', ')}`);
     isConnectingRef.current = true;
     setConnectionStatus('connecting');
 
@@ -398,12 +384,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     if (!symbols?.length) return;
 
     console.log(`📊 Subscribing to symbols: ${symbols.join(', ')}`);
+    console.log(`📊 Current subscriptions before: ${Array.from(subscriptionsRef.current.keys()).join(', ')}`);
     
     let needsConnection = false;
+    let newSymbolsAdded = false;
+    
     symbols.forEach(symbol => {
       const normalizedSymbol = normalizeSymbol(symbol);
       if (!normalizedSymbol || !ALLOWED_SYMBOLS.includes(normalizedSymbol as any)) {
-        console.warn(`⚠️ Symbol ${symbol} not in allowed list`);
+        console.warn(`⚠️ Symbol ${symbol} -> ${normalizedSymbol} not in allowed list: ${ALLOWED_SYMBOLS.join(', ')}`);
         return;
       }
 
@@ -412,14 +401,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       
       if (currentCount === 0) {
         needsConnection = true;
+        newSymbolsAdded = true;
         console.log(`➕ New subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
       } else {
         console.log(`🔄 Existing subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
       }
     });
 
+    console.log(`📊 Current subscriptions after: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (count: ${subscriptionsRef.current.size})`);
+
     // Establish connection if we have new symbols and no connection
-    if (needsConnection && !channelRef.current) {
+    if (needsConnection && !channelRef.current && newSymbolsAdded) {
+      console.log('🚀 Triggering connection establishment for new symbols...');
+      connectToRealtimeChannel();
+    } else if (subscriptionsRef.current.size > 0 && !channelRef.current) {
+      console.log('🚀 Establishing connection for existing symbols...');
       connectToRealtimeChannel();
     }
 
@@ -657,12 +653,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     getInternalPrice: (symbol: string) => internalPrices[normalizeSymbol(symbol) || ''] || null,
     refreshPrice: async () => {},
     getConnectionHealth: () => ({ isHealthy: connectionStatus === 'connected', lastUpdate: lastUpdated }),
+    getActiveSymbolsCount: () => subscriptionsRef.current.size,
+    getActiveSymbols: () => Array.from(subscriptionsRef.current.keys()),
     getStats: () => ({
       messagesReceived: statsRef.current.messagesReceived,
       reconnections: statsRef.current.reconnections,
       avgLatency: statsRef.current.latencyCount > 0 
         ? statsRef.current.latencySum / statsRef.current.latencyCount 
-        : 0
+        : 0,
+      activeSymbols: subscriptionsRef.current.size,
+      connectionStatus
     }),
     restartConnection,
     emergencyRestart,
@@ -713,6 +713,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         errors: {},
         refreshPrice: () => {},
         getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
+        getActiveSymbolsCount: () => 0,
+        getActiveSymbols: () => [],
+        getStats: () => ({ messagesReceived: 0, reconnections: 0, avgLatency: 0, activeSymbols: 0, connectionStatus: 'connecting' }),
         isUsingEnhancedSystem: false,
         // Emergency functions
         emergencyRestart: () => {},

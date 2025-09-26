@@ -7,44 +7,35 @@ import { Activity, Wifi, Database } from 'lucide-react';
 /**
  * Simple status display to show live data connection and active symbols
  */
-export const LiveDataStatus: React.FC = () => {
+export default function LiveDataStatus() {
   const { 
-    prices, 
     connectionStatus, 
-    dataSource,
+    prices, 
+    dataSource, 
     lastUpdated,
-    isConnected 
+    getActiveSymbolsCount,
+    getActiveSymbols,
+    getStats
   } = useOptimizedWebSocketPrices();
 
-  const activeSymbolsCount = Object.keys(prices).length;
-  const hasRecentData = lastUpdated && (Date.now() - lastUpdated.getTime()) < 10000; // Within 10 seconds
+  const stats = getStats?.() || { messagesReceived: 0, reconnections: 0, avgLatency: 0, activeSymbols: 0, connectionStatus: 'disconnected' };
+  const activeSymbolsCount = getActiveSymbolsCount();
+  const activeSymbols = getActiveSymbols();
 
   const getStatusBadge = () => {
+    const isConnected = connectionStatus === 'connected';
+    const hasRecentData = lastUpdated && (Date.now() - lastUpdated.getTime()) < 30000; // 30 seconds
+
     if (isConnected && hasRecentData) {
-      return (
-        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-          <Wifi className="w-3 h-3 mr-1" />
-          Live Data
-        </Badge>
-      );
+      return <Badge variant="default">Live Data</Badge>;
+    } else if (isConnected) {
+      return <Badge variant="secondary">Connected</Badge>;
+    } else {
+      return <Badge variant="destructive">Offline</Badge>;
     }
-    
-    if (isConnected) {
-      return (
-        <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-          <Activity className="w-3 h-3 mr-1" />
-          Connected
-        </Badge>
-      );
-    }
-    
-    return (
-      <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
-        <Database className="w-3 h-3 mr-1" />
-        Offline
-      </Badge>
-    );
   };
+
+  const activePricesCount = Object.keys(prices || {}).length;
 
   return (
     <Card className="bg-card border-border">
@@ -54,41 +45,49 @@ export const LiveDataStatus: React.FC = () => {
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Connection:</span>
+            <span className="text-sm font-medium">Status</span>
             {getStatusBadge()}
           </div>
           
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Active Symbols:</span>
-            <Badge variant="outline">
-              {activeSymbolsCount}
-            </Badge>
+            <span className="text-sm text-muted-foreground">Active Symbols</span>
+            <span className="text-sm font-medium">{activeSymbolsCount} subscribed</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Live Prices</span>
+            <span className="text-sm font-medium">{activePricesCount} received</span>
           </div>
           
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Data Source:</span>
-            <Badge variant="secondary" className="text-xs">
-              {dataSource}
-            </Badge>
+            <span className="text-sm text-muted-foreground">Data Source</span>
+            <span className="text-xs font-mono">{dataSource}</span>
           </div>
           
-          {lastUpdated && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Last Update:</span>
-              <span className="text-xs text-muted-foreground">
-                {lastUpdated.toLocaleTimeString()}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Last Update</span>
+            <span className="text-xs">{lastUpdated ? lastUpdated.toLocaleTimeString() : 'Never'}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Messages</span>
+            <span className="text-xs font-mono">{stats.messagesReceived || 0}</span>
+          </div>
           
           {activeSymbolsCount > 0 && (
-            <div className="space-y-1">
-              <span className="text-sm text-muted-foreground">Current Prices:</span>
-              <div className="grid grid-cols-1 gap-1">
-                {Object.entries(prices).slice(0, 3).map(([symbol, priceData]) => (
-                  <div key={symbol} className="flex items-center justify-between text-xs">
-                    <span className="font-mono text-muted-foreground">{symbol}:</span>
-                    <span className="font-mono">{priceData.price.toFixed(2)}</span>
+            <div className="mt-4 pt-3 border-t">
+              <div className="text-xs text-muted-foreground mb-2">Subscribed: {activeSymbols.join(', ')}</div>
+            </div>
+          )}
+
+          {activePricesCount > 0 && (
+            <div className="mt-4 pt-3 border-t">
+              <div className="text-xs text-muted-foreground mb-2">Current Prices:</div>
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                {Object.entries(prices || {}).slice(0, 3).map(([symbol, data]) => (
+                  <div key={symbol} className="flex justify-between text-xs">
+                    <span>{symbol}</span>
+                    <span className="font-mono">{data.price?.toFixed(4)}</span>
                   </div>
                 ))}
               </div>
@@ -98,6 +97,4 @@ export const LiveDataStatus: React.FC = () => {
       </CardContent>
     </Card>
   );
-};
-
-export default LiveDataStatus;
+}

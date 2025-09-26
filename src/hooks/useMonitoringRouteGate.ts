@@ -25,9 +25,23 @@ const MONITORING_DISABLED_ROUTES = [
 ];
 
 export const useMonitoringRouteGate = () => {
-  const location = useLocation();
+  let location = null;
+  
+  try {
+    location = useLocation();
+  } catch (error) {
+    console.warn('useMonitoringRouteGate: Router context not available, defaulting to monitoring disabled');
+    // Default to safe behavior - disable monitoring when no router context
+    return {
+      shouldEnableMonitoring: false,
+      currentRoute: '/',
+      isLandingPage: true,
+      isDashboard: false
+    };
+  }
   
   const shouldEnableMonitoring = useMemo(() => {
+    if (!location) return false;
     const currentPath = location.pathname;
     
     // Check exact matches first
@@ -44,13 +58,13 @@ export const useMonitoringRouteGate = () => {
     
     // Enable monitoring for dashboard routes and other protected areas
     return currentPath.startsWith('/dashboard') || currentPath.startsWith('/admin');
-  }, [location.pathname]);
+  }, [location?.pathname]);
   
   return {
     shouldEnableMonitoring,
-    currentRoute: location.pathname,
-    isLandingPage: location.pathname === '/',
-    isDashboard: location.pathname.startsWith('/dashboard')
+    currentRoute: location?.pathname || '/',
+    isLandingPage: location?.pathname === '/' || false,
+    isDashboard: location?.pathname?.startsWith('/dashboard') || false
   };
 };
 

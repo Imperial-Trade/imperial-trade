@@ -120,8 +120,23 @@ export const NotificationMonitor: React.FC = () => {
 
   const cleanupPhantomLogs = async () => {
     try {
-      const { error } = await supabase.rpc('cleanup_phantom_notifications');
+      // Call cleanup function directly via SQL query since RPC types aren't updated yet
+      const { data, error } = await supabase
+        .from('cron_job_logs')
+        .delete()
+        .eq('job_name', 'enhanced_notification_pipeline')
+        .in('status', ['success'])
+        .like('error_message', '%Changes: ,%')
+        .lt('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
       if (error) throw error;
+      
+      // Also clean false positives
+      await supabase
+        .from('notification_audit_false_positives')
+        .delete()
+        .lt('false_positive_detected_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      
       toast.success('Phantom notifications cleaned up');
       fetchLogs();
     } catch (error) {

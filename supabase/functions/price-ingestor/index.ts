@@ -54,7 +54,7 @@ async function initializeSupabase() {
 }
 
 // 🔥 SIMPLIFIED: Create static channel for UI broadcasts
-async function createBroadcastChannel(supabaseClient: any) {
+async function createBroadcastChannel(supabaseClient: any): Promise<any> {
   console.log('📡 Creating new Realtime channel...');
   console.log('🎯 Broadcasting to channel: live-prices-broadcast');
   const priceChannel = supabaseClient.channel('live-prices-broadcast');
@@ -604,7 +604,7 @@ serve(async (req) => {
 
     // Create broadcast channel and send updates
     try {
-      const priceChannel = await createBroadcastChannel(supabaseClient);
+      const priceChannel: any = await createBroadcastChannel(supabaseClient);
       
       let broadcastCount = 0;
       for (const priceData of significantPrices) {

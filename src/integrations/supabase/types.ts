@@ -3786,6 +3786,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_notification_rate_limit: {
+        Args: { p_max_per_minute?: number; p_signal_id: string }
+        Returns: boolean
+      }
       check_user_xeon_subscription: {
         Args: { user_id_param?: string }
         Returns: boolean
@@ -3823,6 +3827,10 @@ export type Database = {
         Returns: number
       }
       cleanup_old_ui_listeners: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_phantom_notifications: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
@@ -3945,6 +3953,10 @@ export type Database = {
       get_market_session: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_notification_health_metrics: {
+        Args: { p_hours?: number }
+        Returns: Json
       }
       get_realtime_system_status: {
         Args: Record<PropertyKey, never>

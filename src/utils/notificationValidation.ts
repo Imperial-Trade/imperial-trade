@@ -296,9 +296,9 @@ export class NotificationValidator {
         .insert({
           signal_id: signalId,
           reported_change_types: changeTypes,
-          actual_change_data: { detection_method, automated: true },
+          actual_change_data: { detection_method: detectionMethod, automated: true },
           notification_sent_at: new Date().toISOString(),
-          detection_method,
+          detection_method: detectionMethod,
           user_reported: false
         });
     } catch (error) {

@@ -718,20 +718,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // Emergency restart function
   const emergencyRestart = useCallback(() => {
-    console.log('🚨 Emergency restart initiated');
-    providerStabilityService.resetStability();
-    restartConnection();
-  }, [restartConnection]);
-    setConnectionStatus('disconnected');
-    setError(null);
-    
-    // Reconnect if we have subscriptions
-    if (subscriptionsRef.current.size > 0) {
-      setTimeout(() => connectToRealtimeChannel(), 1000);
-    }
-  }, [connectToRealtimeChannel]);
-
-  const emergencyRestart = useCallback(() => {
     console.log('🚨 EMERGENCY RESTART: Clearing all state and restarting...');
     
     // Close all connections

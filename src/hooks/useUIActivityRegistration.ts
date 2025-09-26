@@ -24,6 +24,7 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     }
     sessionIdRef.current = sessionId;
   }
+  
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastRegistrationRef = useRef(0);
 

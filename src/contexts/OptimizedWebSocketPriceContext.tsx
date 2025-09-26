@@ -169,13 +169,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
   
-  // 🚨 PHASE 1: Log diagnostic event
-  realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'initialize', {
-    initCount: initCountRef.current,
-    timeSinceMount,
-    mountTime: mountTimeRef.current
-  });
-  
   // 🚨 PHASE 1: Check provider stability
   const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
   
@@ -1330,15 +1323,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     internalPrices,
   ]);
 
-  // Show loading state until provider is ready
-  if (!isProviderReady) {
+  // Show loading state until provider is ready OR if provider is blocked
+  if (!isProviderReady || !canMount) {
+    if (!canMount) {
+      console.error('🚨 OptimizedWebSocketPriceProvider blocked due to restart loop - serving minimal context');
+    }
+    
     return (
       <OptimizedWebSocketContext.Provider value={{
         prices: {},
         connectionStatus: 'connecting',
         error: null,
         lastUpdated: null,
-        dataSource: 'initializing',
+        dataSource: canMount ? 'initializing' : 'blocked',
         uiThrottleMs: UI_UPDATE_THROTTLE_MS,
         subscribe: () => {},
         unsubscribe: () => {},

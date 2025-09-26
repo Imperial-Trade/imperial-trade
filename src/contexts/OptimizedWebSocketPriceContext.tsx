@@ -153,6 +153,12 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
+  // 🚨 EMERGENCY FIX: Check if provider is blocked, and if so, perform emergency reset
+  if (!providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider')) {
+    console.log('🚨 EMERGENCY INTERVENTION: Provider stability service blocking provider, performing emergency reset...');
+    providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
+  }
+
   // 🚨 CRITICAL: Check provider stability BEFORE any hooks to prevent hook violations
   const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
   

@@ -14,9 +14,9 @@ interface ProviderMetrics {
 class ProviderStabilityService {
   private static instance: ProviderStabilityService;
   private providers = new Map<string, ProviderMetrics>();
-  private readonly RESTART_THRESHOLD = 3; // Max restarts within time window
-  private readonly TIME_WINDOW = 10000; // 10 seconds
-  private readonly COOLDOWN_PERIOD = 30000; // 30 seconds
+  private readonly RESTART_THRESHOLD = 5; // INCREASED: Max restarts within time window (was 3)
+  private readonly TIME_WINDOW = 30000; // INCREASED: 30 seconds (was 10 seconds)
+  private readonly COOLDOWN_PERIOD = 10000; // REDUCED: 10 seconds (was 30 seconds)
 
   static getInstance(): ProviderStabilityService {
     if (!ProviderStabilityService.instance) {
@@ -107,6 +107,27 @@ class ProviderStabilityService {
     } else {
       this.providers.clear();
       console.log('🔄 All provider metrics reset');
+    }
+  }
+
+  // EMERGENCY RESET METHOD: Force allow provider mounting
+  emergencyReset(providerId: string): void {
+    const existing = this.providers.get(providerId);
+    if (existing) {
+      existing.isStable = true;
+      existing.rapidRestarts = 0;
+      existing.initCount = 1;
+      existing.mountTime = Date.now();
+      console.log(`🚨 ${providerId}: EMERGENCY RESET - Provider stability restored, restart loop cleared`);
+    } else {
+      this.providers.set(providerId, {
+        initCount: 1,
+        mountTime: Date.now(),
+        lastUnmountTime: null,
+        rapidRestarts: 0,
+        isStable: true
+      });
+      console.log(`🚨 ${providerId}: EMERGENCY RESET - New provider metrics created as stable`);
     }
   }
 }

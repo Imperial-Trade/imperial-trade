@@ -88,10 +88,20 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       }
     };
 
-    // Delayed initial registration to ensure auth is fully loaded
-    const initialDelay = setTimeout(() => {
-      registerActivity();
-    }, 1000); // 1-second delay to ensure auth context is stable
+    // ENHANCED: Delayed initial registration with progressive auth stability checks
+    const initialDelay = setTimeout(async () => {
+      // Extra stability check before initial registration
+      try {
+        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !currentUser?.id || currentUser.id !== user.id) {
+          console.warn('⚠️ Initial UI activity registration skipped - auth state changed during delay');
+          return;
+        }
+        registerActivity();
+      } catch (error) {
+        console.warn('⚠️ Initial UI activity registration error during auth check:', error);
+      }
+    }, 2000); // INCREASED: 2-second delay for better auth stability
 
     // Reduced frequency: 10 minutes
     intervalRef.current = setInterval(registerActivity, 600000); 

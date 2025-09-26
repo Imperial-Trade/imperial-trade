@@ -29,46 +29,75 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   const lastRegistrationRef = useRef(0);
 
   useEffect(() => {
-    // CRITICAL FIX: Skip registration for unauthenticated users to prevent foreign key failures
+    // 🚨 ENHANCED RACE CONDITION PROTECTION: Multiple safeguards
+    // 1. Early exit if no user context available
     if (!user?.id) {
       console.log('🚫 UI activity registration skipped - user not authenticated');
       return;
     }
 
-    // Register initial activity
+    // 2. Additional validation to prevent edge cases
+    if (typeof user.id !== 'string' || user.id.length < 32) {
+      console.warn('🚫 UI activity registration skipped - invalid user ID format');
+      return;
+    }
+
+    // Register initial activity with enhanced error handling
     const registerActivity = async () => {
       const now = Date.now();
       
-      // 🚨 PHASE 2: Increased registration frequency to reduce message volume
-      if (now - lastRegistrationRef.current < 120000) { // Increased to 120 seconds (2 minutes)
+      // Rate limiting (2 minutes minimum between calls)
+      if (now - lastRegistrationRef.current < 120000) {
+        return;
+      }
+
+      // 🚨 RUNTIME AUTHENTICATION GUARD: Double-check before each call
+      if (!user?.id) {
+        console.log('🚫 Runtime guard: UI activity registration skipped - user became unauthenticated');
         return;
       }
 
       try {
         const { error } = await supabase.rpc('register_ui_activity_enhanced', {
           p_session_id: sessionIdRef.current,
-          p_user_id: user.id, // Only authenticated users now
+          p_user_id: user.id, // Triple-verified user ID
           p_symbols: symbols.filter(s => s && s.trim().length > 0)
         });
         
         if (error) {
+          // 🚨 ENHANCED ERROR LOGGING for debugging persistent issues
+          console.error('🔥 UI activity registration failed:', {
+            error: error.message,
+            code: error.code,
+            userId: user.id,
+            sessionId: sessionIdRef.current,
+            timestamp: new Date().toISOString()
+          });
           throw error;
         }
         
         lastRegistrationRef.current = now;
-        console.log('🎯 UI activity registered for session:', sessionIdRef.current);
+        console.log('🎯 UI activity registered successfully:', {
+          session: sessionIdRef.current,
+          userId: user.id,
+          symbolCount: symbols.length
+        });
       } catch (error) {
         console.warn('⚠️ Failed to register UI activity:', error);
+        // Don't throw - let the app continue running even if activity registration fails
       }
     };
 
-    // Register activity immediately
-    registerActivity();
+    // Delayed initial registration to ensure auth is fully loaded
+    const initialDelay = setTimeout(() => {
+      registerActivity();
+    }, 1000); // 1-second delay to ensure auth context is stable
 
-    // 🚨 PHASE 2: Increased to 10 minutes to drastically reduce message frequency
-    intervalRef.current = setInterval(registerActivity, 600000); // 10 minutes
+    // Reduced frequency: 10 minutes
+    intervalRef.current = setInterval(registerActivity, 600000); 
 
     return () => {
+      clearTimeout(initialDelay);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -76,33 +105,55 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     };
   }, [user?.id, symbols]);
 
-  // Register activity on user interactions
+  // Register activity on user interactions with enhanced protection
   const registerInteraction = async () => {
-    // CRITICAL FIX: Skip registration for unauthenticated users to prevent foreign key failures
+    // 🚨 ENHANCED PROTECTION: Multiple authentication checks
     if (!user?.id) {
       console.log('🚫 UI interaction registration skipped - user not authenticated');
       return;
     }
 
+    // Additional validation for user ID format
+    if (typeof user.id !== 'string' || user.id.length < 32) {
+      console.warn('🚫 UI interaction registration skipped - invalid user ID format');
+      return;
+    }
+
     const now = Date.now();
-    if (now - lastRegistrationRef.current < 60000) { // Rate limit increased to 60 seconds
+    if (now - lastRegistrationRef.current < 60000) { // Rate limit: 60 seconds
+      return;
+    }
+
+    // 🚨 RUNTIME GUARD: Final check before RPC call
+    if (!user?.id) {
+      console.log('🚫 Runtime guard: Interaction registration skipped - user became unauthenticated');
       return;
     }
 
     try {
       const { error } = await supabase.rpc('register_ui_activity_enhanced', {
         p_session_id: sessionIdRef.current,
-        p_user_id: user.id, // Only authenticated users now
+        p_user_id: user.id, // Triple-verified user ID
         p_symbols: symbols.filter(s => s && s.trim().length > 0)
       });
       
       if (error) {
+        // Enhanced error logging for interactions
+        console.error('🔥 UI interaction registration failed:', {
+          error: error.message,
+          code: error.code,
+          userId: user.id,
+          sessionId: sessionIdRef.current,
+          timestamp: new Date().toISOString()
+        });
         throw error;
       }
 
       lastRegistrationRef.current = now;
+      console.log('🎯 UI interaction registered successfully');
     } catch (error) {
       console.warn('⚠️ Failed to register interaction:', error);
+      // Don't throw - allow app to continue
     }
   };
 

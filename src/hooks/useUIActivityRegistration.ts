@@ -11,7 +11,19 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 export function useUIActivityRegistration(symbols: string[] = []) {
   const { user } = useAuth();
-  const sessionIdRef = useRef(`ui-${Date.now()}-${Math.random().toString(36).slice(-6)}`);
+  // 🚨 PHASE 2: Session stability - use stable session ID based on tab
+  const sessionIdRef = useRef<string>('');
+  
+  // Initialize session ID only once
+  if (!sessionIdRef.current) {
+    // Check if session already exists in sessionStorage
+    let sessionId = sessionStorage.getItem('ui_session_id');
+    if (!sessionId) {
+      sessionId = `ui-${Date.now()}-${Math.random().toString(36).slice(-6)}`;
+      sessionStorage.setItem('ui_session_id', sessionId);
+    }
+    sessionIdRef.current = sessionId;
+  }
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastRegistrationRef = useRef(0);
 
@@ -20,8 +32,8 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     const registerActivity = async () => {
       const now = Date.now();
       
-      // Rate limit registration calls to every 30 seconds
-      if (now - lastRegistrationRef.current < 30000) {
+      // 🚨 PHASE 2: Reduced registration frequency to prevent spam
+      if (now - lastRegistrationRef.current < 60000) { // Increased to 60 seconds
         return;
       }
 
@@ -49,8 +61,8 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     // Register activity immediately
     registerActivity();
 
-    // Set up periodic registration every 2 minutes to maintain activity status
-    intervalRef.current = setInterval(registerActivity, 120000);
+    // 🚨 PHASE 2: Increased to 5 minutes to reduce message frequency
+    intervalRef.current = setInterval(registerActivity, 300000); // 5 minutes
 
     return () => {
       if (intervalRef.current) {
@@ -63,7 +75,7 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   // Register activity on user interactions
   const registerInteraction = async () => {
     const now = Date.now();
-    if (now - lastRegistrationRef.current < 10000) { // Rate limit to 10 seconds
+    if (now - lastRegistrationRef.current < 30000) { // Rate limit to 30 seconds
       return;
     }
 

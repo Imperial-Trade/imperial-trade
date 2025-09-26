@@ -15,6 +15,8 @@ import { normalizeSymbol } from '@/utils/symbolUtils';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
+import { providerStabilityService } from '@/services/ProviderStabilityService';
+import { realtimeMessageRateMonitor } from '@/services/RealtimeMessageRateMonitor';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -150,7 +152,29 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
-  console.log('🚀 OptimizedWebSocketPriceProvider initializing...');
+  // 🚨 PHASE 1: Provider stability tracking
+  const mountTimeRef = useRef(Date.now());
+  const initCountRef = useRef(0);
+  
+  initCountRef.current++;
+  const initTime = Date.now();
+  const timeSinceMount = initTime - mountTimeRef.current;
+  
+  // 🚨 CRITICAL: Detect rapid re-initialization (restart loop)
+  if (initCountRef.current > 1 && timeSinceMount < 10000) {
+    console.error(`🚨 PROVIDER RESTART LOOP DETECTED: Init #${initCountRef.current} after only ${timeSinceMount}ms`);
+    console.error('🔍 Restart cause investigation needed - parent component re-rendering');
+  }
+  
+  console.log(`🚀 OptimizedWebSocketPriceProvider initializing... (Init #${initCountRef.current}, ${timeSinceMount}ms since mount)`);
+  
+  // 🚨 PHASE 1: Check provider stability
+  const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
+  if (!canMount) {
+    console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
+    // Return minimal fallback to prevent cascade failures
+    return <>{children}</>;
+  }
   
   // Provider initialization state
   const [isProviderReady, setIsProviderReady] = useState(false);
@@ -188,8 +212,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // Mark provider as ready after initial state setup
   useEffect(() => {
+    console.log(`🔧 Provider mounting... (Init #${initCountRef.current})`);
+    
+    // 🚨 PHASE 1: Track mount/unmount cycles
+    mountOnlyRef.current = true;
     setIsProviderReady(true);
-    console.log('✅ OptimizedWebSocketPriceProvider ready');
+    
+    console.log(`✅ OptimizedWebSocketPriceProvider ready (Init #${initCountRef.current})`);
+    
+    // 🚨 PHASE 1: Cleanup tracking on unmount
+    return () => {
+      console.log(`🧹 OptimizedWebSocketPriceProvider unmounting (Init #${initCountRef.current})`);
+      mountOnlyRef.current = false;
+      providerStabilityService.registerProviderUnmount('OptimizedWebSocketPriceProvider');
+    };
   }, []);
   
   // UI prices: Throttled updates for calm user experience (exposed to components)
@@ -394,6 +430,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // 🔥 LEAK-PROOF: Connection with mount guards and emergency breaker
   const connect = useCallback(async () => {
+    // 🚨 PHASE 1: Provider-level circuit breaker for restart loops
+    const timeSinceMount = Date.now() - mountTimeRef.current;
+    if (timeSinceMount < 5000 && initCountRef.current > 2) {
+      console.error(`🚨 Provider restart loop detected - blocking connection (${initCountRef.current} inits in ${timeSinceMount}ms)`);
+      emergencyRealtimeBreaker.recordFailure('Provider restart loop detected');
+      return;
+    }
+    
     // 🚨 EMERGENCY BREAKER: Check if realtime operations are allowed
     if (!emergencyRealtimeBreaker.canAllowRealtimeOperation('connection')) {
       if (isDevToolsEnabled()) {

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Clock, Zap, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface SystemHealthMonitorProps {
   className?: string;
@@ -17,6 +18,8 @@ interface HealthMetrics {
 }
 
 export const SystemHealthMonitor: React.FC<SystemHealthMonitorProps> = ({ className = "" }) => {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
+  
   const [health, setHealth] = useState<HealthMetrics>({
     priceUpdatesActive: false,
     orderMonitorActive: false,

@@ -18,6 +18,7 @@ import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 import { providerStabilityService } from '@/services/ProviderStabilityService';
 import { realtimeMessageRateMonitor } from '@/services/RealtimeMessageRateMonitor';
 import { realtimeMessageDiagnostics } from '@/services/RealtimeMessageDiagnostics';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -275,6 +276,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // 🚀 ACTIVITY-BASED RESOURCE MANAGEMENT: Register UI activity for cost optimization
   const { registerInteraction } = useUIActivityRegistration(Array.from(subscriptionsRef.current.keys()));
+  const { shouldEnableMonitoring, currentRoute, isLandingPage } = useMonitoringRouteGate();
 
   // 🚀 PHASE 2: Fallback mechanism refs
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);

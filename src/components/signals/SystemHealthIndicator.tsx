@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Activity, CheckCircle, AlertTriangle, Wifi } from 'lucide-react';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface SystemHealth {
   priceUpdates: 'live' | 'delayed' | 'stale';
@@ -11,6 +12,8 @@ interface SystemHealth {
 }
 
 export const SystemHealthIndicator = () => {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
+  
   const [health, setHealth] = useState<SystemHealth>({
     priceUpdates: 'live',
     realtimeConnection: 'connected', 
@@ -18,8 +21,13 @@ export const SystemHealthIndicator = () => {
     lastPriceUpdate: null
   });
 
-  // Monitor system health
+  // Monitor system health - ONLY if monitoring is enabled
   useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log(`🚫 SystemHealthIndicator: DISABLED on route: ${currentRoute}`);
+      return;
+    }
+    
     const updateHealth = () => {
       // Simulate health checks based on actual system performance
       const now = Date.now();
@@ -36,7 +44,7 @@ export const SystemHealthIndicator = () => {
 
     const interval = setInterval(updateHealth, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring, currentRoute]);
 
   const getOverallStatus = (): 'healthy' | 'warning' | 'error' => {
     if (health.realtimeConnection === 'disconnected' || health.notifications === 'error') {

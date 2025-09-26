@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface HealthMetrics {
   totalConnections: number;
@@ -41,6 +42,8 @@ export const useRealtimeHealth = () => {
 };
 
 export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
+  
   const [metrics, setMetrics] = useState<HealthMetrics>({
     totalConnections: 0,
     totalReconnections: 0,
@@ -116,8 +119,13 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
            activeConnections.current.size <= 2;
   };
 
-  // Reset counters every minute to track rates
+  // Reset counters every minute to track rates - ONLY if monitoring is enabled
   useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log(`🚫 RealtimeHealth: Monitoring DISABLED on route: ${currentRoute}`);
+      return;
+    }
+    
     const resetInterval = setInterval(() => {
       setMetrics(prev => ({
         ...prev,
@@ -128,22 +136,23 @@ export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = (
     }, 60000);
 
     return () => clearInterval(resetInterval);
-  }, []);
+  }, [shouldEnableMonitoring, currentRoute]);
 
-  // Log system health every 30 seconds in dev mode
+  // Log system health every 30 seconds in dev mode - ONLY if monitoring is enabled
   useEffect(() => {
-    if (!isDevToolsEnabled()) return;
+    if (!isDevToolsEnabled() || !shouldEnableMonitoring) return;
     
     const logInterval = setInterval(() => {
       console.log('📊 RealtimeHealth Status:', {
         activeConnections: Array.from(activeConnections.current),
         metrics,
-        isHealthy: isSystemHealthy()
+        isHealthy: isSystemHealthy(),
+        route: currentRoute
       });
     }, 30000);
 
     return () => clearInterval(logInterval);
-  }, [metrics]);
+  }, [metrics, shouldEnableMonitoring, currentRoute]);
 
   const contextValue: RealtimeHealthContextType = useMemo(() => ({
     metrics,

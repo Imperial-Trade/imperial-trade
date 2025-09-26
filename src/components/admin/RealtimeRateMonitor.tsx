@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Activity, TrendingUp, DollarSign, RefreshCw } from 'lucide-react';
 import { realtimeMessageRateMonitor } from '@/services/RealtimeMessageRateMonitor';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface RateMetrics {
   messagesPerMinute: number;
@@ -21,6 +22,8 @@ interface MessageType {
 }
 
 export const RealtimeRateMonitor: React.FC = () => {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
+  
   const [metrics, setMetrics] = useState<RateMetrics>({
     messagesPerMinute: 0,
     messagesPerHour: 0,
@@ -48,6 +51,11 @@ export const RealtimeRateMonitor: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log(`🚫 RealtimeRateMonitor: DISABLED on route: ${currentRoute}`);
+      return;
+    }
+    
     // Initial load
     refreshMetrics();
 
@@ -55,7 +63,7 @@ export const RealtimeRateMonitor: React.FC = () => {
     const interval = setInterval(refreshMetrics, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring, currentRoute]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

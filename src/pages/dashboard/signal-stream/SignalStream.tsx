@@ -12,9 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
-import { LivePriceDiagnosticsPanel } from '@/components/admin/LivePriceDiagnosticsPanel';
-import { EmergencyBroadcastReset } from '@/components/debug/EmergencyBroadcastReset';
 
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
@@ -732,15 +729,6 @@ export default function SignalStream() {
             {/* Economic Sidebar - Protected positioning */}
             <div data-prevent-widget-open="true" className="space-y-4">
               <EconomicSidebar />
-              
-              {/* System Diagnostics - Only show to admins */}
-              {isAdmin && (
-                <>
-                  <SignalStreamStatus />
-                  <LivePriceDiagnosticsPanel />
-                  <EmergencyBroadcastReset />
-                </>
-              )}
             </div>
           </div>
         </div>

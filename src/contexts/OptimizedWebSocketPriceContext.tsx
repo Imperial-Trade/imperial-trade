@@ -159,52 +159,16 @@ interface OptimizedWebSocketPriceProviderProps {
 export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPriceProviderProps> = ({
   children
 }) => {
-  // 🚨 EMERGENCY FIX: Check if provider is blocked, and if so, perform emergency reset
-  if (!providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider')) {
+  // 🚨 FIX: Read-only stability check without side effects in render
+  const isInitiallyStable = providerStabilityService.isProviderStable('OptimizedWebSocketPriceProvider');
+  
+  // 🚨 CRITICAL: Emergency reset if truly blocked, but don't call registerProviderMount in render
+  if (!isInitiallyStable) {
     console.log('🚨 EMERGENCY INTERVENTION: Provider stability service blocking provider, performing emergency reset...');
     providerStabilityService.emergencyReset('OptimizedWebSocketPriceProvider');
   }
-
-  // 🚨 CRITICAL: Check provider stability BEFORE any hooks to prevent hook violations
-  const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
   
-  // 🚨 CRITICAL FIX: Create fallback value before hooks to avoid hook violations
-  const fallbackValue: OptimizedWebSocketContextType = {
-    prices: {},
-    connectionStatus: 'disconnected',
-    error: canMount ? null : 'Provider restart loop detected - temporarily disabled',
-    lastUpdated: null,
-    dataSource: 'fallback',
-    uiThrottleMs: 3500,
-    subscribe: () => {},
-    unsubscribe: () => {},
-    getPrice: () => null,
-    getInternalPrice: () => null,
-    getDataAge: () => Infinity,
-    getConnectionQuality: () => 'stale',
-    getArrivalAge: () => Infinity,
-    internalPrices: {},
-    restartConnection: () => Promise.resolve(),
-    isConnected: false,
-    errors: {},
-    refreshPrice: () => {},
-    getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null }),
-    isUsingEnhancedSystem: false,
-    // Emergency functions
-    emergencyRestart: () => {},
-    getProviderStabilityStatus: () => ({ isBlocked: !canMount, canMount, metrics: null })
-  };
-
-  // 🚨 CRITICAL FIX: Return fallback BEFORE any hooks if can't mount
-  if (!canMount) {
-    console.error('🚨 OptimizedWebSocketPriceProvider mount blocked due to restart loop');
-    
-    return (
-      <OptimizedWebSocketContext.Provider value={fallbackValue}>
-        {children}
-      </OptimizedWebSocketContext.Provider>
-    );
-  }
+  // 🚨 REMOVED: No longer blocking provider in render - stability tracking moved to useEffect
 
   // 🚨 PHASE 1: Provider stability tracking - moved AFTER canMount check
   const mountTimeRef = useRef(Date.now());
@@ -256,9 +220,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return {};
   });
   
-  // Mark provider as ready after initial state setup
+  // 🚨 FIX: Provider stability tracking moved to useEffect (not render)
   useEffect(() => {
     console.log(`🔧 Provider mounting... (Init #${initCountRef.current})`);
+    
+    // 🚨 CRITICAL FIX: Proper mount registration in useEffect
+    const canMount = providerStabilityService.registerProviderMount('OptimizedWebSocketPriceProvider');
+    if (!canMount) {
+      console.error('🚨 Provider blocked by stability service after mount - this should not happen');
+      return;
+    }
     
     // 🚨 PHASE 1: Log mount event
     realtimeMessageDiagnostics.logEvent('OptimizedWebSocketPriceProvider', 'mount', {
@@ -334,9 +305,59 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const lastUIUpdateRef = useRef(new Map<string, number>());
   const significantUpdatesRef = useRef(new Set<string>()); // Track symbols with critical changes
   
-  // PHASE B: BroadcastChannel for leader/follower fanout
+  // REALTIME FALLBACK: Add postgres_changes subscription if no broadcast within 10s
+  const fallbackChannelRef = useRef<RealtimeChannel | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const isFollowerRef = useRef(false);
+  
+  const setupRealtimeFallback = useCallback(() => {
+    if (fallbackChannelRef.current) return;
+    
+    console.log('🔄 Setting up realtime fallback for market_prices changes');
+    
+    const fallbackChannel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'market_prices' 
+      }, (payload: any) => {
+        const row = payload.new;
+        if (row?.symbol && subscriptionsRef.current.has(row.symbol)) {
+          const priceData: PriceData = {
+            symbol: row.symbol,
+            price: parseFloat(row.mid || row.ask || row.bid),
+            change: 0,
+            changePercent: 0,
+            timestamp: row.timestamp,
+            receivedAt: Date.now(),
+            bid: row.bid ? parseFloat(row.bid) : undefined,
+            ask: row.ask ? parseFloat(row.ask) : undefined,
+            mid: row.mid ? parseFloat(row.mid) : undefined
+          };
+          
+          setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+          setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+          setLastUpdated(new Date());
+        }
+      })
+      .subscribe();
+      
+    fallbackChannelRef.current = fallbackChannel;
+  }, []);
+
+  // Start fallback timer when connected but no messages received
+  useEffect(() => {
+    if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
+      const timer = setTimeout(() => {
+        if (statsRef.current.messagesReceived === 0) {
+          setupRealtimeFallback();
+        }
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [connectionStatus, setupRealtimeFallback]);
   
   // 🎯 "Hydrate and Highlight" state tracking
   const realtimeReceivedSymbols = useRef(new Set<string>());
@@ -1168,10 +1189,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       };
       
       return () => {
-        if (broadcastChannelRef.current) {
-          broadcastChannelRef.current.close();
-          broadcastChannelRef.current = null;
-        }
+    // PHASE B: Handle disconnection gracefully  
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+    }
+    
+    if (fallbackChannelRef.current) {
+      fallbackChannelRef.current.unsubscribe();
+      fallbackChannelRef.current = null;
+    }
       };
     }
   }, [isLeader]);
@@ -1352,19 +1379,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     internalPrices,
   ]);
 
-  // Show loading state until provider is ready OR if provider is blocked
-  if (!isProviderReady || !canMount) {
-    if (!canMount) {
-      console.error('🚨 OptimizedWebSocketPriceProvider blocked due to restart loop - serving minimal context');
-    }
-    
+  // Show loading state until provider is ready
+  if (!isProviderReady) {
     return (
       <OptimizedWebSocketContext.Provider value={{
         prices: {},
         connectionStatus: 'connecting',
         error: null,
         lastUpdated: null,
-        dataSource: canMount ? 'initializing' : 'blocked',
+        dataSource: 'initializing',
         uiThrottleMs: UI_UPDATE_THROTTLE_MS,
         subscribe: () => {},
         unsubscribe: () => {},
@@ -1382,7 +1405,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         isUsingEnhancedSystem: false,
         // Emergency functions
         emergencyRestart: () => {},
-        getProviderStabilityStatus: () => ({ isBlocked: !canMount, canMount, metrics: null })
+        getProviderStabilityStatus: () => ({ isBlocked: false, canMount: true, metrics: null })
       }}>
         {children}
       </OptimizedWebSocketContext.Provider>

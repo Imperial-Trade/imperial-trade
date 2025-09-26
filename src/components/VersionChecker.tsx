@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface VersionInfo {
   version: string;
@@ -12,8 +13,15 @@ interface VersionInfo {
 export function VersionChecker() {
   const [needsUpdate, setNeedsUpdate] = useState(false);
   const [newVersion, setNewVersion] = useState<VersionInfo | null>(null);
+  const { shouldEnableMonitoring } = useMonitoringRouteGate();
 
   useEffect(() => {
+    // 🚨 ROUTE GATE: Only check for updates on dashboard/admin routes to prevent realtime message leak
+    if (!shouldEnableMonitoring) {
+      console.log('🚫 VersionChecker: Disabled on landing page routes for cost optimization');
+      return;
+    }
+
     const checkVersion = async () => {
       try {
         const currentVersion = localStorage.getItem('app_version');
@@ -42,10 +50,10 @@ export function VersionChecker() {
     // Check on mount
     checkVersion();
     
-    // Check every 90 seconds for faster update detection
+    // Check every 90 seconds for faster update detection (only on dashboard routes)
     const interval = setInterval(checkVersion, 90 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring]);
 
   const handleRefresh = () => {
     if (newVersion) {

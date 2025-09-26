@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface NotificationMetrics {
   totalSent: number;
@@ -26,6 +27,7 @@ export function NotificationDuplicateMonitor() {
   const [metrics, setMetrics] = useState<NotificationMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const { shouldEnableMonitoring } = useMonitoringRouteGate();
 
   const fetchMetrics = async () => {
     try {
@@ -120,11 +122,15 @@ export function NotificationDuplicateMonitor() {
   }, []);
 
   useEffect(() => {
-    if (autoRefresh) {
+    // 🚨 ROUTE GATE: Only auto-refresh on dashboard/admin routes to prevent realtime message leak
+    if (autoRefresh && shouldEnableMonitoring) {
       const interval = setInterval(fetchMetrics, 30000); // 30 seconds
       return () => clearInterval(interval);
+    } else if (autoRefresh && !shouldEnableMonitoring) {
+      console.log('🚫 NotificationDuplicateMonitor: Auto-refresh disabled on landing page routes');
+      setAutoRefresh(false);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, shouldEnableMonitoring]);
 
   if (loading) {
     return (

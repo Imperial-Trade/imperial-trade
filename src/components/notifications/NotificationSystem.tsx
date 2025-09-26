@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { notificationValidator, type SignalChangeData } from '@/utils/notificationValidation';
 
 // Extend the Window interface to include webkitAudioContext
 declare global {
@@ -64,9 +65,34 @@ const NotificationSystem = () => {
   }, []);
 
   const addNotification = useCallback(
-    (notification: any) => {
+    async (notification: any) => {
       const now = Date.now();
       const cooldown = 5000; // 5 seconds cooldown
+
+      // Enhanced validation for signal-related notifications
+      if (notification.metadata?.signal_id && notification.metadata?.change_types) {
+        // Validate actual changes occurred
+        const changeData: SignalChangeData = {
+          signalId: notification.metadata.signal_id,
+          oldData: notification.metadata.old_data || {},
+          newData: notification.metadata.new_data || {},
+          changeTypes: notification.metadata.change_types || [],
+          timestamp: new Date()
+        };
+
+        const validation = await notificationValidator.validateSignalChange(changeData);
+        if (!validation.isValid) {
+          console.log(`🚫 Notification blocked by validation: ${validation.reason}`);
+          return;
+        }
+
+        // Check rate limiting for signal notifications
+        const rateLimitPassed = await notificationValidator.checkNotificationRateLimit(notification.metadata.signal_id);
+        if (!rateLimitPassed) {
+          console.log(`🚫 Notification blocked by rate limit: ${notification.metadata.signal_id}`);
+          return;
+        }
+      }
 
       if (now - lastNotificationTime < cooldown) {
         console.warn("Notification suppressed due to cooldown.");

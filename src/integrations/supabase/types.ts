@@ -1286,6 +1286,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_audit_false_positives: {
+        Row: {
+          actual_change_data: Json | null
+          created_at: string | null
+          detection_method: string | null
+          false_positive_detected_at: string | null
+          id: string
+          notification_sent_at: string | null
+          reported_change_types: string[] | null
+          signal_id: string
+          user_reported: boolean | null
+        }
+        Insert: {
+          actual_change_data?: Json | null
+          created_at?: string | null
+          detection_method?: string | null
+          false_positive_detected_at?: string | null
+          id?: string
+          notification_sent_at?: string | null
+          reported_change_types?: string[] | null
+          signal_id: string
+          user_reported?: boolean | null
+        }
+        Update: {
+          actual_change_data?: Json | null
+          created_at?: string | null
+          detection_method?: string | null
+          false_positive_detected_at?: string | null
+          id?: string
+          notification_sent_at?: string | null
+          reported_change_types?: string[] | null
+          signal_id?: string
+          user_reported?: boolean | null
+        }
+        Relationships: []
+      }
       notification_audit_trail: {
         Row: {
           attempts: number | null

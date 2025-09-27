@@ -13,6 +13,7 @@ interface UseOptimizedWebSocketPricesReturn {
   subscribe: (symbol: string) => void;
   unsubscribe: (symbol: string) => void;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  isConnected: boolean;
 }
 
 export const useOptimizedWebSocketPrices = (): UseOptimizedWebSocketPricesReturn => {
@@ -82,6 +83,7 @@ export const useOptimizedWebSocketPrices = (): UseOptimizedWebSocketPricesReturn
     prices,
     subscribe,
     unsubscribe,
-    connectionStatus
+    connectionStatus,
+    isConnected: connectionStatus === 'connected'
   };
 };

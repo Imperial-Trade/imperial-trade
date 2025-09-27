@@ -1,4 +1,5 @@
 import { ReactNode, JSXElementConstructor, ReactElement, ReactPortal } from 'react';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 
 export interface BaseComponentProps {
   className?: string;
@@ -61,13 +62,13 @@ export interface TradeAlertData {
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {
-  alert: TradeAlertData;
+  alert: TradeAlertWithProfile;
   currentPrice?: number;
   updatesInProgress?: Set<string>;
-  onStatusUpdate: (alert: TradeAlertData, newStatus: string) => Promise<void>;
-  onTakeProfitHit: (alert: TradeAlertData, tpLevel: number) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertData) => Promise<void>;
-  onActivateOrder?: (alert: TradeAlertData) => Promise<void>;
+  onStatusUpdate: (alert: TradeAlertWithProfile, newStatus: string) => Promise<void>;
+  onTakeProfitHit: (alert: TradeAlertWithProfile, tpLevel: number) => Promise<void>;
+  onStopLossHit: (alert: TradeAlertWithProfile) => Promise<void>;
+  onActivateOrder?: (alert: TradeAlertWithProfile) => Promise<void>;
   livePrice?: number;
   isRecentClosure?: boolean;
   onOrderActivation?: () => Promise<void>;

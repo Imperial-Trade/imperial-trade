@@ -4,7 +4,25 @@ import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from 
 import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
 
-export interface TradeAlertWithProfile extends TradeAlertResponseDto {
+export interface TradeAlertWithProfile {
+  id: string;
+  userId: string;
+  assetName: string;
+  tradermadeSymbol: string;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entryPrice: number;
+  stopLoss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  tpHits: number[];
+  notes?: string;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'expired' | 'reversal_after_tp';
+  createdAt?: string;
+  updatedAt?: string;
   creator?: {
     id: string;
     display_name: string;

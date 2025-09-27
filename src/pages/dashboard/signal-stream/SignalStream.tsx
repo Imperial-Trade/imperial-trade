@@ -183,8 +183,8 @@ const SignalStream: React.FC = () => {
       active: activeAlerts.length,
       closed: staticClosedAlerts.length,
       pending: activeAlerts.filter(alert => alert.status === 'pending').length,
-      buy: activeAlerts.filter(alert => alert.trade_type === 'buy' || alert.trade_type === 'buy_limit').length,
-      sell: activeAlerts.filter(alert => alert.trade_type === 'sell' || alert.trade_type === 'sell_limit').length
+      buy: activeAlerts.filter(alert => alert.tradeType === 'buy' || alert.tradeType === 'buy_limit').length,
+      sell: activeAlerts.filter(alert => alert.tradeType === 'sell' || alert.tradeType === 'sell_limit').length
     };
 
     console.log('signalCounts - Updated counts:', counts);
@@ -328,15 +328,15 @@ const SignalStream: React.FC = () => {
     
     // Add active alert symbols
     activeAlerts.forEach(alert => {
-      if (alert.tradermade_symbol) {
-        symbolSet.add(alert.tradermade_symbol);
+      if (alert.tradermadeSymbol) {
+        symbolSet.add(alert.tradermadeSymbol);
       }
     });
 
     // Add recent closed alert symbols (for display purposes)
     staticClosedAlerts.slice(0, 6).forEach(alert => {
-      if (alert.tradermade_symbol) {
-        symbolSet.add(alert.tradermade_symbol);
+      if (alert.tradermadeSymbol) {
+        symbolSet.add(alert.tradermadeSymbol);
       }
     });
 
@@ -449,7 +449,7 @@ const SignalStream: React.FC = () => {
                         onActivateOrder={handleActivateOrder}
                         updatesInProgress={updatesInProgress}
                         isAdmin={isAdmin}
-                        isCreator={alert.user_id === user?.id}
+        isCreator={alert.userId === user?.id}
                         connectionStatus={connectionStatus}
                         priceSource="websocket"
                       />

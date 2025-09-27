@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
@@ -74,7 +75,6 @@ async function getEducatorUserIds(): Promise<string[]> {
 
 interface SignalRealtimeContextType {
   signals: TradeAlertWithProfile[];
-  signalsMap: Record<string, TradeAlertWithProfile>;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   lastUpdated: Date | null;
   error: string | null;
@@ -99,8 +99,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('signal'));
   
-  // PHASE 1: NORMALIZED STATE - Signal map for atomic updates and array for compatibility
-  const [signalsMap, setSignalsMap] = useState<Record<string, TradeAlertWithProfile>>({});
+  const [signals, setSignals] = useState<TradeAlertWithProfile[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
@@ -136,13 +135,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const lastRefreshRef = useRef<number>(0);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   
-  // PHASE 3: Enhanced local caching to minimize database queries (NORMALIZED)
+  // PHASE 3: Enhanced local caching to minimize database queries
   const localCacheRef = useRef<{ 
-    dataMap: Record<string, TradeAlertWithProfile>, 
+    data: TradeAlertWithProfile[], 
     expiry: number,
     educatorIds: string[],
     educatorExpiry: number 
-  }>({ dataMap: {}, expiry: 0, educatorIds: [], educatorExpiry: 0 });
+  }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
   const refreshSignals = useCallback(async () => {
     try {
@@ -163,18 +162,18 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       
       healthMonitor.recordDatabaseQuery('SignalRealtime', 'refresh');
       
-      // PHASE 3: Enhanced cache checking with educator IDs (NORMALIZED)
+      // PHASE 3: Enhanced cache checking with educator IDs
       const cache = localCacheRef.current;
-      if (Object.keys(cache.dataMap).length > 0 && now < cache.expiry && cache.educatorIds.length > 0) {
+      if (cache.data.length > 0 && now < cache.expiry && cache.educatorIds.length > 0) {
         if (isDevToolsEnabled()) {
           console.log('📊 Using comprehensive cached signals, skipping all database queries');
         }
-        unstable_batchedUpdates(() => {
-          setSignalsMap(cache.dataMap);
-          setLastUpdated(new Date());
-          setError(null);
-        });
-        return;
+unstable_batchedUpdates(() => {
+  setSignals(cache.data);
+  setLastUpdated(new Date());
+  setError(null);
+});
+return;
       }
       
       // PHASE 3: Use cached educator IDs or fetch fresh ones
@@ -203,15 +202,14 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
       console.log('SignalRealtimeContext - Fetched educator alerts:', alertsData?.length || 0);
 
-      if (!alertsData || alertsData.length === 0) {
-        console.log('SignalRealtimeContext - No educator alerts found');
-        unstable_batchedUpdates(() => {
-          setSignalsMap({});
-          setLastUpdated(new Date());
-          setError(null);
-        });
-        return;
-      }
+if (!alertsData || alertsData.length === 0) {
+  console.log('SignalRealtimeContext - No educator alerts found');
+  unstable_batchedUpdates(() => {
+    setLastUpdated(new Date());
+    setError(null);
+  });
+  return;
+}
 
       // Get profiles for these alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
@@ -273,39 +271,29 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         };
       });
 
-      // 🔥 PHASE 1: Convert to normalized state map for atomic updates
+      // 🔥 RESTORED: Let database 1-hour window handle closed signals filtering
+      // SignalCacheManager now only prevents flicker during WebSocket updates
       const filteredAlerts = allAlertsWithProfiles;
-      const normalizedMap: Record<string, TradeAlertWithProfile> = {};
-      filteredAlerts.forEach(alert => {
-        normalizedMap[alert.id] = alert;
-      });
       
-      // PHASE 3: Update comprehensive local cache with normalized results
+      // PHASE 3: Update comprehensive local cache with filtered results
       localCacheRef.current = {
-        dataMap: normalizedMap,
+        data: filteredAlerts,
         expiry: now + LOCAL_CACHE_TTL,
         educatorIds: educatorUserIds,
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
-      unstable_batchedUpdates(() => {
-        setSignalsMap(normalizedMap);
-        setLastUpdated(new Date());
-        setError(null);
-      });
+unstable_batchedUpdates(() => {
+  setSignals(filteredAlerts);
+  setLastUpdated(new Date());
+  setError(null);
+});
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh signals');
     }
   }, []);
-
-  // PHASE 1: Convert normalized state map to array for component compatibility
-  const signals = useMemo(() => {
-    return Object.values(signalsMap).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [signalsMap]);
 
   // PHASE 6: Connection state management utilities
   const updateConnectionState = useCallback((updates: Partial<ConnectionState>) => {
@@ -465,221 +453,338 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
         }
         
-        // PHASE 1: ATOMIC INSERT - Use normalized state map for perfect isolation
-        setSignalsMap(prev => {
-          if (prev[newSignal.id]) {
+        setSignals(prev => {
+          // Check for duplicates using the state from the setter to avoid stale closure
+          const alreadyExists = prev.find(signal => signal.id === newSignal.id);
+          if (alreadyExists) {
             if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal already exists, skipping duplicate insert');
+              console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
             }
-            return prev; // No change needed
+            return prev;
           }
-          
-          // PHASE 1: ATOMIC INSERT - Perfect isolation with normalized state
-          const updated = { ...prev, [newSignal.id]: newSignal };
-          if (isDevToolsEnabled()) {
-            console.log('SignalRealtimeContext - Updated signals map:', Object.keys(updated).length, 'signals');
-          }
-          return updated;
+          return [newSignal, ...prev];
         });
-
-      } else if (eventType === 'UPDATE' && newRecord) {
+        
+        // PHASE 3: Update local cache with new signal
+        const cache = localCacheRef.current;
+        if (cache.data.length > 0) {
+          cache.data = [newSignal, ...cache.data];
+        }
+        
+        // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'signal_created',
+            title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
+            message: `${profile?.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
+            signalId: newRecord.id,
+            assetName: newRecord.asset_name,
+            authorName: profile?.display_name || 'Educator',
+            priority: 'high',
+            autoRemove: true,
+          });
+        }
+        
+        // Also dispatch custom event for backwards compatibility
+        window.dispatchEvent(new CustomEvent('signal-posted'));
+      } 
+      else if (eventType === 'UPDATE' && newRecord) {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         }
         
-        // Get profile for the updated signal
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newRecord.user_id)
-          .single();
-
-        if (profileError && isDevToolsEnabled()) {
-          console.error('SignalRealtimeContext - Error fetching profile for updated signal:', profileError);
-        }
-
-        // Check for meaningful notes changes and trigger notifications
-        const hasSignificantNotesChange = oldRecord.notes !== newRecord.notes && 
-          newRecord.notes && 
-          newRecord.notes.trim().length > 10; // Only notify for substantial notes
-
-        if (hasSignificantNotesChange) {
-          console.log(`🔔 PHASE 3: Notes change detected for signal ${newRecord.id}`, {
-            oldNotes: oldRecord.notes?.substring(0, 50) + '...',
-            newNotes: newRecord.notes?.substring(0, 50) + '...',
-            hasContent: !!newRecord.notes?.trim()
-          });
+        setSignals(prev => {
+          // 🚀 ORDER ACTIVATION BYPASS: Detect critical order status changes
+          const currentSignal = prev.find(signal => signal.id === newRecord.id);
+          const isOrderActivation = currentSignal?.status === 'pending' && newRecord.status === 'active';
+          const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
+          const isNotesUpdate = currentSignal?.notes !== newRecord.notes;
           
-          // Trigger notes update notification
-          window.dispatchEvent(new CustomEvent('signal-notes-updated', {
-            detail: {
-              signalId: newRecord.id,
-              assetName: newRecord.assetName,
-              oldNotes: oldRecord.notes,
-              newNotes: newRecord.notes,
-              updatedAt: new Date().toISOString()
-            }
-          }));
-        }
-
-        const updatedSignal: TradeAlertWithProfile = {
-          id: newRecord.id,
-          userId: newRecord.user_id,
-          assetName: newRecord.asset_name,
-          tradermadeSymbol: newRecord.tradermade_symbol,
-          tradeType: newRecord.trade_type,
-          entryPrice: Number(newRecord.entry_price),
-          stopLoss: Number(newRecord.stop_loss),
-          status: newRecord.status,
-          tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-          tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-          tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-          tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-          tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
-          tpHits: newRecord.tp_hits || [],
-          notes: newRecord.notes,
-          closeReason: newRecord.close_reason,
-          createdAt: newRecord.created_at,
-          updatedAt: newRecord.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url,
-            user_type: profile.user_type,
-            access_level: profile.access_level
-          } : {
-            id: newRecord.user_id,
-            display_name: 'Unknown User',
-            role: 'user',
-            avatar_url: null,
-            user_type: null,
-            access_level: null
-          }
-        };
-        
-        // PHASE 1 & 2: ATOMIC UPDATE - Perfect isolation with instant UI sync
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - UPDATE event details:', {
-            signalId: newRecord.id,
-            oldStatus: oldRecord?.status,
-            newStatus: newRecord.status,
-            tpHitsChange: `${oldRecord?.tp_hits?.length || 0} -> ${newRecord.tp_hits?.length || 0}`,
-            statusChange: oldRecord?.status !== newRecord.status
-          });
-        }
-        
-        // PHASE 1: ATOMIC UPDATE - Single, isolated update per signal
-        setSignalsMap(prev => {
-          if (!prev[newRecord.id]) {
-            if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal not found for update, adding as new:', newRecord.id);
-            }
+          if (isDevToolsEnabled() && isCriticalStatusChange) {
+            console.log(`🚀 ORDER STATUS BYPASS: ${currentSignal?.status} → ${newRecord.status} for ${newRecord.asset_name}`);
           }
           
-          // PHASE 2: INSTANT UI SYNC - Single update, no delays, no race conditions
-          return { ...prev, [newRecord.id]: updatedSignal };
+          if (isDevToolsEnabled() && isNotesUpdate) {
+            console.log(`📝 NOTES UPDATE: "${currentSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
+          }
+
+          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
+          if (isOrderActivation) {
+            console.log(`🎯 ACTIVATION DETECTED: Forcing immediate UI update for ${newRecord.asset_name} (${newRecord.id})`);
+            
+            // Dispatch activation event with high priority
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+                detail: {
+                  signalId: newRecord.id,
+                  assetName: newRecord.asset_name,
+                  status: 'active',
+                  timestamp: new Date().toISOString(),
+                  priority: 'high'
+                }
+              }));
+            }, 0);
+
+            // 🚀 PHASE 2: Enhanced activation reliability - Force delayed refresh
+            setTimeout(() => {
+              console.log(`🔄 ACTIVATION REFRESH: Triggering delayed UI sync for ${newRecord.asset_name}`);
+              setSignals(current => current.map(s => 
+                s.id === newRecord.id ? {
+                  ...s,
+                  status: 'active',
+                  updatedAt: new Date().toISOString()
+                } : s
+              ));
+            }, 100);
+          }
+          
+          const updatedSignals = prev.map(signal => 
+            signal.id === newRecord.id ? {
+              ...signal,
+              assetName: newRecord.asset_name,
+              tradermadeSymbol: newRecord.tradermade_symbol,
+              tradeType: newRecord.trade_type,
+              entryPrice: Number(newRecord.entry_price),
+              stopLoss: Number(newRecord.stop_loss),
+              status: newRecord.status,
+              tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+              tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+              tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+              tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+              tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
+              tpHits: newRecord.tp_hits || [],
+              notes: newRecord.notes,
+              closeReason: newRecord.close_reason,
+              updatedAt: newRecord.updated_at
+            } : signal
+          );
+          
+          // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
+          const validatedSignals = updatedSignals.map(signal => {
+            if (signal.id === newRecord.id && newRecord.tp_hits) {
+              // Ensure TP hits are sequential and valid
+              const validTpHits = [];
+              const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
+              
+              // Only allow sequential TP hits (1, then 2, then 3, etc.)
+              for (let i = 0; i < sortedTpHits.length; i++) {
+                const expectedTp = i + 1;
+                if (sortedTpHits[i] === expectedTp) {
+                  validTpHits.push(expectedTp);
+                } else {
+                  // Invalid TP sequence detected, break
+                  console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${signal.id}`);
+                  break;
+                }
+              }
+              
+              return {
+                ...signal,
+                tpHits: validTpHits // Use validated TP hits
+              };
+            }
+            return signal;
+          });
+          
+          // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
+          if (isOrderActivation) {
+            // Enhanced activation notification
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                type: 'order_activated',
+                title: `🚀 Order Activated!`,
+                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                priority: 'high',
+                autoRemove: true,
+                duration: 5000
+              });
+            }
+            
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('order-activated', {
+                detail: {
+                  signalId: newRecord.id,
+                  assetName: newRecord.asset_name,
+                  status: newRecord.status,
+                  timestamp: new Date().toISOString(),
+                  priority: 'high'
+                }
+              }));
+            }, 0);
+          }
+          
+          // 🔥 FLICKER PREVENTION: Apply cache filtering only during WebSocket updates
+          return signalCacheManager.filterExpiredClosedSignals(updatedSignals);
         });
         
-        // If this is a closure event, trigger cache manager cleanup for flicker prevention
-        if (newRecord.status === 'closed') {
+        // 🔥 FIX CLOSED SIGNALS: Mark signal as closed in cache manager
+        if (eventType === 'UPDATE' && newRecord?.status === 'closed') {
           signalCacheManager.markSignalClosed(newRecord.id, newRecord.updated_at);
         }
-      
-      } else if (eventType === 'DELETE' && oldRecord) {
+        
+        if (isDevToolsEnabled()) {
+          console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
+        }
+      }
+      else if (eventType === 'DELETE' && oldRecord) {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
         }
+        setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));
         
-        // PHASE 1: ATOMIC DELETE - Perfect isolation
-        setSignalsMap(prev => {
-          const { [oldRecord.id]: deleted, ...remaining } = prev;
-          return remaining;
-        });
+        // PHASE 3: Update local cache by removing deleted signal
+        const cache = localCacheRef.current;
+        if (cache.data.length > 0) {
+          cache.data = cache.data.filter(signal => signal.id !== oldRecord.id);
+        }
       }
 
-      unstable_batchedUpdates(() => {
-        setLastUpdated(new Date());
-        setError(null);
-      });
+unstable_batchedUpdates(() => {
+  setLastUpdated(new Date());
+  setError(null);
+});
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to handle realtime update:', err);
     }
   }, []);
 
-  // 🚀 REAL-TIME SUBSCRIPTION: Shared connection approach
+  // 🔥 LEAK-PROOF: Subscribe with mount guards and definitive logging
   const subscribe = useCallback(async () => {
+    // 🔥 LEAK-PROOF: Block subscription after unmount
+    if (!mountOnlyRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('Signal subscription blocked: component unmounted');
+      }
+      return;
+    }
+    
+    // PHASE B: Route gating - only subscribe if current route allows signals
     if (!isSignalSubscriptionAllowed) {
-      console.log('SignalRealtimeContext - Subscription blocked by route gating');
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Signal subscription blocked by route gating');
+      }
       return;
     }
 
-    if (connectionStateRef.current.status === 'connected') {
-      console.log('SignalRealtimeContext - Already connected, skipping subscription');
+    // 🔥 LEAK-PROOF: Idempotent subscription check
+    if (unsubscribeRef.current) {
+      if (isDevToolsEnabled()) {
+        console.log('SignalRealtimeContext - Already subscribed via shared connection');
+      }
       return;
     }
+
+    // 🔥 DEFINITIVE LOGGING: Log subscription attempt
+    realtimeLogger.logSubscribe(channelIdRef.current, 'trade_alerts', 'SignalRealtimeProvider');
 
     try {
-      console.log('SignalRealtimeContext - Starting subscription...');
-      updateConnectionState({ status: 'connecting' });
-      recordConnection();
-
-      // Initial data fetch
-      await refreshSignals();
-
-      // Subscribe to real-time updates using shared connection
-      const unsubscribeFn = subscribeToTable({
-        table: 'trade_alerts',
-        event: '*'
-      }, handleRealtimeUpdate);
-      unsubscribeRef.current = unsubscribeFn;
-
-      // Update connection state and start heartbeat
-      updateConnectionState({
-        status: 'connected',
-        lastSuccessAt: Date.now(),
-        consecutiveFailures: 0,
-        errorCount: 0
-      });
-
-      recordConnection();
+      // PHASE 3: Get educator IDs with enhanced caching
+      const cache = localCacheRef.current;
+      const now = Date.now();
       
-      console.log('SignalRealtimeContext - Successfully subscribed to real-time updates');
-    } catch (err) {
-      console.error('SignalRealtimeContext - Failed to subscribe:', err);
+      let educatorUserIds = cache.educatorIds;
+      if (educatorUserIds.length === 0 || now >= cache.educatorExpiry) {
+        educatorUserIds = await getEducatorUserIds();
+        localCacheRef.current.educatorIds = educatorUserIds;
+        localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
+      }
+      
+      // 🚀 OPTIMIZED: Subscribe to ALL relevant signal events for immediate updates
+      const unsubscribeInsert = subscribeToTable(
+        {
+          table: 'trade_alerts',
+          event: 'INSERT',
+          filter: `user_id=in.(${educatorUserIds.join(',')})`
+        },
+        handleRealtimeUpdate
+      );
+      
+      // 🚀 ENHANCED UPDATE FILTER: All meaningful updates for comprehensive coverage
+      const unsubscribeUpdate = subscribeToTable(
+        {
+          table: 'trade_alerts', 
+          event: 'UPDATE',
+          // Capture all significant changes: status changes, TP hits, notes, activations
+          filter: `user_id=in.(${educatorUserIds.join(',')})`
+        },
+        handleRealtimeUpdate
+      );
+      
+      // Combine unsubscribe functions
+      const unsubscribe = () => {
+        unsubscribeInsert();
+        unsubscribeUpdate();
+      };
+      
+      unsubscribeRef.current = unsubscribe;
+      recordConnection(); // PHASE C: Record successful subscription
+      
+      // Load initial data with caching
+      refreshSignals();
+      
+      if (isDevToolsEnabled()) {
+        console.log('✅ PHASE 3: Subscribed via shared connection, zero duplicate channels');
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to subscribe to signals:', error);
+      setError('Failed to initialize realtime connection');
       updateConnectionState({
         status: 'error',
-        errorCount: connectionStateRef.current.errorCount + 1,
         consecutiveFailures: connectionStateRef.current.consecutiveFailures + 1
       });
-      setError(err instanceof Error ? err.message : 'Subscription failed');
     }
-  }, [isSignalSubscriptionAllowed, refreshSignals, subscribeToTable, handleRealtimeUpdate, updateConnectionState, recordConnection]);
+  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed, updateConnectionState]);
 
+  // 🔥 LEAK-PROOF: Deterministic unsubscribe with definitive logging
   const unsubscribe = useCallback(() => {
-    console.log('SignalRealtimeContext - Unsubscribing...');
-    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     if (unsubscribeRef.current) {
+      // 🔥 DEFINITIVE LOGGING: Always log unsubscription
+      realtimeLogger.logUnsubscribe(channelIdRef.current, 'SignalRealtimeProvider');
+      
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
     
-    updateConnectionState({ status: 'disconnected' });
-    recordConnection();
-  }, [updateConnectionState, recordConnection]);
+    setNextRetryAt(null);
+  }, []); // 🔥 LEAK-PROOF: No dependencies to prevent stale closures
 
-  // 🔥 LEAK-PROOF MOUNT/UNMOUNT: Single execution, comprehensive cleanup
+  // PHASE 3: Simplified reconnection via shared connection (automatic)
+  const attemptReconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    const delay = 5000; // Simple 5 second delay
+    const target = Date.now() + delay;
+    setNextRetryAt(target);
+
+    if (isDevToolsEnabled()) {
+      console.log(`🔄 PHASE 3: Reconnecting via shared connection in ${Math.round(delay)}ms`);
+    }
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      unsubscribe();
+      subscribe();
+    }, delay);
+  }, [subscribe, unsubscribe]);
+
+  // 🔥 LEAK-PROOF: Mount-only lifecycle with definitive cleanup
   useEffect(() => {
-    if (mountOnlyRef.current) return;
     mountOnlyRef.current = true;
     
-    // Register with health monitor
+    realtimeLogger.logStatus('SignalRealtimeProvider MOUNT');
     healthMonitor.registerConnection('SignalRealtime');
     
-    realtimeLogger.logStatus('SignalRealtimeProvider MOUNT');
-
     return () => {
       mountOnlyRef.current = false;
+      
       realtimeLogger.logStatus('SignalRealtimeProvider UNMOUNT');
       
       // 🔥 LEAK-PROOF: Clear all timers first
@@ -697,7 +802,6 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   const contextValue: SignalRealtimeContextType = {
     signals,
-    signalsMap,
     connectionStatus: connectionStateRef.current.status === 'circuit-breaker' ? 'error' : connectionStateRef.current.status,
     lastUpdated,
     error: error || connectionStateRef.current?.status === 'error' ? 'Connection error' : null,
@@ -719,10 +823,21 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   );
 };
 
-export const useSignalRealtime = (): SignalRealtimeContextType => {
+export const useSignalRealtime = () => {
   const context = useContext(SignalRealtimeContext);
   if (!context) {
-    throw new Error('useSignalRealtime must be used within a SignalRealtimeProvider');
+    // Instead of throwing, return a safe fallback object
+    console.warn('useSignalRealtime used outside of SignalRealtimeProvider, returning fallback');
+    return {
+      signals: [],
+      connectionStatus: 'disconnected' as const,
+      lastUpdated: null,
+      error: 'SignalRealtimeProvider not initialized',
+      nextRetryAt: null,
+      subscribe: () => console.warn('SignalRealtimeProvider not available'),
+      unsubscribe: () => console.warn('SignalRealtimeProvider not available'),
+      refreshSignals: async () => console.warn('SignalRealtimeProvider not available')
+    };
   }
   return context;
 };

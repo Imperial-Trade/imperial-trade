@@ -5,12 +5,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useOptimizedWebSocketPrices } from '@/hooks/useOptimizedWebSocketPrices';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { transformTradeAlertToFrontend } from '@/utils/dataTransformers';
 import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
-import { TradeAlertData } from '@/types/components';
+import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 import { SignalCounts, FilterState, EducatorOption } from '@/types/dashboard';
 import EnhancedSignalFilters from '@/components/dashboard/EnhancedSignalFilters';
 import ConnectionStatusIndicator from '@/components/dashboard/ConnectionStatusIndicator';
@@ -33,7 +34,7 @@ const SignalStream: React.FC = () => {
   const [updatesInProgress, setUpdatesInProgress] = useState<Set<string>>(new Set());
   
   // PHASE 4: Static closed alerts - fetched once on mount, never updated live
-  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertData[]>([]);
+  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
   const [closedAlertsLoaded, setClosedAlertsLoaded] = useState(false);
   
   // Core hooks
@@ -77,15 +78,7 @@ const SignalStream: React.FC = () => {
       const { data: closedSignalsData, error } = await supabase
         .from('trade_alerts')
         .select(`
-          *,
-          profiles!trade_alerts_user_id_fkey (
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
+          *
         `)
         .eq('status', 'closed')
         .order('created_at', { ascending: false })
@@ -97,39 +90,38 @@ const SignalStream: React.FC = () => {
       }
 
       if (closedSignalsData) {
-        const transformedClosedAlerts: TradeAlertData[] = closedSignalsData.map(signal => {
-          const profile = signal.profiles;
-          return {
+        // Fetch profiles separately to avoid relationship issues
+        const userIds = [...new Set(closedSignalsData.map(signal => signal.user_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, role, avatar_url, user_type, access_level')
+          .in('id', userIds);
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+        const transformedClosedAlerts: TradeAlertWithProfile[] = closedSignalsData.map(signal => 
+          transformTradeAlertToFrontend({
             id: signal.id,
+            user_id: signal.user_id,
             asset_name: signal.asset_name,
             tradermade_symbol: signal.tradermade_symbol,
-            trade_type: signal.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
-            entry_price: signal.entry_price || 0,
-            stop_loss: signal.stop_loss || 0,
+            trade_type: signal.trade_type,
+            entry_price: signal.entry_price,
+            stop_loss: signal.stop_loss,
+            status: signal.status,
             tp1: signal.tp1,
             tp2: signal.tp2,
             tp3: signal.tp3,
             tp4: signal.tp4,
             tp5: signal.tp5,
-            status: signal.status as 'pending' | 'active' | 'closed' | 'partially_profited',
-            tp_hits: signal.tp_hits || [],
+            tp_hits: signal.tp_hits,
             notes: signal.notes,
-            close_reason: signal.close_reason as any,
+            close_reason: signal.close_reason,
             created_at: signal.created_at,
             updated_at: signal.updated_at,
-            user_id: signal.user_id,
-            created_date: signal.created_at,
-            updated_date: signal.updated_at,
-            creator: profile ? {
-              id: profile.id,
-              displayName: profile.display_name,
-              role: profile.role,
-              avatarUrl: profile.avatar_url,
-              userType: profile.user_type,
-              accessLevel: profile.access_level
-            } : undefined
-          };
-        });
+            profiles: profilesMap.get(signal.user_id) || null
+          })
+        );
 
         console.log('fetchClosedAlerts - Setting static closed alerts:', transformedClosedAlerts.length);
         setStaticClosedAlerts(transformedClosedAlerts);
@@ -192,15 +184,15 @@ const SignalStream: React.FC = () => {
   }, [activeAlerts, staticClosedAlerts]);
 
   // Create signal handler
-  const handleCreateSignal = useCallback(async (signalData: CreateTradeAlertDto) => {
+  const handleCreateSignal = useCallback(async (signalData: CreateTradeAlertDto): Promise<void> => {
     if (!user) {
       toast("Authentication required - please log in to create signals");
-      return false;
+      return;
     }
 
     if (!canCreateSignals) {
       toast("Access denied - only educators and admins can create signals");
-      return false;
+      return;
     }
 
     try {
@@ -233,16 +225,14 @@ const SignalStream: React.FC = () => {
       toast(`${signalData.assetName} signal created successfully`);
 
       setShowNewAlertModal(false);
-      return true;
     } catch (error) {
       console.error('Error creating signal:', error);
       toast("Failed to create signal. Please try again.");
-      return false;
     }
   }, [user, canCreateSignals]);
 
   // Status update handler
-  const handleStatusUpdate = useCallback(async (alert: TradeAlertData, newStatus: string) => {
+  const handleStatusUpdate = useCallback(async (alert: TradeAlertWithProfile, newStatus: string) => {
     try {
       setUpdatesInProgress(prev => new Set(prev).add(alert.id));
       
@@ -261,12 +251,11 @@ const SignalStream: React.FC = () => {
     }
   }, [updateAlert]);
 
-  const handleTakeProfitHit = useCallback(async (alert: TradeAlertData, tpLevel: number) => {
+  const handleTakeProfitHit = useCallback(async (alert: TradeAlertWithProfile, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => {
     try {
       setUpdatesInProgress(prev => new Set(prev).add(alert.id));
       
-      const newTpHits = [...(alert.tp_hits || []), tpLevel];
-      await updateAlert(alert.id, { tp_hits: newTpHits });
+      await updateAlert(alert.id, { tp_hits: newTPHits });
       
       toast("Take profit hit recorded successfully");
     } catch (error) {
@@ -281,7 +270,7 @@ const SignalStream: React.FC = () => {
     }
   }, [updateAlert]);
 
-  const handleStopLossHit = useCallback(async (alert: TradeAlertData) => {
+  const handleStopLossHit = useCallback(async (alert: TradeAlertWithProfile) => {
     try {
       setUpdatesInProgress(prev => new Set(prev).add(alert.id));
       
@@ -303,7 +292,7 @@ const SignalStream: React.FC = () => {
     }
   }, [updateAlert]);
 
-  const handleActivateOrder = useCallback(async (alert: TradeAlertData) => {
+  const handleActivateOrder = useCallback(async (alert: TradeAlertWithProfile) => {
     try {
       setUpdatesInProgress(prev => new Set(prev).add(alert.id));
       
@@ -396,18 +385,22 @@ const SignalStream: React.FC = () => {
             signalCounts={signalCounts}
             canCreateSignals={canCreateSignals}
             onCreateSignal={() => setShowNewAlertModal(true)}
+            connectionStatus={connectionStatus}
+            onRefresh={() => fetchClosedAlerts()}
+            lastUpdated={lastUpdated}
           />
 
           {/* Filters and Connection Status */}
           <div className="flex items-center justify-between">
-            <EnhancedSignalFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              educatorOptions={educatorOptions}
-            />
+          <EnhancedSignalFilters
+            filters={filters}
+            onFiltersChange={(newFilters: FilterState) => setFilters(newFilters)}
+            educatorOptions={educatorOptions}
+            signalCounts={signalCounts}
+          />
             <ConnectionStatusIndicator 
               connectionStatus={connectionStatus}
-              pricesConnected={pricesConnected}
+              priceConnectionStatus={pricesConnected ? 'connected' : 'disconnected'}
               lastUpdated={lastUpdated}
             />
           </div>
@@ -442,7 +435,7 @@ const SignalStream: React.FC = () => {
                       <TradeAlertCard 
                         key={`active-${alert.id}`}
                         alert={alert}
-                        currentPrice={symbolPrices[alert.tradermade_symbol]?.price}
+                        livePrice={symbolPrices[alert.tradermadeSymbol]?.price}
                         onStatusUpdate={handleStatusUpdate}
                         onTakeProfitHit={handleTakeProfitHit}
                         onStopLossHit={handleStopLossHit}
@@ -481,7 +474,7 @@ const SignalStream: React.FC = () => {
                       <TradeAlertCard 
                         key={`closed-${alert.id}`}
                         alert={alert}
-                        currentPrice={symbolPrices[alert.tradermade_symbol]?.price}
+                        livePrice={symbolPrices[alert.tradermadeSymbol]?.price}
                         onStatusUpdate={handleStatusUpdate}
                         onTakeProfitHit={handleTakeProfitHit}
                         onStopLossHit={handleStopLossHit}
@@ -489,7 +482,7 @@ const SignalStream: React.FC = () => {
                         updatesInProgress={updatesInProgress}
                         isRecentClosure={true}
                         isAdmin={isAdmin}
-                        isCreator={alert.user_id === user?.id}
+                        isCreator={alert.userId === user?.id}
                         connectionStatus={connectionStatus}
                         priceSource="websocket"
                       />
@@ -510,8 +503,7 @@ const SignalStream: React.FC = () => {
         {showNewAlertModal && (
           <OptimizedNewAlertForm 
             onSubmit={handleCreateSignal}
-            onClose={() => setShowNewAlertModal(false)}
-            isOpen={showNewAlertModal}
+            onCancel={() => setShowNewAlertModal(false)}
           />
         )}
       </div>

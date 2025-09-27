@@ -146,10 +146,10 @@ describe('Component Performance Tests', () => {
         const { unmount } = render(
           <TestWrapper>
             <LivePriceWidget 
-              symbol="EURUSD"
-              price={1.0875}
-              className="test-widget"
-              compact={true}
+              alert={mockAlert}
+              onTakeProfitHit={mockHandleTakeProfitHit}
+              onStopLossHit={mockHandleStopLossHit}
+              onOrderActivation={mockHandleOrderActivation}
             />
           </TestWrapper>
         );
@@ -169,9 +169,9 @@ describe('Component Performance Tests', () => {
 
     it('should render quickly with different props', () => {
       const testCases = [
-        { symbol: 'EURUSD', price: 1.0875, compact: false },
-        { symbol: 'GBPUSD', price: 1.2650, compact: true },
-        { symbol: 'USDJPY', price: 150.25, compact: false },
+        { alert: mockAlert },
+        { alert: {...mockAlert, tradermadeSymbol: 'GBPUSD'} },
+        { alert: {...mockAlert, tradermadeSymbol: 'USDJPY'} },
       ];
 
       testCases.forEach((props) => {
@@ -179,7 +179,7 @@ describe('Component Performance Tests', () => {
         
         render(
           <TestWrapper>
-            <LivePriceWidget {...props} className="performance-test" />
+            <LivePriceWidget {...props} onTakeProfitHit={mockHandleTakeProfitHit} onStopLossHit={mockHandleStopLossHit} onOrderActivation={mockHandleOrderActivation} />
           </TestWrapper>
         );
         
@@ -212,10 +212,10 @@ describe('Component Performance Tests', () => {
               isRecentClosure={false}
             />
             <LivePriceWidget 
-              symbol="EURUSD"
-              price={1.0875}
-              className="integration-widget"
-              compact={false}
+              alert={mockAlert}
+              onTakeProfitHit={mockHandleTakeProfitHit}
+              onStopLossHit={mockHandleStopLossHit}
+              onOrderActivation={mockHandleOrderActivation}
             />
           </div>
         </TestWrapper>

@@ -122,11 +122,11 @@ const SignalStream: React.FC = () => {
             updated_date: signal.updated_at,
             creator: profile ? {
               id: profile.id,
-              display_name: profile.display_name,
+              displayName: profile.display_name,
               role: profile.role,
-              avatar_url: profile.avatar_url,
-              user_type: profile.user_type,
-              access_level: profile.access_level
+              avatarUrl: profile.avatar_url,
+              userType: profile.user_type,
+              accessLevel: profile.access_level
             } : undefined
           };
         });
@@ -165,8 +165,8 @@ const SignalStream: React.FC = () => {
     const educators = new Map<string, string>();
     
     Object.values(allAlerts).forEach(alert => {
-      if (alert.creator?.display_name) {
-        educators.set(alert.creator.id, alert.creator.display_name);
+      if (alert.creator?.displayName) {
+        educators.set(alert.creator.id, alert.creator.displayName);
       }
     });
 

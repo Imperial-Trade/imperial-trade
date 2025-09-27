@@ -85,18 +85,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   
   // Enhanced trade signal for sharing
   const tradeSignal: TradeSignal = {
-    asset: alert.assetName,
-    type: alert.tradeType,
-    entry: alert.entryPrice,
+    id: alert.id,
+    assetName: alert.assetName,
+    tradeType: alert.tradeType,
+    entryPrice: alert.entryPrice,
     stopLoss: alert.stopLoss,
-    tp1: alert.tp1,
-    tp2: alert.tp2,
-    tp3: alert.tp3,
-    tp4: alert.tp4,
-    tp5: alert.tp5,
     takeProfits,
-    hitTPs,
-    status: alert.status,
     notes: alert.notes
   };
 
@@ -119,7 +113,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       const symbol = alert.tradermadeSymbol;
       
       // Subscribe to live price updates
-      subscribeToLivePrices([symbol]);
+      subscribe([symbol]);
     } else {
       const entryStopDistance = Math.abs(alert.entryPrice - alert.stopLoss);
       const currentStopDistance = Math.abs(livePrice - alert.stopLoss);
@@ -134,7 +128,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   }, [livePrice, alert.entryPrice, alert.stopLoss, isClosed, alert.tradermadeSymbol]);
 
   // Price subscription from WebSocket context
-  const { subscribeToLivePrices } = useOptimizedWebSocketPrices();
+  const { subscribe } = useOptimizedWebSocketPrices();
 
   // Event handlers
   const handleCopyPanelToggle = () => setShowCopyPanel(!showCopyPanel);

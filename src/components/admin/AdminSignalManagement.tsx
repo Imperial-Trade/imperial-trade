@@ -130,7 +130,7 @@ export function AdminSignalManagement() {
     return userAlerts.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           alert.creator?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                           alert.creator?.displayName?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
     });

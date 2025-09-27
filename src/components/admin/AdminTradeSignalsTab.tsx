@@ -135,13 +135,14 @@ export const AdminTradeSignalsTab: React.FC = () => {
     }
   };
 
-  const handleTakeProfitHit = async (alert: TradeAlertWithProfile, tpLevel: number): Promise<void> => {
+  const handleTakeProfitHit = async (alert: TradeAlertWithProfile, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string): Promise<void> => {
     try {      
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
-          tpHits: [tpLevel],
-          status: alert.status
+          tpHits: newTPHits,
+          status: shouldAutoClose ? 'closed' : 'partially_profited',
+          closeReason: (closeReason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'expired' | 'reversal_after_tp') || (shouldAutoClose ? 'all_tps_hit' : undefined)
         },
         currentUser?.id || ''
       );
@@ -152,7 +153,7 @@ export const AdminTradeSignalsTab: React.FC = () => {
           currentUser.email || 'unknown',
           'trade_alert',
           alert.id,
-          { tpLevel }
+          { newTPHits }
         );
         
         await refreshAlerts();

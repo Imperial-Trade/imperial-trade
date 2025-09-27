@@ -236,18 +236,18 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           updatedAt: signal.updated_at,
           creator: profileLookup[signal.user_id] ? {
             id: profileLookup[signal.user_id].id,
-            display_name: profileLookup[signal.user_id].display_name || 'Anonymous User',
+            displayName: profileLookup[signal.user_id].display_name || 'Anonymous User',
             role: profileLookup[signal.user_id].role || 'user',
-            avatar_url: profileLookup[signal.user_id].avatar_url,
-            user_type: profileLookup[signal.user_id].user_type,
-            access_level: profileLookup[signal.user_id].access_level
+            avatarUrl: profileLookup[signal.user_id].avatar_url,
+            userType: profileLookup[signal.user_id].user_type,
+            accessLevel: profileLookup[signal.user_id].access_level
           } : {
             id: signal.user_id,
-            display_name: 'Unknown User',
+            displayName: 'Unknown User',
             role: 'user',
-            avatar_url: null,
-            user_type: null,
-            access_level: null
+            avatarUrl: null,
+            userType: null,
+            accessLevel: null
           }
         };
 
@@ -449,9 +449,22 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     console.log('SignalRealtime - Starting subscription');
     setConnectionStatus('connecting');
 
-    const unsubscribeFn = subscribeToTable('trade_alerts', handleRealtimeUpdate);
+    const channel = supabase
+      .channel('trade-alerts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'trade_alerts'
+        },
+        handleRealtimeUpdate
+      )
+      .subscribe();
     
-    unsubscribeRef.current = unsubscribeFn;
+    unsubscribeRef.current = () => {
+      supabase.removeChannel(channel);
+    };
     mountOnlyRef.current = true;
 
     // Initial data fetch

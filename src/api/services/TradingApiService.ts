@@ -5,6 +5,9 @@ import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
 import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 
+// Export the interface for use in other files
+export type { TradeAlertWithProfile };
+
 export class TradingApiService {
   private static instance: TradingApiService;
 

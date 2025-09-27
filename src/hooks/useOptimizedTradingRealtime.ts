@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { useSignalRealtime } from './useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -8,46 +7,51 @@ interface UseOptimizedTradingRealtimeReturn {
   alerts: TradeAlertWithProfile[];
   isLoading: boolean;
   error: string | null;
-  createAlert: (dto: CreateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
-  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
-  deleteAlert: (id: string) => Promise<boolean>;
-  refreshAlerts: () => Promise<void>;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
-  lastUpdated: Date | null;
   nextRetryAt: number | null;
+  createAlert: (dto: CreateTradeAlertDto) => Promise<boolean>;
+  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
+  deleteAlert: (id: string) => Promise<void>;
+  refreshAlerts: () => Promise<void>;
+  lastUpdated: Date | null;
 }
 
-// This hook provides backward compatibility with the existing useOptimizedTrading interface
-// while adding real-time functionality
-export const useOptimizedTradingRealtime = (
-  userId: string, 
-  showAllSignals: boolean = false
-): UseOptimizedTradingRealtimeReturn => {
+/**
+ * Optimized trading realtime hook that combines signal realtime with CRUD operations
+ * PHASE 1: Normalized state management for flawless signal lifecycle
+ */
+export const useOptimizedTradingRealtime = (userId: string, showAllSignals: boolean = false): UseOptimizedTradingRealtimeReturn => {
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  
-  // Use the new real-time hook
+
+  // Get real-time context with normalized state management
   const {
-    alerts,
-    isLoading: realtimeLoading,
-    error: realtimeError,
+    alerts: contextAlerts,
+    isLoading: contextLoading,
+    error: contextError,
     connectionStatus,
-    updateAlert: realtimeUpdateAlert,
-    refreshAlerts,
-    lastUpdated,
-    nextRetryAt
+    nextRetryAt,
+    updateAlert: contextUpdateAlert,
+    refreshAlerts: contextRefreshAlerts,
+    lastUpdated
   } = useSignalRealtime(userId, showAllSignals);
 
-  // Combine loading states
-  const isLoading = localLoading || realtimeLoading;
-  
-  // Combine error states
-  const error = localError || realtimeError;
+  // Combine loading and error states
+  const isLoading = localLoading || contextLoading;
+  const error = localError || contextError;
 
-  const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    if (!userId || !userId.trim()) {
-      console.warn('Cannot create alert: invalid userId');
-      return null;
+  // PHASE 1: Alerts are already normalized in context, just pass through
+  const alerts = useMemo(() => {
+    console.log('useOptimizedTradingRealtime - Processing normalized alerts:', contextAlerts.length);
+    return contextAlerts;
+  }, [contextAlerts]);
+
+  // PHASE 1: Atomic create operation with instant state updates
+  const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<boolean> => {
+    if (!userId?.trim()) {
+      console.warn('useOptimizedTradingRealtime - Cannot create alert: invalid userId');
+      setLocalError('Invalid user ID');
+      return false;
     }
 
     try {
@@ -55,39 +59,61 @@ export const useOptimizedTradingRealtime = (
       setLocalError(null);
       
       const result = await tradingApiService.createAlert(dto, userId);
-      if (result.success && result.data) {
-        // Real-time context will automatically update the alerts list
-        return result.data;
+      
+      if (result.success) {
+        // Real-time context will handle the automatic update via WebSocket
+        console.log('useOptimizedTradingRealtime - Alert created successfully:', result.data?.id);
+        return true;
       } else {
+        console.error('useOptimizedTradingRealtime - Failed to create alert:', result.error);
         setLocalError(result.error || 'Failed to create alert');
-        console.error('Failed to create alert:', result.error);
-        return null;
+        return false;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setLocalError(errorMessage);
-      console.error('Error creating alert:', error);
-      return null;
+      console.error('useOptimizedTradingRealtime - Error creating alert:', error);
+      setLocalError(error instanceof Error ? error.message : 'Unknown error');
+      return false;
     } finally {
       setLocalLoading(false);
     }
   }, [userId]);
 
+  // PHASE 1: Atomic update operation
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    try {
-      setLocalError(null);
-      return await realtimeUpdateAlert(id, dto);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setLocalError(errorMessage);
+    if (!userId?.trim()) {
+      console.warn('useOptimizedTradingRealtime - Cannot update alert: invalid userId');
       return null;
     }
-  }, [realtimeUpdateAlert]);
 
-  const deleteAlert = useCallback(async (id: string): Promise<boolean> => {
-    if (!userId || !userId.trim()) {
-      console.warn('Cannot delete alert: invalid userId');
-      return false;
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      
+      // Use context update which handles normalization
+      const result = await contextUpdateAlert(id, dto);
+      
+      if (result) {
+        console.log('useOptimizedTradingRealtime - Alert updated successfully:', result.id);
+        return result;
+      } else {
+        console.error('useOptimizedTradingRealtime - Failed to update alert');
+        setLocalError('Failed to update alert');
+        return null;
+      }
+    } catch (error) {
+      console.error('useOptimizedTradingRealtime - Error updating alert:', error);
+      setLocalError(error instanceof Error ? error.message : 'Unknown error');
+      return null;
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [userId, contextUpdateAlert]);
+
+  // PHASE 1: Atomic delete operation  
+  const deleteAlert = useCallback(async (id: string): Promise<void> => {
+    if (!userId?.trim()) {
+      console.warn('useOptimizedTradingRealtime - Cannot delete alert: invalid userId');
+      return;
     }
 
     try {
@@ -95,34 +121,48 @@ export const useOptimizedTradingRealtime = (
       setLocalError(null);
       
       const result = await tradingApiService.deleteAlert(id, userId);
+      
       if (result.success) {
-        // Real-time context will automatically update the alerts list
-        return true;
+        // Real-time context will handle the automatic removal via WebSocket
+        console.log('useOptimizedTradingRealtime - Alert deleted successfully:', id);
       } else {
+        console.error('useOptimizedTradingRealtime - Failed to delete alert:', result.error);
         setLocalError(result.error || 'Failed to delete alert');
-        console.error('Failed to delete alert:', result.error);
-        return false;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setLocalError(errorMessage);
-      console.error('Error deleting alert:', error);
-      return false;
+      console.error('useOptimizedTradingRealtime - Error deleting alert:', error);
+      setLocalError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLocalLoading(false);
     }
   }, [userId]);
 
+  // PHASE 1: Refresh with normalized state handling
+  const refreshAlerts = useCallback(async (): Promise<void> => {
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      console.log('useOptimizedTradingRealtime - Refreshing normalized alerts');
+      await contextRefreshAlerts();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
+      setLocalError(errorMessage);
+      console.error('useOptimizedTradingRealtime - Failed to refresh alerts:', errorMessage);
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [contextRefreshAlerts]);
+
   return {
     alerts,
     isLoading,
     error,
+    connectionStatus,
+    nextRetryAt,
     createAlert,
     updateAlert,
     deleteAlert,
     refreshAlerts,
-    connectionStatus,
-    lastUpdated,
-    nextRetryAt
+    lastUpdated
   };
 };

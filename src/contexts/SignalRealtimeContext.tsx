@@ -74,7 +74,7 @@ async function getEducatorUserIds(): Promise<string[]> {
 }
 
 interface SignalRealtimeContextType {
-  signals: TradeAlertWithProfile[];
+  signals: Record<string, TradeAlertWithProfile>;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   lastUpdated: Date | null;
   error: string | null;
@@ -99,7 +99,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('signal'));
   
-  const [signals, setSignals] = useState<TradeAlertWithProfile[]>([]);
+  const [signals, setSignals] = useState<Record<string, TradeAlertWithProfile>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
@@ -135,13 +135,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const lastRefreshRef = useRef<number>(0);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   
-  // PHASE 3: Enhanced local caching to minimize database queries
+  // PHASE 3: Enhanced local caching to minimize database queries - NORMALIZED MAP
   const localCacheRef = useRef<{ 
-    data: TradeAlertWithProfile[], 
+    data: Record<string, TradeAlertWithProfile>, 
     expiry: number,
     educatorIds: string[],
     educatorExpiry: number 
-  }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
+  }>({ data: {}, expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
   const refreshSignals = useCallback(async () => {
     try {
@@ -162,9 +162,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       
       healthMonitor.recordDatabaseQuery('SignalRealtime', 'refresh');
       
-      // PHASE 3: Enhanced cache checking with educator IDs
+      // PHASE 3: Enhanced cache checking with educator IDs - NORMALIZED MAP
       const cache = localCacheRef.current;
-      if (cache.data.length > 0 && now < cache.expiry && cache.educatorIds.length > 0) {
+      if (Object.keys(cache.data).length > 0 && now < cache.expiry && cache.educatorIds.length > 0) {
         if (isDevToolsEnabled()) {
           console.log('📊 Using comprehensive cached signals, skipping all database queries');
         }
@@ -271,20 +271,23 @@ if (!alertsData || alertsData.length === 0) {
         };
       });
 
-      // 🔥 RESTORED: Let database 1-hour window handle closed signals filtering
-      // SignalCacheManager now only prevents flicker during WebSocket updates
+      // 🔥 PHASE 1: NORMALIZED STATE MAP - Convert to atomic updates
       const filteredAlerts = allAlertsWithProfiles;
+      const normalizedSignals: Record<string, TradeAlertWithProfile> = {};
+      filteredAlerts.forEach(alert => {
+        normalizedSignals[alert.id] = alert;
+      });
       
-      // PHASE 3: Update comprehensive local cache with filtered results
+      // PHASE 3: Update comprehensive local cache with normalized results
       localCacheRef.current = {
-        data: filteredAlerts,
+        data: normalizedSignals,
         expiry: now + LOCAL_CACHE_TTL,
         educatorIds: educatorUserIds,
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
 unstable_batchedUpdates(() => {
-  setSignals(filteredAlerts);
+  setSignals(normalizedSignals);
   setLastUpdated(new Date());
   setError(null);
 });
@@ -454,21 +457,28 @@ unstable_batchedUpdates(() => {
         }
         
         setSignals(prev => {
-          // Check for duplicates using the state from the setter to avoid stale closure
-          const alreadyExists = prev.find(signal => signal.id === newSignal.id);
+          // Check for duplicates using normalized map
+          const alreadyExists = prev[newSignal.id];
           if (alreadyExists) {
             if (isDevToolsEnabled()) {
               console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
             }
             return prev;
           }
-          return [newSignal, ...prev];
+          // PHASE 1: Atomic update - add new signal to normalized map
+          return {
+            ...prev,
+            [newSignal.id]: newSignal
+          };
         });
         
-        // PHASE 3: Update local cache with new signal
+        // PHASE 1: Update local cache with normalized map
         const cache = localCacheRef.current;
-        if (cache.data.length > 0) {
-          cache.data = [newSignal, ...cache.data];
+        if (Object.keys(cache.data).length > 0) {
+          cache.data = {
+            ...cache.data,
+            [newSignal.id]: newSignal
+          };
         }
         
         // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
@@ -495,7 +505,7 @@ unstable_batchedUpdates(() => {
         
         setSignals(prev => {
           // 🚀 ORDER ACTIVATION BYPASS: Detect critical order status changes
-          const currentSignal = prev.find(signal => signal.id === newRecord.id);
+          const currentSignal = prev[newRecord.id];
           const isOrderActivation = currentSignal?.status === 'pending' && newRecord.status === 'active';
           const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
           const isNotesUpdate = currentSignal?.notes !== newRecord.notes;
@@ -508,83 +518,74 @@ unstable_batchedUpdates(() => {
             console.log(`📝 NOTES UPDATE: "${currentSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
           }
 
-          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
+          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations  
           if (isOrderActivation) {
             console.log(`🎯 ACTIVATION DETECTED: Forcing immediate UI update for ${newRecord.asset_name} (${newRecord.id})`);
             
             // Dispatch activation event with high priority
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
-                detail: {
-                  signalId: newRecord.id,
-                  assetName: newRecord.asset_name,
-                  status: 'active',
-                  timestamp: new Date().toISOString(),
-                  priority: 'high'
-                }
-              }));
-            }, 0);
-
-            // 🚀 PHASE 2: Enhanced activation reliability - Force delayed refresh
-            setTimeout(() => {
-              console.log(`🔄 ACTIVATION REFRESH: Triggering delayed UI sync for ${newRecord.asset_name}`);
-              setSignals(current => current.map(s => 
-                s.id === newRecord.id ? {
-                  ...s,
-                  status: 'active',
-                  updatedAt: new Date().toISOString()
-                } : s
-              ));
-            }, 100);
+            window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+              detail: {
+                signalId: newRecord.id,
+                assetName: newRecord.asset_name,
+                status: 'active',
+                timestamp: new Date().toISOString(),
+                priority: 'high'
+              }
+            }));
           }
           
-          const updatedSignals = prev.map(signal => 
-            signal.id === newRecord.id ? {
-              ...signal,
-              assetName: newRecord.asset_name,
-              tradermadeSymbol: newRecord.tradermade_symbol,
-              tradeType: newRecord.trade_type,
-              entryPrice: Number(newRecord.entry_price),
-              stopLoss: Number(newRecord.stop_loss),
-              status: newRecord.status,
-              tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-              tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-              tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-              tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-              tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
-              tpHits: newRecord.tp_hits || [],
-              notes: newRecord.notes,
-              closeReason: newRecord.close_reason,
-              updatedAt: newRecord.updated_at
-            } : signal
-          );
+          // PHASE 1 & 2: Atomic update - no setTimeout delays for instant synchronization
+          const updatedSignal = currentSignal ? {
+            ...currentSignal,
+            assetName: newRecord.asset_name,
+            tradermadeSymbol: newRecord.tradermade_symbol,
+            tradeType: newRecord.trade_type,
+            entryPrice: Number(newRecord.entry_price),
+            stopLoss: Number(newRecord.stop_loss),
+            status: newRecord.status,
+            tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+            tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+            tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+            tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+            tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
+            tpHits: newRecord.tp_hits || [],
+            notes: newRecord.notes,
+            closeReason: newRecord.close_reason,
+            updatedAt: newRecord.updated_at
+          } : null;
+          
+          if (!updatedSignal) return prev;
           
           // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
-          const validatedSignals = updatedSignals.map(signal => {
-            if (signal.id === newRecord.id && newRecord.tp_hits) {
-              // Ensure TP hits are sequential and valid
-              const validTpHits = [];
-              const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
-              
-              // Only allow sequential TP hits (1, then 2, then 3, etc.)
-              for (let i = 0; i < sortedTpHits.length; i++) {
-                const expectedTp = i + 1;
-                if (sortedTpHits[i] === expectedTp) {
-                  validTpHits.push(expectedTp);
-                } else {
-                  // Invalid TP sequence detected, break
-                  console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${signal.id}`);
-                  break;
-                }
+          let validatedSignal = updatedSignal;
+          if (newRecord.tp_hits) {
+            // Ensure TP hits are sequential and valid
+            const validTpHits = [];
+            const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
+            
+            // Only allow sequential TP hits (1, then 2, then 3, etc.)
+            for (let i = 0; i < sortedTpHits.length; i++) {
+              const expectedTp = i + 1;
+              if (sortedTpHits[i] === expectedTp) {
+                validTpHits.push(expectedTp);
+              } else {
+                // Invalid TP sequence detected, break
+                console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${updatedSignal.id}`);
+                break;
               }
-              
-              return {
-                ...signal,
-                tpHits: validTpHits // Use validated TP hits
-              };
             }
-            return signal;
-          });
+            
+            validatedSignal = {
+              ...validatedSignal,
+              tpHits: validTpHits // Use validated TP hits
+            };
+          }
+          
+          // PHASE 1: Atomic update - update single signal in normalized map
+          return {
+            ...prev,
+            [newRecord.id]: validatedSignal
+          };
           
           // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
           if (isOrderActivation) {

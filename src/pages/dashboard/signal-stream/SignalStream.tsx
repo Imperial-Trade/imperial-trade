@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
+import { useOptimizedTradingRealtime } from '@/hooks/useOptimizedTradingRealtime';
 import { tradingApiService } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
@@ -22,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import { supabase } from '@/integrations/supabase/client';
 
 
 
@@ -46,7 +47,7 @@ export default function SignalStream() {
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
 
-  // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
+  // 🚀 PHASE 1: Use optimized hook with normalized state management
   const {
     alerts: allAlerts,
     isLoading: realtimeLoading,
@@ -55,8 +56,9 @@ export default function SignalStream() {
     lastUpdated,
     nextRetryAt,
     updateAlert,
-    refreshAlerts
-  } = useSignalRealtime(user?.id || '', true);
+    refreshAlerts,
+    createAlert
+  } = useOptimizedTradingRealtime(user?.id || '', true);
   
   useEffect(() => {
     if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
@@ -64,24 +66,86 @@ export default function SignalStream() {
     }
   }, [allAlerts.length, connectionStatus, lastUpdated]);
   
-  // Local state for operations
+  // Local state for operations  
   const isLoading = realtimeLoading;
   const error = realtimeError;
   
-  // 🚀 CREATE ALERT: Direct API call with optimistic updates
-  const createAlert = useCallback(async (dto: any) => {
-    try {
-      const result = await tradingApiService.createAlert(dto, user?.id || '');
-      if (result.success) {
-        await refreshAlerts();
-        return true;
+  // PHASE 4: Fetch closed alerts once on mount for static display
+  useEffect(() => {
+    const fetchClosedAlerts = async () => {
+      if (closedAlertsLoaded || !user?.id) return;
+      
+      try {
+        const { data: closedAlertsData, error: closedError } = await supabase
+          .from('trade_alerts')
+          .select(`
+            *,
+            profiles!trade_alerts_user_id_fkey (
+              id,
+              display_name,
+              role,
+              avatar_url,
+              user_type,
+              access_level
+            )
+          `)
+          .eq('status', 'closed')
+          .order('updated_at', { ascending: false })
+          .limit(12);
+
+        if (closedError) {
+          console.error('Failed to fetch closed alerts:', closedError);
+          return;
+        }
+
+        if (closedAlertsData) {
+          const formattedClosedAlerts: TradeAlertWithProfile[] = closedAlertsData.map(alert => ({
+            id: alert.id,
+            userId: alert.user_id,
+            assetName: alert.asset_name,
+            tradermadeSymbol: alert.tradermade_symbol,
+            tradeType: alert.trade_type,
+            entryPrice: Number(alert.entry_price),
+            stopLoss: Number(alert.stop_loss),
+            status: alert.status,
+            tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+            tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+            tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+            tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+            tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+            tpHits: alert.tp_hits || [],
+            notes: alert.notes,
+            closeReason: alert.close_reason,
+            createdAt: alert.created_at,
+            updatedAt: alert.updated_at,
+            creator: alert.profiles ? {
+              id: alert.profiles.id,
+              display_name: alert.profiles.display_name || 'Anonymous User',
+              role: alert.profiles.role || 'user',
+              avatar_url: alert.profiles.avatar_url,
+              user_type: alert.profiles.user_type,
+              access_level: alert.profiles.access_level
+            } : {
+              id: alert.user_id,
+              display_name: 'Unknown User',
+              role: 'user',
+              avatar_url: null,
+              user_type: null,
+              access_level: null
+            }
+          }));
+          
+          setStaticClosedAlerts(formattedClosedAlerts);
+          setClosedAlertsLoaded(true);
+          console.log('PHASE 4: Loaded', formattedClosedAlerts.length, 'static closed alerts');
+        }
+      } catch (error) {
+        console.error('Error fetching static closed alerts:', error);
       }
-      return false;
-    } catch (err) {
-      console.error('Failed to create alert:', err);
-      return false;
-    }
-  }, [refreshAlerts, user?.id]);
+    };
+
+    fetchClosedAlerts();
+  }, [user?.id, closedAlertsLoaded]);
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
@@ -141,14 +205,13 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
+  
   const {
     activeAlerts,
-    closedAlerts,
     educatorOptions,
     signalCounts
   } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
-    const closed = alerts.filter(a => a.status === 'closed');
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
@@ -166,20 +229,16 @@ export default function SignalStream() {
     const counts = {
       total: alerts.length,
       active: active.length,
-      closed: closed.length,
+      closed: staticClosedAlerts.length, // PHASE 4: Use static count
       buy: alerts.filter(a => a.tradeType.includes('buy')).length,
       sell: alerts.filter(a => a.tradeType.includes('sell')).length
     };
     return {
       activeAlerts: active,
-      closedAlerts: closed,
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts]);
-  const sortedClosedAlerts = useMemo(() => {
-    return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
-  }, [closedAlerts]);
+  }, [alerts, allAlerts, staticClosedAlerts]);
 
   // Check if we have pending limit orders for the monitor
   const hasPendingLimitOrders = useMemo(() => {

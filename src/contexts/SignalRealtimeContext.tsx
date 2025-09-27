@@ -449,23 +449,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     console.log('SignalRealtime - Starting subscription');
     setConnectionStatus('connecting');
 
-    const unsubscribeFn = subscribeToTable(
-      'trade_alerts',
-      handleRealtimeUpdate,
-      {
-        channelId: channelIdRef.current,
-        onConnectionChange: (status: string) => {
-          setConnectionStatus(status as any);
-          if (status === 'connected') {
-            connectionStateRef.current.lastSuccessAt = Date.now();
-            connectionStateRef.current.consecutiveFailures = 0;
-            // Refresh data on connection
-            refreshSignals();
-          }
-        }
-      }
-    );
-
+    const unsubscribeFn = subscribeToTable({
+      table: 'trade_alerts',
+      callback: handleRealtimeUpdate
+    });
+    
     unsubscribeRef.current = unsubscribeFn;
     mountOnlyRef.current = true;
 

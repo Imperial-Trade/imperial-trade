@@ -1,16 +1,21 @@
+import { ReactNode, JSXElementConstructor, ReactElement, ReactPortal } from 'react';
 
-// Component-specific type definitions for better UI type safety
-import { ReactNode } from 'react';
-import { LucideIcon } from 'lucide-react';
-
-// Base component props with strict typing
 export interface BaseComponentProps {
   className?: string;
   children?: ReactNode;
-  testId?: string;
 }
 
-// Form Types - Adding missing exports
+export interface LoadingState {
+  isLoading: boolean;
+  message?: string;
+}
+
+export interface ErrorState {
+  hasError: boolean;
+  message?: string;
+  retry?: () => void;
+}
+
 export interface FormError {
   field: string;
   message: string;
@@ -37,252 +42,279 @@ export interface TradeAlertData {
   tp4?: number;
   tp5?: number;
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
-  tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit' | 'expired';
+  tp_hits: number[];
   notes?: string;
-  created_date: string;
+  close_reason?: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  created_date?: string;
   updated_date?: string;
+  creator?: {
+    id: string;
+    display_name: string;
+    role: string;
+    avatar_url?: string;
+    user_type?: string;
+    access_level?: string;
+  };
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {
   alert: TradeAlertData;
+  currentPrice?: number;
+  updatesInProgress?: Set<string>;
   onStatusUpdate: (alert: TradeAlertData, newStatus: string) => Promise<void>;
-  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
+  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
   onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
-  onOrderActivation: (alert: TradeAlertData) => Promise<void>;
-  isAdmin: boolean;
-  isCreator: boolean;
+  onActivateOrder?: (alert: TradeAlertData) => Promise<void>;
   livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
-  priceSource: string;
-  isRecentClosure: boolean;
-}
-
-// Live Price Widget Types
-export interface LivePriceWidgetProps extends BaseComponentProps {
-  alert: TradeAlertData;
-  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
-  onOrderActivation: (alert: TradeAlertData) => Promise<void>;
-  livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
-  priceSource: string;
-}
-
-// Trading Calculator Types
-export interface TradingCalculatorProps extends BaseComponentProps {
-  alert: TradeAlertData;
-  livePrice?: number;
-}
-
-// Quick Copy Panel Types - Updated to support all trade types
-export interface QuickCopyPanelProps extends BaseComponentProps {
-  alert: {
-    asset_name: string;
-    trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-    entry_price: number;
-    stop_loss: number;
-    tp1?: number;
-    tp2?: number;
-    tp3?: number;
-    tp4?: number;
-    tp5?: number;
-  };
-}
-
-// Trade Status Badge Types
-export interface TradeStatusBadgeProps extends BaseComponentProps {
-  alert: {
-    status: 'pending' | 'active' | 'closed' | 'partially_profited';
-    tp_hits?: number[];
-    close_reason?: string;
-  };
-  updatedDate?: string;
   isRecentClosure?: boolean;
+  onOrderActivation?: () => Promise<void>;
 }
 
-// Form Types with strict validation
-export interface FormFieldProps extends BaseComponentProps {
-  label: string;
-  name: string;
-  type?: 'text' | 'email' | 'password' | 'number' | 'select' | 'textarea';
-  placeholder?: string;
-  required?: boolean;
-  disabled?: boolean;
-  error?: string;
-  value?: string | number;
-  onChange?: (value: string | number) => void;
-  options?: Array<{ value: string; label: string; disabled?: boolean }>;
-}
-
-// Navigation Types
-export interface NavigationItem {
-  id: string;
-  label: string;
-  path: string;
-  icon?: LucideIcon;
-  badge?: string | number;
-  disabled?: boolean;
-  children?: NavigationItem[];
-}
-
-export interface NavigationProps extends BaseComponentProps {
-  items: NavigationItem[];
-  currentPath: string;
-  onNavigate: (path: string) => void;
-  collapsed?: boolean;
-}
-
-// Notification Types - Enhanced from common types
-export interface NotificationData {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info' | 'trade_closed' | 'tp_hit' | 'stop_loss' | 'trade_activated';
-  title: string;
-  message: string;
-  duration?: number;
-  timestamp: number;
-  actions?: Array<{
-    label: string;
-    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
-    onClick: () => void;
-  }>;
-}
-
-export interface NotificationSystemProps extends BaseComponentProps {
-  maxNotifications?: number;
-  defaultDuration?: number;
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
-}
-
-// Real-time Connection Types
-export interface ConnectionStatus {
-  status: 'connecting' | 'connected' | 'disconnected' | 'error';
-  lastConnected?: number;
-  reconnectAttempts?: number;
-  error?: string;
-}
-
-export interface PriceFeedData {
-  symbol: string;
-  price: number;
-  timestamp: number;
-  change?: number;
-  changePercent?: number;
-  volume?: number;
-}
-
-export interface PriceFeedProps extends BaseComponentProps {
-  symbols: string[];
-  onPriceUpdate?: (data: PriceFeedData) => void;
-  onConnectionChange?: (status: ConnectionStatus) => void;
-  reconnectInterval?: number;
-}
-
-// Modal and Dialog Types
+// Additional common component interfaces
 export interface ModalProps extends BaseComponentProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  closeOnOverlayClick?: boolean;
-  closeOnEscape?: boolean;
 }
 
-export interface ConfirmDialogProps extends ModalProps {
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  variant?: 'default' | 'destructive';
-  onConfirm: () => void | Promise<void>;
-  onCancel?: () => void;
+export interface ButtonProps extends BaseComponentProps {
+  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  loading?: boolean;
+  onClick?: () => void;
 }
 
-// Loading and Error States
-export interface LoadingStateProps extends BaseComponentProps {
-  isLoading: boolean;
-  error?: string | null;
-  retry?: () => void;
-  loadingText?: string;
-  emptyText?: string;
-  children: ReactNode;
+export interface InputProps extends BaseComponentProps {
+  type?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
+  required?: boolean;
 }
 
-// Table Component Types - Enhanced
-export interface TableColumn<T extends Record<string, unknown> = Record<string, unknown>> {
-  key: keyof T;
+// Table component types
+export interface TableColumn<T> {
+  key: keyof T | string;
   title: string;
+  render?: (value: any, record: T, index: number) => ReactNode;
   sortable?: boolean;
-  width?: string | number;
-  align?: 'left' | 'center' | 'right';
-  render?: (value: unknown, record: T, index: number) => ReactNode;
-  className?: string;
+  width?: number | string;
 }
 
-export interface TableProps<T extends Record<string, unknown> = Record<string, unknown>> extends BaseComponentProps {
+export interface TableProps<T> extends BaseComponentProps {
   data: T[];
   columns: TableColumn<T>[];
   loading?: boolean;
-  emptyText?: string;
-  rowKey?: keyof T | ((record: T) => string);
+  pagination?: boolean;
+  pageSize?: number;
   onRowClick?: (record: T, index: number) => void;
-  pagination?: {
-    current: number;
-    total: number;
-    pageSize: number;
-    showSizeChanger?: boolean;
-    pageSizeOptions?: number[];
-    onChange: (page: number, pageSize: number) => void;
-  };
-  sorting?: {
-    column: keyof T;
-    direction: 'asc' | 'desc';
-    onChange: (column: keyof T, direction: 'asc' | 'desc') => void;
-  };
 }
 
-// Search and Filter Types - Enhanced
-export interface FilterConfig {
+// Navigation component types
+export interface NavItem {
+  label: string;
+  href: string;
+  icon?: ReactNode;
+  active?: boolean;
+  children?: NavItem[];
+}
+
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+// Form component types
+export interface SelectOption {
+  value: string | number;
+  label: string;
+  disabled?: boolean;
+}
+
+export interface FormFieldProps extends BaseComponentProps {
+  label?: string;
+  error?: string;
+  required?: boolean;
+  helpText?: string;
+}
+
+// Card component types
+export interface CardProps extends BaseComponentProps {
+  title?: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  footer?: ReactNode;
+  bordered?: boolean;
+  hoverable?: boolean;
+}
+
+// Alert/Toast component types
+export interface AlertProps extends BaseComponentProps {
+  type?: 'info' | 'success' | 'warning' | 'error';
+  title?: string;
+  message: string;
+  closable?: boolean;
+  onClose?: () => void;
+}
+
+// Badge component types
+export interface BadgeProps extends BaseComponentProps {
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
+  size?: 'sm' | 'md' | 'lg';
+  dot?: boolean;
+}
+
+// Progress component types
+export interface ProgressProps extends BaseComponentProps {
+  value: number;
+  max?: number;
+  showLabel?: boolean;
+  variant?: 'default' | 'success' | 'warning' | 'error';
+}
+
+// Tabs component types
+export interface TabItem {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'multiselect' | 'date' | 'daterange' | 'number' | 'boolean';
-  options?: Array<{ value: string; label: string; count?: number }>;
+  content: ReactNode;
+  disabled?: boolean;
+}
+
+export interface TabsProps extends BaseComponentProps {
+  items: TabItem[];
+  activeKey?: string;
+  onChange?: (key: string) => void;
+  variant?: 'default' | 'pills' | 'underline';
+}
+
+// Dropdown component types
+export interface DropdownItem {
+  key: string;
+  label: string;
+  icon?: ReactNode;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick?: () => void;
+}
+
+export interface DropdownProps extends BaseComponentProps {
+  items: DropdownItem[];
+  trigger?: ReactNode;
+  placement?: 'bottom' | 'top' | 'left' | 'right';
+}
+
+// Menu component types
+export interface MenuItem {
+  key: string;
+  label: string;
+  icon?: ReactNode;
+  href?: string;
+  onClick?: () => void;
+  children?: MenuItem[];
+  disabled?: boolean;
+}
+
+export interface MenuProps extends BaseComponentProps {
+  items: MenuItem[];
+  mode?: 'horizontal' | 'vertical';
+  selectedKeys?: string[];
+  onSelect?: (keys: string[]) => void;
+}
+
+// Upload component types
+export interface UploadFile {
+  uid: string;
+  name: string;
+  status: 'uploading' | 'done' | 'error';
+  url?: string;
+  thumbUrl?: string;
+  size?: number;
+  type?: string;
+}
+
+export interface UploadProps extends BaseComponentProps {
+  accept?: string;
+  multiple?: boolean;
+  maxCount?: number;
+  maxSize?: number;
+  onUpload?: (files: FileList) => Promise<void>;
+  onChange?: (files: UploadFile[]) => void;
+}
+
+// Date picker component types
+export interface DatePickerProps extends BaseComponentProps {
+  value?: Date;
+  onChange?: (date: Date | null) => void;
   placeholder?: string;
-  defaultValue?: unknown;
-  validation?: (value: unknown) => string | null;
+  format?: string;
+  disabled?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
-export interface SearchFilterProps extends BaseComponentProps {
-  filters: FilterConfig[];
-  values: Record<string, unknown>;
-  onChange: (key: string, value: unknown) => void;
-  onReset: () => void;
-  onSearch: () => void;
-  isLoading?: boolean;
+// Time picker component types
+export interface TimePickerProps extends BaseComponentProps {
+  value?: string;
+  onChange?: (time: string) => void;
+  placeholder?: string;
+  format?: '12' | '24';
+  disabled?: boolean;
 }
 
-// Event Handler Types - More specific
-export type ComponentEventHandler<T = Event> = (event: T) => void | Promise<void>;
-export type FormEventHandler<T = HTMLFormElement> = (event: React.FormEvent<T>) => void | Promise<void>;
-export type ChangeEventHandler<T = HTMLInputElement> = (event: React.ChangeEvent<T>) => void;
-export type ClickEventHandler<T = HTMLElement> = (event: React.MouseEvent<T>) => void | Promise<void>;
-export type KeyboardEventHandler<T = HTMLElement> = (event: React.KeyboardEvent<T>) => void;
-
-// Utility Types for Components
-export type ComponentSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-export type ComponentVariant = 'default' | 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost';
-export type ComponentState = 'idle' | 'loading' | 'success' | 'error';
-
-// Component Ref Types
-export interface ComponentRef {
-  focus: () => void;
-  blur: () => void;
-  scrollIntoView: (options?: ScrollIntoViewOptions) => void;
+// Search component types
+export interface SearchProps extends BaseComponentProps {
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  onSearch?: (value: string) => void;
+  loading?: boolean;
+  disabled?: boolean;
 }
 
-export interface FormRef extends ComponentRef {
-  submit: () => void;
-  reset: () => void;
-  validate: () => boolean;
-  getValues: () => Record<string, unknown>;
+// Pagination component types
+export interface PaginationProps extends BaseComponentProps {
+  current: number;
+  total: number;
+  pageSize?: number;
+  showSizeChanger?: boolean;
+  showQuickJumper?: boolean;
+  onChange?: (page: number, pageSize?: number) => void;
+}
+
+// Tree component types
+export interface TreeNode {
+  key: string;
+  title: string;
+  children?: TreeNode[];
+  disabled?: boolean;
+  icon?: ReactNode;
+}
+
+export interface TreeProps extends BaseComponentProps {
+  data: TreeNode[];
+  selectedKeys?: string[];
+  expandedKeys?: string[];
+  onSelect?: (keys: string[], node: TreeNode) => void;
+  onExpand?: (keys: string[], node: TreeNode) => void;
+}
+
+// Form context types
+export interface FormContextValue<T = Record<string, unknown>> {
+  values: T;
+  errors: Record<string, string>;
+  touched: Record<string, boolean>;
+  isSubmitting: boolean;
+  setFieldValue: (field: keyof T, value: unknown) => void;
+  setFieldError: (field: keyof T, error: string) => void;
+  setFieldTouched: (field: keyof T, touched: boolean) => void;
+  validateField: (field: keyof T) => Promise<void>;
+  submitForm: () => Promise<void>;
+  resetForm: () => void;
   setValues: (values: Record<string, unknown>) => void;
 }

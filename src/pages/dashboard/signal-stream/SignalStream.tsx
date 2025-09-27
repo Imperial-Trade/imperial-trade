@@ -1,79 +1,69 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
-import { useOptimizedTradingRealtime } from '@/hooks/useOptimizedTradingRealtime';
-import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
-import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { useOptimizedWebSocketPrices } from '@/hooks/useOptimizedWebSocketPrices';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
+import { TradeAlertData } from '@/types/components';
+import { SignalCounts, FilterState, EducatorOption } from '@/types/dashboard';
 import EnhancedSignalFilters from '@/components/dashboard/EnhancedSignalFilters';
 import ConnectionStatusIndicator from '@/components/dashboard/ConnectionStatusIndicator';
 import SignalStreamHeader from '@/components/dashboard/SignalStreamHeader';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
-// Default filter state
-const defaultFilters = {
-  search: '',
-  status: '',
-  tradeType: '',
-  educator: ''
+// Default filter state for signal stream
+const defaultFilters: FilterState = {
+  status: 'all',
+  type: 'all',
+  tradeType: 'all',
+  educator: 'all',
+  asset: '',
+  search: ''
 };
 
 const SignalStream: React.FC = () => {
+  // Local state management
   const [filters, setFilters] = useState(defaultFilters);
-  const [isNewAlertModalOpen, setIsNewAlertModalOpen] = useState(false);
+  const [showNewAlertModal, setShowNewAlertModal] = useState(false);
+  const [updatesInProgress, setUpdatesInProgress] = useState<Set<string>>(new Set());
   
-  // Static closed alerts state (Phase 4: Static Closed Alerts UI)
-  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  // PHASE 4: Static closed alerts - fetched once on mount, never updated live
+  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertData[]>([]);
   const [closedAlertsLoaded, setClosedAlertsLoaded] = useState(false);
+  
+  // Core hooks
+  const { user } = useAuth();
+  const { navigate } = useSafeNavigation();
+  
+  // PHASE 1 & 2: Real-time signals with normalized state and instant synchronization
+  const { 
+    signals: allAlerts, 
+    connectionStatus, 
+    lastUpdated 
+  } = useSignalRealtime(user?.id || '', true);
+  
+  // User role determination
+  const isAdmin = user?.role === 'admin';
+  const isEducator = user?.user_type === 'educator' || isAdmin;
+  const canCreateSignals = isAdmin || isEducator;
 
-  // Authentication and navigation hooks
-  const { user, profile } = useAuth();
-  const { navigateToPage } = useSafeNavigation();
-  const { toast } = useToast();
-
-  // Real-time data with flawless signal lifecycle (Phase 1: Normalized State Management)
-  const {
-    alerts: allAlerts,
-    isLoading,
-    error,
-    connectionStatus,
-    lastUpdated,
-    nextRetryAt,
-    updateAlert,
-    refreshAlerts,
-    createAlert
-  } = useOptimizedTradingRealtime(user?.id || '', true);
-
-  // User role checks
-  const isAdmin = useMemo(() => {
-    return profile?.access_level === 'admin' || profile?.role === 'admin';
-  }, [profile]);
-
-  const isEducator = useMemo(() => {
-    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-  }, [profile]);
-
-  const canCreateSignals = useMemo(() => {
-    return isAdmin || isEducator;
-  }, [isAdmin, isEducator]);
-
-  // Fetch static closed alerts on component mount (Phase 4: Static Closed Alerts UI)
+  // PHASE 4: Static closed alerts fetch - one-time only on mount
   const fetchClosedAlerts = useCallback(async () => {
     if (closedAlertsLoaded) return;
     
     try {
-      console.log('fetchClosedAlerts - Fetching static closed alerts');
+      console.log('fetchClosedAlerts - Fetching static closed alerts...');
       
       const { data: closedSignalsData, error } = await supabase
         .from('trade_alerts')
         .select(`
           *,
-          profiles (
+          profiles!user_id (
             id,
             display_name,
             role,
@@ -92,28 +82,39 @@ const SignalStream: React.FC = () => {
       }
 
       if (closedSignalsData) {
-        const transformedClosedAlerts: TradeAlertWithProfile[] = closedSignalsData.map(signal => ({
+        const transformedClosedAlerts: TradeAlertData[] = closedSignalsData.map(signal => ({
           id: signal.id,
-          userId: signal.user_id,
-          assetName: signal.asset_name,
-          tradermadeSymbol: signal.tradermade_symbol,
-          tradeType: signal.trade_type,
-          entryPrice: Number(signal.entry_price),
-          stopLoss: Number(signal.stop_loss),
-          status: signal.status,
-          tp1: signal.tp1 ? Number(signal.tp1) : undefined,
-          tp2: signal.tp2 ? Number(signal.tp2) : undefined,
-          tp3: signal.tp3 ? Number(signal.tp3) : undefined,
-          tp4: signal.tp4 ? Number(signal.tp4) : undefined,
-          tp5: signal.tp5 ? Number(signal.tp5) : undefined,
-          tpHits: signal.tp_hits || [],
+          asset_name: signal.asset_name,
+          tradermade_symbol: signal.tradermade_symbol,
+          trade_type: signal.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
+          entry_price: signal.entry_price || 0,
+          stop_loss: signal.stop_loss || 0,
+          tp1: signal.tp1,
+          tp2: signal.tp2,
+          tp3: signal.tp3,
+          tp4: signal.tp4,
+          tp5: signal.tp5,
+          status: signal.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+          tp_hits: signal.tp_hits || [],
           notes: signal.notes,
-          closeReason: signal.close_reason,
-          createdAt: signal.created_at,
-          updatedAt: signal.updated_at,
-          creator: signal.profiles
+          close_reason: signal.close_reason,
+          created_at: signal.created_at,
+          updated_at: signal.updated_at,
+          user_id: signal.user_id,
+          creator: signal.profiles ? {
+            id: signal.profiles.id,
+            display_name: signal.profiles.display_name || 'Unknown',
+            role: signal.profiles.role || 'user',
+            avatar_url: signal.profiles.avatar_url,
+            user_type: signal.profiles.user_type,
+            access_level: signal.profiles.access_level
+          } : {
+            id: signal.user_id,
+            display_name: 'Unknown',
+            role: 'user'
+          }
         }));
-
+        
         setStaticClosedAlerts(transformedClosedAlerts);
         setClosedAlertsLoaded(true);
         
@@ -124,141 +125,139 @@ const SignalStream: React.FC = () => {
     }
   }, [closedAlertsLoaded]);
 
-  // Fetch closed alerts on mount
+  // Mount effect - fetch static closed alerts once
   useEffect(() => {
-    if (!closedAlertsLoaded) {
-      fetchClosedAlerts();
-    }
-  }, [fetchClosedAlerts, closedAlertsLoaded]);
-
-  // Filter alerts based on user inputs
-  const filteredAlerts = useMemo(() => {
-    let filtered = allAlerts;
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(alert => 
-        alert.assetName.toLowerCase().includes(searchLower) ||
-        alert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
-        alert.creator?.display_name?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(alert => alert.status === filters.status);
-    }
-
-    if (filters.tradeType) {
-      filtered = filtered.filter(alert => alert.tradeType.includes(filters.tradeType));
-    }
-
-    if (filters.educator) {
-      filtered = filtered.filter(alert => alert.creator?.id === filters.educator);
-    }
-
-    return filtered;
-  }, [allAlerts, filters]);
-
-  // Separate active and closed alerts for display
-  const activeAlerts = useMemo(() => {
-    return filteredAlerts.filter(alert => 
-      alert.status === 'active' || alert.status === 'pending'
-    );
-  }, [filteredAlerts]);
-
-  // Calculate closed alerts count using static closed alerts
-  const closedAlertsCount = staticClosedAlerts.length;
-
-  // Use static closed alerts for display (Phase 4: Static Closed Alerts UI)
-  const sortedClosedAlerts = useMemo(() => {
-    return staticClosedAlerts.slice(0, 12); // Limit to 12 most recent
-  }, [staticClosedAlerts]);
-
-  // Get unique educators for filter dropdown
-  const educatorOptions = useMemo(() => {
-    const educatorsMap = new Map();
-    allAlerts.forEach(alert => {
-      if (alert.creator && (
-        alert.creator.user_type === 'educator' || 
-        alert.creator.access_level === 'admin' || 
-        alert.creator.role === 'admin'
-      )) {
-        educatorsMap.set(alert.creator.id, {
-          id: alert.creator.id,
-          name: alert.creator.display_name || 'Unknown Educator'
-        });
-      }
-    });
-    return Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    fetchClosedAlerts();
+  }, [fetchClosedAlerts]);
+  
+  // PHASE 1: Transform TradeAlertWithProfile to TradeAlertData for consistent rendering
+  const activeAlerts: TradeAlertData[] = useMemo(() => {
+    return Object.values(allAlerts)
+      .filter(alert => alert.status === 'active' || alert.status === 'partially_profited')
+      .map(alert => ({
+        id: alert.id,
+        asset_name: alert.assetName,
+        tradermade_symbol: alert.tradermadeSymbol,
+        trade_type: alert.tradeType,  
+        entry_price: alert.entryPrice,
+        stop_loss: alert.stopLoss,
+        tp1: alert.tp1,
+        tp2: alert.tp2,
+        tp3: alert.tp3,
+        tp4: alert.tp4,
+        tp5: alert.tp5,
+        status: alert.status,
+        tp_hits: alert.tpHits || [],
+        notes: alert.notes,
+        close_reason: alert.closeReason,
+        created_at: alert.createdAt,
+        updated_at: alert.updatedAt,
+        user_id: alert.userId,
+        creator: alert.creator
+      }));
   }, [allAlerts]);
 
-  // Calculate signal counts for filter badges
-  const signalCounts = useMemo(() => ({
-    total: filteredAlerts.length,
-    active: activeAlerts.length,
-    closed: closedAlertsCount,
-    buy: filteredAlerts.filter(a => a.tradeType.includes('buy')).length,
-    sell: filteredAlerts.filter(a => a.tradeType.includes('sell')).length
-  }), [filteredAlerts, activeAlerts, closedAlertsCount]);
+  // Educator options for filtering
+  const educatorOptions = useMemo(() => {
+    const educators = new Set<string>();
+    Object.values(allAlerts).forEach(alert => {
+      if (alert.creator?.display_name) {
+        educators.add(alert.creator.display_name);
+      }
+    });
+    return Array.from(educators);
+  }, [allAlerts]);
 
-  // Handle creating new trade signal
-  const handleCreateSignal = async (signalData: CreateTradeAlertDto) => {
-    if (!user?.id) {
-      console.error('handleCreateSignal - No user ID available');
+  // Signal counts for display
+  const signalCounts = useMemo(() => {
+    const active = activeAlerts.length;
+    const closed = staticClosedAlerts.length;
+    const buy = activeAlerts.filter(alert => alert.trade_type === 'buy' || alert.trade_type === 'buy_limit').length;
+    const sell = activeAlerts.filter(alert => alert.trade_type === 'sell' || alert.trade_type === 'sell_limit').length;
+    
+    return { active, closed, buy, sell };
+  }, [activeAlerts, staticClosedAlerts]);
+
+  // Create signal handler
+  const handleCreateSignal = useCallback(async (signalData: CreateTradeAlertDto) => {
+    if (!user) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to create trading signals.",
+        description: "Please log in to create signals",
         variant: "destructive",
       });
-      return;
+      return false;
+    }
+
+    if (!canCreateSignals) {
+      toast({
+        title: "Access Denied",
+        description: "Only educators and admins can create signals",
+        variant: "destructive",
+      });
+      return false;
     }
 
     try {
-      const result = await createAlert(signalData);
+      console.log('Creating new signal:', signalData);
       
-      if (result) {
-        toast({
-          title: "Signal Created Successfully",
-          description: `${signalData.assetName} ${signalData.tradeType.toUpperCase()} signal has been created.`,
-        });
-        
-        setIsNewAlertModalOpen(false);
-        // Real-time updates will handle the new signal automatically
-      } else {
-        throw new Error('Failed to create signal');
+      const { data, error } = await supabase
+        .from('trade_alerts')
+        .insert([{
+          user_id: user.id,
+          asset_name: signalData.assetName,
+          tradermade_symbol: signalData.tradermadeSymbol,
+          trade_type: signalData.tradeType,
+          entry_price: signalData.entryPrice,
+          stop_loss: signalData.stopLoss,
+          tp1: signalData.tp1,
+          tp2: signalData.tp2,
+          tp3: signalData.tp3,
+          tp4: signalData.tp4,
+          tp5: signalData.tp5,
+          notes: signalData.notes,
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
       }
+
+      toast({
+        title: "Signal Created",
+        description: `${signalData.assetName} signal created successfully`,
+      });
+
+      setShowNewAlertModal(false);
+      return true;
     } catch (error) {
       console.error('Error creating signal:', error);
       toast({
-        title: "Error Creating Signal",
+        title: "Creation Failed",
         description: "Failed to create signal. Please try again.",
         variant: "destructive",
       });
+      return false;
     }
-  };
+  }, [user, canCreateSignals]);
 
-  // Update operations state management
-  const [updatesInProgress, setUpdatesInProgress] = useState(new Set<string>());
-  
-  // Handle signal status updates
+  // Status update handler
   const handleStatusUpdate = useCallback(async (alertId: string, newStatus: string) => {
     if (updatesInProgress.has(alertId)) return;
 
     setUpdatesInProgress(prev => new Set(prev).add(alertId));
     
     try {
-      const result = await updateAlert(alertId, { status: newStatus as any });
+      await updateAlert(alertId, { status: newStatus as any });
       
-      if (result) {
-        toast({
-          title: "Signal Updated",
-          description: `Signal status updated to ${newStatus}`,
-        });
-      } else {
-        throw new Error('Failed to update signal status');
-      }
+      toast({
+        title: "Status Updated",
+        description: `Signal status updated to ${newStatus}`,
+      });
     } catch (error) {
-      console.error('Error updating signal status:', error);
+      console.error('Error updating status:', error);
       toast({
         title: "Update Failed",
         description: "Failed to update signal status",
@@ -271,32 +270,27 @@ const SignalStream: React.FC = () => {
         return newSet;
       });
     }
-  }, [updateAlert, updatesInProgress, toast]);
+  }, [updateAlert, updatesInProgress]);
 
-  // Handle take profit hits
+  // Take profit hit handler
   const handleTakeProfitHit = useCallback(async (alertId: string, tpLevel: number) => {
     if (updatesInProgress.has(alertId)) return;
 
     setUpdatesInProgress(prev => new Set(prev).add(alertId));
     
     try {
-      // Find the current alert to get existing TP hits
-      const currentAlert = allAlerts.find(alert => alert.id === alertId);
-      if (!currentAlert) return;
+      const alert = Object.values(allAlerts).find(a => a.id === alertId);
+      if (!alert) return;
 
-      const existingTpHits = currentAlert.tpHits || [];
-      const newTpHits = [...existingTpHits, tpLevel].sort((a, b) => a - b);
-
-      const result = await updateAlert(alertId, { tpHits: newTpHits });
+      const currentTpHits = alert.tpHits || [];
+      const newTpHits = [...currentTpHits, tpLevel].sort((a, b) => a - b);
       
-      if (result) {
-        toast({
-          title: "Take Profit Hit",
-          description: `TP${tpLevel} has been marked as hit`,
-        });
-      } else {
-        throw new Error('Failed to update take profit hit');
-      }
+      await updateAlert(alertId, { tpHits: newTpHits });
+      
+      toast({
+        title: "Take Profit Hit",
+        description: `TP${tpLevel} hit for ${alert.assetName}`,
+      });
     } catch (error) {
       console.error('Error updating take profit hit:', error);
       toast({
@@ -311,28 +305,26 @@ const SignalStream: React.FC = () => {
         return newSet;
       });
     }
-  }, [updateAlert, updatesInProgress, allAlerts, toast]);
+  }, [updateAlert, updatesInProgress, allAlerts]);
 
-  // Handle stop loss hits
+  // Stop loss hit handler
   const handleStopLossHit = useCallback(async (alertId: string) => {
     if (updatesInProgress.has(alertId)) return;
 
     setUpdatesInProgress(prev => new Set(prev).add(alertId));
     
     try {
-      const result = await updateAlert(alertId, { 
+      await updateAlert(alertId, { 
         status: 'closed',
         closeReason: 'stop_loss'
       });
       
-      if (result) {
-        toast({
-          title: "Stop Loss Hit",
-          description: "Signal has been closed due to stop loss hit",
-        });
-      } else {
-        throw new Error('Failed to update stop loss hit');
-      }
+      const alert = Object.values(allAlerts).find(a => a.id === alertId);
+      toast({
+        title: "Stop Loss Hit",
+        description: `Stop loss hit for ${alert?.assetName || 'signal'}`,
+        variant: "destructive",
+      });
     } catch (error) {
       console.error('Error updating stop loss hit:', error);
       toast({
@@ -347,25 +339,22 @@ const SignalStream: React.FC = () => {
         return newSet;
       });
     }
-  }, [updateAlert, updatesInProgress, toast]);
+  }, [updateAlert, updatesInProgress, allAlerts]);
 
-  // Handle order activation
+  // Activate order handler
   const handleActivateOrder = useCallback(async (alertId: string) => {
     if (updatesInProgress.has(alertId)) return;
 
     setUpdatesInProgress(prev => new Set(prev).add(alertId));
     
     try {
-      const result = await updateAlert(alertId, { status: 'active' });
+      await updateAlert(alertId, { status: 'active' });
       
-      if (result) {
-        toast({
-          title: "Order Activated",
-          description: "Signal has been activated",
-        });
-      } else {
-        throw new Error('Failed to activate order');
-      }
+      const alert = Object.values(allAlerts).find(a => a.id === alertId);
+      toast({
+        title: "Order Activated",
+        description: `${alert?.assetName || 'Signal'} order activated`,
+      });
     } catch (error) {
       console.error('Error activating order:', error);
       toast({
@@ -380,60 +369,42 @@ const SignalStream: React.FC = () => {
         return newSet;
       });
     }
-  }, [updateAlert, updatesInProgress, toast]);
+  }, [updateAlert, updatesInProgress, allAlerts]);
 
-  // Get symbols for price subscriptions
+  // WebSocket price subscription
   const symbols = useMemo(() => {
-    const symbolSet = new Set<string>();
-    
-    // Subscribe to symbols from both active and pending alerts
-    [...activeAlerts].forEach(alert => {
-      if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
-      }
-    });
-    
-    // If no symbols found, subscribe to essential symbols
-    if (symbolSet.size === 0) {
-      ['XAUUSD', 'BTCUSD'].forEach(symbol => {
-        symbolSet.add(symbol);
-      });
-    }
-    
-    return Array.from(symbolSet).sort().slice(0, 5); // Limit to top 5 symbols
-  }, [activeAlerts]);
-
-  // WebSocket price data
-  const {
-    prices: livePricesData,
-    connectionStatus: priceConnectionStatus,
-    subscribe: subscribeToPrices,
-    unsubscribe: unsubscribeFromPrices
+    return Array.from(new Set([
+      ...activeAlerts.map(alert => alert.tradermade_symbol),
+      ...staticClosedAlerts.slice(0, 5).map(alert => alert.tradermade_symbol)
+    ]));
+  }, [activeAlerts, staticClosedAlerts]);
+  
+  const { 
+    prices: rawPrices, 
+    subscribe: subscribeToPrice, 
+    unsubscribe: unsubscribeFromPrice,
+    connectionStatus: priceConnectionStatus 
   } = useOptimizedWebSocketPrices();
-
-  // Convert price data to simple format
+  
   const symbolPrices = useMemo(() => {
-    const result: Record<string, { price: number }> = {};
-    Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData.price === 'number') {
-        result[symbol] = { price: priceData.price };
-      }
+    const priceMap: Record<string, { price: number; bid?: number; ask?: number }> = {};
+    Object.entries(rawPrices).forEach(([symbol, priceData]) => {
+      priceMap[symbol] = {
+        price: priceData.mid || priceData.price || 0,
+        bid: priceData.bid,
+        ask: priceData.ask
+      };
     });
-    return result;
-  }, [livePricesData]);
+    return priceMap;
+  }, [rawPrices]);
 
-  // Subscribe to price updates
+  // Subscribe to symbol prices
   useEffect(() => {
-    if (symbols.length > 0) {
-      subscribeToPrices(symbols);
-    }
-
+    symbols.forEach(symbol => subscribeToPrice(symbol));
     return () => {
-      if (symbols.length > 0) {
-        unsubscribeFromPrices(symbols);
-      }
+      symbols.forEach(symbol => unsubscribeFromPrice(symbol));
     };
-  }, [symbols, subscribeToPrices, unsubscribeFromPrices]);
+  }, [symbols, subscribeToPrice, unsubscribeFromPrice]);
 
   return (
     <ErrorBoundary>
@@ -441,110 +412,116 @@ const SignalStream: React.FC = () => {
         <div className="container mx-auto px-4 py-6">
           {/* Header */}
           <SignalStreamHeader 
-            connectionStatus={connectionStatus}
-            lastUpdated={lastUpdated}
-            signalCounts={{
-              all: signalCounts.total,
-              active: signalCounts.active,
-              closed: signalCounts.closed,
-              pending: 0,
-              buy: signalCounts.buy,
-              sell: signalCounts.sell
-            }}
+            signalCounts={signalCounts}
             canCreateSignals={canCreateSignals}
-            onCreateSignal={() => setIsNewAlertModalOpen(true)}
-            onRefresh={refreshAlerts}
+            onCreateSignal={() => setShowNewAlertModal(true)}
           />
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            {/* Main Content */}
-            <div className="xl:col-span-3 space-y-6">
-              {/* Filters */}
-              <EnhancedSignalFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                educatorOptions={educatorOptions}
-                 signalCounts={{
-                   all: signalCounts.total,
-                   active: signalCounts.active,
-                   closed: signalCounts.closed,
-                   pending: 0,
-                   buy: signalCounts.buy,
-                   sell: signalCounts.sell
-                 }}
-              />
+          {/* Filters and Connection Status */}
+          <div className="mb-6 space-y-4">
+            <EnhancedSignalFilters 
+              filters={filters}
+              onFiltersChange={setFilters}
+              educatorOptions={educatorOptions}
+            />
+            <ConnectionStatusIndicator 
+              connectionStatus={connectionStatus}
+              priceConnectionStatus={priceConnectionStatus}
+              lastUpdated={lastUpdated}
+            />
+          </div>
 
-              {/* Connection Status */}
-              <ConnectionStatusIndicator
-                connectionStatus={connectionStatus}
-                priceConnectionStatus={priceConnectionStatus}
-                error={error}
-                lastUpdated={lastUpdated}
-                nextRetryAt={nextRetryAt}
-              />
-
-              {/* Active Signals */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">Active Signals ({activeAlerts.length})</h2>
-                <div className="space-y-3">
-                  {activeAlerts.map((alert) => (
-                    <TradeAlertCard 
-                      key={`active-${alert.id}`}
-                      alert={alert}
-                      currentPrice={symbolPrices[alert.tradermadeSymbol]?.price}
-                      onStatusUpdate={() => handleStatusUpdate(alert.id, 'closed')}
-                      onTakeProfitHit={(tpLevel) => handleTakeProfitHit(alert.id, tpLevel)}
-                      onStopLossHit={() => handleStopLossHit(alert.id)}
-                      onActivateOrder={() => handleActivateOrder(alert.id)}
-                      updatesInProgress={updatesInProgress}
-                    />
-                  ))}
-                  {activeAlerts.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <p className="text-lg">No active signals to display</p>
-                      <p className="text-sm mt-2">Active signals will appear here when educators post new analysis</p>
-                    </div>
-                  )}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Main Signals Column */}
+            <div className="lg:col-span-3 space-y-6">
+              {/* Active Signals Section */}
+              <div className="bg-card rounded-lg border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Active Signals</h2>
+                  <span className="text-sm text-muted-foreground">
+                    {activeAlerts.length} active
+                  </span>
                 </div>
+                
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading signals...</p>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <p className="text-destructive">Error loading signals: {error}</p>
+                  </div>
+                ) : activeAlerts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No active signals</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeAlerts.map((alert) => (
+                      <TradeAlertCard 
+                        key={`active-${alert.id}`}
+                        alert={alert}
+                        currentPrice={symbolPrices[alert.tradermade_symbol]?.price}
+                        onStatusUpdate={(alert, newStatus) => handleStatusUpdate(alert.id, newStatus)}
+                        onTakeProfitHit={(alert, newTPHits) => handleTakeProfitHit(alert.id, newTPHits[0])}
+                        onStopLossHit={(alert) => handleStopLossHit(alert.id)}
+                        onActivateOrder={(alert) => handleActivateOrder(alert.id)}
+                        updatesInProgress={updatesInProgress}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Closed Alerts Section - Using Static Data (Phase 4) */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-foreground">Recent Closed Signals ({closedAlertsCount})</h3>
-                <div className="space-y-3">
-                  {sortedClosedAlerts.map((alert) => (
-                    <TradeAlertCard 
-                      key={`closed-${alert.id}`}
-                      alert={alert}
-                      currentPrice={symbolPrices[alert.tradermadeSymbol]?.price}
-                      onStatusUpdate={() => handleStatusUpdate(alert.id, alert.status)}
-                      onTakeProfitHit={(tpLevel) => handleTakeProfitHit(alert.id, tpLevel)}
-                      onStopLossHit={() => handleStopLossHit(alert.id)}
-                      onActivateOrder={() => handleActivateOrder(alert.id)}
-                      updatesInProgress={updatesInProgress}
-                    />
-                  ))}
-                  {sortedClosedAlerts.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No closed signals to display</p>
-                    </div>
-                  )}
+              {/* Closed Signals Section - Static Display */}
+              <div className="bg-card rounded-lg border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Recent Closed Signals</h2>
+                  <span className="text-sm text-muted-foreground">
+                    {staticClosedAlerts.length} recent
+                  </span>
                 </div>
+                
+                {!closedAlertsLoaded ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Loading closed signals...</p>
+                  </div>
+                ) : staticClosedAlerts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No recent closed signals</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {staticClosedAlerts.map((alert) => (
+                      <TradeAlertCard 
+                        key={`closed-${alert.id}`}
+                        alert={alert}
+                        currentPrice={symbolPrices[alert.tradermade_symbol]?.price}
+                        onStatusUpdate={(alert, newStatus) => handleStatusUpdate(alert.id, newStatus)}
+                        onTakeProfitHit={(alert, newTPHits) => handleTakeProfitHit(alert.id, newTPHits[0])}
+                        onStopLossHit={(alert) => handleStopLossHit(alert.id)}
+                        onActivateOrder={(alert) => handleActivateOrder(alert.id)}
+                        updatesInProgress={updatesInProgress}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="xl:col-span-1">
+            {/* Economic Sidebar */}
+            <div className="lg:col-span-1">
               <EconomicSidebar />
             </div>
           </div>
         </div>
 
-        {/* Create Signal Modal */}
-        {isNewAlertModalOpen && (
+        {/* New Signal Modal */}
+        {showNewAlertModal && (
           <OptimizedNewAlertForm
+            isOpen={showNewAlertModal}
+            onClose={() => setShowNewAlertModal(false)}
             onSubmit={handleCreateSignal}
-            onCancel={() => setIsNewAlertModalOpen(false)}
           />
         )}
       </div>

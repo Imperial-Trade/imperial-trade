@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
-import { tradingApiService } from '@/api/services/TradingApiService';
+import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
@@ -23,8 +24,6 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
-
-
 
 export default function SignalStream() {
   const {
@@ -141,6 +140,7 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
+  
   const {
     activeAlerts,
     closedAlerts,
@@ -177,9 +177,70 @@ export default function SignalStream() {
       signalCounts: counts
     };
   }, [alerts, allAlerts]);
-  const sortedClosedAlerts = useMemo(() => {
-    return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
-  }, [closedAlerts]);
+
+  // PHASE 4: Static closed alerts - fetch once on page load, no real-time updates
+  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  const [closedAlertsCount, setClosedAlertsCount] = useState<number>(0);
+  const [closedAlertsLoaded, setClosedAlertsLoaded] = useState(false);
+
+  // PHASE 4: Fetch static closed alerts on component mount
+  useEffect(() => {
+    const fetchClosedAlerts = async () => {
+      if (closedAlertsLoaded || !user?.id) return;
+      
+      try {
+        const { data: closedAlertsData, error } = await supabase
+          .from('trade_alerts')
+          .select('*')
+          .eq('status', 'closed')
+          .in('user_id', allAlerts.map(a => a.userId as string).filter((id, index, arr) => arr.indexOf(id) === index))
+          .order('updated_at', { ascending: false })
+          .limit(12);
+
+        if (error) {
+          console.error('Error fetching closed alerts:', error);
+          return;
+        }
+
+        // Get total count of closed signals
+        const { count } = await supabase
+          .from('trade_alerts')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'closed')
+          .in('user_id', allAlerts.map(a => a.userId as string).filter((id, index, arr) => arr.indexOf(id) === index));
+
+        const formattedClosedAlerts: TradeAlertWithProfile[] = (closedAlertsData || []).map(alert => ({
+          id: alert.id,
+          userId: alert.user_id,
+          assetName: alert.asset_name,
+          tradermadeSymbol: alert.tradermade_symbol,
+          tradeType: alert.trade_type,
+          entryPrice: Number(alert.entry_price),
+          stopLoss: Number(alert.stop_loss),
+          status: alert.status,
+          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+          tpHits: alert.tp_hits || [],
+          notes: alert.notes,
+          closeReason: alert.close_reason,
+          createdAt: alert.created_at,
+          updatedAt: alert.updated_at,
+          creator: undefined
+        }));
+
+        setStaticClosedAlerts(formattedClosedAlerts);
+        setClosedAlertsCount(count || 0);
+        setClosedAlertsLoaded(true);
+      } catch (error) {
+        console.error('Error in fetchClosedAlerts:', error);
+      }
+    };
+
+    fetchClosedAlerts();
+  }, [allAlerts, user?.id, closedAlertsLoaded]);
 
   // Check if we have pending limit orders for the monitor
   const hasPendingLimitOrders = useMemo(() => {
@@ -266,6 +327,7 @@ export default function SignalStream() {
       }
     };
   }, [symbols, subscribe, unsubscribe]);
+  
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {
@@ -343,6 +405,7 @@ export default function SignalStream() {
     }
     prevAlertIdsRef.current = currentIds;
   }, [alerts]);
+  
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
       const update = () => {
@@ -356,6 +419,7 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
+  
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -378,6 +442,7 @@ export default function SignalStream() {
         return null;
     }
   };
+  
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -457,6 +522,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -482,27 +548,16 @@ export default function SignalStream() {
             typedCloseReason = closeReason;
             break;
           default:
-            typedCloseReason = 'manual';
+            typedCloseReason = undefined;
         }
       }
       const updateDto: UpdateTradeAlertDto = {
         tpHits: newTPHits,
-        ...(shouldAutoClose && {
-          status: 'closed',
-          closeReason: typedCloseReason
-        })
+        status: shouldAutoClose ? 'closed' : undefined,
+        closeReason: typedCloseReason
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
-        }
-      }
+      await updateAlert(alert.id, updateDto);
+      // Notifications are handled by real-time updates
     } catch (err) {
       console.error("Failed to update TP hits:", err);
     } finally {
@@ -512,8 +567,8 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
+  }, [updateInProgress, updateAlert, isAdmin, isCreator]);
+  const handleStopLossHit = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
 
     // Check if user can edit this signal (creator or admin only)
@@ -523,36 +578,15 @@ export default function SignalStream() {
     }
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
-      console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
-      switch (closeReason) {
-        case 'manual':
-        case 'stop_loss':
-        case 'tp1':
-        case 'tp2':
-        case 'tp3':
-        case 'tp4':
-        case 'tp5':
-        case 'reversal_after_tp':
-          typedCloseReason = closeReason;
-          break;
-        default:
-          typedCloseReason = 'stop_loss';
-      }
+      console.log(`Stop loss hit for alert ${alert.id}`);
       const updateDto: UpdateTradeAlertDto = {
         status: 'closed',
-        closeReason: typedCloseReason
+        closeReason: 'stop_loss'
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
-      }
+      await updateAlert(alert.id, updateDto);
+      // Notifications are handled by real-time updates
     } catch (err) {
-      console.error("Failed to update stop loss:", err);
+      console.error("Failed to update stop loss hit:", err);
     } finally {
       setUpdateInProgress(prev => {
         const newSet = new Set(prev);
@@ -560,10 +594,10 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateInProgress, updateAlert, isAdmin, isCreator]);
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
-
+    
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
@@ -571,16 +605,16 @@ export default function SignalStream() {
     }
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
-      console.log(`Activating order for alert ${alert.id}`);
+      console.log(`Activating pending order for alert ${alert.id}`);
       const updateDto: UpdateTradeAlertDto = {
         status: 'active'
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
+      await updateAlert(alert.id, updateDto);
+      if ((window as any).addNotification) {
         (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
+          type: 'order_activated',
+          title: '⚡ Order Activated',
+          message: `${alert.assetName} ${alert.tradeType.replace('_', ' ')} order is now active`
         });
       }
     } catch (err) {
@@ -592,162 +626,207 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateInProgress, updateAlert, isAdmin, isCreator]);
+
+  if (!isNavigationAvailable && navigationError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
+          <h1 className="text-xl font-semibold">Navigation Error</h1>
+          <p className="text-muted-foreground">{navigationError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show loading for truly initial load - avoids flicker on subsequent updates
+  if (isLoading && !hasHydratedRef.current) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading educational patterns...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <StreamErrorBoundary>
-      <div className="min-h-screen bg-background w-full">
-        <GlobalLeadershipBanner />
-        <InAppNotificationSystem />
-        
-        {/* Header - Mobile Optimized spacing */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="min-w-0 flex-1">
-                
-                <p className="text-sm sm:text-base text-muted-foreground hidden">
-                  Educational market analysis patterns with reference pricing from verified educational contributors
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 hidden">
-                {getConnectionStatusBadge()}
-                {lastUpdated && <span className="text-xs text-muted-foreground">
-                    Last update: {lastUpdated.toLocaleTimeString()}
-                  </span>}
-              </div>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          {/* Dev Tools */}
+          {isDevToolsEnabled() && (
+            <GlobalLeadershipBanner />
+          )}
+          
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold">Educational Patterns</h1>
+              <p className="text-muted-foreground">Live market analysis and trading opportunities from our team of educators</p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {getConnectionStatusBadge()}
+              
+              {canCreateSignals && (
+                <Button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Educational Pattern
+                </Button>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Main Content - Mobile Optimized grid layout with granular protection */}
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
-          <div className="max-w-none w-full">
-            <div className="w-full">
+          {/* Connection Status & Monitoring Info */}
+          {(isMonitorRunning || reconnectIn || error) && (
+            <div className="space-y-2">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-medium">Connection Error</span>
+                  </div>
+                  <p className="text-sm mt-1 text-muted-foreground">{error}</p>
+                  {reconnectIn && (
+                    <p className="text-sm mt-1 text-muted-foreground">
+                      Retrying in {reconnectIn} seconds...
+                    </p>
+                  )}
+                </div>
+              )}
               
-              {/* System Status - Removed for clean UI */}
-              
-              
+              {isMonitorRunning && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-blue-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Order Monitor Running</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Filters */}
+          <SignalStreamFilters 
+            filters={filters}
+            onFiltersChange={setFilters}
+            signalCounts={signalCounts}
+            educatorOptions={educatorOptions}
+          />
 
-
-              <div className="mb-6" />
-              
-              {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
-              </div>
-              
-{(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {Array.from({
-                length: 6
-              }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
-                      <div className="h-4 w-1/3 bg-muted rounded mb-3" />
-                      <div className="h-6 w-2/3 bg-muted rounded mb-4" />
-                      <div className="h-24 w-full bg-muted rounded" />
-                    </div>)}
-                </div> : <div className="space-y-5">
-                  <div>
-                    <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
-                      <span className="text-imperial-platinum">Active </span>
-                      <span 
-                        className="bg-clip-text text-transparent font-medium"
-                        style={{ 
-                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
-                      >
-                        Alerts
-                      </span>
-                      <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
-                    </h2>
-                    {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
-                          </div>)}
-                      </div> : <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Shield className="w-8 h-8 text-muted-foreground/50" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
-                        <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                      </div>}
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Signals Stream - Takes up 3 columns */}
+            <div className="lg:col-span-3 space-y-8">
+              {/* Active Alerts Section */}
+              {activeAlerts.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-emerald-500" />
+                      <h2 className="text-xl font-bold">Active Patterns</h2>
+                      <Badge variant="secondary" className="ml-2">
+                        {signalCounts.active}
+                      </Badge>
+                    </div>
                   </div>
                   
-                  <div>
-                    <h2 className="text-lg font-semibold mb-3 border-b border-border pb-1.5">
-                      <span className="text-imperial-platinum">Closed </span>
-                      <span 
-                        className="bg-clip-text text-transparent font-medium"
-                        style={{ 
-                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
-                      >
-                        Alerts
-                      </span>
-                      <span className="text-imperial-platinum"> ({closedAlerts.length})</span>
-                    </h2>
-                    {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
-                          </div>)}
-                      </div> : <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
-                        <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                      </div>}
+                  <div className="grid gap-4">
+                    {activeAlerts.map((alert) => (
+                      <TradeAlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onStatusUpdate={handleStatusUpdate}
+                        onTakeProfitHit={handleTakeProfitHit}
+                        onStopLossHit={handleStopLossHit}
+                        onOrderActivation={handleOrderActivation}
+                        showCloseButton={isCreator(alert.creator?.id) || isAdmin}
+                        isHighlighted={justAddedIds.has(alert.id)}
+                        livePrice={livePrices[alert.tradermadeSymbol]}
+                        canUpdate={isCreator(alert.creator?.id) || isAdmin}
+                      />
+                    ))}
                   </div>
-                </div>}
+                </div>
+              )}
+              
+              {/* PHASE 4: Static Closed Alerts Section - No real-time updates */}
+              {staticClosedAlerts.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-muted-foreground" />
+                      <h2 className="text-xl font-bold">Recently Closed</h2>
+                      <Badge variant="secondary" className="ml-2">
+                        {closedAlertsCount}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-4">
+                    {staticClosedAlerts.map((alert) => (
+                      <TradeAlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onStatusUpdate={handleStatusUpdate}
+                        onTakeProfitHit={handleTakeProfitHit}
+                        onStopLossHit={handleStopLossHit}
+                        onOrderActivation={handleOrderActivation}
+                        showCloseButton={false}
+                        isHighlighted={false} // Never highlighted for static display
+                        livePrice={livePrices[alert.tradermadeSymbol]}
+                        canUpdate={false} // No updates allowed on closed signals
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {activeAlerts.length === 0 && staticClosedAlerts.length === 0 && !isLoading && (
+                <div className="text-center py-12">
+                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Educational Patterns Available</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Our educators haven't posted any patterns yet. Check back soon!
+                  </p>
+                  {canCreateSignals && (
+                    <Button onClick={() => setShowCreateModal(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Pattern
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Economic Sidebar - Protected positioning */}
-            <div data-prevent-widget-open="true" className="space-y-4">
+            {/* Economic Sidebar - Takes up 1 column */}
+            <div className="lg:col-span-1">
               <EconomicSidebar />
             </div>
           </div>
         </div>
-        
+
         {/* Create Signal Modal */}
-         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
-              <DialogHeader>
-                <DialogTitle className="text-white text-xl font-semibold">Create Alert</DialogTitle>
-                <p className="text-sm text-muted-foreground">
-                  Create a new educational trading pattern for learning and analysis purposes.
-                </p>
-              </DialogHeader>
-             <OptimizedNewAlertForm 
-               onSubmit={handleCreateSignal}
-               onCancel={() => setShowCreateModal(false)}
-             />
-           </DialogContent>
-         </Dialog>
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create Educational Pattern</DialogTitle>
+            </DialogHeader>
+            <OptimizedNewAlertForm 
+              onSubmit={handleCreateSignal}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* In-App Notifications */}
+        <InAppNotificationSystem />
       </div>
     </StreamErrorBoundary>
   );

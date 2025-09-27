@@ -179,21 +179,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         isThrottled.current = false;
       }, SIGNAL_REFRESH_THROTTLE);
 
-      // Fetch signals with RLS filtering
+      // Use simpler query to avoid relation issues
       const { data: signalsData, error: signalsError } = await supabase
         .from('trade_alerts')
-        .select(`
-          *,
-          profiles!trade_alerts_user_id_fkey (
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
-        `)
-        .in('user_id', educatorIds)
+        .select('*')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -208,6 +198,19 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         setLastUpdated(new Date());
         return;
       }
+
+      // Fetch profile data separately
+      const userIds = [...new Set(signalsData.map(s => s.user_id))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, display_name, role, avatar_url, user_type, access_level')
+        .in('id', userIds);
+
+      // Create profile lookup
+      const profileLookup = (profilesData || []).reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, any>);
 
       // Transform to normalized state map
       const signalsMap: Record<string, TradeAlertWithProfile> = {};
@@ -231,20 +234,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           closeReason: signal.close_reason,
           createdAt: signal.created_at,
           updatedAt: signal.updated_at,
-          creator: Array.isArray(signal.profiles) && signal.profiles.length > 0 ? {
-            id: signal.profiles[0].id,
-            display_name: signal.profiles[0].display_name || 'Anonymous User',
-            role: signal.profiles[0].role || 'user',
-            avatar_url: signal.profiles[0].avatar_url,
-            user_type: signal.profiles[0].user_type,
-            access_level: signal.profiles[0].access_level
-          } : signal.profiles && !Array.isArray(signal.profiles) ? {
-            id: signal.profiles.id,
-            display_name: signal.profiles.display_name || 'Anonymous User',
-            role: signal.profiles.role || 'user',
-            avatar_url: signal.profiles.avatar_url,
-            user_type: signal.profiles.user_type,
-            access_level: signal.profiles.access_level
+          creator: profileLookup[signal.user_id] ? {
+            id: profileLookup[signal.user_id].id,
+            display_name: profileLookup[signal.user_id].display_name || 'Anonymous User',
+            role: profileLookup[signal.user_id].role || 'user',
+            avatar_url: profileLookup[signal.user_id].avatar_url,
+            user_type: profileLookup[signal.user_id].user_type,
+            access_level: profileLookup[signal.user_id].access_level
           } : {
             id: signal.user_id,
             display_name: 'Unknown User',

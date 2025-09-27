@@ -80,7 +80,8 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
 
   const deleteAlert = async (id: string): Promise<boolean> => {
     try {
-      return await realtimeHook.deleteAlert(id);
+      await realtimeHook.deleteAlert(id);
+      return true;
     } catch (error) {
       console.error('Error in deleteAlert:', error);
       return false;

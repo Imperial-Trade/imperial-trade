@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 
 interface SafeNavigationReturn {
   navigate: (to: string, options?: { replace?: boolean; state?: any }) => void;
+  navigateToPage: (to: string) => void;
   isNavigationAvailable: boolean;
   navigationError: string | null;
 }
@@ -45,8 +46,13 @@ export const useSafeNavigation = (): SafeNavigationReturn => {
     }
   }, [navigate, isNavigationAvailable]);
 
+  const navigateToPage = useCallback((to: string) => {
+    safeNavigate(to);
+  }, [safeNavigate]);
+
   return {
     navigate: safeNavigate,
+    navigateToPage,
     isNavigationAvailable,
     navigationError
   };

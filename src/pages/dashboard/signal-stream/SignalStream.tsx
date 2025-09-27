@@ -2,16 +2,16 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useOptimizedTradingRealtime } from '@/hooks/useOptimizedTradingRealtime';
-import { useOptimizedWebSocketPrices } from '@/hooks/useOptimizedWebSocketPrices';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { TradeAlertCard } from '@/components/dashboard/TradeAlertCard';
-import { EconomicSidebar } from '@/components/dashboard/EconomicSidebar';
-import { OptimizedNewAlertForm } from '@/components/dashboard/OptimizedNewAlertForm';
-import { EnhancedSignalFilters } from '@/components/dashboard/EnhancedSignalFilters';
-import { ConnectionStatusIndicator } from '@/components/dashboard/ConnectionStatusIndicator';
-import { SignalStreamHeader } from '@/components/dashboard/SignalStreamHeader';
+import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
+import TradeAlertCard from '@/components/signals/TradeAlertCard';
+import EconomicSidebar from '@/components/widgets/EconomicSidebar';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import EnhancedSignalFilters from '@/components/dashboard/EnhancedSignalFilters';
+import ConnectionStatusIndicator from '@/components/dashboard/ConnectionStatusIndicator';
+import SignalStreamHeader from '@/components/dashboard/SignalStreamHeader';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -247,7 +247,7 @@ const SignalStream: React.FC = () => {
     setUpdatesInProgress(prev => new Set(prev).add(alertId));
     
     try {
-      const result = await updateAlert(alertId, { status: newStatus });
+      const result = await updateAlert(alertId, { status: newStatus as any });
       
       if (result) {
         toast({
@@ -443,7 +443,14 @@ const SignalStream: React.FC = () => {
           <SignalStreamHeader 
             connectionStatus={connectionStatus}
             lastUpdated={lastUpdated}
-            signalCounts={signalCounts}
+            signalCounts={{
+              all: signalCounts.total,
+              active: signalCounts.active,
+              closed: signalCounts.closed,
+              pending: 0,
+              buy: signalCounts.buy,
+              sell: signalCounts.sell
+            }}
             canCreateSignals={canCreateSignals}
             onCreateSignal={() => setIsNewAlertModalOpen(true)}
             onRefresh={refreshAlerts}
@@ -457,7 +464,14 @@ const SignalStream: React.FC = () => {
                 filters={filters}
                 onFiltersChange={setFilters}
                 educatorOptions={educatorOptions}
-                signalCounts={signalCounts}
+                 signalCounts={{
+                   all: signalCounts.total,
+                   active: signalCounts.active,
+                   closed: signalCounts.closed,
+                   pending: 0,
+                   buy: signalCounts.buy,
+                   sell: signalCounts.sell
+                 }}
               />
 
               {/* Connection Status */}
@@ -529,9 +543,8 @@ const SignalStream: React.FC = () => {
         {/* Create Signal Modal */}
         {isNewAlertModalOpen && (
           <OptimizedNewAlertForm
-            open={isNewAlertModalOpen}
-            onOpenChange={setIsNewAlertModalOpen}
             onSubmit={handleCreateSignal}
+            onCancel={() => setIsNewAlertModalOpen(false)}
           />
         )}
       </div>

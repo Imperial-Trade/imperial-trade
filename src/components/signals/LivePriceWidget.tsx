@@ -7,7 +7,16 @@ import { useEnhancedLivePrice } from '@/hooks/useLivePrice';
 import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
-import { LivePriceWidgetProps } from '@/types/components';
+import { TradeAlertWithProfile } from '@/utils/dataTransformers';
+
+// Priority Props for LivePriceWidgetPriority usage
+export interface LivePriceWidgetPriorityProps {
+  alert: TradeAlertWithProfile;
+  allowAutomation?: boolean;
+  onOrderActivation: (alert: TradeAlertWithProfile) => Promise<void>;
+  onStopLossHit: (alert: TradeAlertWithProfile, closeReason: string) => Promise<void>;
+  onTakeProfitHit: (alert: TradeAlertWithProfile, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
+}
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -57,7 +66,7 @@ const LivePriceWidgetComponent = ({
   onStopLossHit,
   onOrderActivation,
   allowAutomation = true
-}) => {
+}: LivePriceWidgetPriorityProps) => {
   // Move hooks inside the component
   const levelHitRef = useRef(globalLevelHitMap);
   const [localClosed, setLocalClosed] = useState(false);
@@ -75,7 +84,7 @@ const LivePriceWidgetComponent = ({
     dataSource,
     priceUpdateSource,
     refreshPrice
-  } = useOptimizedLivePrice(alert.tradermade_symbol, {
+  } = useOptimizedLivePrice(alert.tradermadeSymbol, {
     enableSmartPausing: false,
     debounceMs: 50, // 🔥 OPTIMIZED: Ultra-fast 50ms for professional grade
     pauseOnInput: false,
@@ -83,7 +92,7 @@ const LivePriceWidgetComponent = ({
   });
 
   // ✅ Get connection quality from consumer hook (no additional subscription)
-  const { connectionQuality } = useEnhancedLivePrice(alert.tradermade_symbol);
+  const { connectionQuality } = useEnhancedLivePrice(alert.tradermadeSymbol);
   
   // ✅ FLICKER ELIMINATION: 10-second stability lock
   const { shouldAllowQualityChange } = useConnectionStability({
@@ -134,10 +143,10 @@ const LivePriceWidgetComponent = ({
       console.log(`[LEVEL HIT] Processing ${hitType} for alert ${alert.id}:`, {
         ...data,
         currentPrice: currentPrice,
-        entryPrice: alert.entry_price,
-        tradeType: alert.trade_type,
-        assetName: alert.asset_name,
-        symbol: alert.tradermade_symbol,
+        entryPrice: alert.entryPrice,
+        tradeType: alert.tradeType,
+        assetName: alert.assetName,
+        symbol: alert.tradermadeSymbol,
         timestamp: new Date().toISOString(),
         alertStatus: alert.status
       });
@@ -174,7 +183,7 @@ const LivePriceWidgetComponent = ({
       pips,
       points,
       difference
-    } = calculatePips(alert.entry_price, price, alert.tradermade_symbol);
+    } = calculatePips(alert.entryPrice, price, alert.tradermadeSymbol);
     setPriceChange({
       pips,
       points,
@@ -182,11 +191,11 @@ const LivePriceWidgetComponent = ({
       isPositive: difference > 0
     });
     if (alert.status === 'pending') {
-      const isBuyLimit = alert.trade_type === 'buy_limit';
-      const isSellLimit = alert.trade_type === 'sell_limit';
-      const shouldActivate = isBuyLimit && price <= alert.entry_price || isSellLimit && price >= alert.entry_price;
+      const isBuyLimit = alert.tradeType === 'buy_limit';
+      const isSellLimit = alert.tradeType === 'sell_limit';
+      const shouldActivate = (isBuyLimit && price <= alert.entryPrice) || (isSellLimit && price >= alert.entryPrice);
       if (shouldActivate) {
-        console.log(`🚀 Order activation triggered for ${alert.asset_name}`);
+        console.log(`🚀 Order activation triggered for ${alert.assetName}`);
         processLevelHit('activation', {});
       }
       return;
@@ -194,18 +203,18 @@ const LivePriceWidgetComponent = ({
     if (alert.status !== 'active' && alert.status !== 'partially_profited') {
       return;
     }
-    const isBuy = alert.trade_type.includes('buy');
-    const currentHits = alert.tp_hits || [];
+    const isBuy = alert.tradeType.includes('buy');
+    const currentHits = alert.tpHits || [];
     const hasAlreadyHitTP = currentHits.length > 0;
-    const buffer = alert.entry_price * 0.0001;
+    const buffer = alert.entryPrice * 0.0001;
 
     // Enhanced logging for debugging
     if (isDevToolsEnabled()) {
-      console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
+      console.log(`[PRICE CHECK] ${alert.assetName} (${alert.tradermadeSymbol}):`, {
         currentPrice: price,
-        entryPrice: alert.entry_price,
-        tradeType: alert.trade_type,
-        stopLoss: alert.stop_loss,
+        entryPrice: alert.entryPrice,
+        tradeType: alert.tradeType,
+        stopLoss: alert.stopLoss,
         buffer: buffer,
         currentHits: currentHits,
         isBuy: isBuy
@@ -213,7 +222,7 @@ const LivePriceWidgetComponent = ({
     }
 
     // Priority 1: Check Stop Loss first (highest priority)
-    const stopLossHit = isBuy ? price <= alert.stop_loss - buffer : price >= alert.stop_loss + buffer;
+    const stopLossHit = isBuy ? price <= alert.stopLoss - buffer : price >= alert.stopLoss + buffer;
     if (stopLossHit) {
       const hitKey = `${alert.id}:stop_loss`;
       const lastHit = levelHitRef.current.get(hitKey);
@@ -224,11 +233,11 @@ const LivePriceWidgetComponent = ({
       levelHitRef.current.set(hitKey, now);
       
       const closeReason = hasAlreadyHitTP ? 'reversal_after_tp' : 'stop_loss';
-      console.log(`💥 [STOP LOSS] Hit for ${alert.asset_name}, reason: ${closeReason}`, {
+      console.log(`💥 [STOP LOSS] Hit for ${alert.assetName}, reason: ${closeReason}`, {
         currentPrice: price,
-        stopLoss: alert.stop_loss,
+        stopLoss: alert.stopLoss,
         buffer: buffer,
-        effectiveStopLoss: isBuy ? alert.stop_loss - buffer : alert.stop_loss + buffer
+        effectiveStopLoss: isBuy ? alert.stopLoss - buffer : alert.stopLoss + buffer
       });
       processLevelHit('stop_loss', {
         closeReason
@@ -237,13 +246,13 @@ const LivePriceWidgetComponent = ({
     }
 
     // Priority 2: Validate trade direction before checking TP levels
-    const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
+    const isPriceInProfitDirection = isBuy ? price > alert.entryPrice : price < alert.entryPrice;
     if (!isPriceInProfitDirection) {
       if (isDevToolsEnabled()) {
-        console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
+        console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.assetName}:`, {
           currentPrice: price,
-          entryPrice: alert.entry_price,
-          tradeType: alert.trade_type,
+          entryPrice: alert.entryPrice,
+          tradeType: alert.tradeType,
           isPriceInProfitDirection
         });
       }
@@ -270,26 +279,26 @@ const LivePriceWidgetComponent = ({
     }].filter(tp => tp.price && tp.price > 0);
 
     // Validate TP levels make sense for trade direction
-    const invalidTPs = takeProfits.filter(tp => isBuy ? tp.price <= alert.entry_price : tp.price >= alert.entry_price);
+    const invalidTPs = takeProfits.filter(tp => isBuy ? tp.price <= alert.entryPrice : tp.price >= alert.entryPrice);
     if (invalidTPs.length > 0) {
-      console.warn(`[INVALID TP] Invalid TP levels detected for ${alert.asset_name}:`, invalidTPs);
+      console.warn(`[INVALID TP] Invalid TP levels detected for ${alert.assetName}:`, invalidTPs);
     }
-    const validTPs = takeProfits.filter(tp => isBuy ? tp.price > alert.entry_price : tp.price < alert.entry_price);
+    const validTPs = takeProfits.filter(tp => isBuy ? tp.price > alert.entryPrice : tp.price < alert.entryPrice);
     const newHits = [];
     validTPs.forEach(tp => {
       const hasHit = isBuy ? price >= tp.price - buffer : price <= tp.price + buffer;
       if (hasHit && !currentHits.includes(tp.level)) {
         // Sequential TP validation: Can't hit TP2 without hitting TP1 first
         if (tp.level > 1 && !currentHits.includes(tp.level - 1)) {
-          console.log(`[SEQUENTIAL TP] Skipping TP${tp.level} - TP${tp.level - 1} not hit yet for ${alert.asset_name}`);
+          console.log(`[SEQUENTIAL TP] Skipping TP${tp.level} - TP${tp.level - 1} not hit yet for ${alert.assetName}`);
           return;
         }
-        console.log(`[TP VALIDATION] TP${tp.level} hit for ${alert.asset_name}:`, {
+        console.log(`[TP VALIDATION] TP${tp.level} hit for ${alert.assetName}:`, {
           tpPrice: tp.price,
           currentPrice: price,
           buffer: buffer,
           effectiveTPPrice: isBuy ? tp.price - buffer : tp.price + buffer,
-          tradeType: alert.trade_type
+          tradeType: alert.tradeType
         });
         newHits.push(tp.level);
       }
@@ -315,7 +324,7 @@ const LivePriceWidgetComponent = ({
       if (correspondingTP) {
         const priceMovementValid = isBuy ? price >= correspondingTP.price - buffer : price <= correspondingTP.price + buffer;
         if (!priceMovementValid) {
-          console.error(`[VALIDATION FAILED] Price movement validation failed for ${alert.asset_name}:`, {
+          console.error(`[VALIDATION FAILED] Price movement validation failed for ${alert.assetName}:`, {
             currentPrice: price,
             tpLevel: largestNewHit,
             tpPrice: correspondingTP.price,
@@ -328,13 +337,13 @@ const LivePriceWidgetComponent = ({
       const maxAvailableTP = Math.max(...validTPs.map(tp => tp.level));
       const shouldAutoClose = updatedHits.includes(maxAvailableTP);
       const autoCloseReason = shouldAutoClose ? `tp${maxAvailableTP}` : null;
-      console.log(`🎯 [TP CONFIRMED] Valid TP hits for ${alert.asset_name}: ${newHits.join(', ')}`, {
+      console.log(`🎯 [TP CONFIRMED] Valid TP hits for ${alert.assetName}: ${newHits.join(', ')}`, {
         newHits,
         updatedHits,
         shouldAutoClose,
         autoCloseReason,
         currentPrice: price,
-        entryPrice: alert.entry_price
+        entryPrice: alert.entryPrice
       });
       processLevelHit('tp_hit', {
         updatedHits,
@@ -352,13 +361,13 @@ const LivePriceWidgetComponent = ({
   // Debug logging
   useEffect(() => {
     if (isDevToolsEnabled()) {
-      console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-        alertSymbol: alert.tradermade_symbol,
+      console.log(`LivePriceWidget Debug for ${alert.assetName}:`, {
+        alertSymbol: alert.tradermadeSymbol,
         currentPrice: currentPrice,
         connectionStatus,
         priceUpdateSource,
-        entryPrice: alert.entry_price,
-        stopLoss: alert.stop_loss
+        entryPrice: alert.entryPrice,
+        stopLoss: alert.stopLoss
       });
     }
   }, [currentPrice, connectionStatus, priceUpdateSource, alert]);
@@ -462,7 +471,7 @@ const LivePriceWidgetComponent = ({
 
   const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
-    const isBuy = alert.trade_type.includes('buy');
+    const isBuy = alert.tradeType.includes('buy');
     const isProfit = isBuy ? priceChange.isPositive : !priceChange.isPositive;
     let valueText;
     if (priceChange.pips !== null) {
@@ -479,14 +488,14 @@ const LivePriceWidgetComponent = ({
       valueText,
       sign: priceChange.isPositive ? '+' : ''
     };
-  }, [priceChange, alert.trade_type]);
+  }, [priceChange, alert.tradeType]);
 
-  if (!alert.tradermade_symbol) return null;
+  if (!alert.tradermadeSymbol) return null;
 
   // Pending order state
   if (alert.status === 'pending') {
-    const isBuyLimit = alert.trade_type === 'buy_limit';
-    const isSellLimit = alert.trade_type === 'sell_limit';
+    const isBuyLimit = alert.tradeType === 'buy_limit';
+    const isSellLimit = alert.tradeType === 'sell_limit';
     
     return (
       <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm border-amber-500/30 shadow-amber-500/10 shadow-lg">
@@ -494,7 +503,7 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <div className="text-white text-sm font-medium">
-              Live Price for {alert.asset_name}
+              Live Price for {alert.assetName}
             </div>
             <div className="flex items-center gap-1 text-xs text-amber-400">
               <Hourglass className="w-3 h-3" />
@@ -546,7 +555,7 @@ const LivePriceWidgetComponent = ({
             {isBuyLimit ? 'Waiting for price to drop to' : isSellLimit ? 'Waiting for price to rise to' : 'Entry at'}
           </span>
           <br />
-          <span className="font-bold text-white text-sm">${alert.entry_price.toFixed(2)}</span>
+          <span className="font-bold text-white text-sm">${alert.entryPrice.toFixed(2)}</span>
         </div>
 
 {/* Hidden meta section (Source/Symbol/Price) per request */}
@@ -560,7 +569,7 @@ const LivePriceWidgetComponent = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <div className="text-white text-sm font-medium">
-            Live Price for {alert.asset_name}
+            Live Price for {alert.assetName}
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
             <connectionStatusInfo.icon 
@@ -668,5 +677,5 @@ const LivePriceWidgetWithErrorBoundary = memo((props: LivePriceWidgetProps) => (
   </LivePriceWidgetErrorBoundary>
 ));
 
-export const LivePriceWidget = LivePriceWidgetWithErrorBoundary;
+export const LivePriceWidget = memo(LivePriceWidgetComponent);
 export default LivePriceWidget;

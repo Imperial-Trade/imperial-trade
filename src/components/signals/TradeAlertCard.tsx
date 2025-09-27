@@ -5,7 +5,6 @@ import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil } from '
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
-import { LivePriceWidgetPriority } from '@/components/ui/LivePriceWidgetPriority';
 import AnimatedStatusHeader from './AnimatedStatusHeader';
 import PricePanel from './PricePanel';
 import TradingCalculator from './TradingCalculator';
@@ -228,10 +227,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       {/* Live Price Widget */}
       <div className="flex items-center gap-3">
-        <LivePriceWidgetPriority 
-          symbol={alert.tradermadeSymbol} 
-          className="flex-1" 
-          compact={true}
+        <LivePriceWidget
+          alert={alert}
+          allowAutomation={isCreator || isAdmin}
+          onOrderActivation={onOrderActivation || (() => Promise.resolve())}
+          onStopLossHit={onStopLossHit}
+          onTakeProfitHit={onTakeProfitHit}
         />
         
         <div className="flex gap-2">
@@ -259,7 +260,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
         <CollapsibleContent>
-          <QuickCopyPanel signal={tradeSignal} />
+          <QuickCopyPanel alert={alert} />
         </CollapsibleContent>
       </Collapsible>
 
@@ -268,37 +269,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           <TradingCalculator 
             alert={createLegacyAlert(alert)}
             livePrice={livePrice} 
-            hitTPs={hitTPs}
-            takeProfits={takeProfits}
-            assetName={alert.assetName}
-            symbol={alert.tradermadeSymbol}
-            tradeType={alert.tradeType}
-            entryPrice={alert.entryPrice}
-            stopLoss={alert.stopLoss}
-            tp1={alert.tp1}
-            tp2={alert.tp2}
-            tp3={alert.tp3}
-            tp4={alert.tp4}
-            tp5={alert.tp5}
-            tpHits={alert.tpHits}
-            status={alert.status}
-            closeReason={alert.closeReason}
-            notes={alert.notes}
           />
         </CollapsibleContent>
       </Collapsible>
 
-      <PricePanel 
+      <PricePanel
         alert={alert}
-        livePrice={livePrice} 
-        hitTPs={hitTPs}
-        takeProfits={takeProfits}
-        onStatusUpdate={onStatusUpdate}
-        onStopLossHit={onStopLossHit}
-        onTakeProfitHit={(alert, newTPHits, shouldAutoClose, closeReason) => onTakeProfitHit(alert, newTPHits, shouldAutoClose, closeReason)}
-        onActivateOrder={onActivateOrder}
-        isAdmin={isAdmin}
-        isCreator={isCreator}
+        livePrice={livePrice}
       />
 
       {/* Notes Section */}

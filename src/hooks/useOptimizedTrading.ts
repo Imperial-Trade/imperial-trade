@@ -4,7 +4,7 @@ import { useOptimizedTradingRealtime } from './useOptimizedTradingRealtime';
 import { useTradingFallback } from './trading/useTradingFallback';
 import { useTradingPolling } from './trading/useTradingPolling';
 import { useTradingOperations } from './trading/useTradingOperations';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseOptimizedTradingReturn {

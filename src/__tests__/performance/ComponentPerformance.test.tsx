@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { LivePriceWidget } from '@/components/signals/LivePriceWidget';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { transformTradeAlertToFrontend, DatabaseTradeAlert } from '@/utils/dataTransformers';
 
 // Mock hooks
 vi.mock('@/hooks/use-toast', () => ({
@@ -30,7 +30,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 describe('Component Performance Tests', () => {
-  let mockAlert: TradeAlertWithProfile;
+  let mockAlert: import('@/utils/dataTransformers').TradeAlertWithProfile;
   let mockHandleTakeProfitHit: any;
   let mockHandleStopLossHit: any;
   let mockHandleOrderActivation: any;

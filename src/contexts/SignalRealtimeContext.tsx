@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';

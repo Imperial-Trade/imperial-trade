@@ -62,13 +62,13 @@ export interface TradeAlertData {
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {
-  alert: TradeAlertWithProfile;
+  alert: import('@/utils/dataTransformers').TradeAlertWithProfile;
   currentPrice?: number;
   updatesInProgress?: Set<string>;
-  onStatusUpdate: (alert: TradeAlertWithProfile, newStatus: string) => Promise<void>;
-  onTakeProfitHit: (alert: TradeAlertWithProfile, tpLevel: number) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertWithProfile) => Promise<void>;
-  onActivateOrder?: (alert: TradeAlertWithProfile) => Promise<void>;
+  onStatusUpdate: (alert: import('@/utils/dataTransformers').TradeAlertWithProfile, newStatus: string) => Promise<void>;
+  onTakeProfitHit: (alert: import('@/utils/dataTransformers').TradeAlertWithProfile, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
+  onStopLossHit: (alert: import('@/utils/dataTransformers').TradeAlertWithProfile) => Promise<void>;
+  onActivateOrder?: (alert: import('@/utils/dataTransformers').TradeAlertWithProfile) => Promise<void>;
   livePrice?: number;
   isRecentClosure?: boolean;
   onOrderActivation?: () => Promise<void>;

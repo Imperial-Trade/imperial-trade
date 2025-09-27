@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 import { Button } from '@/components/ui/button';
 import { Plus, TrendingUp, Activity, CheckCircle, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';

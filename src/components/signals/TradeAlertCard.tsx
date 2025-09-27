@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
+import { TradeAlertWithProfile, createLegacyAlert } from '@/utils/dataTransformers';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -52,363 +53,367 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
         // Force immediate local state refresh
         if (onStatusUpdate && alert.status !== 'active') {
-          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.assetName}`);
         }
       }
     };
 
     window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
-    return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
-  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+    return () => {
+      window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
+    };
+  }, [alert.id, alert.status, alert.assetName, onStatusUpdate]);
 
+  // Sync notes with props when changed externally
   useEffect(() => {
-    console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
-    
-    // Only update local state if not currently editing to avoid overwriting user input
     if (!isEditingNotes) {
       setLocalNotes(alert.notes || '');
       setNotesDraft(alert.notes || '');
-      
-      // Show brief sync confirmation when notes change from real-time updates
-      if (alert.notes !== localNotes) {
-        setNotesSyncStatus('saved');
-        setTimeout(() => setNotesSyncStatus('idle'), 1500);
-      }
     }
-  }, [alert.id, alert.notes, isEditingNotes, localNotes]);
-  
-  // Type-safe derivations
-  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = alert.tp_hits || [];
+  }, [alert.notes, isEditingNotes]);
+
+  // Stop loss proximity warnings
+  const [showStopLossWarning, setShowStopLossWarning] = useState(false);
+  const [stopLossProximityWarning, setStopLossProximityWarning] = useState('');
+
+  // 🚀 ACL-TRANSFORMED DATA: All properties now use camelCase
+  // Derived state
+  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter(tp => tp != null) as number[];
+  const hitTPs = alert.tpHits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
-  const canCloseSignal = isCreator;
-  const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  const { getPrice } = useOptimizedWebSocketPrices();
-
-  // Stop-Loss Proximity state management (moved to top level to fix React Hooks violation)
-  const [showStopLossProximity, setShowStopLossProximity] = useState(false);
-  const lastToggleTimestampRef = useRef(0);
-
-  // Convert alert to TradeSignal format for sharing
+  
+  // Enhanced trade signal for sharing
   const tradeSignal: TradeSignal = {
-    id: alert.id,
-    assetName: alert.asset_name,
-    tradeType: alert.trade_type,
-    entryPrice: alert.entry_price,
-    stopLoss: alert.stop_loss,
-    takeProfits: takeProfits,
-    notes: alert.notes || undefined
+    asset: alert.assetName,
+    type: alert.tradeType,
+    entry: alert.entryPrice,
+    stopLoss: alert.stopLoss,
+    tp1: alert.tp1,
+    tp2: alert.tp2,
+    tp3: alert.tp3,
+    tp4: alert.tp4,
+    tp5: alert.tp5,
+    takeProfits,
+    hitTPs,
+    status: alert.status,
+    notes: alert.notes
   };
 
-  // Type-safe event handlers
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      await onStatusUpdate(alert, newStatus);
-    } catch (error) {
-      console.error('Failed to update status:', error);
+  // 🚀 PHASE 2: Live price monitoring with stop loss proximity detection
+  useEffect(() => {
+    if (!livePrice || !alert.entryPrice || !alert.stopLoss || isClosed) {
+      setShowStopLossWarning(false);
+      return;
     }
-  };
 
-  const handleCopyPanelToggle = () => {
-    setShowCopyPanel(prev => !prev);
-  };
+    // Calculate proximity thresholds
+    const stopLossDistance = Math.abs(livePrice - alert.entryPrice);
+    const allowableDistance = alert.entryPrice * 0.02; // 2% threshold
+    
+    if (stopLossDistance <= allowableDistance) {
+      setStopLossProximityWarning(`Price is ${((stopLossDistance / alert.entryPrice) * 100).toFixed(2)}% away from stop loss`);
+      setShowStopLossWarning(true);
 
-  const handleCalculatorToggle = () => {
-    setShowCalculator(prev => !prev);
-  };
+      // Symbol for price subscription
+      const symbol = alert.tradermadeSymbol;
+      
+      // Subscribe to live price updates
+      subscribeToLivePrices([symbol]);
+    } else {
+      const entryStopDistance = Math.abs(alert.entryPrice - alert.stopLoss);
+      const currentStopDistance = Math.abs(livePrice - alert.stopLoss);
+      
+      if (currentStopDistance < entryStopDistance * 0.1) { // 10% of original distance
+        setStopLossProximityWarning(`Price approaching stop loss at ${alert.stopLoss}`);
+        setShowStopLossWarning(true);
+      } else {
+        setShowStopLossWarning(false);
+      }
+    }
+  }, [livePrice, alert.entryPrice, alert.stopLoss, isClosed, alert.tradermadeSymbol]);
 
-  const handleNotesEditToggle = () => {
-    setIsEditingNotes(prev => !prev);
-    setNotesDraft(localNotes || '');
-  };
+  // Price subscription from WebSocket context
+  const { subscribeToLivePrices } = useOptimizedWebSocketPrices();
 
-  const handleNotesSave = async () => {
+  // Event handlers
+  const handleCopyPanelToggle = () => setShowCopyPanel(!showCopyPanel);
+  const handleCalculatorToggle = () => setShowCalculator(!showCalculator);
+
+  const handleSaveNotes = async () => {
+    if (isSavingNotes || notesDraft === localNotes) return;
+
+    setIsSavingNotes(true);
+    setNotesSyncStatus('saving');
+
     try {
-      setIsSavingNotes(true);
-      setNotesSyncStatus('saving');
-      
-      // Optimistic update - immediately show new notes locally
-      setLocalNotes(notesDraft);
-      setIsEditingNotes(false);
-      
-      console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
-      
       const { error } = await supabase
         .from('trade_alerts')
         .update({ notes: notesDraft })
         .eq('id', alert.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating notes:', error);
+        setNotesSyncStatus('error');
+        toast({
+          title: 'Failed to save notes',
+          description: 'Please try again',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      console.log(`✅ Notes saved successfully for alert ${alert.id}`);
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
       setNotesSyncStatus('saved');
-      
-      // Clear success status after 2 seconds
+
+      // Reset sync status after a delay
       setTimeout(() => setNotesSyncStatus('idle'), 2000);
-      
-      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
-    } catch (e: any) {
-      console.error(`❌ Failed to save notes for alert ${alert.id}:`, e);
-      // Revert optimistic update on error
-      setLocalNotes(alert.notes || '');
-      setIsEditingNotes(true);
+
+      toast({
+        title: 'Notes saved successfully',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error saving notes:', error);
       setNotesSyncStatus('error');
-      
-      // Clear error status after 3 seconds
-      setTimeout(() => setNotesSyncStatus('idle'), 3000);
-      
-      toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
+      toast({
+        title: 'Failed to save notes',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
     } finally {
       setIsSavingNotes(false);
     }
   };
 
-  // Stop-Loss Proximity effect (moved to top level to fix React Hooks violation)
-  useEffect(() => {
-    if (alert.status !== 'active' || !alert.entry_price || !alert.stop_loss) {
-      return;
-    }
-
-    const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
-    const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
-    
-    if (!currentPrice) return;
-
-    const totalDistance = Math.abs(alert.entry_price - alert.stop_loss);
-    if (totalDistance === 0) return;
-    
-    const currentDistance = Math.abs(currentPrice - alert.stop_loss);
-    const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-    
-    const now = Date.now();
-    const throttleMs = 5000; // 5 second throttle
-
-    // Hysteresis logic: Show at >= 55%, Hide at <= 45%
-    if (!showStopLossProximity && proximityPercentage >= 55 && (now - lastToggleTimestampRef.current > throttleMs)) {
-      setShowStopLossProximity(true);
-      lastToggleTimestampRef.current = now;
-    } else if (showStopLossProximity && proximityPercentage <= 45 && (now - lastToggleTimestampRef.current > throttleMs)) {
-      setShowStopLossProximity(false);
-      lastToggleTimestampRef.current = now;
-    }
-  }, [livePrice, alert, showStopLossProximity, getPrice]);
-
-  // Get button text (only creator can close in stream)
-  const getCloseButtonText = () => 'Close My Signal';
-
   return (
     <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      className={`
+        trade-alert-card group/card relative bg-gradient-to-r from-background/50 to-background/30 
+        backdrop-blur-sm border rounded-lg p-4 space-y-4 transition-all duration-300 hover:shadow-lg
+        ${isClosed ? 'border-muted/50' : 'border-muted'}
+        ${alert.closeReason === 'stop_loss' ? 'border-destructive/20 bg-gradient-to-r from-destructive/5 to-destructive/10' : ''}
+        ${alert.closeReason === 'manual' ? 'border-warning/20 bg-gradient-to-r from-warning/5 to-warning/10' : ''}
+        ${className || ''}
+      `}
       data-testid={testId}
     >
-      {/* Glowing top indicator for closed trades */}
-      {isClosed && (
-        <div className={`h-1 w-full ${
-          alert.close_reason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        }`} />
+      <div className="flex items-center justify-between">
+        {/* Status Badge */}
+        {alert.closeReason && (
+          <Badge 
+            variant={alert.closeReason === 'stop_loss' ? 'destructive' : 'secondary'}
+            className="text-xs font-medium"
+          >
+            Closed: {alert.closeReason.replace('_', ' ')}
+          </Badge>
+        )}
+      </div>
+
+      {/* Trade Alert Content */}
+      <AnimatedStatusHeader 
+        assetName={alert.assetName} 
+        status={alert.status} 
+        tradeType={alert.tradeType} 
+        closeReason={alert.closeReason}
+        createdDate={alert.createdAt}
+        updatedDate={alert.updatedAt}
+        hasTPHits={hitTPs.length > 0}
+        creator={creator}
+      />
+
+      {/* Stop Loss Proximity Warning */}
+      {showStopLossWarning && (
+        <div className="bg-warning/10 border border-warning/20 rounded-md p-2">
+          <p className="text-sm text-warning-foreground font-medium">
+            ⚠️ {stopLossProximityWarning}
+          </p>
+        </div>
       )}
 
-      <div className="p-3">
-        {/* Use the new AnimatedStatusHeader component with primitive props */}
-        <AnimatedStatusHeader 
-          creator={creator} 
-          assetName={alert.asset_name}
-          status={alert.status}
-          tradeType={alert.trade_type}
-          closeReason={alert.close_reason}
-          highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
-          hasTPHits={Boolean(hitTPs.length)}
-          isRecentClosure={isRecentClosure} 
-          justAdded={justAdded}
-          createdDate={alert.created_date}
-          updatedDate={alert.updated_date}
+      {/* Live Price Widget */}
+      <div className="flex items-center gap-3">
+        <LivePriceWidgetPriority 
+          symbol={alert.tradermadeSymbol} 
+          className="flex-1" 
+          compact={true}
         />
-
-        {/* Actions - moved to the right */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">
-          {/* Copy Button */}
-          <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                onClick={handleCopyPanelToggle}
-              >
-                <Copy className="w-4 h-4 mr-1" />
-                {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
+        
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyPanelToggle}
+            className="h-8 px-3 gap-1.5"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy
+          </Button>
           
-          {/* Share Button */}
-          <SignalSharingModal 
-            signal={tradeSignal}
-            trigger={
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-              >
-                <Share2 className="w-4 h-4 mr-1" />
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            }
-          />
-          
-          {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
-          {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-            <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                  onClick={handleCalculatorToggle}
-                >
-                  <Calculator className="w-4 h-4 mr-1" />
-                  {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </Button>
-              </CollapsibleTrigger>
-            </Collapsible>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCalculatorToggle}
+            className="h-8 px-3 gap-1.5"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            Calc
+          </Button>
         </div>
       </div>
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-        <CollapsibleContent className="px-3 pb-3" data-prevent-widget-open="true">
-            <QuickCopyPanel alert={alert} />
+        <CollapsibleContent>
+          <QuickCopyPanel signal={tradeSignal} />
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Trading Calculator */}
       <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-        <CollapsibleContent className="px-3 pb-3">
-            <TradingCalculator alert={alert} livePrice={livePrice} />
+        <CollapsibleContent>
+          <TradingCalculator 
+            alert={createLegacyAlert(alert)}
+            livePrice={livePrice} 
+            hitTPs={hitTPs}
+            takeProfits={takeProfits}
+            assetName={alert.assetName}
+            symbol={alert.tradermadeSymbol}
+            tradeType={alert.tradeType}
+            entryPrice={alert.entryPrice}
+            stopLoss={alert.stopLoss}
+            tp1={alert.tp1}
+            tp2={alert.tp2}
+            tp3={alert.tp3}
+            tp4={alert.tp4}
+            tp5={alert.tp5}
+            tpHits={alert.tpHits}
+            status={alert.status}
+            closeReason={alert.closeReason}
+            notes={alert.notes}
+          />
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Use the new PricePanel component with primitive props and tpHitsKey */}
       <PricePanel 
-        id={alert.id}
-        assetName={alert.asset_name}
-        symbol={alert.tradermade_symbol}
-        tradeType={alert.trade_type}
-        entryPrice={alert.entry_price}
-        stopLoss={alert.stop_loss}
-        tp1={alert.tp1}
-        tp2={alert.tp2}
-        tp3={alert.tp3}
-        tp4={alert.tp4}
-        tp5={alert.tp5}
-        tpHitsKey={(alert.tp_hits || []).join(',')}
-        status={alert.status}
-        closeReason={alert.close_reason}
-        allowAutomation={isCreator}
-        onTakeProfitHit={onTakeProfitHit}
+        alert={alert}
+        livePrice={livePrice} 
+        hitTPs={hitTPs}
+        takeProfits={takeProfits}
+        onStatusUpdate={onStatusUpdate}
         onStopLossHit={onStopLossHit}
-        onOrderActivation={onOrderActivation}
+        onTakeProfitHit={(alert, newTPHits, shouldAutoClose, closeReason) => onTakeProfitHit(alert, newTPHits, shouldAutoClose, closeReason)}
+        onActivateOrder={onActivateOrder}
+        isAdmin={isAdmin}
+        isCreator={isCreator}
       />
-      
-      
-      <div className="px-3 pb-3">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+
+      {/* Notes Section */}
+      <div className="space-y-3 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <Pencil className="h-4 w-4" />
+            Notes
             <NotesSyncIndicator status={notesSyncStatus} />
-          </div>
-          {canEditNotes && !isEditingNotes && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue h-6 px-2" 
-              onClick={handleNotesEditToggle}
-            >
-              <Pencil className="w-3 h-3 mr-1" /> Edit
-            </Button>
-          )}
-        </div>
-        {isEditingNotes ? (
-          <div className="space-y-1.5">
-            <Textarea 
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              placeholder="Add helpful context for followers..."
-              className="min-h-[60px] text-sm"
-            />
-            <div className="flex justify-end gap-1.5">
-              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes} className="h-6 px-2 text-xs">Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes} className="h-6 px-2 text-xs">
+          </h4>
+          {isEditingNotes && (
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setNotesDraft(localNotes);
+                  setIsEditingNotes(false);
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSaveNotes}
+                disabled={isSavingNotes || notesDraft === localNotes}
+                className="h-7 px-2 text-xs"
+              >
                 {isSavingNotes ? 'Saving...' : 'Save'}
               </Button>
             </div>
-          </div>
+          )}
+        </div>
+        
+        {isEditingNotes ? (
+          <Textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            placeholder="Add your trading notes..."
+            className="min-h-[80px] resize-none"
+          />
         ) : (
-          <p className="text-xs text-muted-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+          <div 
+            className="min-h-[80px] p-3 bg-muted/30 rounded-md cursor-text text-sm leading-relaxed"
+            onClick={() => setIsEditingNotes(true)}
+          >
+            {localNotes || (
+              <span className="text-muted-foreground italic">
+                Click to add trading notes...
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Stop Loss Proximity Warning (fixed React Hooks violation) */}
-      {alert.status === 'active' && showStopLossProximity && (
-        <div className="px-3 pb-3">
-          <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5 transition-opacity duration-300">
-            <span className="text-accent-gold mt-0.5 leading-none text-sm">🟡</span>
-            <div className="text-xs text-accent-gold">
-              <span className="font-semibold">Stop-Loss Proximity Warning</span>
-              <br />
-              <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
-            </div>
-          </div>
+      {/* Close Signal Button - Only show for creators on active signals */}
+      {isCreator && alert.status === 'active' && (
+        <div className="flex justify-end pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onStatusUpdate(alert, 'closed')}
+            className="text-xs"
+          >
+            Close My Signal
+          </Button>
         </div>
       )}
-      
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-        <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-              onClick={() => handleStatusUpdate('closed')}
-            >
-                <Lock className="w-3 h-3 mr-1.5" />
-                {isPending ? 'Cancel Order' : getCloseButtonText()}
-            </Button>
-        </div>
-      )}
+
+      {/* Signal Sharing Modal */}
+      <SignalSharingModal signal={tradeSignal} />
     </div>
   );
 };
 
+// Performance-optimized memo with custom comparison
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // 🚀 COMPREHENSIVE memo comparison to prevent unnecessary re-renders while allowing smooth price updates
-  const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
-  const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
-  
-  return (
-    prevProps.alert.id === nextProps.alert.id &&
-    prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.asset_name === nextProps.alert.asset_name &&
-    prevProps.alert.trade_type === nextProps.alert.trade_type &&
-    prevProps.alert.entry_price === nextProps.alert.entry_price &&
-    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
-    prevProps.alert.tp1 === nextProps.alert.tp1 &&
-    prevProps.alert.tp2 === nextProps.alert.tp2 &&
-    prevProps.alert.tp3 === nextProps.alert.tp3 &&
-    prevProps.alert.tp4 === nextProps.alert.tp4 &&
-    prevProps.alert.tp5 === nextProps.alert.tp5 &&
-    prevProps.alert.notes === nextProps.alert.notes &&
-    prevProps.alert.close_reason === nextProps.alert.close_reason &&
-    prevHitsKey === nextHitsKey &&
-    prevProps.isAdmin === nextProps.isAdmin &&
-    prevProps.isCreator === nextProps.isCreator &&
-    prevProps.justAdded === nextProps.justAdded &&
-    prevProps.className === nextProps.className &&
-    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
-    // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
-  );
+  try {
+    // Check if all properties are the same except tpHits (they should be synced)
+    const propsAreEqual = 
+      prevProps.alert.tpHits?.length === nextProps.alert.tpHits?.length &&
+      prevProps.alert.tpHits?.every((hit, index) => hit === nextProps.alert.tpHits?.[index]) &&
+      Object.keys(prevProps.alert).every(key => {
+        if (key === 'assetName') return prevProps.alert.assetName === nextProps.alert.assetName;
+        if (key === 'tradeType') return prevProps.alert.tradeType === nextProps.alert.tradeType;
+        if (key === 'entryPrice') return prevProps.alert.entryPrice === nextProps.alert.entryPrice;
+        if (key === 'stopLoss') return prevProps.alert.stopLoss === nextProps.alert.stopLoss;
+        if (key === 'tp1') return prevProps.alert.tp1 === nextProps.alert.tp1;
+        if (key === 'tp2') return prevProps.alert.tp2 === nextProps.alert.tp2;
+        if (key === 'tp3') return prevProps.alert.tp3 === nextProps.alert.tp3;
+        if (key === 'tp4') return prevProps.alert.tp4 === nextProps.alert.tp4;
+        if (key === 'tp5') return prevProps.alert.tp5 === nextProps.alert.tp5;
+        if (key === 'closeReason') return prevProps.alert.closeReason === nextProps.alert.closeReason;
+        return true;
+      });
+
+    // 🚀 CRITICAL: Allow livePrice updates to pass through for real-time updates
+    const liveOrConnectionUpdates = 
+      prevProps.livePrice !== nextProps.livePrice ||
+      prevProps.connectionStatus !== nextProps.connectionStatus ||
+      prevProps.isRecentClosure !== nextProps.isRecentClosure;
+
+    // Only re-render if props changed OR we need live updates
+    return propsAreEqual && !liveOrConnectionUpdates;
+
+  } catch (error) {
+    console.error('TradeAlertCard memo comparison error:', error);
+    return false; // Re-render on error for safety
+  }
 });

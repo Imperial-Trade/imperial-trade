@@ -124,12 +124,8 @@ const PricePanel: React.FC<PricePanelProps> = ({
     return (
       <div className="px-3 pb-3">
         <LivePriceWidget 
-          alert={alert} 
-          onTakeProfitHit={onTakeProfitHit}
-          onStopLossHit={onStopLossHit}
-          onOrderActivation={onOrderActivation}
-          connectionStatus={connectionStatus === 'disconnected' ? 'error' : connectionStatus}
-          priceSource={dataSource || 'WebSocket'}
+          symbol={alert.tradermade_symbol} 
+          className="mb-2"
         />
         <StaticLevelsBlock
           tradeType={tradeType}

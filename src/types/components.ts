@@ -44,10 +44,10 @@ export interface TradeAlertData {
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
   tp_hits: number[];
   notes?: string;
-  close_reason?: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'expired' | 'reversal_after_tp';
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string;
   created_date?: string;
   updated_date?: string;
   creator?: {
@@ -65,12 +65,17 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   currentPrice?: number;
   updatesInProgress?: Set<string>;
   onStatusUpdate: (alert: TradeAlertData, newStatus: string) => Promise<void>;
-  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
+  onTakeProfitHit: (alert: TradeAlertData, tpLevel: number) => Promise<void>;
+  onStopLossHit: (alert: TradeAlertData) => Promise<void>;
   onActivateOrder?: (alert: TradeAlertData) => Promise<void>;
   livePrice?: number;
   isRecentClosure?: boolean;
   onOrderActivation?: () => Promise<void>;
+  isAdmin?: boolean;
+  isCreator?: boolean;
+  connectionStatus?: string;
+  priceSource?: string;
+  testId?: string;
 }
 
 // Additional common component interfaces
@@ -302,6 +307,14 @@ export interface TreeProps extends BaseComponentProps {
   expandedKeys?: string[];
   onSelect?: (keys: string[], node: TreeNode) => void;
   onExpand?: (keys: string[], node: TreeNode) => void;
+}
+
+// Live Price Widget Props
+export interface LivePriceWidgetProps {
+  symbol: string;
+  price?: number;
+  className?: string;
+  compact?: boolean;
 }
 
 // Form context types

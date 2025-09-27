@@ -663,7 +663,7 @@ const LivePriceWidgetComponent = ({
 
 // 🚀 REACT QUEUE HARDENING: Wrap component with specialized ErrorBoundary
 const LivePriceWidgetWithErrorBoundary = memo((props: LivePriceWidgetProps) => (
-  <LivePriceWidgetErrorBoundary symbol={props.alert?.tradermade_symbol}>
+  <LivePriceWidgetErrorBoundary symbol={props.symbol}>
     <LivePriceWidgetComponent {...props} />
   </LivePriceWidgetErrorBoundary>
 ));

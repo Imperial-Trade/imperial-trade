@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
+import { TradeAlertData } from '@/types/components';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
@@ -26,6 +27,42 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 
 export default function SignalStream() {
+  // Helper function to convert TradeAlertWithProfile to TradeAlertData
+  const convertAlertToCardData = (alert: TradeAlertWithProfile): TradeAlertData => ({
+    id: alert.id,
+    asset_name: alert.assetName,
+    tradermade_symbol: alert.tradermadeSymbol,
+    trade_type: alert.tradeType,
+    entry_price: alert.entryPrice,
+    stop_loss: alert.stopLoss,
+    tp1: alert.tp1,
+    tp2: alert.tp2,
+    tp3: alert.tp3,
+    tp4: alert.tp4,
+    tp5: alert.tp5,
+    status: alert.status,
+    tp_hits: alert.tpHits,
+    close_reason: alert.closeReason,
+    notes: alert.notes,
+    created_date: alert.createdAt,
+    updated_date: alert.updatedAt
+  });
+
+  // Map connection status to expected format for TradeAlertCard
+  const mapConnectionStatus = (status: typeof connectionStatus): 'connecting' | 'connected' | 'error' => {
+    switch (status) {
+      case 'connected':
+        return 'connected';
+      case 'connecting':
+        return 'connecting';
+      case 'disconnected':
+      case 'error':
+      case 'polling-fallback':
+      default:
+        return 'error';
+    }
+  };
+
   const {
     user,
     profile
@@ -42,6 +79,25 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   
+  // 🚀 PHASE 3: Notes Update Notifications - Listen for notes changes
+  useEffect(() => {
+    const handleNotesUpdate = (event: CustomEvent) => {
+      const { signalId, assetName, newNotes } = event.detail;
+      
+      // Show in-app notification for notes update
+      toast({
+        title: "📝 Pattern Notes Updated",
+        description: `${assetName} pattern notes have been updated`,
+        duration: 4000,
+      });
+      
+      console.log(`🔔 PHASE 3: Notes notification sent for ${assetName} (${signalId})`);
+    };
+
+    window.addEventListener('signal-notes-updated', handleNotesUpdate as EventListener);
+    return () => window.removeEventListener('signal-notes-updated', handleNotesUpdate as EventListener);
+  }, [toast]);
+
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
 
@@ -736,23 +792,27 @@ export default function SignalStream() {
                       </Badge>
                     </div>
                   </div>
-                  
-                  <div className="grid gap-4">
-                    {activeAlerts.map((alert) => (
-                      <TradeAlertCard
-                        key={alert.id}
-                        alert={alert}
-                        onStatusUpdate={handleStatusUpdate}
-                        onTakeProfitHit={handleTakeProfitHit}
-                        onStopLossHit={handleStopLossHit}
-                        onOrderActivation={handleOrderActivation}
-                        showCloseButton={isCreator(alert.creator?.id) || isAdmin}
-                        isHighlighted={justAddedIds.has(alert.id)}
-                        livePrice={livePrices[alert.tradermadeSymbol]}
-                        canUpdate={isCreator(alert.creator?.id) || isAdmin}
-                      />
-                    ))}
-                  </div>
+                   
+                   <div className="grid gap-4">
+                     {activeAlerts.map((alert) => (
+                       <TradeAlertCard
+                         key={alert.id}
+                         alert={convertAlertToCardData(alert)}
+                         onStatusUpdate={handleStatusUpdate}
+                         onTakeProfitHit={handleTakeProfitHit}
+                         onStopLossHit={handleStopLossHit}
+                         onOrderActivation={handleOrderActivation}
+                         isAdmin={isAdmin}
+                         isCreator={isCreator(alert.creator?.id)}
+                         livePrice={livePrices[alert.tradermadeSymbol]}
+                         connectionStatus={mapConnectionStatus(connectionStatus)}
+                         priceSource="tradermade"
+                         isRecentClosure={false}
+                         creator={alert.creator}
+                         justAdded={justAddedIds.has(alert.id)}
+                       />
+                     ))}
+                   </div>
                 </div>
               )}
               
@@ -769,22 +829,26 @@ export default function SignalStream() {
                     </div>
                   </div>
                   
-                  <div className="grid gap-4">
-                    {staticClosedAlerts.map((alert) => (
-                      <TradeAlertCard
-                        key={alert.id}
-                        alert={alert}
-                        onStatusUpdate={handleStatusUpdate}
-                        onTakeProfitHit={handleTakeProfitHit}
-                        onStopLossHit={handleStopLossHit}
-                        onOrderActivation={handleOrderActivation}
-                        showCloseButton={false}
-                        isHighlighted={false} // Never highlighted for static display
-                        livePrice={livePrices[alert.tradermadeSymbol]}
-                        canUpdate={false} // No updates allowed on closed signals
-                      />
-                    ))}
-                  </div>
+                   <div className="grid gap-4">
+                     {staticClosedAlerts.map((alert) => (
+                       <TradeAlertCard
+                         key={alert.id}
+                         alert={convertAlertToCardData(alert)}
+                         onStatusUpdate={handleStatusUpdate}
+                         onTakeProfitHit={handleTakeProfitHit}
+                         onStopLossHit={handleStopLossHit}
+                         onOrderActivation={handleOrderActivation}
+                         isAdmin={isAdmin}
+                         isCreator={false} // Closed signals can't be updated
+                         livePrice={livePrices[alert.tradermadeSymbol]}
+                         connectionStatus={mapConnectionStatus(connectionStatus)}
+                         priceSource="tradermade"
+                         isRecentClosure={true}
+                         creator={alert.creator}
+                         justAdded={false}
+                       />
+                     ))}
+                   </div>
                 </div>
               )}
 
@@ -821,6 +885,7 @@ export default function SignalStream() {
             </DialogHeader>
             <OptimizedNewAlertForm 
               onSubmit={handleCreateSignal}
+              onCancel={() => setShowCreateModal(false)}
             />
           </DialogContent>
         </Dialog>

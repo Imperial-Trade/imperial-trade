@@ -498,6 +498,30 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           console.error('SignalRealtimeContext - Error fetching profile for updated signal:', profileError);
         }
 
+        // Check for meaningful notes changes and trigger notifications
+        const hasSignificantNotesChange = oldRecord.notes !== newRecord.notes && 
+          newRecord.notes && 
+          newRecord.notes.trim().length > 10; // Only notify for substantial notes
+
+        if (hasSignificantNotesChange) {
+          console.log(`🔔 PHASE 3: Notes change detected for signal ${newRecord.id}`, {
+            oldNotes: oldRecord.notes?.substring(0, 50) + '...',
+            newNotes: newRecord.notes?.substring(0, 50) + '...',
+            hasContent: !!newRecord.notes?.trim()
+          });
+          
+          // Trigger notes update notification
+          window.dispatchEvent(new CustomEvent('signal-notes-updated', {
+            detail: {
+              signalId: newRecord.id,
+              assetName: newRecord.assetName,
+              oldNotes: oldRecord.notes,
+              newNotes: newRecord.notes,
+              updatedAt: new Date().toISOString()
+            }
+          }));
+        }
+
         const updatedSignal: TradeAlertWithProfile = {
           id: newRecord.id,
           userId: newRecord.user_id,
@@ -598,7 +622,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     try {
       console.log('SignalRealtimeContext - Starting subscription...');
       updateConnectionState({ status: 'connecting' });
-      recordConnection('SignalRealtime');
+      recordConnection();
 
       // Initial data fetch
       await refreshSignals();
@@ -618,7 +642,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         errorCount: 0
       });
 
-      recordConnection('SignalRealtime');
+      recordConnection();
       
       console.log('SignalRealtimeContext - Successfully subscribed to real-time updates');
     } catch (err) {
@@ -641,7 +665,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
     
     updateConnectionState({ status: 'disconnected' });
-    recordConnection('SignalRealtime');
+    recordConnection();
   }, [updateConnectionState, recordConnection]);
 
   // 🔥 LEAK-PROOF MOUNT/UNMOUNT: Single execution, comprehensive cleanup
@@ -650,7 +674,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     mountOnlyRef.current = true;
     
     // Register with health monitor
-    healthMonitor.registerConnection('SignalRealtime', channelIdRef.current);
+    healthMonitor.registerConnection('SignalRealtime');
     
     realtimeLogger.logStatus('SignalRealtimeProvider MOUNT');
 

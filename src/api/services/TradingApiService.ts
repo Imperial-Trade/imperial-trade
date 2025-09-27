@@ -3,10 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
 
-// Export the interface for use in other files
-export type { TradeAlertWithProfile };
+export interface TradeAlertWithProfile extends TradeAlertResponseDto {
+  creator?: {
+    id: string;
+    display_name: string;
+    role: string;
+    avatar_url?: string;
+    user_type?: string;
+    access_level?: string;
+  };
+}
 
 export class TradingApiService {
   private static instance: TradingApiService;
@@ -354,12 +361,12 @@ export class TradingApiService {
             updatedAt: alert.updated_at,
             creator: profile ? {
               id: profile.id,
-              displayName: profile.display_name || 'Anonymous User',
+              display_name: profile.display_name || 'Anonymous User',
               role: profile.role || 'user',
-              avatarUrl: profile.avatar_url,
-              userType: profile.user_type,
-              accessLevel: profile.access_level,
-            } : undefined,
+              avatar_url: profile.avatar_url,
+              user_type: profile.user_type,
+              access_level: profile.access_level
+            } : undefined
           };
         });
 

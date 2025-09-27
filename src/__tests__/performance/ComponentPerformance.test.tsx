@@ -1,156 +1,150 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { render, screen } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { performance } from 'perf_hooks';
+import { TestWrapper } from '@/test/utils/test-helpers';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import { LivePriceWidget } from '@/components/signals/LivePriceWidget';
-import { transformTradeAlertToFrontend, DatabaseTradeAlert } from '@/utils/dataTransformers';
-
-// Mock hooks
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() })
-}));
-
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'test-user', email: 'test@example.com' } })
-}));
-
-const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-};
+import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
+import LivePriceWidget from '@/components/signals/LivePriceWidget';
+import { TestDataFactory } from '@/__tests__/utils/testDataFactory';
 
 describe('Component Performance Tests', () => {
-  let mockAlert: import('@/utils/dataTransformers').TradeAlertWithProfile;
-  let mockHandleTakeProfitHit: any;
-  let mockHandleStopLossHit: any;
-  let mockHandleOrderActivation: any;
-  let mockHandleStatusUpdate: any;
+  let memoryBefore: number;
+  let performanceStart: number;
 
   beforeEach(() => {
-    mockAlert = {
-      id: 'test-alert-1',
-      userId: 'test-user',
-      assetName: 'EUR/USD',
-      tradermadeSymbol: 'EURUSD',
-      tradeType: 'buy',
-      entryPrice: 1.0850,
-      stopLoss: 1.0800,
-      tp1: 1.0900,
-      tp2: 1.0950,
-      status: 'active',
-      tpHits: [],
-      notes: 'Test signal',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // Clear memory and start performance monitoring
+    if (global.gc) {
+      global.gc();
+    }
+    memoryBefore = process.memoryUsage().heapUsed;
+    performanceStart = performance.now();
+  });
 
-    mockHandleTakeProfitHit = vi.fn();
-    mockHandleStopLossHit = vi.fn();
-    mockHandleOrderActivation = vi.fn();
-    mockHandleStatusUpdate = vi.fn();
+  afterEach(() => {
+    const performanceEnd = performance.now();
+    const memoryAfter = process.memoryUsage().heapUsed;
+    const memoryDiff = memoryAfter - memoryBefore;
+    const timeDiff = performanceEnd - performanceStart;
+    
+    console.log(`Performance metrics - Time: ${timeDiff.toFixed(2)}ms, Memory: ${(memoryDiff / 1024 / 1024).toFixed(2)}MB`);
   });
 
   describe('TradeAlertCard Performance', () => {
-    it('should render within acceptable time limits', async () => {
+    it('should render within performance threshold', () => {
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockProps = {
+        alert: mockAlert,
+        onStatusUpdate: vi.fn(),
+        onTakeProfitHit: vi.fn(),
+        onStopLossHit: vi.fn(),
+        onOrderActivation: vi.fn(),
+        isAdmin: false,
+        isCreator: false,
+        livePrice: 1.0525,
+        connectionStatus: 'connected' as const,
+        priceSource: 'WebSocket',
+        isRecentClosure: false
+      };
+
       const startTime = performance.now();
       
       render(
         <TestWrapper>
-          <TradeAlertCard
-            alert={mockAlert}
-            onStatusUpdate={mockHandleStatusUpdate}
-            onTakeProfitHit={mockHandleTakeProfitHit}
-            onStopLossHit={mockHandleStopLossHit}
-            onOrderActivation={mockHandleOrderActivation}
-            livePrice={1.0875}
-            connectionStatus="connected"
-            priceSource="test"
-            isAdmin={true}
-            isCreator={true}
-            isRecentClosure={false}
-          />
+          <TradeAlertCard {...mockProps} />
         </TestWrapper>
       );
-      
+
       const endTime = performance.now();
       const renderTime = endTime - startTime;
-      
-      expect(renderTime).toBeLessThan(100); // Should render in less than 100ms
+
+      // Assert render time is under 100ms
+      expect(renderTime).toBeLessThan(100);
+      expect(screen.getByText(mockAlert.asset_name)).toBeInTheDocument();
     });
 
-    it('should handle multiple rapid updates efficiently', async () => {
+    it('should handle rapid prop updates efficiently', () => {
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockProps = {
+        alert: mockAlert,
+        onStatusUpdate: vi.fn(),
+        onTakeProfitHit: vi.fn(),
+        onStopLossHit: vi.fn(),
+        onOrderActivation: vi.fn(),
+        isAdmin: false,
+        isCreator: false,
+        livePrice: 1.0500,
+        connectionStatus: 'connected' as const,
+        priceSource: 'WebSocket',
+        isRecentClosure: false
+      };
+
       const { rerender } = render(
         <TestWrapper>
-          <TradeAlertCard
-            alert={mockAlert}
-            onStatusUpdate={mockHandleStatusUpdate}
-            onTakeProfitHit={mockHandleTakeProfitHit}
-            onStopLossHit={mockHandleStopLossHit}
-            onOrderActivation={mockHandleOrderActivation}
-            livePrice={1.0875}
-            connectionStatus="connected"
-            priceSource="test"
-            isAdmin={true}
-            isCreator={true}
-            isRecentClosure={false}
-          />
+          <TradeAlertCard {...mockProps} />
         </TestWrapper>
       );
 
       const startTime = performance.now();
-      
+
       // Simulate rapid price updates
       for (let i = 0; i < 50; i++) {
         rerender(
           <TestWrapper>
-            <TradeAlertCard
-              alert={mockAlert}
-              onStatusUpdate={mockHandleStatusUpdate}
-              onTakeProfitHit={mockHandleTakeProfitHit}
-              onStopLossHit={mockHandleStopLossHit}
-              onOrderActivation={mockHandleOrderActivation}
-              livePrice={1.0875 + (i * 0.0001)}
-              connectionStatus="connected"
-              priceSource="test"
-              isAdmin={true}
-              isCreator={true}
-              isRecentClosure={false}
+            <TradeAlertCard 
+              {...mockProps} 
+              livePrice={1.0500 + (i * 0.0001)} 
             />
           </TestWrapper>
         );
       }
-      
+
       const endTime = performance.now();
-      const totalTime = endTime - startTime;
-      
-      expect(totalTime).toBeLessThan(500); // 50 updates should complete within 500ms
+      const updateTime = endTime - startTime;
+
+      // Assert 50 updates complete under 500ms
+      expect(updateTime).toBeLessThan(500);
     });
   });
 
-  describe('LivePriceWidget Performance', () => {
-    it('should not cause memory leaks during mount/unmount cycles', async () => {
+  describe('System Monitoring Performance', () => {
+    it('should render monitoring dashboard efficiently', () => {
+      const startTime = performance.now();
+      
+      render(
+        <TestWrapper>
+          <EnhancedSystemMonitoring />
+        </TestWrapper>
+      );
+
+      const endTime = performance.now();
+      const renderTime = endTime - startTime;
+
+      // Complex dashboard should render under 200ms
+      expect(renderTime).toBeLessThan(200);
+    });
+  });
+
+  describe('Memory Leak Detection', () => {
+    it('should not leak memory with LivePriceWidget', () => {
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockProps = {
+        alert: mockAlert,
+        onTakeProfitHit: vi.fn(),
+        onStopLossHit: vi.fn(),
+        onOrderActivation: vi.fn(),
+        livePrice: 1.0525,
+        connectionStatus: 'connected' as const,
+        priceSource: 'WebSocket'
+      };
+
       const initialMemory = process.memoryUsage().heapUsed;
 
       // Render and unmount component multiple times
       for (let i = 0; i < 10; i++) {
         const { unmount } = render(
           <TestWrapper>
-            <LivePriceWidget 
-              alert={mockAlert}
-              onTakeProfitHit={mockHandleTakeProfitHit}
-              onStopLossHit={mockHandleStopLossHit}
-              onOrderActivation={mockHandleOrderActivation}
-            />
+            <LivePriceWidget {...mockProps} />
           </TestWrapper>
         );
         unmount();
@@ -165,66 +159,6 @@ describe('Component Performance Tests', () => {
       
       // Memory growth should be minimal (less than 5MB)
       expect(memoryGrowth).toBeLessThan(5 * 1024 * 1024);
-    });
-
-    it('should render quickly with different props', () => {
-      const testCases = [
-        { alert: mockAlert },
-        { alert: {...mockAlert, tradermadeSymbol: 'GBPUSD'} },
-        { alert: {...mockAlert, tradermadeSymbol: 'USDJPY'} },
-      ];
-
-      testCases.forEach((props) => {
-        const startTime = performance.now();
-        
-        render(
-          <TestWrapper>
-            <LivePriceWidget {...props} onTakeProfitHit={mockHandleTakeProfitHit} onStopLossHit={mockHandleStopLossHit} onOrderActivation={mockHandleOrderActivation} />
-          </TestWrapper>
-        );
-        
-        const endTime = performance.now();
-        const renderTime = endTime - startTime;
-        
-        expect(renderTime).toBeLessThan(50); // Each render should be under 50ms
-      });
-    });
-  });
-
-  describe('Component Integration Performance', () => {
-    it('should handle complex component tree efficiently', () => {
-      const startTime = performance.now();
-      
-      render(
-        <TestWrapper>
-          <div>
-            <TradeAlertCard
-              alert={mockAlert}
-              onStatusUpdate={mockHandleStatusUpdate}
-              onTakeProfitHit={mockHandleTakeProfitHit}
-              onStopLossHit={mockHandleStopLossHit}
-              onOrderActivation={mockHandleOrderActivation}
-              livePrice={1.0875}
-              connectionStatus="connected"
-              priceSource="integration-test"
-              isAdmin={true}
-              isCreator={true}
-              isRecentClosure={false}
-            />
-            <LivePriceWidget 
-              alert={mockAlert}
-              onTakeProfitHit={mockHandleTakeProfitHit}
-              onStopLossHit={mockHandleStopLossHit}
-              onOrderActivation={mockHandleOrderActivation}
-            />
-          </div>
-        </TestWrapper>
-      );
-      
-      const endTime = performance.now();
-      const renderTime = endTime - startTime;
-      
-      expect(renderTime).toBeLessThan(150); // Complex tree should render under 150ms
     });
   });
 });

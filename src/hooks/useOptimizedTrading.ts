@@ -4,7 +4,7 @@ import { useOptimizedTradingRealtime } from './useOptimizedTradingRealtime';
 import { useTradingFallback } from './trading/useTradingFallback';
 import { useTradingPolling } from './trading/useTradingPolling';
 import { useTradingOperations } from './trading/useTradingOperations';
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseOptimizedTradingReturn {
@@ -80,8 +80,7 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
 
   const deleteAlert = async (id: string): Promise<boolean> => {
     try {
-      await realtimeHook.deleteAlert(id);
-      return true;
+      return await realtimeHook.deleteAlert(id);
     } catch (error) {
       console.error('Error in deleteAlert:', error);
       return false;

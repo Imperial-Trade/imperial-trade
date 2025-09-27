@@ -24,11 +24,26 @@ const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClas
   </div>
 );
 
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
-
+// PHASE C: Minimal, stable primitive props for price panel
 interface PricePanelProps {
-  alert: TradeAlertWithProfile;
-  livePrice: number;
+  id: string;
+  assetName: string;
+  symbol: string;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entryPrice: number;
+  stopLoss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  tpHitsKey: string; // Deduped string like '1,2' or ''
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
+  allowAutomation: boolean;
+  onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
+  onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
+  onOrderActivation?: (alert: any) => Promise<void>;
 }
 
 // Static levels block component - memoized to prevent unnecessary re-renders
@@ -81,27 +96,52 @@ const StaticLevelsBlock = memo<{
   );
 });
 
-const PricePanel: React.FC<PricePanelProps> = ({ alert, livePrice }) => {
+const PricePanel: React.FC<PricePanelProps> = ({ 
+  id, assetName, symbol, tradeType, entryPrice, stopLoss, 
+  tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason, allowAutomation,
+  onTakeProfitHit, onStopLossHit, onOrderActivation 
+}) => {
   // Get connection status and data source from WebSocket context
   const { connectionStatus, dataSource } = useOptimizedWebSocketPrices();
-  
-  const tpHitsKey = alert.tpHits ? alert.tpHits.join(',') : '';
+  // PHASE C: Reconstruct alert object with useMemo - stable reference unless primitives change
+  const alert = useMemo(() => ({
+    id,
+    asset_name: assetName,
+    tradermade_symbol: symbol,
+    trade_type: tradeType,
+    entry_price: entryPrice,
+    stop_loss: stopLoss,
+    tp1, tp2, tp3, tp4, tp5,
+    tp_hits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
+    status,
+    close_reason: closeReason,
+    created_date: new Date().toISOString(),
+    updated_date: new Date().toISOString()
+  }), [id, assetName, symbol, tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason]);
 
-  // For active/pending/partially_profited trades, show static levels only (LivePriceWidget handled elsewhere)
-  if (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') {
+  // For active/pending/partially_profited trades, show LivePriceWidget + static levels
+  if (status === 'active' || status === 'pending' || status === 'partially_profited') {
     return (
       <div className="px-3 pb-3">
+        <LivePriceWidget 
+          alert={alert} 
+          onTakeProfitHit={onTakeProfitHit}
+          onStopLossHit={onStopLossHit}
+          onOrderActivation={onOrderActivation}
+          connectionStatus={connectionStatus === 'disconnected' ? 'error' : connectionStatus}
+          priceSource={dataSource || 'WebSocket'}
+        />
         <StaticLevelsBlock
-          tradeType={alert.tradeType}
-          entryPrice={alert.entryPrice}
-          stopLoss={alert.stopLoss}
-          tp1={alert.tp1}
-          tp2={alert.tp2}
-          tp3={alert.tp3}
-          tp4={alert.tp4}
-          tp5={alert.tp5}
+          tradeType={tradeType}
+          entryPrice={entryPrice}
+          stopLoss={stopLoss}
+          tp1={tp1}
+          tp2={tp2}
+          tp3={tp3}
+          tp4={tp4}
+          tp5={tp5}
           tpHitsKey={tpHitsKey}
-          closeReason={alert.closeReason}
+          closeReason={closeReason}
         />
       </div>
     );
@@ -111,28 +151,38 @@ const PricePanel: React.FC<PricePanelProps> = ({ alert, livePrice }) => {
   return (
     <div className="px-3 pb-3">
       <StaticLevelsBlock
-        tradeType={alert.tradeType}
-        entryPrice={alert.entryPrice}
-        stopLoss={alert.stopLoss}
-        tp1={alert.tp1}
-        tp2={alert.tp2}
-        tp3={alert.tp3}
-        tp4={alert.tp4}
-        tp5={alert.tp5}
+        tradeType={tradeType}
+        entryPrice={entryPrice}
+        stopLoss={stopLoss}
+        tp1={tp1}
+        tp2={tp2}
+        tp3={tp3}
+        tp4={tp4}
+        tp5={tp5}
         tpHitsKey={tpHitsKey}
-        closeReason={alert.closeReason}
+        closeReason={closeReason}
       />
     </div>
   );
 };
 
 export default memo(PricePanel, (prevProps, nextProps) => {
-  // Compare alert and livePrice
+  // PHASE C: Compare primitive props only - no complex object comparisons
   return (
-    prevProps.alert.id === nextProps.alert.id &&
-    prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.tpHits?.join(',') === nextProps.alert.tpHits?.join(',') &&
-    prevProps.alert.closeReason === nextProps.alert.closeReason &&
-    prevProps.livePrice === nextProps.livePrice
+    prevProps.id === nextProps.id &&
+    prevProps.assetName === nextProps.assetName &&
+    prevProps.symbol === nextProps.symbol &&
+    prevProps.tradeType === nextProps.tradeType &&
+    prevProps.entryPrice === nextProps.entryPrice &&
+    prevProps.stopLoss === nextProps.stopLoss &&
+    prevProps.tp1 === nextProps.tp1 &&
+    prevProps.tp2 === nextProps.tp2 &&
+    prevProps.tp3 === nextProps.tp3 &&
+    prevProps.tp4 === nextProps.tp4 &&
+    prevProps.tp5 === nextProps.tp5 &&
+    prevProps.tpHitsKey === nextProps.tpHitsKey &&
+    prevProps.status === nextProps.status &&
+    prevProps.closeReason === nextProps.closeReason &&
+    prevProps.allowAutomation === nextProps.allowAutomation
   );
 });

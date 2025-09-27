@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Clock, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useOrderManagement } from '@/hooks/useOrderManagement';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 

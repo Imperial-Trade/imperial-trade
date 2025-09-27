@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'lucide-react';
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
@@ -64,7 +64,7 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
         </div>
         
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>by {alert.creator?.displayName}</span>
+          <span>by {alert.creator?.display_name}</span>
           <span>{new Date(alert.createdAt).toLocaleDateString()}</span>
         </div>
       </CardHeader>

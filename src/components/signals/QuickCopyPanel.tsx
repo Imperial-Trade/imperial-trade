@@ -5,10 +5,20 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { TradeAlertWithProfile } from '@/utils/dataTransformers';
+interface Alert {
+  asset_name: string;
+  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entry_price: number;
+  stop_loss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+}
 
-export interface QuickCopyPanelProps {
-  alert: TradeAlertWithProfile;
+interface QuickCopyPanelProps {
+  alert: Alert;
 }
 
 export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
@@ -24,7 +34,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     }
   };
 
-  const isBuy = alert.tradeType.includes('buy');
+  const isBuy = alert.trade_type.includes('buy');
   const takeProfits = [
     { label: 'TP1', value: alert.tp1 },
     { label: 'TP2', value: alert.tp2 },
@@ -55,10 +65,10 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Copy className="w-4 h-4" />
-          Quick Copy Prices - {alert.assetName}
+          Quick Copy Prices - {alert.asset_name}
           <Badge className={`ml-2 ${isBuy ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
             {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-            {alert.tradeType.replace('_', ' ').toUpperCase()}
+            {alert.trade_type.replace('_', ' ').toUpperCase()}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -66,11 +76,11 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <label className="text-xs text-gray-400">Entry Price</label>
-            <CopyButton value={alert.entryPrice} label="Entry" variant="default" />
+            <CopyButton value={alert.entry_price} label="Entry" variant="default" />
           </div>
           <div className="space-y-2">
             <label className="text-xs text-gray-400">Stop Loss</label>
-            <CopyButton value={alert.stopLoss} label="SL" variant="destructive" />
+            <CopyButton value={alert.stop_loss} label="SL" variant="destructive" />
           </div>
         </div>
         
@@ -91,7 +101,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
             size="sm"
             onClick={(e) => { e.preventDefault(); e.stopPropagation();
               copyToClipboard(
-                `${alert.assetName} ${alert.tradeType.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entryPrice}\nSL: ${alert.stopLoss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
+                `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
                 'All Prices'
               );
             }}

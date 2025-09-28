@@ -581,9 +581,25 @@ if (!alertsData || alertsData.length === 0) {
             intendedAction: 'DELETE_SIGNAL'
           });
           
-          // Remove signal from draft (Immer handles immutability)
+           // Remove signal from draft (Immer handles immutability)
           delete draft[oldRecord.id];
         }
+
+        // === DIAGNOSTIC POINT 4: ATOMIC OPERATION COMPLETE ===
+        console.log('[DIAGNOSTIC] 4. ATOMIC OPERATION COMPLETE:', {
+          transactionId,
+          timestamp: new Date().toISOString(),
+          updateType: eventType,
+          signalId: signalId,
+          incomingPayload: JSON.parse(JSON.stringify(payload)),
+          targetSignalAfterUpdate: draft[signalId] ? JSON.parse(JSON.stringify(draft[signalId])) : null,
+          allSignalsInDraft: Object.keys(draft).reduce((acc, key) => {
+            acc[key] = JSON.parse(JSON.stringify(draft[key]));
+            return acc;
+          }, {}),
+          draftSize: Object.keys(draft).length,
+          allSignalIds: Object.keys(draft).sort()
+        });
       }));
       
       // Synchronous cache update immediately after state update

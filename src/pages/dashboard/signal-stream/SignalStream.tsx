@@ -105,8 +105,9 @@ export default function SignalStream() {
     }
     return canCreate;
   }, [isAdmin, isEducator, profile]);
-  const isCreator = useCallback((alertCreatorId: string) => {
-    return profile?.id === alertCreatorId;
+  // FIX #4: Harden isCreator check with fallback to userId when creator is missing
+  const isCreator = useCallback((alertCreatorId?: string, fallbackUserId?: string) => {
+    return profile?.id === (alertCreatorId || fallbackUserId);
   }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
@@ -139,6 +140,26 @@ export default function SignalStream() {
     if (filters.educator) {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
+
+    // FIX #5: Add diagnostic logging for permission path (temporary)
+    if (isDevToolsEnabled()) {
+      console.log('[DIAGNOSTIC] SignalStream - Permission Check for Rendering:', {
+        timestamp: new Date().toISOString(),
+        totalAlerts: filteredAlerts.length,
+        currentUserId: profile?.id,
+        permissionChecks: filteredAlerts.map(alert => ({
+          id: alert.id,
+          assetName: alert.assetName,
+          alertUserId: alert.userId,
+          alertCreatorId: alert.creator?.id,
+          alertCreatorName: alert.creator?.display_name,
+          computedIsCreator: isCreator(alert.creator?.id, alert.userId),
+          willShowCloseButton: isCreator(alert.creator?.id, alert.userId) || isAdmin,
+          status: alert.status
+        }))
+      });
+    }
+
     return filteredAlerts;
   }, [allAlerts, filters]);
   const {
@@ -382,7 +403,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert.creator?.id, alert.userId);
     if (isDevToolsEnabled()) {
       console.log('SignalStream - handleStatusUpdate authorization check:', {
         alertId: alert.id,
@@ -461,7 +482,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert.creator?.id, alert.userId);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
@@ -517,7 +538,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert.creator?.id, alert.userId);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
@@ -565,7 +586,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert.creator?.id, alert.userId);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
@@ -663,7 +684,7 @@ export default function SignalStream() {
                     </h2>
                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
+                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id, alert.userId)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
                           </div>)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -691,7 +712,7 @@ export default function SignalStream() {
                     </h2>
                     {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
+                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id, alert.userId)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
                           </div>)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">

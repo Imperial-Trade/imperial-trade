@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { produce } from 'immer';
 import { supabase } from '@/integrations/supabase/client';
-import { TradeAlertWithProfile, transformTradeAlertWithProfile } from '@/utils/dataTransformers';
+import { TradeAlertWithProfile, transformTradeAlertWithProfile, transformProfile } from '@/utils/dataTransformers';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
@@ -181,19 +181,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // Post-update effects handler (runs after state update)
   const schedulePostUpdateEffects = useCallback((payload: any, actionType: 'INSERT' | 'UPDATE' | 'DELETE') => {
     if (actionType === 'INSERT' && payload.new) {
-      // Dispatch notification for new signals
+      // FIX #3: Remove duplicate notification - InAppNotificationSystem handles signal_created via broadcast
+      // Only dispatch custom event, not local notification to prevent duplicates
       setTimeout(() => {
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'signal_created',
-            title: `🚨 New ${payload.new.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-            message: `Signal posted for ${payload.new.asset_name} at $${payload.new.entry_price}`,
-            signalId: payload.new.id,
-            assetName: payload.new.asset_name,
-            priority: 'high',
-            autoRemove: true,
-          });
-        }
         window.dispatchEvent(new CustomEvent('signal-posted'));
       }, 0);
     } else if (actionType === 'UPDATE' && payload.new) {
@@ -525,6 +515,29 @@ if (!alertsData || alertsData.length === 0) {
             profiles: null // Will be loaded asynchronously
           });
           
+          // FIX #2: Schedule async profile hydration for INSERT to restore creator info
+          const signalId = newRecord.id;
+          const userId = newRecord.user_id;
+          setTimeout(async () => {
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('id, display_name, avatar_url, user_type, access_level, role')
+                .eq('id', userId)
+                .single();
+              
+              if (profileData && mountOnlyRef.current) {
+                setSignalsMap(produce(draft => {
+                  if (draft[signalId] && !draft[signalId].creator) {
+                    draft[signalId].creator = transformProfile(profileData);
+                  }
+                }));
+              }
+            } catch (error) {
+              console.warn('Profile hydration failed for signal:', signalId, error);
+            }
+          }, 100); // Short delay to allow initial render
+          
         } else if (eventType === 'UPDATE' && newRecord && draft[newRecord.id]) {
           const existingSignal = draft[newRecord.id];
           const isOrderActivation = existingSignal.status === 'pending' && newRecord.status === 'active';
@@ -552,21 +565,24 @@ if (!alertsData || alertsData.length === 0) {
           });
           
           // Update existing signal (Immer handles immutability)
+          // FIX #1: Correct field mapping - use tp1..tp5 from database, preserve creator
           Object.assign(draft[newRecord.id], {
             assetName: newRecord.asset_name,
             tradeType: newRecord.trade_type,
             entryPrice: newRecord.entry_price,
             stopLoss: newRecord.stop_loss,
-            takeProfit1: newRecord.take_profit_1,
-            takeProfit2: newRecord.take_profit_2,
-            takeProfit3: newRecord.take_profit_3,
-            takeProfit4: newRecord.take_profit_4,
-            takeProfit5: newRecord.take_profit_5,
+            tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+            tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+            tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+            tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+            tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
             status: newRecord.status,
             notes: newRecord.notes,
+            closeReason: newRecord.close_reason,
             updatedAt: newRecord.updated_at,
             closedAt: newRecord.closed_at,
             tpHits: newRecord.tp_hits || []
+            // Preserve creator field - do not overwrite with null
           });
           
         } else if (eventType === 'DELETE' && oldRecord && draft[oldRecord.id]) {

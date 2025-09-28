@@ -1,1 +1,0 @@
-export { SidebarUserMenu } from '@/components/sidebar/SidebarUserMenu';

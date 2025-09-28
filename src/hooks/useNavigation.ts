@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useNavigation as useNavigationContext } from '@/contexts/NavigationContext';
 import { getMainAppUrl, getAcademyAppUrl, getOrderFlowAppUrl } from '@/utils/environment';
 
-export function useNavigation() {
+export function useAppNavigation() {
   const navigation = useNavigationContext();
 
   const navigateToApp = useCallback((app: 'main' | 'academy' | 'orderflow', path = '/') => {

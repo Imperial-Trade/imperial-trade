@@ -3,6 +3,8 @@ import { useCallback, useState, useEffect, useMemo, useContext } from 'react';
 import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { useSignalStore } from '@/hooks/useSignalStore';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface UseSignalRealtimeReturn {
   alerts: TradeAlertWithProfile[];
@@ -16,6 +18,12 @@ interface UseSignalRealtimeReturn {
 }
 
 export const useSignalRealtime = (userId: string, showAllSignals: boolean = false): UseSignalRealtimeReturn => {
+  // Feature flag to switch between old and new implementations
+  const useNewStore = isDevToolsEnabled(); // Can be changed to a specific flag later
+  
+  // New store implementation
+  const newStoreResult = useSignalStore(userId);
+  
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   
@@ -109,6 +117,23 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     }
   }, [contextRefreshSignals]);
 
+  // Return new store implementation if flag is enabled
+  if (useNewStore) {
+    console.log('useSignalRealtime - Using NEW store implementation');
+    return {
+      alerts: newStoreResult.alerts,
+      isLoading: newStoreResult.isLoading,
+      error: newStoreResult.error,
+      connectionStatus: newStoreResult.connectionStatus,
+      nextRetryAt: newStoreResult.nextRetryAt,
+      updateAlert: (id: string, dto: UpdateTradeAlertDto) => newStoreResult.updateAlert(id, dto, userId),
+      refreshAlerts: () => newStoreResult.refreshAlerts(userId),
+      lastUpdated: newStoreResult.lastUpdated
+    };
+  }
+
+  // Legacy implementation (unchanged)
+  console.log('useSignalRealtime - Using LEGACY context implementation');
   return {
     alerts: filteredAlerts,
     isLoading,

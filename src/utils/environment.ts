@@ -21,11 +21,11 @@ export const isProductionDomain = (): boolean => {
 };
 
 export const getOrderFlowAppUrl = (): string => {
-  return "https://www.tradeimperial.com/orderflow";
+  return "https://orderflow-social-hub.lovableproject.com";
 };
 
 export const getAcademyAppUrl = (): string => {
-  return "https://www.tradeimperial.com/academy";
+  return "https://market-fix-academy.lovableproject.com";
 };
 
 /**

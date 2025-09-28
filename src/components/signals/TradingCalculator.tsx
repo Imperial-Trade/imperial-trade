@@ -14,7 +14,7 @@ export default function TradingCalculator({
   livePrice: externalLivePrice
 }) {
   // Get live price from WebSocket for the current asset (SINGLE SOURCE)
-  const symbol = alert.tradermade_symbol || alert.asset_name || '';
+  const symbol = alert.tradermadeSymbol || alert.assetName || '';
   const { prices, getPrice } = useOptimizedWebSocketPrices();
   const { shouldAllowQualityChange, getStabilityInfo } = useConnectionStability();
   
@@ -73,10 +73,10 @@ export default function TradingCalculator({
   const currentPrice = useMemo(() => {
     const priceValue = typeof livePrice === 'number' && livePrice > 0 ? livePrice : 
                      livePrice?.price && livePrice.price > 0 ? livePrice.price : 
-                     alert.entry_price;
+                     alert.entryPrice;
     
     // Log ultra-fast price updates for monitoring
-    if (isUltraFastTick && priceValue !== alert.entry_price) {
+    if (isUltraFastTick && priceValue !== alert.entryPrice) {
       if (isDevToolsEnabled()) {
         console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
           symbol,
@@ -89,11 +89,11 @@ export default function TradingCalculator({
     }
     
     return priceValue;
-  }, [livePrice, alert.entry_price, isUltraFastTick, symbol, updateFrequency, priceSource]);
+  }, [livePrice, alert.entryPrice, isUltraFastTick, symbol, updateFrequency, priceSource]);
 
   // Calculate real-time price metrics
-  const priceChangeFromEntry = currentPrice - alert.entry_price;
-  const priceChangePercentage = priceChangeFromEntry / alert.entry_price * 100;
+  const priceChangeFromEntry = currentPrice - alert.entryPrice;
+  const priceChangePercentage = priceChangeFromEntry / alert.entryPrice * 100;
   const isPriceUp = priceChangeFromEntry > 0;
 
   // Enhanced price tracking with trend detection - ✅ Stability controlled
@@ -135,7 +135,7 @@ export default function TradingCalculator({
 
   // Enhanced pip distance calculations for all asset types
   const calculatePipDistance = (fromPrice, toPrice) => {
-    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    const symbol = alert.tradermadeSymbol || alert.assetName || '';
     const priceDiff = Math.abs(toPrice - fromPrice);
 
     // Enhanced asset type detection with better support for indices
@@ -154,7 +154,7 @@ export default function TradingCalculator({
 
   // Get proper terminology for the asset type
   const getPipTerminology = () => {
-    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    const symbol = alert.tradermadeSymbol || alert.assetName || '';
     if (symbol.includes('NAS100') || symbol.includes('US30') || symbol.includes('USA30') || symbol.includes('SPX500') || symbol.includes('DJ30')) {
       return 'points';
     } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('CRYPTO')) {
@@ -166,9 +166,9 @@ export default function TradingCalculator({
   // Calculate maximum lot size based on both margin requirements AND risk limit
   const maxLotSizeByMargin = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
-    const entryPrice = alert.entry_price || 0;
-    const stopLoss = alert.stop_loss || 0;
-    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    const entryPrice = alert.entryPrice || 0;
+    const stopLoss = alert.stopLoss || 0;
+    const symbol = alert.tradermadeSymbol || alert.assetName || '';
     if (!balance || !entryPrice || !stopLoss || !symbol) return null;
 
     // Handle livePrice - use current price for active trades, entry price for pending
@@ -194,8 +194,8 @@ export default function TradingCalculator({
   const calculations = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
     const lots = parseFloat(lotSize) || 0;
-    const entryPrice = alert.entry_price || 0;
-    const stopLoss = alert.stop_loss || 0;
+    const entryPrice = alert.entryPrice || 0;
+    const stopLoss = alert.stopLoss || 0;
 
     // REAL-TIME PRICE VALUE: Use the currentPrice from useMemo for optimal performance
     const priceValue = currentPrice;
@@ -203,7 +203,7 @@ export default function TradingCalculator({
     // Enhanced debug logging for ultra-fast price updates
     if (isUltraFastTick && isDevToolsEnabled()) {
       console.log('⚡ ULTRA-FAST CALC UPDATE:', {
-        symbol: alert.tradermade_symbol || alert.asset_name,
+        symbol: alert.tradermadeSymbol || alert.assetName,
         priceValue,
         livePrice: typeof livePrice === 'object' ? livePrice?.price : livePrice,
         connectionStatus: livePrice?.connectionStatus,
@@ -215,8 +215,8 @@ export default function TradingCalculator({
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
     }
-    const isBuy = alert.trade_type.includes('buy');
-    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    const isBuy = alert.tradeType.includes('buy');
+    const symbol = alert.tradermadeSymbol || alert.assetName || '';
 
     // LIVE RISK CALCULATION: Ultra-fast real-time risk tracking
     // - Pending orders: Show potential risk from entry to SL
@@ -433,7 +433,7 @@ export default function TradingCalculator({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Calculator className="w-4 h-4 text-emerald-400" />
-          Position Calculator - {alert.asset_name}
+          Position Calculator - {alert.assetName}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -490,17 +490,17 @@ export default function TradingCalculator({
                 <div className="text-xs text-gray-400 mb-1">Current Price</div>
                 <div className="flex items-center gap-2">
                   <span className={`text-lg font-bold ${priceChangeFlash ? isPriceUp ? 'text-emerald-400' : 'text-red-400' : 'text-white'}`}>
-                    ${formatPrice(currentPrice, alert.tradermade_symbol)}
+                    ${formatPrice(currentPrice, alert.tradermadeSymbol)}
                   </span>
                   {priceChangeFromEntry !== 0 && <div className={`flex items-center gap-1 ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
                       {isPriceUp ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                       <span className="text-xs font-medium">
-                        {isPriceUp ? '+' : ''}{formatPrice(priceChangeFromEntry, alert.tradermade_symbol)}
+                        {isPriceUp ? '+' : ''}{formatPrice(priceChangeFromEntry, alert.tradermadeSymbol)}
                       </span>
                     </div>}
                 </div>
                 <div className="text-xs text-gray-400">
-                  Entry: ${formatPrice(alert.entry_price, alert.tradermade_symbol)}
+                  Entry: ${formatPrice(alert.entryPrice, alert.tradermadeSymbol)}
                   {priceChangeFromEntry !== 0 && <span className={`ml-2 ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
                       ({isPriceUp ? '+' : ''}{priceChangePercentage.toFixed(2)}%)
                     </span>}
@@ -533,12 +533,12 @@ export default function TradingCalculator({
                   <div className="flex justify-between items-center">
                     <div className="text-red-300 font-medium">Stop Loss</div>
                     <div className="text-white text-xs">
-                      {calculatePipDistance(currentPrice, alert.stop_loss)} {getPipTerminology()}
+                      {calculatePipDistance(currentPrice, alert.stopLoss)} {getPipTerminology()}
                     </div>
                   </div>
                   <div className="flex justify-between items-center mt-1">
                     <div className="text-xs text-red-200">
-                      ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                      ${formatPrice(alert.stopLoss, alert.tradermadeSymbol)}
                     </div>
                     <div className="text-xs text-gray-300">
                       {calculations.stopLossDistance.pipPercent.toFixed(1)}% away
@@ -558,10 +558,10 @@ export default function TradingCalculator({
                             {reward.distancePips.toFixed(1)} {getPipTerminology()}
                           </div>
                         </div>
-                        <div className="flex justify-between items-center mt-1">
-                          <div className="text-xs text-emerald-200">
-                            ${formatPrice(reward.price, alert.tradermade_symbol)}
-                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-xs text-emerald-200">
+                              ${formatPrice(reward.price, alert.tradermadeSymbol)}
+                            </div>
                           <div className="text-xs text-gray-300">
                             {reward.pipBasedPercent.toFixed(1)}% away
                           </div>
@@ -578,7 +578,7 @@ export default function TradingCalculator({
                     <span>Pending Order Calculation</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                    Risk/Reward is based on the limit price of <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>.
+                    Risk/Reward is based on the limit price of <span className="font-bold text-white">${alert.entryPrice.toFixed(2)}</span>.
                 </p>
             </div>}
 
@@ -602,7 +602,7 @@ export default function TradingCalculator({
                     </Badge>}
                 </div>
                 <div className="text-xs text-gray-400">
-                  ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                  ${formatPrice(alert.stopLoss, alert.tradermadeSymbol)}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -668,7 +668,7 @@ export default function TradingCalculator({
                         </Badge>}
                     </div>
                     <div className="text-xs text-gray-400">
-                      ${formatPrice(reward.price, alert.tradermade_symbol)}
+                      ${formatPrice(reward.price, alert.tradermadeSymbol)}
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">

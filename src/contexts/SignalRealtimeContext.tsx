@@ -383,6 +383,17 @@ unstable_batchedUpdates(() => {
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const signalId = payload?.new?.id || payload?.old?.id;
     
+    // === DIAGNOSTIC POINT 1: INCOMING EVENT ===
+    console.log('[DIAGNOSTIC] 1. INCOMING EVENT:', {
+      timestamp: new Date().toISOString(),
+      eventType: payload.eventType,
+      signalId: signalId,
+      rawPayload: JSON.parse(JSON.stringify(payload)),
+      payloadKeys: Object.keys(payload || {}),
+      newRecord: payload?.new ? JSON.parse(JSON.stringify(payload.new)) : null,
+      oldRecord: payload?.old ? JSON.parse(JSON.stringify(payload.old)) : null
+    });
+    
     if (isDevToolsEnabled()) {
       console.log('🔄 SignalRealtime event:', {
         type: payload.eventType,
@@ -433,6 +444,27 @@ unstable_batchedUpdates(() => {
         
         // PHASE 2: Map-based state update with O(1) duplicate check
         setSignalsMap(prev => {
+          // === DIAGNOSTIC POINT 2A: STATE BEFORE UPDATE (INSERT) ===
+          console.log('[DIAGNOSTIC] 2A. STATE BEFORE UPDATE (INSERT):', {
+            timestamp: new Date().toISOString(),
+            eventType: 'INSERT',
+            signalId: newSignal.id,
+            currentStateKeys: Object.keys(prev),
+            currentStateCount: Object.keys(prev).length,
+            currentState: JSON.parse(JSON.stringify(prev)),
+            signalAlreadyExists: !!prev[newSignal.id]
+          });
+          
+          // === DIAGNOSTIC POINT 3A: INTENDED CHANGE (INSERT) ===
+          console.log('[DIAGNOSTIC] 3A. INTENDED CHANGE (INSERT):', {
+            timestamp: new Date().toISOString(),
+            eventType: 'INSERT',
+            signalId: newSignal.id,
+            newSignalObject: JSON.parse(JSON.stringify(newSignal)),
+            willSkipDuplicate: !!prev[newSignal.id],
+            intendedAction: prev[newSignal.id] ? 'SKIP_DUPLICATE' : 'ADD_NEW_SIGNAL'
+          });
+          
           // Check for duplicates using O(1) lookup
           if (prev[newSignal.id]) {
             if (isDevToolsEnabled()) {
@@ -486,6 +518,22 @@ unstable_batchedUpdates(() => {
           if (isDevToolsEnabled() && isNotesUpdate) {
             console.log(`📝 NOTES UPDATE: "${existingSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
           }
+
+          // === DIAGNOSTIC POINT 2B: STATE BEFORE UPDATE (UPDATE) ===
+          console.log('[DIAGNOSTIC] 2B. STATE BEFORE UPDATE (UPDATE):', {
+            timestamp: new Date().toISOString(),
+            eventType: 'UPDATE',
+            signalId: newRecord.id,
+            currentStateKeys: Object.keys(prev),
+            currentStateCount: Object.keys(prev).length,
+            currentState: JSON.parse(JSON.stringify(prev)),
+            existingSignal: existingSignal ? JSON.parse(JSON.stringify(existingSignal)) : null,
+            signalExists: !!existingSignal,
+            statusChange: existingSignal ? `${existingSignal.status} → ${newRecord.status}` : 'N/A',
+            isOrderActivation,
+            isCriticalStatusChange,
+            isNotesUpdate
+          });
 
           // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
           if (isOrderActivation) {
@@ -596,10 +644,27 @@ unstable_batchedUpdates(() => {
                 }
               }));
             }, 0);
-          }
-          
-          // PHASE 2: Update the map with the validated signal
-          const updatedMap = { ...prev, [newRecord.id]: finalSignal };
+           }
+           
+           // === DIAGNOSTIC POINT 3B: INTENDED CHANGE (UPDATE) ===
+           console.log('[DIAGNOSTIC] 3B. INTENDED CHANGE (UPDATE):', {
+             timestamp: new Date().toISOString(),
+             eventType: 'UPDATE',
+             signalId: newRecord.id,
+             finalSignalObject: JSON.parse(JSON.stringify(finalSignal)),
+             originalDbRecord: JSON.parse(JSON.stringify(newRecord)),
+             existingSignalInState: existingSignal ? JSON.parse(JSON.stringify(existingSignal)) : null,
+             willUpdateSignal: !!prev[newRecord.id],
+             intendedAction: prev[newRecord.id] ? 'UPDATE_EXISTING_SIGNAL' : 'SKIP_MISSING_SIGNAL',
+             tpHitsValidation: finalSignal.tpHits ? {
+               originalTpHits: newRecord.tp_hits,
+               validatedTpHits: finalSignal.tpHits,
+               wasFiltered: JSON.stringify(newRecord.tp_hits) !== JSON.stringify(finalSignal.tpHits)
+             } : null
+           });
+           
+           // PHASE 2: Update the map with the validated signal
+           const updatedMap = { ...prev, [newRecord.id]: finalSignal };
           
           // Developer mode logging for state transitions
           if (isDevToolsEnabled()) {
@@ -806,6 +871,28 @@ unstable_batchedUpdates(() => {
       healthMonitor.unregisterConnection('SignalRealtime');
     };
   }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
+
+  // === DIAGNOSTIC POINT 4: STATE AFTER UPDATE ===
+  // Monitor signalsMap changes to log complete state after updates
+  useEffect(() => {
+    console.log('[DIAGNOSTIC] 4. STATE AFTER UPDATE:', {
+      timestamp: new Date().toISOString(),
+      stateUpdateTrigger: 'signalsMap_changed',
+      currentStateKeys: Object.keys(signalsMap),
+      currentStateCount: Object.keys(signalsMap).length,
+      currentState: JSON.parse(JSON.stringify(signalsMap)),
+      signalsList: Object.values(signalsMap).map(signal => ({
+        id: signal.id,
+        status: signal.status,
+        assetName: signal.assetName,
+        createdAt: signal.createdAt,
+        updatedAt: signal.updatedAt,
+        notes: signal.notes?.substring(0, 100) + (signal.notes && signal.notes.length > 100 ? '...' : ''),
+        tpHits: signal.tpHits
+      })),
+      lastUpdatedTimestamp: lastUpdated?.toISOString() || null
+    });
+  }, [signalsMap, lastUpdated]);
 
   const contextValue: SignalRealtimeContextType = {
     // PHASE 2: Provide both map and array access

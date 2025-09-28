@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile, transformTradeAlertWithProfile } from '@/utils/dataTransformers';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
 import { useRealtimeGate } from '@/hooks/useRouteGatedSubscriptions';
@@ -230,45 +230,13 @@ if (!alertsData || alertsData.length === 0) {
         });
       }
 
-      // Map alerts with their profiles
+      // ACL: Transform alerts with profiles using centralized transformer
       const allAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
         const profile = profilesMap.get(alert.user_id);
-        
-        return {
-          id: alert.id,
-          userId: alert.user_id,
-          assetName: alert.asset_name,
-          tradermadeSymbol: alert.tradermade_symbol,
-          tradeType: alert.trade_type,
-          entryPrice: Number(alert.entry_price),
-          stopLoss: Number(alert.stop_loss),
-          status: alert.status,
-          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
-          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
-          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
-          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
-          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
-          tpHits: alert.tp_hits || [],
-          notes: alert.notes,
-          closeReason: alert.close_reason,
-          createdAt: alert.created_at,
-          updatedAt: alert.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url,
-            user_type: profile.user_type,
-            access_level: profile.access_level
-          } : {
-            id: alert.user_id,
-            display_name: 'Unknown User',
-            role: 'user',
-            avatar_url: null,
-            user_type: null,
-            access_level: null
-          }
-        };
+        return transformTradeAlertWithProfile({
+          ...alert,
+          profiles: profile || null
+        });
       });
 
       // 🔥 RESTORED: Let database 1-hour window handle closed signals filtering
@@ -413,41 +381,11 @@ unstable_batchedUpdates(() => {
           console.log('SignalRealtimeContext - Profile for new signal:', profile);
         }
 
-        const newSignal: TradeAlertWithProfile = {
-          id: newRecord.id,
-          userId: newRecord.user_id,
-          assetName: newRecord.asset_name,
-          tradermadeSymbol: newRecord.tradermade_symbol,
-          tradeType: newRecord.trade_type,
-          entryPrice: Number(newRecord.entry_price),
-          stopLoss: Number(newRecord.stop_loss),
-          status: newRecord.status,
-          tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-          tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-          tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-          tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-          tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
-          tpHits: newRecord.tp_hits || [],
-          notes: newRecord.notes,
-          closeReason: newRecord.close_reason,
-          createdAt: newRecord.created_at,
-          updatedAt: newRecord.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url,
-            user_type: profile.user_type,
-            access_level: profile.access_level
-          } : {
-            id: newRecord.user_id,
-            display_name: 'Unknown User',
-            role: 'user',
-            avatar_url: null,
-            user_type: null,
-            access_level: null
-          }
-        };
+        // ACL: Transform database record with profile to camelCase
+        const newSignal: TradeAlertWithProfile = transformTradeAlertWithProfile({
+          ...newRecord,
+          profiles: profile || undefined
+        });
 
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
@@ -538,26 +476,29 @@ unstable_batchedUpdates(() => {
             }, 100);
           }
           
-          const updatedSignals = prev.map(signal => 
-            signal.id === newRecord.id ? {
-              ...signal,
-              assetName: newRecord.asset_name,
-              tradermadeSymbol: newRecord.tradermade_symbol,
-              tradeType: newRecord.trade_type,
-              entryPrice: Number(newRecord.entry_price),
-              stopLoss: Number(newRecord.stop_loss),
-              status: newRecord.status,
-              tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-              tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-              tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-              tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-              tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
-              tpHits: newRecord.tp_hits || [],
-              notes: newRecord.notes,
-              closeReason: newRecord.close_reason,
-              updatedAt: newRecord.updated_at
-            } : signal
-          );
+          // ACL: Transform database record to camelCase and merge with existing signal
+          const updatedSignals = prev.map(signal => {
+            if (signal.id === newRecord.id) {
+              const transformedRecord = transformTradeAlertWithProfile({
+                ...newRecord,
+                profiles: signal.creator ? {
+                  id: signal.creator.id,
+                  display_name: signal.creator.display_name,
+                  role: signal.creator.role,
+                  avatar_url: signal.creator.avatar_url || null,
+                  user_type: signal.creator.user_type || null,
+                  access_level: signal.creator.access_level || null
+                } : undefined
+              });
+              
+              return {
+                ...signal,
+                ...transformedRecord,
+                creator: signal.creator // Preserve existing creator info
+              };
+            }
+            return signal;
+          });
           
           // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
           const validatedSignals = updatedSignals.map(signal => {

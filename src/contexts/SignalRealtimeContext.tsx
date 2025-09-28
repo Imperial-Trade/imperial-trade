@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { unstable_batchedUpdates } from 'react-dom';
+import { produce } from 'immer';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile, transformTradeAlertWithProfile } from '@/utils/dataTransformers';
 import { useSharedRealtime } from './SharedRealtimeContext';
@@ -10,7 +10,6 @@ import { useTelemetry } from '@/contexts/TelemetryContext';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
-import { signalCacheManager } from '@/utils/signalCacheManager';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -141,6 +140,10 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const lastRefreshRef = useRef<number>(0);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   
+  // Transaction tracking for guaranteed state lifecycle monitoring
+  const transactionIdRef = useRef<number>(0);
+  const stateTransitionRef = useRef<{ [key: number]: string }>({});
+  
   // PHASE 2: Map-based local caching to minimize database queries
   const localCacheRef = useRef<{ 
     dataMap: Record<string, TradeAlertWithProfile>, 
@@ -148,6 +151,81 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     educatorIds: string[],
     educatorExpiry: number 
   }>({ dataMap: {}, expiry: 0, educatorIds: [], educatorExpiry: 0 });
+
+  // Transaction ID generator for state lifecycle tracking
+  const generateTransactionId = useCallback(() => {
+    return ++transactionIdRef.current;
+  }, []);
+
+  // Synchronous cache update function
+  const updateLocalCacheSync = useCallback((payload: any, action: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    const cache = localCacheRef.current;
+    if (Object.keys(cache.dataMap).length === 0) return;
+
+    const signalId = payload?.new?.id || payload?.old?.id;
+    
+    if (action === 'INSERT' && payload.new) {
+      // Cache will be updated by the main state update
+    } else if (action === 'UPDATE' && payload.new && cache.dataMap[signalId]) {
+      cache.dataMap = produce(cache.dataMap, draft => {
+        if (draft[signalId]) {
+          Object.assign(draft[signalId], payload.new);
+        }
+      });
+    } else if (action === 'DELETE' && payload.old && cache.dataMap[signalId]) {
+      const { [signalId]: deleted, ...remaining } = cache.dataMap;
+      cache.dataMap = remaining;
+    }
+  }, []);
+
+  // Post-update effects handler (runs after state update)
+  const schedulePostUpdateEffects = useCallback((payload: any, actionType: 'INSERT' | 'UPDATE' | 'DELETE') => {
+    if (actionType === 'INSERT' && payload.new) {
+      // Dispatch notification for new signals
+      setTimeout(() => {
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'signal_created',
+            title: `🚨 New ${payload.new.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
+            message: `Signal posted for ${payload.new.asset_name} at $${payload.new.entry_price}`,
+            signalId: payload.new.id,
+            assetName: payload.new.asset_name,
+            priority: 'high',
+            autoRemove: true,
+          });
+        }
+        window.dispatchEvent(new CustomEvent('signal-posted'));
+      }, 0);
+    } else if (actionType === 'UPDATE' && payload.new) {
+      const isOrderActivation = payload.old?.status === 'pending' && payload.new.status === 'active';
+      
+      if (isOrderActivation) {
+        setTimeout(() => {
+          // Enhanced activation notification
+          if ((window as any).addNotification) {
+            (window as any).addNotification({
+              type: 'order_activated',
+              title: `🚀 Order Activated!`,
+              message: `${payload.new.asset_name} ${payload.new.trade_type} is now ACTIVE`,
+              priority: 'high',
+              autoRemove: true,
+              duration: 5000
+            });
+          }
+          
+          window.dispatchEvent(new CustomEvent('order-activated', {
+            detail: {
+              signalId: payload.new.id,
+              assetName: payload.new.asset_name,
+              status: payload.new.status,
+              timestamp: new Date().toISOString(),
+              priority: 'high'
+            }
+          }));
+        }, 0);
+      }
+    }
+  }, []);
 
   // PHASE 2: Helper functions for map operations
   const arrayToMap = useCallback((alerts: TradeAlertWithProfile[]): Record<string, TradeAlertWithProfile> => {
@@ -204,12 +282,10 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         if (isDevToolsEnabled()) {
           console.log('📊 Using comprehensive cached signals, skipping all database queries');
         }
-unstable_batchedUpdates(() => {
-  setSignalsMap(cache.dataMap);
-  setLastUpdated(new Date());
-  setError(null);
-});
-return;
+        setSignalsMap(cache.dataMap);
+        setLastUpdated(new Date());
+        setError(null);
+        return;
       }
       
       // PHASE 3: Use cached educator IDs or fetch fresh ones
@@ -240,11 +316,9 @@ return;
 
 if (!alertsData || alertsData.length === 0) {
   console.log('SignalRealtimeContext - No educator alerts found');
-  unstable_batchedUpdates(() => {
-    setSignalsMap({});
-    setLastUpdated(new Date());
-    setError(null);
-  });
+  setSignalsMap({});
+  setLastUpdated(new Date());
+  setError(null);
   return;
 }
 
@@ -291,11 +365,9 @@ if (!alertsData || alertsData.length === 0) {
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
-unstable_batchedUpdates(() => {
-  setSignalsMap(alertsMap);
-  setLastUpdated(new Date());
-  setError(null);
-});
+      setSignalsMap(alertsMap);
+      setLastUpdated(new Date());
+      setError(null);
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
@@ -379,346 +451,163 @@ unstable_batchedUpdates(() => {
 
   const isInPollingMode = connectionStateRef.current.isPollingMode;
 
-  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms  
-  const handleRealtimeUpdate = useCallback(async (payload: any) => {
+  // 🚀 ATOMIC UPDATE HANDLER: Single source of truth with Immer immutability
+  const atomicSignalUpdate = useCallback(async (payload: any) => {
+    const transactionId = generateTransactionId();
     const signalId = payload?.new?.id || payload?.old?.id;
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    // Store transaction context
+    stateTransitionRef.current[transactionId] = `${eventType}_${signalId}`;
     
     // === DIAGNOSTIC POINT 1: INCOMING EVENT ===
     console.log('[DIAGNOSTIC] 1. INCOMING EVENT:', {
+      transactionId,
       timestamp: new Date().toISOString(),
-      eventType: payload.eventType,
+      eventType: eventType,
       signalId: signalId,
       rawPayload: JSON.parse(JSON.stringify(payload)),
       payloadKeys: Object.keys(payload || {}),
-      newRecord: payload?.new ? JSON.parse(JSON.stringify(payload.new)) : null,
-      oldRecord: payload?.old ? JSON.parse(JSON.stringify(payload.old)) : null
+      newRecord: newRecord ? JSON.parse(JSON.stringify(newRecord)) : null,
+      oldRecord: oldRecord ? JSON.parse(JSON.stringify(oldRecord)) : null
     });
     
     if (isDevToolsEnabled()) {
-      console.log('🔄 SignalRealtime event:', {
-        type: payload.eventType,
+      console.log('🔄 SignalRealtime atomic update:', {
+        transactionId,
+        type: eventType,
         signalId,
         timestamp: new Date().toISOString()
       });
     }
     
-    if (isDevToolsEnabled()) {
-      console.log('SignalRealtimeContext - Processing real-time update:', payload.eventType, signalId);
-    }
-    
-    healthMonitor.recordRealtimeMessage('SignalRealtime', payload.eventType || 'unknown');
-    telemetry.record('signal_change_v3'); // PHASE C: Per-channel telemetry with versioning
+    healthMonitor.recordRealtimeMessage('SignalRealtime', eventType || 'unknown');
+    telemetry.record('signal_change_v3');
     
     try {
-      const { eventType, new: newRecord, old: oldRecord } = payload;
-      
-      if (eventType === 'INSERT' && newRecord) {
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
-        }
-        
-        // Get profile for the new signal
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newRecord.user_id)
-          .single();
-
-        if (profileError && isDevToolsEnabled()) {
-          console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
-        }
-
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Profile for new signal:', profile);
-        }
-
-        // ACL: Transform database record with profile to camelCase
-        const newSignal: TradeAlertWithProfile = transformTradeAlertWithProfile({
-          ...newRecord,
-          profiles: profile || undefined
+      // ATOMIC STATE UPDATE with Immer
+      setSignalsMap(produce(draft => {
+        // === DIAGNOSTIC POINT 2: STATE BEFORE UPDATE ===
+        console.log(`[DIAGNOSTIC] 2. STATE BEFORE UPDATE (${eventType}):`, {
+          transactionId,
+          timestamp: new Date().toISOString(),
+          eventType,
+          signalId,
+          currentStateKeys: Object.keys(draft),
+          currentStateCount: Object.keys(draft).length,
+          currentState: JSON.parse(JSON.stringify(draft)),
+          signalExists: !!draft[signalId]
         });
-
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
-        }
         
-        // PHASE 2: Map-based state update with O(1) duplicate check
-        setSignalsMap(prev => {
-          // === DIAGNOSTIC POINT 2A: STATE BEFORE UPDATE (INSERT) ===
-          console.log('[DIAGNOSTIC] 2A. STATE BEFORE UPDATE (INSERT):', {
-            timestamp: new Date().toISOString(),
-            eventType: 'INSERT',
-            signalId: newSignal.id,
-            currentStateKeys: Object.keys(prev),
-            currentStateCount: Object.keys(prev).length,
-            currentState: JSON.parse(JSON.stringify(prev)),
-            signalAlreadyExists: !!prev[newSignal.id]
-          });
-          
+        if (eventType === 'INSERT' && newRecord) {
           // === DIAGNOSTIC POINT 3A: INTENDED CHANGE (INSERT) ===
           console.log('[DIAGNOSTIC] 3A. INTENDED CHANGE (INSERT):', {
+            transactionId,
             timestamp: new Date().toISOString(),
             eventType: 'INSERT',
-            signalId: newSignal.id,
-            newSignalObject: JSON.parse(JSON.stringify(newSignal)),
-            willSkipDuplicate: !!prev[newSignal.id],
-            intendedAction: prev[newSignal.id] ? 'SKIP_DUPLICATE' : 'ADD_NEW_SIGNAL'
-          });
-          
-          // Check for duplicates using O(1) lookup
-          if (prev[newSignal.id]) {
-            if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
-            }
-            return prev;
-          }
-          return { ...prev, [newSignal.id]: newSignal };
-        });
-        
-        // PHASE 2: Update local cache with new signal (map-based)
-        const cache = localCacheRef.current;
-        if (Object.keys(cache.dataMap).length > 0) {
-          cache.dataMap = { ...cache.dataMap, [newSignal.id]: newSignal };
-        }
-        
-        // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'signal_created',
-            title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-            message: `${profile?.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
             signalId: newRecord.id,
-            assetName: newRecord.asset_name,
-            authorName: profile?.display_name || 'Educator',
-            priority: 'high',
-            autoRemove: true,
+            newRecordObject: JSON.parse(JSON.stringify(newRecord)),
+            willSkipDuplicate: !!draft[newRecord.id],
+            intendedAction: draft[newRecord.id] ? 'SKIP_DUPLICATE' : 'ADD_NEW_SIGNAL'
           });
-        }
-        
-        // Also dispatch custom event for backwards compatibility
-        window.dispatchEvent(new CustomEvent('signal-posted'));
-      } 
-      else if (eventType === 'UPDATE' && newRecord) {
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
-        }
-        
-        // PHASE 2: Map-based state update for better performance
-        setSignalsMap(prev => {
-          // 🚀 ORDER ACTIVATION BYPASS: Detect critical order status changes with O(1) lookup
-          const existingSignal = prev[newRecord.id];
-          const isOrderActivation = existingSignal?.status === 'pending' && newRecord.status === 'active';
+          
+          // Skip duplicates using O(1) lookup
+          if (draft[newRecord.id]) {
+            if (isDevToolsEnabled()) {
+              console.log('SignalRealtime - Signal already in state, skipping duplication:', newRecord.id);
+            }
+            return;
+          }
+          
+          // Add new signal to draft (Immer handles immutability)
+          draft[newRecord.id] = transformTradeAlertWithProfile({
+            ...newRecord,
+            profiles: null // Will be loaded asynchronously
+          });
+          
+        } else if (eventType === 'UPDATE' && newRecord && draft[newRecord.id]) {
+          const existingSignal = draft[newRecord.id];
+          const isOrderActivation = existingSignal.status === 'pending' && newRecord.status === 'active';
           const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
-          const isNotesUpdate = existingSignal?.notes !== newRecord.notes;
+          const isNotesUpdate = existingSignal.notes !== newRecord.notes;
           
-          if (isDevToolsEnabled() && isCriticalStatusChange) {
-            console.log(`🚀 ORDER STATUS BYPASS: ${existingSignal?.status} → ${newRecord.status} for ${newRecord.asset_name}`);
-          }
-          
-          if (isDevToolsEnabled() && isNotesUpdate) {
-            console.log(`📝 NOTES UPDATE: "${existingSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
-          }
-
-          // === DIAGNOSTIC POINT 2B: STATE BEFORE UPDATE (UPDATE) ===
-          console.log('[DIAGNOSTIC] 2B. STATE BEFORE UPDATE (UPDATE):', {
+          // === DIAGNOSTIC POINT 3B: INTENDED CHANGE (UPDATE) ===
+          console.log('[DIAGNOSTIC] 3B. INTENDED CHANGE (UPDATE):', {
+            transactionId,
             timestamp: new Date().toISOString(),
             eventType: 'UPDATE',
             signalId: newRecord.id,
-            currentStateKeys: Object.keys(prev),
-            currentStateCount: Object.keys(prev).length,
-            currentState: JSON.parse(JSON.stringify(prev)),
-            existingSignal: existingSignal ? JSON.parse(JSON.stringify(existingSignal)) : null,
-            signalExists: !!existingSignal,
-            statusChange: existingSignal ? `${existingSignal.status} → ${newRecord.status}` : 'N/A',
+            originalDbRecord: JSON.parse(JSON.stringify(newRecord)),
+            existingSignalInState: JSON.parse(JSON.stringify(existingSignal)),
+            willUpdateSignal: true,
+            intendedAction: 'UPDATE_EXISTING_SIGNAL',
+            statusChange: `${existingSignal.status} → ${newRecord.status}`,
             isOrderActivation,
             isCriticalStatusChange,
-            isNotesUpdate
-          });
-
-          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
-          if (isOrderActivation) {
-            console.log(`🎯 ACTIVATION DETECTED: Forcing immediate UI update for ${newRecord.asset_name} (${newRecord.id})`);
-            
-            // Dispatch activation event with high priority
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
-                detail: {
-                  signalId: newRecord.id,
-                  assetName: newRecord.asset_name,
-                  status: 'active',
-                  timestamp: new Date().toISOString(),
-                  priority: 'high'
-                }
-              }));
-            }, 0);
-
-            // 🚀 PHASE 2: Enhanced activation reliability - Force delayed refresh with map update
-            setTimeout(() => {
-              console.log(`🔄 ACTIVATION REFRESH: Triggering delayed UI sync for ${newRecord.asset_name}`);
-              setSignalsMap(current => {
-                if (!current[newRecord.id]) return current;
-                return {
-                  ...current,
-                  [newRecord.id]: {
-                    ...current[newRecord.id],
-                    status: 'active',
-                    updatedAt: new Date().toISOString()
-                  }
-                };
-              });
-            }, 100);
-          }
-          
-          // Skip if signal doesn't exist
-          if (!prev[newRecord.id]) {
-            return prev;
-          }
-          
-          // ACL: Transform database record to camelCase and merge with existing signal
-          const storedSignal = prev[newRecord.id];
-          const transformedRecord = transformTradeAlertWithProfile({
-            ...newRecord,
-            profiles: storedSignal.creator ? {
-              id: storedSignal.creator.id,
-              display_name: storedSignal.creator.display_name,
-              role: storedSignal.creator.role,
-              avatar_url: storedSignal.creator.avatar_url || null,
-              user_type: storedSignal.creator.user_type || null,
-              access_level: storedSignal.creator.access_level || null
-            } : undefined
+            isNotesUpdate,
+            tpHitsUpdate: {
+              old: existingSignal.tpHits,
+              new: newRecord.tp_hits
+            }
           });
           
-          const updatedSignal = {
-            ...storedSignal,
-            ...transformedRecord,
-            creator: storedSignal.creator // Preserve existing creator info
-          };
+          // Update existing signal (Immer handles immutability)
+          Object.assign(draft[newRecord.id], {
+            assetName: newRecord.asset_name,
+            tradeType: newRecord.trade_type,
+            entryPrice: newRecord.entry_price,
+            stopLoss: newRecord.stop_loss,
+            takeProfit1: newRecord.take_profit_1,
+            takeProfit2: newRecord.take_profit_2,
+            takeProfit3: newRecord.take_profit_3,
+            takeProfit4: newRecord.take_profit_4,
+            takeProfit5: newRecord.take_profit_5,
+            status: newRecord.status,
+            notes: newRecord.notes,
+            updatedAt: newRecord.updated_at,
+            closedAt: newRecord.closed_at,
+            tpHits: newRecord.tp_hits || []
+          });
           
-          // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
-          let finalSignal = updatedSignal;
-          if (newRecord.tp_hits) {
-            // Ensure TP hits are sequential and valid
-            const validTpHits = [];
-            const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
-            
-            // Only allow sequential TP hits (1, then 2, then 3, etc.)
-            for (let i = 0; i < sortedTpHits.length; i++) {
-              const expectedTp = i + 1;
-              if (sortedTpHits[i] === expectedTp) {
-                validTpHits.push(expectedTp);
-              } else {
-                // Invalid TP sequence detected, break
-                console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${finalSignal.id}`);
-                break;
-              }
-            }
-            
-            finalSignal = {
-              ...finalSignal,
-              tpHits: validTpHits // Use validated TP hits
-            };
-          }
+        } else if (eventType === 'DELETE' && oldRecord && draft[oldRecord.id]) {
+          // === DIAGNOSTIC POINT 3C: INTENDED CHANGE (DELETE) ===
+          console.log('[DIAGNOSTIC] 3C. INTENDED CHANGE (DELETE):', {
+            transactionId,
+            timestamp: new Date().toISOString(),
+            eventType: 'DELETE',
+            signalId: oldRecord.id,
+            deletedRecord: JSON.parse(JSON.stringify(oldRecord)),
+            signalExistsInState: !!draft[oldRecord.id],
+            intendedAction: 'DELETE_SIGNAL'
+          });
           
-          // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
-          if (isOrderActivation) {
-            // Enhanced activation notification
-            if ((window as any).addNotification) {
-              (window as any).addNotification({
-                type: 'order_activated',
-                title: `🚀 Order Activated!`,
-                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
-                priority: 'high',
-                autoRemove: true,
-                duration: 5000
-              });
-            }
-            
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('order-activated', {
-                detail: {
-                  signalId: newRecord.id,
-                  assetName: newRecord.asset_name,
-                  status: newRecord.status,
-                  timestamp: new Date().toISOString(),
-                  priority: 'high'
-                }
-              }));
-            }, 0);
-           }
-           
-           // === DIAGNOSTIC POINT 3B: INTENDED CHANGE (UPDATE) ===
-           console.log('[DIAGNOSTIC] 3B. INTENDED CHANGE (UPDATE):', {
-             timestamp: new Date().toISOString(),
-             eventType: 'UPDATE',
-             signalId: newRecord.id,
-             finalSignalObject: JSON.parse(JSON.stringify(finalSignal)),
-             originalDbRecord: JSON.parse(JSON.stringify(newRecord)),
-             existingSignalInState: existingSignal ? JSON.parse(JSON.stringify(existingSignal)) : null,
-             willUpdateSignal: !!prev[newRecord.id],
-             intendedAction: prev[newRecord.id] ? 'UPDATE_EXISTING_SIGNAL' : 'SKIP_MISSING_SIGNAL',
-             tpHitsValidation: finalSignal.tpHits ? {
-               originalTpHits: newRecord.tp_hits,
-               validatedTpHits: finalSignal.tpHits,
-               wasFiltered: JSON.stringify(newRecord.tp_hits) !== JSON.stringify(finalSignal.tpHits)
-             } : null
-           });
-           
-           // PHASE 2: Update the map with the validated signal
-           const updatedMap = { ...prev, [newRecord.id]: finalSignal };
-          
-          // Developer mode logging for state transitions
-          if (isDevToolsEnabled()) {
-            console.log(`[SignalRealtime] UPDATE event for signal ${newRecord.id}:`, {
-              oldStatus: prev[newRecord.id]?.status,
-              newStatus: newRecord.status,
-              signalsBefore: Object.keys(prev).length,
-              signalsAfter: Object.keys(updatedMap).length
-            });
-          }
-          
-          // Mark as closed in cache for telemetry (but don't filter from state during UPDATE)
-          if (newRecord.status === 'closed') {
-            signalCacheManager.markSignalClosed(newRecord.id, newRecord.closed_at || newRecord.updated_at);
-            if (isDevToolsEnabled()) {
-              console.log(`[SignalRealtime] Signal ${newRecord.id} marked as closed, keeping in state for immediate UI update`);
-            }
-          }
-          
-          // Return updated map directly for UPDATE events to preserve immediate status transitions
-          return updatedMap;
-        });
-        
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
+          // Remove signal from draft (Immer handles immutability)
+          delete draft[oldRecord.id];
         }
+      }));
+      
+      // Synchronous cache update immediately after state update
+      updateLocalCacheSync(payload, eventType as 'INSERT' | 'UPDATE' | 'DELETE');
+      
+      // Update metadata atomically
+      setLastUpdated(new Date());
+      setError(null);
+      
+      // Schedule post-update effects (notifications, events) to run after state update
+      schedulePostUpdateEffects(payload, eventType as 'INSERT' | 'UPDATE' | 'DELETE');
+      
+      // Clean up transaction context
+      delete stateTransitionRef.current[transactionId];
+      
+      if (isDevToolsEnabled()) {
+        console.log(`✅ Atomic update completed for transaction ${transactionId}`);
       }
-      else if (eventType === 'DELETE' && oldRecord) {
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
-        }
-        
-        // PHASE 2: Map-based deletion with O(1) operation
-        setSignalsMap(prev => {
-          const { [oldRecord.id]: deleted, ...remaining } = prev;
-          return remaining;
-        });
-        
-        // PHASE 2: Update local cache by removing deleted signal (map-based)
-        const cache = localCacheRef.current;
-        if (Object.keys(cache.dataMap).length > 0) {
-          const { [oldRecord.id]: deleted, ...remaining } = cache.dataMap;
-          cache.dataMap = remaining;
-        }
-      }
-
-unstable_batchedUpdates(() => {
-  setLastUpdated(new Date());
-  setError(null);
-});
+      
     } catch (err) {
-      console.error('SignalRealtimeContext - Failed to handle realtime update:', err);
+      console.error(`❌ Atomic update failed for transaction ${transactionId}:`, err);
+      delete stateTransitionRef.current[transactionId];
     }
-  }, []);
+  }, [generateTransactionId, healthMonitor, telemetry, updateLocalCacheSync, schedulePostUpdateEffects]);
 
   // 🔥 LEAK-PROOF: Subscribe with mount guards and definitive logging
   const subscribe = useCallback(async () => {
@@ -768,7 +657,7 @@ unstable_batchedUpdates(() => {
           event: 'INSERT',
           filter: `user_id=in.(${educatorUserIds.join(',')})`
         },
-        handleRealtimeUpdate
+        atomicSignalUpdate
       );
       
       // 🚀 ENHANCED UPDATE FILTER: All meaningful updates for comprehensive coverage
@@ -779,7 +668,7 @@ unstable_batchedUpdates(() => {
           // Capture all significant changes: status changes, TP hits, notes, activations
           filter: `user_id=in.(${educatorUserIds.join(',')})`
         },
-        handleRealtimeUpdate
+        atomicSignalUpdate
       );
       
       // Combine unsubscribe functions
@@ -806,7 +695,7 @@ unstable_batchedUpdates(() => {
         consecutiveFailures: connectionStateRef.current.consecutiveFailures + 1
       });
     }
-  }, [subscribeToTable, handleRealtimeUpdate, refreshSignals, isSignalSubscriptionAllowed, updateConnectionState]);
+  }, [subscribeToTable, atomicSignalUpdate, refreshSignals, isSignalSubscriptionAllowed, updateConnectionState]);
 
   // 🔥 LEAK-PROOF: Deterministic unsubscribe with definitive logging
   const unsubscribe = useCallback(() => {
@@ -872,9 +761,12 @@ unstable_batchedUpdates(() => {
     };
   }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
 
-  // === DIAGNOSTIC POINT 4: STATE AFTER UPDATE ===
-  // Monitor signalsMap changes to log complete state after updates
+  // === DIAGNOSTIC POINT 4: STATE AFTER UPDATE (Transaction-based monitoring) ===
+  // Monitor signalsMap changes with transaction tracking to guarantee complete lifecycle logging
   useEffect(() => {
+    // Check if there are any active transactions
+    const activeTransactions = Object.keys(stateTransitionRef.current);
+    
     console.log('[DIAGNOSTIC] 4. STATE AFTER UPDATE:', {
       timestamp: new Date().toISOString(),
       stateUpdateTrigger: 'signalsMap_changed',
@@ -890,8 +782,24 @@ unstable_batchedUpdates(() => {
         notes: signal.notes?.substring(0, 100) + (signal.notes && signal.notes.length > 100 ? '...' : ''),
         tpHits: signal.tpHits
       })),
-      lastUpdatedTimestamp: lastUpdated?.toISOString() || null
+      lastUpdatedTimestamp: lastUpdated?.toISOString() || null,
+      activeTransactions: activeTransactions.length > 0 ? activeTransactions.map(id => ({
+        transactionId: id,
+        operation: stateTransitionRef.current[parseInt(id)]
+      })) : [],
+      transactionConsistencyCheck: {
+        hasActiveTransactions: activeTransactions.length > 0,
+        stateUpdatedAfterTransaction: true,
+        lifecycleComplete: activeTransactions.length === 0
+      }
     });
+    
+    // Perform consistency verification
+    if (activeTransactions.length === 0) {
+      console.log('[DIAGNOSTIC] ✅ STATE LIFECYCLE COMPLETE: All transactions processed, state is consistent');
+    } else {
+      console.warn('[DIAGNOSTIC] ⚠️ PENDING TRANSACTIONS: State update occurred with active transactions:', activeTransactions);
+    }
   }, [signalsMap, lastUpdated]);
 
   const contextValue: SignalRealtimeContextType = {

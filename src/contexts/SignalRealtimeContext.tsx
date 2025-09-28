@@ -563,16 +563,43 @@ if (!alertsData || alertsData.length === 0) {
           
           // Update existing signal (Immer handles immutability)
           // FIX #1: Correct field mapping - use tp1..tp5 from database, preserve creator
+          
+          // Step 5: Temporary diagnostics for TP normalization verification
+          console.log('[TP DIAGNOSTIC] Incoming TP values:', {
+            signalId: newRecord.id,
+            rawTP1: newRecord.tp1, rawTP1Type: typeof newRecord.tp1,
+            rawTP2: newRecord.tp2, rawTP2Type: typeof newRecord.tp2,
+            rawTP3: newRecord.tp3, rawTP3Type: typeof newRecord.tp3,
+            rawTP4: newRecord.tp4, rawTP4Type: typeof newRecord.tp4,
+            rawTP5: newRecord.tp5, rawTP5Type: typeof newRecord.tp5
+          });
+          
+          // Step 2B: Normalize null to undefined to prevent phantom TP rows
+          const normalizedTP1 = (typeof newRecord.tp1 === 'number' ? newRecord.tp1 : newRecord.tp1 == null ? undefined : Number(newRecord.tp1));
+          const normalizedTP2 = (typeof newRecord.tp2 === 'number' ? newRecord.tp2 : newRecord.tp2 == null ? undefined : Number(newRecord.tp2));
+          const normalizedTP3 = (typeof newRecord.tp3 === 'number' ? newRecord.tp3 : newRecord.tp3 == null ? undefined : Number(newRecord.tp3));
+          const normalizedTP4 = (typeof newRecord.tp4 === 'number' ? newRecord.tp4 : newRecord.tp4 == null ? undefined : Number(newRecord.tp4));
+          const normalizedTP5 = (typeof newRecord.tp5 === 'number' ? newRecord.tp5 : newRecord.tp5 == null ? undefined : Number(newRecord.tp5));
+          
+          console.log('[TP DIAGNOSTIC] Normalized TP values:', {
+            signalId: newRecord.id,
+            normalizedTP1, normalizedTP1Type: typeof normalizedTP1,
+            normalizedTP2, normalizedTP2Type: typeof normalizedTP2,
+            normalizedTP3, normalizedTP3Type: typeof normalizedTP3,
+            normalizedTP4, normalizedTP4Type: typeof normalizedTP4,
+            normalizedTP5, normalizedTP5Type: typeof normalizedTP5
+          });
+          
           Object.assign(draft[newRecord.id], {
             assetName: newRecord.asset_name,
             tradeType: newRecord.trade_type,
             entryPrice: newRecord.entry_price,
             stopLoss: newRecord.stop_loss,
-            tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
-            tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
-            tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
-            tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
-            tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
+            tp1: normalizedTP1,
+            tp2: normalizedTP2,
+            tp3: normalizedTP3,
+            tp4: normalizedTP4,
+            tp5: normalizedTP5,
             status: newRecord.status,
             notes: newRecord.notes,
             closeReason: newRecord.close_reason,

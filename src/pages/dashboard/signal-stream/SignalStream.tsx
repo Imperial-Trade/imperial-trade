@@ -450,6 +450,12 @@ export default function SignalStream() {
       };
       const result = await updateAlert(alert.id, updateDto);
       console.log('SignalStream - Update result:', result);
+      
+      // Step 4B: Enhanced error handling - check for API failure and surface exact error
+      if (!result) {
+        throw new Error('Update failed - no response from API');
+      }
+      
       if (result && newStatus === 'closed' && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_closed',
@@ -458,16 +464,26 @@ export default function SignalStream() {
         });
       }
     } catch (err) {
-      console.error("Failed to update status:", err);
+      // Step 4C: Enhanced error handling - surface detailed error messages to user
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error("Failed to update status:", {
+        error: errorMessage,
+        alertId: alert.id,
+        newStatus,
+        originalError: err
+      });
+      
       // Revert optimistic update on error
       if (newStatus === 'closed') {
         alert.localClosed = false;
       }
+      
+      // Show user-friendly error message with details
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
-          title: 'Update Failed',
-          message: 'Could not update signal status. Please try again.'
+          title: 'Close Signal Failed',
+          message: `Could not close ${alert.assetName} signal: ${errorMessage}`
         });
       }
     } finally {

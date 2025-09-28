@@ -156,9 +156,18 @@ export class TradingApiService {
       console.log('TradingApiService - Update result:', result);
       
       if (!result.success || !result.data) {
+        // Step 4A: Enhanced error handling - surface detailed error messages
+        const detailedError = result.error || 'Failed to update alert';
+        console.error('TradingApiService - Update failed with detailed error:', {
+          error: detailedError,
+          alertId: id,
+          userId,
+          updateData
+        });
+        
         return {
           success: false,
-          error: result.error || 'Failed to update alert',
+          error: detailedError,
           data: undefined
         };
       }

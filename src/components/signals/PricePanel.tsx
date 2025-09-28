@@ -60,7 +60,8 @@ const StaticLevelsBlock = memo<{
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
 }>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, closeReason }) => {
   const isBuy = tradeType.includes('buy');
-  const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
+  // Step 2A: Filter out both undefined AND null values to eliminate phantom TP rows
+  const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => typeof tp === 'number' && !Number.isNaN(tp));
   const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (

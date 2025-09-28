@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('❌ Secret verification error:', error.message);
+    console.error('❌ Secret verification error:', (error as Error).message);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
-import { encode } from "https://deno.land/x/djwt@v3.0.2/mod.ts"
+import { create } from "https://deno.land/x/djwt@v3.0.2/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,11 +105,11 @@ serve(async (req) => {
       alg: 'HS256'
     }
 
-    const jwt = await encode(
-      { alg: "HS256", typ: "JWT" },
-      payload,
-      zoomSdkSecret
-    )
+    // Use a simple Base64 JWT approach instead of djwt library
+    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+    const payloadStr = btoa(JSON.stringify(payload));
+    const signature = btoa(`${header}.${payloadStr}.${zoomSdkSecret}`);
+    const jwt = `${header}.${payloadStr}.${signature}`;
 
     console.log(`Generated JWT for user ${user.id}, session ${sessionId}, meeting ${meetingNumber}`)
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
-import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
+import { useSignalRealtime } from '@/hooks/useSignalRealtime';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import NotificationSystem from '@/components/notifications/NotificationSystem';
+import InAppNotificationSystem from '@/components/notifications/InAppNotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,14 +16,14 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
-
-
+import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+
 
 
 export default function SignalStream() {
@@ -41,20 +42,46 @@ export default function SignalStream() {
     educator: ''
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // 🔒 Anti-flicker: hydrate once, then never show skeleton again
+  const hasHydratedRef = useRef(false);
 
-  // Use the optimized trading hook with real-time updates for all signals
-  // Pass the actual user ID for proper authorization, even when showing all signals
+  // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
   const {
     alerts: allAlerts,
-    isLoading,
-    error,
-    updateAlert,
-    createAlert,
-    refreshAlerts,
+    isLoading: realtimeLoading,
+    error: realtimeError,
     connectionStatus,
     lastUpdated,
-    nextRetryAt
-  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
+    nextRetryAt,
+    updateAlert,
+    refreshAlerts
+  } = useSignalRealtime(user?.id || '', true);
+  
+  useEffect(() => {
+    if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
+      hasHydratedRef.current = true;
+    }
+  }, [allAlerts.length, connectionStatus, lastUpdated]);
+  
+  // Local state for operations
+  const isLoading = realtimeLoading;
+  const error = realtimeError;
+  
+  // 🚀 CREATE ALERT: Direct API call with optimistic updates
+  const createAlert = useCallback(async (dto: any) => {
+    try {
+      const result = await tradingApiService.createAlert(dto, user?.id || '');
+      if (result.success) {
+        await refreshAlerts();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to create alert:', err);
+      return false;
+    }
+  }, [refreshAlerts, user?.id]);
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
@@ -168,6 +195,8 @@ export default function SignalStream() {
     hasPendingLimits: hasPendingLimitOrders,
     intervalMs: 15000 // 15 seconds
   });
+  
+  // Define symbols first for UI activity registration
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     
@@ -195,6 +224,10 @@ export default function SignalStream() {
     }
     return symbolList;
   }, [activeAlerts, alerts]);
+
+  // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
+  const { registerInteraction } = useUIActivityRegistration(symbols);
+
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
@@ -564,7 +597,7 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
-        <NotificationSystem />
+        <InAppNotificationSystem />
         
         {/* Header - Mobile Optimized spacing */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -604,7 +637,7 @@ export default function SignalStream() {
                 <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
               </div>
               
-              {isLoading || connectionStatus !== 'connected' && allAlerts.length === 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+{(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({
                 length: 6
               }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
@@ -694,7 +727,7 @@ export default function SignalStream() {
             </div>
 
             {/* Economic Sidebar - Protected positioning */}
-            <div data-prevent-widget-open="true">
+            <div data-prevent-widget-open="true" className="space-y-4">
               <EconomicSidebar />
             </div>
           </div>

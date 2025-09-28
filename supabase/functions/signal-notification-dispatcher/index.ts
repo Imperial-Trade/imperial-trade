@@ -179,7 +179,7 @@ async function sendPushNotification(supabase: any, payload: NotificationPayload)
       return true; // No subscribers is not an error
     }
 
-    const playerIds = subscribers.map(sub => sub.onesignal_player_id);
+    const playerIds = subscribers.map((sub: any) => sub.onesignal_player_id);
     console.log(`📱 Sending push to ${playerIds.length} Xeon Stream subscribers`);
 
     // Format notification content based on alert type
@@ -352,6 +352,9 @@ serve(async (req) => {
 
     const { signal_id, signal_data, user_ids } = payload;
 
+    // Create notifications array from payload 
+    const notifications = [payload];
+    
     const results = [];
     
     for (const notification of notifications) {

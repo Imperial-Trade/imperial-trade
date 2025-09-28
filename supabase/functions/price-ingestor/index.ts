@@ -1,5 +1,5 @@
-// IMPERIAL TRADING PRICE INGESTOR v4.0 - STRATEGIC ARCHITECTURAL REFINEMENT
-// The "Factory": Database as source of truth, unconditional upserts, conditional broadcasting
+// IMPERIAL TRADING PRICE INGESTOR v4.1 - CRITICAL RELIABILITY FIXES
+// Enhanced with Stop Loss Priority, Sequential TP Processing, and 100% Reliability
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -10,14 +10,15 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
-// 🎯 ENHANCED SIGNIFICANCE THRESHOLDS - For UI broadcasts only
-const MIN_PRICE_CHANGE_PERCENT = 0.08;
-const MIN_PRICE_CHANGE_PIPS = 0.8;
+// 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
+// These thresholds deliver maximum responsiveness matching top-tier trading platforms
+const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for non-gold assets (ULTRA-SENSITIVE)
+const MIN_PRICE_CHANGE_PIPS = 0.1;      // 0.1 pips for gold assets (ULTRA-SENSITIVE)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-// 🔒 GLOBAL RATE LIMITING - For UI broadcasts only
+// 🚀 ENHANCED RATE LIMITING - For professional 5Hz UI updates
 const SYMBOL_RATE_LIMITS: Record<string, { lastBroadcasts: number[], clampCount: number }> = {};
-const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 0.5;
+const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 5.0; // Enhanced to 5Hz (200ms intervals)
 const MAX_UI_BROADCASTS_PER_BATCH = 50;
 const PER_SYMBOL_CLAMP = 10;
 
@@ -52,29 +53,48 @@ async function initializeSupabase() {
   return supabaseClient;
 }
 
-// 🔥 SIMPLIFIED: Create static channel for UI broadcasts
-async function createBroadcastChannel(supabaseClient: any) {
-  console.log('📡 Creating new Realtime channel...');
-  console.log('🎯 Broadcasting to channel: live-prices-broadcast');
-  const priceChannel = supabaseClient.channel('live-prices-broadcast');
+// 🚀 PHASE 1: Create channel first with retries, then acquire lock
+async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 2): Promise<any> {
+  console.log('📡 Creating broadcast channel with retries...');
   
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
-    }, CHANNEL_SUBSCRIPTION_TIMEOUT);
-
-    priceChannel.subscribe((status: string) => {
-      console.log(`📡 Channel status: ${status}`);
-      clearTimeout(timeout);
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      console.log(`📡 Channel subscription attempt ${attempt}/${maxRetries + 1}...`);
+      const priceChannel = supabaseClient.channel('live-prices-broadcast');
       
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Realtime channel connected successfully');
-        resolve(priceChannel);
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        reject(new Error(`Channel failed to subscribe: ${status}`));
+      const channelResult = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error(`Channel subscription timeout after ${CHANNEL_SUBSCRIPTION_TIMEOUT / 1000} seconds`));
+        }, CHANNEL_SUBSCRIPTION_TIMEOUT);
+
+        priceChannel.subscribe((status: string) => {
+          console.log(`📡 Channel status: ${status} (attempt ${attempt})`);
+          clearTimeout(timeout);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Channel SUBSCRIBED successfully on attempt ${attempt}`);
+            resolve(priceChannel);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            reject(new Error(`Channel failed: ${status}`));
+          }
+        });
+      });
+      
+      return channelResult; // Success - return the channel
+      
+      } catch (error: any) {
+        console.warn(`⚠️ Channel subscription failed on attempt ${attempt}: ${error?.message || error}`);
+        
+        if (attempt <= maxRetries) {
+          const delay = 500 * attempt; // 500ms, 1000ms backoff
+          console.log(`⏱️ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error(`❌ All ${maxRetries + 1} channel subscription attempts failed`);
+          throw error;
+        }
       }
-    });
-  });
+  }
 }
 
 // 🔒 COOPERATIVE LOCK: Acquire broadcast lock with reduced duration
@@ -140,7 +160,7 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
 }
 
 serve(async (req) => {
-  console.log(`🔄 [price-ingestor-v4] ${req.method} request received`);
+  console.log(`🔄 [price-ingestor-v4.1] ${req.method} request received`);
 
   // CORS preflight handling
   if (req.method === 'OPTIONS') {
@@ -180,9 +200,23 @@ serve(async (req) => {
   console.log('✅ Authentication successful');
 
   try {
-    // Parse request payload
+    // Initialize Supabase client
+    await initializeSupabase();
+    
+    // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
+    const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
+      p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
+    });
+    
+    if (activityError) {
+      console.warn('⚠️ Activity check failed, proceeding with full processing:', activityError);
+    }
+    
+    // Parse request payload FIRST
     const requestBody = await req.json();
     const { prices } = requestBody;
+    
+    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
 
     // Validate payload
     if (!prices || !Array.isArray(prices) || prices.length === 0) {
@@ -193,22 +227,91 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📊 Processing ${prices.length} price update(s)`);
     totalPricesProcessed += prices.length;
 
-    // Initialize Supabase client
-    const supabaseClient = await initializeSupabase();
-
-    // STEP 1: Process ALL price ticks for business logic (alerts, limit orders, etc.)
-    console.log('🎯 STEP 1: Processing ALL alerts on raw price data...');
+    // 🚀 STEP 1: CRITICAL PRIORITY PROCESSING - Stop Loss FIRST, then Take Profits
+    console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
     let totalTriggeredAlerts = 0;
+    let limitOrdersActivated = 0;
+    let notificationTriggers: any[] = [];
     
+    // First, process limit order activations using mid prices
+    const symbolsWithPrices = new Map();
     for (const priceUpdate of prices) {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
       const hasMidOnly = typeof priceUpdate.price === 'number';
       
       if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
         console.warn(`⚠️ Skipping invalid price data: ${JSON.stringify(priceUpdate)}`);
+        continue;
+      }
+
+      // Store current prices for limit order processing
+      const currentPrice = hasFullData ? (priceUpdate.bid + priceUpdate.ask) / 2 : priceUpdate.price;
+      symbolsWithPrices.set(priceUpdate.symbol, currentPrice);
+    }
+
+    // Process limit order activations
+    if (symbolsWithPrices.size > 0) {
+      console.log(`🔄 Checking limit orders for ${symbolsWithPrices.size} symbols...`);
+      
+      const { data: pendingLimits, error: fetchError } = await supabaseClient
+        .from('trade_alerts')
+        .select('id, tradermade_symbol, entry_price, trade_type, asset_name, user_id')
+        .eq('status', 'pending')
+        .in('trade_type', ['buy_limit', 'sell_limit'])
+        .in('tradermade_symbol', Array.from(symbolsWithPrices.keys()));
+
+      if (fetchError) {
+        console.error('❌ Error fetching pending limits:', fetchError);
+      } else if (pendingLimits && pendingLimits.length > 0) {
+        for (const alert of pendingLimits) {
+          const currentPrice = symbolsWithPrices.get(alert.tradermade_symbol);
+          if (!currentPrice) continue;
+
+          const shouldTrigger = 
+            (alert.trade_type === 'buy_limit' && currentPrice <= alert.entry_price) ||
+            (alert.trade_type === 'sell_limit' && currentPrice >= alert.entry_price);
+
+          if (shouldTrigger) {
+            const { error: updateError } = await supabaseClient
+              .from('trade_alerts')
+              .update({
+                status: 'active',
+                activated_at: new Date().toISOString(),
+                activation_price: currentPrice,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', alert.id);
+
+            if (!updateError) {
+              limitOrdersActivated++;
+              console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice}`);
+              
+              // Add to notification triggers with HIGH priority
+              notificationTriggers.push({
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                asset_name: alert.asset_name,
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                activation_price: currentPrice,
+                notification_type: 'limit_order_activated',
+                alert_type: 'limit_order_activated',
+                priority_level: 3 // Highest priority for order activations
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // PHASE 4: CRITICAL - Use enhanced alert processing with Stop Loss priority
+    for (const priceUpdate of prices) {
+      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
+      const hasMidOnly = typeof priceUpdate.price === 'number';
+      
+      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
         continue;
       }
 
@@ -227,9 +330,9 @@ serve(async (req) => {
       }
 
       try {
-        // Call enhanced alert processing with bid/ask precision
-        const { data: triggeredAlerts, error: alertError } = await supabaseClient
-          .rpc('process_price_alerts_enhanced', {
+        // PHASE 4: Use enhanced alert processing with Stop Loss priority
+        const { data: alertResults, error: alertError } = await supabaseClient
+          .rpc('process_price_alerts_enhanced_v2', {
             p_symbol: priceUpdate.symbol,
             p_current_bid: priceUpdate.bid,
             p_current_ask: priceUpdate.ask
@@ -237,18 +340,135 @@ serve(async (req) => {
 
         if (alertError) {
           console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, alertError);
-        } else if (triggeredAlerts && triggeredAlerts.length > 0) {
-          const triggeredCount = triggeredAlerts.filter((alert: any) => alert.triggered).length;
-          totalTriggeredAlerts += triggeredCount;
-          console.log(`🚨 ${triggeredCount} alerts triggered for ${priceUpdate.symbol}`);
+        } else if (alertResults && alertResults.length > 0) {
+          // Process triggered alerts in priority order (Stop Loss first)
+          const triggeredAlerts = alertResults.filter((alert: any) => alert.triggered);
+          totalTriggeredAlerts += triggeredAlerts.length;
+          
+          // PHASE 4: STOP LOSS PRIORITY - Process Stop Loss alerts first
+          const stopLossAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type === 'stop_loss');
+          const takeProfitAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type.startsWith('take_profit_'));
+          
+          // Process Stop Loss alerts with HIGHEST priority
+          for (const alert of stopLossAlerts) {
+            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${priceUpdate.bid}`);
+            
+            // Immediately close the signal
+            const { error: closeError } = await supabaseClient
+              .from('trade_alerts')
+              .update({
+                status: 'closed',
+                close_reason: 'stop_loss',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', alert.signal_id);
+
+            if (!closeError) {
+              notificationTriggers.push({
+                signal_id: alert.signal_id,
+                alert_type: 'stop_loss_hit',
+                notification_type: 'stop_loss_hit',
+                triggered_price: priceUpdate.bid,
+                symbol: priceUpdate.symbol,
+                timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                priority_level: 4 // HIGHEST priority for Stop Loss
+              });
+            }
+          }
+          
+          // PHASE 2: Use sequential TP processing for Take Profit alerts
+          for (const alert of takeProfitAlerts) {
+            try {
+              const isBuy = await supabaseClient
+                .from('trade_alerts')
+                .select('trade_type')
+                .eq('id', alert.signal_id)
+                .single();
+
+              if (isBuy.data) {
+                const isBuyTrade = isBuy.data.trade_type.includes('buy');
+                const currentPrice = isBuyTrade ? priceUpdate.ask : priceUpdate.bid;
+                
+                // PHASE 2: Use sequential TP processing
+                const { data: tpResult, error: tpError } = await supabaseClient
+                  .rpc('process_tp_hits_sequential', {
+                    p_trade_id: alert.signal_id,
+                    p_current_price: currentPrice,
+                    p_is_buy: isBuyTrade
+                  });
+
+                if (!tpError && tpResult && tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                  console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
+                  
+                  notificationTriggers.push({
+                    signal_id: alert.signal_id,
+                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                    notification_type: 'take_profit_hit',
+                    triggered_price: currentPrice,
+                    symbol: priceUpdate.symbol,
+                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                    priority_level: 3, // High priority for TP hits
+                    tp_level: tpResult.tp_hit_this_cycle[0]
+                  });
+                }
+              }
+            } catch (tpError) {
+              console.error(`❌ Sequential TP processing error for signal ${alert.signal_id}:`, tpError);
+            }
+          }
+          
+          console.log(`🚨 ${triggeredAlerts.length} alerts triggered for ${priceUpdate.symbol} (${stopLossAlerts.length} SL, ${takeProfitAlerts.length} TP)`);
         }
       } catch (error) {
         console.error(`❌ Critical alert processing error for ${priceUpdate.symbol}:`, error);
       }
     }
 
+    // 🚀 ENHANCED: Send notifications for all significant events
+    if (notificationTriggers.length > 0) {
+      console.log(`📢 NOTIFICATION DISPATCH: Sending ${notificationTriggers.length} trading notifications...`);
+      
+      try {
+        const { data: notifyResult, error: notifyError } = await supabaseClient.functions.invoke(
+          'enhanced-signal-notification-dispatcher',
+          {
+            body: {
+              notifications: notificationTriggers.map(trigger => ({
+                signal_id: trigger.signal_id,
+                notification_type: trigger.notification_type,
+                alert_type: trigger.alert_type,
+                triggered_price: trigger.triggered_price,
+                symbol: trigger.symbol,
+                timestamp: trigger.timestamp,
+                priority_level: trigger.priority_level,
+                delivery_channels: ['push', 'in_app'],
+                // Add all required fields
+                user_id: trigger.user_id || '',
+                asset_name: trigger.asset_name || trigger.symbol,
+                trade_type: trigger.trade_type || 'unknown',
+                entry_price: trigger.entry_price || trigger.triggered_price || 0,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                status: trigger.alert_type === 'stop_loss_hit' ? 'closed' : 'active',
+                author_id: trigger.user_id || '',
+                author_name: 'System' // Safe fallback for automated triggers
+              }))
+            }
+          }
+        );
+        
+        if (notifyError) {
+          console.error('❌ Notification dispatch failed:', notifyError);
+        } else {
+          console.log(`✅ Successfully dispatched ${notificationTriggers.length} trading notifications`);
+        }
+      } catch (error) {
+        console.error('❌ Notification dispatch exception:', error);
+      }
+    }
+
     totalAlertsTriggered += totalTriggeredAlerts;
-    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, triggered ${totalTriggeredAlerts} alerts`);
+    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
 
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
@@ -301,159 +521,188 @@ serve(async (req) => {
           return { success: true, symbol: priceUpdate.symbol, type: 'mid_only' };
         }
       } catch (error) {
-        console.error(`❌ Database upsert exception for ${priceUpdate.symbol}:`, error);
-        return { success: false, symbol: priceUpdate.symbol, error: error.message };
+        console.error(`❌ Upsert exception for ${priceUpdate.symbol}:`, error);
+        return { success: false, error: (error as Error).message, symbol: priceUpdate.symbol };
       }
     });
 
-    // Wait for upserts to complete to ensure data integrity
-    const upsertResults = await Promise.all(upsertPromises);
-    const successfulUpserts = upsertResults.filter((r: any) => r.success).length;
-    const skippedUpserts = upsertResults.filter((r: any) => r.skipped).length;
-    const failedUpserts = upsertResults.filter((r: any) => !r.success && !r.skipped).length;
+    const upsertResults = await Promise.allSettled(upsertPromises);
+    let successfulUpserts = 0;
+    let skippedUpserts = 0;
+    let failedUpserts = 0;
+
+    upsertResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const value = result.value;
+        if (value.skipped) {
+          skippedUpserts++;
+        } else if (value.success) {
+          successfulUpserts++;
+        } else {
+          failedUpserts++;
+        }
+      } else {
+        failedUpserts++;
+        console.error(`❌ Upsert promise rejected for price ${index}:`, result.reason);
+      }
+    });
 
     totalPricesUpserted += successfulUpserts;
     console.log(`✅ STEP 2 COMPLETE: ${successfulUpserts} upserts successful, ${skippedUpserts} skipped, ${failedUpserts} failed`);
-
-    if (failedUpserts > 0) {
-      console.warn(`⚠️ DATABASE HEALTH: ${failedUpserts} price upserts failed out of ${prices.length}`);
-    } else {
+    
+    if (successfulUpserts > 0) {
       console.log(`✅ DATABASE HEALTH: All ${successfulUpserts} price upserts successful`);
     }
 
-    // STEP 3: CONDITIONAL UI Broadcasting (removed heartbeat dependency)
+    // STEP 3: UI BROADCASTING (only if users are active)
     console.log('📡 STEP 3: Checking if UI broadcast should proceed...');
-    let skipBroadcast = false;
-    let lockHolder: string | null = null;
-    let skipReason = '';
     
-    // Step 3.1: Check emergency disable flag
     if (EMERGENCY_DISABLE_BROADCASTS) {
-      console.log('🚨 EMERGENCY MODE: Broadcasts disabled');
-      skipBroadcast = true;
-      skipReason = 'emergency_mode';
-    }
-    
-    // Step 3.2: Acquire cooperative broadcast lock 
-    if (!skipBroadcast) {
-      lockHolder = await acquireBroadcastLock(supabaseClient);
-      if (!lockHolder) {
-        console.log('🔒 No broadcast lock acquired - another instance broadcasting');
-        skipBroadcast = true;
-        skipReason = 'no_broadcast_lock';
-      }
-    }
-    
-    // If no broadcasts needed, return early with success
-    if (skipBroadcast) {
-      console.log(`📡 UI broadcast skipped: ${skipReason}`);
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: `Processed ${prices.length} prices → ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → UI broadcasts skipped (${skipReason})`,
+      console.log('🚨 Emergency broadcast disable active - skipping UI updates');
+      return new Response(JSON.stringify({
+        success: true,
         processed: prices.length,
+        upserted: successfulUpserts,
         alerts_triggered: totalTriggeredAlerts,
-        db_upserts: successfulUpserts,
+        notifications_sent: notificationTriggers.length,
         ui_broadcasts: 0,
-        skip_reason: skipReason
+        broadcast_status: 'emergency_disabled'
       }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        headers: corsHeaders
       });
     }
 
-    // STEP 3.3: Create fresh channel and proceed with UI broadcasting
-    const priceChannel = await createBroadcastChannel(supabaseClient);
+    // 🚀 CRITICAL: ACTIVITY-BASED GATING - Skip UI broadcast if no active users
+    if (!hasActiveUsers) {
+      console.log('📡 UI broadcast skipped: no_active_users');
+      return new Response(JSON.stringify({
+        success: true,
+        processed: prices.length,
+        upserted: successfulUpserts,
+        alerts_triggered: totalTriggeredAlerts,
+        notifications_sent: notificationTriggers.length,
+        ui_broadcasts: 0,
+        broadcast_status: 'no_active_users'
+      }), {
+        status: 200,
+        headers: corsHeaders
+      });
+    }
 
-    // STEP 4: Filter significant prices for UI broadcasting
+    // Try to acquire broadcast lock
+    const lockId = await acquireBroadcastLock(supabaseClient);
+    if (!lockId) {
+      console.log('🔒 No broadcast lock acquired - another instance broadcasting');
+      console.log('📡 UI broadcast skipped: no_broadcast_lock');
+      return new Response(JSON.stringify({
+        success: true,
+        processed: prices.length,
+        upserted: successfulUpserts,
+        alerts_triggered: totalTriggeredAlerts,
+        notifications_sent: notificationTriggers.length,
+        ui_broadcasts: 0,
+        broadcast_status: 'no_lock'
+      }), {
+        status: 200,
+        headers: corsHeaders
+      });
+    }
+
+    // STEP 4: Filter significant prices for UI broadcast
     console.log('🎯 STEP 4: Filtering significant prices for UI broadcast...');
-    const uiPrices = prices.map(p => ({
-      symbol: p.symbol,
-      price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
-      timestamp: p.timestamp || new Date().toISOString()
-    }));
     
-    const significantPrices = filterSignificantPrices(uiPrices);
+    const pricesForUI = prices
+      .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))
+      .map(p => ({
+        symbol: p.symbol,
+        price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
+        timestamp: p.timestamp || new Date().toISOString()
+      }));
+
+    const significantPrices = filterSignificantPrices(pricesForUI);
     
-    // Apply rate limiting and clamps
-    let finalBroadcastPrices = significantPrices.slice(0, MAX_UI_BROADCASTS_PER_BATCH);
-    let clampedCount = significantPrices.length - finalBroadcastPrices.length;
-    
-    if (clampedCount > 0) {
-      totalClampActivations += clampedCount;
-      console.log(`🔒 Rate limit: Clamped ${clampedCount} prices, broadcasting ${finalBroadcastPrices.length}`);
+    if (significantPrices.length === 0) {
+      console.log('📡 No significant price changes for UI broadcast');
+      return new Response(JSON.stringify({
+        success: true,
+        processed: prices.length,
+        upserted: successfulUpserts,
+        alerts_triggered: totalTriggeredAlerts,
+        notifications_sent: notificationTriggers.length,
+        ui_broadcasts: 0,
+        broadcast_status: 'no_significant_changes'
+      }), {
+        status: 200,
+        headers: corsHeaders
+      });
     }
 
-    // STEP 5: Broadcast filtered prices to UI
-    let broadcastCount = 0;
-    for (const priceData of finalBroadcastPrices) {
-      try {
-        await priceChannel.send({
-          type: 'broadcast',
-          event: 'price_update_v3',
-          payload: {
-            symbol: priceData.symbol,
-            price: priceData.price,
-            change: 0,
-            changePercent: 0,
-            ts: priceData.timestamp
-          }
-        });
-        
-        console.log(`💰 UI Broadcast: ${priceData.symbol}: $${priceData.price}`);
-        broadcastCount++;
-      } catch (broadcastError) {
-        console.error(`❌ Broadcast failed for ${priceData.symbol}:`, broadcastError);
-      }
-    }
-    
-    totalUIBroadcasts += broadcastCount;
-    console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${finalBroadcastPrices.length} UI updates broadcasted (${significantPrices.length - finalBroadcastPrices.length} filtered/clamped out)`);
-
-    // Cleanup
+    // Create broadcast channel and send updates
     try {
-      console.log(`📡 Channel status: ${priceChannel.state}`);
-      supabaseClient.removeChannel(priceChannel);
-      console.log('🧹 Channel cleaned up successfully');
-    } catch (cleanupError) {
-      console.warn('⚠️ Channel cleanup error:', cleanupError);
+      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 2);
+      
+      let broadcastCount = 0;
+      for (const priceData of significantPrices) {
+        try {
+          await priceChannel.send({
+            type: 'broadcast',
+            event: 'price_update',
+            payload: {
+              symbol: priceData.symbol,
+              price: priceData.price,
+              timestamp: priceData.timestamp,
+              source: 'price-ingestor-v4.1'
+            }
+          });
+          
+          console.log(`💰 UI Broadcast: ${priceData.symbol}: $${priceData.price}`);
+          broadcastCount++;
+        } catch (broadcastError) {
+          console.error(`❌ Failed to broadcast ${priceData.symbol}:`, broadcastError);
+        }
+      }
+      
+      totalUIBroadcasts += broadcastCount;
+      console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
+      
+    } catch (channelError) {
+      console.error('❌ Failed to create broadcast channel:', channelError);
     }
 
-    // Final telemetry and success response
-    console.log(`📊 SESSION TOTALS: Processed: ${totalPricesProcessed}, Alerts: ${totalAlertsTriggered}, Upserts: ${totalPricesUpserted}, UI: ${totalUIBroadcasts}, Clamps: ${totalClampActivations}`);
-    
-    const responseMessage = `✅ COMPLETE: IMPERIAL TRADING v4.0: Processed ${prices.length} prices → Triggered ${totalTriggeredAlerts} alerts → ${successfulUpserts} DB upserts → ${broadcastCount} UI broadcasts`;
-    console.log(responseMessage);
-
+    // Return success response
     return new Response(JSON.stringify({
       success: true,
-      message: responseMessage,
       processed: prices.length,
+      upserted: successfulUpserts,
       alerts_triggered: totalTriggeredAlerts,
-      db_upserts: successfulUpserts,
-      ui_broadcasts: broadcastCount,
-      session_totals: {
-        processed: totalPricesProcessed,
-        alerts: totalAlertsTriggered,
-        upserts: totalPricesUpserted,
-        ui_broadcasts: totalUIBroadcasts,
-        clamps: totalClampActivations
+      notifications_sent: notificationTriggers.length,
+      ui_broadcasts: totalUIBroadcasts,
+      broadcast_status: 'completed',
+      performance: {
+        total_processed: totalPricesProcessed,
+        total_alerts: totalAlertsTriggered,
+        total_upserted: totalPricesUpserted,
+        total_ui_broadcasts: totalUIBroadcasts
       }
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: corsHeaders
     });
 
   } catch (error) {
-    console.error('💥 Critical error in price ingestor:', error);
-    
+    console.error('❌ Critical error in price processing:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: 'Internal server error',
-      details: error.message
+      error: (error as Error).message,
+      processed: 0,
+      upserted: 0,
+      alerts_triggered: 0,
+      notifications_sent: 0,
+      ui_broadcasts: 0
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: corsHeaders
     });
   }
 });

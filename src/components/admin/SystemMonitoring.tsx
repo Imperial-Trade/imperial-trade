@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminAuditService } from '@/api/services/AdminAuditService';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,8 @@ interface SystemMetrics {
 }
 
 export function SystemMonitoring() {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
+  
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({
     database: 'healthy',
     api: 'healthy',
@@ -55,10 +58,15 @@ export function SystemMonitoring() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log(`🚫 SystemMonitoring: DISABLED on route: ${currentRoute}`);
+      return;
+    }
+    
     checkSystemHealth();
     const interval = setInterval(checkSystemHealth, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring, currentRoute]);
 
   const checkSystemHealth = async () => {
     try {

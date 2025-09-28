@@ -34,7 +34,7 @@ interface EconomicRealtimeProviderProps {
 
 export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> = ({
   children,
-  enabled = true,
+  enabled = false, // 🚨 EMERGENCY FIX: Default to false to prevent automatic subscription
   notificationsEnabled = true
 }) => {
   const [events, setEvents] = useState<EconomicEvent[]>([]);
@@ -82,12 +82,12 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'economic_events'
         },
         (payload) => {
-          console.log('EconomicRealtime - Database change:', payload);
+          console.log('EconomicRealtime - Database INSERT:', payload);
           setLastUpdate(new Date());
           
           if (payload.eventType === 'INSERT') {
@@ -104,7 +104,22 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
                 });
               }
             }
-          } else if (payload.eventType === 'UPDATE') {
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'economic_events',
+          filter: 'actual=is.not.null'
+        },
+        (payload) => {
+          console.log('EconomicRealtime - Database UPDATE:', payload);
+          setLastUpdate(new Date());
+          
+          if (payload.eventType === 'UPDATE') {
             const updatedEvent = payload.new as EconomicEvent;
             setEvents(prev => prev.map(event => 
               event.id === updatedEvent.id ? updatedEvent : event
@@ -117,8 +132,6 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
                 duration: 8000
               });
             }
-          } else if (payload.eventType === 'DELETE') {
-            setEvents(prev => prev.filter(event => event.id !== payload.old.id));
           }
         }
       )

@@ -196,13 +196,13 @@ async function callGoogleAIWithEnhancedHandling(
       lastError = error as Error;
       console.error(
         `Deconstructor Agent - Attempt ${attempt} failed:`,
-        error.message
+        (error as Error).message
       );
 
       // Handle specific error types
       if (
-        error.message.includes("MAX_TOKENS") ||
-        error.message.includes("finishReason")
+        (error as Error).message.includes("MAX_TOKENS") ||
+        (error as Error).message.includes("finishReason")
       ) {
         console.log(
           "Deconstructor Agent - MAX_TOKENS error detected, trying with reduced prompt"
@@ -227,9 +227,9 @@ async function callGoogleAIWithEnhancedHandling(
 
       // Handle rate limiting
       if (
-        error.message.includes("429") ||
-        error.message.includes("quota") ||
-        error.message.includes("RATE_LIMIT")
+        (error as Error).message.includes("429") ||
+        (error as Error).message.includes("quota") ||
+        (error as Error).message.includes("RATE_LIMIT")
       ) {
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 30000; // 30s, 60s, 120s
@@ -488,11 +488,12 @@ serve(async (req) => {
           const mimeType = getMimeTypeFromUrl(imageUrl);
 
           parts.push({
+            text: "",
             inlineData: {
               mimeType: mimeType,
               data: base64Image,
             },
-          });
+          } as any);
 
           console.log(
             "Deconstructor Agent - Image processed successfully:",
@@ -536,7 +537,7 @@ serve(async (req) => {
     } catch (error) {
       console.error(
         "Deconstructor Agent - AI analysis failed, using fallback:",
-        error.message
+        (error as Error).message
       );
 
       // Generate fallback analysis
@@ -631,8 +632,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Deconstructor Agent Error:", error.message);
-    console.error("Deconstructor Agent Stack:", error.stack);
+    console.error("Deconstructor Agent Error:", (error as Error).message);
+    console.error("Deconstructor Agent Stack:", (error as Error).stack);
 
     // Generate fallback response for critical errors
     const fallbackResponse = generateFallbackAnalysis(0, 0);
@@ -640,7 +641,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         reply: fallbackResponse,
-        error: `Analysis temporarily unavailable: ${error.message}`,
+        error: `Analysis temporarily unavailable: ${(error as Error).message}`,
         fallback: true,
       }),
       {

@@ -161,19 +161,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const hasRecoveryTokens = () => {
     try {
-      // Use the enhanced token validator for more robust checking
-      const { TokenValidator } = require('@/utils/tokenValidation');
-      return TokenValidator.hasRecoveryTokens();
+      // Basic check for recovery tokens without require
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      return hashParams.get('type') === 'recovery';
     } catch (error) {
       console.error('❌ Error checking recovery tokens:', error);
-      // Fallback to basic check
-      try {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        return hashParams.get('type') === 'recovery';
-      } catch (fallbackError) {
-        console.error('❌ Fallback token check failed:', fallbackError);
-        return false;
-      }
+      return false;
     }
   };
 

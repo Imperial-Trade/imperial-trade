@@ -53,7 +53,7 @@ serve(async (req) => {
       for (const alert of alerts || []) {
         processedSignals++;
         const currentPrice = price.mid || price.bid; // Use mid price or fallback to bid
-        const tradeType = alert.trade_alerts.trade_type;
+        const tradeType = (alert.trade_alerts as any).trade_type;
         
         let shouldTrigger = false;
         
@@ -112,15 +112,15 @@ serve(async (req) => {
           const notificationPayload = {
             notifications: [{
               signal_id: alert.signal_id,
-              user_id: alert.trade_alerts.user_id,
-              asset_name: alert.trade_alerts.asset_name,
-              trade_type: alert.trade_alerts.trade_type,
+              user_id: (alert.trade_alerts as any).user_id,
+              asset_name: (alert.trade_alerts as any).asset_name,
+              trade_type: (alert.trade_alerts as any).trade_type,
               entry_price: alert.target_price,
               notification_type: 'price_alert_triggered',
               alert_type: alert.alert_type,
               target_price: alert.target_price,
               triggered_price: currentPrice,
-              status: alert.trade_alerts.status,
+              status: (alert.trade_alerts as any).status,
               author_name: 'Price Monitor',
               delivery_channels: ['in_app', 'push'],
               include_creator: true
@@ -161,7 +161,7 @@ serve(async (req) => {
     console.error('❌ Critical error in price monitoring:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      details: error.message,
+      details: (error as Error).message,
       timestamp: new Date().toISOString()
     }), {
       status: 500,

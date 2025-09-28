@@ -1,0 +1,1 @@
+export { SidebarBrand } from '@/components/sidebar/SidebarBrand';

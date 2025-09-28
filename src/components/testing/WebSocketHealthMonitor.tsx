@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { Activity, Heart, Zap, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 interface HealthCheck {
   name: string;
@@ -25,6 +26,7 @@ interface SystemHealth {
 
 export const WebSocketHealthMonitor: React.FC = () => {
   const { connectionStatus, prices, dataSource } = useOptimizedWebSocketPrices();
+  const { shouldEnableMonitoring } = useMonitoringRouteGate();
   const [health, setHealth] = useState<SystemHealth>({
     overall: 'unknown',
     checks: [],
@@ -123,18 +125,22 @@ export const WebSocketHealthMonitor: React.FC = () => {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isMonitoring) {
+    // 🚨 ROUTE GATE: Only run health monitoring on dashboard/admin routes
+    if (isMonitoring && shouldEnableMonitoring) {
       // Initial check
       performHealthChecks();
       
       // Regular checks every 5 seconds
       interval = setInterval(performHealthChecks, 5000);
+    } else if (isMonitoring && !shouldEnableMonitoring) {
+      console.log('🚫 WebSocketHealthMonitor: Disabled on landing page routes for cost optimization');
+      setIsMonitoring(false);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isMonitoring, performHealthChecks]);
+  }, [isMonitoring, shouldEnableMonitoring, performHealthChecks]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

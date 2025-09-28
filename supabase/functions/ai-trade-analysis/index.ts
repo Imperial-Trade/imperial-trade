@@ -214,11 +214,12 @@ serve(async (req) => {
         try {
           const base64Data = await imageUrlToBase64(url);
           parts.push({
-            inline_data: {
-              mime_type: "image/jpeg",
+            text: "",
+            inlineData: {
+              mimeType: "image/jpeg",
               data: base64Data
             }
-          });
+          } as any);
         } catch (error) {
           console.error('Failed to process image:', url, error);
         }

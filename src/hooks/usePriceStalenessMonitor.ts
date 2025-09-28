@@ -7,16 +7,30 @@ interface PriceStalenessStatus {
   lastUpdate: Date | null;
   isHealthy: boolean;
   stalePrices: string[];
+  // 🚀 FRONTEND THROTTLING: Enhanced status with dual-layer awareness
+  uiThrottled: boolean;
+  dataFreshness: 'live' | 'throttled' | 'stale';
 }
 
-export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 30) {
-  const { getConnectionHealth, lastUpdated, prices } = useOptimizedWebSocketPrices();
+export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 2) {
+  const { 
+    getConnectionHealth, 
+    lastUpdated, 
+    prices, 
+    getArrivalAge,
+    getInternalPrice,
+    internalPrices,
+    uiThrottleMs 
+  } = useOptimizedWebSocketPrices();
+  
   const [stalenessStatus, setStalenessStatus] = useState<PriceStalenessStatus>({
     isStale: false,
     ageInSeconds: null,
     lastUpdate: null,
     isHealthy: true,
-    stalePrices: []
+    stalePrices: [],
+    uiThrottled: false,
+    dataFreshness: 'stale'
   });
 
   useEffect(() => {
@@ -24,18 +38,35 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
       const health = getConnectionHealth();
       
       if (symbol) {
-        const priceData = prices[symbol];
-        const now = Date.now();
-        const priceAge = priceData?.timestamp ? now - new Date(priceData.timestamp).getTime() : null;
-        const ageInSeconds = priceAge ? Math.floor(priceAge / 1000) : null;
+        // Sub-2s Live Guarantee: Use arrival age for ultra-responsive staleness detection
+        const arrivalAge = getArrivalAge(symbol);
+        const ageInSeconds = arrivalAge !== Infinity ? Math.floor(arrivalAge / 1000) : null;
         const isStale = ageInSeconds ? ageInSeconds > maxAgeSeconds : true;
+        
+        // 🚀 FRONTEND THROTTLING: Compare UI vs internal prices to detect throttling
+        const uiPrice = prices[symbol];
+        const internalPrice = getInternalPrice(symbol);
+        const uiThrottled = !!(uiPrice && internalPrice && 
+          Math.abs(uiPrice.price - internalPrice.price) > 0.0001);
+        
+        // Determine data freshness considering both layers
+        let dataFreshness: 'live' | 'throttled' | 'stale' = 'stale';
+        if (internalPrice && ageInSeconds !== null) {
+          if (ageInSeconds <= 2) {
+            dataFreshness = uiThrottled ? 'throttled' : 'live';
+          } else if (ageInSeconds <= 10) {
+            dataFreshness = 'throttled';
+          }
+        }
         
         setStalenessStatus({
           isStale,
           ageInSeconds,
           lastUpdate: lastUpdated,
           isHealthy: health.isHealthy,
-          stalePrices: [] // Simplified for hybrid system
+          stalePrices: [], // Simplified for hybrid system
+          uiThrottled,
+          dataFreshness
         });
       } else {
         setStalenessStatus({
@@ -43,7 +74,9 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
           ageInSeconds: null,
           lastUpdate: health.lastUpdate,
           isHealthy: health.isHealthy,
-          stalePrices: [] // Simplified for hybrid system
+          stalePrices: [], // Simplified for hybrid system
+          uiThrottled: false,
+          dataFreshness: 'live'
         });
       }
     };
@@ -55,7 +88,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices]);
+  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices, getArrivalAge, getInternalPrice, internalPrices, uiThrottleMs]);
 
   return stalenessStatus;
 }

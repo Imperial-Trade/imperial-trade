@@ -103,7 +103,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Upload failed', 
-        details: error.message 
+        details: (error as Error).message 
       }),
       { 
         status: 500, 

@@ -77,9 +77,9 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 120, // Business Plan: Ultra-fast 120ms for live price tickers
+    debounceMs: 50, // 🔥 OPTIMIZED: Ultra-fast 50ms for professional grade
     pauseOnInput: false,
-    trackDataAge: false // Prevent data age interval to eliminate flickering
+    trackDataAge: true // 🔥 FIX: Enable data age tracking for accurate Live status
   });
 
   // ✅ Get connection quality from consumer hook (no additional subscription)

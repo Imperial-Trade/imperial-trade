@@ -5,6 +5,7 @@ import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil } from '
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
+import { LivePriceWidgetPriority } from '@/components/ui/LivePriceWidgetPriority';
 import AnimatedStatusHeader from './AnimatedStatusHeader';
 import PricePanel from './PricePanel';
 import TradingCalculator from './TradingCalculator';
@@ -15,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { NotesSyncIndicator } from './NotesSyncIndicator';
+
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
@@ -39,11 +42,40 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [notesDraft, setNotesDraft] = useState(alert.notes || '');
   const [localNotes, setLocalNotes] = useState(alert.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
+  // 🚀 PHASE 2: Enhanced activation listener for instant UI updates
   useEffect(() => {
-    setLocalNotes(alert.notes || '');
-    setNotesDraft(alert.notes || '');
-  }, [alert.id, alert.notes]);
+    const handleActivation = (event: CustomEvent) => {
+      const { signalId, status } = event.detail;
+      if (signalId === alert.id && status === 'active') {
+        console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
+        // Force immediate local state refresh
+        if (onStatusUpdate && alert.status !== 'active') {
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+        }
+      }
+    };
+
+    window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
+    return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
+  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+
+  useEffect(() => {
+    console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
+    
+    // Only update local state if not currently editing to avoid overwriting user input
+    if (!isEditingNotes) {
+      setLocalNotes(alert.notes || '');
+      setNotesDraft(alert.notes || '');
+      
+      // Show brief sync confirmation when notes change from real-time updates
+      if (alert.notes !== localNotes) {
+        setNotesSyncStatus('saved');
+        setTimeout(() => setNotesSyncStatus('idle'), 1500);
+      }
+    }
+  }, [alert.id, alert.notes, isEditingNotes, localNotes]);
   
   // Type-safe derivations
   const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
@@ -94,6 +126,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const handleNotesSave = async () => {
     try {
       setIsSavingNotes(true);
+      setNotesSyncStatus('saving');
+      
+      // Optimistic update - immediately show new notes locally
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
+      
+      console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
+      
       const { error } = await supabase
         .from('trade_alerts')
         .update({ notes: notesDraft })
@@ -101,10 +141,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       if (error) throw error;
 
-      setLocalNotes(notesDraft);
-      setIsEditingNotes(false);
+      console.log(`✅ Notes saved successfully for alert ${alert.id}`);
+      setNotesSyncStatus('saved');
+      
+      // Clear success status after 2 seconds
+      setTimeout(() => setNotesSyncStatus('idle'), 2000);
+      
       toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
     } catch (e: any) {
+      console.error(`❌ Failed to save notes for alert ${alert.id}:`, e);
+      // Revert optimistic update on error
+      setLocalNotes(alert.notes || '');
+      setIsEditingNotes(true);
+      setNotesSyncStatus('error');
+      
+      // Clear error status after 3 seconds
+      setTimeout(() => setNotesSyncStatus('idle'), 3000);
+      
       toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
     } finally {
       setIsSavingNotes(false);
@@ -262,9 +315,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         onOrderActivation={onOrderActivation}
       />
       
+      
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+            <NotesSyncIndicator status={notesSyncStatus} />
+          </div>
           {canEditNotes && !isEditingNotes && (
             <Button 
               variant="ghost" 
@@ -328,7 +385,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 };
 
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // PHASE C: Enhanced memo comparison with tpHitsKey for stable array comparison
+  // 🚀 COMPREHENSIVE memo comparison to prevent unnecessary re-renders while allowing smooth price updates
   const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
   const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
   
@@ -349,10 +406,9 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
     prevHitsKey === nextHitsKey &&
     prevProps.isAdmin === nextProps.isAdmin &&
     prevProps.isCreator === nextProps.isCreator &&
-    prevProps.isRecentClosure === nextProps.isRecentClosure &&
+    prevProps.justAdded === nextProps.justAdded &&
     prevProps.className === nextProps.className &&
-    prevProps.testId === nextProps.testId &&
     JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
-    // Note: livePrice is intentionally excluded to prevent card re-renders on price updates
+    // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
   );
 });

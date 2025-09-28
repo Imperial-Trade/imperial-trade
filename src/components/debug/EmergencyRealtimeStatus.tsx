@@ -7,18 +7,25 @@ import { AlertTriangle, Shield, Activity, Zap } from 'lucide-react';
 import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 import { useCostTracking } from '@/hooks/useCostTracking';
 import { useUltraCostOptimization } from '@/hooks/useUltraCostOptimization';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 export const EmergencyRealtimeStatus: React.FC = () => {
+  const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
   const [status, setStatus] = React.useState(() => emergencyRealtimeBreaker.getStatus());
   const costMetrics = useCostTracking();
   const optimization = useUltraCostOptimization();
 
   React.useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log(`🚫 EmergencyRealtimeStatus: DISABLED on route: ${currentRoute}`);
+      return;
+    }
+    
     const interval = setInterval(() => {
       setStatus(emergencyRealtimeBreaker.getStatus());
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring, currentRoute]);
 
   const handleReset = () => {
     emergencyRealtimeBreaker.reset();

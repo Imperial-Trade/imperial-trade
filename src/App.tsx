@@ -10,6 +10,7 @@ import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
 import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
+import { RouteBasedEconomicProvider } from "@/contexts/RouteBasedEconomicProvider";
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
 import { RealtimeConnectionManagerProvider } from "@/contexts/RealtimeConnectionManager";
 import { TelemetryProvider } from "@/contexts/TelemetryContext";
@@ -127,7 +128,8 @@ function App() {
                           <WebSocketErrorBoundary>
                             <ContextErrorBoundary>
                               <SharedRealtimeProvider>
-                                <SignalRealtimeProvider>
+                                <RouteBasedEconomicProvider>
+                                  <SignalRealtimeProvider>
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -332,8 +334,9 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
-                              </SignalRealtimeProvider>
-                            </SharedRealtimeProvider>
+                                  </SignalRealtimeProvider>
+                                </RouteBasedEconomicProvider>
+                              </SharedRealtimeProvider>
                           </ContextErrorBoundary>
                         </WebSocketErrorBoundary>
                         </OptimizedWebSocketPriceProvider>

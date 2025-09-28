@@ -40,10 +40,10 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
 
   const navigationItems = [
     { to: "/dashboard/home", icon: Home, label: "Home" },
-    { to: "/dashboard/education", icon: GraduationCap, label: "IMPERIAL ACADEMY" },
+    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
-    { to: "/dashboard/forum", icon: MessageSquare, label: "ORDERFLOW" },
+    { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
     { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
     { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },

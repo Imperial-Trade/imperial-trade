@@ -58,7 +58,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
     {
       to: getAcademyAppUrl(),
       icon: GraduationCap,
-      label: "IMPERIAL ACADEMY", 
+      label: "Education", 
       description: "Comprehensive trading education platform",
       external: true
     },
@@ -71,7 +71,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
     {
       to: getOrderFlowAppUrl(),
       icon: Users,
-      label: "ORDERFLOW",
+      label: "Community",
       description: "Connect with fellow traders",
       external: true
     },

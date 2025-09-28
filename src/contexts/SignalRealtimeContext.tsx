@@ -181,11 +181,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   // Post-update effects handler (runs after state update)
   const schedulePostUpdateEffects = useCallback((payload: any, actionType: 'INSERT' | 'UPDATE' | 'DELETE') => {
     if (actionType === 'INSERT' && payload.new) {
-      // FIX #3: Remove duplicate notification - InAppNotificationSystem handles signal_created via broadcast
-      // Only dispatch custom event, not local notification to prevent duplicates
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('signal-posted'));
-      }, 0);
+      // FIX #3: Duplicate notification eliminated - InAppNotificationSystem handles signal_created via broadcast
+      // No custom event dispatch needed for INSERT operations
     } else if (actionType === 'UPDATE' && payload.new) {
       const isOrderActivation = payload.old?.status === 'pending' && payload.new.status === 'active';
       

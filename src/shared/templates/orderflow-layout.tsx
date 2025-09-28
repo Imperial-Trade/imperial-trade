@@ -4,22 +4,20 @@ import { SharedHeader } from '../components/navigation/SharedHeader';
 import { AppSidebar } from '../components/navigation/AppSidebar';
 import { 
   Home,
+  BarChart,
   TrendingUp,
-  BarChart3,
   Activity,
-  Target,
-  Users,
   Settings,
+  Zap,
 } from "lucide-react";
 
 // OrderFlow-specific navigation configuration
 const orderFlowNavigationItems = [
   { to: "/dashboard/home", icon: Home, label: "Dashboard" },
-  { to: "/dashboard/charts", icon: TrendingUp, label: "Live Charts" },
-  { to: "/dashboard/analysis", icon: BarChart3, label: "Market Analysis" },
-  { to: "/dashboard/scanner", icon: Activity, label: "Order Scanner" },
-  { to: "/dashboard/signals", icon: Target, label: "Trade Signals" },
-  { to: "/dashboard/community", icon: Users, label: "Community" },
+  { to: "/dashboard/market-depth", icon: BarChart, label: "Market Depth" },
+  { to: "/dashboard/order-flow", icon: Activity, label: "Order Flow" },
+  { to: "/dashboard/footprint", icon: TrendingUp, label: "Footprint Charts" },
+  { to: "/dashboard/scalping", icon: Zap, label: "Scalping Tools" },
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
 

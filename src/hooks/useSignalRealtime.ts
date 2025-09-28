@@ -21,11 +21,20 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   // Check if we should use the new signal store
   const shouldUseNewStore = useNewSignalStore();
   
+  console.log('🚀 useSignalRealtime called - shouldUseNewStore:', shouldUseNewStore, 'userId:', userId);
+  
   // NEW STORE IMPLEMENTATION
   if (shouldUseNewStore) {
     console.log('🆕 Using new Zustand signal store');
     
     const storeData = useSignalStore(userId);
+    
+    console.log('📊 Store data:', {
+      alertsCount: storeData.alerts?.length || 0,
+      isLoading: storeData.isLoading,
+      connectionStatus: storeData.connectionStatus,
+      error: storeData.error
+    });
     
     // Initialize real-time connection
     useEffect(() => {

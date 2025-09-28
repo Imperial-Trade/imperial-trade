@@ -12,7 +12,12 @@ export const isDevelopment = (): boolean => {
 };
 
 export const getMainAppUrl = (): string => {
-  return "https://www.tradeimperial.com/";
+  // Use current origin for development, or specific Lovable URL for deployment
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  // Fallback for server-side rendering - use the main project's Lovable URL
+  return "https://www.tradeimperial.com";
 };
 
 export const isProductionDomain = (): boolean => {

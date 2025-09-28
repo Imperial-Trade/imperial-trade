@@ -49,9 +49,10 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
       }
     }, [userId]);
     
-    // Exact API compatibility with legacy hook
+    // Exact API compatibility with legacy hook - hide userId from component interface
     const updateAlert = useCallback(
       async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+        console.log('🔄 New Store - updateAlert called:', { id, dto });
         return storeData.updateAlert(id, dto, userId);
       },
       [storeData.updateAlert, userId]
@@ -59,6 +60,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     
     const refreshAlerts = useCallback(
       async (): Promise<void> => {
+        console.log('🔄 New Store - refreshAlerts called');
         await storeData.refreshAlerts(userId);
       },
       [storeData.refreshAlerts, userId]

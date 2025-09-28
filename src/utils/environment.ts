@@ -12,8 +12,7 @@ export const isDevelopment = (): boolean => {
 };
 
 export const getMainAppUrl = (): string => {
-  // Always return production URL for cross-app navigation
-  return "https://www.tradeimperial.com";
+  return "https://www.tradeimperial.com/";
 };
 
 export const isProductionDomain = (): boolean => {
@@ -22,11 +21,11 @@ export const isProductionDomain = (): boolean => {
 };
 
 export const getOrderFlowAppUrl = (): string => {
-  return "https://orderflow.tradeimperial.com";
+  return "https://www.tradeimperial.com/orderflow";
 };
 
 export const getAcademyAppUrl = (): string => {
-  return "https://academy.tradeimperial.com";
+  return "https://www.tradeimperial.com/academy";
 };
 
 /**

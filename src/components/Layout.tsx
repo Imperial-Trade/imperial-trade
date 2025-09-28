@@ -9,7 +9,6 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
 import { SharedHeader } from "@/components/shared/SharedHeader"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
-import { NavigationProvider } from "@/contexts/NavigationContext"
 
 // DashboardHeader replaced with SharedHeader component
 
@@ -67,41 +66,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   // For dashboard pages, use sidebar layout
   return (
-    <NavigationProvider>
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen w-full bg-background">
-          <ErrorBoundary componentName="Header">
-            <SharedHeader />
-          </ErrorBoundary>
+    <SidebarProvider defaultOpen={false}>
+      <div className="min-h-screen w-full bg-background">
+        <ErrorBoundary componentName="Header">
+          <SharedHeader />
+        </ErrorBoundary>
 
-          {/* Mobile: Use existing Sheet-based sidebar */}
-          {isMobile && (
-            <ErrorBoundary componentName="Mobile Sidebar">
-              <AppSidebar />
-            </ErrorBoundary>
-          )}
-
-          {/* Tablet & Desktop: Use custom overlay sidebar */}
-          <ErrorBoundary componentName="Sidebar Overlay">
-            <SidebarOverlay />
+        {/* Mobile: Use existing Sheet-based sidebar */}
+        {isMobile && (
+          <ErrorBoundary componentName="Mobile Sidebar">
+            <AppSidebar />
           </ErrorBoundary>
+        )}
 
-          {/* Main content - centered, no left margin */}
-          <main className="w-full min-h-screen pt-20 bg-background/20 backdrop-blur-sm border-l border-border/10">
-            <ErrorBoundary componentName="Page Content">
-              <Outlet />
-            </ErrorBoundary>
-          </main>
-          
-          {/* Trading Arsenal Sidebar - Floating overlay */}
-          <ErrorBoundary componentName="Trading Arsenal Sidebar">
-            <WidgetSidebar />
+        {/* Tablet & Desktop: Use custom overlay sidebar */}
+        <ErrorBoundary componentName="Sidebar Overlay">
+          <SidebarOverlay />
+        </ErrorBoundary>
+
+        {/* Main content - centered, no left margin */}
+        <main className="w-full min-h-screen pt-20 bg-background/20 backdrop-blur-sm border-l border-border/10">
+          <ErrorBoundary componentName="Page Content">
+            <Outlet />
           </ErrorBoundary>
-          
-          {/* Compliance Footer */}
-          <ComplianceFooter />
-        </div>
-      </SidebarProvider>
-    </NavigationProvider>
+        </main>
+        
+        {/* Trading Arsenal Sidebar - Floating overlay */}
+        <ErrorBoundary componentName="Trading Arsenal Sidebar">
+          <WidgetSidebar />
+        </ErrorBoundary>
+        
+        {/* Compliance Footer */}
+        <ComplianceFooter />
+      </div>
+    </SidebarProvider>
   )
 }

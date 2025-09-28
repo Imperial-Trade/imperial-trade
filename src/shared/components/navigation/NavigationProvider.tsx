@@ -1,1 +1,0 @@
-export { NavigationProvider, useNavigation } from '@/contexts/NavigationContext';

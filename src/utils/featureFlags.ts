@@ -9,6 +9,15 @@ export const isDevToolsEnabled = (): boolean => {
   return import.meta.env.VITE_SHOW_DEV_TOOLS === 'true';
 };
 
+/**
+ * Feature flag for the new Zustand-based signal store
+ * Set VITE_USE_NEW_SIGNAL_STORE=true in .env to enable the new store
+ * Defaults to false for production safety
+ */
+export const useNewSignalStore = (): boolean => {
+  return import.meta.env.VITE_USE_NEW_SIGNAL_STORE === 'true';
+};
+
 export const isDevelopment = (): boolean => {
   return import.meta.env.DEV;
 };

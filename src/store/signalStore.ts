@@ -6,6 +6,13 @@ import { showDevTools } from '@/utils/featureFlags';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
 
+export interface PendingOperation {
+  id: string;
+  operation: 'creating' | 'updating' | 'deleting';
+  timestamp: number;
+  rollbackData?: TradeAlertWithProfile;
+}
+
 export interface SignalState {
   // Core signal data
   signalsMap: Record<string, TradeAlertWithProfile>;
@@ -20,6 +27,10 @@ export interface SignalState {
   // Loading states
   isLoading: boolean;
   isRefreshing: boolean;
+  
+  // Optimistic updates tracking
+  pendingOperations: Record<string, PendingOperation>;
+  rollbackData: Record<string, TradeAlertWithProfile>;
 }
 
 export interface SignalActions {
@@ -39,6 +50,17 @@ export interface SignalActions {
   setLoading: (loading: boolean) => void;
   setRefreshing: (refreshing: boolean) => void;
   
+  // Optimistic updates
+  markPendingOperation: (id: string, operation: 'creating' | 'updating' | 'deleting', rollbackData?: TradeAlertWithProfile) => void;
+  completePendingOperation: (id: string) => void;
+  rollbackOperation: (id: string) => void;
+  clearAllPendingOperations: () => void;
+  
+  // Advanced selectors
+  getSignalById: (id: string) => TradeAlertWithProfile | undefined;
+  getSignalsArray: () => TradeAlertWithProfile[];
+  isPending: (id: string) => boolean;
+  
   // Utility actions
   clearError: () => void;
   reset: () => void;
@@ -55,6 +77,8 @@ const initialState: SignalState = {
   nextRetryAt: null,
   isLoading: false,
   isRefreshing: false,
+  pendingOperations: {},
+  rollbackData: {},
 };
 
 export const useSignalStore = create<SignalStore>()(
@@ -121,6 +145,50 @@ export const useSignalStore = create<SignalStore>()(
       setRefreshing: (refreshing) => set((state) => {
         state.isRefreshing = refreshing;
       }),
+      
+      // Optimistic updates
+      markPendingOperation: (id, operation, rollbackData) => set((state) => {
+        state.pendingOperations[id] = {
+          id,
+          operation,
+          timestamp: Date.now(),
+          rollbackData
+        };
+        if (rollbackData) {
+          state.rollbackData[id] = rollbackData;
+        }
+      }),
+      
+      completePendingOperation: (id) => set((state) => {
+        delete state.pendingOperations[id];
+        delete state.rollbackData[id];
+      }),
+      
+      rollbackOperation: (id) => set((state) => {
+        const rollbackData = state.rollbackData[id];
+        if (rollbackData) {
+          state.signalsMap[id] = rollbackData;
+          const index = state.signalsArray.findIndex(s => s.id === id);
+          if (index >= 0) {
+            state.signalsArray[index] = rollbackData;
+          }
+        }
+        delete state.pendingOperations[id];
+        delete state.rollbackData[id];
+      }),
+      
+      clearAllPendingOperations: () => set((state) => {
+        state.pendingOperations = {};
+        state.rollbackData = {};
+      }),
+      
+      // Advanced selectors
+      getSignalById: (id) => get().signalsMap[id],
+      
+      getSignalsArray: () => Object.values(get().signalsMap)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      
+      isPending: (id) => Boolean(get().pendingOperations[id]),
       
       // Utility actions
       clearError: () => set((state) => {

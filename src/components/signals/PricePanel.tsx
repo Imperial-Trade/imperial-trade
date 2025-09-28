@@ -106,17 +106,17 @@ const PricePanel: React.FC<PricePanelProps> = ({
   // PHASE C: Reconstruct alert object with useMemo - stable reference unless primitives change
   const alert = useMemo(() => ({
     id,
-    asset_name: assetName,
-    tradermade_symbol: symbol,
-    trade_type: tradeType,
-    entry_price: entryPrice,
-    stop_loss: stopLoss,
+    assetName,
+    tradermadeSymbol: symbol,
+    tradeType,
+    entryPrice,
+    stopLoss,
     tp1, tp2, tp3, tp4, tp5,
-    tp_hits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
+    tpHits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
     status,
-    close_reason: closeReason,
-    created_date: new Date().toISOString(),
-    updated_date: new Date().toISOString()
+    closeReason,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }), [id, assetName, symbol, tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason]);
 
   // For active/pending/partially_profited trades, show LivePriceWidget + static levels

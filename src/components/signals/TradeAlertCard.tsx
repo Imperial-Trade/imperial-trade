@@ -52,14 +52,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
         // Force immediate local state refresh
         if (onStatusUpdate && alert.status !== 'active') {
-          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.assetName}`);
         }
       }
     };
 
     window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
     return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
-  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+  }, [alert.id, alert.status, alert.assetName, onStatusUpdate]);
 
   useEffect(() => {
     console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
@@ -79,7 +79,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   
   // Type-safe derivations
   const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = alert.tp_hits || [];
+  const hitTPs = alert.tpHits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
@@ -93,10 +93,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
     id: alert.id,
-    assetName: alert.asset_name,
-    tradeType: alert.trade_type,
-    entryPrice: alert.entry_price,
-    stopLoss: alert.stop_loss,
+    assetName: alert.assetName,
+    tradeType: alert.tradeType,
+    entryPrice: alert.entryPrice,
+    stopLoss: alert.stopLoss,
     takeProfits: takeProfits,
     notes: alert.notes || undefined
   };
@@ -166,19 +166,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Stop-Loss Proximity effect (moved to top level to fix React Hooks violation)
   useEffect(() => {
-    if (alert.status !== 'active' || !alert.entry_price || !alert.stop_loss) {
+    if (alert.status !== 'active' || !alert.entryPrice || !alert.stopLoss) {
       return;
     }
 
-    const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
+    const wsPrice = getPrice?.(alert.tradermadeSymbol?.trim().toUpperCase())?.price;
     const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
     
     if (!currentPrice) return;
 
-    const totalDistance = Math.abs(alert.entry_price - alert.stop_loss);
+    const totalDistance = Math.abs(alert.entryPrice - alert.stopLoss);
     if (totalDistance === 0) return;
     
-    const currentDistance = Math.abs(currentPrice - alert.stop_loss);
+    const currentDistance = Math.abs(currentPrice - alert.stopLoss);
     const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
     
     const now = Date.now();
@@ -199,15 +199,15 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.closeReason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.closeReason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
       data-testid={testId}
     >
       {/* Glowing top indicator for closed trades */}
       {isClosed && (
         <div className={`h-1 w-full ${
-          alert.close_reason === 'stop_loss' 
+          alert.closeReason === 'stop_loss' 
             ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
+            : (hitTPs.length > 0 || alert.closeReason?.startsWith('tp'))
               ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
               : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
         }`} />
@@ -217,16 +217,16 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         {/* Use the new AnimatedStatusHeader component with primitive props */}
         <AnimatedStatusHeader 
           creator={creator} 
-          assetName={alert.asset_name}
+          assetName={alert.assetName}
           status={alert.status}
-          tradeType={alert.trade_type}
-          closeReason={alert.close_reason}
+          tradeType={alert.tradeType}
+          closeReason={alert.closeReason}
           highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
           hasTPHits={Boolean(hitTPs.length)}
           isRecentClosure={isRecentClosure} 
           justAdded={justAdded}
-          createdDate={alert.created_date}
-          updatedDate={alert.updated_date}
+          createdDate={alert.createdAt}
+          updatedDate={alert.updatedAt}
         />
 
         {/* Actions - moved to the right */}
@@ -296,19 +296,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       {/* Use the new PricePanel component with primitive props and tpHitsKey */}
       <PricePanel 
         id={alert.id}
-        assetName={alert.asset_name}
-        symbol={alert.tradermade_symbol}
-        tradeType={alert.trade_type}
-        entryPrice={alert.entry_price}
-        stopLoss={alert.stop_loss}
+        assetName={alert.assetName}
+        symbol={alert.tradermadeSymbol}
+        tradeType={alert.tradeType}
+        entryPrice={alert.entryPrice}
+        stopLoss={alert.stopLoss}
         tp1={alert.tp1}
         tp2={alert.tp2}
         tp3={alert.tp3}
         tp4={alert.tp4}
         tp5={alert.tp5}
-        tpHitsKey={(alert.tp_hits || []).join(',')}
+        tpHitsKey={(alert.tpHits || []).join(',')}
         status={alert.status}
-        closeReason={alert.close_reason}
+        closeReason={alert.closeReason}
         allowAutomation={isCreator}
         onTakeProfitHit={onTakeProfitHit}
         onStopLossHit={onStopLossHit}
@@ -386,23 +386,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
   // 🚀 COMPREHENSIVE memo comparison to prevent unnecessary re-renders while allowing smooth price updates
-  const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
-  const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
+  const prevHitsKey = (prevProps.alert.tpHits || []).join(',');
+  const nextHitsKey = (nextProps.alert.tpHits || []).join(',');
   
   return (
     prevProps.alert.id === nextProps.alert.id &&
     prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.asset_name === nextProps.alert.asset_name &&
-    prevProps.alert.trade_type === nextProps.alert.trade_type &&
-    prevProps.alert.entry_price === nextProps.alert.entry_price &&
-    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.assetName === nextProps.alert.assetName &&
+    prevProps.alert.tradeType === nextProps.alert.tradeType &&
+    prevProps.alert.entryPrice === nextProps.alert.entryPrice &&
+    prevProps.alert.stopLoss === nextProps.alert.stopLoss &&
     prevProps.alert.tp1 === nextProps.alert.tp1 &&
     prevProps.alert.tp2 === nextProps.alert.tp2 &&
     prevProps.alert.tp3 === nextProps.alert.tp3 &&
     prevProps.alert.tp4 === nextProps.alert.tp4 &&
     prevProps.alert.tp5 === nextProps.alert.tp5 &&
     prevProps.alert.notes === nextProps.alert.notes &&
-    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevProps.alert.closeReason === nextProps.alert.closeReason &&
     prevHitsKey === nextHitsKey &&
     prevProps.isAdmin === nextProps.isAdmin &&
     prevProps.isCreator === nextProps.isCreator &&

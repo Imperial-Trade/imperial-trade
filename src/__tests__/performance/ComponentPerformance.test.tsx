@@ -60,7 +60,7 @@ describe('Component Performance Tests', () => {
 
       // Assert render time is under 100ms
       expect(renderTime).toBeLessThan(100);
-      expect(screen.getByText(mockAlert.asset_name)).toBeInTheDocument();
+      expect(screen.getByText('EURUSD')).toBeInTheDocument();
     });
 
     it('should handle rapid prop updates efficiently', () => {

@@ -663,18 +663,7 @@ export default function SignalStream() {
                     </h2>
                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
+                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
                           </div>)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -702,18 +691,7 @@ export default function SignalStream() {
                     </h2>
                     {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
+                            <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
                           </div>)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">

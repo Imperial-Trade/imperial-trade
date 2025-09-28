@@ -26,22 +26,22 @@ export interface FormState<T extends Record<string, unknown>> {
 // Trading Alert Component Types
 export interface TradeAlertData {
   id: string;
-  asset_name: string;
-  tradermade_symbol: string;
-  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-  entry_price: number;
-  stop_loss: number;
+  assetName: string;
+  tradermadeSymbol: string;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entryPrice: number;
+  stopLoss: number;
   tp1?: number;
   tp2?: number;
   tp3?: number;
   tp4?: number;
   tp5?: number;
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
-  tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit' | 'expired';
+  tpHits?: number[];
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit' | 'expired';
   notes?: string;
-  created_date: string;
-  updated_date?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {
@@ -78,10 +78,10 @@ export interface TradingCalculatorProps extends BaseComponentProps {
 // Quick Copy Panel Types - Updated to support all trade types
 export interface QuickCopyPanelProps extends BaseComponentProps {
   alert: {
-    asset_name: string;
-    trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-    entry_price: number;
-    stop_loss: number;
+    assetName: string;
+    tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+    entryPrice: number;
+    stopLoss: number;
     tp1?: number;
     tp2?: number;
     tp3?: number;
@@ -94,8 +94,8 @@ export interface QuickCopyPanelProps extends BaseComponentProps {
 export interface TradeStatusBadgeProps extends BaseComponentProps {
   alert: {
     status: 'pending' | 'active' | 'closed' | 'partially_profited';
-    tp_hits?: number[];
-    close_reason?: string;
+    tpHits?: number[];
+    closeReason?: string;
   };
   updatedDate?: string;
   isRecentClosure?: boolean;

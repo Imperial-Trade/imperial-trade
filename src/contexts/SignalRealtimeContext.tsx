@@ -601,16 +601,27 @@ unstable_batchedUpdates(() => {
           // PHASE 2: Update the map with the validated signal
           const updatedMap = { ...prev, [newRecord.id]: finalSignal };
           
-          // 🔥 FLICKER PREVENTION: Apply cache filtering only during WebSocket updates
-          const allSignals: TradeAlertWithProfile[] = Object.values(updatedMap);
-          const filteredArray = signalCacheManager.filterExpiredClosedSignals(allSignals);
-          return arrayToMap(filteredArray);
+          // Developer mode logging for state transitions
+          if (isDevToolsEnabled()) {
+            console.log(`[SignalRealtime] UPDATE event for signal ${newRecord.id}:`, {
+              oldStatus: prev[newRecord.id]?.status,
+              newStatus: newRecord.status,
+              signalsBefore: Object.keys(prev).length,
+              signalsAfter: Object.keys(updatedMap).length
+            });
+          }
+          
+          // Mark as closed in cache for telemetry (but don't filter from state during UPDATE)
+          if (newRecord.status === 'closed') {
+            signalCacheManager.markSignalClosed(newRecord.id, newRecord.closed_at || newRecord.updated_at);
+            if (isDevToolsEnabled()) {
+              console.log(`[SignalRealtime] Signal ${newRecord.id} marked as closed, keeping in state for immediate UI update`);
+            }
+          }
+          
+          // Return updated map directly for UPDATE events to preserve immediate status transitions
+          return updatedMap;
         });
-        
-        // 🔥 FIX CLOSED SIGNALS: Mark signal as closed in cache manager
-        if (eventType === 'UPDATE' && newRecord?.status === 'closed') {
-          signalCacheManager.markSignalClosed(newRecord.id, newRecord.updated_at);
-        }
         
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);

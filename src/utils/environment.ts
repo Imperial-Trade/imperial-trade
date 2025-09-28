@@ -12,11 +12,7 @@ export const isDevelopment = (): boolean => {
 };
 
 export const getMainAppUrl = (): string => {
-  // Use current origin for development, or specific Lovable URL for deployment
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  // Fallback for server-side rendering - use the main project's Lovable URL
+  // Always return production URL for cross-app navigation
   return "https://www.tradeimperial.com";
 };
 
@@ -26,11 +22,11 @@ export const isProductionDomain = (): boolean => {
 };
 
 export const getOrderFlowAppUrl = (): string => {
-  return "https://orderflow-social-hub.lovableproject.com";
+  return "https://orderflow.tradeimperial.com";
 };
 
 export const getAcademyAppUrl = (): string => {
-  return "https://market-fix-academy.lovableproject.com";
+  return "https://academy.tradeimperial.com";
 };
 
 /**

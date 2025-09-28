@@ -1,0 +1,1 @@
+export { SidebarEducatorSection } from '@/components/sidebar/SidebarEducatorSection';

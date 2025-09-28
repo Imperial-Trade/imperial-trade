@@ -1,0 +1,1 @@
+export { CrossAppLink } from '@/components/navigation/CrossAppLink';

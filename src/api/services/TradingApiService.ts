@@ -107,38 +107,81 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - Updating alert (direct RLS approach):', { id, dto, userId });
+      console.log('TradingApiService - Updating alert:', { id, dto, userId });
 
-      // ACL: Transform camelCase DTO to snake_case database format
-      const updateData = transformUpdateAlertToDatabase(dto);
+      // Check if this is a close operation
+      const isCloseOperation = dto.status === 'closed';
       
-      console.log('TradingApiService - Direct update with RLS enforcement:', updateData);
-
-      // Direct update using Supabase - RLS will enforce ownership permissions
-      const { error } = await supabase
-        .from('trade_alerts')
-        .update(updateData)
-        .eq('id', id);
-      
-      console.log('TradingApiService - Direct update result (no select):', { error });
-      
-      if (error) {
-        console.error('TradingApiService - RLS/Update error:', {
-          error: error.message,
-          code: error.code,
-          alertId: id,
-          userId,
-          updateData
-        });
+      if (isCloseOperation) {
+        console.log('TradingApiService - Close operation detected, using RPC function');
         
-        return {
-          success: false,
-          error: error.message,
-          data: undefined
-        };
+        // Use the secure RPC function for closing signals
+        const { data: rpcResult, error: rpcError } = await supabase
+          .rpc('close_trade_alert', {
+            p_alert_id: id,
+            p_user_id: userId,
+            p_close_reason: dto.closeReason || 'manual'
+          });
+        
+        console.log('TradingApiService - RPC close result:', { rpcResult, rpcError });
+        
+        if (rpcError) {
+          console.error('TradingApiService - RPC error:', rpcError);
+          return {
+            success: false,
+            error: rpcError.message,
+            data: undefined
+          };
+        }
+        
+        // Type-safe access to RPC result
+        const result = rpcResult as { success: boolean; error?: string; alert_id?: string; new_status?: string; close_reason?: string };
+        
+        if (!result?.success) {
+          console.error('TradingApiService - RPC close failed:', result?.error);
+          return {
+            success: false,
+            error: result?.error || 'Failed to close signal',
+            data: undefined
+          };
+        }
+        
+        console.log('TradingApiService - Signal closed successfully via RPC');
+      } else {
+        // For non-close operations, use direct RLS update
+        console.log('TradingApiService - Non-close operation, using direct RLS update');
+        
+        // ACL: Transform camelCase DTO to snake_case database format
+        const updateData = transformUpdateAlertToDatabase(dto);
+        
+        console.log('TradingApiService - Direct update with RLS enforcement:', updateData);
+
+        // Direct update using Supabase - RLS will enforce ownership permissions
+        const { error } = await supabase
+          .from('trade_alerts')
+          .update(updateData)
+          .eq('id', id);
+        
+        console.log('TradingApiService - Direct update result:', { error });
+        
+        if (error) {
+          console.error('TradingApiService - RLS/Update error:', {
+            error: error.message,
+            code: error.code,
+            alertId: id,
+            userId,
+            updateData
+          });
+          
+          return {
+            success: false,
+            error: error.message,
+            data: undefined
+          };
+        }
       }
 
-      console.log('TradingApiService - Update accepted; requesting store refresh...');
+      console.log('TradingApiService - Update completed, requesting store refresh...');
       
       // Import signalActions dynamically to avoid circular dependency
       const { signalActions } = await import('@/store/signalActions');

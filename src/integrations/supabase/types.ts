@@ -3950,6 +3950,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      close_trade_alert: {
+        Args: { p_alert_id: string; p_close_reason?: string; p_user_id: string }
+        Returns: Json
+      }
       create_smart_notification_batch: {
         Args: {
           p_asset_symbol?: string

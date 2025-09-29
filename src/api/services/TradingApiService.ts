@@ -107,59 +107,27 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - Updating alert:', { id, dto, userId });
-
-      // First get the alert to check ownership
-      const alertResult = await apiClient.select('trade_alerts', {
-        eq: { column: 'id', value: id }
-      });
-
-      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
-        console.log('TradingApiService - Alert not found:', id);
-        return {
-          success: false,
-          error: 'Alert not found',
-          data: undefined
-        };
-      }
-
-      const alert = alertResult.data[0];
-      console.log('TradingApiService - Found alert:', { 
-        alertId: alert.id, 
-        alertUserId: alert.user_id, 
-        requestUserId: userId 
-      });
-
-      // Only the owner (educator who posted it) can update
-      const isOwner = alert.user_id === userId;
-
-      console.log('TradingApiService - Authorization check:', { 
-        isOwner, 
-        canUpdate: isOwner 
-      });
-
-      if (!isOwner) {
-        return {
-          success: false,
-          error: 'Only the educator who posted this signal can edit it',
-          data: undefined
-        };
-      }
+      console.log('TradingApiService - Updating alert (direct RLS approach):', { id, dto, userId });
 
       // ACL: Transform camelCase DTO to snake_case database format
       const updateData = transformUpdateAlertToDatabase(dto);
-
-      console.log('TradingApiService - Updating with data:', updateData);
-
-      const result = await apiClient.update('trade_alerts', id, updateData);
       
-      console.log('TradingApiService - Update result:', result);
+      console.log('TradingApiService - Direct update with RLS enforcement:', updateData);
+
+      // Direct update using Supabase - RLS will enforce ownership permissions
+      const { data, error } = await supabase
+        .from('trade_alerts')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
       
-      if (!result.success || !result.data) {
-        // Step 4A: Enhanced error handling - surface detailed error messages
-        const detailedError = result.error || 'Failed to update alert';
-        console.error('TradingApiService - Update failed with detailed error:', {
-          error: detailedError,
+      console.log('TradingApiService - Direct update result:', { data, error });
+      
+      if (error) {
+        console.error('TradingApiService - RLS/Update error:', {
+          error: error.message,
+          code: error.code,
           alertId: id,
           userId,
           updateData
@@ -167,12 +135,12 @@ export class TradingApiService {
         
         return {
           success: false,
-          error: detailedError,
+          error: error.message,
           data: undefined
         };
       }
 
-      if (!isTradeAlert(result.data)) {
+      if (!data || !isTradeAlert(data)) {
         return {
           success: false,
           error: 'Invalid trade alert data received',
@@ -181,7 +149,15 @@ export class TradingApiService {
       }
 
       // ACL: Transform database response to camelCase DTO
-      const responseDto = transformTradeAlert(result.data);
+      const responseDto = transformTradeAlert(data);
+      
+      console.log('TradingApiService - Update successful, refreshing store...');
+      
+      // Import signalActions dynamically to avoid circular dependency
+      const { signalActions } = await import('@/store/signalActions');
+      await signalActions.refreshSignals(userId);
+      
+      console.log('TradingApiService - Store refresh completed');
 
       return {
         success: true,

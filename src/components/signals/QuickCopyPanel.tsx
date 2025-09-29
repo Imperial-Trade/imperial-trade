@@ -34,20 +34,29 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     }
   };
 
-  const isBuy = alert.tradeType.includes('buy');
+  // Null-safety: Guard against undefined tradeType
+  const isBuy = alert.tradeType ? alert.tradeType.includes('buy') : false;
+  
+  // Null-safety: Filter only finite numbers for TP list
   const takeProfits = [
     { label: 'TP1', value: alert.tp1 },
     { label: 'TP2', value: alert.tp2 },
     { label: 'TP3', value: alert.tp3 },
     { label: 'TP4', value: alert.tp4 },
     { label: 'TP5', value: alert.tp5 }
-  ].filter(tp => tp.value !== undefined) as { label: string; value: number }[];
+  ].filter(tp => tp.value !== undefined && Number.isFinite(tp.value)) as { label: string; value: number }[];
 
   const CopyButton = ({ value, label, variant = "outline" }: { value: number; label: string; variant?: "outline" | "default" | "destructive" | "secondary" | "ghost" }) => (
     <Button
       variant={variant}
       size="sm"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(value?.toString() || '0', label); }}
+      onClick={(e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+        // Null-safety: Prevent copying "undefined" or "NaN"
+        const safeValue = Number.isFinite(value) ? value.toString() : '—';
+        copyToClipboard(safeValue, label); 
+      }}
       className="flex items-center gap-2 h-8 text-xs"
     >
       {copiedItem === label ? (
@@ -55,7 +64,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
       ) : (
         <Copy className="w-3 h-3" />
       )}
-      {value != null ? value.toFixed(2) : '0.00'}
+      {Number.isFinite(value) ? value.toFixed(2) : '—'}
       {copiedItem === label && <span className="text-green-400">Copied!</span>}
     </Button>
   );
@@ -65,10 +74,10 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Copy className="w-4 h-4" />
-          Quick Copy Prices - {alert.assetName}
+          Quick Copy Prices - {alert.assetName || 'Unknown Asset'}
           <Badge className={`ml-2 ${isBuy ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
             {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-            {alert.tradeType.replace('_', ' ').toUpperCase()}
+            {alert.tradeType ? alert.tradeType.replace('_', ' ').toUpperCase() : 'UNKNOWN'}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -76,11 +85,11 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <label className="text-xs text-gray-400">Entry Price</label>
-            <CopyButton value={alert.entryPrice} label="Entry" variant="default" />
+            <CopyButton value={alert.entryPrice || 0} label="Entry" variant="default" />
           </div>
           <div className="space-y-2">
             <label className="text-xs text-gray-400">Stop Loss</label>
-            <CopyButton value={alert.stopLoss} label="SL" variant="destructive" />
+            <CopyButton value={alert.stopLoss || 0} label="SL" variant="destructive" />
           </div>
         </div>
         
@@ -99,9 +108,17 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation();
+            onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation();
+              // Null-safety: Handle undefined values in clipboard copy
+              const safeAssetName = alert.assetName || 'Unknown Asset';
+              const safeTradeType = alert.tradeType ? alert.tradeType.replace('_', ' ').toUpperCase() : 'UNKNOWN';
+              const safeEntry = Number.isFinite(alert.entryPrice) ? alert.entryPrice : '—';
+              const safeSL = Number.isFinite(alert.stopLoss) ? alert.stopLoss : '—';
+              
               copyToClipboard(
-                `${alert.assetName} ${alert.tradeType.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entryPrice}\nSL: ${alert.stopLoss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
+                `${safeAssetName} ${safeTradeType}\nEntry: ${safeEntry}\nSL: ${safeSL}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
                 'All Prices'
               );
             }}

@@ -166,6 +166,18 @@ export class SignalActions {
       if (result.success && result.data) {
         // Apply conflict resolution - validate and merge with current state
         const validatedSignals = this.validateAndResolveConflicts(result.data, store.signalsMap);
+        
+        // DIAGNOSTIC: Log refresh results to confirm creator data
+        console.log('🔄 Store refresh completed:', {
+          totalAlerts: validatedSignals.length,
+          withCreator: validatedSignals.filter(s => s.creator).length,
+          examples: validatedSignals.slice(0, 5).map(s => ({
+            id: s.id.substring(0, 8),
+            creator: s.creator?.display_name || 'Missing',
+            creatorId: s.creator?.id?.substring(0, 8) || 'Missing'
+          }))
+        });
+        
         store.setSignals(validatedSignals);
         return {
           success: true,

@@ -25,7 +25,7 @@ import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErr
 
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
-import { isDevToolsEnabled, useNewSignalStore } from "@/utils/featureFlags";
+import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 
 // Layout Components
@@ -89,10 +89,6 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🏗️ App component initializing...');
-  
-  // Feature flag check
-  const useNewStore = useNewSignalStore();
-  console.log('🏪 Signal Store Mode:', useNewStore ? 'NEW (Zustand)' : 'LEGACY (Context)');
 
   // Initialize app state on startup
   React.useEffect(() => {
@@ -131,423 +127,214 @@ function App() {
                           <OptimizedWebSocketPriceProvider>
                           <WebSocketErrorBoundary>
                             <ContextErrorBoundary>
-                               <SharedRealtimeProvider>
-                                 <RouteBasedEconomicProvider>
-                                   {/* Conditional Signal Provider - Use new store or legacy context */}
-                                   {useNewStore ? (
-                                     // New Zustand store doesn't need a provider
-                                     <Routes>
-                                       {/* Landing Routes */}
-                                       <Route
-                                         path="/"
-                                         element={<LandingLayout />}
-                                         errorElement={<RouteErrorBoundary />}
-                                       >
-                                         <Route index element={<Landing />} />
-                                         <Route path="about" element={<About />} />
-                                         <Route path="features" element={<Features />} />
-                                         <Route
-                                           path="advanced-tools"
-                                           element={<AdvancedToolsPage />}
-                                         />
-                                         <Route path="signals" element={<SignalsPage />} />
-                                         <Route path="education" element={<EducationPage />} />
-                                         <Route
-                                           path="live-sessions"
-                                           element={<LiveSessionsPage />}
-                                         />
-                                         <Route
-                                           path="community-forum"
-                                           element={<CommunityForumPage />}
-                                         />
-                                         <Route
-                                           path="ib-partnership"
-                                           element={<ImperialPartnership />}
-                                         />
-                                         <Route
-                                           path="ib-partnership-new"
-                                           element={<ImperialPartnership />}
-                                         />
-                                         <Route
-                                           path="imperial-partnership"
-                                           element={<ImperialPartnership />}
-                                          />
-                                           <Route path="signin" element={<Signin />} />
-                                           <Route path="legal/disclaimers" element={<DisclaimersPage />} />
-                                          <Route path="legal/terms" element={<TermsPage />} />
-                                          <Route path="legal/privacy" element={<PrivacyPage />} />
-                                         <Route
-                                           path="account-request"
-                                           element={<AccountRequest />}
-                                         />
-                                         <Route
-                                           path="account-request-status"
-                                           element={<AccountRequestStatus />}
-                                         />
-                                         </Route>
+                              <SharedRealtimeProvider>
+                                <RouteBasedEconomicProvider>
+                                  <SignalRealtimeProvider>
+                      <Routes>
+                        {/* Landing Routes */}
+                        <Route
+                          path="/"
+                          element={<LandingLayout />}
+                          errorElement={<RouteErrorBoundary />}
+                        >
+                          <Route index element={<Landing />} />
+                          <Route path="about" element={<About />} />
+                          <Route path="features" element={<Features />} />
+                          <Route
+                            path="advanced-tools"
+                            element={<AdvancedToolsPage />}
+                          />
+                          <Route path="signals" element={<SignalsPage />} />
+                          <Route path="education" element={<EducationPage />} />
+                          <Route
+                            path="live-sessions"
+                            element={<LiveSessionsPage />}
+                          />
+                          <Route
+                            path="community-forum"
+                            element={<CommunityForumPage />}
+                          />
+<Route
+                            path="ib-partnership"
+                            element={<ImperialPartnership />}
+                          />
+                          <Route
+                            path="ib-partnership-new"
+                            element={<ImperialPartnership />}
+                          />
+                          <Route
+                            path="imperial-partnership"
+                            element={<ImperialPartnership />}
+                           />
+                            <Route path="signin" element={<Signin />} />
+                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
+                           <Route path="legal/terms" element={<TermsPage />} />
+                           <Route path="legal/privacy" element={<PrivacyPage />} />
+                          <Route
+                            path="account-request"
+                            element={<AccountRequest />}
+                          />
+                          <Route
+                            path="account-request-status"
+                            element={<AccountRequestStatus />}
+                          />
+                          </Route>
 
-                                       {/* Reset Password Route - Clean Layout */}
-                                       <Route
-                                         path="reset-password" 
-                                         element={<ResetPasswordLayout />}
-                                         errorElement={<RouteErrorBoundary />}
-                                       >
-                                         <Route index element={<ResetPasswordPage />} />
-                                       </Route>
+                        {/* Reset Password Route - Clean Layout */}
+                        <Route
+                          path="reset-password" 
+                          element={<ResetPasswordLayout />}
+                          errorElement={<RouteErrorBoundary />}
+                        >
+                          <Route index element={<ResetPasswordPage />} />
+                        </Route>
 
-                                        {/* Dashboard Routes */}
-                                        <Route
-                                          path="/dashboard"
-                                         element={
-                                           <ProtectedRoute>
-                                             <TooltipProvider>
-                                               <Layout>
-                                                 <div></div>
-                                               </Layout>
-                                             </TooltipProvider>
-                                           </ProtectedRoute>
-                                         }
-                                         errorElement={<RouteErrorBoundary />}
-                                       >
-                                         <Route
-                                           index
-                                           element={<Navigate to="/dashboard/home" replace />}
-                                         />
-                                         <Route path="home" element={<Home />} />
-                                         <Route path="live" element={<Live />} />
-                                         <Route
-                                           path="signal-stream"
-                                           element={<SignalStreamOptimized />}
-                                         />
-                                         <Route
-                                           path="new-signal"
-                                           element={<NewSignalPage />}
-                                         />
-                                         <Route
-                                           path="advanced-tools"
-                                           element={<AdvancedTools />}
-                                         />
-                                         <Route path="my-progress" element={<MyProgress />} />
-                                         <Route path="progress" element={<Progress />} />
-                                          <Route path="settings" element={<Settings />} />
-                                           {isDevToolsEnabled() && (
-                                              <>
-                                                <Route path="athena" element={<AthenaTest />} />
-                                                <Route path="dev-tests" element={<DevTests />} />
-                                                <Route path="price-testing" element={<PriceTestingPage />} />
-                                                <Route 
-                                                  path="realtime-cost-status" 
-                                                  element={
-                                                    <ProtectedRoute requiredAccessLevel="admin">
-                                                      <div className="p-4">
-                                                        {React.createElement(
-                                                          React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
-                                                        )}
-                                                      </div>
-                                                    </ProtectedRoute>
-                                                  } 
-                                                />
-                                              </>
-                                            )}
+                         {/* Dashboard Routes */}
+                         <Route
+                           path="/dashboard"
+                          element={
+                            <ProtectedRoute>
+                              <TooltipProvider>
+                                <Layout>
+                                  <div></div>
+                                </Layout>
+                              </TooltipProvider>
+                            </ProtectedRoute>
+                          }
+                          errorElement={<RouteErrorBoundary />}
+                        >
+                          <Route
+                            index
+                            element={<Navigate to="/dashboard/home" replace />}
+                          />
+                          <Route path="home" element={<Home />} />
+                          <Route path="live" element={<Live />} />
+                          <Route
+                            path="signal-stream"
+                            element={<SignalStreamOptimized />}
+                          />
+                          <Route
+                            path="new-signal"
+                            element={<NewSignalPage />}
+                          />
+                          <Route
+                            path="advanced-tools"
+                            element={<AdvancedTools />}
+                          />
+                          <Route path="my-progress" element={<MyProgress />} />
+                          <Route path="progress" element={<Progress />} />
+                           <Route path="settings" element={<Settings />} />
+                            {isDevToolsEnabled() && (
+                               <>
+                                 <Route path="athena" element={<AthenaTest />} />
+                                 <Route path="dev-tests" element={<DevTests />} />
+                                 <Route path="price-testing" element={<PriceTestingPage />} />
+                                 <Route 
+                                   path="realtime-cost-status" 
+                                   element={
+                                     <ProtectedRoute requiredAccessLevel="admin">
+                                       <div className="p-4">
+                                         {React.createElement(
+                                           React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                         )}
+                                       </div>
+                                     </ProtectedRoute>
+                                   } 
+                                 />
+                               </>
+                             )}
 
-                                         <Route
-                                           path="administration"
-                                           element={
-                                             <ProtectedRoute requiredAccessLevel="admin">
-                                               <Administration />
-                                             </ProtectedRoute>
-                                           }
-                                         />
+                          <Route
+                            path="administration"
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <Administration />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                                         <Route
-                                           path="admin"
-                                           element={
-                                             <ProtectedRoute requiredAccessLevel="admin">
-                                               <AdminPanel />
-                                             </ProtectedRoute>
-                                           }
-                                         />
+                          <Route
+                            path="admin"
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <AdminPanel />
+                              </ProtectedRoute>
+                            }
+                          />
 
-                                         <Route path="educator">
-                                           <Route
-                                             path="signals"
-                                             element={
-                                               <ProtectedRoute
-                                                 requiredUserType={["educator", "ib_partner"]}
-                                               >
-                                                 <EducatorSignalManagement />
-                                               </ProtectedRoute>
-                                             }
-                                           />
-                                           <Route
-                                             path="analytics"
-                                             element={
-                                               <ProtectedRoute
-                                                 requiredUserType={["educator", "ib_partner"]}
-                                               >
-                                                 <div className="p-6">
-                                                   <h1 className="text-2xl font-bold">
-                                                     Performance Analytics
-                                                   </h1>
-                                                   <p className="text-secondary">
-                                                     Coming soon...
-                                                   </p>
-                                                 </div>
-                                               </ProtectedRoute>
-                                             }
-                                           />
-                                           <Route
-                                             path="followers"
-                                             element={
-                                               <ProtectedRoute
-                                                 requiredUserType={["educator", "ib_partner"]}
-                                               >
-                                                 <div className="p-6">
-                                                   <h1 className="text-2xl font-bold">
-                                                     Followers & Engagement
-                                                   </h1>
-                                                   <p className="text-secondary">
-                                                     Coming soon...
-                                                   </p>
-                                                 </div>
-                                               </ProtectedRoute>
-                                             }
-                                           />
-                                           <Route
-                                             path="ib-dashboard"
-                                             element={
-                                               <ProtectedRoute
-                                                 requiredUserType={["ib_partner"]}
-                                               >
-                                                 <div className="p-6">
-                                                   <h1 className="text-2xl font-bold">
-                                                     IB Partner Dashboard
-                                                   </h1>
-                                                   <p className="text-secondary">
-                                                     Coming soon...
-                                                   </p>
-                                                 </div>
-                                               </ProtectedRoute>
-                                             }
-                                           />
-                                         </Route>
-                                       </Route>
+                          <Route path="educator">
+                            <Route
+                              path="signals"
+                              element={
+                                <ProtectedRoute
+                                  requiredUserType={["educator", "ib_partner"]}
+                                >
+                                  <EducatorSignalManagement />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="analytics"
+                              element={
+                                <ProtectedRoute
+                                  requiredUserType={["educator", "ib_partner"]}
+                                >
+                                  <div className="p-6">
+                                    <h1 className="text-2xl font-bold">
+                                      Performance Analytics
+                                    </h1>
+                                    <p className="text-secondary">
+                                      Coming soon...
+                                    </p>
+                                  </div>
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="followers"
+                              element={
+                                <ProtectedRoute
+                                  requiredUserType={["educator", "ib_partner"]}
+                                >
+                                  <div className="p-6">
+                                    <h1 className="text-2xl font-bold">
+                                      Followers & Engagement
+                                    </h1>
+                                    <p className="text-secondary">
+                                      Coming soon...
+                                    </p>
+                                  </div>
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="ib-dashboard"
+                              element={
+                                <ProtectedRoute
+                                  requiredUserType={["ib_partner"]}
+                                >
+                                  <div className="p-6">
+                                    <h1 className="text-2xl font-bold">
+                                      IB Partner Dashboard
+                                    </h1>
+                                    <p className="text-secondary">
+                                      Coming soon...
+                                    </p>
+                                  </div>
+                                </ProtectedRoute>
+                              }
+                            />
+                          </Route>
+                        </Route>
 
-                                       {/* Error Routes */}
-                                       <Route
-                                         path="/access-denied"
-                                         element={<AccessDenied />}
-                                       />
-                                       <Route path="*" element={<NotFound />} />
-                                     </Routes>
-                                   ) : (
-                                     <SignalRealtimeProvider>
-                                       <Routes>
-                                         {/* Landing Routes */}
-                                         <Route
-                                           path="/"
-                                           element={<LandingLayout />}
-                                           errorElement={<RouteErrorBoundary />}
-                                         >
-                                           <Route index element={<Landing />} />
-                                           <Route path="about" element={<About />} />
-                                           <Route path="features" element={<Features />} />
-                                           <Route
-                                             path="advanced-tools"
-                                             element={<AdvancedToolsPage />}
-                                           />
-                                           <Route path="signals" element={<SignalsPage />} />
-                                           <Route path="education" element={<EducationPage />} />
-                                           <Route
-                                             path="live-sessions"
-                                             element={<LiveSessionsPage />}
-                                           />
-                                           <Route
-                                             path="community-forum"
-                                             element={<CommunityForumPage />}
-                                           />
-                                           <Route
-                                             path="ib-partnership"
-                                             element={<ImperialPartnership />}
-                                           />
-                                           <Route
-                                             path="ib-partnership-new"
-                                             element={<ImperialPartnership />}
-                                           />
-                                           <Route
-                                             path="imperial-partnership"
-                                             element={<ImperialPartnership />}
-                                            />
-                                             <Route path="signin" element={<Signin />} />
-                                             <Route path="legal/disclaimers" element={<DisclaimersPage />} />
-                                            <Route path="legal/terms" element={<TermsPage />} />
-                                            <Route path="legal/privacy" element={<PrivacyPage />} />
-                                           <Route
-                                             path="account-request"
-                                             element={<AccountRequest />}
-                                           />
-                                           <Route
-                                             path="account-request-status"
-                                             element={<AccountRequestStatus />}
-                                           />
-                                           </Route>
-
-                                         {/* Reset Password Route - Clean Layout */}
-                                         <Route
-                                           path="reset-password" 
-                                           element={<ResetPasswordLayout />}
-                                           errorElement={<RouteErrorBoundary />}
-                                         >
-                                           <Route index element={<ResetPasswordPage />} />
-                                         </Route>
-
-                                          {/* Dashboard Routes */}
-                                          <Route
-                                            path="/dashboard"
-                                           element={
-                                             <ProtectedRoute>
-                                               <TooltipProvider>
-                                                 <Layout>
-                                                   <div></div>
-                                                 </Layout>
-                                               </TooltipProvider>
-                                             </ProtectedRoute>
-                                           }
-                                           errorElement={<RouteErrorBoundary />}
-                                         >
-                                           <Route
-                                             index
-                                             element={<Navigate to="/dashboard/home" replace />}
-                                           />
-                                           <Route path="home" element={<Home />} />
-                                           <Route path="live" element={<Live />} />
-                                           <Route
-                                             path="signal-stream"
-                                             element={<SignalStreamOptimized />}
-                                           />
-                                           <Route
-                                             path="new-signal"
-                                             element={<NewSignalPage />}
-                                           />
-                                           <Route
-                                             path="advanced-tools"
-                                             element={<AdvancedTools />}
-                                           />
-                                           <Route path="my-progress" element={<MyProgress />} />
-                                           <Route path="progress" element={<Progress />} />
-                                            <Route path="settings" element={<Settings />} />
-                                             {isDevToolsEnabled() && (
-                                                <>
-                                                  <Route path="athena" element={<AthenaTest />} />
-                                                  <Route path="dev-tests" element={<DevTests />} />
-                                                  <Route path="price-testing" element={<PriceTestingPage />} />
-                                                  <Route 
-                                                    path="realtime-cost-status" 
-                                                    element={
-                                                      <ProtectedRoute requiredAccessLevel="admin">
-                                                        <div className="p-4">
-                                                          {React.createElement(
-                                                            React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
-                                                          )}
-                                                        </div>
-                                                      </ProtectedRoute>
-                                                    } 
-                                                  />
-                                                </>
-                                              )}
-
-                                           <Route
-                                             path="administration"
-                                             element={
-                                               <ProtectedRoute requiredAccessLevel="admin">
-                                                 <Administration />
-                                               </ProtectedRoute>
-                                             }
-                                           />
-
-                                           <Route
-                                             path="admin"
-                                             element={
-                                               <ProtectedRoute requiredAccessLevel="admin">
-                                                 <AdminPanel />
-                                               </ProtectedRoute>
-                                             }
-                                           />
-
-                                           <Route path="educator">
-                                             <Route
-                                               path="signals"
-                                               element={
-                                                 <ProtectedRoute
-                                                   requiredUserType={["educator", "ib_partner"]}
-                                                 >
-                                                   <EducatorSignalManagement />
-                                                 </ProtectedRoute>
-                                               }
-                                             />
-                                             <Route
-                                               path="analytics"
-                                               element={
-                                                 <ProtectedRoute
-                                                   requiredUserType={["educator", "ib_partner"]}
-                                                 >
-                                                   <div className="p-6">
-                                                     <h1 className="text-2xl font-bold">
-                                                       Performance Analytics
-                                                     </h1>
-                                                     <p className="text-secondary">
-                                                     Coming soon...
-                                                     </p>
-                                                   </div>
-                                                 </ProtectedRoute>
-                                               }
-                                             />
-                                             <Route
-                                               path="followers"
-                                               element={
-                                                 <ProtectedRoute
-                                                   requiredUserType={["educator", "ib_partner"]}
-                                                 >
-                                                   <div className="p-6">
-                                                     <h1 className="text-2xl font-bold">
-                                                       Followers & Engagement
-                                                     </h1>
-                                                     <p className="text-secondary">
-                                                       Coming soon...
-                                                     </p>
-                                                   </div>
-                                                 </ProtectedRoute>
-                                               }
-                                             />
-                                             <Route
-                                               path="ib-dashboard"
-                                               element={
-                                                 <ProtectedRoute
-                                                   requiredUserType={["ib_partner"]}
-                                                 >
-                                                   <div className="p-6">
-                                                     <h1 className="text-2xl font-bold">
-                                                       IB Partner Dashboard
-                                                     </h1>
-                                                     <p className="text-secondary">
-                                                       Coming soon...
-                                                     </p>
-                                                   </div>
-                                                 </ProtectedRoute>
-                                               }
-                                             />
-                                           </Route>
-                                         </Route>
-
-                                         {/* Error Routes */}
-                                         <Route
-                                           path="/access-denied"
-                                           element={<AccessDenied />}
-                                         />
-                                         <Route path="*" element={<NotFound />} />
-                                       </Routes>
-                                     </SignalRealtimeProvider>
-                                   )}
+                        {/* Error Routes */}
+                        <Route
+                          path="/access-denied"
+                          element={<AccessDenied />}
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                                  </SignalRealtimeProvider>
                                 </RouteBasedEconomicProvider>
                               </SharedRealtimeProvider>
                           </ContextErrorBoundary>

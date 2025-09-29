@@ -337,7 +337,18 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                   alerts.map((alert) => (
                     <TradeAlertCard
                       key={alert.id}
-                      alert={alert}
+                      alert={{
+                        ...alert,
+                        asset_name: alert.assetName,
+                        tradermade_symbol: alert.tradermadeSymbol,
+                        trade_type: alert.tradeType,
+                        entry_price: alert.entryPrice,
+                        stop_loss: alert.stopLoss,
+                        tp_hits: alert.tpHits,
+                        close_reason: alert.closeReason,
+                        created_date: alert.createdAt,
+                        updated_date: alert.updatedAt
+                      }}
                       onStatusUpdate={handleSignalStatusUpdate}
                       onTakeProfitHit={handleTakeProfitHit}
                       onStopLossHit={handleStopLossHit}
@@ -368,7 +379,18 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                 {alerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
-                    alert={alert}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                       tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}
                     onStopLossHit={handleStopLossHit}
@@ -388,7 +410,18 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                 {alerts.filter(alert => alert.status === 'closed').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
-                    alert={alert}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}
                     onStopLossHit={handleStopLossHit}

@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Activity, Clock, Zap, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
-import { getTimeAgo } from '@/utils/timeUtils';
 
 interface SystemHealthMonitorProps {
   className?: string;
@@ -91,6 +90,14 @@ export const SystemHealthMonitor: React.FC<SystemHealthMonitorProps> = ({ classN
 
   const overallStatus = getOverallStatus();
 
+  const formatTimeAgo = (timestamp: string | null) => {
+    if (!timestamp) return 'Never';
+    const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    return `${Math.floor(seconds / 3600)}h ago`;
+  };
+
   return (
     <Card className={`${className}`}>
       <CardHeader className="pb-3">
@@ -122,7 +129,7 @@ export const SystemHealthMonitor: React.FC<SystemHealthMonitorProps> = ({ classN
               {health.priceUpdatesActive ? 'Live' : 'Stale'}
             </Badge>
             <span className="text-muted-foreground">
-              {getTimeAgo(health.lastPriceUpdate)}
+              {formatTimeAgo(health.lastPriceUpdate)}
             </span>
           </div>
         </div>
@@ -140,7 +147,7 @@ export const SystemHealthMonitor: React.FC<SystemHealthMonitorProps> = ({ classN
               {health.orderMonitorActive ? 'Active' : 'Idle'}
             </Badge>
             <span className="text-muted-foreground">
-              {getTimeAgo(health.lastOrderCheck)}
+              {formatTimeAgo(health.lastOrderCheck)}
             </span>
           </div>
         </div>

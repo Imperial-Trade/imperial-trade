@@ -45,7 +45,7 @@ export class RealtimeIntegration {
             schema: 'public',
             table: 'trade_alerts',
           },
-          this.handleRealtimeEvent.bind(this)
+          (payload) => this.handleRealtimeEvent(payload)
         )
         .subscribe((status) => {
           console.log('📡 Real-time subscription status:', status);
@@ -98,10 +98,15 @@ export class RealtimeIntegration {
   }
 
   /**
-   * Handle real-time events from Supabase
+   * Handle real-time events from Supabase - ENHANCED with async profile resolution
    */
-  private handleRealtimeEvent(payload: any): void {
-    console.log('📨 Real-time event received:', payload.eventType, payload.new?.id);
+  private async handleRealtimeEvent(payload: any): Promise<void> {
+    console.log('📨 Real-time event received:', { 
+      eventType: payload.eventType, 
+      signalId: payload.new?.id || payload.old?.id,
+      hasProfiles: !!payload.new?.profiles,
+      notes: payload.new?.notes ? 'has notes' : 'no notes'
+    });
 
     try {
       const store = useSignalStore.getState();
@@ -109,20 +114,34 @@ export class RealtimeIntegration {
       switch (payload.eventType) {
         case 'INSERT':
           if (payload.new) {
-            const signal = this.transformPayload(payload.new);
+            console.log('🆕 Processing INSERT event');
+            const signal = await this.transformPayload(payload.new);
+            console.log('🆕 Transformed INSERT signal:', { 
+              id: signal.id,
+              creatorName: signal.creator?.display_name,
+              hasNotes: !!signal.notes 
+            });
             signalActions.handleRealtimeUpdate(signal, 'INSERT');
           }
           break;
 
         case 'UPDATE':
           if (payload.new) {
-            const signal = this.transformPayload(payload.new);
+            console.log('🔄 Processing UPDATE event');
+            const signal = await this.transformPayload(payload.new);
+            console.log('🔄 Transformed UPDATE signal:', { 
+              id: signal.id,
+              creatorName: signal.creator?.display_name,
+              hasNotes: !!signal.notes,
+              notes: signal.notes 
+            });
             signalActions.handleRealtimeUpdate(signal, 'UPDATE');
           }
           break;
 
         case 'DELETE':
           if (payload.old?.id) {
+            console.log('🗑️ Processing DELETE event:', payload.old.id);
             signalActions.handleRealtimeUpdate({ id: payload.old.id } as any, 'DELETE');
           }
           break;
@@ -142,16 +161,44 @@ export class RealtimeIntegration {
   }
 
   /**
-   * Transform raw Supabase payload to TradeAlertWithProfile
+   * Transform raw Supabase payload to TradeAlertWithProfile - ENHANCED with profile resolution
    */
-  private transformPayload(payload: any): TradeAlertWithProfile {
+  private async transformPayload(payload: any): Promise<TradeAlertWithProfile> {
+    console.log('🔄 Transforming payload:', { 
+      id: payload.id,
+      hasProfiles: !!payload.profiles,
+      userId: payload.user_id,
+      notes: payload.notes ? 'has notes' : 'no notes'
+    });
+
     // If payload already has profile data, use transformTradeAlertWithProfile
     if (payload.profiles) {
+      console.log('✅ Using existing profile data from payload');
       return transformTradeAlertWithProfile(payload);
     }
 
-    // Otherwise, create a basic signal (profile will be fetched separately if needed)
-    return {
+    // CRITICAL FIX: Fetch profile data when missing from real-time event
+    let profileData = null;
+    if (payload.user_id) {
+      try {
+        console.log('🔍 Fetching profile data for user:', payload.user_id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, display_name, role, avatar_url, user_type, access_level')
+          .eq('id', payload.user_id)
+          .single();
+        
+        profileData = profile;
+        console.log('✅ Profile data fetched:', { 
+          id: profile?.id,
+          displayName: profile?.display_name 
+        });
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch profile data for real-time event:', error);
+      }
+    }
+
+    const transformedSignal = {
       id: payload.id,
       userId: payload.user_id,
       assetName: payload.asset_name,
@@ -170,7 +217,29 @@ export class RealtimeIntegration {
       closeReason: payload.close_reason,
       createdAt: payload.created_at,
       updatedAt: payload.updated_at,
+      // CRITICAL FIX: Include profile data using correct structure
+      creator: profileData ? {
+        id: profileData.id,
+        display_name: profileData.display_name || 'Unknown Trader',
+        role: profileData.role || 'user',
+        avatar_url: profileData.avatar_url || undefined,
+        user_type: profileData.user_type || undefined,
+        access_level: profileData.access_level || undefined
+      } : {
+        id: payload.user_id,
+        display_name: 'Unknown Trader',
+        role: 'user',
+        avatar_url: undefined
+      }
     };
+
+    console.log('🔄 Transformed signal:', { 
+      id: transformedSignal.id,
+      creatorName: transformedSignal.creator?.display_name,
+      hasNotes: !!transformedSignal.notes 
+    });
+
+    return transformedSignal;
   }
 
   /**

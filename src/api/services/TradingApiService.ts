@@ -235,23 +235,32 @@ export class TradingApiService {
 
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      const { data, error } = await supabase
-        .from('trade_alerts')
-        .select(`
-          *,
-          profiles (
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Use manual JOIN to avoid Supabase relationship issues
+      const { data, error } = await supabase.rpc('get_alerts_with_profiles');
 
       if (error) {
         console.error('TradingApiService - Error fetching public alerts:', error);
+        // Fallback to basic alerts without profiles
+        console.warn('Falling back to alerts without profiles...');
+        const fallbackResponse = await this.getAllAlerts('');
+        if (fallbackResponse.success && fallbackResponse.data) {
+          const alertsWithEmptyProfiles = fallbackResponse.data.map(alert => ({
+            ...alert,
+            profiles: {
+              id: alert.userId,
+              displayName: 'Unknown User',
+              role: null,
+              avatarUrl: null,
+              userType: null,
+              accessLevel: null
+            }
+          }));
+          return {
+            success: true,
+            data: alertsWithEmptyProfiles,
+            error: undefined
+          };
+        }
         return {
           success: false,
           error: error.message,
@@ -267,10 +276,35 @@ export class TradingApiService {
         };
       }
 
-      // ACL: Transform database responses with profiles to camelCase
-      const responseData = data
-        .filter(item => isTradeAlert(item))
-        .map(item => transformTradeAlertWithProfile(item as any));
+      // Transform the flattened JOIN results
+      const responseData = data.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        assetName: row.asset_name,
+        tradermadeSymbol: row.tradermade_symbol,
+        tradeType: row.trade_type,
+        entryPrice: row.entry_price,
+        stopLoss: row.stop_loss,
+        status: row.status,
+        tp1: row.tp1,
+        tp2: row.tp2,
+        tp3: row.tp3,
+        tp4: row.tp4,
+        tp5: row.tp5,
+        tpHits: row.tp_hits || [],
+        notes: row.notes,
+        closeReason: row.close_reason,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        profiles: {
+          id: row.profile_id,
+          displayName: row.display_name || 'Unknown User',
+          role: row.role,
+          avatarUrl: row.avatar_url,
+          userType: row.user_type,
+          accessLevel: row.access_level
+        }
+      }));
 
       return {
         success: true,

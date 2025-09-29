@@ -18,6 +18,15 @@ export const useNewSignalStore = (): boolean => {
   return import.meta.env.VITE_USE_NEW_SIGNAL_STORE === 'true';
 };
 
+/**
+ * Feature flag for enabling/disabling real-time signal updates
+ * Set VITE_ENABLE_SIGNAL_REALTIME=true in .env to enable real-time functionality
+ * Defaults to false for stable, non-real-time operation
+ */
+export const enableSignalRealtime = (): boolean => {
+  return import.meta.env.VITE_ENABLE_SIGNAL_REALTIME === 'true';
+};
+
 export const isDevelopment = (): boolean => {
   return import.meta.env.DEV;
 };

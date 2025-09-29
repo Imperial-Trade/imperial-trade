@@ -3,7 +3,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import InAppNotificationSystem from '@/components/notifications/InAppNotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -68,11 +68,12 @@ export default function SignalStream() {
   const isLoading = realtimeLoading;
   const error = realtimeError;
   
-  // 🚀 CREATE ALERT: Direct API call with optimistic updates
+  // 🚀 CREATE ALERT: Direct API call with manual refresh
   const createAlert = useCallback(async (dto: any) => {
     try {
       const result = await tradingApiService.createAlert(dto, user?.id || '');
       if (result.success) {
+        // Manual refresh to ensure consistency
         await refreshAlerts();
         return true;
       }
@@ -82,6 +83,23 @@ export default function SignalStream() {
       return false;
     }
   }, [refreshAlerts, user?.id]);
+
+  // Manual refresh handler
+  const handleManualRefresh = useCallback(async () => {
+    try {
+      await refreshAlerts();
+      toast({
+        title: "Refreshed",
+        description: "Signal data has been updated from server.",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh signal data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [refreshAlerts, toast]);
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
@@ -456,6 +474,9 @@ export default function SignalStream() {
         throw new Error('Update failed - no response from API');
       }
       
+      // Manual refresh to ensure consistency after update
+      await refreshAlerts();
+      
       if (result && newStatus === 'closed' && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_closed',
@@ -530,6 +551,10 @@ export default function SignalStream() {
         })
       };
       const result = await updateAlert(alert.id, updateDto);
+      
+      // Manual refresh to ensure consistency after TP hit
+      await refreshAlerts();
+      
       if (result && (window as any).addNotification) {
         const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
         if (highestTP !== null) {
@@ -581,6 +606,10 @@ export default function SignalStream() {
         closeReason: typedCloseReason
       };
       const result = await updateAlert(alert.id, updateDto);
+      
+      // Manual refresh to ensure consistency after stop loss hit
+      await refreshAlerts();
+      
       if (result && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'stop_loss',
@@ -613,6 +642,10 @@ export default function SignalStream() {
         status: 'active'
       };
       const result = await updateAlert(alert.id, updateDto);
+      
+      // Manual refresh to ensure consistency after order activation
+      await refreshAlerts();
+      
       if (result && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_activated',
@@ -684,20 +717,32 @@ export default function SignalStream() {
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
-                      <span className="text-imperial-platinum">Active </span>
-                      <span 
-                        className="bg-clip-text text-transparent font-medium"
-                        style={{ 
-                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
+                    <div className="flex items-center justify-between mb-3 border-b border-accent-green/20 pb-1.5">
+                      <h2 className="text-lg font-semibold">
+                        <span className="text-imperial-platinum">Active </span>
+                        <span 
+                          className="bg-clip-text text-transparent font-medium"
+                          style={{ 
+                            background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                          }}
+                        >
+                          Alerts
+                        </span>
+                        <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
+                      </h2>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleManualRefresh}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        title="Refresh signals from server"
                       >
-                        Alerts
-                      </span>
-                      <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
-                    </h2>
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard alert={alert} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id, alert.userId)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />

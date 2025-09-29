@@ -47,7 +47,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     <Button
       variant={variant}
       size="sm"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(value.toString(), label); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(value?.toString() || '0', label); }}
       className="flex items-center gap-2 h-8 text-xs"
     >
       {copiedItem === label ? (
@@ -55,7 +55,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
       ) : (
         <Copy className="w-3 h-3" />
       )}
-      {value.toFixed(2)}
+      {value != null ? value.toFixed(2) : '0.00'}
       {copiedItem === label && <span className="text-green-400">Copied!</span>}
     </Button>
   );

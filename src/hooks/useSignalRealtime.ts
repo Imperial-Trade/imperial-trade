@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ConnectionStatus } from '@/store/signalStore';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
-import { useNewSignalStore } from '@/utils/featureFlags';
+import { useNewSignalStore, enableSignalRealtime } from '@/utils/featureFlags';
 import { useSignalStore } from '@/hooks/useSignalStore';
 import { realtimeIntegration } from '@/store/realtimeIntegration';
 
@@ -20,8 +20,9 @@ export interface UseSignalRealtimeReturn {
 export const useSignalRealtime = (userId: string, showAllSignals: boolean = false): UseSignalRealtimeReturn => {
   // Check if we should use the new signal store
   const shouldUseNewStore = useNewSignalStore();
+  const realtimeEnabled = enableSignalRealtime();
   
-  console.log('🚀 useSignalRealtime called - shouldUseNewStore:', shouldUseNewStore, 'userId:', userId);
+  console.log('🚀 useSignalRealtime called - shouldUseNewStore:', shouldUseNewStore, 'realtimeEnabled:', realtimeEnabled, 'userId:', userId);
   
   // NEW STORE IMPLEMENTATION
   if (shouldUseNewStore) {
@@ -36,18 +37,24 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
       error: storeData.error
     });
     
-    // Initialize real-time connection
+    // Initialize connection based on realtime flag
     useEffect(() => {
       if (userId) {
-        console.log('🔗 Initializing real-time connection for user:', userId);
-        realtimeIntegration.connect(userId);
-        
-        return () => {
-          console.log('🔌 Cleaning up real-time connection');
-          realtimeIntegration.disconnect();
-        };
+        if (realtimeEnabled) {
+          console.log('🔗 Initializing real-time connection for user:', userId);
+          realtimeIntegration.connect(userId);
+          
+          return () => {
+            console.log('🔌 Cleaning up real-time connection');
+            realtimeIntegration.disconnect();
+          };
+        } else {
+          console.log('🚫 Real-time disabled - performing initial data fetch only');
+          // Perform initial data fetch without real-time subscription
+          storeData.refreshAlerts(userId);
+        }
       }
-    }, [userId]);
+    }, [userId, realtimeEnabled, storeData.refreshAlerts]);
     
     // Exact API compatibility with legacy hook - hide userId from component interface
     const updateAlert = useCallback(

@@ -3,6 +3,7 @@ import { useSignalStore } from './signalStore';
 import { signalActions } from './signalActions';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { transformTradeAlertWithProfile } from '@/utils/dataTransformers';
+import { enableSignalRealtime } from '@/utils/featureFlags';
 
 /**
  * Real-time Integration Bridge for Zustand Signal Store
@@ -31,6 +32,15 @@ export class RealtimeIntegration {
 
     try {
       const store = useSignalStore.getState();
+      const realtimeEnabled = enableSignalRealtime();
+      
+      if (!realtimeEnabled) {
+        console.log('🚫 Real-time disabled by feature flag - skipping WebSocket subscription');
+        store.setConnectionStatus('disconnected');
+        await signalActions.refreshSignals(userId);
+        return;
+      }
+
       store.setConnectionStatus('connecting');
       store.clearError();
 

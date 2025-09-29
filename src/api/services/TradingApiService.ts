@@ -115,14 +115,12 @@ export class TradingApiService {
       console.log('TradingApiService - Direct update with RLS enforcement:', updateData);
 
       // Direct update using Supabase - RLS will enforce ownership permissions
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('trade_alerts')
         .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
       
-      console.log('TradingApiService - Direct update result:', { data, error });
+      console.log('TradingApiService - Direct update result (no select):', { error });
       
       if (error) {
         console.error('TradingApiService - RLS/Update error:', {
@@ -140,18 +138,7 @@ export class TradingApiService {
         };
       }
 
-      if (!data || !isTradeAlert(data)) {
-        return {
-          success: false,
-          error: 'Invalid trade alert data received',
-          data: undefined
-        };
-      }
-
-      // ACL: Transform database response to camelCase DTO
-      const responseDto = transformTradeAlert(data);
-      
-      console.log('TradingApiService - Update successful, refreshing store...');
+      console.log('TradingApiService - Update accepted; requesting store refresh...');
       
       // Import signalActions dynamically to avoid circular dependency
       const { signalActions } = await import('@/store/signalActions');
@@ -161,7 +148,7 @@ export class TradingApiService {
 
       return {
         success: true,
-        data: responseDto,
+        data: undefined,
         error: undefined
       };
     } catch (error) {

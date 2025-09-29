@@ -106,13 +106,9 @@ export class SignalActions {
       // Make API call
       const result = await tradingApiService.updateAlert(id, dto, userId);
       
-      if (result.success && result.data) {
-        console.log('✅ Signal updated successfully:', { 
-          id: result.data.id,
-          status: result.data.status,
-          notes: result.data.notes ? 'has notes' : 'no notes'
-        });
-        // Real-time subscription will provide the actual updated data
+      if (result.success) {
+        console.log('✅ Signal update accepted; awaiting server refresh');
+        // Real-time or explicit refresh will reconcile the optimistic state
         return {
           success: true,
           data: result.data

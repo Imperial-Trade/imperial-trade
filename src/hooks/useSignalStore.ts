@@ -55,21 +55,11 @@ export const useSignalStore = (userId: string): UseSignalStoreReturn => {
   }, []);
   
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto | null> => {
-    if (!userId || !userId.trim()) {
-      console.warn('useSignalStore - Cannot update alert: invalid userId');
-      return null;
-    }
-    
     const result = await signalActions.updateSignal(id, dto, userId);
     return result.success ? result.data || null : null;
   }, []);
   
   const closeAlert = useCallback(async (id: string, reason: string, userId: string): Promise<TradeAlertResponseDto | null> => {
-    if (!userId || !userId.trim()) {
-      console.warn('useSignalStore - Cannot close alert: invalid userId');
-      return null;
-    }
-    
     const result = await signalActions.closeSignal(id, reason, userId);
     return result.success ? result.data || null : null;
   }, []);

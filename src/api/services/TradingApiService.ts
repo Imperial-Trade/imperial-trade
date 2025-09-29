@@ -235,33 +235,15 @@ export class TradingApiService {
 
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Use direct SQL query to avoid Supabase relationship issues
+      console.log('TradingApiService - Using RPC function get_alerts_with_profiles');
+      
+      // Use the working RPC function that properly joins alerts with profiles
       const { data, error } = await supabase
-        .from('trade_alerts')
-        .select(`
-          id,
-          user_id,
-          asset_name,
-          tradermade_symbol,
-          trade_type,
-          entry_price,
-          stop_loss,
-          status,
-          tp1,
-          tp2,
-          tp3,
-          tp4,
-          tp5,
-          tp_hits,
-          notes,
-          close_reason,
-          created_at,
-          updated_at
-        `)
+        .rpc('get_alerts_with_profiles')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('TradingApiService - Error fetching public alerts:', error);
+        console.error('TradingApiService - RPC error:', error);
         return {
           success: false,
           error: error.message,
@@ -277,48 +259,39 @@ export class TradingApiService {
         };
       }
 
-      // Get profile data separately to avoid JOIN issues
-      const userIds = [...new Set(data.map(alert => alert.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name, role, avatar_url, user_type, access_level')
-        .in('id', userIds);
+      console.log('TradingApiService - RPC returned', data.length, 'alerts with profile data');
 
-      // Create a profile lookup map
-      const profileMap = new Map();
-      (profiles || []).forEach(profile => {
-        profileMap.set(profile.id, profile);
-      });
-
-      // Transform the data with profile information
-      const responseData = data.map(alert => ({
+      // Transform the RPC result to match the expected interface
+      const responseData: TradeAlertWithProfile[] = data.map(alert => ({
         id: alert.id,
         userId: alert.user_id,
         assetName: alert.asset_name,
         tradermadeSymbol: alert.tradermade_symbol,
-        tradeType: alert.trade_type,
-        entryPrice: alert.entry_price,
-        stopLoss: alert.stop_loss,
-        status: alert.status,
-        tp1: alert.tp1,
-        tp2: alert.tp2,
-        tp3: alert.tp3,
-        tp4: alert.tp4,
-        tp5: alert.tp5,
+        tradeType: alert.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
+        entryPrice: Number(alert.entry_price),
+        stopLoss: Number(alert.stop_loss),
+        status: alert.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+        tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+        tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+        tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+        tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+        tp5: alert.tp5 ? Number(alert.tp5) : undefined,
         tpHits: alert.tp_hits || [],
         notes: alert.notes,
-        closeReason: alert.close_reason,
+        closeReason: alert.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired' | undefined,
         createdAt: alert.created_at,
         updatedAt: alert.updated_at,
-        profiles: {
+        creator: {
           id: alert.user_id,
-          displayName: profileMap.get(alert.user_id)?.display_name || 'Unknown User',
-          role: profileMap.get(alert.user_id)?.role || null,
-          avatarUrl: profileMap.get(alert.user_id)?.avatar_url || null,
-          userType: profileMap.get(alert.user_id)?.user_type || null,
-          accessLevel: profileMap.get(alert.user_id)?.access_level || null
+          display_name: alert.display_name || 'Unknown User',
+          role: alert.role || 'user',
+          avatar_url: alert.avatar_url || undefined,
+          user_type: alert.user_type || undefined,
+          access_level: alert.access_level || undefined,
         }
       }));
+
+      console.log('TradingApiService - Transformed data sample:', responseData[0]?.creator);
 
       return {
         success: true,

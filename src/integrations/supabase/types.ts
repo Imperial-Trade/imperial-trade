@@ -4008,6 +4008,35 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_alerts_with_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: Database["public"]["Enums"]["access_level_enum"]
+          asset_name: string
+          avatar_url: string
+          close_reason: string
+          created_at: string
+          display_name: string
+          entry_price: number
+          id: string
+          notes: string
+          profile_id: string
+          role: string
+          status: string
+          stop_loss: number
+          tp_hits: number[]
+          tp1: number
+          tp2: number
+          tp3: number
+          tp4: number
+          tp5: number
+          trade_type: string
+          tradermade_symbol: string
+          updated_at: string
+          user_id: string
+          user_type: Database["public"]["Enums"]["user_type_enum"]
+        }[]
+      }
       get_anonymized_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: {

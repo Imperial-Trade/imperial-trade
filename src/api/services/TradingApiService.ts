@@ -235,32 +235,33 @@ export class TradingApiService {
 
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Use manual JOIN to avoid Supabase relationship issues
-      const { data, error } = await supabase.rpc('get_alerts_with_profiles');
+      // Use direct SQL query to avoid Supabase relationship issues
+      const { data, error } = await supabase
+        .from('trade_alerts')
+        .select(`
+          id,
+          user_id,
+          asset_name,
+          tradermade_symbol,
+          trade_type,
+          entry_price,
+          stop_loss,
+          status,
+          tp1,
+          tp2,
+          tp3,
+          tp4,
+          tp5,
+          tp_hits,
+          notes,
+          close_reason,
+          created_at,
+          updated_at
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('TradingApiService - Error fetching public alerts:', error);
-        // Fallback to basic alerts without profiles
-        console.warn('Falling back to alerts without profiles...');
-        const fallbackResponse = await this.getAllAlerts('');
-        if (fallbackResponse.success && fallbackResponse.data) {
-          const alertsWithEmptyProfiles = fallbackResponse.data.map(alert => ({
-            ...alert,
-            profiles: {
-              id: alert.userId,
-              displayName: 'Unknown User',
-              role: null,
-              avatarUrl: null,
-              userType: null,
-              accessLevel: null
-            }
-          }));
-          return {
-            success: true,
-            data: alertsWithEmptyProfiles,
-            error: undefined
-          };
-        }
         return {
           success: false,
           error: error.message,
@@ -276,33 +277,46 @@ export class TradingApiService {
         };
       }
 
-      // Transform the flattened JOIN results
-      const responseData = data.map((row: any) => ({
-        id: row.id,
-        userId: row.user_id,
-        assetName: row.asset_name,
-        tradermadeSymbol: row.tradermade_symbol,
-        tradeType: row.trade_type,
-        entryPrice: row.entry_price,
-        stopLoss: row.stop_loss,
-        status: row.status,
-        tp1: row.tp1,
-        tp2: row.tp2,
-        tp3: row.tp3,
-        tp4: row.tp4,
-        tp5: row.tp5,
-        tpHits: row.tp_hits || [],
-        notes: row.notes,
-        closeReason: row.close_reason,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+      // Get profile data separately to avoid JOIN issues
+      const userIds = [...new Set(data.map(alert => alert.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, role, avatar_url, user_type, access_level')
+        .in('id', userIds);
+
+      // Create a profile lookup map
+      const profileMap = new Map();
+      (profiles || []).forEach(profile => {
+        profileMap.set(profile.id, profile);
+      });
+
+      // Transform the data with profile information
+      const responseData = data.map(alert => ({
+        id: alert.id,
+        userId: alert.user_id,
+        assetName: alert.asset_name,
+        tradermadeSymbol: alert.tradermade_symbol,
+        tradeType: alert.trade_type,
+        entryPrice: alert.entry_price,
+        stopLoss: alert.stop_loss,
+        status: alert.status,
+        tp1: alert.tp1,
+        tp2: alert.tp2,
+        tp3: alert.tp3,
+        tp4: alert.tp4,
+        tp5: alert.tp5,
+        tpHits: alert.tp_hits || [],
+        notes: alert.notes,
+        closeReason: alert.close_reason,
+        createdAt: alert.created_at,
+        updatedAt: alert.updated_at,
         profiles: {
-          id: row.profile_id,
-          displayName: row.display_name || 'Unknown User',
-          role: row.role,
-          avatarUrl: row.avatar_url,
-          userType: row.user_type,
-          accessLevel: row.access_level
+          id: alert.user_id,
+          displayName: profileMap.get(alert.user_id)?.display_name || 'Unknown User',
+          role: profileMap.get(alert.user_id)?.role || null,
+          avatarUrl: profileMap.get(alert.user_id)?.avatar_url || null,
+          userType: profileMap.get(alert.user_id)?.user_type || null,
+          accessLevel: profileMap.get(alert.user_id)?.access_level || null
         }
       }));
 

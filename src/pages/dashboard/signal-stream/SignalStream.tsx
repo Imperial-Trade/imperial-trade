@@ -15,7 +15,7 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
-import { isDevToolsEnabled } from '@/utils/featureFlags';
+import { isDevToolsEnabled, enableSignalRealtime } from '@/utils/featureFlags';
 import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';
 import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -58,14 +58,14 @@ export default function SignalStream() {
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
   
-  useEffect(() => {
-    if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
-      hasHydratedRef.current = true;
-    }
-  }, [allAlerts.length, connectionStatus, lastUpdated]);
-  
   // Local state for operations
   const isLoading = realtimeLoading;
+  
+  useEffect(() => {
+    if (!hasHydratedRef.current && (allAlerts.length > 0 || !isLoading || connectionStatus === 'connected' || lastUpdated)) {
+      hasHydratedRef.current = true;
+    }
+  }, [allAlerts.length, connectionStatus, lastUpdated, isLoading]);
   const error = realtimeError;
   
   // 🚀 CREATE ALERT: Direct API call with manual refresh
@@ -707,7 +707,7 @@ export default function SignalStream() {
                 <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
               </div>
               
-{(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+{(!hasHydratedRef.current && (isLoading || (!enableSignalRealtime() ? false : connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({
                 length: 6
               }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">

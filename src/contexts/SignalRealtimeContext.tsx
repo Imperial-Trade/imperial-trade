@@ -454,7 +454,7 @@ unstable_batchedUpdates(() => {
         }
         
         setSignals(prev => {
-          // Check for duplicates using the state from the setter to avoid stale closure
+          // PHASE 3: SIGNAL ISOLATION - Check for duplicates only for THIS specific signal
           const alreadyExists = prev.find(signal => signal.id === newSignal.id);
           if (alreadyExists) {
             if (isDevToolsEnabled()) {
@@ -494,48 +494,46 @@ unstable_batchedUpdates(() => {
         }
         
         setSignals(prev => {
-          // 🚀 ORDER ACTIVATION BYPASS: Detect critical order status changes
-          const currentSignal = prev.find(signal => signal.id === newRecord.id);
-          const isOrderActivation = currentSignal?.status === 'pending' && newRecord.status === 'active';
+          // PHASE 3: CRITICAL SIGNAL ISOLATION - Only update the specific signal being modified
+          const targetSignalId = newRecord.id;
+          const currentSignal = prev.find(signal => signal.id === targetSignalId);
+          
+          if (!currentSignal) {
+            if (isDevToolsEnabled()) {
+              console.log('SignalRealtimeContext - UPDATE: Signal not found in state, ignoring:', targetSignalId);
+            }
+            return prev; // CRITICAL: Don't affect other signals if target not found
+          }
+          
+          const isOrderActivation = currentSignal.status === 'pending' && newRecord.status === 'active';
           const isCriticalStatusChange = newRecord.status === 'closed' || isOrderActivation;
-          const isNotesUpdate = currentSignal?.notes !== newRecord.notes;
+          const isNotesUpdate = currentSignal.notes !== newRecord.notes;
           
           if (isDevToolsEnabled() && isCriticalStatusChange) {
-            console.log(`🚀 ORDER STATUS BYPASS: ${currentSignal?.status} → ${newRecord.status} for ${newRecord.asset_name}`);
+            console.log(`🚀 ISOLATED STATUS CHANGE: ${currentSignal.status} → ${newRecord.status} for ${newRecord.asset_name} (ID: ${targetSignalId})`);
           }
           
           if (isDevToolsEnabled() && isNotesUpdate) {
-            console.log(`📝 NOTES UPDATE: "${currentSignal?.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (${newRecord.id})`);
+            console.log(`📝 ISOLATED NOTES UPDATE: "${currentSignal.notes}" → "${newRecord.notes}" for ${newRecord.asset_name} (ID: ${targetSignalId})`);
           }
 
-          // 🎯 ACTIVATION PRIORITY: Force immediate re-render for order activations
+          // PHASE 3: CRITICAL - Signal isolation during order activation
           if (isOrderActivation) {
-            console.log(`🎯 ACTIVATION DETECTED: Forcing immediate UI update for ${newRecord.asset_name} (${newRecord.id})`);
+            console.log(`🎯 ISOLATED ACTIVATION: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
             
-            // Dispatch activation event with high priority
+            // Dispatch activation event with signal isolation
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
                 detail: {
-                  signalId: newRecord.id,
+                  signalId: targetSignalId,
                   assetName: newRecord.asset_name,
                   status: 'active',
                   timestamp: new Date().toISOString(),
-                  priority: 'high'
+                  priority: 'high',
+                  isolation: 'enforced'
                 }
               }));
             }, 0);
-
-            // 🚀 PHASE 2: Enhanced activation reliability - Force delayed refresh
-            setTimeout(() => {
-              console.log(`🔄 ACTIVATION REFRESH: Triggering delayed UI sync for ${newRecord.asset_name}`);
-              setSignals(current => current.map(s => 
-                s.id === newRecord.id ? {
-                  ...s,
-                  status: 'active',
-                  updatedAt: new Date().toISOString()
-                } : s
-              ));
-            }, 100);
           }
           
           const updatedSignals = prev.map(signal => 
@@ -559,41 +557,44 @@ unstable_batchedUpdates(() => {
             } : signal
           );
           
-          // PHASE 5: CRITICAL FIX - Validate TP progression to prevent regression
+          // PHASE 3: CRITICAL SIGNAL ISOLATION - Validate TP progression ONLY for target signal
           const validatedSignals = updatedSignals.map(signal => {
-            if (signal.id === newRecord.id && newRecord.tp_hits) {
-              // Ensure TP hits are sequential and valid
+            // STRICT ISOLATION: Only validate TP hits for the exact signal being updated
+            if (signal.id === targetSignalId && newRecord.tp_hits) {
+              // Ensure TP hits are sequential and valid for THIS signal only
               const validTpHits = [];
               const sortedTpHits = [...newRecord.tp_hits].sort((a, b) => a - b);
               
-              // Only allow sequential TP hits (1, then 2, then 3, etc.)
+              // Only allow sequential TP hits (1, then 2, then 3, etc.) for THIS signal
               for (let i = 0; i < sortedTpHits.length; i++) {
                 const expectedTp = i + 1;
                 if (sortedTpHits[i] === expectedTp) {
                   validTpHits.push(expectedTp);
                 } else {
-                  // Invalid TP sequence detected, break
-                  console.warn(`🚨 INVALID TP SEQUENCE: Expected TP${expectedTp}, got TP${sortedTpHits[i]} for signal ${signal.id}`);
+                  // Invalid TP sequence detected for THIS signal only
+                  console.warn(`🚨 INVALID TP SEQUENCE for signal ${targetSignalId}: Expected TP${expectedTp}, got TP${sortedTpHits[i]}`);
                   break;
                 }
               }
               
               return {
                 ...signal,
-                tpHits: validTpHits // Use validated TP hits
+                tpHits: validTpHits // Use validated TP hits for THIS signal only
               };
             }
+            // CRITICAL: All other signals remain completely untouched
             return signal;
           });
           
-          // 🚀 INSTANT FEEDBACK: Dispatch immediate UI update for order activations
+          // PHASE 3: ISOLATED FEEDBACK - Only dispatch notifications for the specific signal
           if (isOrderActivation) {
-            // Enhanced activation notification
+            // Enhanced activation notification with signal isolation
             if ((window as any).addNotification) {
               (window as any).addNotification({
                 type: 'order_activated',
                 title: `🚀 Order Activated!`,
                 message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                signalId: targetSignalId, // CRITICAL: Signal isolation
                 priority: 'high',
                 autoRemove: true,
                 duration: 5000
@@ -603,14 +604,30 @@ unstable_batchedUpdates(() => {
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('order-activated', {
                 detail: {
-                  signalId: newRecord.id,
+                  signalId: targetSignalId, // CRITICAL: Signal isolation
                   assetName: newRecord.asset_name,
                   status: newRecord.status,
                   timestamp: new Date().toISOString(),
-                  priority: 'high'
+                  priority: 'high',
+                  isolation: 'enforced'
                 }
               }));
             }, 0);
+          }
+
+          // PHASE 4: NOTES UPDATE NOTIFICATIONS - Only for THIS signal
+          if (isNotesUpdate && !isCriticalStatusChange) {
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                type: 'notes_updated',
+                title: `📝 Signal Notes Updated`,
+                message: `${newRecord.asset_name} notes have been updated`,
+                signalId: targetSignalId, // CRITICAL: Signal isolation
+                priority: 'medium',
+                autoRemove: true,
+                duration: 4000
+              });
+            }
           }
           
           // 🔥 FLICKER PREVENTION: Apply cache filtering only during WebSocket updates

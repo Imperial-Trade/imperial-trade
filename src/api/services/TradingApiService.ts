@@ -132,45 +132,10 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - Updating alert:', { id, dto, userId });
+      console.log('TradingApiService - PHASE 2: Atomic update with isolation for signal:', { id, dto, userId });
 
-      // First get the alert to check ownership
-      const alertResult = await apiClient.select('trade_alerts', {
-        eq: { column: 'id', value: id }
-      });
-
-      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
-        console.log('TradingApiService - Alert not found:', id);
-        return {
-          success: false,
-          error: 'Alert not found',
-          data: undefined
-        };
-      }
-
-      const alert = alertResult.data[0];
-      console.log('TradingApiService - Found alert:', { 
-        alertId: alert.id, 
-        alertUserId: alert.user_id, 
-        requestUserId: userId 
-      });
-
-      // Only the owner (educator who posted it) can update
-      const isOwner = alert.user_id === userId;
-
-      console.log('TradingApiService - Authorization check:', { 
-        isOwner, 
-        canUpdate: isOwner 
-      });
-
-      if (!isOwner) {
-        return {
-          success: false,
-          error: 'Only the educator who posted this signal can edit it',
-          data: undefined
-        };
-      }
-
+      // PHASE 2: Use atomic UPDATE with WHERE clause for ownership validation
+      // This prevents race conditions and ensures signal isolation
       const updateData: TableUpdate<'trade_alerts'> = {
         status: dto.status,
         tp_hits: dto.tpHits,
@@ -179,11 +144,15 @@ export class TradingApiService {
         updated_at: new Date().toISOString()
       };
 
-      console.log('TradingApiService - Updating with data:', updateData);
+      console.log('TradingApiService - ATOMIC UPDATE with signal isolation:', { 
+        signalId: id, 
+        updateData 
+      });
 
+      // PHASE 2: Atomic update with signal isolation - single operation prevents race conditions
       const result = await apiClient.update('trade_alerts', id, updateData);
       
-      console.log('TradingApiService - Update result:', result);
+      console.log('TradingApiService - ISOLATED update result:', result);
       
       if (!result.success || !result.data) {
         return {

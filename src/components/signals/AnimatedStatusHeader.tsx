@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { User, Crown, GraduationCap } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
+import { getTimeAgo } from '@/utils/timeUtils';
 
 interface Creator {
   id: string;
@@ -61,18 +62,6 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
     }
   };
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
-  };
 
   return (
     <div className="mb-2">
@@ -99,7 +88,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <div className="text-xs text-muted-foreground">
-              {formatTimeAgo(createdDate)}
+              {getTimeAgo(createdDate)}
             </div>
           </div>
         </div>

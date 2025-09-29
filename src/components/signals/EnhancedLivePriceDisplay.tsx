@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getTimeAgo } from '@/utils/timeUtils';
 import { 
   RefreshCw, 
   TrendingUp, 
@@ -85,13 +86,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         setDataAge('Live'); // Show "Live" for sub-2-second data
       } else if (ageSeconds < 3) {
         setDataAge('Live'); // Extended to 3 seconds for heartbeat tolerance
-      } else if (ageSeconds < 60) {
-        setDataAge(`${ageSeconds}s ago`);
-      } else if (ageSeconds < 3600) {
-        const minutes = Math.floor(ageSeconds / 60);
-        setDataAge(`${minutes}m ago`);
       } else {
-        setDataAge('Stale');
+        // Use centralized time utility for consistency
+        const timeAgo = getTimeAgo(lastUpdated.toISOString());
+        setDataAge(timeAgo === 'Just now' ? 'Live' : timeAgo);
       }
     };
 

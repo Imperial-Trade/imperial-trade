@@ -595,6 +595,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               setPrices(prev => ({ ...prev, [symbol]: priceData }));
               setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
               setLastUpdated(new Date());
+              arrivalTimestamps.current.set(symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
               console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           }
@@ -644,6 +645,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               
               // 🚨 PHASE 2: Track database timestamp for race condition prevention
               timestampUpdates[row.symbol] = dbTimestamp;
+              arrivalTimestamps.current.set(row.symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
               console.log(`📊 Database hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           });
@@ -742,6 +744,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
             // 🚨 PHASE 2: Track database timestamp for race condition prevention
             timestampUpdates[row.symbol] = dbTimestamp;
+            arrivalTimestamps.current.set(row.symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
             console.log(`⚡ INSTANT hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()} (price: ${price})`);
           }
         });

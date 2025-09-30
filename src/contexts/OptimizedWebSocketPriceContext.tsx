@@ -669,9 +669,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           });
           
           if (Object.keys(polledPrices).length > 0) {
-            setInternalPrices(prev => ({ ...prev, ...polledPrices }));
             // 🚀 PHASE 1: Single batched update for emergency polling
             unstable_batchedUpdates(() => {
+              setInternalPrices(prev => ({ ...prev, ...polledPrices }));
               setPrices(prev => ({ ...prev, ...polledPrices }));
               setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
               setLastUpdated(new Date());
@@ -774,9 +774,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         });
         
         if (Object.keys(hydratedPrices).length > 0) {
-          setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
           // 🚀 PHASE 1: Single batched update for instant hydration
           unstable_batchedUpdates(() => {
+            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
             setLastUpdated(new Date());
@@ -1005,11 +1005,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Reset all state
     subscriptionsRef.current.clear();
-    setInternalPrices({});
-    setPrices({});
-    setConnectionStatus('disconnected');
-    setError(null);
-    setLastUpdated(null);
+    // 🚀 PHASE 1: Batched state reset
+    unstable_batchedUpdates(() => {
+      setInternalPrices({});
+      setPrices({});
+      setConnectionStatus('disconnected');
+      setError(null);
+      setLastUpdated(null);
+    });
     isConnectingRef.current = false;
     
     // Reset stability service
@@ -1066,9 +1069,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             mid: row.mid ? parseFloat(row.mid) : undefined
           };
           
-          setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-          setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-          setLastUpdated(new Date());
+          // 🚀 PHASE 1: Batched fallback update
+          unstable_batchedUpdates(() => {
+            setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+            setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+            setLastUpdated(new Date());
+          });
           
           console.log(`📡 Fallback price update: ${row.symbol} = ${priceData.price}`);
         }
@@ -1156,10 +1162,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 mid: nMid
               };
               
-              setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-              setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              // 🚀 PHASE 1: Batched emergency polling update
+              unstable_batchedUpdates(() => {
+                setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+                setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              });
             });
-            setLastUpdated(new Date());
+            // 🚀 PHASE 1: Batched timestamp update
+            unstable_batchedUpdates(() => {
+              setLastUpdated(new Date());
+            });
             console.log('✅ Emergency polling: Updated prices for', criticalSymbols);
           }
         } catch (error) {

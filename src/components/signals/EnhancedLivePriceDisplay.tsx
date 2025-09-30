@@ -38,7 +38,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // Use standardized symbol mapping
   const apiSymbol = getStandardSymbol(symbol) || symbol;
   
-  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(symbol, {
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds, dataAge: hookDataAge, isStale } = useOptimizedLivePrice(symbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
     enableSmartPausing: false,
     trackDataAge: true // Enable 250ms data age tracking for "Live" status display
@@ -64,42 +64,26 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const { shouldAllowQualityChange } = useConnectionStability();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataAge, setDataAge] = useState<string>('');
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
-  // GUARANTEED 2s Updates: Use current timestamp vs last updated for accurate staleness
-  useEffect(() => {
-    const updateAge = () => {
-      if (!lastUpdated) {
-        setDataAge('--');
-        return;
-      }
-      
-      // Calculate age from lastUpdated timestamp for guaranteed accuracy
-      const ageMs = Date.now() - lastUpdated.getTime();
-      const ageSeconds = Math.floor(ageMs / 1000);
-      
-      if (ageSeconds < 2) {
-        setDataAge('Live'); // Show "Live" for sub-2-second data
-      } else if (ageSeconds < 3) {
-        setDataAge('Live'); // Extended to 3 seconds for heartbeat tolerance
-      } else if (ageSeconds < 60) {
-        setDataAge(`${ageSeconds}s ago`);
-      } else if (ageSeconds < 3600) {
-        const minutes = Math.floor(ageSeconds / 60);
-        setDataAge(`${minutes}m ago`);
-      } else {
-        setDataAge('Stale');
-      }
-    };
-
-    updateAge();
-    // Update every 500ms for smooth, guaranteed real-time experience
-    const interval = setInterval(updateAge, 500);
-    return () => clearInterval(interval);
-  }, [lastUpdated]);
+  // Use optimized data age from hook (updated every 250ms)
+  const dataAge = useMemo(() => {
+    if (arrivalAgeMs === undefined || arrivalAgeMs === null) return '--';
+    
+    // Sub-2s live guarantee
+    if (arrivalAgeMs < 2000) return 'Live';
+    if (arrivalAgeMs < 3000) return 'Live'; // Extended for heartbeat tolerance
+    
+    const ageSeconds = Math.floor(arrivalAgeMs / 1000);
+    if (ageSeconds < 60) return `${ageSeconds}s ago`;
+    
+    const minutes = Math.floor(ageSeconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    
+    return 'Stale';
+  }, [arrivalAgeMs]);
 
   // Optimized price change animation effect
   useEffect(() => {

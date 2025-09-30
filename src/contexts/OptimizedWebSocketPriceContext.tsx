@@ -459,8 +459,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     }, 5000);
     
-    // 🚀 PHASE 2: Connection status watchdog - if stuck in connecting/error >10s, restart
+    // 🚀 PHASE 3: Connection status watchdog with route-gate guard
     watchdogTimerRef.current = setTimeout(() => {
+      // PHASE 3 FIX: Don't fight with route-based subscription management
+      if (!isPriceSubscriptionAllowed) {
+        if (isDevToolsEnabled()) {
+          console.log('🚦 Watchdog: Skipping restart - route gate is closed');
+        }
+        return;
+      }
+      
       if (connectionStatus === 'connecting' || connectionStatus === 'error') {
         console.log('🧯 Self-heal: restarting connection (stuck >10s)');
         restartConnection();
@@ -782,13 +790,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     if (isPriceSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Route gate OPENED for prices - Connection will establish on first subscription');
+        console.log('🚦 DIAGNOSTIC: Route gate OPENED for prices', {
+          timestamp: new Date().toISOString(),
+          activeSubscriptions: subscriptionsRef.current.size
+        });
       }
       // Price subscriptions are managed through subscribe() calls from components
       // No action needed here - just log the gate status
     } else {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Route gate CLOSED for prices - Cleaning up all subscriptions');
+        console.log('🚦 DIAGNOSTIC: Route gate CLOSED for prices - Cleaning up subscriptions', {
+          timestamp: new Date().toISOString(),
+          subscriptionsBeforeCleanup: subscriptionsRef.current.size
+        });
       }
       // Clean up all subscriptions when route gate closes
       if (subscriptionsRef.current.size > 0) {
@@ -799,7 +813,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Track previous state
     wasSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
-  }, [isPriceSubscriptionAllowed, unsubscribe]);
+  }, [isPriceSubscriptionAllowed]); // PHASE 2 FIX: Removed unsubscribe to break dependency loop
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions
   const restartConnection = useCallback(() => {

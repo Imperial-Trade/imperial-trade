@@ -144,6 +144,25 @@ class EmergencyRealtimeBreaker {
   }
 
   /**
+   * PHASE 4: Record route gate block (NOT a real failure)
+   * Route-gate blocks are expected behavior and should not trigger emergency mode
+   */
+  recordRouteGateBlock(subscriptionType: string): void {
+    // Don't increment failure counter - this is normal behavior
+    if (this.isDevToolsEnabled()) {
+      console.log(`🚦 Emergency Breaker: Route gate block recorded for ${subscriptionType} (not counted as failure)`);
+    }
+  }
+
+  /**
+   * PHASE 4: Helper to import isDevToolsEnabled
+   */
+  private isDevToolsEnabled(): boolean {
+    // Check if we're in development mode
+    return import.meta.env.DEV || localStorage.getItem('devToolsEnabled') === 'true';
+  }
+
+  /**
    * Activate emergency mode
    */
   private activateEmergencyMode(reason: string): void {

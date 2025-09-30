@@ -835,16 +835,22 @@ unstable_batchedUpdates(() => {
 
     if (isSignalSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Route gate OPENED for signals - Subscribing...');
+        console.log('🚦 DIAGNOSTIC: Route gate OPENED for signals - Subscribing...', {
+          timestamp: new Date().toISOString(),
+          currentSignals: signals.length
+        });
       }
       subscribe();
     } else {
       if (isDevToolsEnabled()) {
-        console.log('🚦 Route gate CLOSED for signals - Unsubscribing...');
+        console.log('🚦 DIAGNOSTIC: Route gate CLOSED for signals - Unsubscribing...', {
+          timestamp: new Date().toISOString(),
+          hadSignals: signals.length
+        });
       }
       unsubscribe();
     }
-  }, [isSignalSubscriptionAllowed, subscribe, unsubscribe]);
+  }, [isSignalSubscriptionAllowed]); // PHASE 1 FIX: Removed subscribe/unsubscribe to break dependency loop
 
   const contextValue: SignalRealtimeContextType = {
     signals,

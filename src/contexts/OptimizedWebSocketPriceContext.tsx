@@ -804,6 +804,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           subscriptionsBeforeCleanup: subscriptionsRef.current.size
         });
       }
+      // PHASE 4: Record route-gate block (not a connection failure)
+      emergencyRealtimeBreaker.recordRouteGateBlock('prices');
       // Clean up all subscriptions when route gate closes
       if (subscriptionsRef.current.size > 0) {
         const allSymbols = Array.from(subscriptionsRef.current.keys());

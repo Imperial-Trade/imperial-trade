@@ -11,6 +11,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 import { signalCacheManager } from '@/utils/signalCacheManager';
+import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 
 // PHASE 3: Massive Realtime Usage Reduction - 90% cost savings
 // Enhanced caching and shared connection strategy
@@ -848,6 +849,8 @@ unstable_batchedUpdates(() => {
           hadSignals: signals.length
         });
       }
+      // PHASE 4: Record route-gate block (not a connection failure)
+      emergencyRealtimeBreaker.recordRouteGateBlock('signals');
       unsubscribe();
     }
   }, [isSignalSubscriptionAllowed]); // PHASE 1 FIX: Removed subscribe/unsubscribe to break dependency loop

@@ -25,20 +25,12 @@ import { checkPriceIngestorHealth } from '@/utils/priceIngestorHealthCheck';
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
 const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
 
-// 🚀 FRONTEND THROTTLING (SMART TV STATION) CONFIGURATION
-const UI_UPDATE_THROTTLE_MS = 3500; // 3.5 seconds for calm, professional trading experience
+// 🚀 CONTINUOUS LIVE DISPLAY - RESTORED (September 26 Configuration)
+const UI_UPDATE_THROTTLE_MS = 100; // 100ms for immediate, responsive updates
 const SIGNIFICANCE_THRESHOLDS = {
-  CRITICAL: 0.005, // 0.5% change bypasses throttling for immediate updates
+  CRITICAL: 0.001, // 0.1% change for ultra-sensitive live updates
   MAJOR: 0.003,    // 0.3% change gets priority in next UI update
   NORMAL: 0.001,   // Normal threshold for batch updates
-};
-
-// 🚀 ORDER ACTIVATION BYPASS: Critical trading events that bypass throttling
-const CRITICAL_TRADING_EVENTS = {
-  ORDER_STATUS_CHANGE: true, // pending → active, active → closed
-  TP_HIT: true,             // Take profit hits
-  SL_HIT: true,             // Stop loss hits
-  LIVE_PRICE_WIDGET: true   // Live price displays for professional trading interface
 };
 
 // Enhanced price data interface with bid/ask support and arrival tracking
@@ -319,11 +311,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const watchdogIntervalRef = useRef<NodeJS.Timeout | null>(null); // New: Staleness watchdog
   const watchdogStaleCountRef = useRef(new Map<string, number>()); // New: Track consecutive stale checks
   
-  // 🚀 FRONTEND THROTTLING: Smart UI update management
-  const uiUpdateBuffer = useRef(new Map<string, PriceData>());
-  const uiUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUIUpdateRef = useRef(new Map<string, number>());
-  const significantUpdatesRef = useRef(new Set<string>()); // Track symbols with critical changes
+  // 🚀 CONTINUOUS LIVE DISPLAY: Removed UI throttling buffer (anti-blinking systems remain active)
   
   // 🎯 "Hydrate and Highlight" state tracking
   const realtimeReceivedSymbols = useRef(new Set<string>());
@@ -1072,10 +1060,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (visibilityTimeoutRef.current) {
         clearTimeout(visibilityTimeoutRef.current);
         visibilityTimeoutRef.current = null;
-      }
-      if (uiUpdateTimeoutRef.current) {
-        clearTimeout(uiUpdateTimeoutRef.current);
-        uiUpdateTimeoutRef.current = null;
       }
       if (watchdogIntervalRef.current) {
         clearInterval(watchdogIntervalRef.current);

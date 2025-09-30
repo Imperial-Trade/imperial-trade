@@ -88,7 +88,7 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
     const interval = setInterval(checkStaleness, 1000);
 
     return () => clearInterval(interval);
-  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices, getArrivalAge, getInternalPrice, internalPrices, uiThrottleMs]);
+  }, [symbol, maxAgeSeconds, getConnectionHealth, lastUpdated, prices, getArrivalAge, getInternalPrice, internalPrices]);
 
   return stalenessStatus;
 }

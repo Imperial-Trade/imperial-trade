@@ -461,7 +461,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // 🚀 PHASE 2: Start fallback timer - if not SUBSCRIBED within 5s, enable fallback
     fallbackTimerRef.current = setTimeout(() => {
-      if (connectionStatus !== 'connected') {
+      if (connectionStateRef.current.status !== 'connected') {
         console.log('📡 Fallback activated: Not SUBSCRIBED within 5s');
         enableFallbackMechanisms();
       }
@@ -469,7 +469,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // 🚀 PHASE 2: Start message watchdog - if SUBSCRIBED but no messages within 5s, enable fallback
     const messageWatchdog = setTimeout(() => {
-      if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
+      if (connectionStateRef.current.status === 'connected' && statsRef.current.messagesReceived === 0) {
         console.log('📡 Fallback activated: SUBSCRIBED but no messages received');
         enableFallbackMechanisms();
       }
@@ -529,6 +529,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             const price = mid || (bid && ask ? (bid + ask) / 2 : bid || ask);
             
             if (price && subscriptionsRef.current.has(symbol)) {
+              // 🚨 PHASE 2 FIX: Track database timestamp for race condition prevention
+              const dbTimestamp = new Date(updated_at).getTime();
+              
               const priceData: PriceData = {
                 symbol,
                 price,
@@ -543,7 +546,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               
               setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
               setPrices(prev => ({ ...prev, [symbol]: priceData }));
+              setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
               setLastUpdated(new Date());
+              console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           }
         })

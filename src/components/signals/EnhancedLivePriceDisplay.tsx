@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
 import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isPricePlausibleForSymbol } from '@/utils/priceGuards';
@@ -38,11 +39,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // Use standardized symbol mapping
   const apiSymbol = getStandardSymbol(symbol) || symbol;
   
-  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds, dataAge: hookDataAge, isStale } = useOptimizedLivePrice(symbol, {
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice } = useOptimizedLivePrice(symbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
-    enableSmartPausing: false,
-    trackDataAge: true // Enable 250ms data age tracking for "Live" status display
+    enableSmartPausing: false
   });
+
+  // Direct access to real-time age calculation
+  const { getArrivalAge } = useOptimizedWebSocketPrices();
 
   // Defensive check: Prevent showing implausible prices for closed markets
   const displayPrice = useMemo(() => {
@@ -67,23 +70,42 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
+  const [dataAge, setDataAge] = useState<string>('--');
 
-  // Use optimized data age from hook (updated every 250ms)
-  const dataAge = useMemo(() => {
-    if (arrivalAgeMs === undefined || arrivalAgeMs === null) return '--';
-    
-    // Sub-2s live guarantee
-    if (arrivalAgeMs < 2000) return 'Live';
-    if (arrivalAgeMs < 3000) return 'Live'; // Extended for heartbeat tolerance
-    
-    const ageSeconds = Math.floor(arrivalAgeMs / 1000);
-    if (ageSeconds < 60) return `${ageSeconds}s ago`;
-    
-    const minutes = Math.floor(ageSeconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    
-    return 'Stale';
-  }, [arrivalAgeMs]);
+  // DIRECT REAL-TIME CALCULATION: Update every 250ms for ultra-fast "Live" display
+  useEffect(() => {
+    const updateDataAge = () => {
+      const ageMs = getArrivalAge(symbol);
+      
+      if (ageMs === undefined || ageMs === null) {
+        setDataAge('--');
+        return;
+      }
+      
+      // Sub-2s live guarantee - INSTANT "Live" display
+      if (ageMs < 2000) {
+        setDataAge('Live');
+      } else if (ageMs < 3000) {
+        setDataAge('Live'); // Extended for heartbeat tolerance
+      } else {
+        const ageSeconds = Math.floor(ageMs / 1000);
+        if (ageSeconds < 60) {
+          setDataAge(`${ageSeconds}s ago`);
+        } else {
+          const minutes = Math.floor(ageSeconds / 60);
+          if (minutes < 60) {
+            setDataAge(`${minutes}m ago`);
+          } else {
+            setDataAge('Stale');
+          }
+        }
+      }
+    };
+
+    updateDataAge(); // Initial calculation
+    const interval = setInterval(updateDataAge, 250); // Ultra-fast 250ms updates
+    return () => clearInterval(interval);
+  }, [symbol, getArrivalAge]);
 
   // Optimized price change animation effect
   useEffect(() => {

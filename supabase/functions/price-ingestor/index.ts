@@ -6,8 +6,8 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 // 🔥 CRITICAL FIX: Emergency kill switch for broadcasts
 const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS') === 'true';
-// 🚀 PHASE 2: Force instant broadcasts - bypass significance filtering
-const FORCE_INSTANT_BROADCASTS = Deno.env.get('FORCE_INSTANT_BROADCASTS') === 'true';
+// 🚀 PHASE 2 ACTIVATED: Force instant broadcasts - HARDCODED TO TRUE for instant updates
+const FORCE_INSTANT_BROADCASTS = true; // Always enabled for <100ms latency
 
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;

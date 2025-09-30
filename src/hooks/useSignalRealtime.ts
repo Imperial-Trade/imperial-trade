@@ -60,7 +60,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
       console.log('useSignalRealtime - Unsubscribing from real-time updates');
       unsubscribe();
     };
-  }, [subscribe, unsubscribe]);
+  }, []); // PHASE 6: Remove subscribe/unsubscribe to prevent hook-level subscription loops
 
   // Sync realtime error with local error state
   useEffect(() => {

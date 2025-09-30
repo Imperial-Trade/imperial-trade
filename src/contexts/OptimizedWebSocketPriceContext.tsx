@@ -340,7 +340,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     const activeSymbols = Array.from(subscriptionsRef.current.keys());
     console.log(`🔗 Establishing realtime connection for symbols: ${activeSymbols.join(', ')}`);
     isConnectingRef.current = true;
-    setConnectionStatus('connecting');
+    // 🚀 PHASE 1: Batched connection status update
+    unstable_batchedUpdates(() => {
+      setConnectionStatus('connecting');
+    });
 
     // 🚨 PHASE 1 FIX: Correct channel name to match backend broadcast
     const channel = supabase
@@ -727,7 +730,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     isConnectingRef.current = false;
-    setConnectionStatus('disconnected');
+    // 🚀 PHASE 1: Batched connection status update
+    unstable_batchedUpdates(() => {
+      setConnectionStatus('disconnected');
+    });
     
     // Reconnect if we have active subscriptions
     if (subscriptionsRef.current.size > 0) {
@@ -895,7 +901,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🔌 No active subscriptions, disconnecting...');
       channelRef.current.unsubscribe();
       channelRef.current = null;
-      setConnectionStatus('disconnected');
+      // 🚀 PHASE 1: Batched connection status update
+      unstable_batchedUpdates(() => {
+        setConnectionStatus('disconnected');
+      });
     }
   }, []);
 
@@ -981,7 +990,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     isConnectingRef.current = false;
-    setConnectionStatus('disconnected');
+    // 🚀 PHASE 1: Batched connection status update
+    unstable_batchedUpdates(() => {
+      setConnectionStatus('disconnected');
+    });
     
     // Reconnect if we have active subscriptions
     if (subscriptionsRef.current.size > 0) {
@@ -1162,15 +1174,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 mid: nMid
               };
               
-              // 🚀 PHASE 1: Batched emergency polling update
+              // 🚀 PHASE 1: Single batched emergency polling update
               unstable_batchedUpdates(() => {
                 setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
                 setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+                setLastUpdated(new Date());
               });
-            });
-            // 🚀 PHASE 1: Batched timestamp update
-            unstable_batchedUpdates(() => {
-              setLastUpdated(new Date());
             });
             console.log('✅ Emergency polling: Updated prices for', criticalSymbols);
           }

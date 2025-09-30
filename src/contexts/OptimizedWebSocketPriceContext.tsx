@@ -902,31 +902,70 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     };
   }, []);
 
-  // 🚨 EMERGENCY CIRCUIT BREAKER: Database polling ONLY when broadcasts completely fail
+  // 🎯 PHASE 4: Smart Database Polling with Strict Conditions
   useEffect(() => {
-    // DISABLED: This was causing massive message rate leak!
-    // Only enable emergency polling in extreme circumstances
-    console.log('🚫 EMERGENCY POLLING CIRCUIT BREAKER: Database polling is DISABLED to prevent message rate leak');
-    
-    // If you need to re-enable in emergency, uncomment below and add strict conditions:
-    /*
     const symbolsArray = Array.from(subscriptionsRef.current.keys());
     if (symbolsArray.length === 0) return;
 
-    // ONLY poll if ALL these conditions are met:
-    // 1. Connection is in polling-fallback mode (not just 'connected')
-    // 2. No broadcast data received for 60+ seconds
-    // 3. We have critical subscriptions that need data
+    // 🎯 STRICT CONDITIONS: Only poll if ALL these are met
     const now = Date.now();
-    const timeSinceLastBroadcast = lastUpdated ? now - lastUpdated.getTime() : Infinity;
-    const isBroadcastDeadFor60Seconds = timeSinceLastBroadcast > 60000;
+    const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
+    const isBroadcastStaleFor60Seconds = timeSinceLastUpdate > 60000;
+    const isConnectionBroken = connectionStatus === 'error' || connectionStatus === 'disconnected';
     
-    if (connectionStatus === 'polling-fallback' && isBroadcastDeadFor60Seconds && symbolsArray.length > 0) {
-      console.log('🚨 EMERGENCY DATABASE POLLING: Broadcast dead for 60+ seconds');
-      // ... polling logic here
+    // Only enable polling in extreme emergency when broadcast is completely dead
+    if (isConnectionBroken && isBroadcastStaleFor60Seconds && symbolsArray.length > 0) {
+      console.log('🚨 PHASE 4: Emergency database polling activated (broadcast dead 60+s)');
+      
+      const pollInterval = setInterval(async () => {
+        try {
+          // Only poll for top 2 critical symbols to minimize load
+          const criticalSymbols = symbolsArray.slice(0, 2);
+          
+          const { data, error } = await supabase
+            .from('market_prices')
+            .select('*')
+            .in('symbol', criticalSymbols)
+            .order('timestamp', { ascending: false })
+            .limit(2);
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            data.forEach(row => {
+              const toNum = (v: any) => (v === null || v === undefined || v === '' ? undefined : Number(v));
+              const nBid = toNum(row.bid);
+              const nAsk = toNum(row.ask);
+              const nMid = toNum(row.mid);
+              
+              const price = nMid ?? (nBid && nAsk ? (nBid + nAsk) / 2 : nBid ?? nAsk ?? 0);
+              
+              const priceData: PriceData = {
+                symbol: row.symbol,
+                price,
+                change: 0,
+                changePercent: 0,
+                timestamp: row.timestamp,
+                receivedAt: Date.now(),
+                bid: nBid,
+                ask: nAsk,
+                mid: nMid
+              };
+              
+              setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+            });
+            setLastUpdated(new Date());
+            console.log('✅ Emergency polling: Updated prices for', criticalSymbols);
+          }
+        } catch (error) {
+          console.error('Emergency polling failed:', error);
+        }
+      }, 15000); // Poll every 15 seconds (not too aggressive)
+      
+      return () => clearInterval(pollInterval);
     }
-    */
-  }, [connectionStatus, internalPrices, lastUpdated]);
+  }, [connectionStatus, lastUpdated]);
 
   // Start fallback timer when connected but no messages received
   useEffect(() => {

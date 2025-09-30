@@ -142,14 +142,16 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
+  
+  // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
+  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  
   const {
     activeAlerts,
-    closedAlerts,
     educatorOptions,
     signalCounts
   } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
-    const closed = alerts.filter(a => a.status === 'closed');
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
@@ -167,19 +169,16 @@ export default function SignalStream() {
     const counts = {
       total: alerts.length,
       active: active.length,
-      closed: closed.length,
+      closed: staticClosedAlerts.length, // 🎯 PHASE 2: Use static closed alerts count
       buy: alerts.filter(a => a.tradeType.includes('buy')).length,
       sell: alerts.filter(a => a.tradeType.includes('sell')).length
     };
     return {
       activeAlerts: active,
-      closedAlerts: closed,
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts]);
-  // PHASE 6: Static Closed Alerts - Single fetch on component mount
-  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  }, [alerts, allAlerts, staticClosedAlerts.length]);
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   
   useEffect(() => {
@@ -300,7 +299,8 @@ export default function SignalStream() {
     intervalMs: 15000 // 15 seconds
   });
   
-  // Define symbols first for UI activity registration
+  // 🎯 PHASE 1 & 5: Define symbols with deep equality for subscription stability
+  const prevSymbolsRef = useRef<string[]>([]);
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     
@@ -323,9 +323,20 @@ export default function SignalStream() {
     
     // Limit to top 2 symbols for efficient connection management
     const symbolList = Array.from(symbolSet).sort().slice(0, 2);
-    if (isDevToolsEnabled()) {
-      console.log('🔄 SignalStream - Pre-subscribing to top 2 symbols:', symbolList);  
+    
+    // 🎯 DEEP EQUALITY CHECK: Return same reference if content identical
+    const prev = prevSymbolsRef.current;
+    if (JSON.stringify(prev) === JSON.stringify(symbolList)) {
+      if (isDevToolsEnabled()) {
+        console.log('🔒 SignalStream - Symbols unchanged (deep equality), returning same reference');
+      }
+      return prev; // Return SAME reference to prevent useEffect re-run
     }
+    
+    if (isDevToolsEnabled()) {
+      console.log('🔄 SignalStream - Symbols changed:', { prev, new: symbolList });  
+    }
+    prevSymbolsRef.current = symbolList;
     return symbolList;
   }, [activeAlerts, alerts]);
 
@@ -352,24 +363,26 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Pre-subscribe to warm up the connection for the most important symbols
+  // 🎯 PHASE 1: Pre-subscribe with persistent connection (no cleanup cycling)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (symbols.length > 0) {
-        subscribe(symbols);
-        if (isDevToolsEnabled()) {
-          console.log('🚀 SignalStream - Pre-warming connection with symbols:', symbols);
-        }
+    if (symbols.length > 0) {
+      subscribe(symbols);
+      if (isDevToolsEnabled()) {
+        console.log('🚀 SignalStream - Subscribing to symbols (persistent):', symbols);
       }
-    }, 500); // 500ms debounce
+    }
 
+    // 🎯 CRITICAL FIX: Only unsubscribe on component unmount, NOT on symbols change
     return () => {
-      clearTimeout(timeoutId);
       if (symbols.length > 0) {
+        if (isDevToolsEnabled()) {
+          console.log('🧹 SignalStream - Component unmounting, cleaning up subscriptions:', symbols);
+        }
         unsubscribe(symbols);
       }
     };
-  }, [symbols, subscribe, unsubscribe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 🎯 Empty deps: Subscribe once on mount, cleanup on unmount only
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {

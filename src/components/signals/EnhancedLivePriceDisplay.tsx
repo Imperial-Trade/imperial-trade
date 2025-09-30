@@ -40,7 +40,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   
   const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(symbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
-    enableSmartPausing: false
+    enableSmartPausing: false,
+    trackDataAge: true // Enable 250ms data age tracking for "Live" status display
   });
 
   // Defensive check: Prevent showing implausible prices for closed markets

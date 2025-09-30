@@ -18,9 +18,6 @@ import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 
-// PHASE 4: Enhanced UI Components for Status Display
-import { CachedDataIndicator } from '@/components/ui/cached-data-indicator';
-
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
@@ -234,15 +231,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               updatedDate={alert.updated_date}
             />
           </div>
-          
-          {/* PHASE 4: Show cached data indicator for pending/active signals */}
-          {(alert.status === 'pending' || alert.status === 'active') && connectionStatus !== 'connected' && (
-            <CachedDataIndicator 
-              isCached={true}
-              variant="badge"
-              className="text-xs"
-            />
-          )}
         </div>
 
         {/* Actions - moved to the right */}

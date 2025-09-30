@@ -20,12 +20,6 @@ import {
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
 
-// PHASE 4: Enhanced UI Components
-import { DataFreshnessBadge } from '@/components/ui/data-freshness-badge';
-import { LivePulseIndicator } from '@/components/ui/live-pulse-indicator';
-import { ManualRefreshControls } from '@/components/ui/manual-refresh-controls';
-// Market status imports removed
-
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
   assetName: string;
@@ -274,30 +268,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
     } ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
-      {/* PHASE 4: Enhanced Header with Status Indicators */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="text-white font-medium">
-            Live Price for {assetName}
-          </div>
-          <LivePulseIndicator 
-            isLive={debouncedConnectionStatus === 'connected' && price > 0} 
-            size="sm"
-          />
-          <DataFreshnessBadge 
-            lastUpdated={lastUpdated} 
-            thresholdSeconds={2}
-            showIcon={false}
-          />
-        </div>
-        
-        <ManualRefreshControls
-          onRefresh={handleRefresh}
-          isRefreshing={isLoading || isRefreshing}
-          lastRefresh={lastUpdated}
-          variant="ghost"
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">Live Price</h3>
+        <Button
           size="sm"
-        />
+          variant="ghost"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-7 px-2"
+        >
+          <RefreshCw className="h-3 w-3" />
+        </Button>
       </div>
 
       {/* GUARDRAIL: Only show real errors, suppress benign ones */}

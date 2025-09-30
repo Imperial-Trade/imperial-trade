@@ -25,6 +25,14 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 
+// PHASE 4: Enhanced UI Components for Real-time Status & User Control
+import { ConnectionQualityIndicator } from '@/components/ui/connection-quality-indicator';
+import { DataFreshnessBadge } from '@/components/ui/data-freshness-badge';
+import { LivePulseIndicator } from '@/components/ui/live-pulse-indicator';
+import { ManualRefreshControls } from '@/components/ui/manual-refresh-controls';
+import { OfflineModeBanner } from '@/components/ui/offline-mode-banner';
+import { useConnectionQualityAdapter } from '@/hooks/useConnectionQualityAdapter';
+
 
 
 export default function SignalStream() {
@@ -59,6 +67,14 @@ export default function SignalStream() {
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
   
+  // PHASE 4: Connection quality adapter for enhanced UX
+  const mappedConnectionStatus = connectionStatus === 'polling-fallback' ? 'connected' : connectionStatus;
+  const connectionQuality = useConnectionQualityAdapter(
+    mappedConnectionStatus,
+    lastUpdated,
+    undefined // latency not currently tracked
+  );
+  
   useEffect(() => {
     if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
       hasHydratedRef.current = true;
@@ -68,6 +84,17 @@ export default function SignalStream() {
   // Local state for operations
   const isLoading = realtimeLoading;
   const error = realtimeError;
+  
+  // PHASE 4: Manual refresh and reconnect handlers
+  const handleManualRefresh = useCallback(async () => {
+    console.log('🔄 PHASE 4: Manual refresh triggered');
+    await refreshAlerts();
+  }, [refreshAlerts]);
+  
+  const handleManualReconnect = useCallback(async () => {
+    console.log('🔌 PHASE 4: Manual reconnect triggered');
+    await refreshAlerts();
+  }, [refreshAlerts]);
   
   // 🚀 CREATE ALERT: Direct API call with optimistic updates
   const createAlert = useCallback(async (dto: any) => {
@@ -726,15 +753,40 @@ export default function SignalStream() {
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 hidden">
-                {getConnectionStatusBadge()}
-                {lastUpdated && <span className="text-xs text-muted-foreground">
-                    Last update: {lastUpdated.toLocaleTimeString()}
-                  </span>}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                <LivePulseIndicator 
+                  isLive={mappedConnectionStatus === 'connected'} 
+                  showLabel 
+                />
+                <ConnectionQualityIndicator 
+                  status={mappedConnectionStatus} 
+                  quality={connectionQuality.quality}
+                  latency={connectionQuality.latency}
+                />
+                <DataFreshnessBadge 
+                  lastUpdated={lastUpdated} 
+                  thresholdSeconds={5}
+                />
+                <ManualRefreshControls
+                  onRefresh={handleManualRefresh}
+                  onReconnect={handleManualReconnect}
+                  lastRefresh={lastUpdated}
+                  showLastRefresh={false}
+                />
               </div>
             </div>
           </div>
         </div>
+
+        {/* PHASE 4: Offline Mode Banner */}
+        {connectionQuality.quality === 'offline' && (
+          <OfflineModeBanner
+            isOffline={true}
+            showCachedData={allAlerts.length > 0}
+            onRetry={handleManualReconnect}
+            className="mx-2 sm:mx-4 mt-4"
+          />
+        )}
 
         {/* Main Content - Mobile Optimized grid layout with granular protection */}
         <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
@@ -744,7 +796,6 @@ export default function SignalStream() {
               {/* System Status - Removed for clean UI */}
               
               
-
 
 
               <div className="mb-6" />

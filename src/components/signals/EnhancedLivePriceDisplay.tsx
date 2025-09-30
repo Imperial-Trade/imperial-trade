@@ -19,6 +19,11 @@ import {
   Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
+
+// PHASE 4: Enhanced UI Components
+import { DataFreshnessBadge } from '@/components/ui/data-freshness-badge';
+import { LivePulseIndicator } from '@/components/ui/live-pulse-indicator';
+import { ManualRefreshControls } from '@/components/ui/manual-refresh-controls';
 // Market status imports removed
 
 interface EnhancedLivePriceDisplayProps {
@@ -269,27 +274,30 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
     } ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
-      {/* Header */}
+      {/* PHASE 4: Enhanced Header with Status Indicators */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <div className="text-white font-medium">
-              Live Price for {assetName}
-            </div>
+          <div className="text-white font-medium">
+            Live Price for {assetName}
           </div>
+          <LivePulseIndicator 
+            isLive={debouncedConnectionStatus === 'connected' && price > 0} 
+            size="sm"
+          />
+          <DataFreshnessBadge 
+            lastUpdated={lastUpdated} 
+            thresholdSeconds={2}
+            showIcon={false}
+          />
         </div>
         
-        <Button
-          type="button"
+        <ManualRefreshControls
+          onRefresh={handleRefresh}
+          isRefreshing={isLoading || isRefreshing}
+          lastRefresh={lastUpdated}
           variant="ghost"
           size="sm"
-          onClick={handleRefresh}
-          className="text-gray-400 hover:text-white h-8 w-8 p-0"
-          title="Refresh price"
-          disabled={isLoading || isRefreshing}
-        >
-          <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
-        </Button>
+        />
       </div>
 
       {/* GUARDRAIL: Only show real errors, suppress benign ones */}

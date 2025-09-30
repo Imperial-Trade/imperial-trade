@@ -18,6 +18,9 @@ import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 
+// PHASE 4: Enhanced UI Components for Status Display
+import { CachedDataIndicator } from '@/components/ui/cached-data-indicator';
+
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
@@ -214,20 +217,33 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <div className="p-3">
-        {/* Use the new AnimatedStatusHeader component with primitive props */}
-        <AnimatedStatusHeader 
-          creator={creator} 
-          assetName={alert.asset_name}
-          status={alert.status}
-          tradeType={alert.trade_type}
-          closeReason={alert.close_reason}
-          highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
-          hasTPHits={Boolean(hitTPs.length)}
-          isRecentClosure={isRecentClosure} 
-          justAdded={justAdded}
-          createdDate={alert.created_date}
-          updatedDate={alert.updated_date}
-        />
+        <div className="flex items-center justify-between gap-2 mb-2">
+          {/* Use the new AnimatedStatusHeader component with primitive props */}
+          <div className="flex-1">
+            <AnimatedStatusHeader 
+              creator={creator} 
+              assetName={alert.asset_name}
+              status={alert.status}
+              tradeType={alert.trade_type}
+              closeReason={alert.close_reason}
+              highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
+              hasTPHits={Boolean(hitTPs.length)}
+              isRecentClosure={isRecentClosure} 
+              justAdded={justAdded}
+              createdDate={alert.created_date}
+              updatedDate={alert.updated_date}
+            />
+          </div>
+          
+          {/* PHASE 4: Show cached data indicator for pending/active signals */}
+          {(alert.status === 'pending' || alert.status === 'active') && connectionStatus !== 'connected' && (
+            <CachedDataIndicator 
+              isCached={true}
+              variant="badge"
+              className="text-xs"
+            />
+          )}
+        </div>
 
         {/* Actions - moved to the right */}
         <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">

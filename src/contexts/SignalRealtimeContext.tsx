@@ -134,6 +134,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastSubscribeAttemptRef = useRef<number>(0); // PHASE 4: Cooldown tracking
   
   // PHASE 3: Enhanced local caching to minimize database queries
   const localCacheRef = useRef<{ 
@@ -683,6 +684,17 @@ unstable_batchedUpdates(() => {
       return;
     }
 
+    // PHASE 4: Subscription cooldown - prevent rapid subscribe attempts
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastSubscribeAttemptRef.current;
+    if (timeSinceLastAttempt < 5000) {
+      if (isDevToolsEnabled()) {
+        console.log(`⏱️ Signal subscription cooldown active (${Math.round((5000 - timeSinceLastAttempt) / 1000)}s remaining)`);
+      }
+      return;
+    }
+    lastSubscribeAttemptRef.current = now;
+
     // 🔥 LEAK-PROOF: Idempotent subscription check
     if (unsubscribeRef.current) {
       if (isDevToolsEnabled()) {
@@ -816,6 +828,23 @@ unstable_batchedUpdates(() => {
       healthMonitor.unregisterConnection('SignalRealtime');
     };
   }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
+
+  // PHASE 1: Route-aware subscription management - React to route gate changes
+  useEffect(() => {
+    if (!mountOnlyRef.current) return;
+
+    if (isSignalSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Route gate OPENED for signals - Subscribing...');
+      }
+      subscribe();
+    } else {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Route gate CLOSED for signals - Unsubscribing...');
+      }
+      unsubscribe();
+    }
+  }, [isSignalSubscriptionAllowed, subscribe, unsubscribe]);
 
   const contextValue: SignalRealtimeContextType = {
     signals,

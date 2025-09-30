@@ -188,6 +188,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   const { shouldAllowQualityChange } = useConnectionStability();
   
+  // PHASE 3: Track route-based subscription state
+  const wasSubscriptionAllowedRef = useRef(isPriceSubscriptionAllowed);
+  
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
@@ -684,6 +687,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const subscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;
 
+    // PHASE 3: Route gating check
+    if (!isPriceSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Price subscription blocked by route gating');
+      }
+      return;
+    }
+
     console.log(`📊 Subscribing to symbols: ${symbols.join(', ')}`);
     console.log(`📊 Current subscriptions before: ${Array.from(subscriptionsRef.current.keys()).join(', ')}`);
     
@@ -730,7 +741,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Register activity for cost tracking
     registerInteraction();
-  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase]);
+  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;
@@ -764,6 +775,31 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       setConnectionStatus('disconnected');
     }
   }, []);
+
+  // PHASE 3: Route-aware subscription management - React to route gate changes
+  useEffect(() => {
+    if (!mountOnlyRef.current) return;
+
+    if (isPriceSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Route gate OPENED for prices - Connection will establish on first subscription');
+      }
+      // Price subscriptions are managed through subscribe() calls from components
+      // No action needed here - just log the gate status
+    } else {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 Route gate CLOSED for prices - Cleaning up all subscriptions');
+      }
+      // Clean up all subscriptions when route gate closes
+      if (subscriptionsRef.current.size > 0) {
+        const allSymbols = Array.from(subscriptionsRef.current.keys());
+        unsubscribe(allSymbols);
+      }
+    }
+
+    // Track previous state
+    wasSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
+  }, [isPriceSubscriptionAllowed, unsubscribe]);
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions
   const restartConnection = useCallback(() => {

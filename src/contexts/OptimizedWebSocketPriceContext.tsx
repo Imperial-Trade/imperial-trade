@@ -708,7 +708,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   }, []);
 
   // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system with instant hydration
-  const subscribe = useCallback((symbols: string[]) => {
+  const subscribe = useCallback((symbols: string[], bypassRouteGate: boolean = false) => {
     if (!symbols?.length) return;
 
     // ✅ PHASE 1 FIX: Check route gate readiness FIRST to prevent race condition
@@ -723,8 +723,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // PHASE 3: Route gating check (after initialization check)
-    if (!isPriceSubscriptionAllowed) {
+    // PHASE 3: Route gating check (skipped for pending subscriptions to avoid stale value)
+    if (!bypassRouteGate && !isPriceSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
         console.log('🚦 Price subscription blocked by route gating');
       }
@@ -858,7 +858,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
       
       // Process all pending subscriptions now that gate is ready
-      subscribe(pending);
+      subscribe(pending, true); // Bypass stale route gate check
     }
   }, [isRouteGateReady, subscribe]);
 

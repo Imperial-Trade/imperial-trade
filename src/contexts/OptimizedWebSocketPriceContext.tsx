@@ -19,6 +19,7 @@ import { providerStabilityService } from '@/services/ProviderStabilityService';
 import { realtimeMessageRateMonitor } from '@/services/RealtimeMessageRateMonitor';
 import { realtimeMessageDiagnostics } from '@/services/RealtimeMessageDiagnostics';
 import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
+import { checkPriceIngestorHealth } from '@/utils/priceIngestorHealthCheck';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
@@ -60,6 +61,7 @@ interface ConnectionState {
   nextRetryAt: number | null;
   errorCount: number;
   lastSuccessAt: number | null;
+  fallbackActivationCount?: number; // PHASE 3: Track retry attempts for smart escalation
 }
 
 // Circuit breaker configuration
@@ -194,6 +196,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   
   // PHASE 3: Track route-based subscription state
   const wasSubscriptionAllowedRef = useRef(isPriceSubscriptionAllowed);
+  const isPriceSubscriptionAllowedRef = useRef(isPriceSubscriptionAllowed);
   
   // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
   const channelIdRef = useRef(generateChannelId('prices'));
@@ -475,21 +478,64 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     }, 5000);
     
-    // 🚀 PHASE 3: Connection status watchdog with route-gate guard
+    // 🚀 PHASE 3: Enhanced Connection Watchdog with Data Age Monitoring
     watchdogTimerRef.current = setTimeout(() => {
-      // PHASE 3 FIX: Don't fight with route-based subscription management
-      if (!isPriceSubscriptionAllowed) {
+      // PHASE 3 FIX: Use ref instead of state to avoid stale closure
+      if (!isRouteGateReady || !isPriceSubscriptionAllowedRef.current) {
         if (isDevToolsEnabled()) {
-          console.log('🚦 Watchdog: Skipping restart - route gate is closed');
+          console.log('⏭️ Watchdog: Skipping check - route gate not ready or closed');
         }
         return;
       }
       
-      if (connectionStatus === 'connecting' || connectionStatus === 'error') {
-        console.log('🧯 Self-heal: restarting connection (stuck >10s)');
+      const currentStatus = connectionStateRef.current.status;
+      const now = Date.now();
+      
+      // Check 1: Still connecting after 30s
+      if (currentStatus === 'connecting') {
+        console.warn('⚠️ WATCHDOG: Still connecting after 30s, forcing restart...');
         restartConnection();
+        return;
       }
-    }, 10000);
+      
+      // Check 2: Connection error state
+      if (currentStatus === 'error') {
+        console.warn('⚠️ WATCHDOG: Connection in error state, forcing restart...');
+        restartConnection();
+        return;
+      }
+      
+      // Check 3: Connected but no messages after 30s
+      if (currentStatus === 'connected' && statsRef.current.messagesReceived === 0) {
+        console.warn('⚠️ WATCHDOG: Connected but no messages after 30s, forcing restart...');
+        restartConnection();
+        return;
+      }
+      
+      // Check 4: Data age monitoring - detect silent broadcast failures
+      const activeSymbols = Array.from(subscriptionsRef.current.keys());
+      if (currentStatus === 'connected' && activeSymbols.length > 0) {
+        let hasStaleData = false;
+        
+        for (const symbol of activeSymbols) {
+          const priceData = internalPrices[symbol];
+          if (priceData) {
+            const dataAge = now - priceData.receivedAt;
+            const MAX_DATA_AGE = 60000; // 60 seconds
+            
+            if (dataAge > MAX_DATA_AGE) {
+              console.warn(`⚠️ WATCHDOG: Stale data detected for ${symbol}: ${(dataAge / 1000).toFixed(0)}s old`);
+              hasStaleData = true;
+            }
+          }
+        }
+        
+        if (hasStaleData) {
+          console.warn('⚠️ WATCHDOG: Stale data detected, enabling fallback mechanisms...');
+          enableFallbackMechanisms();
+        }
+      }
+    }, 30000); // 30 seconds
     
     // Cleanup watchdogs when connection succeeds or fails
     const cleanupTimers = () => {
@@ -509,7 +555,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     if (hasTriggeredFallback.current) return;
     hasTriggeredFallback.current = true;
     
-    console.log('📡 Fallback activated: postgres_changes');
+    // PHASE 3: Track fallback activation count for smart retry
+    if (!connectionStateRef.current.fallbackActivationCount) {
+      connectionStateRef.current.fallbackActivationCount = 0;
+    }
+    connectionStateRef.current.fallbackActivationCount++;
+    
+    const activationCount = connectionStateRef.current.fallbackActivationCount;
+    console.log(`📡 Fallback activated (attempt #${activationCount})`);
+    
+    // PHASE 3: After 3 failed attempts, increase polling frequency
+    const isHighFrequencyMode = activationCount >= 3;
+    const pollingInterval = isHighFrequencyMode ? 5000 : 10000; // 5s vs 10s
+    
+    console.log(`⏱️ Using ${isHighFrequencyMode ? 'HIGH' : 'NORMAL'} frequency polling: ${pollingInterval}ms`);
     
     // Enable postgres_changes fallback for subscribed symbols
     const activeSymbols = Array.from(subscriptionsRef.current.keys());
@@ -614,9 +673,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     };
     
-    // 🚨 EMERGENCY: Poll every 10 seconds (was 2) - only when broadcast is completely dead
-    fallbackPollingRef.current = setInterval(pollDatabase, 10000);
-    console.log('🚨 Started EMERGENCY database polling (10s intervals) due to broadcast failure');
+    // 🚨 EMERGENCY: Smart polling with dynamic interval based on retry count
+    fallbackPollingRef.current = setInterval(pollDatabase, pollingInterval);
+    console.log(`🚨 Started EMERGENCY database polling (${pollingInterval}ms intervals) due to broadcast failure`);
     
   }, [lastUpdated]);
 
@@ -938,6 +997,27 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     console.log('🔄 Emergency restart complete');
   }, []);
 
+  // PHASE 3: Periodic health check for external price feed
+  useEffect(() => {
+    if (!isProviderReady || !isRouteGateReady) return;
+    
+    const healthCheckInterval = setInterval(async () => {
+      const health = await checkPriceIngestorHealth();
+      
+      if (!health.isHealthy) {
+        console.warn(`⚠️ HEALTH CHECK: Price feed ${health.severity.toUpperCase()} - data is ${(health.lastUpdateAge / 1000).toFixed(0)}s old`);
+        console.warn(`📋 Recommendation: ${health.recommendedAction}`);
+        
+        if (health.severity === 'critical') {
+          console.error('🚨 CRITICAL: External price feed appears to be down');
+          console.error('🔧 ACTION REQUIRED: Check DigitalOcean price-ingestor service');
+        }
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(healthCheckInterval);
+  }, [isProviderReady, isRouteGateReady]);
+
   // Setup realtime fallback for postgres_changes subscription
   const setupRealtimeFallback = useCallback(() => {
     if (fallbackChannelRef.current) return;
@@ -1003,6 +1083,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     };
   }, []);
+
+  // PHASE 3: Sync isPriceSubscriptionAllowed to ref for watchdog
+  useEffect(() => {
+    isPriceSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
+  }, [isPriceSubscriptionAllowed]);
 
   // 🎯 PHASE 4: Smart Database Polling with Strict Conditions
   useEffect(() => {

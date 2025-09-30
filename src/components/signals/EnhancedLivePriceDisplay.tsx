@@ -295,7 +295,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         error.includes('closed') || 
         error.includes('CHANNEL_ERROR') ||
         error.includes('TIMED_OUT') ||
-        error.includes('connection')
+        error.includes('connect')
       ) && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />

@@ -596,6 +596,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
               setLastUpdated(new Date());
               arrivalTimestamps.current.set(symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
+              
+              // 🔥 PHASE 1 FIX: Recover connection status when fallback provides data
+              setConnectionStatus('connected');
+              setError(null);
+              
               console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           }
@@ -655,6 +660,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setPrices(prev => ({ ...prev, ...polledPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
             setLastUpdated(new Date());
+            
+            // 🔥 PHASE 1 FIX: Recover connection status when fallback provides data
+            setConnectionStatus('connected');
+            setError(null);
+            
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');
           }
         }
@@ -754,6 +764,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           setPrices(prev => ({ ...prev, ...hydratedPrices }));
           setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
           setLastUpdated(new Date());
+          
+          // 🔥 PHASE 1 FIX: Recover connection status when fallback provides data
+          setConnectionStatus('connected');
+          setError(null);
+          
           console.log(`⚡ INSTANT hydration complete: ${Object.keys(hydratedPrices).length} prices loaded immediately`);
         }
       }

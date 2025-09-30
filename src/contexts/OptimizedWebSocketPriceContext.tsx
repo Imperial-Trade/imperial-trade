@@ -700,6 +700,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (isDevToolsEnabled()) {
         console.log('🚦 Price subscription blocked by route gating');
       }
+      // PHASE 4: Record route-gate block (not a connection failure)
+      emergencyRealtimeBreaker.recordRouteGateBlock('prices');
       return;
     }
 

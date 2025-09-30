@@ -682,6 +682,8 @@ unstable_batchedUpdates(() => {
       if (isDevToolsEnabled()) {
         console.log('🚦 Signal subscription blocked by route gating');
       }
+      // PHASE 4: Record route-gate block (not a connection failure)
+      emergencyRealtimeBreaker.recordRouteGateBlock('signals');
       return;
     }
 

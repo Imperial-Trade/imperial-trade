@@ -6,19 +6,21 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 // 🔥 CRITICAL FIX: Emergency kill switch for broadcasts
 const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS') === 'true';
+// 🚀 PHASE 2: Force instant broadcasts - bypass significance filtering
+const FORCE_INSTANT_BROADCASTS = Deno.env.get('FORCE_INSTANT_BROADCASTS') === 'true';
 
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
-// 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
-// These thresholds deliver maximum responsiveness matching top-tier trading platforms
-const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for non-gold assets (ULTRA-SENSITIVE)
-const MIN_PRICE_CHANGE_PIPS = 0.1;      // 0.1 pips for gold assets (ULTRA-SENSITIVE)
+// 🚀 PHASE 2: INSTANT BROADCAST THRESHOLDS - For true instant updates (every ~2 seconds)
+// Reduced thresholds to 0.001% and 0.01 pips for instant broadcasting
+const MIN_PRICE_CHANGE_PERCENT = 0.001; // 0.001% for non-gold assets (INSTANT - 10x more sensitive)
+const MIN_PRICE_CHANGE_PIPS = 0.01;      // 0.01 pips for gold assets (INSTANT - 10x more sensitive)
 const GOLD_SYMBOLS = ['XAUUSD', 'XAUEUR', 'GOLD'];
 
-// 🚀 ENHANCED RATE LIMITING - For professional 5Hz UI updates
+// 🚀 PHASE 2: INSTANT RATE LIMITING - For true instant updates (20Hz - 50ms intervals)
 const SYMBOL_RATE_LIMITS: Record<string, { lastBroadcasts: number[], clampCount: number }> = {};
-const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 5.0; // Enhanced to 5Hz (200ms intervals)
+const MAX_SYMBOL_UI_BROADCASTS_PER_SECOND = 20.0; // INSTANT: 20Hz (50ms intervals - 4x faster)
 const MAX_UI_BROADCASTS_PER_BATCH = 50;
 const PER_SYMBOL_CLAMP = 10;
 
@@ -122,8 +124,18 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
   }
 }
 
-// Phase 1: Price significance filtering function (UI only)
+// 🚀 PHASE 2: Price significance filtering with FORCE INSTANT BROADCASTS
 function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: number, timestamp: string}>) {
+  // 🚀 PHASE 2: Bypass filtering if force instant broadcasts enabled
+  if (FORCE_INSTANT_BROADCASTS) {
+    console.log(`⚡ FORCE_INSTANT_BROADCASTS enabled - Broadcasting ALL ${incomingPrices.length} prices immediately`);
+    // Update cache for all prices
+    for (const priceData of incomingPrices) {
+      lastBroadcastedPrices[priceData.symbol.toUpperCase()] = priceData.price;
+    }
+    return incomingPrices;
+  }
+
   const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
 
   for (const priceData of incomingPrices) {
@@ -620,9 +632,11 @@ serve(async (req) => {
         timestamp: p.timestamp || new Date().toISOString()
       }));
 
+    // 🚀 PHASE 2: Apply force instant broadcasts or filter
     const significantPrices = filterSignificantPrices(pricesForUI);
     
-    if (significantPrices.length === 0) {
+    // 🚀 PHASE 2: Skip "no significant changes" check if force broadcasts enabled
+    if (significantPrices.length === 0 && !FORCE_INSTANT_BROADCASTS) {
       console.log('📡 No significant price changes for UI broadcast');
       return new Response(JSON.stringify({
         success: true,

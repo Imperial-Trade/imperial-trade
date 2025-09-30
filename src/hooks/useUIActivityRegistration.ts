@@ -80,12 +80,11 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       }
     };
 
-    // 🎯 PHASE 3: Debounced initial registration (reduced to 2 seconds)
-    const initialTimeout = setTimeout(() => {
-      if (!isUnmountedRef.current && user?.id) {
-        registerActivity();
-      }
-    }, 2000); // Reduced from 5s to 2s for responsiveness
+    // 🎯 PHASE 7: INSTANT registration - no delay to prevent broadcast race condition
+    // The existing 5-second debounce in registerActivity() (line 46-50) prevents spam
+    if (!isUnmountedRef.current && user?.id) {
+      registerActivity(); // Call immediately on mount
+    }
 
     // Periodic registration every 10 minutes
     const intervalId = setInterval(() => {
@@ -96,7 +95,6 @@ export function useUIActivityRegistration(symbols: string[] = []) {
 
     return () => {
       isUnmountedRef.current = true;
-      clearTimeout(initialTimeout);
       clearInterval(intervalId);
     };
   }, [user?.id, symbols]);

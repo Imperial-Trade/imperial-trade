@@ -188,6 +188,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const { isGlobalLeader, isEnforced } = useGlobalPreviewControl();
   const { shouldAllowQualityChange } = useConnectionStability();
   
+  // ✅ PHASE 1 FIX: Route gate initialization state to prevent race conditions
+  const [isRouteGateReady, setIsRouteGateReady] = useState(false);
+  const pendingSubscriptionsRef = useRef<string[]>([]);
+  
   // PHASE 3: Track route-based subscription state
   const wasSubscriptionAllowedRef = useRef(isPriceSubscriptionAllowed);
   
@@ -244,6 +248,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         broadcastChannelRef.current = null;
       }
     };
+  }, []);
+  
+  // ✅ PHASE 1 FIX: Route gate initialization delay to prevent race conditions
+  useEffect(() => {
+    const initTimer = setTimeout(() => {
+      setIsRouteGateReady(true);
+      if (isDevToolsEnabled()) {
+        console.log('✅ Route gate initialized, subscriptions now allowed');
+      }
+    }, 150); // 150ms delay ensures route context is fully initialized
+    
+    return () => clearTimeout(initTimer);
   }, []);
   
   // UI prices: Throttled updates for calm user experience (exposed to components)
@@ -695,7 +711,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const subscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;
 
-    // PHASE 3: Route gating check
+    // ✅ PHASE 1 FIX: Check route gate readiness FIRST to prevent race condition
+    if (!isRouteGateReady) {
+      if (isDevToolsEnabled()) {
+        console.log('⏳ Route gate not ready yet, deferring subscription...', symbols);
+      }
+      // Store symbols for later subscription when gate is ready
+      pendingSubscriptionsRef.current = [
+        ...new Set([...pendingSubscriptionsRef.current, ...symbols])
+      ];
+      return;
+    }
+
+    // PHASE 3: Route gating check (after initialization check)
     if (!isPriceSubscriptionAllowed) {
       if (isDevToolsEnabled()) {
         console.log('🚦 Price subscription blocked by route gating');
@@ -751,7 +779,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Register activity for cost tracking
     registerInteraction();
-  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed]);
+  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed, isRouteGateReady]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;
@@ -818,6 +846,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // Track previous state
     wasSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
   }, [isPriceSubscriptionAllowed]); // PHASE 2 FIX: Removed unsubscribe to break dependency loop
+
+  // ✅ PHASE 1 FIX: Process pending subscriptions when route gate becomes ready
+  useEffect(() => {
+    if (isRouteGateReady && pendingSubscriptionsRef.current.length > 0) {
+      const pending = [...pendingSubscriptionsRef.current];
+      pendingSubscriptionsRef.current = [];
+      
+      if (isDevToolsEnabled()) {
+        console.log('🚀 Route gate ready, processing pending subscriptions:', pending);
+      }
+      
+      // Process all pending subscriptions now that gate is ready
+      subscribe(pending);
+    }
+  }, [isRouteGateReady, subscribe]);
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions
   const restartConnection = useCallback(() => {

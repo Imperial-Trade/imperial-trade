@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useHybridPrices } from '@/contexts/HybridPriceContext';
 import { usePriceStalenessMonitor } from '@/hooks/usePriceStalenessMonitor';
 import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isPricePlausibleForSymbol } from '@/utils/priceGuards';
@@ -45,7 +45,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   });
 
   // Direct access to real-time age calculation
-  const { getArrivalAge } = useOptimizedWebSocketPrices();
+  const { prices: hybridPrices } = useHybridPrices();
+  const getArrivalAge = (sym: string) => {
+    const priceData = hybridPrices[sym];
+    return priceData ? Date.now() - new Date(priceData.timestamp).getTime() : 999999;
+  };
 
   // Defensive check: Prevent showing implausible prices for closed markets
   const displayPrice = useMemo(() => {

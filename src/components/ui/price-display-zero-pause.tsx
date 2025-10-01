@@ -27,7 +27,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
 
   // ✅ FLICKER ELIMINATION: Stability-aware quality changes
   useEffect(() => {
-    if (shouldAllowQualityChange(symbol, stableQuality, connectionQuality)) {
+    if (shouldAllowQualityChange(symbol, stableQuality as any, connectionQuality as any)) {
       setStableQuality(connectionQuality);
     }
   }, [connectionQuality, shouldAllowQualityChange, symbol, stableQuality]);

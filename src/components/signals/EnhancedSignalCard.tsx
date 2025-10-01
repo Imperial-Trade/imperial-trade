@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'lucide-react';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
-import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useHybridPrices } from '@/contexts/HybridPriceContext';
 
 interface EnhancedSignalCardProps {
   alert: TradeAlertWithProfile;
@@ -14,7 +14,7 @@ interface EnhancedSignalCardProps {
 }
 
 export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalCardProps) => {
-  const { prices } = useOptimizedWebSocketPrices();
+  const { prices } = useHybridPrices();
   const currentPrice = prices[alert.tradermadeSymbol || alert.assetName]?.price || 0;
 
   const isBuyTrade = alert.tradeType.startsWith('buy');

@@ -6,7 +6,7 @@ import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useHybridPrices } from '@/contexts/HybridPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -345,11 +345,13 @@ export default function SignalStream() {
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
-    dataSource: priceSource,
+    activeSource: priceSource,
     subscribe,
-    unsubscribe,
-    getPrice
-  } = useOptimizedWebSocketPrices();
+    unsubscribe
+  } = useHybridPrices();
+  
+  // Helper function to get price
+  const getPrice = (symbol: string) => livePricesData[symbol]?.price || 0;
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {

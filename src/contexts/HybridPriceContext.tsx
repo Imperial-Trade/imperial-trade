@@ -30,10 +30,14 @@ interface HybridPriceContextType {
 
 const HybridPriceContext = createContext<HybridPriceContextType | undefined>(undefined);
 
-const WEBSOCKET_URL = 'wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/live-price-websocket';
+// PHASE ALPHA: WebSocket configuration with authentication
+const SUPABASE_URL = 'https://kmuoqkcxguafxulqlbmi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI';
+const WEBSOCKET_URL = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/live-price-websocket?apikey=${SUPABASE_ANON_KEY}`;
 const POLLING_INTERVAL = 2000; // 2 second fallback polling
 const RECONNECT_DELAY = 3000;
 const HEALTH_CHECK_INTERVAL = 5000;
+const ACTIVITY_HEARTBEAT_INTERVAL = 5000; // PHASE BETA: 5 second activity heartbeat
 
 export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
@@ -53,6 +57,8 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activityHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const sessionIdRef = useRef<string>(`ui-${Date.now()}-${Math.random().toString(36).substring(2)}`);
+  const pendingSubscriptions = useRef<Set<string>>(new Set()); // PHASE ALPHA: Queue subscriptions until WS ready
+  const isInitializedRef = useRef(false); // PHASE BETA: Track initialization
 
   // Update price with batching
   const updatePrice = useCallback((symbol: string, data: PriceData) => {
@@ -64,38 +70,58 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Layer 1: Direct WebSocket Connection
   const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('🔌 [PHASE ALPHA] WebSocket already connected');
+      return;
+    }
 
-    console.log('🔌 [HYBRID] Connecting to Direct WebSocket...');
+    console.log('🔌 [PHASE ALPHA] Connecting to Direct WebSocket with authentication...');
+    console.log('📍 [PHASE ALPHA] WebSocket URL:', WEBSOCKET_URL.replace(/apikey=.*/, 'apikey=***'));
     
     try {
       const ws = new WebSocket(WEBSOCKET_URL);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('✅ [HYBRID] Direct WebSocket connected');
+        console.log('✅ [PHASE ALPHA] Direct WebSocket connected successfully!');
         setConnectionHealth(prev => ({ ...prev, websocket: true }));
         setActiveSource('websocket');
         setConnectionStatus('connected');
 
-        // Subscribe to symbols with enhanced logging
-        if (subscribedSymbols.current.size > 0) {
+        // PHASE ALPHA: Process queued subscriptions
+        const allSymbols = new Set([...subscribedSymbols.current, ...pendingSubscriptions.current]);
+        
+        if (allSymbols.size > 0) {
           const subscribeMessage = {
             type: 'subscribe',
-            symbols: Array.from(subscribedSymbols.current)
+            symbols: Array.from(allSymbols)
           };
-          console.log('📤 [HYBRID] Sending subscribe message:', subscribeMessage);
+          console.log('📤 [PHASE ALPHA] Sending queued subscriptions:', subscribeMessage);
           ws.send(JSON.stringify(subscribeMessage));
+          
+          // Update subscribed symbols
+          subscribedSymbols.current = allSymbols;
+          pendingSubscriptions.current.clear();
         } else {
-          console.warn('⚠️ [HYBRID] WebSocket connected but no symbols to subscribe');
+          console.log('ℹ️ [PHASE ALPHA] WebSocket connected, waiting for subscriptions...');
         }
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('📨 [PHASE ALPHA] Received WebSocket message:', message.type);
+
+          if (message.type === 'connected') {
+            console.log('🎉 [PHASE ALPHA] WebSocket handshake complete:', message);
+          }
+
+          if (message.type === 'subscribed') {
+            console.log('✅ [PHASE ALPHA] Subscription confirmed for symbols:', message.symbols);
+          }
 
           if (message.type === 'price_update') {
+            console.log(`💰 [PHASE ALPHA] Received ${message.prices?.length || 0} price updates`);
             message.prices.forEach((priceData: any) => {
               updatePrice(priceData.symbol, {
                 price: priceData.price,
@@ -108,29 +134,38 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
               });
             });
           }
+
+          if (message.type === 'heartbeat') {
+            // Silent heartbeat acknowledgment
+          }
         } catch (error) {
-          console.error('❌ [HYBRID] WebSocket message error:', error);
+          console.error('❌ [PHASE ALPHA] WebSocket message error:', error);
         }
       };
 
-      ws.onerror = () => {
-        console.error('❌ [HYBRID] WebSocket error');
+      ws.onerror = (error) => {
+        console.error('❌ [PHASE ALPHA] WebSocket error:', error);
         setConnectionHealth(prev => ({ ...prev, websocket: false }));
       };
 
-      ws.onclose = () => {
-        console.warn('⚠️ [HYBRID] WebSocket disconnected, falling back to Realtime...');
+      ws.onclose = (event) => {
+        console.warn('⚠️ [PHASE ALPHA] WebSocket disconnected:', {
+          code: event.code,
+          reason: event.reason,
+          clean: event.wasClean
+        });
         setConnectionHealth(prev => ({ ...prev, websocket: false }));
         wsRef.current = null;
 
         // Attempt reconnect
+        console.log(`🔄 [PHASE ALPHA] Reconnecting in ${RECONNECT_DELAY}ms...`);
         reconnectTimeoutRef.current = setTimeout(connectWebSocket, RECONNECT_DELAY);
 
         // Fallback to Realtime
         setupRealtimeChannel();
       };
     } catch (error) {
-      console.error('❌ [HYBRID] WebSocket connection failed:', error);
+      console.error('❌ [PHASE ALPHA] WebSocket connection failed:', error);
       setConnectionHealth(prev => ({ ...prev, websocket: false }));
       setupRealtimeChannel();
     }
@@ -236,19 +271,19 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [connectionHealth, connectWebSocket]);
 
-  // PHASE 1: UI Activity Registration
+  // PHASE BETA: UI Activity Registration with heartbeat
   const registerUIActivity = useCallback(async () => {
     try {
       const symbols = Array.from(subscribedSymbols.current);
       if (symbols.length === 0) {
-        console.log('⚠️ [PHASE 1] No symbols to register');
+        // Don't log every time if no symbols, just return silently
         return;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user?.id) {
-        console.warn('⚠️ [PHASE 1] No authenticated user, skipping registration');
+        // Don't log every time if no user, just return silently
         return;
       }
       
@@ -258,36 +293,48 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         p_symbols: symbols
       });
 
-      console.log('✅ [PHASE 1] UI Activity registered:', { 
-        symbols, 
-        session: sessionIdRef.current,
-        userId: user.id
-      });
+      // Only log on first registration or every 10th call to reduce noise
+      if (!isInitializedRef.current) {
+        console.log('✅ [PHASE BETA] UI Activity heartbeat started:', { 
+          symbols, 
+          session: sessionIdRef.current,
+          userId: user.id,
+          interval: `${ACTIVITY_HEARTBEAT_INTERVAL}ms`
+        });
+        isInitializedRef.current = true;
+      }
     } catch (error: any) {
       if (error?.code !== '23503' && error?.code !== 'PGRST204') {
-        console.error('❌ [PHASE 1] UI Activity registration failed:', error);
+        console.error('❌ [PHASE BETA] UI Activity registration failed:', error);
       }
     }
   }, []);
 
   // Subscribe to symbols
   const subscribe = useCallback((symbols: string[]) => {
-    console.log('🔔 [HYBRID] Subscribe called with symbols:', symbols);
-    symbols.forEach(symbol => subscribedSymbols.current.add(symbol.toUpperCase()));
+    if (symbols.length === 0) return;
+    
+    console.log('🔔 [PHASE ALPHA] Subscribe called with symbols:', symbols);
+    
+    const upperSymbols = symbols.map(s => s.toUpperCase());
+    upperSymbols.forEach(symbol => subscribedSymbols.current.add(symbol));
 
-    // PHASE 1: Immediately register UI activity
+    // PHASE BETA: Immediately register UI activity
     registerUIActivity();
 
-    // Subscribe on active connection
+    // PHASE ALPHA: Subscribe on active connection or queue for later
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const subscribeMessage = {
         type: 'subscribe',
         symbols: Array.from(subscribedSymbols.current)
       };
-      console.log('📤 [HYBRID] Sending WebSocket subscribe message:', subscribeMessage);
+      console.log('📤 [PHASE ALPHA] Sending WebSocket subscribe message (OPEN):', subscribeMessage);
       wsRef.current.send(JSON.stringify(subscribeMessage));
     } else {
-      console.warn('⚠️ [HYBRID] Cannot subscribe - WebSocket not ready. State:', wsRef.current?.readyState);
+      // Queue subscriptions until WebSocket is ready
+      upperSymbols.forEach(symbol => pendingSubscriptions.current.add(symbol));
+      console.log('📋 [PHASE ALPHA] WebSocket not ready (state: ' + wsRef.current?.readyState + '), queued symbols:', upperSymbols);
+      console.log('📋 [PHASE ALPHA] Total pending:', Array.from(pendingSubscriptions.current));
     }
   }, [registerUIActivity]);
 
@@ -305,20 +352,27 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Initialize
   useEffect(() => {
+    console.log('🚀 [PHASE ALPHA] Initializing Hybrid Price Context...');
+    
+    // Connect WebSocket
     connectWebSocket();
 
-    // PHASE 1: Start UI activity heartbeat every 5 seconds
+    // PHASE BETA: Start UI activity heartbeat every 5 seconds
+    console.log(`💓 [PHASE BETA] Starting UI activity heartbeat (${ACTIVITY_HEARTBEAT_INTERVAL}ms interval)...`);
     activityHeartbeatRef.current = setInterval(() => {
       registerUIActivity();
-    }, 5000);
+    }, ACTIVITY_HEARTBEAT_INTERVAL);
 
-    // Initial registration
-    registerUIActivity();
+    // Initial registration (delayed to allow symbols to be subscribed first)
+    setTimeout(() => {
+      registerUIActivity();
+    }, 1000);
 
     // Health check interval
     healthCheckIntervalRef.current = setInterval(checkHealth, HEALTH_CHECK_INTERVAL);
 
     return () => {
+      console.log('🛑 [PHASE ALPHA] Cleaning up Hybrid Price Context...');
       // Cleanup
       if (wsRef.current) {
         wsRef.current.close();

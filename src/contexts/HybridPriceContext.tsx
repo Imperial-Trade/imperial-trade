@@ -51,6 +51,8 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const activityHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionIdRef = useRef<string>(`ui-${Date.now()}-${Math.random().toString(36).substring(2)}`);
 
   // Update price with batching
   const updatePrice = useCallback((symbol: string, data: PriceData) => {
@@ -230,9 +232,34 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [connectionHealth, connectWebSocket]);
 
+  // PHASE 1: UI Activity Registration
+  const registerUIActivity = useCallback(async () => {
+    try {
+      const symbols = Array.from(subscribedSymbols.current);
+      if (symbols.length === 0) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      await supabase.rpc('register_ui_activity_enhanced', {
+        p_session_id: sessionIdRef.current,
+        p_user_id: user?.id || null,
+        p_symbols: symbols
+      });
+
+      console.log('✅ [PHASE 1] UI Activity registered:', { symbols, session: sessionIdRef.current });
+    } catch (error: any) {
+      if (error?.code !== '23503' && error?.code !== 'PGRST204') {
+        console.error('❌ [PHASE 1] UI Activity registration failed:', error);
+      }
+    }
+  }, []);
+
   // Subscribe to symbols
   const subscribe = useCallback((symbols: string[]) => {
     symbols.forEach(symbol => subscribedSymbols.current.add(symbol.toUpperCase()));
+
+    // PHASE 1: Immediately register UI activity
+    registerUIActivity();
 
     // Subscribe on active connection
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -240,8 +267,9 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         type: 'subscribe',
         symbols: Array.from(subscribedSymbols.current)
       }));
+      console.log('📡 [HYBRID] WebSocket subscribe sent:', Array.from(subscribedSymbols.current));
     }
-  }, []);
+  }, [registerUIActivity]);
 
   // Unsubscribe from symbols
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -258,6 +286,14 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Initialize
   useEffect(() => {
     connectWebSocket();
+
+    // PHASE 1: Start UI activity heartbeat every 5 seconds
+    activityHeartbeatRef.current = setInterval(() => {
+      registerUIActivity();
+    }, 5000);
+
+    // Initial registration
+    registerUIActivity();
 
     // Health check interval
     healthCheckIntervalRef.current = setInterval(checkHealth, HEALTH_CHECK_INTERVAL);
@@ -277,8 +313,11 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (healthCheckIntervalRef.current) {
         clearInterval(healthCheckIntervalRef.current);
       }
+      if (activityHeartbeatRef.current) {
+        clearInterval(activityHeartbeatRef.current);
+      }
     };
-  }, []);
+  }, [connectWebSocket, checkHealth, registerUIActivity]);
 
   return (
     <HybridPriceContext.Provider

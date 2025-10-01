@@ -76,7 +76,10 @@ async function pollPrices(symbols: string[]): Promise<PriceUpdate[]> {
 
 // Broadcast prices to all connected clients
 async function broadcastPrices() {
-  if (activeConnections.size === 0) return;
+  if (activeConnections.size === 0) {
+    console.log('⚠️ [PHASE 2] No active connections, skipping broadcast');
+    return;
+  }
   
   // Collect all unique symbols
   const allSymbols = new Set<string>();
@@ -84,30 +87,49 @@ async function broadcastPrices() {
     conn.symbols.forEach(symbol => allSymbols.add(symbol));
   });
   
-  if (allSymbols.size === 0) return;
+  if (allSymbols.size === 0) {
+    console.log('⚠️ [PHASE 2] No symbols subscribed, skipping broadcast');
+    return;
+  }
+  
+  console.log(`🔄 [PHASE 2] Broadcasting prices for ${allSymbols.size} symbols:`, Array.from(allSymbols));
   
   // Poll prices
   const prices = await pollPrices(Array.from(allSymbols));
   
-  if (prices.length === 0) return;
+  if (prices.length === 0) {
+    console.log('⚠️ [PHASE 2] No prices fetched from database');
+    return;
+  }
+  
+  console.log(`📊 [PHASE 2] Fetched ${prices.length} prices from database`);
   
   // Broadcast to each connection
-  activeConnections.forEach(conn => {
+  let broadcastCount = 0;
+  activeConnections.forEach((conn, clientId) => {
     if (conn.socket.readyState === WebSocket.OPEN) {
       // Filter prices relevant to this connection
       const relevantPrices = prices.filter(p => conn.symbols.has(p.symbol));
       
       if (relevantPrices.length > 0) {
-        conn.socket.send(JSON.stringify({
-          type: 'price_update',
-          prices: relevantPrices,
-          timestamp: new Date().toISOString()
-        }));
+        try {
+          conn.socket.send(JSON.stringify({
+            type: 'price_update',
+            prices: relevantPrices,
+            timestamp: new Date().toISOString()
+          }));
+          broadcastCount++;
+          console.log(`✅ [PHASE 2] Sent ${relevantPrices.length} prices to ${clientId}`);
+        } catch (error) {
+          console.error(`❌ [PHASE 2] Error sending to ${clientId}:`, error);
+        }
       }
+    } else {
+      console.warn(`⚠️ [PHASE 2] Socket not open for ${clientId}, state: ${conn.socket.readyState}`);
     }
   });
   
-  console.log(`📊 Broadcasted ${prices.length} prices to ${activeConnections.size} clients`);
+  console.log(`📡 [PHASE 2] Broadcast complete: ${broadcastCount}/${activeConnections.size} clients updated`);
 }
 
 // Start global polling
@@ -162,15 +184,18 @@ function handleWebSocket(socket: WebSocket, clientId: string) {
     }
   }, HEARTBEAT_INTERVAL_MS);
   
-  // Handle messages
+  // PHASE 2: Handle messages with comprehensive logging
   socket.onmessage = (event) => {
     connection.lastActivity = Date.now();
     
     try {
+      console.log(`📨 [PHASE 2] Received message from ${clientId}:`, event.data);
       const message = JSON.parse(event.data);
       
       if (message.type === 'subscribe') {
         const symbols = message.symbols || [];
+        
+        console.log(`🔔 [PHASE 2] Subscribe request from ${clientId}:`, symbols);
         
         if (symbols.length > MAX_SYMBOLS_PER_CONNECTION) {
           socket.send(JSON.stringify({
@@ -187,17 +212,20 @@ function handleWebSocket(socket: WebSocket, clientId: string) {
           symbols: Array.from(connection.symbols)
         }));
         
-        console.log(`📡 Client ${clientId} subscribed to: ${Array.from(connection.symbols).join(', ')}`);
+        console.log(`✅ [PHASE 2] Client ${clientId} subscribed to: ${Array.from(connection.symbols).join(', ')}`);
       }
       
       if (message.type === 'unsubscribe') {
         const symbols = message.symbols || [];
+        console.log(`🔕 [PHASE 2] Unsubscribe request from ${clientId}:`, symbols);
         symbols.forEach((s: string) => connection.symbols.delete(s.toUpperCase()));
         
         socket.send(JSON.stringify({
           type: 'unsubscribed',
           symbols
         }));
+        
+        console.log(`✅ [PHASE 2] Client ${clientId} unsubscribed from:`, symbols);
       }
       
       if (message.type === 'ping') {
@@ -207,7 +235,7 @@ function handleWebSocket(socket: WebSocket, clientId: string) {
         }));
       }
     } catch (error) {
-      console.error('❌ Message handling error:', error);
+      console.error(`❌ [PHASE 2] Message handling error for ${clientId}:`, error);
     }
   };
   
@@ -216,13 +244,17 @@ function handleWebSocket(socket: WebSocket, clientId: string) {
     activeConnections.delete(clientId);
     clearInterval(heartbeat);
     stopGlobalPolling();
-    console.log(`❌ Client disconnected: ${clientId} (Total: ${activeConnections.size})`);
+    console.log(`❌ [PHASE 2] Client disconnected: ${clientId} (Total: ${activeConnections.size})`);
+    console.log(`📊 [PHASE 2] Remaining connections: ${Array.from(activeConnections.keys()).join(', ')}`);
   };
   
   // Handle error
   socket.onerror = (error) => {
-    console.error(`❌ WebSocket error for client ${clientId}:`, error);
+    console.error(`❌ [PHASE 2] WebSocket error for client ${clientId}:`, error);
   };
+  
+  // Log connection established
+  console.log(`📊 [PHASE 2] Connection ${clientId} established. Ready to receive subscriptions.`);
 }
 
 Deno.serve(async (req) => {

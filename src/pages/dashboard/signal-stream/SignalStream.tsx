@@ -339,8 +339,8 @@ export default function SignalStream() {
     return symbolList;
   }, [activeAlerts, alerts]);
 
-  // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
-  const { registerInteraction } = useUIActivityRegistration(symbols);
+  // 🎯 REMOVED: UI activity registration now handled by HybridPriceContext
+  // This eliminates duplicate registration systems and coordination failures
 
   const {
     prices: livePricesData,

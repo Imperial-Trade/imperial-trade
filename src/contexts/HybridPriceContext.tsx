@@ -78,12 +78,16 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setActiveSource('websocket');
         setConnectionStatus('connected');
 
-        // Subscribe to symbols
+        // Subscribe to symbols with enhanced logging
         if (subscribedSymbols.current.size > 0) {
-          ws.send(JSON.stringify({
+          const subscribeMessage = {
             type: 'subscribe',
             symbols: Array.from(subscribedSymbols.current)
-          }));
+          };
+          console.log('📤 [HYBRID] Sending subscribe message:', subscribeMessage);
+          ws.send(JSON.stringify(subscribeMessage));
+        } else {
+          console.warn('⚠️ [HYBRID] WebSocket connected but no symbols to subscribe');
         }
       };
 
@@ -236,17 +240,29 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const registerUIActivity = useCallback(async () => {
     try {
       const symbols = Array.from(subscribedSymbols.current);
-      if (symbols.length === 0) return;
+      if (symbols.length === 0) {
+        console.log('⚠️ [PHASE 1] No symbols to register');
+        return;
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user?.id) {
+        console.warn('⚠️ [PHASE 1] No authenticated user, skipping registration');
+        return;
+      }
+      
       await supabase.rpc('register_ui_activity_enhanced', {
         p_session_id: sessionIdRef.current,
-        p_user_id: user?.id || null,
+        p_user_id: user.id,
         p_symbols: symbols
       });
 
-      console.log('✅ [PHASE 1] UI Activity registered:', { symbols, session: sessionIdRef.current });
+      console.log('✅ [PHASE 1] UI Activity registered:', { 
+        symbols, 
+        session: sessionIdRef.current,
+        userId: user.id
+      });
     } catch (error: any) {
       if (error?.code !== '23503' && error?.code !== 'PGRST204') {
         console.error('❌ [PHASE 1] UI Activity registration failed:', error);
@@ -256,6 +272,7 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Subscribe to symbols
   const subscribe = useCallback((symbols: string[]) => {
+    console.log('🔔 [HYBRID] Subscribe called with symbols:', symbols);
     symbols.forEach(symbol => subscribedSymbols.current.add(symbol.toUpperCase()));
 
     // PHASE 1: Immediately register UI activity
@@ -263,11 +280,14 @@ export const HybridPriceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     // Subscribe on active connection
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
+      const subscribeMessage = {
         type: 'subscribe',
         symbols: Array.from(subscribedSymbols.current)
-      }));
-      console.log('📡 [HYBRID] WebSocket subscribe sent:', Array.from(subscribedSymbols.current));
+      };
+      console.log('📤 [HYBRID] Sending WebSocket subscribe message:', subscribeMessage);
+      wsRef.current.send(JSON.stringify(subscribeMessage));
+    } else {
+      console.warn('⚠️ [HYBRID] Cannot subscribe - WebSocket not ready. State:', wsRef.current?.readyState);
     }
   }, [registerUIActivity]);
 

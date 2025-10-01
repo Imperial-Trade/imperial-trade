@@ -47,9 +47,3 @@ verify_jwt = false
 
 [functions.order-trigger-monitor]
 verify_jwt = false
-
-[functions.live-price-websocket]
-verify_jwt = false
-
-[functions.smart-price-poller]
-verify_jwt = false

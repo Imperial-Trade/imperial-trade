@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -9,8 +9,7 @@ interface WebSocketDiagnosticsProps {
 
 
 export default function WebSocketDiagnostics({ symbols = [] }: WebSocketDiagnosticsProps) {
-  const { connectionStatus, activeSource, prices } = useHybridPrices();
-  const dataSource = activeSource;
+  const { connectionStatus, dataSource, prices } = useOptimizedWebSocketPrices();
 
   const subscribedCount = useMemo(() => symbols.length, [symbols]);
   const priceKeys = useMemo(() => Object.keys(prices || {}), [prices]);

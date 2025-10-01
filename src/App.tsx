@@ -8,7 +8,7 @@ import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { SharedRealtimeProvider } from "@/contexts/SharedRealtimeContext";
-import { HybridPriceProvider } from "@/contexts/HybridPriceContext";
+import { OptimizedWebSocketPriceProvider } from "@/contexts/OptimizedWebSocketPriceContext";
 import { GlobalPreviewControlProvider } from "@/contexts/GlobalPreviewControlContext";
 import { RouteBasedEconomicProvider } from "@/contexts/RouteBasedEconomicProvider";
 import { RealtimeHealthProvider } from "@/contexts/RealtimeHealthMonitor";
@@ -126,7 +126,7 @@ function App() {
                          <RealtimeConnectionManagerProvider>
                            <TelemetryProvider>
                           <GlobalPreviewControlProvider>
-                          <HybridPriceProvider>
+                          <OptimizedWebSocketPriceProvider>
                           <WebSocketErrorBoundary>
                             <ContextErrorBoundary>
                               <SharedRealtimeProvider>
@@ -341,7 +341,7 @@ function App() {
                               </SharedRealtimeProvider>
                           </ContextErrorBoundary>
                         </WebSocketErrorBoundary>
-                        </HybridPriceProvider>
+                        </OptimizedWebSocketPriceProvider>
                         </GlobalPreviewControlProvider>
                          </TelemetryProvider>
                        </RealtimeConnectionManagerProvider>

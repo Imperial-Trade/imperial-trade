@@ -6,7 +6,7 @@ import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -339,19 +339,17 @@ export default function SignalStream() {
     return symbolList;
   }, [activeAlerts, alerts]);
 
-  // 🎯 REMOVED: UI activity registration now handled by HybridPriceContext
-  // This eliminates duplicate registration systems and coordination failures
+  // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
+  const { registerInteraction } = useUIActivityRegistration(symbols);
 
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
-    activeSource: priceSource,
+    dataSource: priceSource,
     subscribe,
-    unsubscribe
-  } = useHybridPrices();
-  
-  // Helper function to get price
-  const getPrice = (symbol: string) => livePricesData[symbol]?.price || 0;
+    unsubscribe,
+    getPrice
+  } = useOptimizedWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {

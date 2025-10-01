@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -26,12 +25,20 @@ import { checkPriceIngestorHealth } from '@/utils/priceIngestorHealthCheck';
 const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
 const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
 
-// 🚀 INSTANT WEBSOCKET BROADCAST - PHASE 1: Zero throttling for true real-time
-const UI_UPDATE_THROTTLE_MS = 0; // NO THROTTLING - Instant updates with batched rendering
+// 🚀 FRONTEND THROTTLING (SMART TV STATION) CONFIGURATION
+const UI_UPDATE_THROTTLE_MS = 3500; // 3.5 seconds for calm, professional trading experience
 const SIGNIFICANCE_THRESHOLDS = {
-  CRITICAL: 0.001, // 0.1% change for ultra-sensitive live updates
+  CRITICAL: 0.005, // 0.5% change bypasses throttling for immediate updates
   MAJOR: 0.003,    // 0.3% change gets priority in next UI update
   NORMAL: 0.001,   // Normal threshold for batch updates
+};
+
+// 🚀 ORDER ACTIVATION BYPASS: Critical trading events that bypass throttling
+const CRITICAL_TRADING_EVENTS = {
+  ORDER_STATUS_CHANGE: true, // pending → active, active → closed
+  TP_HIT: true,             // Take profit hits
+  SL_HIT: true,             // Stop loss hits
+  LIVE_PRICE_WIDGET: true   // Live price displays for professional trading interface
 };
 
 // Enhanced price data interface with bid/ask support and arrival tracking
@@ -312,7 +319,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const watchdogIntervalRef = useRef<NodeJS.Timeout | null>(null); // New: Staleness watchdog
   const watchdogStaleCountRef = useRef(new Map<string, number>()); // New: Track consecutive stale checks
   
-  // 🚀 CONTINUOUS LIVE DISPLAY: Removed UI throttling buffer (anti-blinking systems remain active)
+  // 🚀 FRONTEND THROTTLING: Smart UI update management
+  const uiUpdateBuffer = useRef(new Map<string, PriceData>());
+  const uiUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUIUpdateRef = useRef(new Map<string, number>());
+  const significantUpdatesRef = useRef(new Set<string>()); // Track symbols with critical changes
   
   // 🎯 "Hydrate and Highlight" state tracking
   const realtimeReceivedSymbols = useRef(new Set<string>());
@@ -340,10 +351,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     const activeSymbols = Array.from(subscriptionsRef.current.keys());
     console.log(`🔗 Establishing realtime connection for symbols: ${activeSymbols.join(', ')}`);
     isConnectingRef.current = true;
-    // 🚀 PHASE 1: Batched connection status update
-    unstable_batchedUpdates(() => {
-      setConnectionStatus('connecting');
-    });
+    setConnectionStatus('connecting');
 
     // 🚨 PHASE 1 FIX: Correct channel name to match backend broadcast
     const channel = supabase
@@ -417,15 +425,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         }
         
         console.log(`✅ Accepting newer WebSocket message for ${symbol}: ${new Date(messageTimestamp).toISOString()}`);
-        
-        // 🚀 PHASE 1: Single batched update for instant rendering
-        unstable_batchedUpdates(() => {
-          setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
-          setPrices(prev => ({ ...prev, [symbol]: priceData }));
-          setLastUpdated(new Date());
-          arrivalTimestamps.current.set(symbol, Date.now());
-          realtimeReceivedSymbols.current.add(symbol);
-        });
+        setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
+        setPrices(prev => ({ ...prev, [symbol]: priceData }));
+        setLastUpdated(new Date());
+        arrivalTimestamps.current.set(symbol, Date.now());
+        realtimeReceivedSymbols.current.add(symbol);
         
         console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
       })
@@ -434,11 +438,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         console.log(`📡 Channel subscription status: ${status}`);
         
         if (status === 'SUBSCRIBED') {
-          // 🚀 PHASE 1: Batched connection status update
-          unstable_batchedUpdates(() => {
-            setConnectionStatus('connected');
-            setError(null);
-          });
+          setConnectionStatus('connected');
           connectionStateRef.current.status = 'connected';
           connectionStateRef.current.lastSuccessAt = Date.now();
           connectionStateRef.current.errorCount = 0;
@@ -451,11 +451,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           console.log(`✅ SUBSCRIBED on live-prices-broadcast`);
           console.log(`📊 Active subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (${subscriptionsRef.current.size} symbols)`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          // 🚀 PHASE 1: Batched error status update
-          unstable_batchedUpdates(() => {
-            setConnectionStatus('error');
-            setError('Failed to connect to price stream');
-          });
+          setConnectionStatus('error');
+          setError('Failed to connect to price stream');
           isConnectingRef.current = false;
           console.error(`❌ WebSocket connection failed: ${status} on 'live-prices-broadcast'`);
           // 🚀 PHASE 2: Trigger fallback immediately on error
@@ -606,17 +603,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 mid
               };
               
-              // 🚀 PHASE 1: Single batched update for postgres_changes
-              unstable_batchedUpdates(() => {
-                setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
-                setPrices(prev => ({ ...prev, [symbol]: priceData }));
-                setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
-                setLastUpdated(new Date());
-                arrivalTimestamps.current.set(symbol, Date.now());
-                setConnectionStatus('connected');
-                setError(null);
-              });
-              
+              setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
+              setPrices(prev => ({ ...prev, [symbol]: priceData }));
+              setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
+              setLastUpdated(new Date());
               console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           }
@@ -666,22 +656,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               
               // 🚨 PHASE 2: Track database timestamp for race condition prevention
               timestampUpdates[row.symbol] = dbTimestamp;
-              arrivalTimestamps.current.set(row.symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
               console.log(`📊 Database hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()}`);
             }
           });
           
           if (Object.keys(polledPrices).length > 0) {
-            // 🚀 PHASE 1: Single batched update for emergency polling
-            unstable_batchedUpdates(() => {
-              setInternalPrices(prev => ({ ...prev, ...polledPrices }));
-              setPrices(prev => ({ ...prev, ...polledPrices }));
-              setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
-              setLastUpdated(new Date());
-              setConnectionStatus('connected');
-              setError(null);
-            });
-            
+            setInternalPrices(prev => ({ ...prev, ...polledPrices }));
+            setPrices(prev => ({ ...prev, ...polledPrices }));
+            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+            setLastUpdated(new Date());
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');
           }
         }
@@ -730,10 +713,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     isConnectingRef.current = false;
-    // 🚀 PHASE 1: Batched connection status update
-    unstable_batchedUpdates(() => {
-      setConnectionStatus('disconnected');
-    });
+    setConnectionStatus('disconnected');
     
     // Reconnect if we have active subscriptions
     if (subscriptionsRef.current.size > 0) {
@@ -774,22 +754,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
             // 🚨 PHASE 2: Track database timestamp for race condition prevention
             timestampUpdates[row.symbol] = dbTimestamp;
-            arrivalTimestamps.current.set(row.symbol, Date.now()); // 🔥 FIX: Track arrival for "Live" display
             console.log(`⚡ INSTANT hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()} (price: ${price})`);
           }
         });
         
         if (Object.keys(hydratedPrices).length > 0) {
-          // 🚀 PHASE 1: Single batched update for instant hydration
-          unstable_batchedUpdates(() => {
-            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
-            setPrices(prev => ({ ...prev, ...hydratedPrices }));
-            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
-            setLastUpdated(new Date());
-            setConnectionStatus('connected');
-            setError(null);
-          });
-          
+          setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
+          setPrices(prev => ({ ...prev, ...hydratedPrices }));
+          setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+          setLastUpdated(new Date());
           console.log(`⚡ INSTANT hydration complete: ${Object.keys(hydratedPrices).length} prices loaded immediately`);
         }
       }
@@ -901,10 +874,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🔌 No active subscriptions, disconnecting...');
       channelRef.current.unsubscribe();
       channelRef.current = null;
-      // 🚀 PHASE 1: Batched connection status update
-      unstable_batchedUpdates(() => {
-        setConnectionStatus('disconnected');
-      });
+      setConnectionStatus('disconnected');
     }
   }, []);
 
@@ -990,10 +960,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     isConnectingRef.current = false;
-    // 🚀 PHASE 1: Batched connection status update
-    unstable_batchedUpdates(() => {
-      setConnectionStatus('disconnected');
-    });
+    setConnectionStatus('disconnected');
     
     // Reconnect if we have active subscriptions
     if (subscriptionsRef.current.size > 0) {
@@ -1017,14 +984,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // Reset all state
     subscriptionsRef.current.clear();
-    // 🚀 PHASE 1: Batched state reset
-    unstable_batchedUpdates(() => {
-      setInternalPrices({});
-      setPrices({});
-      setConnectionStatus('disconnected');
-      setError(null);
-      setLastUpdated(null);
-    });
+    setInternalPrices({});
+    setPrices({});
+    setConnectionStatus('disconnected');
+    setError(null);
+    setLastUpdated(null);
     isConnectingRef.current = false;
     
     // Reset stability service
@@ -1081,12 +1045,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             mid: row.mid ? parseFloat(row.mid) : undefined
           };
           
-          // 🚀 PHASE 1: Batched fallback update
-          unstable_batchedUpdates(() => {
-            setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-            setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-            setLastUpdated(new Date());
-          });
+          setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+          setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+          setLastUpdated(new Date());
           
           console.log(`📡 Fallback price update: ${row.symbol} = ${priceData.price}`);
         }
@@ -1111,6 +1072,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (visibilityTimeoutRef.current) {
         clearTimeout(visibilityTimeoutRef.current);
         visibilityTimeoutRef.current = null;
+      }
+      if (uiUpdateTimeoutRef.current) {
+        clearTimeout(uiUpdateTimeoutRef.current);
+        uiUpdateTimeoutRef.current = null;
       }
       if (watchdogIntervalRef.current) {
         clearInterval(watchdogIntervalRef.current);
@@ -1174,13 +1139,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
                 mid: nMid
               };
               
-              // 🚀 PHASE 1: Single batched emergency polling update
-              unstable_batchedUpdates(() => {
-                setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-                setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-                setLastUpdated(new Date());
-              });
+              setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
             });
+            setLastUpdated(new Date());
             console.log('✅ Emergency polling: Updated prices for', criticalSymbols);
           }
         } catch (error) {

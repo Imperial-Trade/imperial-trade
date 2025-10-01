@@ -1,7 +1,7 @@
 // src/hooks/useLivePrice.ts - Pure consumer hook (Single Source of Truth Architecture)
 
 import { useOptimizedLivePrice } from './useOptimizedLivePrice';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useState, useEffect, useRef } from 'react';
 import { useRenderThrottling } from '@/hooks/useRenderThrottling';
 
@@ -21,8 +21,8 @@ export function useEnhancedLivePrice(symbol: string) {
   const optimizedData = useOptimizedLivePrice(symbol, { skipSubscribe: true });
   
   // Get connection quality from the context directly (symbol-specific with hysteresis)
-  const { connectionStatus } = useHybridPrices();
-  const rawConnectionQuality = connectionStatus === 'connected' ? 'live' : connectionStatus === 'connecting' ? 'hydrated' : 'stale';
+  const { getConnectionQuality } = useOptimizedWebSocketPrices();
+  const rawConnectionQuality = getConnectionQuality(symbol);
   const { withTransition } = useRenderThrottling();
   
   // 🚀 ANTI-FLICKER: Debounced connection quality with minimum state duration + render throttling

@@ -1,6 +1,6 @@
 // Phase 3: Optimized Live Price Hook with Throttling & Backward Compatibility
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { normalizeSymbol } from '@/utils/symbolUtils';
@@ -48,18 +48,13 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     prices, 
     connectionStatus, 
     subscribe, 
-    unsubscribe
-  } = useHybridPrices();
-  
-  // Compatibility layer for old API
-  const error = null;
-  const lastUpdated = prices[normalizeSymbol(symbol)]?.timestamp ? new Date(prices[normalizeSymbol(symbol)].timestamp) : null;
-  const getArrivalAge = (sym: string) => {
-    const price = prices[sym];
-    return price ? Date.now() - new Date(price.timestamp).getTime() : 999999;
-  };
-  const getInternalPrice = (sym: string) => prices[sym];
-  const ctxRefreshPrice = (sym: string) => {};
+    unsubscribe, 
+    error, 
+    lastUpdated, 
+    refreshPrice: ctxRefreshPrice, 
+    getArrivalAge,
+    getInternalPrice // 🔥 CRITICAL: Access internal prices for accurate age calculation
+  } = useOptimizedWebSocketPrices();
   
   const [localState, setLocalState] = useState({
     change: 0,

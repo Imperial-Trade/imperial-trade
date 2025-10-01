@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 export default function TradingCalculator({
@@ -15,8 +15,7 @@ export default function TradingCalculator({
 }) {
   // Get live price from WebSocket for the current asset (SINGLE SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
-  const { prices } = useHybridPrices();
-  const getPrice = (sym: string) => prices[sym];
+  const { prices, getPrice } = useOptimizedWebSocketPrices();
   const { shouldAllowQualityChange, getStabilityInfo } = useConnectionStability();
   
   // Subscribe to this symbol and get its price data
@@ -26,8 +25,8 @@ export default function TradingCalculator({
     
     return {
       price: priceData.price,
-      change: 0, // HybridPriceContext doesn't provide change data
-      changePercent: 0, // HybridPriceContext doesn't provide change data
+      change: priceData.change || 0,
+      changePercent: priceData.changePercent || 0,
       isLoading: false,
       error: null,
       lastUpdated: priceData.timestamp ? new Date(priceData.timestamp) : null,

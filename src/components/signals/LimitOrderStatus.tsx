@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Clock, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useOrderManagement } from '@/hooks/useOrderManagement';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -17,7 +17,7 @@ interface LimitOrderStatusProps {
 
 export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatusProps) => {
   const { toast } = useToast();
-  const { prices } = useHybridPrices();
+  const { prices } = useOptimizedWebSocketPrices();
   const { cancelOrder, modifyOrderPrice } = useOrderManagement();
   const { userId } = useCurrentUser();
   const [isModifying, setIsModifying] = useState(false);

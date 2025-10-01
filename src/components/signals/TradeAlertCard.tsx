@@ -15,7 +15,7 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 
 
@@ -84,8 +84,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  const { prices } = useHybridPrices();
-  const getPrice = (symbol: string) => prices[symbol]?.price || 0;
+  const { getPrice } = useOptimizedWebSocketPrices();
 
   // Stop-Loss Proximity state management (moved to top level to fix React Hooks violation)
   const [showStopLossProximity, setShowStopLossProximity] = useState(false);
@@ -171,7 +170,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       return;
     }
 
-    const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase());
+    const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
     const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
     
     if (!currentPrice) return;

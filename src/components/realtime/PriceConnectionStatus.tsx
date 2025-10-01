@@ -1,10 +1,9 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { useHybridPrices } from '@/contexts/HybridPriceContext';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 export const PriceConnectionStatus: React.FC = () => {
-  const { connectionStatus, activeSource } = useHybridPrices();
-  const error = null;
+  const { connectionStatus, error } = useOptimizedWebSocketPrices();
 
   const getStatusDisplay = () => {
     switch (connectionStatus) {
@@ -20,8 +19,7 @@ export const PriceConnectionStatus: React.FC = () => {
           variant: 'secondary' as const,
           description: 'Establishing real-time connection'
         };
-      case 'disconnected':
-      case 'degraded':
+      case 'error':
         return {
           label: 'Connection Error',
           variant: 'destructive' as const,

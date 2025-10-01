@@ -48,7 +48,7 @@ export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
         prevSubscribedRef.current = [];
       }
     };
-  }, [validSymbols, subscribe, unsubscribe]);
+  }, [validSymbols]); // PHASE 6: Remove subscribe/unsubscribe to prevent hook-level subscription loops
 
   const formattedPrices = useMemo(() => {
     const result: Record<string, number> = {};

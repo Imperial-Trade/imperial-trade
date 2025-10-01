@@ -13,9 +13,18 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   const { user } = useAuth();
   const lastRegistrationRef = useRef<number>(0);
   const isUnmountedRef = useRef<boolean>(false);
+  const prevSymbolsRef = useRef<string[]>([]); // 🎯 PHASE 3: Track previous symbols for deep equality
 
   useEffect(() => {
     isUnmountedRef.current = false;
+    
+    // 🎯 PHASE 3: Deep equality check for symbols to prevent unnecessary re-runs
+    const symbolsChanged = JSON.stringify(prevSymbolsRef.current) !== JSON.stringify(symbols);
+    if (!symbolsChanged && prevSymbolsRef.current.length > 0) {
+      // Symbols haven't changed, skip registration
+      return;
+    }
+    prevSymbolsRef.current = symbols;
     
     const sessionId = (() => {
       try {
@@ -34,9 +43,9 @@ export function useUIActivityRegistration(symbols: string[] = []) {
         // Check if component is unmounted
         if (isUnmountedRef.current) return;
         
-        // Rate limiting: Don't register more than once per minute per user
+        // 🎯 PHASE 3: Rate limiting with 5-second debounce
         const now = Date.now();
-        if (now - lastRegistrationRef.current < 60000) {
+        if (now - lastRegistrationRef.current < 5000) {
           return;
         }
 
@@ -71,12 +80,11 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       }
     };
 
-    // Initial registration with longer authentication delay
-    const initialTimeout = setTimeout(() => {
-      if (!isUnmountedRef.current && user?.id) {
-        registerActivity();
-      }
-    }, 5000); // Wait 5 seconds for auth to fully settle
+    // 🎯 PHASE 7: INSTANT registration - no delay to prevent broadcast race condition
+    // The existing 5-second debounce in registerActivity() (line 46-50) prevents spam
+    if (!isUnmountedRef.current && user?.id) {
+      registerActivity(); // Call immediately on mount
+    }
 
     // Periodic registration every 10 minutes
     const intervalId = setInterval(() => {
@@ -87,7 +95,6 @@ export function useUIActivityRegistration(symbols: string[] = []) {
 
     return () => {
       isUnmountedRef.current = true;
-      clearTimeout(initialTimeout);
       clearInterval(intervalId);
     };
   }, [user?.id, symbols]);

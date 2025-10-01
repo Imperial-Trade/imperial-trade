@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
-import { tradingApiService } from '@/api/services/TradingApiService';
+import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import InAppNotificationSystem from '@/components/notifications/InAppNotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
@@ -141,14 +141,16 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
+  
+  // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
+  const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  
   const {
     activeAlerts,
-    closedAlerts,
     educatorOptions,
     signalCounts
   } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
-    const closed = alerts.filter(a => a.status === 'closed');
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
@@ -166,20 +168,120 @@ export default function SignalStream() {
     const counts = {
       total: alerts.length,
       active: active.length,
-      closed: closed.length,
+      closed: staticClosedAlerts.length, // 🎯 PHASE 2: Use static closed alerts count
       buy: alerts.filter(a => a.tradeType.includes('buy')).length,
       sell: alerts.filter(a => a.tradeType.includes('sell')).length
     };
     return {
       activeAlerts: active,
-      closedAlerts: closed,
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts]);
+  }, [alerts, allAlerts, staticClosedAlerts.length]);
+  const [totalClosedCount, setTotalClosedCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchStaticClosedAlerts = async () => {
+      try {
+        console.log('📊 PHASE 6: Fetching static closed alerts (one-time fetch)');
+        
+        const { data: closedAlertsData, error } = await supabase
+          .from('trade_alerts')
+          .select('*')
+          .eq('status', 'closed')
+          .order('updated_at', { ascending: false })
+          .limit(12);
+          
+        if (error) {
+          console.error('Failed to fetch static closed alerts:', error);
+          return;
+        }
+
+        // Get profiles for these alerts
+        const userIds = [...new Set((closedAlertsData || []).map(alert => alert.user_id))];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Failed to fetch profiles for closed alerts:', profilesError);
+        }
+
+        // Create profile map
+        const profilesMap = new Map();
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            profilesMap.set(profile.id, profile);
+          });
+        }
+
+        // Get total count
+        const { count, error: countError } = await supabase
+          .from('trade_alerts')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'closed');
+
+        if (countError) {
+          console.error('Failed to fetch closed alerts count:', countError);
+        }
+
+        const mappedAlerts: TradeAlertWithProfile[] = (closedAlertsData || []).map(alert => {
+          const profile = profilesMap.get(alert.user_id);
+          
+          return {
+            id: alert.id,
+            userId: alert.user_id,
+            assetName: alert.asset_name,
+            tradermadeSymbol: alert.tradermade_symbol,
+            tradeType: alert.trade_type,
+            entryPrice: Number(alert.entry_price),
+            stopLoss: Number(alert.stop_loss),
+            status: alert.status,
+            tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+            tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+            tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+            tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+            tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+            tpHits: alert.tp_hits || [],
+            notes: alert.notes,
+            closeReason: alert.close_reason,
+            createdAt: alert.created_at,
+            updatedAt: alert.updated_at,
+            creator: profile ? {
+              id: profile.id,
+              display_name: profile.display_name || 'Anonymous User',
+              role: profile.role || 'user',
+              avatar_url: profile.avatar_url,
+              user_type: profile.user_type,
+              access_level: profile.access_level
+            } : {
+              id: alert.user_id,
+              display_name: 'Unknown User',
+              role: 'user',
+              avatar_url: null,
+              user_type: null,
+              access_level: null
+            }
+          };
+        });
+
+        setStaticClosedAlerts(mappedAlerts);
+        setTotalClosedCount(count || 0);
+        
+        console.log(`📊 PHASE 6: Loaded ${mappedAlerts.length} static closed alerts, total: ${count}`);
+      } catch (error) {
+        console.error('Error fetching static closed alerts:', error);
+      }
+    };
+
+    fetchStaticClosedAlerts();
+  }, []); // Only fetch once on mount
+
   const sortedClosedAlerts = useMemo(() => {
-    return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
-  }, [closedAlerts]);
+    // PHASE 6: Use static closed alerts instead of real-time filtered ones
+    return staticClosedAlerts;
+  }, [staticClosedAlerts]);
 
   // Check if we have pending limit orders for the monitor
   const hasPendingLimitOrders = useMemo(() => {
@@ -196,7 +298,8 @@ export default function SignalStream() {
     intervalMs: 15000 // 15 seconds
   });
   
-  // Define symbols first for UI activity registration
+  // 🎯 PHASE 1 & 5: Define symbols with deep equality for subscription stability
+  const prevSymbolsRef = useRef<string[]>([]);
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     
@@ -219,9 +322,20 @@ export default function SignalStream() {
     
     // Limit to top 2 symbols for efficient connection management
     const symbolList = Array.from(symbolSet).sort().slice(0, 2);
-    if (isDevToolsEnabled()) {
-      console.log('🔄 SignalStream - Pre-subscribing to top 2 symbols:', symbolList);  
+    
+    // 🎯 DEEP EQUALITY CHECK: Return same reference if content identical
+    const prev = prevSymbolsRef.current;
+    if (JSON.stringify(prev) === JSON.stringify(symbolList)) {
+      if (isDevToolsEnabled()) {
+        console.log('🔒 SignalStream - Symbols unchanged (deep equality), returning same reference');
+      }
+      return prev; // Return SAME reference to prevent useEffect re-run
     }
+    
+    if (isDevToolsEnabled()) {
+      console.log('🔄 SignalStream - Symbols changed:', { prev, new: symbolList });  
+    }
+    prevSymbolsRef.current = symbolList;
     return symbolList;
   }, [activeAlerts, alerts]);
 
@@ -248,24 +362,26 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Pre-subscribe to warm up the connection for the most important symbols
+  // 🎯 PHASE 1: Pre-subscribe with persistent connection (no cleanup cycling)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (symbols.length > 0) {
-        subscribe(symbols);
-        if (isDevToolsEnabled()) {
-          console.log('🚀 SignalStream - Pre-warming connection with symbols:', symbols);
-        }
+    if (symbols.length > 0) {
+      subscribe(symbols);
+      if (isDevToolsEnabled()) {
+        console.log('🚀 SignalStream - Subscribing to symbols (persistent):', symbols);
       }
-    }, 500); // 500ms debounce
+    }
 
+    // 🎯 CRITICAL FIX: Only unsubscribe on component unmount, NOT on symbols change
     return () => {
-      clearTimeout(timeoutId);
       if (symbols.length > 0) {
+        if (isDevToolsEnabled()) {
+          console.log('🧹 SignalStream - Component unmounting, cleaning up subscriptions:', symbols);
+        }
         unsubscribe(symbols);
       }
     };
-  }, [symbols, subscribe, unsubscribe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 🎯 Empty deps: Subscribe once on mount, cleanup on unmount only
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {
@@ -597,7 +713,6 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
-        <InAppNotificationSystem />
         
         {/* Header - Mobile Optimized spacing */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -609,15 +724,16 @@ export default function SignalStream() {
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 hidden">
-                {getConnectionStatusBadge()}
-                {lastUpdated && <span className="text-xs text-muted-foreground">
-                    Last update: {lastUpdated.toLocaleTimeString()}
-                  </span>}
+              <div className="text-xs text-muted-foreground">
+                {connectionStatus === 'connected' ? '● Live' : 
+                 connectionStatus === 'polling-fallback' ? '● Polling' :
+                 connectionStatus === 'connecting' ? '⟳ Connecting...' : 
+                 '○ Disconnected'}
               </div>
             </div>
           </div>
         </div>
+
 
         {/* Main Content - Mobile Optimized grid layout with granular protection */}
         <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
@@ -627,7 +743,6 @@ export default function SignalStream() {
               {/* System Status - Removed for clean UI */}
               
               
-
 
 
               <div className="mb-6" />
@@ -698,7 +813,7 @@ export default function SignalStream() {
                       >
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({closedAlerts.length})</span>
+                      <span className="text-imperial-platinum"> ({totalClosedCount})</span>
                     </h2>
                     {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">

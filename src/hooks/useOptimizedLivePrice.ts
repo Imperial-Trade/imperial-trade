@@ -115,7 +115,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       }
       unsubscribe([normalizedSymbol]);
     };
-  }, [symbol, subscribe, unsubscribe, options.skipSubscribe]);
+  }, [symbol, options.skipSubscribe]); // PHASE 6: Remove subscribe/unsubscribe to prevent hook-level subscription loops
 
   // Update local state when price changes - immediate updates
   useEffect(() => {

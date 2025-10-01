@@ -68,15 +68,12 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
       
       console.log('Checking account status for:', normalizedEmail);
 
-      const { data, error: dbError } = await supabase
-        .from('account_requests')
-        .select('*')
-        .eq('email', normalizedEmail)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
+      const { data: response, error: invokeError } = await supabase.functions.invoke('account-status-check', {
+        body: { email: normalizedEmail }
+      });
 
-      if (dbError) {
-        console.error('Database error:', dbError);
+      if (invokeError) {
+        console.error('Edge function error:', invokeError);
         const errorObj = {
           type: 'system_error' as const,
           message: 'Unable to check account status. Please try again.'
@@ -93,10 +90,10 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
         return;
       }
 
-      if (!data) {
+      if (response.status === 'not_found') {
         const errorObj = {
           type: 'not_found' as const,
-          message: 'No account request found for this email address.'
+          message: response.message || 'No account request found for this email address.'
         };
         setError(errorObj);
         setStatus(null);
@@ -107,13 +104,27 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
           timestamp: Date.now(),
           error: errorObj
         });
-      } else {
-        setStatus(data as AccountStatusData);
+      } else if (response.status === 'error') {
+        const errorObj = {
+          type: 'system_error' as const,
+          message: response.error || 'Unable to check account status. Please try again.'
+        };
+        setError(errorObj);
+        setStatus(null);
+        
+        // Cache the error
+        statusCache.set(normalizedEmail, {
+          data: null,
+          timestamp: Date.now(),
+          error: errorObj
+        });
+      } else if (response.status === 'found' && response.data) {
+        setStatus(response.data as AccountStatusData);
         setError(null);
         
         // Cache the successful result
         statusCache.set(normalizedEmail, {
-          data: data as AccountStatusData,
+          data: response.data as AccountStatusData,
           timestamp: Date.now()
         });
       }

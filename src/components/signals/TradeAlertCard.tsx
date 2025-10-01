@@ -214,20 +214,24 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <div className="p-3">
-        {/* Use the new AnimatedStatusHeader component with primitive props */}
-        <AnimatedStatusHeader 
-          creator={creator} 
-          assetName={alert.asset_name}
-          status={alert.status}
-          tradeType={alert.trade_type}
-          closeReason={alert.close_reason}
-          highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
-          hasTPHits={Boolean(hitTPs.length)}
-          isRecentClosure={isRecentClosure} 
-          justAdded={justAdded}
-          createdDate={alert.created_date}
-          updatedDate={alert.updated_date}
-        />
+        <div className="flex items-center justify-between gap-2 mb-2">
+          {/* Use the new AnimatedStatusHeader component with primitive props */}
+          <div className="flex-1">
+            <AnimatedStatusHeader 
+              creator={creator} 
+              assetName={alert.asset_name}
+              status={alert.status}
+              tradeType={alert.trade_type}
+              closeReason={alert.close_reason}
+              highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
+              hasTPHits={Boolean(hitTPs.length)}
+              isRecentClosure={isRecentClosure} 
+              justAdded={justAdded}
+              createdDate={alert.created_date}
+              updatedDate={alert.updated_date}
+            />
+          </div>
+        </div>
 
         {/* Actions - moved to the right */}
         <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">

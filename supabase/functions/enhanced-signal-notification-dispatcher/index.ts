@@ -121,62 +121,108 @@ function generateEventKey(notification: NotificationPayload): string {
   return `${baseKey}_${timestamp}_${sequence}`;
 }
 
+// Pips calculation helper
+function calculatePips(entryPrice: number, targetPrice: number, symbol: string): string {
+  const pipSize = getPipSize(symbol);
+  const priceDiff = Math.abs(targetPrice - entryPrice);
+  const pips = priceDiff / pipSize;
+  return pips.toFixed(1);
+}
+
+function getPipSize(symbol: string): number {
+  const upperSymbol = symbol.toUpperCase();
+  if (upperSymbol.includes('JPY')) return 0.01;
+  if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) return 0.1;
+  if (upperSymbol.includes('BTC')) return 1.0;
+  if (upperSymbol.includes('US30') || upperSymbol.includes('US100')) return 1.0;
+  return 0.0001;
+}
+
 function createRichNotificationContent(notification: NotificationPayload): {
   title: string;
   body: string;
   data: Record<string, any>;
   webButtons?: Array<{ id: string; text: string; url: string; }>;
 } {
-  const { asset_name, trade_type, entry_price, author_name, notification_type, status, tp_hits } = notification;
+  const { asset_name, trade_type, entry_price, author_name, notification_type, status, tp_hits, symbol, tradermade_symbol } = notification;
   
   let title = '';
   let body = '';
-  let urgencyIcon = '';
-
-  // PHASE 3: CRITICAL FIX - Ensure author_name is never undefined
   const safeAuthorName = author_name || 'Educator';
+  const safeSymbol = tradermade_symbol || symbol || asset_name;
 
-  // Determine urgency and content based on notification type
+  // Calculate pips for relevant notifications
+  let pipsText = '';
+  if (notification.triggered_price && notification.entry_price) {
+    const pips = calculatePips(notification.entry_price, notification.triggered_price, safeSymbol);
+    const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
+    const isProfit = (isBuy && notification.triggered_price > entry_price) || 
+                     (!isBuy && notification.triggered_price < entry_price);
+    pipsText = `${isProfit ? 'Profit' : 'Loss'}: ${isProfit ? '+' : '-'}${pips} pips`;
+  }
+
+  // Provider name format: "${providerName} • ${notificationType}"
   switch (notification_type) {
     case 'signal_created':
-      urgencyIcon = '🚨';
-      title = `${urgencyIcon} New ${trade_type.toUpperCase()} Signal`;
-      body = `${safeAuthorName} created ${asset_name} at ${entry_price}`;
+      title = `${safeAuthorName} • New Signal`;
+      body = `${asset_name} • ${trade_type.toUpperCase()} at ${entry_price}`;
       break;
-    case 'signal_updated':
-      if (notification.change_types?.includes('tp_hits')) {
-        urgencyIcon = '🎯';
-        title = `${urgencyIcon} TP Hit - ${asset_name}`;
-        body = `Take Profit ${tp_hits?.[tp_hits.length - 1]} reached!`;
-      } else if (notification.change_types?.includes('status_change')) {
-        urgencyIcon = status === 'closed' ? '🔒' : '✅';
-        title = `${urgencyIcon} Signal ${status.toUpperCase()} - ${asset_name}`;
-        body = `Status changed by ${safeAuthorName}`;
-      } else {
-        urgencyIcon = '📊';
-        title = `${urgencyIcon} Signal Updated - ${asset_name}`;
-        body = `${safeAuthorName} updated the signal`;
+      
+    case 'tp_hit':
+    case 'take_profit_hit':
+      const tpLevel = tp_hits?.[tp_hits.length - 1] || 1;
+      title = `${safeAuthorName} • TP${tpLevel} Hit`;
+      body = `${asset_name} • ${pipsText || 'Target reached'}`;
+      break;
+      
+    case 'stop_loss_hit':
+      title = `${safeAuthorName} • Stop Loss Hit`;
+      body = `${asset_name} • ${pipsText || `SL at ${notification.triggered_price}`}`;
+      break;
+      
+    case 'limit_order_activated':
+      title = `${safeAuthorName} • Order Activated`;
+      body = `${asset_name} • ${trade_type.replace('_', ' ').toUpperCase()} now active`;
+      break;
+      
+    case 'manual_close':
+      title = `${safeAuthorName} • Signal Closed`;
+      body = `${asset_name} • Manually closed`;
+      if (notification.close_reason) {
+        body += ` (${notification.close_reason})`;
       }
       break;
-    case 'stop_loss_hit':
-      urgencyIcon = '🛑';
-      title = `${urgencyIcon} Stop Loss Hit - ${asset_name}`;
-      body = `Stop loss triggered at ${notification.triggered_price || 'market price'}`;
+      
+    case 'notes_updated':
+      title = `${safeAuthorName} • Notes Updated`;
+      body = `${asset_name} • New trading notes added`;
       break;
-    case 'take_profit_hit':
-      urgencyIcon = '🎯';
-      title = `${urgencyIcon} Take Profit Hit - ${asset_name}`;
-      body = `TP level reached at ${notification.triggered_price || 'market price'}`;
+      
+    case 'signal_updated':
+      if (notification.change_types?.includes('tp_hits')) {
+        const tpNum = tp_hits?.[tp_hits.length - 1] || 1;
+        title = `${safeAuthorName} • TP${tpNum} Hit`;
+        body = `${asset_name} • ${pipsText || 'Take profit reached'}`;
+      } else if (notification.change_types?.includes('status_change')) {
+        if (status === 'closed') {
+          title = `${safeAuthorName} • Signal Closed`;
+          body = `${asset_name} • Trade completed`;
+        } else if (status === 'active') {
+          title = `${safeAuthorName} • Signal Active`;
+          body = `${asset_name} • Now trading`;
+        } else {
+          title = `${safeAuthorName} • Status Update`;
+          body = `${asset_name} • Status: ${status}`;
+        }
+      } else {
+        title = `${safeAuthorName} • Signal Updated`;
+        body = `${asset_name} • Parameters modified`;
+      }
       break;
-    case 'limit_order_activated':
-      urgencyIcon = '⚡';
-      title = `${urgencyIcon} Order Activated - ${asset_name}`;
-      body = `${trade_type.replace('_', ' ').toUpperCase()} order now ACTIVE at ${notification.triggered_price || entry_price}`;
-      break;
+      
     default:
-      urgencyIcon = '📈';
-      title = `${urgencyIcon} Trading Alert - ${asset_name}`;
-      body = `${safeAuthorName}: ${trade_type.toUpperCase()} at ${entry_price}`;
+      title = `${safeAuthorName} • Trading Alert`;
+      body = `${asset_name} • ${trade_type.toUpperCase()}`;
   }
 
   // Rich data payload for deep linking and UI enhancement
@@ -197,17 +243,12 @@ function createRichNotificationContent(notification: NotificationPayload): {
     ...(notification.close_reason && { close_reason: notification.close_reason })
   };
 
-  // Web action buttons for enhanced UX
+  // ONLY "View Signal" button as per requirements
   const webButtons = [
     {
       id: 'view_signal',
-      text: '👁️ View Signal',
-      url: `https://www.tradeimperial.com/dashboard/signals/${notification.signal_id}`
-    },
-    {
-      id: 'view_all_signals',
-      text: '📊 All Signals',
-      url: 'https://www.tradeimperial.com/dashboard/signals'
+      text: 'View Signal',
+      url: `https://www.tradeimperial.com/dashboard/signal-stream?signal=${notification.signal_id}`
     }
   ];
 

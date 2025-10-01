@@ -32,6 +32,9 @@ const ROUTE_SUBSCRIPTION_MAP: Record<string, string[]> = {
   '/dashboard/academy': [],
   '/dashboard/academy/*': [],
   
+  // Advanced tools - needs prices for calculators, but NOT signals
+  '/dashboard/advanced-tools': ['prices'],
+  
   // Profile pages - no realtime needed
   '/dashboard/profile': [],
   '/dashboard/settings': [],

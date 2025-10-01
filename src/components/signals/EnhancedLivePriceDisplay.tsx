@@ -19,7 +19,6 @@ import {
   Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
-// Market status imports removed
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -269,26 +268,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
     } ${className}`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <div className="text-white font-medium">
-              Live Price for {assetName}
-            </div>
-          </div>
-        </div>
-        
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">Live Price</h3>
         <Button
-          type="button"
-          variant="ghost"
           size="sm"
+          variant="ghost"
           onClick={handleRefresh}
-          className="text-gray-400 hover:text-white h-8 w-8 p-0"
-          title="Refresh price"
-          disabled={isLoading || isRefreshing}
+          disabled={isRefreshing}
+          className="h-7 px-2"
         >
-          <RefreshCw className="w-4 h-4" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
+          <RefreshCw className="h-3 w-3" />
         </Button>
       </div>
 

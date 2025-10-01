@@ -27,6 +27,7 @@ import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
+import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -114,6 +115,7 @@ function App() {
           <VersionChecker />
           <CacheCleanerMount />
           <Sonner />
+          <ModernNotificationSystem />
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>

@@ -20,6 +20,12 @@ class GlobalUIActivityManager {
   private userId: string | null = null;
   private lastRegistrationTime: number = 0;
   private isRegistering: boolean = false;
+  
+  // 🔥 PRIORITY 1: Idle Detection - Stop registration after 5 minutes of no user interaction
+  private lastInteractionTime: number = Date.now();
+  private readonly IDLE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+  private isIdle: boolean = false;
+  private eventListenersAttached: boolean = false;
 
   private constructor() {
     this.sessionId = this.getOrCreateSessionId();
@@ -45,6 +51,49 @@ class GlobalUIActivityManager {
   }
 
   /**
+   * Record user interaction to reset idle timer
+   */
+  private recordInteraction = (): void => {
+    const wasIdle = this.isIdle;
+    this.lastInteractionTime = Date.now();
+    this.isIdle = false;
+    
+    if (wasIdle) {
+      console.log('👤 User active again - resuming UI activity registration');
+    }
+  };
+
+  /**
+   * Attach global event listeners for idle detection
+   */
+  private attachEventListeners(): void {
+    if (this.eventListenersAttached) return;
+    
+    const events = ['click', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+    events.forEach(event => {
+      window.addEventListener(event, this.recordInteraction, { passive: true });
+    });
+    
+    this.eventListenersAttached = true;
+    console.log('👂 Idle detection listeners attached');
+  }
+
+  /**
+   * Remove global event listeners
+   */
+  private removeEventListeners(): void {
+    if (!this.eventListenersAttached) return;
+    
+    const events = ['click', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+    events.forEach(event => {
+      window.removeEventListener(event, this.recordInteraction);
+    });
+    
+    this.eventListenersAttached = false;
+    console.log('👋 Idle detection listeners removed');
+  }
+
+  /**
    * Subscribe a component to global activity management
    * @param componentId Unique identifier for the component
    * @param symbols Array of symbols this component is tracking
@@ -62,8 +111,9 @@ class GlobalUIActivityManager {
     console.log(`📡 GlobalUIActivityManager: Subscribed "${componentId}" with ${symbols.length} symbols`);
     console.log(`   Total subscribers: ${this.subscribers.size}`);
 
-    // Start interval if this is the first subscriber
+    // Start interval and attach event listeners if this is the first subscriber
     if (this.subscribers.size === 1 && !this.intervalId) {
+      this.attachEventListeners();
       this.startInterval();
     }
   }
@@ -81,9 +131,10 @@ class GlobalUIActivityManager {
       console.log(`   Remaining subscribers: ${this.subscribers.size}`);
     }
 
-    // Stop interval if no more subscribers
+    // Stop interval and remove event listeners if no more subscribers
     if (this.subscribers.size === 0 && this.intervalId) {
       this.stopInterval();
+      this.removeEventListeners();
     }
   }
 
@@ -106,6 +157,16 @@ class GlobalUIActivityManager {
    * Register UI activity with backend
    */
   private async registerActivity(): Promise<void> {
+    // 🔥 PRIORITY 1: Check idle state - skip registration if user has been idle for 5+ minutes
+    const timeSinceLastInteraction = Date.now() - this.lastInteractionTime;
+    if (timeSinceLastInteraction > this.IDLE_THRESHOLD_MS) {
+      if (!this.isIdle) {
+        this.isIdle = true;
+        console.log('💤 User idle for 5+ minutes - pausing UI activity registration');
+      }
+      return;
+    }
+
     // Prevent concurrent registrations
     if (this.isRegistering) {
       console.log('📡 GlobalUIActivityManager: Registration already in progress, skipping');

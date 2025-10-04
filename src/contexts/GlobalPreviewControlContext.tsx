@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
-import { realtimeLogger, generateChannelId } from '@/utils/realtimeLogger';
 
 // Global Preview Control - Ensures only one live preview across all developers
-// Uses Supabase Realtime presence for coordination
+// 🔥 PRIORITY 3: Uses localStorage for coordination (NO Realtime Connection)
 
 interface PreviewControlState {
   isGlobalLeader: boolean;
@@ -38,150 +36,145 @@ interface GlobalPreviewControlProviderProps {
 export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProviderProps> = ({
   children
 }) => {
-  // 🔥 LEAK-PROOF: Deterministic channel ID for definitive logging
-  const channelIdRef = useRef(generateChannelId('preview-ctrl'));
-  const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+  const mountOnlyRef = useRef(false);
   const [state, setState] = useState<PreviewControlState>({
     isGlobalLeader: false,
     currentLeader: null,
     leaderName: null,
     sessionId: '',
-    isEnforced: false, // Default off - can be enabled via feature flag
+    isEnforced: false,
     participants: 0
   });
 
-  const channelRef = useRef<any>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const sessionIdRef = useRef<string>('');
-  const projectId = 'kmuoqkcxguafxulqlbmi'; // Fixed project ID
 
   // Generate unique session ID
   useEffect(() => {
-    const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     sessionIdRef.current = sessionId;
     setState(prev => ({ ...prev, sessionId }));
   }, []);
 
-  // 🔥 LEAK-PROOF: Initialize global presence channel with mount guards
+  // 🔥 PRIORITY 3: localStorage-based Tab Leadership (NO Realtime Connection)
   useEffect(() => {
     mountOnlyRef.current = true;
     
-    // Feature flag check - can be enabled later
-    const isEnforced = false; // TODO: Replace with actual feature flag
+    // Always disabled - no Realtime presence channel needed
+    const isEnforced = false;
     setState(prev => ({ ...prev, isEnforced }));
 
-    if (!isEnforced || !sessionIdRef.current) {
-      return;
-    }
+    // Use localStorage for tab coordination instead of Supabase presence
+    const STORAGE_KEY = 'preview_tabs';
+    const HEARTBEAT_INTERVAL = 5000; // Update every 5 seconds
+    const STALE_THRESHOLD = 15000; // Consider tab stale after 15 seconds
 
-    const channelName = `preview_control:${projectId}`;
-    
-    // 🔥 DEFINITIVE LOGGING: Always log subscription attempts
-    realtimeLogger.logSubscribe(channelIdRef.current, channelName, 'GlobalPreviewControlProvider');
-
-    const channel = supabase.channel(channelName);
-    channelRef.current = channel;
-
-    // Join presence with metadata
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const presenceState = channel.presenceState();
-        const participants = Object.keys(presenceState).length;
+    const updateTabPresence = () => {
+      try {
+        // Read existing tabs
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const tabs = stored ? JSON.parse(stored) : {};
         
-        // Determine leader by earliest startedAt timestamp
-        let earliestParticipant = null;
-        let earliestTime = Infinity;
-
-        for (const [key, presences] of Object.entries(presenceState)) {
-          const presence = (presences as any[])[0]; // Get first presence
-          if (presence?.startedAt < earliestTime) {
-            earliestTime = presence.startedAt;
-            earliestParticipant = presence;
+        // Clean up stale tabs
+        const now = Date.now();
+        Object.keys(tabs).forEach(tabId => {
+          if (now - tabs[tabId].timestamp > STALE_THRESHOLD) {
+            delete tabs[tabId];
           }
-        }
+        });
 
-        const isLeader = earliestParticipant?.sessionId === sessionIdRef.current;
-        
+        // Update this tab
+        tabs[sessionIdRef.current] = {
+          timestamp: now,
+          route: window.location.pathname,
+          name: `Tab-${sessionIdRef.current.slice(-4)}`
+        };
+
+        // Save back to localStorage
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+
+        // Determine leader (earliest timestamp)
+        let earliestTab = null;
+        let earliestTime = Infinity;
+        let totalTabs = 0;
+
+        Object.entries(tabs).forEach(([tabId, data]: [string, any]) => {
+          totalTabs++;
+          if (data.timestamp < earliestTime) {
+            earliestTime = data.timestamp;
+            earliestTab = { sessionId: tabId, ...data };
+          }
+        });
+
+        const isLeader = earliestTab?.sessionId === sessionIdRef.current;
+
         setState(prev => ({
           ...prev,
           isGlobalLeader: isLeader,
-          currentLeader: earliestParticipant?.sessionId || null,
-          leaderName: earliestParticipant?.name || 'Unknown',
-          participants
+          currentLeader: earliestTab?.sessionId || null,
+          leaderName: earliestTab?.name || 'Unknown',
+          participants: totalTabs
         }));
 
         if (isDevToolsEnabled()) {
-          console.log('🌐 Global leader election:', {
+          console.log('📑 localStorage Tab Leadership:', {
             isLeader,
-            leader: earliestParticipant?.name,
-            participants,
+            leader: earliestTab?.name,
+            totalTabs,
             sessionId: sessionIdRef.current
           });
         }
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        if (isDevToolsEnabled()) {
-          console.log('🌐 Developer joined preview:', newPresences);
-        }
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        if (isDevToolsEnabled()) {
-          console.log('🌐 Developer left preview:', leftPresences);
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          // Track presence with metadata
-          const userName = `Dev-${sessionIdRef.current.slice(-4)}`;
-          await channel.track({
-            sessionId: sessionIdRef.current,
-            name: userName,
-            startedAt: Date.now(),
-            route: window.location.pathname,
-            isActive: true
-          });
+      } catch (error) {
+        console.error('Error updating tab presence:', error);
+      }
+    };
 
-          if (isDevToolsEnabled()) {
-            console.log('🌐 Joined global preview control as:', userName);
-          }
-        }
-      });
+    // Initial update
+    updateTabPresence();
 
-    // 🔥 LEAK-PROOF: Cleanup on unmount with definitive logging
+    // Start heartbeat
+    heartbeatIntervalRef.current = setInterval(updateTabPresence, HEARTBEAT_INTERVAL);
+
+    // Cleanup on unmount
     return () => {
       mountOnlyRef.current = false;
       
-      realtimeLogger.logStatus('GlobalPreviewControlProvider UNMOUNT');
-      
-      if (channelRef.current) {
-        // 🔥 DEFINITIVE LOGGING: Always log unsubscription
-        realtimeLogger.logUnsubscribe(channelIdRef.current, 'GlobalPreviewControlProvider');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+      // Remove this tab from localStorage
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const tabs = JSON.parse(stored);
+          delete tabs[sessionIdRef.current];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+        }
+      } catch (error) {
+        console.error('Error cleaning up tab presence:', error);
       }
+
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
       }
+
+      if (isDevToolsEnabled()) {
+        console.log('📑 Tab removed from localStorage leadership');
+      }
     };
-  }, []); // 🔥 LEAK-PROOF: Mount-only, never re-run
+  }, []); // Mount-only, never re-run
 
   const requestControl = useCallback(() => {
     // Implementation for requesting control from current leader
     if (isDevToolsEnabled()) {
-      console.log('🌐 Control request not implemented yet');
+      console.log('📑 Control request not implemented yet');
     }
   }, []);
 
   const releaseControl = useCallback(() => {
     // Implementation for voluntarily releasing control
-    if (channelRef.current && state.isGlobalLeader) {
-      channelRef.current.untrack();
-      if (isDevToolsEnabled()) {
-        console.log('🌐 Released global control');
-      }
+    if (isDevToolsEnabled()) {
+      console.log('📑 Released local control');
     }
-  }, [state.isGlobalLeader]);
+  }, []);
 
   const getControlStatus = useCallback(() => state, [state]);
 

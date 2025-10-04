@@ -382,6 +382,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           messagesReceived: prev.messagesReceived + 1 
         }));
         
+        // 🔥 PRIORITY 2: Set status to connected when we successfully receive data
+        setConnectionStatus('connected');
+        
         const msg = payload?.payload ?? payload;
         console.log('📈 Live broadcast received:', msg);
         
@@ -1189,6 +1192,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     return () => clearInterval(resetInterval);
   }, []);
+
+  // 🔥 PRIORITY 2: Connection Health Check - Auto-recover from false error states
+  useEffect(() => {
+    const healthCheckInterval = setInterval(() => {
+      // If status is 'error' but we've received messages recently, reset to 'connected'
+      if (connectionStatus === 'error' && lastUpdated) {
+        const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
+        
+        // If we received data in last 30 seconds, we're actually connected
+        if (timeSinceLastUpdate < 30000) {
+          console.log('✅ Health check: Received data despite error status, resetting to connected');
+          setConnectionStatus('connected');
+        }
+      }
+    }, 15000); // Check every 15 seconds
+    
+    return () => clearInterval(healthCheckInterval);
+  }, [connectionStatus, lastUpdated]);
 
   // 🔧 FIX: Stable callback functions to prevent infinite re-render loops
   const getConnectionHealth = useCallback(() => ({ 

@@ -168,16 +168,23 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       const latest = history[history.length - 1];
       const timeSinceLastUpdate = now - latest.timestamp;
 
-      // Only interpolate if we're between polls (500ms - 2000ms since last update)
-      if (timeSinceLastUpdate > 500 && timeSinceLastUpdate < 2000) {
-        // Calculate velocity from last 2 points
+      // 🚀 STEP 6: Prioritize real database updates over interpolation
+      if (timeSinceLastUpdate <= 1000) {
+        // PRIORITY: Use real price immediately when fresh (< 1s old)
+        setLocalState(prev => ({
+          ...prev,
+          optimisticPrice: latest.price,
+          isInterpolating: false
+        }));
+      } else if (timeSinceLastUpdate > 1000 && timeSinceLastUpdate < 2000) {
+        // Interpolate only between 1-2s (gap between real updates)
         const prev = history[history.length - 2];
         const timeDelta = latest.timestamp - prev.timestamp;
         const priceDelta = latest.price - prev.price;
         const velocity = priceDelta / timeDelta; // Price change per ms
 
-        // Interpolate forward (but cap at 2x polling interval)
-        const interpolationTime = Math.min(timeSinceLastUpdate, 4000);
+        // Interpolate forward (conservative estimation)
+        const interpolationTime = timeSinceLastUpdate - 1000; // Only interpolate the gap
         const estimatedPrice = latest.price + (velocity * interpolationTime);
 
         setLocalState(prev => ({
@@ -185,8 +192,8 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
           optimisticPrice: estimatedPrice,
           isInterpolating: true
         }));
-      } else if (timeSinceLastUpdate <= 500) {
-        // Just after update, use real price
+      } else {
+        // Data is stale (> 2s), show last known real price
         setLocalState(prev => ({
           ...prev,
           optimisticPrice: latest.price,

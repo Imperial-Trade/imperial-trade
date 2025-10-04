@@ -531,12 +531,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // Optimized query: only fetch needed fields, order by freshness
+      // 🚀 STEP 1: Force fresh database reads with timeout (prevent caching)
       const { data } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .abortSignal(AbortSignal.timeout(5000)); // Force fresh read + timeout
         
       if (data) {
         const hydratedPrices: Record<string, PriceData> = {};
@@ -560,19 +561,33 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             
             timestampUpdates[row.symbol] = dbTimestamp;
             const ageSeconds = Math.round((Date.now() - dbTimestamp) / 1000);
-            console.log(`💾 [Database Poll] ${row.symbol}: $${price} (${ageSeconds}s old)`);
+            
+            // 🚀 STEP 3: Aggressive logging to debug price ingestor
+            console.log(`💾 [Database Poll] ${row.symbol}: $${price} (${ageSeconds}s old) [RAW updated_at: ${row.updated_at}]`);
+            const oldPrice = internalPrices[row.symbol]?.price;
+            if (oldPrice) {
+              const priceDiff = Math.abs(oldPrice - price);
+              console.log(`🔍 [Price Comparison] ${row.symbol} - Old: $${oldPrice.toFixed(4)}, New: $${price.toFixed(4)}, Diff: $${priceDiff.toFixed(6)} (${((priceDiff / oldPrice) * 100).toFixed(4)}%)`);
+            }
           }
         });
         
-        // 🚀 STEP 2: Smart State Updates - Only update if prices changed
+        // 🚀 STEP 2 & 4: Smart State Updates with enhanced sensitivity + debug mode
         if (Object.keys(hydratedPrices).length > 0) {
+          // 🚧 DEBUG MODE: Set to true to force updates every poll (debugging only)
+          const FORCE_UPDATE_MODE = false; // Set to true to bypass hasChanges check
+          
           const hasChanges = Object.keys(hydratedPrices).some(symbol => {
             const oldPrice = internalPrices[symbol]?.price;
             const newPrice = hydratedPrices[symbol]?.price;
-            return !oldPrice || Math.abs(newPrice - oldPrice) > 0.0001;
+            // 🚀 STEP 2: Lower threshold from 0.0001 to 0.00001 (detect 0.1 pip movements)
+            return !oldPrice || Math.abs(newPrice - oldPrice) > 0.00001;
           });
 
-          if (hasChanges) {
+          if (FORCE_UPDATE_MODE || hasChanges) {
+            if (FORCE_UPDATE_MODE && !hasChanges) {
+              console.log(`🚧 [DEBUG MODE] Forcing UI update despite no price changes`);
+            }
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));

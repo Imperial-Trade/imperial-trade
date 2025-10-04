@@ -362,7 +362,7 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // 🎯 FIXED: Update subscriptions when symbols change, but manage cleanup separately
+  // 🎯 FIXED: Update subscriptions when symbols change (subscribe is stable now)
   useEffect(() => {
     if (symbols.length > 0) {
       subscribe(symbols);
@@ -370,7 +370,7 @@ export default function SignalStream() {
         console.log('🚀 SignalStream - Subscribing to symbols:', symbols);
       }
     }
-  }, [symbols, subscribe]);
+  }, [symbols]); // ✅ Only depend on symbols - subscribe is now stable
 
   // 🎯 Separate cleanup effect - only unsubscribe on unmount
   useEffect(() => {

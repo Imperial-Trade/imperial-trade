@@ -814,9 +814,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     });
 
-    // 🚀 FIXED: Update state to trigger reactivity for useUIActivityRegistration
-    setActiveSubscriptions(Array.from(subscriptionsRef.current.keys()));
-
     // 🚀 CRITICAL: INSTANT DATABASE HYDRATION - Fetch prices IMMEDIATELY for any symbols without data
     if (newSymbolsForHydration.length > 0) {
       console.log(`⚡⚡⚡ EXECUTING INSTANT HYDRATION for: ${newSymbolsForHydration.join(', ')}`);
@@ -884,9 +881,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Check if we still have active subscriptions
     hasActiveSubscriptions = hasActiveSubscriptions || subscriptionsRef.current.size > 0;
-
-    // 🚀 FIXED: Update state to trigger reactivity for useUIActivityRegistration
-    setActiveSubscriptions(Array.from(subscriptionsRef.current.keys()));
 
     // Disconnect if no active subscriptions
     if (!hasActiveSubscriptions && channelRef.current) {
@@ -1036,6 +1030,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     return () => clearInterval(healthCheckInterval);
   }, [isProviderReady, isRouteGateReady]);
+
+  // 🚀 STABILIZATION FIX: Sync activeSubscriptions with subscriptionsRef when prices update
+  // This ensures useUIActivityRegistration always has current symbols without causing infinite loops
+  useEffect(() => {
+    const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
+    setActiveSubscriptions(prevSubs => {
+      // Only update if actually changed to prevent unnecessary re-renders
+      if (JSON.stringify(prevSubs) !== JSON.stringify(currentSubscriptions)) {
+        console.log('🔄 Syncing activeSubscriptions:', currentSubscriptions);
+        return currentSubscriptions;
+      }
+      return prevSubs;
+    });
+  }, [internalPrices]); // Sync when prices update (stable trigger)
 
   // Setup realtime fallback for postgres_changes subscription
   const setupRealtimeFallback = useCallback(() => {

@@ -55,6 +55,9 @@ export function useUIActivityRegistration(symbols: string[] = []) {
           return; // Silently skip - don't log to avoid spam
         }
 
+        // 🔍 DIAGNOSTIC: Log symbols being sent to backend
+        console.log('📡 UI Activity Registration - Sending symbols:', symbols);
+
         await supabase.rpc('register_ui_activity_enhanced', {
           p_session_id: sessionId,
           p_user_id: user.id,

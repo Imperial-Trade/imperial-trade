@@ -296,8 +296,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const errorLogCountRef = useRef(0);
   const manualCloseRef = useRef(false);
   
+  // 🚀 FIXED: Track active subscriptions in state (not ref) for proper reactivity
+  const [activeSubscriptions, setActiveSubscriptions] = useState<string[]>([]);
+  
   // 🚀 ACTIVITY-BASED RESOURCE MANAGEMENT: Register UI activity for cost optimization
-  const { registerInteraction } = useUIActivityRegistration(Array.from(subscriptionsRef.current.keys()));
+  const { registerInteraction } = useUIActivityRegistration(activeSubscriptions);
   const { shouldEnableMonitoring, currentRoute, isLandingPage } = useMonitoringRouteGate();
 
   // 🚀 PHASE 2: Fallback mechanism refs
@@ -811,6 +814,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     });
 
+    // 🚀 FIXED: Update state to trigger reactivity for useUIActivityRegistration
+    setActiveSubscriptions(Array.from(subscriptionsRef.current.keys()));
+
     // 🚀 CRITICAL: INSTANT DATABASE HYDRATION - Fetch prices IMMEDIATELY for any symbols without data
     if (newSymbolsForHydration.length > 0) {
       console.log(`⚡⚡⚡ EXECUTING INSTANT HYDRATION for: ${newSymbolsForHydration.join(', ')}`);
@@ -878,6 +884,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
     // Check if we still have active subscriptions
     hasActiveSubscriptions = hasActiveSubscriptions || subscriptionsRef.current.size > 0;
+
+    // 🚀 FIXED: Update state to trigger reactivity for useUIActivityRegistration
+    setActiveSubscriptions(Array.from(subscriptionsRef.current.keys()));
 
     // Disconnect if no active subscriptions
     if (!hasActiveSubscriptions && channelRef.current) {

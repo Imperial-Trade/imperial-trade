@@ -362,26 +362,29 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // 🎯 PHASE 1: Pre-subscribe with persistent connection (no cleanup cycling)
+  // 🎯 FIXED: Update subscriptions when symbols change, but manage cleanup separately
   useEffect(() => {
     if (symbols.length > 0) {
       subscribe(symbols);
       if (isDevToolsEnabled()) {
-        console.log('🚀 SignalStream - Subscribing to symbols (persistent):', symbols);
+        console.log('🚀 SignalStream - Subscribing to symbols:', symbols);
       }
     }
+  }, [symbols, subscribe]);
 
-    // 🎯 CRITICAL FIX: Only unsubscribe on component unmount, NOT on symbols change
+  // 🎯 Separate cleanup effect - only unsubscribe on unmount
+  useEffect(() => {
+    const currentSymbols = symbols; // Capture current symbols
     return () => {
-      if (symbols.length > 0) {
+      if (currentSymbols.length > 0) {
         if (isDevToolsEnabled()) {
-          console.log('🧹 SignalStream - Component unmounting, cleaning up subscriptions:', symbols);
+          console.log('🧹 SignalStream - Component unmounting, cleaning up subscriptions:', currentSymbols);
         }
-        unsubscribe(symbols);
+        unsubscribe(currentSymbols);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 🎯 Empty deps: Subscribe once on mount, cleanup on unmount only
+  }, []); // Only run cleanup on unmount
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {

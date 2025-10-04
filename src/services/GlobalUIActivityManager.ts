@@ -27,6 +27,11 @@ class GlobalUIActivityManager {
   private isIdle: boolean = false;
   private eventListenersAttached: boolean = false;
 
+  // 🔥 PRIORITY 2: Passive Viewing Mode - Different intervals for passive vs active users
+  private passiveViewingMode: boolean = false;
+  private readonly PASSIVE_VIEWING_INTERVAL_MS = 120000; // 2 minutes for passive viewing
+  private readonly REGISTRATION_INTERVAL_MS = 30000; // 30 seconds for active users
+
   private constructor() {
     this.sessionId = this.getOrCreateSessionId();
   }
@@ -94,12 +99,30 @@ class GlobalUIActivityManager {
   }
 
   /**
+   * Set whether user is actively trading or passively viewing
+   */
+  public setPassiveViewingMode(isPassive: boolean): void {
+    if (this.passiveViewingMode === isPassive) return;
+    
+    this.passiveViewingMode = isPassive;
+    
+    console.log(`📺 GlobalUIActivityManager: ${isPassive ? 'PASSIVE' : 'ACTIVE'} viewing mode`);
+    
+    // Restart interval with new duration if already running
+    if (this.intervalId !== null) {
+      this.stopInterval();
+      this.startInterval();
+    }
+  }
+
+  /**
    * Subscribe a component to global activity management
    * @param componentId Unique identifier for the component
    * @param symbols Array of symbols this component is tracking
    * @param userId User ID for authentication
+   * @param isPassiveViewing Whether the user is passively viewing (reduces registration frequency)
    */
-  public subscribe(componentId: string, symbols: string[], userId: string | null): void {
+  public subscribe(componentId: string, symbols: string[], userId: string | null, isPassiveViewing: boolean = false): void {
     if (!userId) {
       console.warn('GlobalUIActivityManager: Cannot subscribe without user ID');
       return;
@@ -232,7 +255,7 @@ class GlobalUIActivityManager {
   }
 
   /**
-   * Start the 30-second registration interval
+   * Start the registration interval (30s for active, 2min for passive)
    */
   private startInterval(): void {
     if (this.intervalId) {
@@ -240,15 +263,19 @@ class GlobalUIActivityManager {
       return;
     }
 
-    console.log('🚀 GlobalUIActivityManager: Starting 30-second registration interval');
+    const intervalDuration = this.passiveViewingMode 
+      ? this.PASSIVE_VIEWING_INTERVAL_MS 
+      : this.REGISTRATION_INTERVAL_MS;
+
+    console.log(`🚀 GlobalUIActivityManager: Starting registration interval (${intervalDuration / 1000}s - ${this.passiveViewingMode ? 'PASSIVE' : 'ACTIVE'} mode)`);
 
     // Register immediately on start
     this.registerActivity();
 
-    // Then register every 30 seconds
+    // Then register at appropriate interval
     this.intervalId = setInterval(() => {
       this.registerActivity();
-    }, 30 * 1000);
+    }, intervalDuration);
   }
 
   /**

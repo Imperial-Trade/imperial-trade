@@ -307,8 +307,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // 🚀 FIXED: Track active subscriptions in state (not ref) for proper reactivity
   const [activeSubscriptions, setActiveSubscriptions] = useState<string[]>([]);
   
-  // 🚀 ACTIVITY-BASED RESOURCE MANAGEMENT: Register UI activity for cost optimization
-  const { registerInteraction } = useUIActivityRegistration(activeSubscriptions);
+  // 🔥 PHASE 2: Removed duplicate useUIActivityRegistration - now managed by GlobalUIActivityManager in passive mode
   const { shouldEnableMonitoring, currentRoute, isLandingPage } = useMonitoringRouteGate();
 
   // 🚀 PHASE 2: Fallback mechanism refs
@@ -1193,23 +1192,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return () => clearInterval(resetInterval);
   }, []);
 
-  // 🔥 PRIORITY 2: Connection Health Check - Auto-recover from false error states
-  useEffect(() => {
-    const healthCheckInterval = setInterval(() => {
-      // If status is 'error' but we've received messages recently, reset to 'connected'
-      if (connectionStatus === 'error' && lastUpdated) {
-        const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
-        
-        // If we received data in last 30 seconds, we're actually connected
-        if (timeSinceLastUpdate < 30000) {
-          console.log('✅ Health check: Received data despite error status, resetting to connected');
-          setConnectionStatus('connected');
-        }
-      }
-    }, 15000); // Check every 15 seconds
-    
-    return () => clearInterval(healthCheckInterval);
-  }, [connectionStatus, lastUpdated]);
+  // 🔥 PHASE 4: Removed health check interval to reduce Realtime message overhead
 
   // 🔧 FIX: Stable callback functions to prevent infinite re-render loops
   const getConnectionHealth = useCallback(() => ({ 

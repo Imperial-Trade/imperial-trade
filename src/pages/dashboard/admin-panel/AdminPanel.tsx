@@ -18,7 +18,7 @@ import { NotificationRateLimitManager } from "@/components/admin/NotificationRat
 import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import CostMonitorDashboard from "@/components/monitoring/CostMonitorDashboard";
-import { RealtimeMessageRateMonitor } from "@/components/monitoring/RealtimeMessageRateMonitor";
+import { RealtimeRateMonitor } from "@/components/admin/RealtimeRateMonitor";
 import { WebSocketHealthMonitor } from "@/components/testing/WebSocketHealthMonitor";
 
 const AdminPanel: React.FC = () => {
@@ -151,7 +151,7 @@ const AdminPanel: React.FC = () => {
             </TabsContent>
             
             <TabsContent value="messages" className="space-y-4">
-              <RealtimeMessageRateMonitor />
+              <RealtimeRateMonitor />
             </TabsContent>
             
             <TabsContent value="health" className="space-y-4">

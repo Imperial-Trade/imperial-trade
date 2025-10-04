@@ -1,4 +1,4 @@
-
+// PHASE 5: NUCLEAR OPTION - ALL Supabase Realtime ELIMINATED, 30-second polling for signals
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -759,31 +759,77 @@ unstable_batchedUpdates(() => {
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // 🚀 OPTIMIZED: Subscribe to ALL relevant signal events for immediate updates
-      const unsubscribeInsert = subscribeToTable(
-        {
-          table: 'trade_alerts',
-          event: 'INSERT',
-          filter: `user_id=in.(${educatorUserIds.join(',')})`
-        },
-        handleRealtimeUpdate
-      );
+      // 🚀 PHASE 5: POLLING MODE - Zero Realtime usage, 30-second polling
+      console.log('🔄 PHASE 5: Realtime ELIMINATED - Starting 30-second polling for signals');
       
-      // 🚀 ENHANCED UPDATE FILTER: All meaningful updates for comprehensive coverage
-      const unsubscribeUpdate = subscribeToTable(
-        {
-          table: 'trade_alerts', 
-          event: 'UPDATE',
-          // Capture all significant changes: status changes, TP hits, notes, activations
-          filter: `user_id=in.(${educatorUserIds.join(',')})`
-        },
-        handleRealtimeUpdate
-      );
+      let pollingInterval: NodeJS.Timeout | null = null;
+      let previousSignals: any[] = [];
       
-      // Combine unsubscribe functions
+      // Poll function to check for signal changes
+      const pollSignals = async () => {
+        try {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          
+          const { data: currentSignals, error } = await supabase
+            .from('trade_alerts')
+            .select('*')
+            .in('user_id', educatorUserIds)
+            .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          if (error) {
+            console.error('❌ Polling error:', error);
+            return;
+          }
+          
+          if (!currentSignals || currentSignals.length === 0) return;
+          
+          // Detect changes by comparing with previous poll
+          if (previousSignals.length > 0) {
+            // Check for new signals (INSERT)
+            const newSignals = currentSignals.filter(
+              current => !previousSignals.some(prev => prev.id === current.id)
+            );
+            
+            // Check for updated signals (UPDATE)
+            const updatedSignals = currentSignals.filter(current => {
+              const prev = previousSignals.find(p => p.id === current.id);
+              return prev && prev.updated_at !== current.updated_at;
+            });
+            
+            // Trigger handleRealtimeUpdate for detected changes
+            for (const signal of newSignals) {
+              console.log('📥 Polling detected INSERT:', signal.id);
+              await handleRealtimeUpdate({ eventType: 'INSERT', new: signal, old: null });
+            }
+            
+            for (const signal of updatedSignals) {
+              const oldSignal = previousSignals.find(p => p.id === signal.id);
+              console.log('🔄 Polling detected UPDATE:', signal.id);
+              await handleRealtimeUpdate({ eventType: 'UPDATE', new: signal, old: oldSignal });
+            }
+          }
+          
+          previousSignals = currentSignals;
+        } catch (error) {
+          console.error('❌ Polling exception:', error);
+        }
+      };
+      
+      // Start polling every 30 seconds
+      pollingInterval = setInterval(pollSignals, 30000);
+      
+      // Initial poll
+      pollSignals();
+      
+      // Cleanup function
       const unsubscribe = () => {
-        unsubscribeInsert();
-        unsubscribeUpdate();
+        if (pollingInterval) {
+          console.log('🛑 PHASE 5: Stopping signal polling');
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
       };
       
       unsubscribeRef.current = unsubscribe;

@@ -1,4 +1,4 @@
-// Force rebuild - Phase 3 & 4 complete: Passive viewing mode + aggressive cleanup
+// PHASE 5: NUCLEAR OPTION - ALL Supabase Realtime ELIMINATED, custom WebSocket + database polling only
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -364,215 +364,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isConnectingRef.current = true;
     setConnectionStatus('connecting');
 
-    // 🚨 PHASE 1 FIX: Correct channel name to match backend broadcast
-    const channel = supabase
-      .channel('live-prices-broadcast', {
-        config: { 
-          broadcast: { self: false },
-          presence: { key: tabId }
-        }
-      })
-      .on('broadcast', { event: 'price_update' }, (payload: any) => {
-        // 🚨 PHASE 2: Enhanced connection diagnostics + robust payload parsing
-        statsRef.current.messagesReceived++;
-        
-        // 🎯 PHASE 4: Track Realtime message usage
-        setRealtimeStats(prev => ({ 
-          ...prev, 
-          messagesReceived: prev.messagesReceived + 1 
-        }));
-        
-        // 🔥 PRIORITY 2: Set status to connected when we successfully receive data
-        setConnectionStatus('connected');
-        
-        const msg = payload?.payload ?? payload;
-        console.log('📈 Live broadcast received:', msg);
-        
-        const {
-          symbol,
-          bid,
-          ask,
-          mid,
-          price: rawPrice,
-          timestamp,
-        } = msg || {};
-        
-        if (!symbol || !subscriptionsRef.current.has(symbol)) return;
-        
-        // 🚨 PHASE 2: Timestamp State Lock - Only update if message is newer than database hydration
-        const messageTimestamp = timestamp ? new Date(timestamp).getTime() : Date.now();
-        const lastDbTimestamp = lastDatabaseTimestamp[symbol];
-        
-        if (lastDbTimestamp && messageTimestamp <= lastDbTimestamp) {
-          console.log(`⏭️ Discarding old WebSocket message for ${symbol}: ${new Date(messageTimestamp).toISOString()} <= ${new Date(lastDbTimestamp).toISOString()}`);
-          return;
-        }
-        
-        const toNum = (v: any) => (v === null || v === undefined || v === '' ? undefined : Number(v));
-        const nBid = toNum(bid);
-        const nAsk = toNum(ask);
-        const nMid = toNum(mid);
-        const nPrice = toNum(rawPrice);
-        
-        const computedPrice =
-          (typeof nMid === 'number' ? nMid : undefined) ??
-          (typeof nBid === 'number' && typeof nAsk === 'number'
-            ? (nBid + nAsk) / 2
-            : undefined) ??
-          (typeof nPrice === 'number' ? nPrice : undefined);
-        
-        if (typeof computedPrice !== 'number' || isNaN(computedPrice)) {
-          console.warn('⚠️ Broadcast payload missing usable price fields:', msg);
-          return;
-        }
-        
-        const priceData: PriceData = {
-          symbol,
-          price: computedPrice,
-          change: 0,
-          changePercent: 0,
-          timestamp: timestamp || new Date().toISOString(),
-          receivedAt: Date.now(),
-          bid: nBid,
-          ask: nAsk,
-          mid: nMid ?? (typeof nBid === 'number' && typeof nAsk === 'number' ? (nBid + nAsk) / 2 : undefined)
-        };
-        
-        // Calculate change if we have previous price
-        const previousPrice = internalPrices[symbol]?.price;
-        if (typeof previousPrice === 'number') {
-          priceData.change = priceData.price - previousPrice;
-          priceData.changePercent = (priceData.change / previousPrice) * 100;
-        }
-        
-        console.log(`✅ Accepting newer WebSocket message for ${symbol}: ${new Date(messageTimestamp).toISOString()}`);
-        setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
-        setPrices(prev => ({ ...prev, [symbol]: priceData }));
-        setLastUpdated(new Date());
-        arrivalTimestamps.current.set(symbol, Date.now());
-        
-        // Update timestamp state after accepting message
-        setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: messageTimestamp }));
-        realtimeReceivedSymbols.current.add(symbol);
-        
-        console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
-      })
-      .subscribe((status) => {
-        // 🚨 PHASE 2: Enhanced connection status logging
-        console.log(`📡 Channel subscription status: ${status}`);
-        
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('connected');
-          connectionStateRef.current.status = 'connected';
-          connectionStateRef.current.lastSuccessAt = Date.now();
-          connectionStateRef.current.errorCount = 0;
-          isConnectingRef.current = false;
-          // 🚨 PHASE 2: Clear any pending fallback timers on successful connection
-          if (fallbackTimerRef.current) {
-            clearTimeout(fallbackTimerRef.current);
-            fallbackTimerRef.current = null;
-          }
-          console.log(`✅ SUBSCRIBED on live-prices-broadcast`);
-          console.log(`📊 Active subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (${subscriptionsRef.current.size} symbols)`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          setConnectionStatus('error');
-          setError('Failed to connect to price stream');
-          isConnectingRef.current = false;
-          console.error(`❌ WebSocket connection failed: ${status} on 'live-prices-broadcast'`);
-          // 🚀 PHASE 2: Trigger fallback immediately on error
-          enableFallbackMechanisms();
-        }
-      });
-
-    channelRef.current = channel;
+    // 🚀 PHASE 5: PRICE BROADCAST REMOVED - Zero Realtime usage
+    // Custom WebSocket handles all real-time prices, database polling serves as fallback
+    console.log('🚀 PHASE 5: Supabase Realtime price broadcast ELIMINATED - Using custom WebSocket only');
     
-    // 🚀 PHASE 2: Start fallback timer - if not SUBSCRIBED within 5s, enable fallback
-    fallbackTimerRef.current = setTimeout(() => {
-      if (connectionStateRef.current.status !== 'connected') {
-        console.log('📡 Fallback activated: Not SUBSCRIBED within 5s');
-        enableFallbackMechanisms();
-      }
-    }, 5000);
+    // Set connection status based on custom WebSocket (already handled elsewhere)
+    setConnectionStatus('connected');
+    connectionStateRef.current.status = 'connected';
+    connectionStateRef.current.lastSuccessAt = Date.now();
+    isConnectingRef.current = false;
     
-    // 🚀 PHASE 2: Start message watchdog - if SUBSCRIBED but no messages within 5s, enable fallback
-    const messageWatchdog = setTimeout(() => {
-      if (connectionStateRef.current.status === 'connected' && statsRef.current.messagesReceived === 0) {
-        console.log('📡 Fallback activated: SUBSCRIBED but no messages received');
-        enableFallbackMechanisms();
-      }
-    }, 5000);
+    console.log(`✅ PHASE 5: No Realtime channel created - relying on custom WebSocket + database polling`);
     
-    // 🚀 PHASE 3: Enhanced Connection Watchdog with Data Age Monitoring
-    watchdogTimerRef.current = setTimeout(() => {
-      // PHASE 3 FIX: Use ref instead of state to avoid stale closure
-      if (!isRouteGateReady || !isPriceSubscriptionAllowedRef.current) {
-        if (isDevToolsEnabled()) {
-          console.log('⏭️ Watchdog: Skipping check - route gate not ready or closed');
-        }
-        return;
-      }
-      
-      const currentStatus = connectionStateRef.current.status;
-      const now = Date.now();
-      
-      // Check 1: Still connecting after 30s
-      if (currentStatus === 'connecting') {
-        console.warn('⚠️ WATCHDOG: Still connecting after 30s, forcing restart...');
-        restartConnection();
-        return;
-      }
-      
-      // Check 2: Connection error state
-      if (currentStatus === 'error') {
-        console.warn('⚠️ WATCHDOG: Connection in error state, forcing restart...');
-        restartConnection();
-        return;
-      }
-      
-      // Check 3: Connected but no messages after 30s
-      if (currentStatus === 'connected' && statsRef.current.messagesReceived === 0) {
-        console.warn('⚠️ WATCHDOG: Connected but no messages after 30s, forcing restart...');
-        restartConnection();
-        return;
-      }
-      
-      // Check 4: Data age monitoring - detect silent broadcast failures
-      const activeSymbols = Array.from(subscriptionsRef.current.keys());
-      if (currentStatus === 'connected' && activeSymbols.length > 0) {
-        let hasStaleData = false;
-        
-        for (const symbol of activeSymbols) {
-          const priceData = internalPrices[symbol];
-          if (priceData) {
-            const dataAge = now - priceData.receivedAt;
-            const MAX_DATA_AGE = 60000; // 60 seconds
-            
-            if (dataAge > MAX_DATA_AGE) {
-              console.warn(`⚠️ WATCHDOG: Stale data detected for ${symbol}: ${(dataAge / 1000).toFixed(0)}s old`);
-              hasStaleData = true;
-            }
-          }
-        }
-        
-        if (hasStaleData) {
-          console.warn('⚠️ WATCHDOG: Stale data detected, enabling fallback mechanisms...');
-          enableFallbackMechanisms();
-        }
-      }
-    }, 30000); // 30 seconds
+    // 🚀 PHASE 5: No channel reference needed - removed Realtime entirely
+    channelRef.current = null;
     
-    // Cleanup watchdogs when connection succeeds or fails
-    const cleanupTimers = () => {
-      clearTimeout(messageWatchdog);
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-      }
-    };
-    
-    // Store cleanup for later use
-    (channel as any)._customCleanup = cleanupTimers;
-  }, [tabId, internalPrices, connectionStatus]);
+    console.log(`✅ PHASE 5: Connection marked as ready - custom WebSocket + database polling only`);
+  }, []);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
   const enableFallbackMechanisms = useCallback(() => {

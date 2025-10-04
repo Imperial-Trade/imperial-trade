@@ -1244,6 +1244,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [connectionStatus, setupRealtimeFallback]);
 
+  // 🔧 FIX: Stable callback functions to prevent infinite re-render loops
+  const getConnectionHealth = useCallback(() => ({ 
+    isHealthy: connectionStatus === 'connected', 
+    lastUpdate: lastUpdated 
+  }), [connectionStatus, lastUpdated]);
+
+  const getArrivalAge = useCallback((symbol: string) => {
+    const arrivalTime = arrivalTimestamps.current.get(normalizeSymbol(symbol) || '');
+    return arrivalTime ? Date.now() - arrivalTime : Infinity;
+  }, []);
+
+  const getInternalPrice = useCallback((symbol: string) => {
+    return internalPrices[normalizeSymbol(symbol) || ''] || null;
+  }, [internalPrices]);
+
   // Simple context value with all required functions
   const contextValue = useMemo<OptimizedWebSocketContextType>(() => ({
     prices,
@@ -1258,9 +1273,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     subscribe,
     unsubscribe,
     getPrice: (symbol: string) => prices[normalizeSymbol(symbol) || ''] || null,
-    getInternalPrice: (symbol: string) => internalPrices[normalizeSymbol(symbol) || ''] || null,
+    getInternalPrice,
     refreshPrice: async () => {},
-    getConnectionHealth: () => ({ isHealthy: connectionStatus === 'connected', lastUpdate: lastUpdated }),
+    getConnectionHealth,
     // 🚨 PHASE 3: Enhanced Active Symbols tracking with logging
     getActiveSymbolsCount: () => {
       const count = subscriptionsRef.current.size;
@@ -1301,11 +1316,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
       return Object.keys(prices).length > 0 ? 'hydrated' : 'stale';
     },
-    getArrivalAge: (symbol: string) => {
-      const arrivalTime = arrivalTimestamps.current.get(normalizeSymbol(symbol) || '');
-      return arrivalTime ? Date.now() - arrivalTime : Infinity;
-    }
-  }), [prices, internalPrices, connectionStatus, error, lastUpdated]);
+    getArrivalAge
+  }), [prices, internalPrices, connectionStatus, error, lastUpdated, subscribe, unsubscribe, getConnectionHealth, getArrivalAge, getInternalPrice]);
 
   // Show loading state until provider is ready
   if (!isProviderReady) {

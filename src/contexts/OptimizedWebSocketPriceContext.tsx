@@ -576,10 +576,20 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+            
+            // 🚀 CRITICAL FIX: Update arrivalTimestamps for all polled symbols to show "Live" status
+            Object.keys(hydratedPrices).forEach(symbol => {
+              arrivalTimestamps.current.set(symbol, Date.now());
+            });
+            
             setLastUpdated(new Date());
-            console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices`);
+            console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices + arrivalTimestamps`);
           } else {
-            console.log(`⏭️  [Database Poll] Skipped update - no price changes detected`);
+            // 🚀 CRITICAL FIX: Even if prices didn't change, update arrivalTimestamps to prevent "Stale" status
+            Object.keys(hydratedPrices).forEach(symbol => {
+              arrivalTimestamps.current.set(symbol, Date.now());
+            });
+            console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps`);
           }
         }
       }
@@ -631,6 +641,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // 🚀 CRITICAL: INSTANT DATABASE HYDRATION - Fetch prices IMMEDIATELY for any symbols without data
     if (newSymbolsForHydration.length > 0) {
       console.log(`⚡⚡⚡ EXECUTING INSTANT HYDRATION for: ${newSymbolsForHydration.join(', ')}`);
+      
+      // 🚀 CRITICAL FIX: Initialize arrivalTimestamps immediately to prevent "Stale" flash
+      newSymbolsForHydration.forEach(symbol => {
+        arrivalTimestamps.current.set(symbol, Date.now());
+      });
+      
       // Call immediately - don't wait for WebSocket or route gates
       fetchPricesFromDatabase(newSymbolsForHydration).catch(err => {
         console.error('❌ Instant hydration failed:', err);
@@ -1109,9 +1125,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return Math.floor((Date.now() - new Date(priceData.timestamp).getTime()) / 1000);
     },
     getConnectionQuality: () => {
-      if (connectionStatus === 'connected' && lastUpdated) {
+      // 🚀 CRITICAL FIX: Support 'polling' status for database polling mode
+      if ((connectionStatus === 'connected' || connectionStatus === 'polling') && lastUpdated) {
         const ageMs = Date.now() - lastUpdated.getTime();
-        return ageMs < HEALTH_CONFIG.staleDataThreshold ? 'live' : 'hydrated';
+        // 🚀 Adjust threshold for 2s polling: 6s = 3 missed polls before showing "hydrated"
+        return ageMs < 6000 ? 'live' : 'hydrated';
       }
       return Object.keys(prices).length > 0 ? 'hydrated' : 'stale';
     },

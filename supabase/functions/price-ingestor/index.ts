@@ -630,7 +630,7 @@ serve(async (req) => {
       .map(p => ({
         symbol: p.symbol,
         price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
-        timestamp: p.timestamp || new Date().toISOString()
+        timestamp: new Date().toISOString() // Always use fresh timestamp for UI
       }));
 
     const significantPrices = filterSignificantPrices(pricesForUI);
@@ -688,7 +688,7 @@ serve(async (req) => {
             payload: {
               symbol: priceData.symbol,
               price: priceData.price,
-              timestamp: priceData.timestamp,
+              timestamp: new Date().toISOString(), // Fresh timestamp for accurate UI display
               source: 'price-ingestor-v4.1'
             }
           });

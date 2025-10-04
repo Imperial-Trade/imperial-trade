@@ -68,17 +68,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
 
-  // GUARANTEED 2s Updates: Use current timestamp vs last updated for accurate staleness
+  // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
     const updateAge = () => {
-      if (!lastUpdated) {
+      // Use arrivalAgeSeconds from hook for accurate age based on actual message timestamp
+      const ageSeconds = arrivalAgeSeconds ?? 0;
+      
+      if (ageSeconds === 0 && !lastUpdated) {
         setDataAge('--');
         return;
       }
-      
-      // Calculate age from lastUpdated timestamp for guaranteed accuracy
-      const ageMs = Date.now() - lastUpdated.getTime();
-      const ageSeconds = Math.floor(ageMs / 1000);
       
       if (ageSeconds < 2) {
         setDataAge('Live'); // Show "Live" for sub-2-second data
@@ -98,7 +97,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     // Update every 500ms for smooth, guaranteed real-time experience
     const interval = setInterval(updateAge, 500);
     return () => clearInterval(interval);
-  }, [lastUpdated]);
+  }, [arrivalAgeSeconds, lastUpdated]);
 
   // Optimized price change animation effect
   useEffect(() => {
@@ -166,8 +165,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    // GUARANTEED 2s Updates: Use timestamp-based freshness for accurate status
-    const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
+    // ACCURATE FRESHNESS: Use actual arrival age for precise freshness calculation
+    const dataFreshness = arrivalAgeSeconds ?? Infinity;
     
     if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 

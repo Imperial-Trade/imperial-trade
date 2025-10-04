@@ -34,7 +34,7 @@ let totalClampActivations = 0;
 
 // 🔒 SIMPLIFIED LOCK CONFIGURATION  
 const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000;
-const BROADCAST_LOCK_DURATION = 5; // Reduced from 25 to 5 seconds for cooperation
+const BROADCAST_LOCK_DURATION = 8; // Phase 1: Increased from 5 to 8 seconds to prevent lock contention
 
 // Initialize Supabase client only
 async function initializeSupabase() {
@@ -666,8 +666,41 @@ serve(async (req) => {
       totalUIBroadcasts += broadcastCount;
       console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
       
+      // Phase 2: Release broadcast lock early after successful broadcast
+      try {
+        await supabaseClient
+          .from('price_broadcast_lock')
+          .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+          .eq('id', 'singleton')
+          .eq('holder_id', lockId);
+        console.log('✅ Broadcast lock released early');
+      } catch (releaseError) {
+        console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
+      }
+      
     } catch (channelError) {
       console.error('❌ Failed to create broadcast channel:', channelError);
+    }
+
+    // Phase 3: Log broadcast telemetry for monitoring
+    try {
+      await supabaseClient
+        .from('edge_function_telemetry')
+        .insert({
+          function_name: 'price-ingestor',
+          metric: 'broadcast_status',
+          count: 1,
+          metadata: {
+            has_active_users: hasActiveUsers,
+            broadcast_status: lockId ? 'broadcast_sent' : 'lock_failed',
+            prices_processed: prices.length,
+            ui_broadcasts_sent: lockId ? significantPrices.length : 0,
+            lock_acquired: !!lockId,
+            execution_timestamp: new Date().toISOString()
+          }
+        });
+    } catch (telemetryError) {
+      console.warn('⚠️ Telemetry logging failed (non-critical):', telemetryError);
     }
 
     // Return success response

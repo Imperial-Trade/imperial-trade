@@ -61,10 +61,13 @@ async function initializeSupabase() {
 async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 3): Promise<any> {
   console.log('📡 Creating broadcast channel with retries...');
   
+  // PHASE 4 FIX: Declare priceChannel outside try block for proper cleanup
+  let priceChannel: any = null;
+  
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
       console.log(`📡 Channel subscription attempt ${attempt}/${maxRetries + 1}...`);
-      const priceChannel = supabaseClient.channel('live-prices-broadcast');
+      priceChannel = supabaseClient.channel('live-prices-broadcast');
       
       const channelResult = await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -622,11 +625,15 @@ serve(async (req) => {
       });
     }
 
+    // PHASE 2: Check if this is a heartbeat broadcast
+    const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
+      significantPrices.every((p: any) => p.reason === 'heartbeat');
+    
     // Try to acquire broadcast lock
     const lockId = await acquireBroadcastLock(supabaseClient);
-    if (!lockId) {
+    if (!lockId && !isHeartbeatBroadcast) {
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
-      console.log('📡 UI broadcast skipped: no_broadcast_lock');
+      console.log('📡 UI broadcast skipped: no_broadcast_lock (non-heartbeat)');
       return new Response(JSON.stringify({
         success: true,
         processed: prices.length,
@@ -639,6 +646,10 @@ serve(async (req) => {
         status: 200,
         headers: corsHeaders
       });
+    }
+    
+    if (isHeartbeatBroadcast && !lockId) {
+      console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
     }
 
     // STEP 4: Filter significant prices for UI broadcast with HEARTBEAT GUARANTEE

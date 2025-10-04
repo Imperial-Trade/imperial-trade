@@ -4273,7 +4273,7 @@ export type Database = {
         Returns: undefined
       }
       register_ui_activity_enhanced: {
-        Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
+        Args: { p_session_id: string; p_symbols: string[]; p_user_id: string }
         Returns: undefined
       }
       should_show_onesignal_prompt: {

@@ -1169,12 +1169,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // 🎯 STRICT CONDITIONS: Only poll if ALL these are met
     const now = Date.now();
     const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
-    const isBroadcastStaleFor60Seconds = timeSinceLastUpdate > 60000;
+    // PHASE 3 FIX: Reduce emergency trigger from 60s to 6s for faster recovery
+    const isBroadcastStaleFor6Seconds = timeSinceLastUpdate > 6000;
     const isConnectionBroken = connectionStatus === 'error' || connectionStatus === 'disconnected';
     
     // Only enable polling in extreme emergency when broadcast is completely dead
-    if (isConnectionBroken && isBroadcastStaleFor60Seconds && symbolsArray.length > 0) {
-      console.log('🚨 PHASE 4: Emergency database polling activated (broadcast dead 60+s)');
+    if (isConnectionBroken && isBroadcastStaleFor6Seconds && symbolsArray.length > 0) {
+      console.log('🚨 PHASE 4: Emergency database polling activated (broadcast stale > 6s)');
       
       const pollInterval = setInterval(async () => {
         try {

@@ -57,7 +57,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, [price, symbol]);
 
   // Critical: Monitor price staleness for trading safety - Robust Live Guarantee
-  const stalenessStatus = usePriceStalenessMonitor(symbol, 6); // 6-second staleness threshold for robust display
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 8); // 8-second staleness threshold for continuous Live display
   
   // ✅ FLICKER ELIMINATION: Stability management
   const { shouldAllowQualityChange } = useConnectionStability();
@@ -79,8 +79,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         return;
       }
       
-      if (ageSeconds < 6) {
-        setDataAge('Live'); // Show "Live" for data within 6 seconds (covers 2-4s broadcast interval + buffer)
+      if (ageSeconds < 8) {
+        setDataAge('Live'); // Show "Live" for data within 8 seconds (4s buffer for robust display)
       } else if (ageSeconds < 60) {
         setDataAge(`${ageSeconds}s ago`);
       } else if (ageSeconds < 3600) {
@@ -197,7 +197,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
     
     // Guaranteed Live indicator for fresh data (within broadcast interval)
-    if (dataFreshness < 6 && price > 0) {
+    if (dataFreshness < 8 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 

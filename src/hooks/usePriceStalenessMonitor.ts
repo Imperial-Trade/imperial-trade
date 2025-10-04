@@ -12,7 +12,7 @@ interface PriceStalenessStatus {
   dataFreshness: 'live' | 'throttled' | 'stale';
 }
 
-export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 6) {
+export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 8) {
   const { 
     getConnectionHealth, 
     lastUpdated, 

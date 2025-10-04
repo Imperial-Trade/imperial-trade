@@ -142,8 +142,27 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
   }
 }
 
-// Phase 1: Price significance filtering function with HEARTBEAT GUARANTEE
-function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: number, timestamp: string}>) {
+// Phase 1: Price significance filtering function with REAL-TIME MODE
+function filterSignificantPrices(
+  incomingPrices: Array<{symbol: string, price: number, timestamp: string}>,
+  broadcastAll: boolean = false
+) {
+  // 🚀 REAL-TIME MODE: When active UI listeners present, broadcast ALL prices
+  if (broadcastAll) {
+    console.log(`🚀 REAL-TIME MODE: Broadcasting ALL ${incomingPrices.length} prices (active UI listeners)`);
+    const now = Date.now();
+    
+    // Update last broadcast times for all symbols
+    for (const priceData of incomingPrices) {
+      const normalizedSymbol = priceData.symbol.toUpperCase();
+      lastBroadcastedPrices[normalizedSymbol] = priceData.price;
+      lastBroadcastTime[normalizedSymbol] = now;
+    }
+    
+    return incomingPrices.map(p => ({ ...p, reason: 'real-time-update' }));
+  }
+  
+  // STANDARD MODE: Use filtering logic for background updates
   const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
   const now = Date.now();
 
@@ -154,7 +173,7 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
 
     // Always broadcast the first price for a symbol (check FIRST)
     if (!lastPrice) {
-      significantUpdates.push(priceData);
+      significantUpdates.push({ ...priceData, reason: 'first-price' });
       lastBroadcastedPrices[normalizedSymbol] = price;
       lastBroadcastTime[normalizedSymbol] = now;
       console.log(`🆕 First price for ${symbol}: ${price}`);
@@ -166,7 +185,7 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
     const isHeartbeat = timeSinceLastBroadcast >= HEARTBEAT_INTERVAL;
     
     if (isHeartbeat) {
-      significantUpdates.push(priceData);
+      significantUpdates.push({ ...priceData, reason: 'heartbeat' });
       lastBroadcastedPrices[normalizedSymbol] = price;
       lastBroadcastTime[normalizedSymbol] = now;
       console.log(`💓 Heartbeat broadcast for ${symbol} (${timeSinceLastBroadcast}ms since last) - Price: ${price}`);
@@ -182,7 +201,7 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
     const changeValue = isGoldAsset ? absoluteChange : percentChange;
 
     if (changeValue >= threshold) {
-      significantUpdates.push(priceData);
+      significantUpdates.push({ ...priceData, reason: 'significant-change' });
       lastBroadcastedPrices[normalizedSymbol] = price;
       lastBroadcastTime[normalizedSymbol] = now;
       console.log(`📈 Significant change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
@@ -608,7 +627,28 @@ serve(async (req) => {
       });
     }
 
-    // 🚀 CRITICAL: ACTIVITY-BASED GATING - Skip UI broadcast if no active users
+    // STEP 3A: Calculate prices for UI FIRST (before using significantPrices)
+    console.log('🎯 STEP 3A: Preparing prices for UI broadcast...');
+    
+    const pricesForUI = prices
+      .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))
+      .map(p => ({
+        symbol: p.symbol,
+        price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
+        timestamp: new Date().toISOString()
+      }));
+
+    // 🚀 CRITICAL FIX: Enable real-time broadcasting when active users are present
+    const broadcastAllPrices = hasActiveUsers && activeUserCount > 0;
+    console.log(`📊 Broadcast mode: ${broadcastAllPrices ? 'REAL-TIME (all prices)' : 'FILTERED (significant only)'}`);
+    
+    const significantPrices = filterSignificantPrices(pricesForUI, broadcastAllPrices);
+
+    // STEP 3B: Check if this is a heartbeat broadcast (significantPrices now exists)
+    const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
+      significantPrices.every((p: any) => p.reason === 'heartbeat');
+
+    // 🚀 CRITICAL: Skip UI broadcast if no active users
     if (!hasActiveUsers) {
       console.log('📡 UI broadcast skipped: no_active_users');
       return new Response(JSON.stringify({
@@ -624,12 +664,8 @@ serve(async (req) => {
         headers: corsHeaders
       });
     }
-
-    // PHASE 2: Check if this is a heartbeat broadcast
-    const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
-      significantPrices.every((p: any) => p.reason === 'heartbeat');
     
-    // Try to acquire broadcast lock
+    // STEP 3C: Try to acquire broadcast lock
     const lockId = await acquireBroadcastLock(supabaseClient);
     if (!lockId && !isHeartbeatBroadcast) {
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
@@ -651,19 +687,6 @@ serve(async (req) => {
     if (isHeartbeatBroadcast && !lockId) {
       console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
     }
-
-    // STEP 4: Filter significant prices for UI broadcast with HEARTBEAT GUARANTEE
-    console.log('🎯 STEP 4: Filtering significant prices with heartbeat guarantee...');
-    
-    const pricesForUI = prices
-      .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))
-      .map(p => ({
-        symbol: p.symbol,
-        price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
-        timestamp: new Date().toISOString() // Always use fresh timestamp for UI
-      }));
-
-    const significantPrices = filterSignificantPrices(pricesForUI);
     
     if (significantPrices.length === 0) {
       console.log('📡 No significant price changes for UI broadcast');

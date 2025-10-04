@@ -167,8 +167,8 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     lastUpdate: lastUpdated?.toISOString() || null,
     isConnected: connectionStatus === 'connected',
     dataAge: localState.dataAge,
-    isStale: localState.arrivalAgeMs > 3000, // 🔥 FIXED: 3s threshold for Live status
-    isVeryStale: localState.arrivalAgeMs > 6000, // Very stale after 6s
+    isStale: localState.arrivalAgeMs > 6000, // 6s threshold for robust Live status
+    isVeryStale: localState.arrivalAgeMs > 10000, // Very stale after 10s
     // Sub-2s Live Guarantee properties
     arrivalAgeMs: localState.arrivalAgeMs,
     arrivalAgeSeconds: localState.arrivalAgeSeconds

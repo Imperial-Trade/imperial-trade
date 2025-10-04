@@ -56,8 +56,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return price;
   }, [price, symbol]);
 
-  // Critical: Monitor price staleness for trading safety - Sub-2s Live Guarantee
-  const stalenessStatus = usePriceStalenessMonitor(symbol, 2); // 2-second staleness threshold
+  // Critical: Monitor price staleness for trading safety - Robust Live Guarantee
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 6); // 6-second staleness threshold for robust display
   
   // ✅ FLICKER ELIMINATION: Stability management
   const { shouldAllowQualityChange } = useConnectionStability();
@@ -79,10 +79,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         return;
       }
       
-      if (ageSeconds < 2) {
-        setDataAge('Live'); // Show "Live" for sub-2-second data
-      } else if (ageSeconds < 3) {
-        setDataAge('Live'); // Extended to 3 seconds for heartbeat tolerance
+      if (ageSeconds < 6) {
+        setDataAge('Live'); // Show "Live" for data within 6 seconds (covers 2-4s broadcast interval + buffer)
       } else if (ageSeconds < 60) {
         setDataAge(`${ageSeconds}s ago`);
       } else if (ageSeconds < 3600) {
@@ -198,24 +196,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // Guaranteed Live indicator for sub-2-second data
-    if (dataFreshness < 2 && price > 0) {
+    // Guaranteed Live indicator for fresh data (within broadcast interval)
+    if (dataFreshness < 6 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 
         text: 'Live',
-        description: 'Guaranteed 2-second updates via heartbeat system',
+        description: 'Real-time updates active',
         animate: false
       };
     }
     
-    // Recent data (2-5 seconds)
-    if (dataFreshness < 5 && price > 0) {
+    // Recent data (6-10 seconds)
+    if (dataFreshness < 10 && price > 0) {
       return { 
         color: 'text-yellow-400', 
         icon: Timer, 
         text: 'Recent',
-        description: 'Recent price data, heartbeat incoming',
+        description: 'Price data slightly delayed',
         animate: false
       };
     }

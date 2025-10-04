@@ -576,12 +576,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           }
         });
         
+        // 🚀 STEP 2: Smart State Updates - Only update if prices changed
         if (Object.keys(hydratedPrices).length > 0) {
-          setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
-          setPrices(prev => ({ ...prev, ...hydratedPrices }));
-          setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
-          setLastUpdated(new Date());
-          console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices`);
+          const hasChanges = Object.keys(hydratedPrices).some(symbol => {
+            const oldPrice = internalPrices[symbol]?.price;
+            const newPrice = hydratedPrices[symbol]?.price;
+            return !oldPrice || Math.abs(newPrice - oldPrice) > 0.0001;
+          });
+
+          if (hasChanges) {
+            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
+            setPrices(prev => ({ ...prev, ...hydratedPrices }));
+            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+            setLastUpdated(new Date());
+            console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices`);
+          } else {
+            console.log(`⏭️  [Database Poll] Skipped update - no price changes detected`);
+          }
         }
       }
     } catch (error) {
@@ -766,9 +777,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // Detect if on signal-stream page for fast polling
+    // 🚀 STEP 1: Aggressive Polling with Burst Mode
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
-    const pollingInterval = isSignalStreamPage ? 5000 : 30000; // 5s on signal-stream, 30s elsewhere
+    const timeSinceMount = Date.now() - (mountTimeRef.current || Date.now());
+    const isBurstMode = timeSinceMount < 10000; // First 10 seconds
+    const pollingInterval = isSignalStreamPage 
+      ? (isBurstMode ? 1000 : 2000) // 1s burst, then 2s
+      : 30000; // 30s elsewhere
     
     console.log(`🔄 [Polling] Starting ${isSignalStreamPage ? 'FAST' : 'SLOW'} polling (${pollingInterval}ms) for:`, symbolList);
     

@@ -19,7 +19,7 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
     cooldownPeriod: 2000 // 2 seconds
   });
 
-  // 🚀 PHASE 5: Show polling status instead of "live"
+  // 🚀 PHASE 5: Show aggressive polling status (2s with 1s burst)
   const indicatorProps = useMemo(() => {
     switch (connectionQuality) {
       case 'live':
@@ -28,7 +28,7 @@ export const LivePriceIndicator: React.FC<LivePriceIndicatorProps> = ({
           variant: 'default' as const,
           icon: Wifi,
           color: 'text-blue-400',
-          title: 'Database polling active (5s updates)'
+          title: 'Database polling active (2s updates with interpolation)'
         };
       case 'stale':
         return {

@@ -61,8 +61,13 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     changePercent: 0,
     dataAge: 0,
     arrivalAgeMs: 0, // New: Arrival-based age in milliseconds
-    arrivalAgeSeconds: 0 // New: Arrival-based age in seconds
+    arrivalAgeSeconds: 0, // New: Arrival-based age in seconds
+    optimisticPrice: null as number | null, // 🚀 STEP 3: Optimistic interpolated price
+    isInterpolating: false // Flag to indicate if showing interpolated value
   });
+
+  // 🚀 STEP 3: Price history for interpolation (last 3 data points)
+  const priceHistoryRef = useRef<Array<{ price: number; timestamp: number }>>([]);
 
   // PATH A: Phase 3 Complete - Zero throttling for ultra-responsive updates
   const previousPriceRef = useRef<number | null>(null);
@@ -79,12 +84,22 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     const arrivalAgeMs = getArrivalAge(normalizeSymbol(symbol));
     const arrivalAgeSeconds = Math.floor(arrivalAgeMs / 1000);
 
+    // 🚀 STEP 3: Update price history for interpolation
+    const now = Date.now();
+    priceHistoryRef.current.push({ price, timestamp: now });
+    // Keep only last 3 data points
+    if (priceHistoryRef.current.length > 3) {
+      priceHistoryRef.current.shift();
+    }
+
     setLocalState({
       change,
       changePercent,
       dataAge: Date.now() - new Date(timestamp).getTime(),
       arrivalAgeMs,
-      arrivalAgeSeconds
+      arrivalAgeSeconds,
+      optimisticPrice: price, // Reset to real price when new data arrives
+      isInterpolating: false
     });
 
     previousPriceRef.current = price;
@@ -124,6 +139,48 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyImmediateUpdate]);
 
+  // 🚀 STEP 3: Optimistic Price Interpolation - Makes polling feel like WebSocket
+  useEffect(() => {
+    if (!currentPrice || priceHistoryRef.current.length < 2) return;
+
+    const interval = setInterval(() => {
+      const history = priceHistoryRef.current;
+      if (history.length < 2) return;
+
+      const now = Date.now();
+      const latest = history[history.length - 1];
+      const timeSinceLastUpdate = now - latest.timestamp;
+
+      // Only interpolate if we're between polls (500ms - 2000ms since last update)
+      if (timeSinceLastUpdate > 500 && timeSinceLastUpdate < 2000) {
+        // Calculate velocity from last 2 points
+        const prev = history[history.length - 2];
+        const timeDelta = latest.timestamp - prev.timestamp;
+        const priceDelta = latest.price - prev.price;
+        const velocity = priceDelta / timeDelta; // Price change per ms
+
+        // Interpolate forward (but cap at 2x polling interval)
+        const interpolationTime = Math.min(timeSinceLastUpdate, 4000);
+        const estimatedPrice = latest.price + (velocity * interpolationTime);
+
+        setLocalState(prev => ({
+          ...prev,
+          optimisticPrice: estimatedPrice,
+          isInterpolating: true
+        }));
+      } else if (timeSinceLastUpdate <= 500) {
+        // Just after update, use real price
+        setLocalState(prev => ({
+          ...prev,
+          optimisticPrice: latest.price,
+          isInterpolating: false
+        }));
+      }
+    }, 100); // Update interpolation every 100ms for smooth animation
+
+    return () => clearInterval(interval);
+  }, [currentPrice]);
+
   // PATH A: Real-time data age tracking with faster interval + Sub-2s arrival age tracking
   useEffect(() => {
     if (!currentPrice || options.trackDataAge === false) return;
@@ -150,9 +207,14 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
   }, [currentPrice, options.trackDataAge, symbol, getArrivalAge, getInternalPrice]);
 
 
+  // 🚀 STEP 3: Use optimistic price for display if available and interpolating
+  const displayPrice = localState.isInterpolating && localState.optimisticPrice 
+    ? localState.optimisticPrice 
+    : currentPrice?.price || null;
+
   return {
     // Backward compatibility properties
-    price: currentPrice?.price || null,
+    price: displayPrice,
     change: localState.change,
     changePercent: localState.changePercent,
     isLoading: connectionStatus === 'connecting',
@@ -163,7 +225,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     priceUpdateSource: 'websocket_institutional',
     refreshPrice,
     // New optimized properties
-    livePrice: currentPrice?.price || null,
+    livePrice: displayPrice,
     lastUpdate: lastUpdated?.toISOString() || null,
     isConnected: connectionStatus === 'connected',
     dataAge: localState.dataAge,

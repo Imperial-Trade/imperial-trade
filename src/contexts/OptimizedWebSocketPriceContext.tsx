@@ -364,22 +364,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isConnectingRef.current = true;
     setConnectionStatus('connecting');
 
-    // 🚀 PHASE 5: PRICE BROADCAST REMOVED - Zero Realtime usage
-    // Custom WebSocket handles all real-time prices, database polling serves as fallback
-    console.log('🚀 PHASE 5: Supabase Realtime price broadcast ELIMINATED - Using custom WebSocket only');
-    
-    // Set connection status based on custom WebSocket (already handled elsewhere)
-    setConnectionStatus('connected');
-    connectionStateRef.current.status = 'connected';
-    connectionStateRef.current.lastSuccessAt = Date.now();
-    isConnectingRef.current = false;
-    
-    console.log(`✅ PHASE 5: No Realtime channel created - relying on custom WebSocket + database polling`);
-    
-    // 🚀 PHASE 5: No channel reference needed - removed Realtime entirely
+  const connectToRealtimeChannel = useCallback(() => {
+    // ⚠️  PHASE 5: NO REALTIME CONNECTION - Database polling only
+    console.log('ℹ️  [Connection] Using database polling for prices (no realtime)');
     channelRef.current = null;
     
-    console.log(`✅ PHASE 5: Connection marked as ready - custom WebSocket + database polling only`);
+    // Set status to 'polling' to reflect actual architecture
+    setConnectionStatus('polling' as any);
+  }, []);
   }, []);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
@@ -544,16 +536,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [connectToRealtimeChannel]);
 
-  // 🚀 INSTANT DATABASE HYDRATION: Fetch prices immediately for new symbols
+  // ⚡ PHASE 5: Optimized Database Polling - Direct fetch with clean logging
   const fetchPricesFromDatabase = useCallback(async (targetSymbols: string[]) => {
     if (targetSymbols.length === 0) return;
 
     try {
-      console.log(`💾 Instant hydration fetching prices for: ${targetSymbols.join(', ')}`);
+      console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
+      
+      // Optimized query: only fetch needed fields, order by freshness
       const { data } = await supabase
         .from('market_prices')
-        .select('symbol, bid, ask, mid, updated_at')
-        .in('symbol', targetSymbols);
+        .select('symbol, mid, bid, ask, updated_at')
+        .in('symbol', targetSymbols)
+        .order('updated_at', { ascending: false });
         
       if (data) {
         const hydratedPrices: Record<string, PriceData> = {};
@@ -575,9 +570,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               mid: row.mid
             };
             
-            // 🚨 PHASE 2: Track database timestamp for race condition prevention
             timestampUpdates[row.symbol] = dbTimestamp;
-            console.log(`⚡ INSTANT hydration for ${row.symbol}: ${new Date(dbTimestamp).toISOString()} (price: ${price})`);
+            const ageSeconds = Math.round((Date.now() - dbTimestamp) / 1000);
+            console.log(`💾 [Database Poll] ${row.symbol}: $${price} (${ageSeconds}s old)`);
           }
         });
         
@@ -586,11 +581,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           setPrices(prev => ({ ...prev, ...hydratedPrices }));
           setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
           setLastUpdated(new Date());
-          console.log(`⚡ INSTANT hydration complete: ${Object.keys(hydratedPrices).length} prices loaded immediately`);
+          console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices`);
         }
       }
     } catch (error) {
-      console.warn('⚠️ Instant hydration error:', error);
+      console.warn('⚠️ Database polling error:', error);
     }
   }, []);
 
@@ -757,6 +752,49 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       subscribe(pending, true); // Bypass stale route gate check
     }
   }, [isRouteGateReady, subscribe]);
+
+  // ⚡ PHASE 5: Optimized Polling with Route Detection
+  useEffect(() => {
+    if (!isProviderReady) {
+      console.log('⏸️  [Polling] Provider not ready');
+      return;
+    }
+
+    const symbolList = Array.from(subscriptionsRef.current.keys());
+    if (symbolList.length === 0) {
+      console.log('⏸️  [Polling] No symbols subscribed');
+      return;
+    }
+
+    // Detect if on signal-stream page for fast polling
+    const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
+    const pollingInterval = isSignalStreamPage ? 5000 : 30000; // 5s on signal-stream, 30s elsewhere
+    
+    console.log(`🔄 [Polling] Starting ${isSignalStreamPage ? 'FAST' : 'SLOW'} polling (${pollingInterval}ms) for:`, symbolList);
+    
+    // Immediate fetch
+    fetchPricesFromDatabase(symbolList);
+
+    // Set up polling interval
+    const intervalId = setInterval(() => {
+      // Pause polling if tab is hidden
+      if (document.hidden) {
+        console.log('⏸️  [Polling] Tab hidden, skipping fetch');
+        return;
+      }
+
+      const currentSymbols = Array.from(subscriptionsRef.current.keys());
+      if (currentSymbols.length > 0) {
+        fetchPricesFromDatabase(currentSymbols);
+      }
+    }, pollingInterval);
+
+    return () => {
+      console.log('🧹 [Polling] Stopping polling');
+      clearInterval(intervalId);
+    };
+  }, [fetchPricesFromDatabase, isProviderReady]);
+
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions
   const restartConnection = useCallback(() => {
@@ -1024,7 +1062,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     connectionStatus,
     error,
     lastUpdated,
-    dataSource: 'optimized-websocket',
+    dataSource: 'database_polling',
     uiThrottleMs: UI_UPDATE_THROTTLE_MS,
     isConnected: connectionStatus === 'connected',
     errors: {},
@@ -1085,7 +1123,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         connectionStatus: 'connecting',
         error: null,
         lastUpdated: null,
-        dataSource: 'initializing',
+        dataSource: 'database_polling',
         uiThrottleMs: UI_UPDATE_THROTTLE_MS,
         subscribe: () => {},
         unsubscribe: () => {},

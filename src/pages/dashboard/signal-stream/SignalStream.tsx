@@ -3,7 +3,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
@@ -23,6 +23,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 
 
 
@@ -751,8 +752,11 @@ export default function SignalStream() {
               <div className="mb-6" />
               
               {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
+              <div data-prevent-widget-open="true" className="flex items-center gap-3">
+                <div className="flex-1">
+                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
+                </div>
+                <PriceRefreshButton symbols={symbols} className="shrink-0" />
               </div>
               
 {(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">

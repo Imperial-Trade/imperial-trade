@@ -59,6 +59,18 @@ export default function SignalStream() {
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
   
+  // Track seconds since last signal update
+  const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const lastUpdateTime = typeof lastUpdated === 'number' ? lastUpdated : new Date(lastUpdated).getTime();
+      setSecondsSinceUpdate(Math.floor((now - lastUpdateTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+  
   useEffect(() => {
     if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
       hasHydratedRef.current = true;
@@ -728,11 +740,25 @@ export default function SignalStream() {
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {connectionStatus === 'connected' ? '● Live' : 
-                 connectionStatus === 'polling-fallback' ? '● Polling' :
-                 connectionStatus === 'connecting' ? '⟳ Connecting...' : 
-                 '○ Disconnected'}
+              <div className="flex items-center gap-3">
+                {lastUpdated && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant={secondsSinceUpdate < 30 ? "default" : "secondary"}>
+                      {secondsSinceUpdate < 30 ? '● Live' : '○ Stale'}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Updated {secondsSinceUpdate}s ago
+                    </span>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshAlerts}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
             </div>
           </div>

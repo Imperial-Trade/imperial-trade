@@ -697,115 +697,10 @@ serve(async (req) => {
       console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
     }
     
-    if (significantPrices.length === 0) {
-      console.log('📡 No significant price changes for UI broadcast');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_significant_changes'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
-    }
-
-    // Create broadcast channel and send updates
-    try {
-      const channelStartTime = Date.now();
-      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 3);
-      const channelCreationTime = Date.now() - channelStartTime;
-      console.log(`⏱️ Channel created in ${channelCreationTime}ms`);
-
-      // 🚨 CRITICAL: Verify channel is functional before broadcasting
-      if (!priceChannel) {
-        throw new Error('Channel creation returned null');
-      }
-
-      // Log actual state for debugging (Supabase API may use 'joined' instead of 'subscribed')
-      console.log(`📡 Channel state after creation: "${priceChannel.state || 'undefined'}"`);
-
-      // Only reject channels in explicitly failed states
-      const failedStates = ['closed', 'errored', 'error'];
-      if (failedStates.includes(priceChannel.state)) {
-        console.error('❌ Channel in failed state:', { 
-          state: priceChannel.state, 
-          creationTime: channelCreationTime 
-        });
-        throw new Error(`Channel in invalid state: ${priceChannel.state}`);
-      }
-
-      // Channel is functional (state may be 'subscribed', 'joined', or undefined)
-      console.log(`✅ Channel validation passed - ready for broadcast (state: ${priceChannel.state || 'unknown'})`)
-      
-      let broadcastCount = 0;
-      for (const priceData of significantPrices) {
-        try {
-          await priceChannel.send({
-            type: 'broadcast',
-            event: 'price_update',
-            payload: {
-              symbol: priceData.symbol,
-              price: priceData.price,
-              timestamp: new Date().toISOString(), // Fresh timestamp for accurate UI display
-              source: 'price-ingestor-v4.1'
-            }
-          });
-          
-          console.log(`💰 UI Broadcast: ${priceData.symbol}: $${priceData.price}`);
-          broadcastCount++;
-        } catch (broadcastError) {
-          console.error(`❌ Failed to broadcast ${priceData.symbol}:`, broadcastError);
-        }
-      }
-      
-      totalUIBroadcasts += broadcastCount;
-      console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
-      console.log(`📡 ✅ BROADCAST SUCCESS: Sent ${broadcastCount}/${significantPrices.length} prices to ${activeUserCount} users`);
-      
-      // 🎯 PHASE 3: Always release lock (no bypass mode)
-      if (lockId) {
-        const releaseStartTime = Date.now();
-        try {
-          await supabaseClient
-            .from('price_broadcast_lock')
-            .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
-            .eq('id', 'singleton')
-            .eq('holder_id', lockId);
-          const releaseTime = Date.now() - releaseStartTime;
-          console.log(`✅ Broadcast lock released in ${releaseTime}ms (duration: ${lockDuration}s)`);
-        } catch (releaseError) {
-          console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
-        }
-      }
-      
-    } catch (channelError) {
-      console.error('❌ Failed to create broadcast channel:', channelError);
-    }
-
-    // Phase 3: Log broadcast telemetry for monitoring
-    try {
-      await supabaseClient
-        .from('edge_function_telemetry')
-        .insert({
-          function_name: 'price-ingestor',
-          metric: 'broadcast_status',
-          count: 1,
-          metadata: {
-            has_active_users: hasActiveUsers,
-            broadcast_status: lockId ? 'broadcast_sent' : 'lock_failed',
-            prices_processed: prices.length,
-            ui_broadcasts_sent: lockId ? significantPrices.length : 0,
-            lock_acquired: !!lockId,
-            execution_timestamp: new Date().toISOString()
-          }
-        });
-    } catch (telemetryError) {
-      console.warn('⚠️ Telemetry logging failed (non-critical):', telemetryError);
-    }
+    // ✅ PHASE 1: ZERO-REALTIME ARCHITECTURE
+    // Broadcasts removed - frontend uses database polling (500ms)
+    // This eliminates $32.50/month in Realtime message costs
+    console.log(`💾 Database upserts complete. Frontend will poll for updates (no broadcasts).`);
 
     // Return success response
     return new Response(JSON.stringify({
@@ -814,13 +709,11 @@ serve(async (req) => {
       upserted: successfulUpserts,
       alerts_triggered: totalTriggeredAlerts,
       notifications_sent: notificationTriggers.length,
-      ui_broadcasts: totalUIBroadcasts,
-      broadcast_status: 'completed',
+      architecture: 'zero_realtime_polling', // No broadcasts - frontend polls database
       performance: {
         total_processed: totalPricesProcessed,
         total_alerts: totalAlertsTriggered,
-        total_upserted: totalPricesUpserted,
-        total_ui_broadcasts: totalUIBroadcasts
+        total_upserted: totalPricesUpserted
       }
     }), {
       status: 200,
@@ -835,8 +728,7 @@ serve(async (req) => {
       processed: 0,
       upserted: 0,
       alerts_triggered: 0,
-      notifications_sent: 0,
-      ui_broadcasts: 0
+      notifications_sent: 0
     }), {
       status: 500,
       headers: corsHeaders

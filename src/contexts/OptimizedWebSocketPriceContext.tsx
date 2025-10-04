@@ -574,8 +574,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         // 🚀 STEP 2 & 4: Smart State Updates with enhanced sensitivity + debug mode
         if (Object.keys(hydratedPrices).length > 0) {
-          // 🚀 PHASE 2: Enable force updates + timestamp-based updates
-          const FORCE_UPDATE_MODE = true; // ✅ Force UI updates every poll for "live feel"
+          // ✅ PHASE 3: Optimized change detection with minimum threshold
+          const FORCE_UPDATE_MODE = false; // Disabled - only update on real changes
+          const MINIMUM_CHANGE_THRESHOLD = 0.0001; // 0.01% minimum price change
           
           // Check for ANY changes: price OR timestamp updates
           const hasChanges = Object.keys(hydratedPrices).some(symbol => {
@@ -584,8 +585,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             const oldTimestamp = lastDatabaseTimestamp[symbol];
             const newTimestamp = timestampUpdates[symbol];
             
-            // Update if: price changed OR timestamp changed (database was written to)
-            const priceChanged = !oldPrice || Math.abs(newPrice - oldPrice) >= 0; // ANY price change
+            // Update if: price changed meaningfully OR timestamp changed (database was written to)
+            const priceChanged = !oldPrice || (Math.abs(newPrice - oldPrice) / oldPrice > MINIMUM_CHANGE_THRESHOLD);
             const timestampChanged = oldTimestamp !== newTimestamp;
             
             if (timestampChanged && !priceChanged) {

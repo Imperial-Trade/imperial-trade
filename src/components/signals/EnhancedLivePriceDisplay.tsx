@@ -99,16 +99,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return () => clearInterval(interval);
   }, [arrivalAgeSeconds, lastUpdated]);
 
-  // 🚀 PHASE 4: Enhanced animation for ALL changes (micro-changes included)
+  // 🚀 PHASE 2C: Micro-animation pulses every 200ms for live feel
   useEffect(() => {
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
-      // 🚀 Show animation for ANY price change (even micro-changes)
-      const changePercent = Math.abs((price - prevPrice) / prevPrice) * 100;
+      // 🚀 Trigger animation for ANY price change (zero pause)
       setPriceAnimation(price > prevPrice ? 'up' : 'down');
       setPulseKey(prev => prev + 1);
       
-      const animationDuration = changePercent >= 0.1 ? 500 : 300; // Longer for big moves
-      const timer = setTimeout(() => setPriceAnimation(null), animationDuration);
+      // Ultra-fast 200ms animation for continuous live feel
+      const timer = setTimeout(() => setPriceAnimation(null), 200);
       return () => clearTimeout(timer);
     }
     if (price > 0 && price !== prevPrice) {
@@ -368,14 +367,18 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             <span>{dataAge}</span>
           </div>
           
-          {/* 🚀 Data Source Indicator */}
+          {/* 🚀 PHASE 3: Enhanced data source indicator with streaming badge */}
           <div className={cn(
             'flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded',
-            connectionStatusInfo.color,
-            connectionStatusInfo.color.replace('text-', 'bg-').replace('-400', '-400/10')
+            arrivalAgeSeconds < 3 ? 'text-green-400 bg-green-400/10' : 
+            arrivalAgeSeconds < 10 ? 'text-blue-400 bg-blue-400/10' : 
+            'text-orange-400 bg-orange-400/10'
           )}>
             <connectionStatusInfo.icon className="w-3 h-3" />
-            <span>{connectionStatusInfo.text}</span>
+            <span>
+              {arrivalAgeSeconds < 3 ? '🟢 Streaming' : arrivalAgeSeconds < 10 ? '🟡 Live' : '🔴 Stale'}
+              {arrivalAgeSeconds < 60 && arrivalAgeSeconds > 0 && ` (${arrivalAgeSeconds}s)`}
+            </span>
           </div>
         </div>
         

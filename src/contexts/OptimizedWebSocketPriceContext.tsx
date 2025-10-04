@@ -807,32 +807,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // 🚀 PHASE 3: Enhanced Adaptive Polling with Extended Burst Mode + Volatility Detection
+    // 🚀 PHASE 2A: Optimized Polling for 200ms Visual Ticks
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
     const timeSinceMount = Date.now() - (mountTimeRef.current || Date.now());
-    const isBurstMode = timeSinceMount < 30000; // 🚀 PHASE 3.1: Extended 30s burst mode
+    const isBurstMode = timeSinceMount < 60000; // Extended 60s burst mode for smooth onboarding
     
-    // 🚀 PHASE 3.2: Simple volatility detection (just check if we have recent price data)
-    // Simplified: Assume volatility during burst mode and first 60s
-    const hasRecentVolatility = timeSinceMount < 60000;
-    
-    // 🚀 Dynamic polling intervals:
-    // - Burst mode (0-30s): 1s for instant feedback
-    // - High volatility (30-60s): 500ms for rapid updates  
-    // - Normal: 2s standard polling
+    // 🚀 Ultra-fast polling for signal stream to enable 200ms visual ticks
+    // - Burst mode (0-60s): 500ms for instant feedback + smooth interpolation
+    // - Standard: 500ms for continuous live feel
     // - Other pages: 30s slow polling
     const pollingInterval = isSignalStreamPage 
-      ? (isBurstMode ? 1000 : hasRecentVolatility ? 500 : 2000)
+      ? 500  // Always 500ms for signal-stream to enable smooth 200ms ticks
       : 30000;
     
-    const modeLabel = isBurstMode ? 'BURST' : hasRecentVolatility ? 'VOLATILE' : 'STANDARD';
+    const modeLabel = isBurstMode ? 'BURST' : 'STREAMING';
     console.log(`🔄 [Polling] ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
     
     if (isBurstMode) {
-      console.log(`⚡ [Burst Mode] ${Math.round((30000 - timeSinceMount) / 1000)}s remaining`);
-    }
-    if (hasRecentVolatility && !isBurstMode) {
-      console.log(`🔥 [Volatility Window] Accelerated 500ms polling (${Math.round((60000 - timeSinceMount) / 1000)}s remaining)`);
+      console.log(`⚡ [Burst Mode] ${Math.round((60000 - timeSinceMount) / 1000)}s remaining`);
     }
     
     // Immediate fetch

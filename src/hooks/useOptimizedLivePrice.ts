@@ -156,7 +156,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyImmediateUpdate]);
 
-  // 🚀 STEP 3: Optimistic Price Interpolation - Makes polling feel like WebSocket
+  // 🚀 PHASE 2B: Smooth Price Streaming - 200ms Visual Ticks with Velocity-Based Interpolation
   useEffect(() => {
     if (!currentPrice || priceHistoryRef.current.length < 2) return;
 
@@ -168,23 +168,24 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       const latest = history[history.length - 1];
       const timeSinceLastUpdate = now - latest.timestamp;
 
-      // 🚀 STEP 6: Prioritize real database updates over interpolation
-      if (timeSinceLastUpdate <= 1000) {
-        // PRIORITY: Use real price immediately when fresh (< 1s old)
+      // 🚀 Ultra-responsive: Show real price immediately when fresh (< 500ms)
+      if (timeSinceLastUpdate <= 500) {
         setLocalState(prev => ({
           ...prev,
           optimisticPrice: latest.price,
           isInterpolating: false
         }));
-      } else if (timeSinceLastUpdate > 1000 && timeSinceLastUpdate < 2000) {
-        // Interpolate only between 1-2s (gap between real updates)
+      } else if (timeSinceLastUpdate > 500 && timeSinceLastUpdate < 1500) {
+        // 🚀 Smooth interpolation between 500ms-1.5s (fills gaps between polls)
         const prev = history[history.length - 2];
         const timeDelta = latest.timestamp - prev.timestamp;
         const priceDelta = latest.price - prev.price;
-        const velocity = priceDelta / timeDelta; // Price change per ms
+        
+        // Calculate velocity (conservative - reduce by 50% to avoid overshooting)
+        const velocity = (priceDelta / timeDelta) * 0.5;
 
-        // Interpolate forward (conservative estimation)
-        const interpolationTime = timeSinceLastUpdate - 1000; // Only interpolate the gap
+        // Smooth interpolation with easing
+        const interpolationTime = timeSinceLastUpdate - 500;
         const estimatedPrice = latest.price + (velocity * interpolationTime);
 
         setLocalState(prev => ({
@@ -193,14 +194,14 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
           isInterpolating: true
         }));
       } else {
-        // Data is stale (> 2s), show last known real price
+        // Data is stale (> 1.5s), show last known real price
         setLocalState(prev => ({
           ...prev,
           optimisticPrice: latest.price,
           isInterpolating: false
         }));
       }
-    }, 100); // Update interpolation every 100ms for smooth animation
+    }, 200); // 🚀 200ms ticks for zero visual pause
 
     return () => clearInterval(interval);
   }, [currentPrice]);

@@ -88,6 +88,8 @@ interface SignalRealtimeContextType {
   getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null; mode: string };
   forcePollingMode: () => void;
   isInPollingMode: boolean;
+  // PHASE 7: Signal retrieval for instant UI updates
+  getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | null>(null);
@@ -373,7 +375,12 @@ unstable_batchedUpdates(() => {
 
   const isInPollingMode = connectionStateRef.current.isPollingMode;
 
-  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms  
+  // PHASE 7: Get signal by ID for instant UI updates
+  const getSignalById = useCallback((signalId: string) => {
+    return signals.find(signal => signal.id === signalId);
+  }, [signals]);
+
+  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const signalId = payload?.new?.id || payload?.old?.id;
     
@@ -537,8 +544,29 @@ unstable_batchedUpdates(() => {
               }));
             }, 0);
           }
+
+          // PHASE 7: CRITICAL - Signal isolation during closure
+          const isSignalClosure = currentSignal.status === 'active' && newRecord.status === 'closed';
+          if (isSignalClosure) {
+            console.log(`🔴 ISOLATED CLOSURE: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
+            
+            // Dispatch closure event with signal isolation
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+                detail: {
+                  signalId: targetSignalId,
+                  assetName: newRecord.asset_name,
+                  status: 'closed',
+                  closeReason: newRecord.close_reason,
+                  timestamp: new Date().toISOString(),
+                  priority: 'high',
+                  isolation: 'enforced'
+                }
+              }));
+            }, 0);
+          }
           
-          const updatedSignals = prev.map(signal => 
+          const updatedSignals = prev.map(signal =>
             signal.id === newRecord.id ? {
               ...signal,
               assetName: newRecord.asset_name,
@@ -870,7 +898,9 @@ unstable_batchedUpdates(() => {
     restartConnection,
     getConnectionHealth,
     forcePollingMode,
-    isInPollingMode
+    isInPollingMode,
+    // PHASE 7: Signal retrieval for instant UI updates
+    getSignalById
   };
 
   return (
@@ -893,7 +923,12 @@ export const useSignalRealtime = () => {
       nextRetryAt: null,
       subscribe: () => console.warn('SignalRealtimeProvider not available'),
       unsubscribe: () => console.warn('SignalRealtimeProvider not available'),
-      refreshSignals: async () => console.warn('SignalRealtimeProvider not available')
+      refreshSignals: async () => console.warn('SignalRealtimeProvider not available'),
+      restartConnection: () => console.warn('SignalRealtimeProvider not available'),
+      getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null, mode: 'disconnected' }),
+      forcePollingMode: () => console.warn('SignalRealtimeProvider not available'),
+      isInPollingMode: false,
+      getSignalById: () => undefined
     };
   }
   return context;

@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
+import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -44,22 +45,50 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
-  // 🚀 PHASE 2: Enhanced activation listener for instant UI updates
+  // PHASE 7: Get signal retrieval function for instant UI updates
+  const { getSignalById } = useSignalRealtime();
+  
+  // 🚀 PHASE 7: Enhanced activation listener for instant UI updates
   useEffect(() => {
     const handleActivation = (event: CustomEvent) => {
       const { signalId, status } = event.detail;
       if (signalId === alert.id && status === 'active') {
-        console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
-        // Force immediate local state refresh
-        if (onStatusUpdate && alert.status !== 'active') {
+        console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing UI sync`);
+        
+        // CRITICAL FIX: Pull latest data from realtime context
+        const latestSignal = getSignalById(signalId);
+        if (latestSignal && onStatusUpdate) {
           console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+          // Force parent to re-render with latest data
+          onStatusUpdate(signalId, latestSignal.status);
         }
       }
     };
 
     window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
     return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
-  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate, getSignalById]);
+
+  // 🔴 PHASE 7: Enhanced closure listener for instant UI updates
+  useEffect(() => {
+    const handleClosure = (event: CustomEvent) => {
+      const { signalId, status } = event.detail;
+      if (signalId === alert.id && status === 'closed') {
+        console.log(`🔴 CLOSURE EVENT: Signal ${alert.id} closed - forcing UI sync`);
+        
+        // CRITICAL FIX: Pull latest data from realtime context
+        const latestSignal = getSignalById(signalId);
+        if (latestSignal && onStatusUpdate) {
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → closed for ${alert.asset_name}`);
+          // Force parent to re-render with latest data
+          onStatusUpdate(signalId, latestSignal.status);
+        }
+      }
+    };
+
+    window.addEventListener('signal-closed-confirmed', handleClosure as EventListener);
+    return () => window.removeEventListener('signal-closed-confirmed', handleClosure as EventListener);
+  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate, getSignalById]);
 
   useEffect(() => {
     console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);

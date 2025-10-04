@@ -608,6 +608,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               
               setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
               setPrices(prev => ({ ...prev, [symbol]: priceData }));
+              
+              // 🔧 FIX: Update arrivalTimestamp for accurate age calculation
+              arrivalTimestamps.current.set(symbol, Date.now());
+              console.log(`⏰ Updated arrivalTimestamp for ${symbol} (postgres_changes fallback)`);
+              
               setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
               setLastUpdated(new Date());
               console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
@@ -666,6 +671,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           if (Object.keys(polledPrices).length > 0) {
             setInternalPrices(prev => ({ ...prev, ...polledPrices }));
             setPrices(prev => ({ ...prev, ...polledPrices }));
+            
+            // 🔧 FIX: Update arrivalTimestamps for all polled symbols
+            Object.keys(polledPrices).forEach(symbol => {
+              arrivalTimestamps.current.set(symbol, Date.now());
+            });
+            console.log(`⏰ Updated arrivalTimestamps for ${Object.keys(polledPrices).length} symbols (db_poll fallback)`);
+            
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
             setLastUpdated(new Date());
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');
@@ -1031,19 +1043,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return () => clearInterval(healthCheckInterval);
   }, [isProviderReady, isRouteGateReady]);
 
-  // 🚀 STABILIZATION FIX: Sync activeSubscriptions with subscriptionsRef when prices update
+  // 🚀 STABILIZATION FIX: Periodic sync of activeSubscriptions with subscriptionsRef
   // This ensures useUIActivityRegistration always has current symbols without causing infinite loops
   useEffect(() => {
-    const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
-    setActiveSubscriptions(prevSubs => {
-      // Only update if actually changed to prevent unnecessary re-renders
-      if (JSON.stringify(prevSubs) !== JSON.stringify(currentSubscriptions)) {
-        console.log('🔄 Syncing activeSubscriptions:', currentSubscriptions);
-        return currentSubscriptions;
-      }
-      return prevSubs;
-    });
-  }, [internalPrices]); // Sync when prices update (stable trigger)
+    const syncInterval = setInterval(() => {
+      const currentSubscriptions = Array.from(subscriptionsRef.current.keys());
+      setActiveSubscriptions(prevSubs => {
+        // Only update if actually changed to prevent unnecessary re-renders
+        if (JSON.stringify(prevSubs) !== JSON.stringify(currentSubscriptions)) {
+          console.log('🔄 Syncing activeSubscriptions:', currentSubscriptions);
+          return currentSubscriptions;
+        }
+        return prevSubs;
+      });
+    }, 3000); // Sync every 3 seconds instead of on every price update
+    
+    return () => clearInterval(syncInterval);
+  }, []); // ✅ No dependencies - stable periodic sync
 
   // Setup realtime fallback for postgres_changes subscription
   const setupRealtimeFallback = useCallback(() => {
@@ -1168,7 +1184,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               
               setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
               setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
+              
+              // 🔧 FIX: Update arrivalTimestamp for accurate age calculation
+              arrivalTimestamps.current.set(row.symbol, Date.now());
             });
+            console.log(`⏰ Updated arrivalTimestamps for ${criticalSymbols.length} symbols (emergency polling)`);
             setLastUpdated(new Date());
             console.log('✅ Emergency polling: Updated prices for', criticalSymbols);
           }

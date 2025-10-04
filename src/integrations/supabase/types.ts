@@ -3849,6 +3849,10 @@ export type Database = {
         Args: { p_duration_seconds?: number; p_holder_id: string }
         Returns: boolean
       }
+      auto_cleanup_stale_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number

@@ -865,9 +865,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       connectToRealtimeChannel();
     }
 
-    // Register activity for cost tracking
-    registerInteraction();
-  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed, isRouteGateReady, internalPrices]);
+    // Activity registration now handled by GlobalUIActivityManager in passive mode
+  }, [connectToRealtimeChannel, fetchPricesFromDatabase, isPriceSubscriptionAllowed, isRouteGateReady, internalPrices]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;

@@ -13,6 +13,7 @@ interface UseSignalRealtimeReturn {
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   refreshAlerts: () => Promise<void>;
   lastUpdated: Date | null;
+  getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
 }
 
 export const useSignalRealtime = (userId: string, showAllSignals: boolean = false): UseSignalRealtimeReturn => {
@@ -29,7 +30,8 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     nextRetryAt,
     subscribe,
     unsubscribe,
-    refreshSignals: contextRefreshSignals
+    refreshSignals: contextRefreshSignals,
+    getSignalById
   } = context;
 
   // Combine loading and error states
@@ -117,6 +119,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     nextRetryAt,
     updateAlert,
     refreshAlerts: handleRefreshAlerts,
-    lastUpdated
+    lastUpdated,
+    getSignalById
   };
 };

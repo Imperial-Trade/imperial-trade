@@ -357,7 +357,17 @@ unstable_batchedUpdates(() => {
   }, [lastUpdated]);
 
   const forcePollingMode = useCallback(() => {
-    console.log('🔄 SignalRealtime: Forcing polling mode');
+    // 🔒 ROUTE GATING: Only enable polling on signal-related routes
+    const currentPath = window.location.pathname;
+    const signalRoutes = ['/dashboard/signal-stream', '/dashboard/signals', '/admin'];
+    const isSignalRoute = signalRoutes.some(route => currentPath.startsWith(route));
+    
+    if (!isSignalRoute) {
+      console.log('🚫 SignalRealtime: Route gating blocked polling mode on', currentPath);
+      return;
+    }
+    
+    console.log('🔄 SignalRealtime: Forcing polling mode on', currentPath);
     connectionStateRef.current.isPollingMode = true;
     setConnectionStatus('polling-fallback');
     

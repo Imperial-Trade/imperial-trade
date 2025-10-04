@@ -2,7 +2,8 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity, BarChart3 } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
 import { DirectAccountRequestManagement } from "@/components/admin/DirectAccountRequestManagement";
 import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
@@ -16,6 +17,9 @@ import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationA
 import { NotificationRateLimitManager } from "@/components/admin/NotificationRateLimitManager";
 import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
+import CostMonitorDashboard from "@/components/monitoring/CostMonitorDashboard";
+import { RealtimeMessageRateMonitor } from "@/components/monitoring/RealtimeMessageRateMonitor";
+import { WebSocketHealthMonitor } from "@/components/testing/WebSocketHealthMonitor";
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
@@ -42,7 +46,7 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-10' : 'grid-cols-9'}`}>
+        <TabsList className={`grid w-full ${isDevToolsEnabled() ? 'grid-cols-11' : 'grid-cols-10'}`}>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Requests
@@ -74,6 +78,10 @@ const AdminPanel: React.FC = () => {
           <TabsTrigger value="optimization" className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
             Optimization
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Monitoring
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
@@ -128,6 +136,30 @@ const AdminPanel: React.FC = () => {
 
         <TabsContent value="optimization" className="space-y-4">
           <RealtimeOptimizationDashboard />
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-4">
+          <Tabs defaultValue="cost" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="cost">Cost Tracking</TabsTrigger>
+              <TabsTrigger value="messages">Message Rate</TabsTrigger>
+              <TabsTrigger value="health">WebSocket Health</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="cost" className="space-y-4">
+              <CostMonitorDashboard />
+            </TabsContent>
+            
+            <TabsContent value="messages" className="space-y-4">
+              <RealtimeMessageRateMonitor />
+            </TabsContent>
+            
+            <TabsContent value="health" className="space-y-4">
+              <Card className="p-6">
+                <WebSocketHealthMonitor />
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {isDevToolsEnabled() && (

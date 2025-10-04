@@ -576,6 +576,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     console.log(`⏱️ Using ${isHighFrequencyMode ? 'HIGH' : 'NORMAL'} frequency polling: ${pollingInterval}ms`);
     
+    // 🔒 CHECK ACTIVE UI SESSIONS: Only enable fallback if users are actually connected
+    const checkActiveUISessions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('ui_price_listeners')
+          .select('session_id')
+          .gte('last_seen_at', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+        
+        const hasActiveUsers = data && data.length > 0;
+        console.log(`👥 Active UI sessions: ${data?.length || 0} - ${hasActiveUsers ? 'ENABLING' : 'SKIPPING'} fallback`);
+        return hasActiveUsers;
+      } catch (error) {
+        console.error('❌ Error checking active sessions:', error);
+        return true; // Fail-safe: enable fallback on error
+      }
+    };
+    
     // Enable postgres_changes fallback for subscribed symbols
     const activeSymbols = Array.from(subscriptionsRef.current.keys());
     if (activeSymbols.length > 0) {
@@ -628,6 +645,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // 🚨 EMERGENCY ONLY: Poll every 10 seconds (reduced frequency) and ONLY if broadcast is dead
     const pollDatabase = async () => {
+      // 🔒 COST OPTIMIZATION: Check if any UI sessions are active before polling
+      const hasActiveUsers = await checkActiveUISessions();
+      if (!hasActiveUsers) {
+        console.log('✅ No active UI sessions detected - skipping emergency database poll');
+        return;
+      }
+      
       const activeSymbols = Array.from(subscriptionsRef.current.keys());
       if (activeSymbols.length === 0) return;
       

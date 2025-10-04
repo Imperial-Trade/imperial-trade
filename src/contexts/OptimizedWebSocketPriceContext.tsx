@@ -775,34 +775,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const subscribe = useCallback((symbols: string[], bypassRouteGate: boolean = false) => {
     if (!symbols?.length) return;
 
-    // ✅ PHASE 1 FIX: Check route gate readiness FIRST to prevent race condition
-    if (!isRouteGateReady) {
-      if (isDevToolsEnabled()) {
-        console.log('⏳ Route gate not ready yet, deferring subscription...', symbols);
-      }
-      // Store symbols for later subscription when gate is ready
-      pendingSubscriptionsRef.current = [
-        ...new Set([...pendingSubscriptionsRef.current, ...symbols])
-      ];
-      return;
-    }
-
-    // PHASE 3: Route gating check (skipped for pending subscriptions to avoid stale value)
-    if (!bypassRouteGate && !isPriceSubscriptionAllowed) {
-      if (isDevToolsEnabled()) {
-        console.log('🚦 Price subscription blocked by route gating');
-      }
-      // PHASE 4: Record route-gate block (not a connection failure)
-      emergencyRealtimeBreaker.recordRouteGateBlock('prices');
-      return;
-    }
-
-    console.log(`📊 Subscribing to symbols: ${symbols.join(', ')}`);
-    console.log(`📊 Current subscriptions before: ${Array.from(subscriptionsRef.current.keys()).join(', ')}`);
+    console.log(`⚡ HYDRATE & SUBSCRIBE called for: ${symbols.join(', ')}`);
+    console.log(`📊 Current subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')}`);
     
     let needsConnection = false;
     let newSymbolsAdded = false;
     const newSymbolsForHydration: string[] = [];
+    const allRequestedSymbols: string[] = [];
     
     symbols.forEach(symbol => {
       const normalizedSymbol = normalizeSymbol(symbol);
@@ -811,39 +790,70 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         return;
       }
 
+      allRequestedSymbols.push(normalizedSymbol);
       const currentCount = subscriptionsRef.current.get(normalizedSymbol) || 0;
       subscriptionsRef.current.set(normalizedSymbol, currentCount + 1);
+      
+      // Check if this symbol needs immediate hydration (new subscription OR no price data exists)
+      const needsHydration = currentCount === 0 || !internalPrices[normalizedSymbol];
       
       if (currentCount === 0) {
         needsConnection = true;
         newSymbolsAdded = true;
-        newSymbolsForHydration.push(normalizedSymbol);
-        console.log(`➕ New subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
+        console.log(`➕ NEW SUBSCRIPTION: ${normalizedSymbol} (refs: ${currentCount + 1})`);
       } else {
         console.log(`🔄 Existing subscription: ${normalizedSymbol} (refs: ${currentCount + 1})`);
       }
+      
+      if (needsHydration) {
+        newSymbolsForHydration.push(normalizedSymbol);
+        console.log(`⚡ Symbol ${normalizedSymbol} needs immediate hydration`);
+      }
     });
 
-    console.log(`📊 Current subscriptions after: ${Array.from(subscriptionsRef.current.keys()).join(', ')} (count: ${subscriptionsRef.current.size})`);
-
-    // 🚀 INSTANT DATABASE HYDRATION: Immediately fetch prices for new symbols
+    // 🚀 CRITICAL: INSTANT DATABASE HYDRATION - Fetch prices IMMEDIATELY for any symbols without data
     if (newSymbolsForHydration.length > 0) {
-      console.log(`⚡ Triggering instant hydration for new symbols: ${newSymbolsForHydration.join(', ')}`);
-      fetchPricesFromDatabase(newSymbolsForHydration);
+      console.log(`⚡⚡⚡ EXECUTING INSTANT HYDRATION for: ${newSymbolsForHydration.join(', ')}`);
+      // Call immediately - don't wait for WebSocket or route gates
+      fetchPricesFromDatabase(newSymbolsForHydration).catch(err => {
+        console.error('❌ Instant hydration failed:', err);
+      });
+    } else {
+      console.log(`✅ All requested symbols already have price data - skipping hydration`);
     }
 
-    // Establish connection if we have new symbols and no connection
+    // ✅ Route gating check (only for WebSocket connection, NOT for hydration)
+    if (!bypassRouteGate && !isPriceSubscriptionAllowed) {
+      if (isDevToolsEnabled()) {
+        console.log('🚦 WebSocket subscription blocked by route gating (hydration still completed)');
+      }
+      emergencyRealtimeBreaker.recordRouteGateBlock('prices');
+      return;
+    }
+
+    // ✅ Check route gate readiness for WebSocket (hydration already done above)
+    if (!isRouteGateReady) {
+      if (isDevToolsEnabled()) {
+        console.log('⏳ Route gate not ready yet, deferring WebSocket connection (hydration already completed)');
+      }
+      pendingSubscriptionsRef.current = [
+        ...new Set([...pendingSubscriptionsRef.current, ...allRequestedSymbols])
+      ];
+      return;
+    }
+
+    // Establish WebSocket connection if needed
     if (needsConnection && !channelRef.current && newSymbolsAdded) {
-      console.log('🚀 Triggering connection establishment for new symbols...');
+      console.log('🚀 Triggering WebSocket connection for new symbols...');
       connectToRealtimeChannel();
     } else if (subscriptionsRef.current.size > 0 && !channelRef.current) {
-      console.log('🚀 Establishing connection for existing symbols...');
+      console.log('🚀 Establishing WebSocket connection for existing symbols...');
       connectToRealtimeChannel();
     }
 
     // Register activity for cost tracking
     registerInteraction();
-  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed, isRouteGateReady]);
+  }, [connectToRealtimeChannel, registerInteraction, fetchPricesFromDatabase, isPriceSubscriptionAllowed, isRouteGateReady, internalPrices]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     if (!symbols?.length) return;

@@ -12,7 +12,7 @@ interface PriceStalenessStatus {
   dataFreshness: 'live' | 'throttled' | 'stale';
 }
 
-export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 2) {
+export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number = 6) {
   const { 
     getConnectionHealth, 
     lastUpdated, 
@@ -52,9 +52,9 @@ export function usePriceStalenessMonitor(symbol?: string, maxAgeSeconds: number 
         // Determine data freshness considering both layers
         let dataFreshness: 'live' | 'throttled' | 'stale' = 'stale';
         if (internalPrice && ageInSeconds !== null) {
-          if (ageInSeconds <= 2) {
+          if (ageInSeconds <= maxAgeSeconds) {
             dataFreshness = uiThrottled ? 'throttled' : 'live';
-          } else if (ageInSeconds <= 10) {
+          } else if (ageInSeconds <= maxAgeSeconds * 2) {
             dataFreshness = 'throttled';
           }
         }

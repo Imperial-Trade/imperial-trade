@@ -15,7 +15,7 @@ export const FrontendThrottlingIndicator: React.FC<FrontendThrottlingIndicatorPr
   showDetails = false,
   size = 'default'
 }) => {
-  const stalenessStatus = usePriceStalenessMonitor(symbol);
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 6);
   
   const getIndicatorConfig = () => {
     switch (stalenessStatus.dataFreshness) {

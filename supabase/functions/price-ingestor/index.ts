@@ -148,9 +148,18 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
     const { symbol, price } = priceData;
     const normalizedSymbol = symbol.toUpperCase();
     const lastPrice = lastBroadcastedPrices[normalizedSymbol];
-    const timeSinceLastBroadcast = now - (lastBroadcastTime[normalizedSymbol] || 0);
+
+    // Always broadcast the first price for a symbol (check FIRST)
+    if (!lastPrice) {
+      significantUpdates.push(priceData);
+      lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
+      console.log(`🆕 First price for ${symbol}: ${price}`);
+      continue;
+    }
     
     // 💓 HEARTBEAT CHECK: Force broadcast if no update in last 4 seconds
+    const timeSinceLastBroadcast = now - (lastBroadcastTime[normalizedSymbol] || now);
     const isHeartbeat = timeSinceLastBroadcast >= HEARTBEAT_INTERVAL;
     
     if (isHeartbeat) {
@@ -158,15 +167,6 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
       lastBroadcastedPrices[normalizedSymbol] = price;
       lastBroadcastTime[normalizedSymbol] = now;
       console.log(`💓 Heartbeat broadcast for ${symbol} (${timeSinceLastBroadcast}ms since last) - Price: ${price}`);
-      continue;
-    }
-
-    // Always broadcast the first price for a symbol
-    if (!lastPrice) {
-      significantUpdates.push(priceData);
-      lastBroadcastedPrices[normalizedSymbol] = price;
-      lastBroadcastTime[normalizedSymbol] = now;
-      console.log(`🆕 First price for ${symbol}: ${price}`);
       continue;
     }
 

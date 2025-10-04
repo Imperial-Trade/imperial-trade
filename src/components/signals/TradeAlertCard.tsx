@@ -157,6 +157,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
       
+      const originalNotes = alert.notes || '';
+      const newNotes = notesDraft.trim();
+      
+      // Detect meaningful changes (minimum 10 characters difference or substantial content change)
+      const lengthDiff = Math.abs(newNotes.length - originalNotes.length);
+      const isMeaningfulChange = lengthDiff >= 10 || (newNotes.length > 20 && newNotes !== originalNotes);
+      
       // Optimistic update - immediately show new notes locally
       setLocalNotes(notesDraft);
       setIsEditingNotes(false);
@@ -173,10 +180,60 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       console.log(`✅ Notes saved successfully for alert ${alert.id}`);
       setNotesSyncStatus('saved');
       
+      // Trigger notifications for meaningful notes updates
+      if (isMeaningfulChange && alert.status === 'active' && creator?.id) {
+        console.log(`🔔 Triggering notifications for meaningful notes update on signal ${alert.id}`);
+        
+        try {
+          // Call notification dispatcher
+          const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
+            body: {
+              notifications: [{
+                signal_id: alert.id,
+                user_id: creator.id,
+                asset_name: alert.asset_name,
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                stop_loss: alert.stop_loss,
+                tp1: alert.tp1,
+                tp2: alert.tp2,
+                tp3: alert.tp3,
+                tp4: alert.tp4,
+                tp5: alert.tp5,
+                symbol: alert.tradermade_symbol,
+                tradermade_symbol: alert.tradermade_symbol,
+                created_at: alert.created_date,
+                updated_at: new Date().toISOString(),
+                notification_type: 'notes_updated',
+                alert_type: 'notes_updated',
+                status: alert.status,
+                notes: newNotes,
+                change_types: ['notes_updated'],
+                priority_level: 1,
+                author_id: creator.id,
+                author_name: creator.display_name || 'Unknown',
+                author_avatar_url: creator.avatar_url,
+                delivery_channels: ['push', 'in_app'],
+                include_creator: false
+              }]
+            }
+          });
+
+          if (notifyError) {
+            console.error('⚠️ Failed to send notes update notification:', notifyError);
+          } else {
+            console.log('✅ Notes update notification sent successfully');
+          }
+        } catch (notifyErr) {
+          console.error('⚠️ Notes notification dispatch error:', notifyErr);
+          // Don't fail the notes save if notification fails
+        }
+      }
+      
       // Clear success status after 2 seconds
       setTimeout(() => setNotesSyncStatus('idle'), 2000);
       
-      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+      toast({ title: 'Notes updated', description: isMeaningfulChange ? 'Users have been notified of the new notes.' : 'Everyone can now see the new notes.' });
     } catch (e: any) {
       console.error(`❌ Failed to save notes for alert ${alert.id}:`, e);
       // Revert optimistic update on error

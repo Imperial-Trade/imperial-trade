@@ -117,13 +117,13 @@ async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries
   }
 }
 
-// 🔒 COOPERATIVE LOCK: Acquire broadcast lock with reduced duration
-async function acquireBroadcastLock(supabaseClient: any): Promise<string | null> {
+// 🎯 PHASE 3: COOPERATIVE LOCK with configurable duration (1s for real-time, 6s for standard)
+async function acquireBroadcastLock(supabaseClient: any, durationSeconds: number = BROADCAST_LOCK_DURATION): Promise<string | null> {
   try {
     const holderId = `price-ingestor-${Date.now()}-${Math.random().toString(36).substring(2)}`;
     const { data, error } = await supabaseClient.rpc('acquire_broadcast_lock', {
       p_holder_id: holderId,
-      p_duration_seconds: BROADCAST_LOCK_DURATION
+      p_duration_seconds: durationSeconds
     });
     
     if (error) {
@@ -132,7 +132,7 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
     }
     
     if (data) {
-      console.log(`🔒 Acquired broadcast lock: ${holderId} (${BROADCAST_LOCK_DURATION}s)`);
+      console.log(`🔒 Acquired broadcast lock: ${holderId} (${durationSeconds}s)`);
       return holderId;
     }
     return null;
@@ -672,36 +672,29 @@ serve(async (req) => {
       });
     }
     
-    // STEP 3C: Try to acquire broadcast lock (skip for real-time mode)
-    let lockId = null;
+    // 🎯 PHASE 3: COOPERATIVE LOCK - Always acquire, use 1s duration for real-time mode
+    const lockDuration = broadcastAllPrices ? 1 : BROADCAST_LOCK_DURATION; // Fast rotation for real-time
+    const lockId = await acquireBroadcastLock(supabaseClient, lockDuration);
     
-    if (broadcastAllPrices) {
-      // 🚀 REAL-TIME MODE: Bypass lock for immediate delivery to active users
-      console.log('🚀 REAL-TIME MODE: Bypassing broadcast lock for immediate delivery');
-      lockId = 'real-time-bypass'; // Set fake lock ID to proceed
-    } else {
-      // Standard lock acquisition for background/heartbeat updates
-      lockId = await acquireBroadcastLock(supabaseClient);
-      if (!lockId && !isHeartbeatBroadcast) {
-        console.log('🔒 No broadcast lock acquired - another instance broadcasting');
-        console.log('📡 UI broadcast skipped: no_broadcast_lock (non-heartbeat)');
-        return new Response(JSON.stringify({
-          success: true,
-          processed: prices.length,
-          upserted: successfulUpserts,
-          alerts_triggered: totalTriggeredAlerts,
-          notifications_sent: notificationTriggers.length,
-          ui_broadcasts: 0,
-          broadcast_status: 'no_lock'
-        }), {
-          status: 200,
-          headers: corsHeaders
-        });
-      }
-      
-      if (isHeartbeatBroadcast && !lockId) {
-        console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
-      }
+    if (!lockId && !isHeartbeatBroadcast) {
+      console.log('🔒 No broadcast lock acquired - another instance broadcasting');
+      console.log('📡 UI broadcast skipped: cooperative locking active');
+      return new Response(JSON.stringify({
+        success: true,
+        processed: prices.length,
+        upserted: successfulUpserts,
+        alerts_triggered: totalTriggeredAlerts,
+        notifications_sent: notificationTriggers.length,
+        ui_broadcasts: 0,
+        broadcast_status: 'no_lock'
+      }), {
+        status: 200,
+        headers: corsHeaders
+      });
+    }
+    
+    if (isHeartbeatBroadcast && !lockId) {
+      console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
     }
     
     if (significantPrices.length === 0) {
@@ -772,10 +765,9 @@ serve(async (req) => {
       totalUIBroadcasts += broadcastCount;
       console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
       console.log(`📡 ✅ BROADCAST SUCCESS: Sent ${broadcastCount}/${significantPrices.length} prices to ${activeUserCount} users`);
-      console.log(`🔓 Lock status: ${lockId === 'real-time-bypass' ? 'BYPASSED (real-time)' : 'ACQUIRED'}`);
       
-      // Phase 2: Release broadcast lock (skip if bypassed for real-time)
-      if (lockId && lockId !== 'real-time-bypass') {
+      // 🎯 PHASE 3: Always release lock (no bypass mode)
+      if (lockId) {
         const releaseStartTime = Date.now();
         try {
           await supabaseClient
@@ -784,7 +776,7 @@ serve(async (req) => {
             .eq('id', 'singleton')
             .eq('holder_id', lockId);
           const releaseTime = Date.now() - releaseStartTime;
-          console.log(`✅ Broadcast lock released in ${releaseTime}ms`);
+          console.log(`✅ Broadcast lock released in ${releaseTime}ms (duration: ${lockDuration}s)`);
         } catch (releaseError) {
           console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
         }

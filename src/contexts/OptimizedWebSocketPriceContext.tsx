@@ -206,6 +206,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const privateFallbackChannelRef = useRef<RealtimeChannel | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   
+  // 🎯 PHASE 4: Realtime usage monitoring
+  const [realtimeStats, setRealtimeStats] = useState({
+    messagesReceived: 0,
+    hourlyAverage: 0,
+    lastResetTime: Date.now(),
+    peakHourlyRate: 0
+  });
+  
   // 🚀 FRONTEND THROTTLING: Dual-layer price state management
   // Internal prices: Always fresh, updated immediately from backend (for data integrity)
   const [internalPrices, setInternalPrices] = useState<Record<string, PriceData>>(() => {
@@ -367,6 +375,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       .on('broadcast', { event: 'price_update' }, (payload: any) => {
         // 🚨 PHASE 2: Enhanced connection diagnostics + robust payload parsing
         statsRef.current.messagesReceived++;
+        
+        // 🎯 PHASE 4: Track Realtime message usage
+        setRealtimeStats(prev => ({ 
+          ...prev, 
+          messagesReceived: prev.messagesReceived + 1 
+        }));
+        
         const msg = payload?.payload ?? payload;
         console.log('📈 Live broadcast received:', msg);
         
@@ -593,55 +608,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       }
     };
     
-    // Enable postgres_changes fallback for subscribed symbols
-    const activeSymbols = Array.from(subscriptionsRef.current.keys());
-    if (activeSymbols.length > 0) {
-      fallbackChannelRef.current = supabase
-        .channel('market_prices_fallback')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'market_prices',
-          filter: `symbol=in.(${activeSymbols.join(',')})`
-        }, (payload: any) => {
-          console.log('📡 Fallback: postgres_changes received', payload);
-          
-          if (payload.new && payload.new.symbol) {
-            const { symbol, bid, ask, mid, updated_at } = payload.new as any;
-            const price = mid || (bid && ask ? (bid + ask) / 2 : bid || ask);
-            
-            if (price && subscriptionsRef.current.has(symbol)) {
-              // 🚨 PHASE 2 FIX: Track database timestamp for race condition prevention
-              const dbTimestamp = new Date(updated_at).getTime();
-              
-              const priceData: PriceData = {
-                symbol,
-                price,
-                change: 0,
-                changePercent: 0,
-                timestamp: updated_at,
-                receivedAt: Date.now(),
-                bid,
-                ask,
-                mid
-              };
-              
-              setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
-              setPrices(prev => ({ ...prev, [symbol]: priceData }));
-              
-              // 🔧 FIX: Update arrivalTimestamp for accurate age calculation
-              arrivalTimestamps.current.set(symbol, Date.now());
-              console.log(`⏰ Updated arrivalTimestamp for ${symbol} (postgres_changes fallback)`);
-              
-              // Store database timestamp as milliseconds (already converted on line 611)
-              setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
-              setLastUpdated(new Date());
-              console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
-            }
-          }
-        })
-        .subscribe();
-    }
+    // 🎯 PHASE 1: Removed redundant market_prices_fallback subscription
+    // This was causing 3x message duplication - only live-prices-broadcast is needed
     
     // 🚨 EMERGENCY ONLY: Poll every 10 seconds (reduced frequency) and ONLY if broadcast is dead
     const pollDatabase = async () => {
@@ -655,12 +623,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const activeSymbols = Array.from(subscriptionsRef.current.keys());
       if (activeSymbols.length === 0) return;
       
-      // 🔥 EMERGENCY CIRCUIT BREAKER: Only poll if no broadcast data received for 45+ seconds
+      // 🎯 PHASE 2: EMERGENCY ONLY - Poll only if broadcast dead for 120+ seconds AND not connected
       const now = Date.now();
       const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
       
-      if (timeSinceLastUpdate < 45000) { // If we got data in last 45 seconds, don't poll
-        console.log('✅ Broadcast recently active, skipping emergency database poll');
+      if (connectionStatus === 'connected' || timeSinceLastUpdate < 120000) {
+        console.log('✅ Broadcast active or recently updated, skipping emergency database poll');
         return;
       }
       
@@ -1090,44 +1058,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     return () => clearInterval(syncInterval);
   }, []); // ✅ No dependencies - stable periodic sync
 
-  // Setup realtime fallback for postgres_changes subscription
-  const setupRealtimeFallback = useCallback(() => {
-    if (fallbackChannelRef.current) return;
-    
-    console.log('🔄 Setting up realtime fallback for market_prices changes');
-    
-    const fallbackChannel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'market_prices' 
-      }, (payload: any) => {
-        const row = payload.new;
-        if (row?.symbol && subscriptionsRef.current.has(row.symbol)) {
-          const priceData: PriceData = {
-            symbol: row.symbol,
-            price: parseFloat(row.mid || row.ask || row.bid),
-            change: 0,
-            changePercent: 0,
-            timestamp: row.timestamp,
-            receivedAt: Date.now(),
-            bid: row.bid ? parseFloat(row.bid) : undefined,
-            ask: row.ask ? parseFloat(row.ask) : undefined,
-            mid: row.mid ? parseFloat(row.mid) : undefined
-          };
-          
-          setInternalPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-          setPrices(prev => ({ ...prev, [row.symbol]: priceData }));
-          setLastUpdated(new Date());
-          
-          console.log(`📡 Fallback price update: ${row.symbol} = ${priceData.price}`);
-        }
-      })
-      .subscribe();
-      
-    fallbackChannelRef.current = fallbackChannel;
-  }, []);
+  // 🎯 PHASE 1: Removed setupRealtimeFallback - redundant subscription causing 3x duplication
 
   // 🚨 CRITICAL FIX: Add cleanup for reconnect timeout
   useEffect(() => {
@@ -1166,16 +1097,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     const symbolsArray = Array.from(subscriptionsRef.current.keys());
     if (symbolsArray.length === 0) return;
 
-    // 🎯 STRICT CONDITIONS: Only poll if ALL these are met
+    // 🎯 PHASE 2: STRICT CONDITIONS - Only poll if ALL these are met
     const now = Date.now();
     const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
-    // PHASE 3 FIX: Reduce emergency trigger from 60s to 6s for faster recovery
-    const isBroadcastStaleFor6Seconds = timeSinceLastUpdate > 6000;
+    // Emergency trigger only after 120 seconds (2 minutes) of no updates
+    const isBroadcastStale = timeSinceLastUpdate > 120000;
     const isConnectionBroken = connectionStatus === 'error' || connectionStatus === 'disconnected';
     
     // Only enable polling in extreme emergency when broadcast is completely dead
-    if (isConnectionBroken && isBroadcastStaleFor6Seconds && symbolsArray.length > 0) {
-      console.log('🚨 PHASE 4: Emergency database polling activated (broadcast stale > 6s)');
+    if (isConnectionBroken && isBroadcastStale && symbolsArray.length > 0) {
+      console.log('🚨 PHASE 2: Emergency database polling activated (broadcast stale > 2 minutes)');
       
       const pollInterval = setInterval(async () => {
         try {
@@ -1225,25 +1156,39 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         } catch (error) {
           console.error('Emergency polling failed:', error);
         }
-      }, 15000); // Poll every 15 seconds (not too aggressive)
+      }, 30000); // 🎯 PHASE 2: Poll every 30 seconds (reduced from 15s)
       
       return () => clearInterval(pollInterval);
     }
   }, [connectionStatus, lastUpdated]);
 
-  // Start fallback timer when connected but no messages received
+  // 🎯 PHASE 1: Removed fallback timer - no longer needed without setupRealtimeFallback
+  
+  // 🎯 PHASE 4: Realtime usage monitoring - reset stats hourly and warn on high usage
   useEffect(() => {
-    if (connectionStatus === 'connected' && statsRef.current.messagesReceived === 0) {
-      const timer = setTimeout(() => {
-        if (statsRef.current.messagesReceived === 0) {
-          console.log('🔄 No broadcast messages received, activating fallback');
-          setupRealtimeFallback();
+    const resetInterval = setInterval(() => {
+      setRealtimeStats(prev => {
+        const hourlyRate = prev.messagesReceived;
+        const newPeak = Math.max(hourlyRate, prev.peakHourlyRate);
+        
+        // Warn if usage exceeds 400 messages/hour
+        if (hourlyRate > 400) {
+          console.warn(`⚠️ High Realtime usage detected: ${hourlyRate} messages/hour (target: <400)`);
         }
-      }, 5000); // Reduced to 5 seconds
-      
-      return () => clearTimeout(timer);
-    }
-  }, [connectionStatus, setupRealtimeFallback]);
+        
+        console.log(`📊 Realtime Stats - Messages this hour: ${hourlyRate}, Peak: ${newPeak}, Avg: ${prev.hourlyAverage}`);
+        
+        return {
+          messagesReceived: 0,
+          hourlyAverage: hourlyRate,
+          lastResetTime: Date.now(),
+          peakHourlyRate: newPeak
+        };
+      });
+    }, 3600000); // Reset every hour
+    
+    return () => clearInterval(resetInterval);
+  }, []);
 
   // 🔧 FIX: Stable callback functions to prevent infinite re-render loops
   const getConnectionHealth = useCallback(() => ({ 

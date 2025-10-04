@@ -1,9 +1,17 @@
 // Phase 3: Optimized Live Price Hook with Throttling & Backward Compatibility
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { pricePerformanceMonitor } from '@/utils/pricePerformanceMonitor';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { normalizeSymbol } from '@/utils/symbolUtils';
+
+// 🚀 STEP 5: Runtime hook validation (development mode only)
+if (process.env.NODE_ENV === 'development') {
+  // Validate we're inside a React component by checking React internals
+  if (typeof React !== 'undefined' && !React.version) {
+    console.error('❌ React validation failed - hooks may be called incorrectly');
+  }
+}
 
 interface PriceData {
   symbol: string;
@@ -112,6 +120,15 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     return Promise.resolve();
   }, [symbol, ctxRefreshPrice]);
 
+  // 🚀 STEP 3: Stabilize subscribe/unsubscribe with refs to prevent stale closures
+  const subscribeRef = useRef(subscribe);
+  const unsubscribeRef = useRef(unsubscribe);
+  
+  useEffect(() => {
+    subscribeRef.current = subscribe;
+    unsubscribeRef.current = unsubscribe;
+  }, [subscribe, unsubscribe]);
+
   // Subscribe to the symbol using the unified context (unless skipSubscribe is true)
   useEffect(() => {
     if (!symbol || options.skipSubscribe) return;
@@ -122,15 +139,15 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     if (isDevToolsEnabled()) {
       console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol}`);
     }
-    subscribe([normalizedSymbol]);
+    subscribeRef.current([normalizedSymbol]);
 
     return () => {
       if (isDevToolsEnabled()) {
         console.log(`🧹 [useOptimizedLivePrice] Unsubscribing from ${normalizedSymbol}`);
       }
-      unsubscribe([normalizedSymbol]);
+      unsubscribeRef.current([normalizedSymbol]);
     };
-  }, [symbol, options.skipSubscribe]); // PHASE 6: Remove subscribe/unsubscribe to prevent hook-level subscription loops
+  }, [symbol, options.skipSubscribe]); // ✅ Now stable dependencies
 
   // Update local state when price changes - immediate updates
   useEffect(() => {

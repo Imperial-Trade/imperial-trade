@@ -5,7 +5,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface PriceFeedData {
   prices: Record<string, number>;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling';
   priceSource: string;
 }
 

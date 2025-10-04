@@ -85,7 +85,7 @@ const HEALTH_CONFIG = {
 
 interface OptimizedWebSocketContextType {
   prices: Record<string, PriceData>;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling';
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
   getPrice: (symbol: string) => PriceData | null;
@@ -291,7 +291,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     lastSuccessAt: null,
   });
 
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'polling'>('disconnected');
   
   // Core refs for connection management - PHASE 1: Ref-counting Map
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -354,24 +354,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // CORE WEBSOCKET CONNECTION: Establish realtime channel with price broadcasts
   const connectToRealtimeChannel = useCallback(() => {
-    if (channelRef.current || isConnectingRef.current) {
-      console.log('🚫 Connection already exists or in progress');
-      return;
-    }
-
-    const activeSymbols = Array.from(subscriptionsRef.current.keys());
-    console.log(`🔗 Establishing realtime connection for symbols: ${activeSymbols.join(', ')}`);
-    isConnectingRef.current = true;
-    setConnectionStatus('connecting');
-
-  const connectToRealtimeChannel = useCallback(() => {
     // ⚠️  PHASE 5: NO REALTIME CONNECTION - Database polling only
     console.log('ℹ️  [Connection] Using database polling for prices (no realtime)');
     channelRef.current = null;
     
     // Set status to 'polling' to reflect actual architecture
-    setConnectionStatus('polling' as any);
-  }, []);
+    setConnectionStatus('polling');
   }, []);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling

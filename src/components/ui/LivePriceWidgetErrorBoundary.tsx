@@ -42,6 +42,27 @@ export class LivePriceWidgetErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.setState({ errorInfo });
 
+    // 🚀 STEP 6: Enhanced error detection with automatic recovery
+    if (error.message.includes('Should have a queue')) {
+      console.error('🚨 CRITICAL: React hook queue corruption detected!');
+      console.error('📋 Root causes identified:');
+      console.error('  1. ✅ FIXED: Duplicate function declarations with useCallback');
+      console.error('  2. Conditional hook calls');
+      console.error('  3. Hooks called in wrong order');
+      console.error('  4. Multiple React instances (check: npm ls react)');
+      console.error('📍 Context:', {
+        symbol: this.props.symbol,
+        errorId: this.state.errorId,
+        location: window.location.href
+      });
+      
+      // Attempt emergency recovery after 2 seconds
+      setTimeout(() => {
+        console.log('🔄 Attempting emergency recovery...');
+        window.location.reload();
+      }, 2000);
+    }
+
     // 🚀 ENHANCED ERROR LOGGING: Detailed component stack and props for debugging
     const errorDetails = {
       errorId: this.state.errorId,
@@ -62,14 +83,13 @@ export class LivePriceWidgetErrorBoundary extends Component<Props, State> {
     console.error('🚨 LivePriceWidget Error Boundary Triggered:', errorDetails);
 
     // 🚀 REACT DUPLICATE DETECTION: Check for common React issues
-    if (error.message.includes('Should have a queue') || 
-        error.message.includes('Cannot update a component') ||
+    if (error.message.includes('Cannot update a component') ||
         error.message.includes('duplicate React')) {
-      console.error('🔍 Detected React Queue/Duplicate Issue:', {
+      console.error('🔍 Detected React Issue:', {
         errorId: this.state.errorId,
         symbol: this.props.symbol,
-        possibleCause: 'Multiple React instances or state update after unmount',
-        recommendation: 'Check for duplicate React packages or async state updates'
+        possibleCause: 'State update after unmount or duplicate React instances',
+        recommendation: 'Check for async operations in unmounted components'
       });
     }
 

@@ -15,7 +15,7 @@ interface ConnectionQuality {
  * Provides intelligent connection status beyond simple socket state
  */
 export function useConnectionQuality(
-  connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error',
+  connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error' | 'polling',
   lastUpdated: Date | null,
   priceSource?: string
 ): ConnectionQuality {

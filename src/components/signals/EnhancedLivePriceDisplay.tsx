@@ -73,14 +73,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
     const updateAge = () => {
-      // Use arrivalAgeSeconds from hook for accurate age based on actual message timestamp
-      const ageSeconds = arrivalAgeSeconds ?? 0;
-      
-      if (ageSeconds === 0 && !lastUpdated) {
-        setDataAge('--');
+      // Handle undefined, Infinity, or NaN gracefully - these indicate no data received yet
+      if (arrivalAgeSeconds === undefined || !isFinite(arrivalAgeSeconds) || isNaN(arrivalAgeSeconds)) {
+        setDataAge('Connecting...');
         return;
       }
       
+      const ageSeconds = arrivalAgeSeconds;
+      
+      // If we have a valid age and it's fresh, show Live status
       if (ageSeconds < 8) {
         setDataAge('Live'); // Show "Live" for data within 8 seconds (4s buffer for robust display)
       } else if (ageSeconds < 60) {

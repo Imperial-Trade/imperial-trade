@@ -258,19 +258,26 @@ serve(async (req) => {
     await initializeSupabase();
     
     // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
-    const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
-      p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
-    });
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: activeSessions, error: activityError, count } = await supabaseClient
+      .from('ui_price_listeners')
+      .select('session_id', { count: 'exact' })
+      .gte('last_seen_at', fiveMinutesAgo);
+    
+    const activeUserCount = count || 0;
+    const hasActiveUsers = activeUserCount > 0;
     
     if (activityError) {
       console.warn('⚠️ Activity check failed, proceeding with full processing:', activityError);
     }
     
+    console.log(`👥 Active UI sessions: ${activeUserCount}`);
+    
     // Parse request payload FIRST
     const requestBody = await req.json();
     const { prices } = requestBody;
     
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
+    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${activeUserCount} active users (notifications always processed)`);
 
     // Validate payload
     if (!prices || !Array.isArray(prices) || prices.length === 0) {

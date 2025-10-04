@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { 
   RefreshCw, 
   TrendingUp, 
@@ -67,6 +68,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
+  const [pulseKey, setPulseKey] = useState(0);
 
   // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
@@ -97,16 +99,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return () => clearInterval(interval);
   }, [arrivalAgeSeconds, lastUpdated]);
 
-  // Optimized price change animation effect
+  // 🚀 PHASE 4: Enhanced animation for ALL changes (micro-changes included)
   useEffect(() => {
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
-      // Only animate for significant changes to reduce visual noise
+      // 🚀 Show animation for ANY price change (even micro-changes)
       const changePercent = Math.abs((price - prevPrice) / prevPrice) * 100;
-      if (changePercent >= 0.02) { // Increased threshold to 0.02% for less noise
-        setPriceAnimation(price > prevPrice ? 'up' : 'down');
-        const timer = setTimeout(() => setPriceAnimation(null), 250); // Reduced to 250ms
-        return () => clearTimeout(timer);
-      }
+      setPriceAnimation(price > prevPrice ? 'up' : 'down');
+      setPulseKey(prev => prev + 1);
+      
+      const animationDuration = changePercent >= 0.1 ? 500 : 300; // Longer for big moves
+      const timer = setTimeout(() => setPriceAnimation(null), animationDuration);
+      return () => clearTimeout(timer);
     }
     if (price > 0 && price !== prevPrice) {
       setPrevPrice(price);
@@ -314,13 +317,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
       {/* Market Status Banner removed to eliminate blinking and market closed displays */}
 
-      {/* Main Price Display - Always visible */}
+      {/* 🚀 PHASE 4: Main Price Display with Pulse Animation */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {displayPrice > 0 ? (
-            <div className={`font-mono text-xl font-bold ${
-              'text-accent-green'
-            }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+            <div 
+              key={pulseKey}
+              className={cn(
+                'font-mono text-xl font-bold transition-all duration-300',
+                'text-accent-green',
+                priceAnimation === 'up' && 'animate-pulse text-green-400 scale-105',
+                priceAnimation === 'down' && 'animate-pulse text-red-400 scale-105'
+              )} 
+              style={{ willChange: 'transform', transform: 'translateZ(0)' }}
+            >
               ${formatPrice(displayPrice)}
             </div>
           ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
@@ -349,12 +359,23 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         )}
       </div>
 
-      {/* Enhanced Footer with Trading Safety and Real-time Data Age */}
+      {/* 🚀 PHASE 4: Enhanced Footer with Data Source Indicators */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Data Age */}
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <Clock className="w-3 h-3" />
             <span>{dataAge}</span>
+          </div>
+          
+          {/* 🚀 Data Source Indicator */}
+          <div className={cn(
+            'flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded',
+            connectionStatusInfo.color,
+            connectionStatusInfo.color.replace('text-', 'bg-').replace('-400', '-400/10')
+          )}>
+            <connectionStatusInfo.icon className="w-3 h-3" />
+            <span>{connectionStatusInfo.text}</span>
           </div>
         </div>
         

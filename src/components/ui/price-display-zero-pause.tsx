@@ -24,6 +24,8 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [displayPrice, setDisplayPrice] = useState<number | null>(null);
   const [stableQuality, setStableQuality] = useState(connectionQuality);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [priceChangeDirection, setPriceChangeDirection] = useState<'up' | 'down' | null>(null);
 
   // ✅ FLICKER ELIMINATION: Stability-aware quality changes
   useEffect(() => {
@@ -32,13 +34,22 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
     }
   }, [connectionQuality, shouldAllowQualityChange, symbol, stableQuality]);
 
-  // Update last price when we receive a valid price (no flicker fallback)
+  // 🚀 PHASE 4: Update price with pulse animation + direction indicator
   useEffect(() => {
     if (price && price > 0) {
+      // Detect price change direction for micro-changes
+      if (displayPrice && price !== displayPrice) {
+        setPriceChangeDirection(price > displayPrice ? 'up' : 'down');
+        setPulseKey(prev => prev + 1);
+        
+        // Clear direction after animation
+        setTimeout(() => setPriceChangeDirection(null), 500);
+      }
+      
       setLastPrice(price);
       setDisplayPrice(price);
     }
-  }, [price]);
+  }, [price, displayPrice]);
 
   // Initialize display price from last known price if current price is invalid
   useEffect(() => {
@@ -57,6 +68,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
     return value.toFixed(precision);
   };
 
+  // 🚀 PHASE 4: Enhanced status indicators with data source labels
   const getStatusIndicator = () => {
     switch (stableQuality) {
       case 'live':
@@ -64,28 +76,36 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
           icon: Wifi,
           className: 'text-green-500',
           bgClassName: 'bg-green-500',
-          title: 'Live updates active'
+          title: '🟢 Live (2s polling)',
+          label: 'Live',
+          pulse: true
         };
       case 'hydrated':
         return {
           icon: Wifi,
           className: 'text-yellow-500',
           bgClassName: 'bg-yellow-500',
-          title: 'Loading live updates...'
+          title: '🟡 Hydrated (loading...)',
+          label: 'Hydrated',
+          pulse: true
         };
       case 'stale':
         return {
           icon: WifiOff,
           className: 'text-red-500',
           bgClassName: 'bg-red-500',
-          title: 'Connection issues'
+          title: '🔴 Stale (>10s)',
+          label: 'Stale',
+          pulse: false
         };
       default:
         return {
           icon: WifiOff,
           className: 'text-muted-foreground',
           bgClassName: 'bg-muted',
-          title: 'No data'
+          title: 'No data',
+          label: 'Offline',
+          pulse: false
         };
     }
   };
@@ -94,24 +114,36 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
 
   return (
     <div className={cn('flex flex-col space-y-1', className)}>
-      {/* Main Price */}
+      {/* Main Price with Pulse Animation */}
       <div className="flex items-center gap-2">
-        <span className={cn(
-          'text-2xl font-bold',
-          displayPrice ? 'text-accent-green' : 'text-muted-foreground'
-        )}
-        style={{ willChange: 'transform' }}>
+        <span 
+          key={pulseKey}
+          className={cn(
+            'text-2xl font-bold transition-all duration-300',
+            displayPrice ? 'text-accent-green' : 'text-muted-foreground',
+            priceChangeDirection === 'up' && 'animate-pulse text-green-400',
+            priceChangeDirection === 'down' && 'animate-pulse text-red-400'
+          )}
+          style={{ willChange: 'transform' }}
+        >
           {formatPrice(displayPrice)}
         </span>
         
-        {/* Enhanced Status Indicator */}
-        <div className="flex items-center gap-1">
-          <indicator.icon className={cn('w-3 h-3', indicator.className)} />
+        {/* 🚀 PHASE 4: Enhanced Status Indicator with Labels */}
+        <div className="flex items-center gap-1.5">
+          <indicator.icon className={cn('w-3.5 h-3.5', indicator.className, indicator.pulse ? 'animate-pulse' : '')} />
           <div 
-            className={cn('w-2 h-2 rounded-full', indicator.bgClassName.replace('animate-pulse', ''))}
+            className={cn(
+              'w-2 h-2 rounded-full transition-all duration-300',
+              indicator.bgClassName,
+              indicator.pulse ? 'animate-pulse' : ''
+            )}
             title={indicator.title}
             style={{ willChange: 'transform' }}
           />
+          <span className={cn('text-[10px] font-medium uppercase tracking-wide', indicator.className)}>
+            {indicator.label}
+          </span>
         </div>
       </div>
 

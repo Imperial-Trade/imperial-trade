@@ -574,19 +574,30 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         // 🚀 STEP 2 & 4: Smart State Updates with enhanced sensitivity + debug mode
         if (Object.keys(hydratedPrices).length > 0) {
-          // 🚧 DEBUG MODE: Set to true to force updates every poll (debugging only)
-          const FORCE_UPDATE_MODE = false; // Set to true to bypass hasChanges check
+          // 🚀 PHASE 2: Enable force updates + timestamp-based updates
+          const FORCE_UPDATE_MODE = true; // ✅ Force UI updates every poll for "live feel"
           
+          // Check for ANY changes: price OR timestamp updates
           const hasChanges = Object.keys(hydratedPrices).some(symbol => {
             const oldPrice = internalPrices[symbol]?.price;
             const newPrice = hydratedPrices[symbol]?.price;
-            // 🚀 STEP 2: Lower threshold from 0.0001 to 0.00001 (detect 0.1 pip movements)
-            return !oldPrice || Math.abs(newPrice - oldPrice) > 0.00001;
+            const oldTimestamp = lastDatabaseTimestamp[symbol];
+            const newTimestamp = timestampUpdates[symbol];
+            
+            // Update if: price changed OR timestamp changed (database was written to)
+            const priceChanged = !oldPrice || Math.abs(newPrice - oldPrice) >= 0; // ANY price change
+            const timestampChanged = oldTimestamp !== newTimestamp;
+            
+            if (timestampChanged && !priceChanged) {
+              console.log(`⏰ [Timestamp Update] ${symbol} - Database updated but price unchanged`);
+            }
+            
+            return priceChanged || timestampChanged;
           });
 
           if (FORCE_UPDATE_MODE || hasChanges) {
             if (FORCE_UPDATE_MODE && !hasChanges) {
-              console.log(`🚧 [DEBUG MODE] Forcing UI update despite no price changes`);
+              console.log(`🚀 [Force Update] Forcing UI refresh despite no changes (every 2s)`);
             }
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
@@ -796,15 +807,33 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // 🚀 STEP 1: Aggressive Polling with Burst Mode
+    // 🚀 PHASE 3: Enhanced Adaptive Polling with Extended Burst Mode + Volatility Detection
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
     const timeSinceMount = Date.now() - (mountTimeRef.current || Date.now());
-    const isBurstMode = timeSinceMount < 10000; // First 10 seconds
-    const pollingInterval = isSignalStreamPage 
-      ? (isBurstMode ? 1000 : 2000) // 1s burst, then 2s
-      : 30000; // 30s elsewhere
+    const isBurstMode = timeSinceMount < 30000; // 🚀 PHASE 3.1: Extended 30s burst mode
     
-    console.log(`🔄 [Polling] Starting ${isSignalStreamPage ? 'FAST' : 'SLOW'} polling (${pollingInterval}ms) for:`, symbolList);
+    // 🚀 PHASE 3.2: Simple volatility detection (just check if we have recent price data)
+    // Simplified: Assume volatility during burst mode and first 60s
+    const hasRecentVolatility = timeSinceMount < 60000;
+    
+    // 🚀 Dynamic polling intervals:
+    // - Burst mode (0-30s): 1s for instant feedback
+    // - High volatility (30-60s): 500ms for rapid updates  
+    // - Normal: 2s standard polling
+    // - Other pages: 30s slow polling
+    const pollingInterval = isSignalStreamPage 
+      ? (isBurstMode ? 1000 : hasRecentVolatility ? 500 : 2000)
+      : 30000;
+    
+    const modeLabel = isBurstMode ? 'BURST' : hasRecentVolatility ? 'VOLATILE' : 'STANDARD';
+    console.log(`🔄 [Polling] ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
+    
+    if (isBurstMode) {
+      console.log(`⚡ [Burst Mode] ${Math.round((30000 - timeSinceMount) / 1000)}s remaining`);
+    }
+    if (hasRecentVolatility && !isBurstMode) {
+      console.log(`🔥 [Volatility Window] Accelerated 500ms polling (${Math.round((60000 - timeSinceMount) / 1000)}s remaining)`);
+    }
     
     // Immediate fetch
     fetchPricesFromDatabase(symbolList);

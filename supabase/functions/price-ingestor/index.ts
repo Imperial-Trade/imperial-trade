@@ -672,27 +672,36 @@ serve(async (req) => {
       });
     }
     
-    // STEP 3C: Try to acquire broadcast lock
-    const lockId = await acquireBroadcastLock(supabaseClient);
-    if (!lockId && !isHeartbeatBroadcast) {
-      console.log('🔒 No broadcast lock acquired - another instance broadcasting');
-      console.log('📡 UI broadcast skipped: no_broadcast_lock (non-heartbeat)');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_lock'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
-    }
+    // STEP 3C: Try to acquire broadcast lock (skip for real-time mode)
+    let lockId = null;
     
-    if (isHeartbeatBroadcast && !lockId) {
-      console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
+    if (broadcastAllPrices) {
+      // 🚀 REAL-TIME MODE: Bypass lock for immediate delivery to active users
+      console.log('🚀 REAL-TIME MODE: Bypassing broadcast lock for immediate delivery');
+      lockId = 'real-time-bypass'; // Set fake lock ID to proceed
+    } else {
+      // Standard lock acquisition for background/heartbeat updates
+      lockId = await acquireBroadcastLock(supabaseClient);
+      if (!lockId && !isHeartbeatBroadcast) {
+        console.log('🔒 No broadcast lock acquired - another instance broadcasting');
+        console.log('📡 UI broadcast skipped: no_broadcast_lock (non-heartbeat)');
+        return new Response(JSON.stringify({
+          success: true,
+          processed: prices.length,
+          upserted: successfulUpserts,
+          alerts_triggered: totalTriggeredAlerts,
+          notifications_sent: notificationTriggers.length,
+          ui_broadcasts: 0,
+          broadcast_status: 'no_lock'
+        }), {
+          status: 200,
+          headers: corsHeaders
+        });
+      }
+      
+      if (isHeartbeatBroadcast && !lockId) {
+        console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
+      }
     }
     
     if (significantPrices.length === 0) {
@@ -762,19 +771,23 @@ serve(async (req) => {
       
       totalUIBroadcasts += broadcastCount;
       console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
+      console.log(`📡 ✅ BROADCAST SUCCESS: Sent ${broadcastCount}/${significantPrices.length} prices to ${activeUserCount} users`);
+      console.log(`🔓 Lock status: ${lockId === 'real-time-bypass' ? 'BYPASSED (real-time)' : 'ACQUIRED'}`);
       
-      // Phase 2: Release broadcast lock immediately after successful broadcast
-      const releaseStartTime = Date.now();
-      try {
-        await supabaseClient
-          .from('price_broadcast_lock')
-          .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
-          .eq('id', 'singleton')
-          .eq('holder_id', lockId);
-        const releaseTime = Date.now() - releaseStartTime;
-        console.log(`✅ Broadcast lock released in ${releaseTime}ms`);
-      } catch (releaseError) {
-        console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
+      // Phase 2: Release broadcast lock (skip if bypassed for real-time)
+      if (lockId && lockId !== 'real-time-bypass') {
+        const releaseStartTime = Date.now();
+        try {
+          await supabaseClient
+            .from('price_broadcast_lock')
+            .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+            .eq('id', 'singleton')
+            .eq('holder_id', lockId);
+          const releaseTime = Date.now() - releaseStartTime;
+          console.log(`✅ Broadcast lock released in ${releaseTime}ms`);
+        } catch (releaseError) {
+          console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
+        }
       }
       
     } catch (channelError) {

@@ -432,6 +432,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         setPrices(prev => ({ ...prev, [symbol]: priceData }));
         setLastUpdated(new Date());
         arrivalTimestamps.current.set(symbol, Date.now());
+        
+        // Update timestamp state after accepting message
+        setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: messageTimestamp }));
         realtimeReceivedSymbols.current.add(symbol);
         
         console.log(`💰 Live price: ${symbol} = ${priceData.price} (${priceData.changePercent?.toFixed(2)}%)`);
@@ -613,6 +616,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
               arrivalTimestamps.current.set(symbol, Date.now());
               console.log(`⏰ Updated arrivalTimestamp for ${symbol} (postgres_changes fallback)`);
               
+              // Store database timestamp as milliseconds (already converted on line 611)
               setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
               setLastUpdated(new Date());
               console.log(`📊 postgres_changes hydration for ${symbol}: ${new Date(dbTimestamp).toISOString()}`);
@@ -678,6 +682,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             });
             console.log(`⏰ Updated arrivalTimestamps for ${Object.keys(polledPrices).length} symbols (db_poll fallback)`);
             
+            // timestampUpdates already contains milliseconds (line 683)
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
             setLastUpdated(new Date());
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');

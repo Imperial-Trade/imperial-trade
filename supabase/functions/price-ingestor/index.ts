@@ -658,14 +658,26 @@ serve(async (req) => {
       const channelCreationTime = Date.now() - channelStartTime;
       console.log(`⏱️ Channel created in ${channelCreationTime}ms`);
 
-      // 🚨 CRITICAL: Verify channel is actually subscribed before broadcasting
-      if (!priceChannel || priceChannel.state !== 'subscribed') {
-        console.error('❌ Channel creation succeeded but channel not subscribed:', {
-          state: priceChannel?.state,
-          creationTime: channelCreationTime
-        });
-        throw new Error('Channel not in subscribed state');
+      // 🚨 CRITICAL: Verify channel is functional before broadcasting
+      if (!priceChannel) {
+        throw new Error('Channel creation returned null');
       }
+
+      // Log actual state for debugging (Supabase API may use 'joined' instead of 'subscribed')
+      console.log(`📡 Channel state after creation: "${priceChannel.state || 'undefined'}"`);
+
+      // Only reject channels in explicitly failed states
+      const failedStates = ['closed', 'errored', 'error'];
+      if (failedStates.includes(priceChannel.state)) {
+        console.error('❌ Channel in failed state:', { 
+          state: priceChannel.state, 
+          creationTime: channelCreationTime 
+        });
+        throw new Error(`Channel in invalid state: ${priceChannel.state}`);
+      }
+
+      // Channel is functional (state may be 'subscribed', 'joined', or undefined)
+      console.log(`✅ Channel validation passed - ready for broadcast (state: ${priceChannel.state || 'unknown'})`)
       
       let broadcastCount = 0;
       for (const priceData of significantPrices) {

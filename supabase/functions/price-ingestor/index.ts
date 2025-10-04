@@ -33,8 +33,8 @@ let totalUIBroadcasts = 0;
 let totalClampActivations = 0;
 
 // 🔒 SIMPLIFIED LOCK CONFIGURATION  
-const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000;
-const BROADCAST_LOCK_DURATION = 8; // Phase 1: Increased from 5 to 8 seconds to prevent lock contention
+const CHANNEL_SUBSCRIPTION_TIMEOUT = 5000; // 5s timeout (fast fail, faster retries)
+const BROADCAST_LOCK_DURATION = 6; // Reduced from 8s to 6s for faster lock release cycles
 
 // Initialize Supabase client only
 async function initializeSupabase() {
@@ -54,7 +54,7 @@ async function initializeSupabase() {
 }
 
 // 🚀 PHASE 1: Create channel first with retries, then acquire lock
-async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 2): Promise<any> {
+async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 3): Promise<any> {
   console.log('📡 Creating broadcast channel with retries...');
   
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
@@ -85,9 +85,22 @@ async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries
       } catch (error: any) {
         console.warn(`⚠️ Channel subscription failed on attempt ${attempt}: ${error?.message || error}`);
         
+        // 🧹 CRITICAL: Clean up failed channel to prevent memory leaks
+        try {
+          if (priceChannel) {
+            await priceChannel.unsubscribe();
+            console.log('🧹 Cleaned up failed channel instance');
+          }
+        } catch (cleanupError) {
+          console.warn('⚠️ Channel cleanup warning (non-critical):', cleanupError);
+        }
+        
         if (attempt <= maxRetries) {
-          const delay = 500 * attempt; // 500ms, 1000ms backoff
-          console.log(`⏱️ Retrying in ${delay}ms...`);
+          const baseDelay = 300; // Faster base: 300ms instead of 500ms
+          const exponentialDelay = baseDelay * Math.pow(1.5, attempt - 1); // 300ms, 450ms, 675ms
+          const jitter = Math.random() * 100; // 0-100ms jitter to prevent thundering herd
+          const delay = Math.min(exponentialDelay + jitter, 1500); // Cap at 1.5 seconds
+          console.log(`⏱️ Retrying in ${delay.toFixed(0)}ms... (attempt ${attempt}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
           console.error(`❌ All ${maxRetries + 1} channel subscription attempts failed`);
@@ -640,7 +653,19 @@ serve(async (req) => {
 
     // Create broadcast channel and send updates
     try {
-      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 2);
+      const channelStartTime = Date.now();
+      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 3);
+      const channelCreationTime = Date.now() - channelStartTime;
+      console.log(`⏱️ Channel created in ${channelCreationTime}ms`);
+
+      // 🚨 CRITICAL: Verify channel is actually subscribed before broadcasting
+      if (!priceChannel || priceChannel.state !== 'subscribed') {
+        console.error('❌ Channel creation succeeded but channel not subscribed:', {
+          state: priceChannel?.state,
+          creationTime: channelCreationTime
+        });
+        throw new Error('Channel not in subscribed state');
+      }
       
       let broadcastCount = 0;
       for (const priceData of significantPrices) {
@@ -666,14 +691,16 @@ serve(async (req) => {
       totalUIBroadcasts += broadcastCount;
       console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
       
-      // Phase 2: Release broadcast lock early after successful broadcast
+      // Phase 2: Release broadcast lock immediately after successful broadcast
+      const releaseStartTime = Date.now();
       try {
         await supabaseClient
           .from('price_broadcast_lock')
           .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
           .eq('id', 'singleton')
           .eq('holder_id', lockId);
-        console.log('✅ Broadcast lock released early');
+        const releaseTime = Date.now() - releaseStartTime;
+        console.log(`✅ Broadcast lock released in ${releaseTime}ms`);
       } catch (releaseError) {
         console.warn('⚠️ Lock early release failed (non-critical):', releaseError);
       }

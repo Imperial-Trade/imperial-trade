@@ -25,6 +25,10 @@ const PER_SYMBOL_CLAMP = 10;
 // In-memory cache for last broadcasted prices (UI filtering only)
 const lastBroadcastedPrices: Record<string, number> = {};
 
+// 💓 HEARTBEAT SYSTEM: Guarantee continuous "Live" display
+const HEARTBEAT_INTERVAL = 4000; // 4 seconds maximum silence between broadcasts
+const lastBroadcastTime: Record<string, number> = {};
+
 // Telemetry tracking
 let totalPricesProcessed = 0;
 let totalAlertsTriggered = 0;
@@ -135,19 +139,33 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
   }
 }
 
-// Phase 1: Price significance filtering function (UI only)
+// Phase 1: Price significance filtering function with HEARTBEAT GUARANTEE
 function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: number, timestamp: string}>) {
   const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
+  const now = Date.now();
 
   for (const priceData of incomingPrices) {
     const { symbol, price } = priceData;
     const normalizedSymbol = symbol.toUpperCase();
     const lastPrice = lastBroadcastedPrices[normalizedSymbol];
+    const timeSinceLastBroadcast = now - (lastBroadcastTime[normalizedSymbol] || 0);
+    
+    // 💓 HEARTBEAT CHECK: Force broadcast if no update in last 4 seconds
+    const isHeartbeat = timeSinceLastBroadcast >= HEARTBEAT_INTERVAL;
+    
+    if (isHeartbeat) {
+      significantUpdates.push(priceData);
+      lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
+      console.log(`💓 Heartbeat broadcast for ${symbol} (${timeSinceLastBroadcast}ms since last) - Price: ${price}`);
+      continue;
+    }
 
     // Always broadcast the first price for a symbol
     if (!lastPrice) {
       significantUpdates.push(priceData);
       lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
       console.log(`🆕 First price for ${symbol}: ${price}`);
       continue;
     }
@@ -163,6 +181,7 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
     if (changeValue >= threshold) {
       significantUpdates.push(priceData);
       lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
       console.log(`📈 Significant change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
     } else {
       console.log(`⏭️ Skipping minor change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
@@ -622,8 +641,8 @@ serve(async (req) => {
       });
     }
 
-    // STEP 4: Filter significant prices for UI broadcast
-    console.log('🎯 STEP 4: Filtering significant prices for UI broadcast...');
+    // STEP 4: Filter significant prices for UI broadcast with HEARTBEAT GUARANTEE
+    console.log('🎯 STEP 4: Filtering significant prices with heartbeat guarantee...');
     
     const pricesForUI = prices
       .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))

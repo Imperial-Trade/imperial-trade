@@ -1,3 +1,4 @@
+// Force rebuild - Phase 3 & 4 complete: Passive viewing mode + aggressive cleanup
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';

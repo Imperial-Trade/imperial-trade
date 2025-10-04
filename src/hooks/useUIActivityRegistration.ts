@@ -89,12 +89,12 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       registerActivity(); // Call immediately on mount
     }
 
-    // Periodic registration every 10 minutes
+    // Periodic registration every 30 seconds (aligns with backend's 60s activity threshold)
     const intervalId = setInterval(() => {
       if (!isUnmountedRef.current && user?.id) {
         registerActivity();
       }
-    }, 10 * 60 * 1000);
+    }, 30 * 1000);
 
     return () => {
       isUnmountedRef.current = true;

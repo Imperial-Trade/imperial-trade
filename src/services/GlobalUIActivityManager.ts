@@ -106,6 +106,7 @@ class GlobalUIActivityManager {
     }
 
     this.userId = userId;
+    this.passiveViewingMode = isPassiveViewing;
     this.subscribers.set(componentId, symbols);
 
     console.log(`📡 GlobalUIActivityManager: Subscribed "${componentId}" with ${symbols.length} symbols`);

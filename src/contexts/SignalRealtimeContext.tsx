@@ -122,6 +122,8 @@ interface SignalRealtimeContextType {
   isInPollingMode: boolean;
   // PHASE 7: Signal retrieval for instant UI updates
   getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
+  // PHASE 1 CLEANUP: Shared profile cache
+  getCachedProfile: (userId: string) => Promise<any | null>;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | null>(null);
@@ -139,6 +141,27 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+
+  // PHASE 1 CLEANUP: Automatic cache cleanup every 5 minutes
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      let removedCount = 0;
+      
+      profileCache.forEach((value, key) => {
+        if (value.expiry <= now) {
+          profileCache.delete(key);
+          removedCount++;
+        }
+      });
+      
+      if (removedCount > 0 && isDevToolsEnabled()) {
+        console.log(`🧹 Profile cache cleanup: Removed ${removedCount} expired entries`);
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   // PHASE 6: Enhanced connection state management for production reliability
   const connectionStateRef = useRef<ConnectionState>({
@@ -500,40 +523,53 @@ unstable_batchedUpdates(() => {
         // PHASE 1: ASYNC PROFILE FETCH - Get real profile without blocking
         getCachedProfile(newRecord.user_id).then(profile => {
           if (profile) {
-            // Update signal with real profile
-            setSignals(prev => prev.map(signal => 
-              signal.id === newRecord.id
-                ? {
-                    ...signal,
-                    creator: {
-                      id: profile.id,
-                      display_name: profile.display_name || 'Anonymous User',
-                      role: profile.role || 'user',
-                      avatar_url: profile.avatar_url,
-                      user_type: profile.user_type,
-                      access_level: profile.access_level
+            // PHASE 1 CLEANUP: Check if signal still exists before updating (race condition fix)
+            setSignals(prev => {
+              const signalExists = prev.find(s => s.id === newRecord.id);
+              if (!signalExists) {
+                if (isDevToolsEnabled()) {
+                  console.log('SignalRealtimeContext - Signal no longer exists, skipping profile update:', newRecord.id);
+                }
+                return prev;
+              }
+              
+              return prev.map(signal => 
+                signal.id === newRecord.id
+                  ? {
+                      ...signal,
+                      creator: {
+                        id: profile.id,
+                        display_name: profile.display_name || 'Anonymous User',
+                        role: profile.role || 'user',
+                        avatar_url: profile.avatar_url,
+                        user_type: profile.user_type,
+                        access_level: profile.access_level
+                      }
                     }
-                  }
-                : signal
-            ));
+                  : signal
+              );
+            });
             
-            // Update cache with real profile
+            // Update cache with race condition check
             const cache = localCacheRef.current;
-            cache.data = cache.data.map(signal =>
-              signal.id === newRecord.id
-                ? {
-                    ...signal,
-                    creator: {
-                      id: profile.id,
-                      display_name: profile.display_name || 'Anonymous User',
-                      role: profile.role || 'user',
-                      avatar_url: profile.avatar_url,
-                      user_type: profile.user_type,
-                      access_level: profile.access_level
+            const signalExistsInCache = cache.data.find(s => s.id === newRecord.id);
+            if (signalExistsInCache) {
+              cache.data = cache.data.map(signal =>
+                signal.id === newRecord.id
+                  ? {
+                      ...signal,
+                      creator: {
+                        id: profile.id,
+                        display_name: profile.display_name || 'Anonymous User',
+                        role: profile.role || 'user',
+                        avatar_url: profile.avatar_url,
+                        user_type: profile.user_type,
+                        access_level: profile.access_level
+                      }
                     }
-                  }
-                : signal
-            );
+                  : signal
+              );
+            }
             
             if (isDevToolsEnabled()) {
               console.log('SignalRealtimeContext - Profile loaded for signal:', newRecord.id, profile.display_name);
@@ -1011,7 +1047,9 @@ unstable_batchedUpdates(() => {
     forcePollingMode,
     isInPollingMode,
     // PHASE 7: Signal retrieval for instant UI updates
-    getSignalById
+    getSignalById,
+    // PHASE 1 CLEANUP: Shared profile cache
+    getCachedProfile
   };
 
   return (
@@ -1039,7 +1077,8 @@ export const useSignalRealtime = () => {
       getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null, mode: 'disconnected' }),
       forcePollingMode: () => console.warn('SignalRealtimeProvider not available'),
       isInPollingMode: false,
-      getSignalById: () => undefined
+      getSignalById: () => undefined,
+      getCachedProfile: async () => null
     };
   }
   return context;

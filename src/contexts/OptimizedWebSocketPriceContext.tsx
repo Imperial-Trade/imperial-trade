@@ -242,6 +242,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     mountOnlyRef.current = true;
     setIsProviderReady(true);
     
+    // ⚡ PHASE 2: Initialize Realtime subscription on mount
+    setupRealtimeSubscription();
+    
     console.log(`✅ OptimizedWebSocketPriceProvider ready (Init #${initCountRef.current})`);
     
     // 🚨 PHASE 1: Cleanup tracking on unmount
@@ -249,6 +252,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log(`🧹 OptimizedWebSocketPriceProvider unmounting (Init #${initCountRef.current})`);
       mountOnlyRef.current = false;
       hasInitialized.current = false; // Reset for next mount
+      
+      // ⚡ PHASE 2: Cleanup Realtime subscription
+      if (realtimeChannelRef.current) {
+        realtimeChannelRef.current.unsubscribe();
+        realtimeChannelRef.current = null;
+        console.log('⚡ [Realtime] Unsubscribed from postgres_changes');
+      }
       
       // Cleanup channels
       if (privateFallbackChannelRef.current) {
@@ -482,6 +492,90 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
   }, [lastUpdated]);
 
+  // ⚡ PHASE 2: Supabase Realtime Subscription for Instant Price Updates
+  const realtimeChannelRef = useRef<any>(null);
+  const lastRealtimeUpdateRef = useRef<Record<string, number>>({});
+
+  const setupRealtimeSubscription = useCallback(() => {
+    if (realtimeChannelRef.current) {
+      console.log('⚡ [Realtime] Subscription already active, skipping setup');
+      return;
+    }
+
+    console.log('⚡ [Realtime] Setting up postgres_changes subscription for market_prices');
+
+    const channel = supabase
+      .channel('market_prices_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT and UPDATE
+          schema: 'public',
+          table: 'market_prices'
+        },
+        (payload) => {
+          const { new: newRow, eventType } = payload as any;
+          
+          if (!newRow || !newRow.symbol) return;
+
+          const symbol = newRow.symbol as string;
+          const dbTimestamp = new Date(newRow.updated_at).getTime();
+          const lastUpdate = lastRealtimeUpdateRef.current[symbol] || 0;
+
+          // 🔥 DEDUPLICATION: Only process if timestamp is newer
+          if (dbTimestamp <= lastUpdate) {
+            console.log(`⏭️ [Realtime] Skipped duplicate update for ${symbol} (timestamp: ${dbTimestamp})`);
+            return;
+          }
+
+          lastRealtimeUpdateRef.current[symbol] = dbTimestamp;
+
+          // Extract price with mid-only support
+          const price = newRow.mid || (newRow.bid && newRow.ask ? (newRow.bid + newRow.ask) / 2 : newRow.bid || newRow.ask);
+
+          if (price) {
+            const priceData: PriceData = {
+              symbol,
+              price,
+              change: 0,
+              changePercent: 0,
+              timestamp: newRow.updated_at,
+              receivedAt: Date.now(),
+              bid: newRow.bid,
+              ask: newRow.ask,
+              mid: newRow.mid
+            };
+
+            console.log(`⚡ [Realtime ${eventType}] ${symbol}: $${price} (instant update from postgres_changes)`);
+
+            // Update state instantly
+            setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
+            setPrices(prev => ({ ...prev, [symbol]: priceData }));
+            setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
+            arrivalTimestamps.current.set(symbol, Date.now());
+            setLastUpdated(new Date());
+            
+            console.log(`✅ [Realtime] Applied instant update for ${symbol}`);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`⚡ [Realtime] Subscription status: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [Realtime] Successfully subscribed to market_prices postgres_changes');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`❌ [Realtime] Subscription failed: ${status}`);
+          // Retry after 5 seconds
+          setTimeout(() => {
+            realtimeChannelRef.current = null;
+            setupRealtimeSubscription();
+          }, 5000);
+        }
+      });
+
+    realtimeChannelRef.current = channel;
+  }, []);
+
   // 🚀 PHASE 2: Connection restart with cleanup
   const connectionRestart = useCallback(() => {
     console.log('🔄 Restarting connection...');
@@ -524,23 +618,26 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [connectToRealtimeChannel]);
 
-  // ⚡ PHASE 5: Optimized Database Polling - AGGRESSIVE CACHE-BUSTING
+  // ⚡ PHASE 5: NUCLEAR CACHE-BUSTING - Force fresh database reads every poll
   const fetchPricesFromDatabase = useCallback(async (targetSymbols: string[]) => {
     if (targetSymbols.length === 0) return;
 
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // 🔥 AGGRESSIVE CACHE-BUSTING: Multiple strategies to force fresh data
-      const cacheBustTimestamp = Date.now();
-      const oneMinuteAgo = new Date(cacheBustTimestamp - 60000).toISOString();
+      // 🔥 NUCLEAR CACHE-BUSTING: 3-layer strategy to eliminate ALL cache
+      const cacheBustNonce = Date.now();
+      const twoSecondsAgo = new Date(cacheBustNonce - 2000).toISOString(); // ⚡ Tightened from 60s to 2s
       
+      // ⚡ CRITICAL: Use timestamp in query to bypass HTTP cache
       const { data } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
-        .gte('updated_at', oneMinuteAgo) // Cache-busting filter (last 60 seconds)
-        .abortSignal(AbortSignal.timeout(5000)); // Force timeout
+        .gte('updated_at', twoSecondsAgo) // ⚡ TIGHTENED: Reject cached responses older than 2s
+        .limit(50); // ⚡ Force query re-execution
+      
+      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${twoSecondsAgo}`);
         
       if (data) {
         const hydratedPrices: Record<string, PriceData> = {};

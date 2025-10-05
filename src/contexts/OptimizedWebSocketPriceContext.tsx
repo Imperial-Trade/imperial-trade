@@ -608,6 +608,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return priceChanged || timestampChanged;
           });
 
+          // 🚀 UNCONDITIONAL FIX: Update arrivalTimestamps for ALL polled symbols ALWAYS
+          const now = Date.now();
+          Object.keys(hydratedPrices).forEach(symbol => {
+            arrivalTimestamps.current.set(symbol, now);
+            console.log(`🟢 [Timestamp] ${symbol} → ${now} (unconditional)`);
+          });
+
           if (FORCE_UPDATE_MODE || hasChanges) {
             if (FORCE_UPDATE_MODE && !hasChanges) {
               console.log(`🚀 [Force Update] Forcing UI refresh despite no changes (every 2s)`);
@@ -615,20 +622,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
-            
-            // 🚀 CRITICAL FIX: Update arrivalTimestamps for all polled symbols to show "Live" status
-            Object.keys(hydratedPrices).forEach(symbol => {
-              arrivalTimestamps.current.set(symbol, Date.now());
-            });
-            
             setLastUpdated(new Date());
             console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices + arrivalTimestamps`);
           } else {
-            // 🚀 CRITICAL FIX: Even if prices didn't change, update arrivalTimestamps to prevent "Stale" status
-            Object.keys(hydratedPrices).forEach(symbol => {
-              arrivalTimestamps.current.set(symbol, Date.now());
-            });
-            console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps`);
+            console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps for ${Object.keys(hydratedPrices).length} symbols`);
           }
         }
       }

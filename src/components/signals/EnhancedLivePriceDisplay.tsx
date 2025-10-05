@@ -74,14 +74,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
   // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
     const updateAge = () => {
-      const timeSinceMountMs = Date.now() - mountTime;
-      
-      // 🔥 PHASE 3: Show "Connecting..." for first 2 seconds after mount to allow polling to catch up
-      if (timeSinceMountMs < 2000) {
-        setDataAge('Connecting...');
-        return;
-      }
-      
       // Handle undefined, Infinity, or NaN gracefully - these indicate no data received yet
       if (arrivalAgeSeconds === undefined || !isFinite(arrivalAgeSeconds) || isNaN(arrivalAgeSeconds)) {
         setDataAge('Connecting...');
@@ -90,9 +82,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
       
       const ageSeconds = arrivalAgeSeconds;
       
-      // If we have a valid age and it's fresh, show Live status
-      if (ageSeconds < 8) {
-        setDataAge('Live'); // Show "Live" for data within 8 seconds (4s buffer for robust display)
+      // Show "Live" for data within 3 seconds (aligned with 500ms polling)
+      if (ageSeconds < 3) {
+        setDataAge('Live');
       } else if (ageSeconds < 60) {
         setDataAge(`${ageSeconds}s ago`);
       } else if (ageSeconds < 3600) {

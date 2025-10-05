@@ -775,6 +775,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const currentCount = subscriptionsRef.current.get(normalizedSymbol) || 0;
       subscriptionsRef.current.set(normalizedSymbol, currentCount + 1);
       
+      // 🔥 CRITICAL FIX: Synchronously update activeSubscriptions state
+      setActiveSubscriptions(prev => {
+        const updated = Array.from(subscriptionsRef.current.keys());
+        if (JSON.stringify(prev) !== JSON.stringify(updated)) {
+          console.log(`🔄 [Subscribe] Synchronously updated activeSubscriptions: ${updated.join(', ')}`);
+          return updated;
+        }
+        return prev;
+      });
+      
       // Check if this symbol needs immediate hydration (new subscription OR no price data exists)
       const needsHydration = currentCount === 0 || !internalPrices[normalizedSymbol];
       
@@ -860,6 +870,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         subscriptionsRef.current.delete(normalizedSymbol);
         console.log(`🗑️ Removed subscription: ${normalizedSymbol} (refs: 0)`);
       }
+    });
+
+    // 🔥 CRITICAL FIX: Synchronously update activeSubscriptions state
+    setActiveSubscriptions(prev => {
+      const updated = Array.from(subscriptionsRef.current.keys());
+      if (JSON.stringify(prev) !== JSON.stringify(updated)) {
+        console.log(`🔄 [Unsubscribe] Synchronously updated activeSubscriptions: ${updated.join(', ')}`);
+        return updated;
+      }
+      return prev;
     });
 
     // Check if we still have active subscriptions
@@ -952,7 +972,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       : 30000;
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
-    console.log(`🔄 [Polling] ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
+    console.log(`🔄 [Polling] Starting ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
     
     if (!hasRecentData) {
       console.log(`⚡ [Hydration Mode] Fast polling active until fresh data received`);
@@ -961,10 +981,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     // Immediate fetch
+    console.log(`🚀 [Polling] Immediate fetch on effect trigger`);
     fetchPricesFromDatabase(symbolList);
 
     // Set up polling interval
     const intervalId = setInterval(() => {
+      console.log(`⏰ [Polling] Interval tick (${pollingInterval}ms)`);
+      
       // Pause polling if tab is hidden
       if (document.hidden) {
         console.log('⏸️  [Polling] Tab hidden, skipping fetch');
@@ -973,15 +996,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
       const currentSymbols = Array.from(subscriptionsRef.current.keys());
       if (currentSymbols.length > 0) {
+        console.log(`📡 [Polling] Fetching ${currentSymbols.length} symbols: ${currentSymbols.join(', ')}`);
         fetchPricesFromDatabase(currentSymbols);
+      } else {
+        console.log('⏸️  [Polling] No symbols to fetch');
       }
     }, pollingInterval);
 
     return () => {
-      console.log('🧹 [Polling] Stopping polling');
+      console.log('🧹 [Polling] Stopping polling interval');
       clearInterval(intervalId);
     };
-  }, [fetchPricesFromDatabase, isProviderReady]);
+  }, [fetchPricesFromDatabase, isProviderReady, activeSubscriptions, connectionStatus, lastDatabaseTimestamp]);
 
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions

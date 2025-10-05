@@ -2991,6 +2991,33 @@ export type Database = {
         }
         Relationships: []
       }
+      trigger_execution_log: {
+        Row: {
+          created_at: string | null
+          execution_time: string | null
+          id: number
+          signal_id: string
+          trigger_name: string
+          trigger_operation: string
+        }
+        Insert: {
+          created_at?: string | null
+          execution_time?: string | null
+          id?: number
+          signal_id: string
+          trigger_name: string
+          trigger_operation: string
+        }
+        Update: {
+          created_at?: string | null
+          execution_time?: string | null
+          id?: number
+          signal_id?: string
+          trigger_name?: string
+          trigger_operation?: string
+        }
+        Relationships: []
+      }
       ui_activity_sessions: {
         Row: {
           created_at: string

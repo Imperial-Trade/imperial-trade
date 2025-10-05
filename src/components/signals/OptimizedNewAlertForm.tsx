@@ -242,6 +242,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     }
   }, [errors, selectedAsset, formData.trade_type, formData.entry_price, pipInputs, takeProfits, recalcTargetsFromPips]);
 
+  // 🚀 ANTI-CHURN: Stable callbacks with useCallback to prevent EnhancedLivePriceDisplay re-renders
+  const handlePriceUpdate = useCallback((price: number) => {
+    setCurrentPrice(price);
+  }, []);
+
   const handleUseCurrentPrice = useCallback((price: number) => {
     const priceStr = price.toString();
     setFormData(prev => ({ ...prev, entry_price: priceStr }));
@@ -530,7 +535,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               <EnhancedLivePriceDisplay
                 symbol={selectedAsset.symbol}
                 assetName={selectedAsset.name}
-                onPriceUpdate={setCurrentPrice}
+                onPriceUpdate={handlePriceUpdate}
                 onUseCurrentPrice={handleUseCurrentPrice}
               />
             </div>

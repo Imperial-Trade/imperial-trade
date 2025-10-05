@@ -29,7 +29,7 @@ interface EnhancedLivePriceDisplayProps {
   className?: string;
 }
 
-const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
+const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.memo(({
   symbol,
   assetName,
   onUseCurrentPrice,
@@ -391,11 +391,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             </span>
           </div>
           
-          {/* 🚀 PHASE 4: Polling status indicator with pulse animation */}
-          {connectionStatus === 'connected' && (
-            <div className="flex items-center gap-1 text-[10px] text-gray-500">
+          {/* 🚀 ALWAYS ACTIVE: Visual confirmation of persistent connection */}
+          {connectionStatus === 'connected' && arrivalAgeSeconds < 10 && (
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span>Polling every 500ms</span>
+              <span>🟢 ALWAYS ACTIVE</span>
+            </div>
+          )}
+          {connectionStatus === 'connected' && arrivalAgeSeconds >= 10 && (
+            <div className="flex items-center gap-1 text-[10px] text-gray-500">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full" />
+              <span>Polling 500ms</span>
             </div>
           )}
         </div>
@@ -432,6 +438,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if symbol or callbacks actually change
+  return prevProps.symbol === nextProps.symbol &&
+         prevProps.assetName === nextProps.assetName &&
+         prevProps.className === nextProps.className;
+  // Intentionally omit onUseCurrentPrice and onPriceUpdate from comparison
+  // to prevent re-renders when parent re-creates these callbacks
+});
+
+EnhancedLivePriceDisplay.displayName = 'EnhancedLivePriceDisplay';
 
 export default EnhancedLivePriceDisplay;

@@ -120,6 +120,10 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     return Promise.resolve();
   }, [symbol, ctxRefreshPrice]);
 
+  // 🚀 ANTI-CHURN: Prevent subscription churn with first-mount-only refresh
+  const isFirstMountRef = useRef(true);
+  const currentSymbolRef = useRef(symbol);
+  
   // 🚀 STEP 3: Stabilize subscribe/unsubscribe with refs to prevent stale closures
   const subscribeRef = useRef(subscribe);
   const unsubscribeRef = useRef(unsubscribe);
@@ -136,12 +140,21 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     // Normalize symbol before subscription
     const normalizedSymbol = normalizeSymbol(symbol);
     
-    // 🔥 PHASE 2: Force immediate poll on mount to prevent stale data in modals
-    ctxRefreshPrice(normalizedSymbol);
-    
-    if (isDevToolsEnabled()) {
-      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol} with immediate refresh`);
+    // 🔥 ANTI-CHURN FIX: Only refresh on first mount OR symbol change
+    const symbolChanged = currentSymbolRef.current !== normalizedSymbol;
+    if (isFirstMountRef.current || symbolChanged) {
+      if (isDevToolsEnabled()) {
+        console.log(`🔗 [useOptimizedLivePrice] ${isFirstMountRef.current ? 'First mount' : 'Symbol changed'}: Subscribing to ${normalizedSymbol} with immediate refresh`);
+      }
+      ctxRefreshPrice(normalizedSymbol);
+      isFirstMountRef.current = false;
+      currentSymbolRef.current = normalizedSymbol;
+    } else {
+      if (isDevToolsEnabled()) {
+        console.log(`♻️ [useOptimizedLivePrice] Re-subscribing to ${normalizedSymbol} (no refresh - preventing churn)`);
+      }
     }
+    
     subscribeRef.current([normalizedSymbol]);
 
     return () => {
@@ -150,7 +163,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       }
       unsubscribeRef.current([normalizedSymbol]);
     };
-  }, [symbol, options.skipSubscribe, ctxRefreshPrice]); // ✅ Now stable dependencies
+  }, [symbol, options.skipSubscribe]); // ✅ Removed ctxRefreshPrice from deps to prevent churn
 
   // Update local state when price changes - immediate updates
   useEffect(() => {

@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -24,17 +23,20 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
-
-
-
 export default function SignalStream() {
   const {
     user,
     profile
   } = useAuth();
-  const { navigate, isNavigationAvailable, navigationError } = useSafeNavigation();
-  const { toast } = useToast();
-  
+  const {
+    navigate,
+    isNavigationAvailable,
+    navigationError
+  } = useSafeNavigation();
+  const {
+    toast
+  } = useToast();
+
   // State for filtering and modal
   const [filters, setFilters] = useState({
     search: '',
@@ -43,7 +45,7 @@ export default function SignalStream() {
     educator: ''
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
-  
+
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
 
@@ -58,7 +60,7 @@ export default function SignalStream() {
     updateAlert,
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
-  
+
   // Track seconds since last signal update
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
   useEffect(() => {
@@ -70,17 +72,16 @@ export default function SignalStream() {
     }, 1000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
-  
   useEffect(() => {
     if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
       hasHydratedRef.current = true;
     }
   }, [allAlerts.length, connectionStatus, lastUpdated]);
-  
+
   // Local state for operations
   const isLoading = realtimeLoading;
   const error = realtimeError;
-  
+
   // 🚀 CREATE ALERT: Direct API call with optimistic updates
   const createAlert = useCallback(async (dto: any) => {
     try {
@@ -154,10 +155,9 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
-  
+
   // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
   const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
-  
   const {
     activeAlerts,
     educatorOptions,
@@ -181,7 +181,8 @@ export default function SignalStream() {
     const counts = {
       total: alerts.length,
       active: active.length,
-      closed: staticClosedAlerts.length, // 🎯 PHASE 2: Use static closed alerts count
+      closed: staticClosedAlerts.length,
+      // 🎯 PHASE 2: Use static closed alerts count
       buy: alerts.filter(a => a.tradeType.includes('buy')).length,
       sell: alerts.filter(a => a.tradeType.includes('sell')).length
     };
@@ -192,19 +193,16 @@ export default function SignalStream() {
     };
   }, [alerts, allAlerts, staticClosedAlerts.length]);
   const [totalClosedCount, setTotalClosedCount] = useState(0);
-  
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
       try {
         console.log('📊 PHASE 6: Fetching static closed alerts (one-time fetch)');
-        
-        const { data: closedAlertsData, error } = await supabase
-          .from('trade_alerts')
-          .select('*')
-          .eq('status', 'closed')
-          .order('updated_at', { ascending: false })
-          .limit(12);
-          
+        const {
+          data: closedAlertsData,
+          error
+        } = await supabase.from('trade_alerts').select('*').eq('status', 'closed').order('updated_at', {
+          ascending: false
+        }).limit(12);
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
           return;
@@ -212,11 +210,10 @@ export default function SignalStream() {
 
         // Get profiles for these alerts
         const userIds = [...new Set((closedAlertsData || []).map(alert => alert.user_id))];
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
-
+        const {
+          data: profilesData,
+          error: profilesError
+        } = await supabase.from('profiles').select('*').in('id', userIds);
         if (profilesError) {
           console.error('Failed to fetch profiles for closed alerts:', profilesError);
         }
@@ -230,18 +227,18 @@ export default function SignalStream() {
         }
 
         // Get total count
-        const { count, error: countError } = await supabase
-          .from('trade_alerts')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'closed');
-
+        const {
+          count,
+          error: countError
+        } = await supabase.from('trade_alerts').select('*', {
+          count: 'exact',
+          head: true
+        }).eq('status', 'closed');
         if (countError) {
           console.error('Failed to fetch closed alerts count:', countError);
         }
-
         const mappedAlerts: TradeAlertWithProfile[] = (closedAlertsData || []).map(alert => {
           const profile = profilesMap.get(alert.user_id);
-          
           return {
             id: alert.id,
             userId: alert.user_id,
@@ -278,16 +275,13 @@ export default function SignalStream() {
             }
           };
         });
-
         setStaticClosedAlerts(mappedAlerts);
         setTotalClosedCount(count || 0);
-        
         console.log(`📊 PHASE 6: Loaded ${mappedAlerts.length} static closed alerts, total: ${count}`);
       } catch (error) {
         console.error('Error fetching static closed alerts:', error);
       }
     };
-
     fetchStaticClosedAlerts();
   }, []); // Only fetch once on mount
 
@@ -310,19 +304,19 @@ export default function SignalStream() {
     hasPendingLimits: hasPendingLimitOrders,
     intervalMs: 15000 // 15 seconds
   });
-  
+
   // 🎯 PHASE 1 & 5: Define symbols with deep equality for subscription stability
   const prevSymbolsRef = useRef<string[]>([]);
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
-    
+
     // Subscribe to symbols from both active AND pending alerts (normalized)
     [...activeAlerts, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
         symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
       }
     });
-    
+
     // If no symbols found, subscribe to essential symbols for warm-start
     if (symbolSet.size === 0) {
       ['XAUUSD', 'BTCUSD'].forEach(symbol => {
@@ -332,10 +326,10 @@ export default function SignalStream() {
         console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD');
       }
     }
-    
+
     // Limit to top 2 symbols for efficient connection management
     const symbolList = Array.from(symbolSet).sort().slice(0, 2);
-    
+
     // 🎯 DEEP EQUALITY CHECK: Return same reference if content identical
     const prev = prevSymbolsRef.current;
     if (JSON.stringify(prev) === JSON.stringify(symbolList)) {
@@ -344,17 +338,20 @@ export default function SignalStream() {
       }
       return prev; // Return SAME reference to prevent useEffect re-run
     }
-    
     if (isDevToolsEnabled()) {
-      console.log('🔄 SignalStream - Symbols changed:', { prev, new: symbolList });  
+      console.log('🔄 SignalStream - Symbols changed:', {
+        prev,
+        new: symbolList
+      });
     }
     prevSymbolsRef.current = symbolList;
     return symbolList;
   }, [activeAlerts, alerts]);
 
   // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
-  const { registerInteraction } = useUIActivityRegistration(symbols);
-
+  const {
+    registerInteraction
+  } = useUIActivityRegistration(symbols);
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
@@ -404,11 +401,10 @@ export default function SignalStream() {
       toast({
         title: "Authentication Error",
         description: "You must be logged in to create educational patterns.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     try {
       // Convert form data to CreateTradeAlertDto
       const createDto: CreateTradeAlertDto = {
@@ -424,15 +420,12 @@ export default function SignalStream() {
         tp5: data.tp5,
         notes: data.notes
       };
-
       const result = await createAlert(createDto);
-      
       if (result) {
         toast({
           title: "🚀 Educational Pattern Created!",
-          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
+          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`
         });
-        
         setShowCreateModal(false);
         // Refresh alerts will happen automatically via the query
       } else {
@@ -443,11 +436,10 @@ export default function SignalStream() {
       toast({
         title: "Error Creating Educational Pattern",
         description: "Failed to create educational analysis. Please check your inputs and try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
   const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
@@ -497,7 +489,10 @@ export default function SignalStream() {
           </Badge>;
       case 'connecting':
         return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-            <Loader2 className="w-3 h-3 mr-1" style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
+            <Loader2 className="w-3 h-3 mr-1" style={{
+            willChange: 'transform',
+            transform: 'translateZ(0)'
+          }} />
             Connecting...
           </Badge>;
       case 'error':
@@ -545,13 +540,12 @@ export default function SignalStream() {
       }
       return;
     }
-    
+
     // Optimistic local state: immediately mark as closed if closing
     if (newStatus === 'closed') {
       // Set local closed state to prevent duplicate processing
       alert.localClosed = true;
     }
-    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
@@ -725,8 +719,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  return (
-    <StreamErrorBoundary>
+  return <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
         
@@ -740,26 +733,7 @@ export default function SignalStream() {
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                {lastUpdated && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant={secondsSinceUpdate < 30 ? "default" : "secondary"}>
-                      {secondsSinceUpdate < 30 ? '● Live' : '○ Stale'}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      Updated {secondsSinceUpdate}s ago
-                    </span>
-                  </div>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshAlerts}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
+              
             </div>
           </div>
         </div>
@@ -785,7 +759,7 @@ export default function SignalStream() {
                 <PriceRefreshButton symbols={symbols} className="shrink-0" />
               </div>
               
-{(!hasHydratedRef.current && (isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0))) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+            {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({
                 length: 6
               }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
@@ -797,14 +771,11 @@ export default function SignalStream() {
                   <div>
                     <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
                       <span className="text-imperial-platinum">Active </span>
-                      <span 
-                        className="bg-clip-text text-transparent font-medium"
-                        style={{ 
-                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
-                      >
+                      <span className="bg-clip-text text-transparent font-medium" style={{
+                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
                         Alerts
                       </span>
                       <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
@@ -836,14 +807,11 @@ export default function SignalStream() {
                   <div>
                     <h2 className="text-lg font-semibold mb-3 border-b border-border pb-1.5">
                       <span className="text-imperial-platinum">Closed </span>
-                      <span 
-                        className="bg-clip-text text-transparent font-medium"
-                        style={{ 
-                          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
-                      >
+                      <span className="bg-clip-text text-transparent font-medium" style={{
+                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
                         Alerts
                       </span>
                       <span className="text-imperial-platinum"> ({totalClosedCount})</span>
@@ -890,13 +858,9 @@ export default function SignalStream() {
                   Create a new educational trading pattern for learning and analysis purposes.
                 </p>
               </DialogHeader>
-             <OptimizedNewAlertForm 
-               onSubmit={handleCreateSignal}
-               onCancel={() => setShowCreateModal(false)}
-             />
+             <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
            </DialogContent>
          </Dialog>
       </div>
-    </StreamErrorBoundary>
-  );
+    </StreamErrorBoundary>;
 }

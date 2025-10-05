@@ -679,6 +679,9 @@ unstable_batchedUpdates(() => {
                   isolation: 'enforced'
                 }
               }));
+              
+              // ✅ HYBRID MODE: Instant toast notification for activation
+              console.log(`🎯 INSTANT NOTIFICATION: ${newRecord.asset_name} activated`);
             }, 0);
           }
 
@@ -700,6 +703,9 @@ unstable_batchedUpdates(() => {
                   isolation: 'enforced'
                 }
               }));
+              
+              // ✅ HYBRID MODE: Instant toast notification for closure
+              console.log(`🔴 INSTANT NOTIFICATION: ${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`);
             }, 0);
           }
           
@@ -723,6 +729,17 @@ unstable_batchedUpdates(() => {
               updatedAt: newRecord.updated_at
             } : signal
           );
+          
+          // ✅ HYBRID MODE: Check for new TP hits and log instant notifications
+          const oldTpHits = currentSignal.tpHits || [];
+          const newTpHits = newRecord.tp_hits || [];
+          const newHitsDetected = newTpHits.filter(tp => !oldTpHits.includes(tp));
+          
+          if (newHitsDetected.length > 0) {
+            newHitsDetected.forEach(tp => {
+              console.log(`🎯 INSTANT NOTIFICATION: TP${tp} Hit! ${newRecord.asset_name}`);
+            });
+          }
           
           // PHASE 3: CRITICAL SIGNAL ISOLATION - Validate TP progression ONLY for target signal
           const validatedSignals = updatedSignals.map(signal => {
@@ -968,8 +985,8 @@ unstable_batchedUpdates(() => {
         }
         };
         
-        // Start polling every 30 seconds
-        pollingInterval = setInterval(pollSignals, 30000);
+        // Start polling every 60 seconds (Realtime handles instant updates)
+        pollingInterval = setInterval(pollSignals, 60000);
         
         // Initial poll
         pollSignals();
@@ -989,12 +1006,12 @@ unstable_batchedUpdates(() => {
         // Load initial data with caching
         refreshSignals();
         
-        console.log('✅ PHASE 4 FIX #6: Polling mode active, Realtime disabled (conflict resolved)');
-        return; // ✅ CRITICAL: Exit early, don't start Realtime
+        console.log('✅ PHASE 4 HYBRID MODE: Polling (60s backup) + Realtime (instant) both enabled');
+        // ⚠️ DO NOT RETURN - Allow Realtime to also start for instant updates
       }
       
-      // Only reach here if polling is NOT enabled - start Realtime normally
-      console.log('🚀 PHASE 4: Starting Realtime subscriptions (no polling conflict)');
+      // Start Realtime subscriptions for instant updates (works with or without polling)
+      console.log('🚀 PHASE 4: Starting Realtime subscriptions for instant updates');
       
       // ✅ FIX BUG #17: Add missing subscribeToTable() call with correct arguments
       const unsubscribeFn = subscribeToTable(
@@ -1007,7 +1024,20 @@ unstable_batchedUpdates(() => {
       );
       
       if (unsubscribeFn) {
-        unsubscribeRef.current = unsubscribeFn;
+        // ✅ HYBRID MODE: Combine both Realtime and Polling cleanup
+        const existingPollingCleanup = unsubscribeRef.current;
+        
+        unsubscribeRef.current = () => {
+          // Cleanup Realtime subscription
+          console.log('🛑 HYBRID MODE: Stopping Realtime subscription');
+          unsubscribeFn();
+          
+          // Cleanup Polling if it exists
+          if (existingPollingCleanup && typeof existingPollingCleanup === 'function') {
+            console.log('🛑 HYBRID MODE: Stopping polling backup');
+            existingPollingCleanup();
+          }
+        };
         
         // Set connection status to connected
         updateConnectionState({
@@ -1015,10 +1045,13 @@ unstable_batchedUpdates(() => {
           consecutiveFailures: 0
         });
         
-        // Populate initial signal data
-        await refreshSignals();
+        // Populate initial signal data (only if not already populated by polling)
+        const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
+        if (!pollingEnabled) {
+          await refreshSignals();
+        }
         
-        console.log('✅ SignalRealtimeContext - Successfully subscribed and connected');
+        console.log('✅ HYBRID MODE ACTIVE: Realtime (instant) + Polling (60s backup)');
       }
       
     } catch (error) {

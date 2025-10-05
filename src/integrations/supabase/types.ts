@@ -3977,6 +3977,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_trigger_execution_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_webhook_debounce: {
         Args: Record<PropertyKey, never>
         Returns: undefined

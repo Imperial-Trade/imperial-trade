@@ -597,6 +597,18 @@ export default function SignalStream() {
     }
   }, [updateAlert, profile, isAdmin, isCreator]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
+    // 🔍 PHASE 1 DIAGNOSTIC: Log what we receive
+    console.log(`🔍 [PHASE 1 - handleTakeProfitHit] Called for ${alert.asset_name}:`, {
+      alertId: alert.id,
+      newTPHits,
+      shouldAutoClose,
+      closeReason,
+      currentStatus: alert.status,
+      currentTPHits: alert.tp_hits,
+      hasTP5: alert.tp5 != null && alert.tp5 > 0,
+      allTPs: { tp1: alert.tp1, tp2: alert.tp2, tp3: alert.tp3, tp4: alert.tp4, tp5: alert.tp5 }
+    });
+    
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
       return;
@@ -635,7 +647,26 @@ export default function SignalStream() {
           closeReason: typedCloseReason
         })
       };
+      
+      // 🔍 PHASE 2 DIAGNOSTIC: Verify DTO structure
+      console.log(`🔍 [PHASE 2 - updateDto] Built for ${alert.id}:`, {
+        updateDto,
+        shouldAutoCloseCondition: shouldAutoClose,
+        typedCloseReason,
+        willCloseSignal: shouldAutoClose && updateDto.status === 'closed'
+      });
+      
       const result = await updateAlert(alert.id, updateDto);
+      
+      // 🔍 PHASE 3 DIAGNOSTIC: Verify update result
+      console.log(`🔍 [PHASE 3 - updateAlert Result] For ${alert.id}:`, {
+        success: !!result,
+        resultStatus: result?.status,
+        resultCloseReason: result?.closeReason,
+        resultTPHits: result?.tpHits,
+        expectedStatus: shouldAutoClose ? 'closed' : alert.status,
+        originalUpdateDto: updateDto
+      });
       if (result && (window as any).addNotification) {
         const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
         if (highestTP !== null) {

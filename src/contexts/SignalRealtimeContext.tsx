@@ -698,6 +698,22 @@ unstable_batchedUpdates(() => {
           // PHASE 7: CRITICAL - Signal isolation during closure
           const isSignalClosure = currentSignal.status === 'active' && newRecord.status === 'closed';
           if (isSignalClosure) {
+            // 🔍 PHASE 4 DIAGNOSTIC: Check if closure is being processed
+            console.log(`🔍 [PHASE 4 - Realtime Closure] Detected for ${newRecord.asset_name}:`, {
+              signalId: newRecord.id,
+              oldStatus: currentSignal.status,
+              newStatus: newRecord.status,
+              closeReason: newRecord.close_reason,
+              tpHits: newRecord.tp_hits,
+              allTPs: { 
+                tp1: newRecord.tp1, 
+                tp2: newRecord.tp2, 
+                tp3: newRecord.tp3, 
+                tp4: newRecord.tp4, 
+                tp5: newRecord.tp5 
+              }
+            });
+            
             console.log(`🔴 ISOLATED CLOSURE: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
             
             // Dispatch closure event with signal isolation

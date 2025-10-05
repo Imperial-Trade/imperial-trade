@@ -440,7 +440,8 @@ export default function SignalStream() {
       });
     }
   };
-  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
+  // 🚨 PHASE 2B FIX (Bug #3): Replace State with Ref to prevent blocking between signals
+  const updateInProgressRef = useRef(new Map<string, boolean>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
   const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
   const prevAlertIdsRef = useRef(new Set<string>());
@@ -506,7 +507,11 @@ export default function SignalStream() {
     }
   };
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
-    if (updateInProgress.has(alert.id)) return;
+    // ✅ Check if already processing THIS specific signal
+    if (updateInProgressRef.current.get(alert.id)) {
+      console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
+      return;
+    }
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
@@ -546,7 +551,9 @@ export default function SignalStream() {
       // Set local closed state to prevent duplicate processing
       alert.localClosed = true;
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    // ✅ Mark as processing
+    updateInProgressRef.current.set(alert.id, true);
+    console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
@@ -576,22 +583,24 @@ export default function SignalStream() {
         });
       }
     } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      // ✅ Release lock
+      updateInProgressRef.current.delete(alert.id);
+      console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert, profile, isAdmin, isCreator]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
-    if (updateInProgress.has(alert.id)) return;
+    if (updateInProgressRef.current.get(alert.id)) {
+      console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
+      return;
+    }
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    updateInProgressRef.current.set(alert.id, true);
+    console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
       console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
       let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
@@ -632,22 +641,23 @@ export default function SignalStream() {
     } catch (err) {
       console.error("Failed to update TP hits:", err);
     } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      updateInProgressRef.current.delete(alert.id);
+      console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert, profile, isAdmin, isCreator]);
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
-    if (updateInProgress.has(alert.id)) return;
+    if (updateInProgressRef.current.get(alert.id)) {
+      console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
+      return;
+    }
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    updateInProgressRef.current.set(alert.id, true);
+    console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
       console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
       let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
@@ -680,22 +690,23 @@ export default function SignalStream() {
     } catch (err) {
       console.error("Failed to update stop loss:", err);
     } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      updateInProgressRef.current.delete(alert.id);
+      console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert, profile, isAdmin, isCreator]);
   const handleOrderActivation = useCallback(async (alert: any) => {
-    if (updateInProgress.has(alert.id)) return;
+    if (updateInProgressRef.current.get(alert.id)) {
+      console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
+      return;
+    }
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    updateInProgressRef.current.set(alert.id, true);
+    console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
       console.log(`Activating order for alert ${alert.id}`);
       const updateDto: UpdateTradeAlertDto = {
@@ -712,13 +723,10 @@ export default function SignalStream() {
     } catch (err) {
       console.error("Failed to activate order:", err);
     } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      updateInProgressRef.current.delete(alert.id);
+      console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert, profile, isAdmin, isCreator]);
   return <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />

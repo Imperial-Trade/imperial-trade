@@ -141,6 +141,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+  
+  // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - track ALL signal IDs we've ever seen
+  const seenSignalIdsRef = useRef(new Set<string>());
 
   // PHASE 1 CLEANUP: Automatic cache cleanup every 5 minutes
   useEffect(() => {
@@ -157,6 +160,20 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       
       if (removedCount > 0 && isDevToolsEnabled()) {
         console.log(`🧹 Profile cache cleanup: Removed ${removedCount} expired entries`);
+      }
+      
+      // 🚨 PHASE 2D FIX (Bug #7): Enforce max cache size (prevent unbounded growth)
+      const MAX_CACHE_SIZE = 1000;
+      if (profileCache.size > MAX_CACHE_SIZE) {
+        const sortedEntries = Array.from(profileCache.entries())
+          .sort((a, b) => a[1].expiry - b[1].expiry);
+        
+        const toRemove = sortedEntries.slice(0, profileCache.size - MAX_CACHE_SIZE);
+        toRemove.forEach(([key]) => profileCache.delete(key));
+        
+        if (isDevToolsEnabled()) {
+          console.log(`🧹 [Cache Limit] Removed ${toRemove.length} oldest entries - Cache size: ${profileCache.size}`);
+        }
       }
     }, 5 * 60 * 1000); // Every 5 minutes
     
@@ -468,6 +485,12 @@ unstable_batchedUpdates(() => {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
       if (eventType === 'INSERT' && newRecord) {
+        // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - check if we've seen this ID from ANY source
+        if (seenSignalIdsRef.current.has(newRecord.id)) {
+          console.log(`⚠️  [DUPLICATE BLOCKED] Signal ${newRecord.id} already exists`);
+          return; // ✅ Block duplicate immediately
+        }
+        
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         }
@@ -504,13 +527,16 @@ unstable_batchedUpdates(() => {
 
         // Render signal IMMEDIATELY
         setSignals(prev => {
-          const alreadyExists = prev.find(signal => signal.id === optimisticSignal.id);
-          if (alreadyExists) {
-            if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal already in state, skipping:', optimisticSignal.id);
-            }
-            return prev;
+          const existsInState = prev.find(s => s.id === newRecord.id);
+          if (existsInState) {
+            console.log(`⚠️  [DUPLICATE BLOCKED] Signal ${newRecord.id} already in state`);
+            return prev; // ✅ Return unchanged state
           }
+          
+          // ✅ Mark as seen BEFORE adding to state
+          seenSignalIdsRef.current.add(newRecord.id);
+          console.log(`✅ [INSERT] Adding NEW signal ${newRecord.id} - ${newRecord.asset_name}`);
+          
           return [optimisticSignal, ...prev];
         });
         
@@ -778,12 +804,32 @@ unstable_batchedUpdates(() => {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
         }
-        setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));
         
-        // PHASE 3: Update local cache by removing deleted signal
+        // 🚨 PHASE 2B FIX (Bug #2): INSTANT UI UPDATE - Remove immediately
+        setSignals(prev => {
+          const filtered = prev.filter(signal => signal.id !== oldRecord.id);
+          console.log(`✅ [DELETE] Removed signal ${oldRecord.id} - ${filtered.length} signals remaining`);
+          return filtered;
+        });
+        
+        // ✅ Update local cache
         const cache = localCacheRef.current;
         if (cache.data.length > 0) {
           cache.data = cache.data.filter(signal => signal.id !== oldRecord.id);
+          console.log(`✅ [DELETE] Cache updated - ${cache.data.length} cached signals`);
+        }
+        
+        // 🚨 PHASE 2B FIX (Bug #6): Remove from seen IDs when deleted (allows re-creation if needed)
+        seenSignalIdsRef.current.delete(oldRecord.id);
+        console.log(`✅ [DELETE] Removed ${oldRecord.id} from seen IDs`);
+        
+        // ✅ Dispatch in-app notification
+        if (typeof window !== 'undefined' && (window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'info',
+            title: '🗑️ Signal Removed',
+            message: `${oldRecord.asset_name || 'Signal'} has been canceled`
+          });
         }
       }
 

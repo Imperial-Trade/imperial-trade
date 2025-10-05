@@ -119,6 +119,7 @@ const LivePriceWidgetComponent = ({
       return;
     }
     
+    // 🚨 PHASE 2D FIX (Bug #8): Atomic check-and-set for TP processing
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
       return;
@@ -127,6 +128,7 @@ const LivePriceWidgetComponent = ({
     if (now - lastUpdateRef.current < 2000) { // Reduced from 5000ms to 2000ms for better responsiveness
       return; // Removed rate limit logging to reduce console spam
     }
+    // ✅ Atomic check-and-set
     isProcessingRef.current = true;
     lastUpdateRef.current = now;
     try {
@@ -149,10 +151,13 @@ const LivePriceWidgetComponent = ({
         await onOrderActivation(alert);
       }
       await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log(`✅ [LEVEL HIT] Successfully processed ${hitType}`);
     } catch (error) {
       console.error(`[ERROR] Processing ${hitType} for alert ${alert.id}:`, error);
     } finally {
+      // ✅ Guaranteed cleanup
       isProcessingRef.current = false;
+      console.log(`🔓 [LEVEL HIT] Released processing lock`);
     }
   }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
   // Enhanced level checking with better logic

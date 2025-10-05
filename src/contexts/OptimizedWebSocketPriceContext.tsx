@@ -289,8 +289,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  // 🚨 PHASE 2: Timestamp State Lock - Track database hydration timestamp to prevent race conditions
-  const [lastDatabaseTimestamp, setLastDatabaseTimestamp] = useState<Record<string, number>>({});
+  // 🚨 PHASE 2A FIX (Bug #0): Convert to ref to prevent polling loop
+  // lastDatabaseTimestamp was causing 80-90ms polling due to being a reactive state dependency
+  const lastDatabaseTimestampRef = useRef<Record<string, number>>({});
   
   // Connection state management
   const connectionStateRef = useRef<ConnectionState>({
@@ -475,8 +476,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             });
             console.log(`⏰ Updated arrivalTimestamps for ${Object.keys(polledPrices).length} symbols (db_poll fallback)`);
             
-            // timestampUpdates already contains milliseconds (line 683)
-            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+            // 🚨 PHASE 2A FIX: Update ref directly (no setState to prevent re-render loop)
+            Object.keys(timestampUpdates).forEach(symbol => {
+              lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
+            });
             setLastUpdated(new Date());
             console.log('🚨 EMERGENCY fallback: db_poll updated prices after broadcast failure');
           }
@@ -521,7 +524,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const symbol = newRow.symbol as string;
           const dbTimestamp = new Date(newRow.updated_at).getTime();
           const lastUpdate = lastRealtimeUpdateRef.current[symbol] || 0;
-          const hydratedTimestamp = lastDatabaseTimestamp[symbol] || 0;
+          const hydratedTimestamp = lastDatabaseTimestampRef.current[symbol] || 0;
 
           // ✅ PHASE 2: Make realtime SECONDARY to instant hydration
           if (dbTimestamp <= hydratedTimestamp) {
@@ -558,7 +561,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             // Update state instantly
             setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
             setPrices(prev => ({ ...prev, [symbol]: priceData }));
-            setLastDatabaseTimestamp(prev => ({ ...prev, [symbol]: dbTimestamp }));
+            // 🚨 PHASE 2A FIX: Update ref directly
+            lastDatabaseTimestampRef.current[symbol] = dbTimestamp;
             arrivalTimestamps.current.set(symbol, Date.now());
             setLastUpdated(new Date());
             
@@ -701,7 +705,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const hasChanges = Object.keys(hydratedPrices).some(symbol => {
             const oldPrice = internalPrices[symbol]?.price;
             const newPrice = hydratedPrices[symbol]?.price;
-            const oldTimestamp = lastDatabaseTimestamp[symbol];
+            const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
             const newTimestamp = timestampUpdates[symbol];
             
             // Update if: price changed meaningfully OR timestamp changed (database was written to)
@@ -718,7 +722,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   // ✅ PHASE 1: Conditional timestamp updates - only update if ACTUALLY newer
           const now = Date.now();
           Object.keys(hydratedPrices).forEach(symbol => {
-            const oldTimestamp = lastDatabaseTimestamp[symbol];
+            const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
             const newTimestamp = timestampUpdates[symbol];
             if (!oldTimestamp || newTimestamp > oldTimestamp) {
               arrivalTimestamps.current.set(symbol, now);
@@ -735,7 +739,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             }
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
-            setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
+            // 🚨 PHASE 2A FIX: Update ref directly
+            Object.keys(timestampUpdates).forEach(symbol => {
+              lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
+            });
             console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices + arrivalTimestamps`);
           } else {
             console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps for ${Object.keys(hydratedPrices).length} symbols`);
@@ -958,10 +965,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     // ✅ PHASE 2: Dynamic polling frequency based on data freshness
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
     
-    // Check if we have recent fresh data (within 5 seconds)
-    const hasRecentData = Object.values(lastDatabaseTimestamp).some(
-      ts => ts && (Date.now() - ts < 5000)
-    );
+    // 🚨 PHASE 2D FIX (Bug #9): Check ALL subscribed symbols have fresh data (not just ANY symbol)
+    const hasRecentData = symbolList.length > 0 && symbolList.every(symbol => {
+      const timestamp = lastDatabaseTimestampRef.current[symbol];
+      const isFresh = timestamp && (Date.now() - timestamp < 5000);
+      
+      if (!isFresh && isDevToolsEnabled()) {
+        console.log(`⚠️  [Freshness Check] Symbol ${symbol} is stale - Last update: ${timestamp ? new Date(timestamp).toISOString() : 'never'}`);
+      }
+      
+      return isFresh;
+    });
     
     // 🚀 Smart polling strategy:
     // - Signal stream with fresh data: 5s (slow backup polling)
@@ -973,6 +987,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
     console.log(`🔄 [Polling] Starting ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
+    console.log(`📊 [Polling Strategy] Fresh data check:`, {
+      hasRecentData,
+      lastTimestamps: lastDatabaseTimestampRef.current,
+      pollingInterval,
+      mode: modeLabel
+    });
     
     if (!hasRecentData) {
       console.log(`⚡ [Hydration Mode] Fast polling active until fresh data received`);
@@ -1007,7 +1027,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       console.log('🧹 [Polling] Stopping polling interval');
       clearInterval(intervalId);
     };
-  }, [fetchPricesFromDatabase, isProviderReady, activeSubscriptions, connectionStatus, lastDatabaseTimestamp]);
+    // 🚨 PHASE 2A FIX: Removed lastDatabaseTimestamp from dependencies (now a ref, not state)
+  }, [fetchPricesFromDatabase, isProviderReady, activeSubscriptions, connectionStatus]);
 
 
   // CONNECTION MANAGEMENT: Enhanced restart and emergency functions

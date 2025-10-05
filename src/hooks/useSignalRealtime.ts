@@ -39,17 +39,17 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   const error = localError || contextError;
 
   // Since RLS policies now handle filtering, we can return all signals from the context
-  // The database will only return educator/admin signals due to the RLS policy
+  // RLS policies handle filtering automatically, so we can return all signals
+  // These are already filtered to only show educator/admin signals
   const filteredAlerts = useMemo(() => {
-    console.log('useSignalRealtime - RLS-filtered signals from context:', {
+    console.log('🔍 DEBUG [useSignalRealtime] Signals from context:', {
       totalSignals: allSignals.length,
       showAllSignals,
-      userId: userId || 'empty'
+      userId: userId || 'empty',
+      firstSignalId: allSignals[0]?.id || 'no signals',
+      signalStatuses: allSignals.slice(0, 5).map(s => `${s.tradermadeSymbol}:${s.status}`)
     });
 
-    // RLS policies handle filtering automatically, so we can return all signals
-    // These are already filtered to only show educator/admin signals
-    console.log('useSignalRealtime - Returning RLS-filtered signals:', allSignals.length);
     return allSignals;
   }, [allSignals, showAllSignals, userId]);
 

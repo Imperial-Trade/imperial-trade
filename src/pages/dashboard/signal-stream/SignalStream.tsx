@@ -61,6 +61,14 @@ export default function SignalStream() {
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
 
+  console.log('🔍 DEBUG [SignalStream] Received allAlerts from hook:', {
+    totalAlerts: allAlerts.length,
+    realtimeLoading,
+    connectionStatus,
+    firstAlertId: allAlerts[0]?.id || 'no alerts',
+    alertStatuses: allAlerts.slice(0, 5).map(a => `${a.tradermadeSymbol}:${a.status}`)
+  });
+
   // Track seconds since last signal update
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
   useEffect(() => {

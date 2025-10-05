@@ -359,6 +359,16 @@ if (!alertsData || alertsData.length === 0) {
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
+console.log('🔍 DEBUG [SignalRealtimeContext] Setting signals in state:', {
+  totalSignals: filteredAlerts.length,
+  signalIds: filteredAlerts.map(s => s.id).slice(0, 5),
+  firstSignalSample: filteredAlerts[0] ? {
+    id: filteredAlerts[0].id,
+    status: filteredAlerts[0].status,
+    tradermadeSymbol: filteredAlerts[0].tradermadeSymbol
+  } : null
+});
+
 unstable_batchedUpdates(() => {
   setSignals(filteredAlerts);
   setLastUpdated(new Date());

@@ -896,6 +896,14 @@ unstable_batchedUpdates(() => {
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
+      // 🔥 PHASE 3: Disable Realtime if polling mode is active
+      const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
+      if (pollingEnabled) {
+        console.log('⏸️ PHASE 3: Polling mode active - Realtime DISABLED to prevent conflicts');
+        setConnectionStatus('disconnected');
+        return;
+      }
+      
       // 🚀 PHASE 5: POLLING MODE - Zero Realtime usage, 30-second polling
       console.log('🔄 PHASE 5: Realtime ELIMINATED - Starting 30-second polling for signals');
       

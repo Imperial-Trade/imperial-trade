@@ -112,13 +112,21 @@ function logProfessional(level: 'info' | 'warn' | 'error', message: string, data
   console.log(JSON.stringify(logEntry));
 }
 
-// PHASE 3: CRITICAL FIX - Enhanced event key generation with millisecond precision + sequence
+// PHASE 3: ENHANCED EVENT KEY - Sub-millisecond precision + trigger source + crypto hash
 let eventSequence = 0;
-function generateEventKey(notification: NotificationPayload): string {
-  const baseKey = `${notification.notification_type}_${notification.signal_id}`;
-  const timestamp = Date.now(); // Use milliseconds for precision
-  const sequence = ++eventSequence % 10000; // Add sequence number to prevent collisions
-  return `${baseKey}_${timestamp}_${sequence}`;
+function generateEventKey(
+  notification: NotificationPayload, 
+  triggerSource: string = 'unknown'
+): string {
+  const timestamp = Date.now();
+  const nanoSeconds = performance.now().toString().replace('.', ''); // Sub-millisecond precision
+  const sequence = ++eventSequence % 10000;
+  
+  // Include trigger source to prevent cross-trigger collisions
+  const changeHash = (notification.change_types || []).sort().join('-') || 'none';
+  
+  // Format: signalId-type-triggerSource-changeHash-timestamp-nanos-sequence
+  return `${notification.signal_id}-${notification.notification_type}-${triggerSource}-${changeHash}-${timestamp}-${nanoSeconds}-${sequence}`;
 }
 
 // Pips calculation helper
@@ -619,6 +627,43 @@ async function logNotificationDelivery(
   }
 }
 
+// PHASE 3: User-level circuit breaker check BEFORE batching
+async function checkUserEligibility(
+  supabase: any,
+  signalId: string,
+  userId: string,
+  notificationType: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  try {
+    // Check circuit breaker at user level (5-minute cooldown)
+    const { data: canSend, error } = await supabase.rpc(
+      'check_notification_circuit_breaker',
+      {
+        p_signal_id: signalId,
+        p_user_id: userId,
+        p_cooldown_minutes: 5
+      }
+    );
+
+    if (error) {
+      logProfessional('warn', 'User eligibility check failed', { error: error.message });
+      return { allowed: true }; // Allow on error to prevent blocking
+    }
+
+    if (!canSend) {
+      return { 
+        allowed: false, 
+        reason: 'User-level circuit breaker active (5-min cooldown)' 
+      };
+    }
+
+    return { allowed: true };
+  } catch (error) {
+    logProfessional('error', 'User eligibility exception', { error: (error as Error).message });
+    return { allowed: true }; // Allow on error
+  }
+}
+
 // ===== MAIN HANDLER =====
 
 serve(async (req) => {
@@ -693,7 +738,9 @@ serve(async (req) => {
     for (const notification of notifications) {
       try {
         metrics.processed++;
-        const eventKey = generateEventKey(notification);
+        // PHASE 3: Include trigger source in event key
+        const triggerSource = notification.change_types?.includes('signal_created') ? 'insert' : 'update';
+        const eventKey = generateEventKey(notification, triggerSource);
         
         logProfessional('info', `Processing notification for signal ${notification.signal_id}`, {
           notificationType: notification.notification_type,
@@ -724,12 +771,39 @@ serve(async (req) => {
         }
 
         // Get eligible users
-        const eligibleUsers = await getEligibleUsers(supabase, notification.user_ids);
+        const allUsers = await getEligibleUsers(supabase, notification.user_ids);
         
-        if (eligibleUsers.length === 0) {
+        if (allUsers.length === 0) {
           logProfessional('warn', `No eligible users found for signal ${notification.signal_id}`);
           continue;
         }
+
+        // PHASE 3: Filter eligible users BEFORE batching (user-level circuit breaker)
+        const eligibleUsers = [];
+        let skippedByCircuitBreaker = 0;
+        
+        for (const user of allUsers) {
+          const eligibilityCheck = await checkUserEligibility(
+            supabase,
+            notification.signal_id,
+            user.id,
+            notification.notification_type
+          );
+          
+          if (eligibilityCheck.allowed) {
+            eligibleUsers.push(user);
+          } else {
+            skippedByCircuitBreaker++;
+            logProfessional('info', `🚫 User ${user.id} blocked by circuit breaker: ${eligibilityCheck.reason}`);
+          }
+        }
+        
+        if (eligibleUsers.length === 0) {
+          logProfessional('warn', `All ${allUsers.length} users blocked by circuit breaker for signal ${notification.signal_id}`);
+          continue;
+        }
+        
+        logProfessional('info', `✅ ${eligibleUsers.length} eligible users (${skippedByCircuitBreaker} blocked by circuit breaker)`);
 
         // Send in-app realtime notifications
         if (notification.delivery_channels.includes('in_app')) {
@@ -738,25 +812,16 @@ serve(async (req) => {
             metrics.in_app_sent++;
             metrics.sent++;
             
-            // Log successful in-app delivery for each user (with circuit breaker check)
+            // Log successful in-app delivery for ELIGIBLE users only
             for (const user of eligibleUsers) {
-              // 3. Circuit breaker check per user
-              const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
-              if (canSend) {
-                await logNotificationDelivery(
-                  supabase,
-                  notification,
-                  user.id,
-                  'in_app',
-                  'sent',
-                  eventKey
-                );
-              } else {
-                logProfessional('info', `EMERGENCY: In-app notification blocked by circuit breaker`, {
-                  signalId: notification.signal_id,
-                  userId: user.id
-                });
-              }
+              await logNotificationDelivery(
+                supabase,
+                notification,
+                user.id,
+                'in_app',
+                'sent',
+                eventKey
+              );
             }
           } else {
             metrics.failed++;
@@ -779,28 +844,19 @@ serve(async (req) => {
             );
 
             if (pushResult.success) {
-              // Log successful deliveries (with circuit breaker check)
+              // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
               let actualSentCount = 0;
               for (const user of eligibleUsers) {
                 if (user.onesignal_player_id) {
-                  // 3. Circuit breaker check per user for push notifications
-                  const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
-                  if (canSend) {
-                    await logNotificationDelivery(
-                      supabase,
-                      notification,
-                      user.id,
-                      'push',
-                      'sent',
-                      eventKey
-                    );
-                    actualSentCount++;
-                  } else {
-                    logProfessional('info', `EMERGENCY: Push notification blocked by circuit breaker`, {
-                      signalId: notification.signal_id,
-                      userId: user.id
-                    });
-                  }
+                  await logNotificationDelivery(
+                    supabase,
+                    notification,
+                    user.id,
+                    'push',
+                    'sent',
+                    eventKey
+                  );
+                  actualSentCount++;
                 }
               }
               

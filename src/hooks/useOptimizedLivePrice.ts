@@ -172,54 +172,24 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
   }, [currentPrice, applyImmediateUpdate]);
 
-  // 🚀 PHASE 2B: Smooth Price Streaming - 200ms Visual Ticks with Velocity-Based Interpolation
+  // PHASE 4: FIX #5 - Remove Price Interpolation Delay (ELIMINATED 200ms interval)
+  // Direct price updates from context with ZERO delay
   useEffect(() => {
-    if (!currentPrice || priceHistoryRef.current.length < 2) return;
-
-    const interval = setInterval(() => {
-      const history = priceHistoryRef.current;
-      if (history.length < 2) return;
-
-      const now = Date.now();
-      const latest = history[history.length - 1];
-      const timeSinceLastUpdate = now - latest.timestamp;
-
-      // 🚀 Ultra-responsive: Show real price immediately when fresh (< 500ms)
-      if (timeSinceLastUpdate <= 500) {
-        setLocalState(prev => ({
-          ...prev,
-          optimisticPrice: latest.price,
-          isInterpolating: false
-        }));
-      } else if (timeSinceLastUpdate > 500 && timeSinceLastUpdate < 1500) {
-        // 🚀 Smooth interpolation between 500ms-1.5s (fills gaps between polls)
-        const prev = history[history.length - 2];
-        const timeDelta = latest.timestamp - prev.timestamp;
-        const priceDelta = latest.price - prev.price;
-        
-        // Calculate velocity (conservative - reduce by 50% to avoid overshooting)
-        const velocity = (priceDelta / timeDelta) * 0.5;
-
-        // Smooth interpolation with easing
-        const interpolationTime = timeSinceLastUpdate - 500;
-        const estimatedPrice = latest.price + (velocity * interpolationTime);
-
-        setLocalState(prev => ({
-          ...prev,
-          optimisticPrice: estimatedPrice,
-          isInterpolating: true
-        }));
-      } else {
-        // Data is stale (> 1.5s), show last known real price
-        setLocalState(prev => ({
-          ...prev,
-          optimisticPrice: latest.price,
-          isInterpolating: false
-        }));
-      }
-    }, 200); // 🚀 200ms ticks for zero visual pause
-
-    return () => clearInterval(interval);
+    if (!currentPrice) return;
+    
+    // Update price history for change calculations
+    const now = Date.now();
+    priceHistoryRef.current.push({ price: currentPrice.price, timestamp: now });
+    if (priceHistoryRef.current.length > 3) {
+      priceHistoryRef.current.shift();
+    }
+    
+    // Direct update - no interpolation, no delay
+    setLocalState(prev => ({
+      ...prev,
+      optimisticPrice: currentPrice.price,
+      isInterpolating: false
+    }));
   }, [currentPrice]);
 
   // PATH A: Real-time data age tracking with faster interval + Sub-2s arrival age tracking
@@ -230,11 +200,8 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       const arrivalAgeMs = getArrivalAge(normalizeSymbol(symbol));
       const arrivalAgeSeconds = Math.floor(arrivalAgeMs / 1000);
       
-      // 🔥 CRITICAL FIX: Use internal price for accurate data age calculation
-      const internalPrice = getInternalPrice(normalizeSymbol(symbol));
-      const dataAgeMs = internalPrice 
-        ? Date.now() - new Date(internalPrice.timestamp).getTime()
-        : Date.now() - new Date(currentPrice.timestamp).getTime();
+      // PHASE 4: FIX #11 - Use arrival age for accurate data age (not display timestamp)
+      const dataAgeMs = arrivalAgeMs; // Already accurate from getArrivalAge
       
       setLocalState(prev => ({
         ...prev,

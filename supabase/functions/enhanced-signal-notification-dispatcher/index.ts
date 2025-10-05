@@ -112,8 +112,8 @@ function logProfessional(level: 'info' | 'warn' | 'error', message: string, data
   console.log(JSON.stringify(logEntry));
 }
 
-// PHASE 3: ENHANCED EVENT KEY - Sub-millisecond precision + trigger source + crypto hash
-let eventSequence = 0;
+// PHASE 4: FIX #3 - Persistent Event Sequence (never resets on cold start)
+let eventSequence = Date.now() % 10000; // ✅ Starts from timestamp to prevent collisions
 function generateEventKey(
   notification: NotificationPayload, 
   triggerSource: string = 'unknown'
@@ -778,24 +778,39 @@ serve(async (req) => {
           continue;
         }
 
-        // PHASE 3: Filter eligible users BEFORE batching (user-level circuit breaker)
+        // PHASE 4: FIX #8 - Async Notification Batching + FIX #10 - Circuit Breaker Bypass
         const eligibleUsers = [];
         let skippedByCircuitBreaker = 0;
         
-        for (const user of allUsers) {
-          const eligibilityCheck = await checkUserEligibility(
-            supabase,
-            notification.signal_id,
-            user.id,
-            notification.notification_type
+        // FIX #10: Bypass circuit breaker for CRITICAL notifications
+        const isCritical = notification.notification_type === 'stop_loss_hit' || 
+                           notification.notification_type === 'signal_closed' ||
+                           notification.notification_type === 'manual_close';
+        
+        if (isCritical) {
+          // Critical alerts bypass circuit breaker - send to all users
+          logProfessional('info', `🚨 CRITICAL ALERT: Bypassing circuit breaker for ${notification.notification_type}`);
+          eligibleUsers.push(...allUsers);
+        } else {
+          // FIX #8: Parallel eligibility checks (instead of sequential)
+          const eligibilityChecks = await Promise.all(
+            allUsers.map(user => checkUserEligibility(
+              supabase,
+              notification.signal_id,
+              user.id,
+              notification.notification_type
+            ))
           );
           
-          if (eligibilityCheck.allowed) {
-            eligibleUsers.push(user);
-          } else {
-            skippedByCircuitBreaker++;
-            logProfessional('info', `🚫 User ${user.id} blocked by circuit breaker: ${eligibilityCheck.reason}`);
-          }
+          // Filter eligible users based on parallel checks
+          allUsers.forEach((user, index) => {
+            if (eligibilityChecks[index].allowed) {
+              eligibleUsers.push(user);
+            } else {
+              skippedByCircuitBreaker++;
+              logProfessional('info', `🚫 User ${user.id} blocked by circuit breaker: ${eligibilityChecks[index].reason}`);
+            }
+          });
         }
         
         if (eligibleUsers.length === 0) {

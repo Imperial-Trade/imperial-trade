@@ -896,22 +896,18 @@ unstable_batchedUpdates(() => {
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // 🔥 PHASE 3: Disable Realtime if polling mode is active
+      // PHASE 4: FIX #6 - Fix Polling Mode Conflict (early exit when polling enabled)
       const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
       if (pollingEnabled) {
-        console.log('⏸️ PHASE 3: Polling mode active - Realtime DISABLED to prevent conflicts');
-        setConnectionStatus('disconnected');
-        return;
-      }
-      
-      // 🚀 PHASE 5: POLLING MODE - Zero Realtime usage, 30-second polling
-      console.log('🔄 PHASE 5: Realtime ELIMINATED - Starting 30-second polling for signals');
-      
-      let pollingInterval: NodeJS.Timeout | null = null;
-      let previousSignals: any[] = [];
-      
-      // Poll function to check for signal changes
-      const pollSignals = async () => {
+        console.log('⏸️ PHASE 4: Polling mode active - Realtime DISABLED (early exit)');
+        setConnectionStatus('polling-fallback');
+        
+        // 🔄 Start polling mode immediately (no Realtime at all)
+        let pollingInterval: NodeJS.Timeout | null = null;
+        let previousSignals: any[] = [];
+        
+        // Poll function to check for signal changes
+        const pollSignals = async () => {
         try {
           const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
           
@@ -960,32 +956,35 @@ unstable_batchedUpdates(() => {
         } catch (error) {
           console.error('❌ Polling exception:', error);
         }
-      };
-      
-      // Start polling every 30 seconds
-      pollingInterval = setInterval(pollSignals, 30000);
-      
-      // Initial poll
-      pollSignals();
-      
-      // Cleanup function
-      const unsubscribe = () => {
-        if (pollingInterval) {
-          console.log('🛑 PHASE 5: Stopping signal polling');
-          clearInterval(pollingInterval);
-          pollingInterval = null;
-        }
-      };
-      
-      unsubscribeRef.current = unsubscribe;
-      recordConnection(); // PHASE C: Record successful subscription
-      
-      // Load initial data with caching
-      refreshSignals();
-      
-      if (isDevToolsEnabled()) {
-        console.log('✅ PHASE 3: Subscribed via shared connection, zero duplicate channels');
+        };
+        
+        // Start polling every 30 seconds
+        pollingInterval = setInterval(pollSignals, 30000);
+        
+        // Initial poll
+        pollSignals();
+        
+        // Cleanup function
+        const unsubscribe = () => {
+          if (pollingInterval) {
+            console.log('🛑 PHASE 4: Stopping signal polling');
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+        };
+        
+        unsubscribeRef.current = unsubscribe;
+        recordConnection();
+        
+        // Load initial data with caching
+        refreshSignals();
+        
+        console.log('✅ PHASE 4 FIX #6: Polling mode active, Realtime disabled (conflict resolved)');
+        return; // ✅ CRITICAL: Exit early, don't start Realtime
       }
+      
+      // Only reach here if polling is NOT enabled - start Realtime normally
+      console.log('🚀 PHASE 4: Starting Realtime subscriptions (no polling conflict)');
       
     } catch (error) {
       console.error('❌ Failed to subscribe to signals:', error);

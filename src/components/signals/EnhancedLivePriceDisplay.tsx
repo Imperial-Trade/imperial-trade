@@ -69,10 +69,19 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
   const [pulseKey, setPulseKey] = useState(0);
+  const [mountTime] = useState(Date.now()); // 🔥 PHASE 3: Track mount time for initial load grace period
 
   // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
     const updateAge = () => {
+      const timeSinceMountMs = Date.now() - mountTime;
+      
+      // 🔥 PHASE 3: Show "Connecting..." for first 2 seconds after mount to allow polling to catch up
+      if (timeSinceMountMs < 2000) {
+        setDataAge('Connecting...');
+        return;
+      }
+      
       // Handle undefined, Infinity, or NaN gracefully - these indicate no data received yet
       if (arrivalAgeSeconds === undefined || !isFinite(arrivalAgeSeconds) || isNaN(arrivalAgeSeconds)) {
         setDataAge('Connecting...');
@@ -98,7 +107,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     // Update every 500ms for smooth, guaranteed real-time experience
     const interval = setInterval(updateAge, 500);
     return () => clearInterval(interval);
-  }, [arrivalAgeSeconds, lastUpdated]);
+  }, [arrivalAgeSeconds, lastUpdated, mountTime]);
 
   // 🚀 PHASE 2C: Micro-animation pulses every 200ms for live feel
   useEffect(() => {
@@ -381,6 +390,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {arrivalAgeSeconds < 60 && arrivalAgeSeconds > 0 && ` (${arrivalAgeSeconds}s)`}
             </span>
           </div>
+          
+          {/* 🚀 PHASE 4: Polling status indicator with pulse animation */}
+          {connectionStatus === 'connected' && (
+            <div className="flex items-center gap-1 text-[10px] text-gray-500">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <span>Polling every 500ms</span>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-1">

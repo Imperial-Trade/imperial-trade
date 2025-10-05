@@ -136,8 +136,11 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     // Normalize symbol before subscription
     const normalizedSymbol = normalizeSymbol(symbol);
     
+    // 🔥 PHASE 2: Force immediate poll on mount to prevent stale data in modals
+    ctxRefreshPrice(normalizedSymbol);
+    
     if (isDevToolsEnabled()) {
-      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol}`);
+      console.log(`🔗 [useOptimizedLivePrice] Subscribing to ${normalizedSymbol} with immediate refresh`);
     }
     subscribeRef.current([normalizedSymbol]);
 
@@ -147,7 +150,7 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
       }
       unsubscribeRef.current([normalizedSymbol]);
     };
-  }, [symbol, options.skipSubscribe]); // ✅ Now stable dependencies
+  }, [symbol, options.skipSubscribe, ctxRefreshPrice]); // ✅ Now stable dependencies
 
   // Update local state when price changes - immediate updates
   useEffect(() => {

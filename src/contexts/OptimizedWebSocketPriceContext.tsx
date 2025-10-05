@@ -521,8 +521,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           const symbol = newRow.symbol as string;
           const dbTimestamp = new Date(newRow.updated_at).getTime();
           const lastUpdate = lastRealtimeUpdateRef.current[symbol] || 0;
+          const hydratedTimestamp = lastDatabaseTimestamp[symbol] || 0;
 
-          // 🔥 DEDUPLICATION: Only process if timestamp is newer
+          // ✅ PHASE 2: Make realtime SECONDARY to instant hydration
+          if (dbTimestamp <= hydratedTimestamp) {
+            console.log(`⏭️ [Realtime] Skipped - hydrated data is fresher for ${symbol} (db: ${dbTimestamp}, hydrated: ${hydratedTimestamp})`);
+            return;
+          }
+
+          // 🔥 DEDUPLICATION: Only process if timestamp is newer than last realtime update
           if (dbTimestamp <= lastUpdate) {
             console.log(`⏭️ [Realtime] Skipped duplicate update for ${symbol} (timestamp: ${dbTimestamp})`);
             return;
@@ -625,19 +632,19 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // 🔥 NUCLEAR CACHE-BUSTING: 3-layer strategy to eliminate ALL cache
+      // ✅ PHASE 1: Restored 60-second window for instant hydration
       const cacheBustNonce = Date.now();
-      const twoSecondsAgo = new Date(cacheBustNonce - 2000).toISOString(); // ⚡ Tightened from 60s to 2s
+      const oneMinuteAgo = new Date(cacheBustNonce - 60000).toISOString(); // ✅ Loosened to 60s for fresh data
       
       // ⚡ CRITICAL: Use timestamp in query to bypass HTTP cache
       const { data } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
-        .gte('updated_at', twoSecondsAgo) // ⚡ TIGHTENED: Reject cached responses older than 2s
+        .gte('updated_at', oneMinuteAgo) // ✅ Accept recent fresh data (60s window)
         .limit(50); // ⚡ Force query re-execution
       
-      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${twoSecondsAgo}`);
+      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${oneMinuteAgo}`);
         
       if (data) {
         const hydratedPrices: Record<string, PriceData> = {};
@@ -708,11 +715,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return priceChanged || timestampChanged;
           });
 
-  // 🚀 UNCONDITIONAL FIX: Update arrivalTimestamps for ALL polled symbols ALWAYS
+  // ✅ PHASE 1: Conditional timestamp updates - only update if ACTUALLY newer
           const now = Date.now();
           Object.keys(hydratedPrices).forEach(symbol => {
-            arrivalTimestamps.current.set(symbol, now);
-            console.log(`🟢 [Timestamp] ${symbol} → ${now} (unconditional)`);
+            const oldTimestamp = lastDatabaseTimestamp[symbol];
+            const newTimestamp = timestampUpdates[symbol];
+            if (!oldTimestamp || newTimestamp > oldTimestamp) {
+              arrivalTimestamps.current.set(symbol, now);
+              console.log(`🟢 [Timestamp] ${symbol} → ${now} (genuinely newer)`);
+            } else {
+              console.log(`⏭️ [Timestamp] ${symbol} skipped (same data)`);
+            }
           });
 
           // 🔥 REACTIVE FIX: Always trigger re-renders after timestamp updates
@@ -922,24 +935,29 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // 🚀 PHASE 2A: Optimized Polling for 200ms Visual Ticks
+    // ✅ PHASE 2: Dynamic polling frequency based on data freshness
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
-    const timeSinceMount = Date.now() - (mountTimeRef.current || Date.now());
-    const isBurstMode = timeSinceMount < 60000; // Extended 60s burst mode for smooth onboarding
     
-    // 🚀 Ultra-fast polling for signal stream to enable 200ms visual ticks
-    // - Burst mode (0-60s): 500ms for instant feedback + smooth interpolation
-    // - Standard: 500ms for continuous live feel
-    // - Other pages: 30s slow polling
+    // Check if we have recent fresh data (within 5 seconds)
+    const hasRecentData = Object.values(lastDatabaseTimestamp).some(
+      ts => ts && (Date.now() - ts < 5000)
+    );
+    
+    // 🚀 Smart polling strategy:
+    // - Signal stream with fresh data: 5s (slow backup polling)
+    // - Signal stream without fresh data: 500ms (fast initial hydration)
+    // - Other pages: 30s
     const pollingInterval = isSignalStreamPage 
-      ? 500  // Always 500ms for signal-stream to enable smooth 200ms ticks
+      ? (hasRecentData ? 5000 : 500)  // ✅ Dynamic: 5s if fresh, 500ms during hydration
       : 30000;
     
-    const modeLabel = isBurstMode ? 'BURST' : 'STREAMING';
+    const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
     console.log(`🔄 [Polling] ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
     
-    if (isBurstMode) {
-      console.log(`⚡ [Burst Mode] ${Math.round((60000 - timeSinceMount) / 1000)}s remaining`);
+    if (!hasRecentData) {
+      console.log(`⚡ [Hydration Mode] Fast polling active until fresh data received`);
+    } else {
+      console.log(`✅ [Backup Mode] Slow polling - realtime handling updates`);
     }
     
     // Immediate fetch

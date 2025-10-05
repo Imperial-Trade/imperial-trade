@@ -524,20 +524,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
   }, [connectToRealtimeChannel]);
 
-  // ⚡ PHASE 5: Optimized Database Polling - Direct fetch with clean logging
+  // ⚡ PHASE 5: Optimized Database Polling - AGGRESSIVE CACHE-BUSTING
   const fetchPricesFromDatabase = useCallback(async (targetSymbols: string[]) => {
     if (targetSymbols.length === 0) return;
 
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // 🚀 STEP 1: Force fresh database reads with timeout (prevent caching)
+      // 🔥 AGGRESSIVE CACHE-BUSTING: Multiple strategies to force fresh data
+      const cacheBustTimestamp = Date.now();
+      const oneMinuteAgo = new Date(cacheBustTimestamp - 60000).toISOString();
+      
       const { data } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
-        .order('updated_at', { ascending: false })
-        .abortSignal(AbortSignal.timeout(5000)); // Force fresh read + timeout
+        .gte('updated_at', oneMinuteAgo) // Cache-busting filter (last 60 seconds)
+        .abortSignal(AbortSignal.timeout(5000)); // Force timeout
         
       if (data) {
         const hydratedPrices: Record<string, PriceData> = {};
@@ -586,8 +589,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         
         // 🚀 STEP 2 & 4: Smart State Updates with enhanced sensitivity + debug mode
         if (Object.keys(hydratedPrices).length > 0) {
-          // ✅ PHASE 3: Optimized change detection with minimum threshold
-          const FORCE_UPDATE_MODE = false; // Disabled - only update on real changes
+          // 🔥 AGGRESSIVE CACHE-BUSTING: Force updates on every poll
+          const FORCE_UPDATE_MODE = true; // Enabled to force UI updates with fresh data
           const MINIMUM_CHANGE_THRESHOLD = 0.0001; // 0.01% minimum price change
           
           // Check for ANY changes: price OR timestamp updates

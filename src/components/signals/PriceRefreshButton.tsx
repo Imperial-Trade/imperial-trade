@@ -53,5 +53,17 @@ export const PriceRefreshButton: React.FC<PriceRefreshButtonProps> = ({
     const minutes = Math.floor(seconds / 60);
     return `${minutes}m ago`;
   };
-  return;
+  
+  return (
+    <Button
+      onClick={handleForceRefresh}
+      disabled={isRefreshing || symbols.length === 0}
+      variant="outline"
+      size="sm"
+      className={className}
+    >
+      <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+      {lastRefresh && <span className="ml-2 text-xs">{formatLastRefresh()}</span>}
+    </Button>
+  );
 };

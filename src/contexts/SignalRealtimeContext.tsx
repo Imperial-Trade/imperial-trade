@@ -21,6 +21,38 @@ const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
 const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
 const SIGNAL_REFRESH_THROTTLE = 30000; // 🔥 OPTIMIZED to 30 seconds for better responsiveness
 
+// PHASE 1: Profile cache with 5-minute TTL for instant signal rendering
+const profileCache = new Map<string, { profile: any; expiry: number }>();
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to get cached or fetch profile
+async function getCachedProfile(userId: string): Promise<any | null> {
+  const now = Date.now();
+  const cached = profileCache.get(userId);
+  
+  // Return cached if valid
+  if (cached && cached.expiry > now) {
+    return cached.profile;
+  }
+  
+  // Fetch from Supabase
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  // Store in cache
+  if (profile) {
+    profileCache.set(userId, {
+      profile,
+      expiry: now + PROFILE_CACHE_TTL
+    });
+  }
+  
+  return profile;
+}
+
 // PHASE 6: PRODUCTION-READY RELIABILITY - Connection Management & Fallbacks
 const CONNECTION_CONFIG = {
   maxConsecutiveFailures: 5,
@@ -417,22 +449,8 @@ unstable_batchedUpdates(() => {
           console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         }
         
-        // Get profile for the new signal
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newRecord.user_id)
-          .single();
-
-        if (profileError && isDevToolsEnabled()) {
-          console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
-        }
-
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Profile for new signal:', profile);
-        }
-
-        const newSignal: TradeAlertWithProfile = {
+        // PHASE 1: OPTIMISTIC RENDER - Create signal with placeholder profile IMMEDIATELY
+        const optimisticSignal: TradeAlertWithProfile = {
           id: newRecord.id,
           userId: newRecord.user_id,
           assetName: newRecord.asset_name,
@@ -451,16 +469,9 @@ unstable_batchedUpdates(() => {
           closeReason: newRecord.close_reason,
           createdAt: newRecord.created_at,
           updatedAt: newRecord.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url,
-            user_type: profile.user_type,
-            access_level: profile.access_level
-          } : {
+          creator: {
             id: newRecord.user_id,
-            display_name: 'Unknown User',
+            display_name: '⏳ Loading...',
             role: 'user',
             avatar_url: null,
             user_type: null,
@@ -468,45 +479,89 @@ unstable_batchedUpdates(() => {
           }
         };
 
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
-        }
-        
+        // Render signal IMMEDIATELY
         setSignals(prev => {
-          // PHASE 3: SIGNAL ISOLATION - Check for duplicates only for THIS specific signal
-          const alreadyExists = prev.find(signal => signal.id === newSignal.id);
+          const alreadyExists = prev.find(signal => signal.id === optimisticSignal.id);
           if (alreadyExists) {
             if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
+              console.log('SignalRealtimeContext - Signal already in state, skipping:', optimisticSignal.id);
             }
             return prev;
           }
-          return [newSignal, ...prev];
+          return [optimisticSignal, ...prev];
         });
         
-        // PHASE 3: Update local cache with new signal
+        // Update local cache with optimistic signal
         const cache = localCacheRef.current;
         if (cache.data.length > 0) {
-          cache.data = [newSignal, ...cache.data];
+          cache.data = [optimisticSignal, ...cache.data];
         }
         
-        // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'signal_created',
-            title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-            message: `${profile?.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
-            signalId: newRecord.id,
-            assetName: newRecord.asset_name,
-            authorName: profile?.display_name || 'Educator',
-            priority: 'high',
-            autoRemove: true,
-          });
-        }
+        // PHASE 1: ASYNC PROFILE FETCH - Get real profile without blocking
+        getCachedProfile(newRecord.user_id).then(profile => {
+          if (profile) {
+            // Update signal with real profile
+            setSignals(prev => prev.map(signal => 
+              signal.id === newRecord.id
+                ? {
+                    ...signal,
+                    creator: {
+                      id: profile.id,
+                      display_name: profile.display_name || 'Anonymous User',
+                      role: profile.role || 'user',
+                      avatar_url: profile.avatar_url,
+                      user_type: profile.user_type,
+                      access_level: profile.access_level
+                    }
+                  }
+                : signal
+            ));
+            
+            // Update cache with real profile
+            const cache = localCacheRef.current;
+            cache.data = cache.data.map(signal =>
+              signal.id === newRecord.id
+                ? {
+                    ...signal,
+                    creator: {
+                      id: profile.id,
+                      display_name: profile.display_name || 'Anonymous User',
+                      role: profile.role || 'user',
+                      avatar_url: profile.avatar_url,
+                      user_type: profile.user_type,
+                      access_level: profile.access_level
+                    }
+                  }
+                : signal
+            );
+            
+            if (isDevToolsEnabled()) {
+              console.log('SignalRealtimeContext - Profile loaded for signal:', newRecord.id, profile.display_name);
+            }
+            
+            // 🚨 PHASE 3: Dispatch enhanced in-app notification with real profile
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                type: 'signal_created',
+                title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
+                message: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
+                signalId: newRecord.id,
+                assetName: newRecord.asset_name,
+                authorName: profile.display_name || 'Educator',
+                priority: 'high',
+                autoRemove: true,
+              });
+            }
+          }
+        }).catch(error => {
+          if (isDevToolsEnabled()) {
+            console.error('SignalRealtimeContext - Error loading profile:', error);
+          }
+        });
         
         // Also dispatch custom event for backwards compatibility
         window.dispatchEvent(new CustomEvent('signal-posted'));
-      } 
+      }
       else if (eventType === 'UPDATE' && newRecord) {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);

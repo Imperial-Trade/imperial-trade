@@ -681,7 +681,17 @@ unstable_batchedUpdates(() => {
               }));
               
               // ✅ HYBRID MODE: Instant toast notification for activation
-              console.log(`🎯 INSTANT NOTIFICATION: ${newRecord.asset_name} activated`);
+              if ((window as any).addNotification) {
+                (window as any).addNotification({
+                  type: 'order_activated',
+                  title: `🚀 Order Activated!`,
+                  message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                  signalId: targetSignalId,
+                  priority: 'high',
+                  autoRemove: true,
+                  duration: 5000
+                });
+              }
             }, 0);
           }
 
@@ -705,7 +715,17 @@ unstable_batchedUpdates(() => {
               }));
               
               // ✅ HYBRID MODE: Instant toast notification for closure
-              console.log(`🔴 INSTANT NOTIFICATION: ${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`);
+              if ((window as any).addNotification) {
+                (window as any).addNotification({
+                  type: 'signal_closed',
+                  title: `🔴 Signal Closed`,
+                  message: `${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`,
+                  signalId: targetSignalId,
+                  priority: 'high',
+                  autoRemove: true,
+                  duration: 5000
+                });
+              }
             }, 0);
           }
           
@@ -737,7 +757,18 @@ unstable_batchedUpdates(() => {
           
           if (newHitsDetected.length > 0) {
             newHitsDetected.forEach(tp => {
-              console.log(`🎯 INSTANT NOTIFICATION: TP${tp} Hit! ${newRecord.asset_name}`);
+              // ✅ HYBRID MODE: Instant toast notification for TP hits
+              if ((window as any).addNotification) {
+                (window as any).addNotification({
+                  type: 'tp_hit',
+                  title: `🎯 TP${tp} Hit!`,
+                  message: `${newRecord.asset_name} reached Take Profit ${tp}`,
+                  signalId: targetSignalId,
+                  priority: 'high',
+                  autoRemove: true,
+                  duration: 6000
+                });
+              }
             });
           }
           
@@ -770,21 +801,8 @@ unstable_batchedUpdates(() => {
             return signal;
           });
           
-          // PHASE 3: ISOLATED FEEDBACK - Only dispatch notifications for the specific signal
+          // PHASE 3: ISOLATED FEEDBACK - Only dispatch event for the specific signal
           if (isOrderActivation) {
-            // Enhanced activation notification with signal isolation
-            if ((window as any).addNotification) {
-              (window as any).addNotification({
-                type: 'order_activated',
-                title: `🚀 Order Activated!`,
-                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
-                signalId: targetSignalId, // CRITICAL: Signal isolation
-                priority: 'high',
-                autoRemove: true,
-                duration: 5000
-              });
-            }
-            
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('order-activated', {
                 detail: {

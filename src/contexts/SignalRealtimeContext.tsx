@@ -996,6 +996,31 @@ unstable_batchedUpdates(() => {
       // Only reach here if polling is NOT enabled - start Realtime normally
       console.log('🚀 PHASE 4: Starting Realtime subscriptions (no polling conflict)');
       
+      // ✅ FIX BUG #17: Add missing subscribeToTable() call with correct arguments
+      const unsubscribeFn = subscribeToTable(
+        {
+          table: 'trade_alerts',
+          event: '*',
+          schema: 'public'
+        },
+        handleRealtimeUpdate
+      );
+      
+      if (unsubscribeFn) {
+        unsubscribeRef.current = unsubscribeFn;
+        
+        // Set connection status to connected
+        updateConnectionState({
+          status: 'connected',
+          consecutiveFailures: 0
+        });
+        
+        // Populate initial signal data
+        await refreshSignals();
+        
+        console.log('✅ SignalRealtimeContext - Successfully subscribed and connected');
+      }
+      
     } catch (error) {
       console.error('❌ Failed to subscribe to signals:', error);
       setError('Failed to initialize realtime connection');

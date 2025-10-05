@@ -611,13 +611,14 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             return priceChanged || timestampChanged;
           });
 
-          // 🚀 UNCONDITIONAL FIX: Update arrivalTimestamps for ALL polled symbols ALWAYS
+  // 🚀 UNCONDITIONAL FIX: Update arrivalTimestamps for ALL polled symbols ALWAYS
           const now = Date.now();
           Object.keys(hydratedPrices).forEach(symbol => {
             arrivalTimestamps.current.set(symbol, now);
             console.log(`🟢 [Timestamp] ${symbol} → ${now} (unconditional)`);
           });
 
+          // 🔥 REACTIVE FIX: Always trigger re-renders after timestamp updates
           if (FORCE_UPDATE_MODE || hasChanges) {
             if (FORCE_UPDATE_MODE && !hasChanges) {
               console.log(`🚀 [Force Update] Forcing UI refresh despite no changes (every 2s)`);
@@ -625,11 +626,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
             setPrices(prev => ({ ...prev, ...hydratedPrices }));
             setLastDatabaseTimestamp(prev => ({ ...prev, ...timestampUpdates }));
-            setLastUpdated(new Date());
             console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices + arrivalTimestamps`);
           } else {
             console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps for ${Object.keys(hydratedPrices).length} symbols`);
           }
+          
+          // 🔥 CRITICAL: Always update lastUpdated to force component re-renders
+          setLastUpdated(new Date());
+          console.log(`♻️ [Reactive Update] Triggered component re-renders at ${new Date().toISOString()}`);
+
         }
       }
     } catch (error) {
@@ -1117,7 +1122,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
   const getArrivalAge = useCallback((symbol: string) => {
     const arrivalTime = arrivalTimestamps.current.get(normalizeSymbol(symbol) || '');
     return arrivalTime ? Date.now() - arrivalTime : Infinity;
-  }, []);
+  }, [lastUpdated]); // 🔥 REACTIVE FIX: Depends on lastUpdated to force re-creation
 
   const getInternalPrice = useCallback((symbol: string) => {
     return internalPrices[normalizeSymbol(symbol) || ''] || null;

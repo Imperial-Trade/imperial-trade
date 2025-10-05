@@ -70,6 +70,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
   const [pulseKey, setPulseKey] = useState(0);
   const [mountTime] = useState(Date.now()); // 🔥 PHASE 3: Track mount time for initial load grace period
+  const [heartbeatPulse, setHeartbeatPulse] = useState(0); // 🔥 REACTIVE FIX: Visual heartbeat indicator
 
   // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
@@ -99,7 +100,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
     // Update every 500ms for smooth, guaranteed real-time experience
     const interval = setInterval(updateAge, 500);
     return () => clearInterval(interval);
-  }, [arrivalAgeSeconds, lastUpdated, mountTime]);
+  }, [arrivalAgeSeconds, lastUpdated, mountTime]); // 🔥 lastUpdated forces re-calculation
 
   // 🚀 PHASE 2C: Micro-animation pulses every 200ms for live feel
   useEffect(() => {
@@ -128,6 +129,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
       setDebouncedConnectionStatus(connectionStatus);
     }
   }, [connectionStatus, shouldAllowQualityChange, symbol]);
+
+  // 🔥 REACTIVE FIX: Visual heartbeat triggers on every database poll
+  useEffect(() => {
+    if (lastUpdated) {
+      setHeartbeatPulse(prev => prev + 1);
+      console.log(`💓 [Heartbeat] Triggered at ${lastUpdated.toISOString()} for ${symbol}`);
+    }
+  }, [lastUpdated, symbol]);
 
   // Price update effect with validation
   useEffect(() => {
@@ -386,14 +395,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
           {/* 🚀 ALWAYS ACTIVE: Visual confirmation of persistent connection */}
           {connectionStatus === 'connected' && arrivalAgeSeconds < 10 && (
             <div className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span>🟢 ALWAYS ACTIVE</span>
+              <div 
+                key={heartbeatPulse} 
+                className="w-2 h-2 bg-green-400 rounded-full animate-pulse" 
+              />
+              <span>🟢 LIVE POLLING (500ms)</span>
             </div>
           )}
           {connectionStatus === 'connected' && arrivalAgeSeconds >= 10 && (
-            <div className="flex items-center gap-1 text-[10px] text-gray-500">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full" />
-              <span>Polling 500ms</span>
+            <div className="flex items-center gap-1 text-[10px] text-yellow-400">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+              <span>🟡 POLLING (Delayed)</span>
             </div>
           )}
         </div>

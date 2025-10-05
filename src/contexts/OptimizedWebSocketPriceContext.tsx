@@ -544,7 +544,15 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         const timestampUpdates: Record<string, number> = {};
         
         data.forEach(row => {
+          // 🔥 MID-ONLY SUPPORT: Prioritize mid, then calculate from bid/ask, then fallback
+          const hasMidOnly = row.mid && (!row.bid || !row.ask);
           const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
+          
+          // 🚀 Enhanced logging for mid-only prices
+          if (hasMidOnly) {
+            console.log(`🎯 [Mid-Only Price] ${row.symbol}: mid=${row.mid}, bid=${row.bid}, ask=${row.ask}`);
+          }
+          
           if (price) {
             const dbTimestamp = new Date(row.updated_at).getTime();
             hydratedPrices[row.symbol] = {
@@ -563,12 +571,16 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
             const ageSeconds = Math.round((Date.now() - dbTimestamp) / 1000);
             
             // 🚀 STEP 3: Aggressive logging to debug price ingestor
-            console.log(`💾 [Database Poll] ${row.symbol}: $${price} (${ageSeconds}s old) [RAW updated_at: ${row.updated_at}]`);
+            const priceSource = hasMidOnly ? '[MID-ONLY]' : row.bid && row.ask ? '[BID/ASK]' : '[PARTIAL]';
+            console.log(`💾 [Database Poll] ${row.symbol}: $${price} ${priceSource} (${ageSeconds}s old) [RAW updated_at: ${row.updated_at}]`);
             const oldPrice = internalPrices[row.symbol]?.price;
             if (oldPrice) {
               const priceDiff = Math.abs(oldPrice - price);
               console.log(`🔍 [Price Comparison] ${row.symbol} - Old: $${oldPrice.toFixed(4)}, New: $${price.toFixed(4)}, Diff: $${priceDiff.toFixed(6)} (${((priceDiff / oldPrice) * 100).toFixed(4)}%)`);
             }
+          } else {
+            // 🚨 Log when price extraction fails completely
+            console.error(`❌ [Database Poll] Failed to extract price for ${row.symbol} - mid=${row.mid}, bid=${row.bid}, ask=${row.ask}`);
           }
         });
         

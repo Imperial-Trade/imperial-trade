@@ -48,7 +48,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   // PHASE 7: Get signal retrieval function for instant UI updates
   const { getSignalById } = useSignalRealtime();
   
-  // 🎯 FIX #4A: Consolidated event listeners for activation and closure (reduces duplicate handlers)
+  // 🎯 BUG FIX #1 & #3: Pass full signal object to onStatusUpdate instead of just signalId
   useEffect(() => {
     const handleSignalUpdate = (event: CustomEvent) => {
       const { signalId, status } = event.detail;
@@ -62,7 +62,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         const latestSignal = getSignalById(signalId);
         if (latestSignal && onStatusUpdate) {
           console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → ${status} for ${alert.asset_name}`);
-          onStatusUpdate(signalId, latestSignal.status);
+          // ✅ FIX: Pass full signal object instead of just signalId
+          onStatusUpdate(latestSignal, latestSignal.status);
         }
       }
     };

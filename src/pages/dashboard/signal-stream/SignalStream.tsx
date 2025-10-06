@@ -308,11 +308,8 @@ export default function SignalStream() {
         return;
       }
 
-      // Check if already in staticClosedAlerts (prevent duplicates)
-      if (staticClosedAlerts.some(a => a.id === signalId)) {
-        console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
-        return;
-      }
+      // ✅ BUG FIX #5: Use functional setState to always get fresh staticClosedAlerts
+      // This prevents stale closure issues with the dependency array
 
       // Fetch the profile if not already available
       let creatorProfile = closedSignal.creator;
@@ -350,16 +347,25 @@ export default function SignalStream() {
         }
       };
 
-      // Prepend to staticClosedAlerts and increment count
-      setStaticClosedAlerts(prev => [closedAlertWithProfile, ...prev.slice(0, 11)]); // Keep max 12
-      setTotalClosedCount(prev => prev + 1);
-
-      console.log('✅ [Real-time Closed Update] Added signal to closed alerts:', {
-        signalId,
-        assetName: closedSignal.assetName,
-        closeReason,
-        newClosedCount: staticClosedAlerts.length + 1
+      // ✅ BUG FIX #5: Use functional setState with duplicate check inside
+      setStaticClosedAlerts(prev => {
+        // Check if already exists using fresh prev value
+        if (prev.some(a => a.id === signalId)) {
+          console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
+          return prev; // Return unchanged if duplicate
+        }
+        
+        console.log('✅ [Real-time Closed Update] Adding signal to closed alerts:', {
+          signalId,
+          assetName: closedSignal.assetName,
+          closeReason,
+          newClosedCount: prev.length + 1
+        });
+        
+        return [closedAlertWithProfile, ...prev.slice(0, 11)]; // Keep max 12
       });
+      
+      setTotalClosedCount(prev => prev + 1);
     };
 
     window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
@@ -367,7 +373,7 @@ export default function SignalStream() {
     return () => {
       window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     };
-  }, [allAlerts, staticClosedAlerts]);
+  }, [allAlerts]); // ✅ BUG FIX #5: Remove staticClosedAlerts from deps to prevent stale closure
 
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
@@ -630,12 +636,8 @@ export default function SignalStream() {
       return;
     }
 
-    // Optimistic local state: immediately mark as closed if closing
-    if (newStatus === 'closed') {
-      // Set local closed state to prevent duplicate processing
-      alert.localClosed = true;
-    }
-    // ✅ Mark as processing
+    // ✅ BUG FIX #1 & #3: Remove buggy localClosed assignment (causes runtime error)
+    // updateInProgressRef already prevents duplicate processing
     updateInProgressRef.current.set(alert.id, true);
     console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
@@ -646,19 +648,33 @@ export default function SignalStream() {
       };
       const result = await updateAlert(alert.id, updateDto);
       console.log('SignalStream - Update result:', result);
-      if (result && newStatus === 'closed' && (window as any).addNotification) {
-        (window as any).addNotification({
+      
+      // ✅ BUG FIX #4: Enhanced notification with toast fallback
+      if (result && newStatus === 'closed') {
+        const notificationData = {
           type: 'trade_closed',
           title: `🔒 Signal Closed`,
           message: `${alert.assetName} signal has been closed`
+        };
+        
+        // Try custom notification system
+        if ((window as any).addNotification) {
+          (window as any).addNotification(notificationData);
+        }
+        
+        // Fallback to toast (always show for redundancy)
+        import('@/hooks/use-toast').then(({ toast }) => {
+          toast({
+            title: notificationData.title,
+            description: notificationData.message,
+          });
         });
+        
+        console.log('✅ [Notification Sent] Signal closed notification dispatched');
       }
     } catch (err) {
       console.error("Failed to update status:", err);
-      // Revert optimistic update on error
-      if (newStatus === 'closed') {
-        alert.localClosed = false;
-      }
+      // ✅ BUG FIX #1 & #3: Removed localClosed revert (property doesn't exist)
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',

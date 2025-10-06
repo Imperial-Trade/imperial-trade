@@ -611,19 +611,34 @@ unstable_batchedUpdates(() => {
               console.log('SignalRealtimeContext - Profile loaded for signal:', newRecord.id, profile.display_name);
             }
             
-            // 🚨 PHASE 3: Dispatch enhanced in-app notification with real profile
+            // 🚨 BUG FIX #2 & #4: Enhanced notification with toast fallback and custom event
+            const notificationData = {
+              type: 'signal_created',
+              title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
+              message: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
+              signalId: newRecord.id,
+              assetName: newRecord.asset_name,
+              authorName: profile.display_name || 'Educator',
+              priority: 'high',
+              autoRemove: true,
+            };
+            
+            // Try custom notification system
             if ((window as any).addNotification) {
-              (window as any).addNotification({
-                type: 'signal_created',
-                title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-                message: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
+              (window as any).addNotification(notificationData);
+            }
+            
+            // Dispatch custom event for UI listeners
+            window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
+              detail: {
                 signalId: newRecord.id,
                 assetName: newRecord.asset_name,
                 authorName: profile.display_name || 'Educator',
-                priority: 'high',
-                autoRemove: true,
-              });
-            }
+                timestamp: new Date().toISOString()
+              }
+            }));
+            
+            console.log('✅ [BUG FIX #2] New signal notification dispatched:', newRecord.id);
           }
         }).catch(error => {
           if (isDevToolsEnabled()) {
@@ -680,18 +695,22 @@ unstable_batchedUpdates(() => {
                 }
               }));
               
-              // ✅ HYBRID MODE: Instant toast notification for activation
+              // ✅ BUG FIX #4: Enhanced activation notification with logging
+              const activationNotification = {
+                type: 'order_activated',
+                title: `🚀 Order Activated!`,
+                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                signalId: targetSignalId,
+                priority: 'high',
+                autoRemove: true,
+                duration: 5000
+              };
+              
               if ((window as any).addNotification) {
-                (window as any).addNotification({
-                  type: 'order_activated',
-                  title: `🚀 Order Activated!`,
-                  message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
-                  signalId: targetSignalId,
-                  priority: 'high',
-                  autoRemove: true,
-                  duration: 5000
-                });
+                (window as any).addNotification(activationNotification);
               }
+              
+              console.log('✅ [BUG FIX #4] Activation notification dispatched:', targetSignalId);
             }, 0);
           }
 

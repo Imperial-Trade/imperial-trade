@@ -293,6 +293,82 @@ export default function SignalStream() {
     fetchStaticClosedAlerts();
   }, []); // Only fetch once on mount
 
+  // 🔧 BUG FIX #22: Listen for signal-closed-confirmed events and update staticClosedAlerts in real-time
+  useEffect(() => {
+    const handleSignalClosed = async (event: CustomEvent) => {
+      const { signalId, closeReason } = event.detail;
+      
+      console.log('🔔 [Real-time Closed Update] Signal closed event received:', { signalId, closeReason });
+
+      // Find the signal in allAlerts
+      const closedSignal = allAlerts.find(a => a.id === signalId);
+      
+      if (!closedSignal) {
+        console.warn('⚠️ [Real-time Closed Update] Signal not found in allAlerts:', signalId);
+        return;
+      }
+
+      // Check if already in staticClosedAlerts (prevent duplicates)
+      if (staticClosedAlerts.some(a => a.id === signalId)) {
+        console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
+        return;
+      }
+
+      // Fetch the profile if not already available
+      let creatorProfile = closedSignal.creator;
+      if (!creatorProfile || !creatorProfile.display_name) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', closedSignal.userId)
+          .single();
+        
+        if (profileData) {
+          creatorProfile = {
+            id: profileData.id,
+            display_name: profileData.display_name || 'Anonymous User',
+            role: profileData.role || 'user',
+            avatar_url: profileData.avatar_url,
+            user_type: profileData.user_type,
+            access_level: profileData.access_level
+          };
+        }
+      }
+
+      // Map to TradeAlertWithProfile format with closed status
+      const closedAlertWithProfile: TradeAlertWithProfile = {
+        ...closedSignal,
+        status: 'closed',
+        closeReason: closeReason || closedSignal.closeReason,
+        creator: creatorProfile || {
+          id: closedSignal.userId,
+          display_name: 'Unknown User',
+          role: 'user',
+          avatar_url: null,
+          user_type: null,
+          access_level: null
+        }
+      };
+
+      // Prepend to staticClosedAlerts and increment count
+      setStaticClosedAlerts(prev => [closedAlertWithProfile, ...prev.slice(0, 11)]); // Keep max 12
+      setTotalClosedCount(prev => prev + 1);
+
+      console.log('✅ [Real-time Closed Update] Added signal to closed alerts:', {
+        signalId,
+        assetName: closedSignal.assetName,
+        closeReason,
+        newClosedCount: staticClosedAlerts.length + 1
+      });
+    };
+
+    window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+
+    return () => {
+      window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+    };
+  }, [allAlerts, staticClosedAlerts]);
+
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
     return staticClosedAlerts;

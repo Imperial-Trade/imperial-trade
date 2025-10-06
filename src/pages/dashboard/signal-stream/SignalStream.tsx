@@ -6,6 +6,21 @@ import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
+
+// ✅ BUG FIX #17: Memoize TradeAlertCard for performance
+const MemoizedTradeAlertCard = React.memo(TradeAlertCard, (prevProps, nextProps) => {
+  // Custom comparison function for optimal re-render prevention
+  return (
+    prevProps.alert.id === nextProps.alert.id &&
+    prevProps.alert.status === nextProps.alert.status &&
+    prevProps.alert.tp_hits?.join(',') === nextProps.alert.tp_hits?.join(',') &&
+    prevProps.livePrice === nextProps.livePrice &&
+    prevProps.connectionStatus === nextProps.connectionStatus &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.isCreator === nextProps.isCreator &&
+    prevProps.justAdded === nextProps.justAdded
+  );
+});
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -176,6 +191,9 @@ export default function SignalStream() {
     return filteredAlerts;
   }, [allAlerts, filters]);
 
+  // ✅ BUG FIX #19: Add loading state for closed alerts
+  const [isLoadingClosedAlerts, setIsLoadingClosedAlerts] = useState(true);
+  
   // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
   const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
   const {
@@ -215,8 +233,9 @@ export default function SignalStream() {
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
+      setIsLoadingClosedAlerts(true); // ✅ BUG FIX #19: Set loading state
       try {
-        console.log('📊 PHASE 6: Fetching static closed alerts (one-time fetch)');
+        console.log('📊 PHASE 6 + BUG #19: Fetching static closed alerts with loading state');
         const {
           data: closedAlertsData,
           error
@@ -225,6 +244,7 @@ export default function SignalStream() {
         }).limit(12);
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
+          setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19
           return;
         }
 
@@ -297,9 +317,11 @@ export default function SignalStream() {
         });
         setStaticClosedAlerts(mappedAlerts);
         setTotalClosedCount(count || 0);
-        console.log(`📊 PHASE 6: Loaded ${mappedAlerts.length} static closed alerts, total: ${count}`);
+        console.log(`📊 PHASE 6 + BUG #19: Loaded ${mappedAlerts.length} static closed alerts, total: ${count}`);
       } catch (error) {
         console.error('Error fetching static closed alerts:', error);
+      } finally {
+        setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19: Clear loading state
       }
     };
     fetchStaticClosedAlerts();
@@ -436,8 +458,10 @@ export default function SignalStream() {
     intervalMs: 15000 // 15 seconds
   });
 
-  // 🎯 PHASE 1 & 5: Define symbols with deep equality for subscription stability
+  // ✅ BUG FIX #18: Optimize symbols with deep equality check to prevent WebSocket churn
   const prevSymbolsRef = useRef<string[]>([]);
+  const prevSymbolsHashRef = useRef<string>('');
+  
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
 
@@ -637,6 +661,7 @@ export default function SignalStream() {
         return null;
     }
   };
+  // ✅ BUG FIX #17: Memoize all callbacks with stable dependencies
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     // ✅ Check if already processing THIS specific signal
     if (updateInProgressRef.current.get(alert.id)) {
@@ -992,9 +1017,10 @@ export default function SignalStream() {
                       </span>
                       <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
                     </h2>
-                    {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {activeAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
+                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {activeAlerts.map(alert => <MemoizedTradeAlertCard 
+                            key={alert.id}
+                            alert={{
                       ...alert,
                       asset_name: alert.assetName,
                       tradermade_symbol: alert.tradermadeSymbol,
@@ -1005,8 +1031,20 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />
-                          </div>)}
+                    }} 
+                            onStatusUpdate={handleStatusUpdate} 
+                            onTakeProfitHit={handleTakeProfitHit} 
+                            onStopLossHit={handleStopLossHit} 
+                            onOrderActivation={handleOrderActivation} 
+                            isAdmin={isAdmin} 
+                            isCreator={isCreator(alert.creator?.id)} 
+                            livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
+                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                            priceSource={priceSource} 
+                            isRecentClosure={false} 
+                            creator={alert.creator} 
+                            justAdded={justAddedIds.has(alert.id)} 
+                          />)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                           <Shield className="w-8 h-8 text-muted-foreground/50" />
@@ -1028,9 +1066,21 @@ export default function SignalStream() {
                       </span>
                       <span className="text-imperial-platinum"> ({totalClosedCount})</span>
                     </h2>
-                    {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {sortedClosedAlerts.map(alert => <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard alert={{
+                    {isLoadingClosedAlerts ? (
+                      // ✅ BUG FIX #19: Skeleton UI for closed alerts loading
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+                            <div className="h-4 w-1/3 bg-muted rounded mb-3" />
+                            <div className="h-6 w-2/3 bg-muted rounded mb-4" />
+                            <div className="h-24 w-full bg-muted rounded" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {sortedClosedAlerts.map(alert => <MemoizedTradeAlertCard 
+                            key={alert.id}
+                            alert={{
                       ...alert,
                       asset_name: alert.assetName,
                       tradermade_symbol: alert.tradermadeSymbol,
@@ -1041,8 +1091,19 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />
-                          </div>)}
+                    }} 
+                            onStatusUpdate={handleStatusUpdate} 
+                            onTakeProfitHit={handleTakeProfitHit} 
+                            onStopLossHit={handleStopLossHit} 
+                            onOrderActivation={handleOrderActivation} 
+                            isAdmin={isAdmin} 
+                            isCreator={isCreator(alert.creator?.id)} 
+                            livePrice={undefined} 
+                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                            priceSource={priceSource} 
+                            isRecentClosure={true} 
+                            creator={alert.creator} 
+                          />)}
                       </div> : <div className="text-center py-8">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                           <div className="w-8 h-8 text-muted-foreground/50">🔒</div>

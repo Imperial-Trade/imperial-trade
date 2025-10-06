@@ -145,6 +145,15 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   
   // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - track ALL signal IDs we've ever seen
   const seenSignalIdsRef = useRef(new Set<string>());
+  
+  // ✅ BUG FIX #15: Profile fetch batch queue and timer refs
+  const profileFetchQueueRef = useRef<Array<{
+    signalId: string;
+    userId: string;
+    assetName: string;
+    timestamp: number;
+  }>>([]);
+  const profileBatchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // PHASE 1 CLEANUP: Automatic cache cleanup every 5 minutes
   useEffect(() => {
@@ -473,6 +482,134 @@ unstable_batchedUpdates(() => {
     return signals.find(signal => signal.id === signalId);
   }, [signals]);
 
+  // ✅ BUG FIX #15: Batch profile fetch processor (defined outside handleRealtimeUpdate)
+  const processBatchedProfileFetches = useCallback(async () => {
+    const queue = profileFetchQueueRef.current || [];
+    if (queue.length === 0) return;
+    
+    console.log(`🚀 [BUG #15] Processing ${queue.length} queued signals in batch`);
+    
+    // Clear queue immediately to prevent duplicates
+    profileFetchQueueRef.current = [];
+    
+    // Get unique user IDs
+    const userIds = [...new Set(queue.map(item => item.userId))];
+    
+    try {
+      // Single profile fetch for all users
+      const profiles = await Promise.all(
+        userIds.map(userId => 
+          Promise.race([
+            getCachedProfile(userId),
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
+            )
+          ]).catch(() => null)
+        )
+      );
+      
+      // Create profile map
+      const profileMap = new Map();
+      profiles.forEach((profile, index) => {
+        if (profile) {
+          profileMap.set(userIds[index], profile);
+        }
+      });
+      
+      console.log(`✅ [BUG #15] Fetched ${profileMap.size} profiles for ${queue.length} signals`);
+      
+      // ✅ SINGLE setState call for all profile updates
+      setSignals(prev => {
+        let updated = [...prev];
+        let changesMade = false;
+        
+        queue.forEach(item => {
+          const profile = profileMap.get(item.userId);
+          if (profile) {
+            const index = updated.findIndex(s => s.id === item.signalId);
+            if (index !== -1 && updated[index].creator?.display_name === '⏳ Loading...') {
+              updated[index] = {
+                ...updated[index],
+                creator: {
+                  id: profile.id,
+                  display_name: profile.display_name || 'Anonymous User',
+                  role: profile.role || 'user',
+                  avatar_url: profile.avatar_url,
+                  user_type: profile.user_type,
+                  access_level: profile.access_level
+                }
+              };
+              changesMade = true;
+            }
+          }
+        });
+        
+        console.log(`✅ [BUG #15] Batch update complete: ${changesMade ? 'profiles updated' : 'no changes needed'}`);
+        return changesMade ? updated : prev;
+      });
+      
+      // Batch update cache
+      const cache = localCacheRef.current;
+      queue.forEach(item => {
+        const profile = profileMap.get(item.userId);
+        if (profile) {
+          const index = cache.data.findIndex(s => s.id === item.signalId);
+          if (index !== -1) {
+            cache.data[index] = {
+              ...cache.data[index],
+              creator: {
+                id: profile.id,
+                display_name: profile.display_name || 'Anonymous User',
+                role: profile.role || 'user',
+                avatar_url: profile.avatar_url,
+                user_type: profile.user_type,
+                access_level: profile.access_level
+              }
+            };
+          }
+        }
+      });
+      
+      // ✅ BUG FIX #15: Single batch notification for all new signals
+      queue.forEach(item => {
+        const profile = profileMap.get(item.userId);
+        if (profile) {
+          const notificationData = {
+            type: 'signal_created',
+            title: `🚨 New Signal`,
+            message: `${profile.display_name || 'Educator'} posted ${item.assetName}`,
+            signalId: item.signalId,
+            assetName: item.assetName,
+            authorName: profile.display_name || 'Educator',
+            priority: 'high',
+            autoRemove: true,
+          };
+          
+          if ((window as any).addNotification) {
+            (window as any).addNotification(notificationData);
+          }
+          
+          toast({
+            title: '🎯 New Signal Created',
+            description: `${profile.display_name || 'Educator'} posted ${item.assetName}`,
+          });
+          
+          // Dispatch custom event for UI listeners
+          window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
+            detail: {
+              signalId: item.signalId,
+              assetName: item.assetName,
+              id: item.signalId
+            }
+          }));
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ [BUG #15] Batch profile fetch failed:', error);
+    }
+  }, []);
+
   // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const signalId = payload?.new?.id || payload?.old?.id;
@@ -505,6 +642,9 @@ unstable_batchedUpdates(() => {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         }
+        
+        // ✅ BUG FIX #15: Queue signal for batched profile fetch
+        console.log(`📋 [BUG #15] Queueing signal ${newRecord.id} for batched profile fetch`);
         
         // PHASE 1: OPTIMISTIC RENDER - Create signal with placeholder profile IMMEDIATELY
         const optimisticSignal: TradeAlertWithProfile = {
@@ -557,123 +697,26 @@ unstable_batchedUpdates(() => {
           cache.data = [optimisticSignal, ...cache.data];
         }
         
-        // PHASE 1: ASYNC PROFILE FETCH with 5-second timeout - Get real profile without blocking
-        const profilePromise = getCachedProfile(newRecord.user_id);
-        const timeoutPromise = new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
-        );
+        // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
+        if (!profileFetchQueueRef.current) {
+          profileFetchQueueRef.current = [];
+        }
         
-        Promise.race([profilePromise, timeoutPromise])
-          .then(profile => {
-            if (profile) {
-              // PHASE 1 CLEANUP: Check if signal still exists before updating (race condition fix)
-              setSignals(prev => {
-                const signalExists = prev.find(s => s.id === newRecord.id);
-                if (!signalExists) {
-                  if (isDevToolsEnabled()) {
-                    console.log('SignalRealtimeContext - Signal no longer exists, skipping profile update:', newRecord.id);
-                  }
-                  return prev;
-              }
-              
-              return prev.map(signal => 
-                signal.id === newRecord.id
-                  ? {
-                      ...signal,
-                      creator: {
-                        id: profile.id,
-                        display_name: profile.display_name || 'Anonymous User',
-                        role: profile.role || 'user',
-                        avatar_url: profile.avatar_url,
-                        user_type: profile.user_type,
-                        access_level: profile.access_level
-                      }
-                    }
-                  : signal
-              );
-            });
-            
-            // Update cache with race condition check
-            const cache = localCacheRef.current;
-            const signalExistsInCache = cache.data.find(s => s.id === newRecord.id);
-            if (signalExistsInCache) {
-              cache.data = cache.data.map(signal =>
-                signal.id === newRecord.id
-                  ? {
-                      ...signal,
-                      creator: {
-                        id: profile.id,
-                        display_name: profile.display_name || 'Anonymous User',
-                        role: profile.role || 'user',
-                        avatar_url: profile.avatar_url,
-                        user_type: profile.user_type,
-                        access_level: profile.access_level
-                      }
-                    }
-                  : signal
-              );
-            }
-            
-            if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Profile loaded for signal:', newRecord.id, profile.display_name);
-            }
-            
-            // 🚨 BUG FIX #2 & #4: Enhanced notification with toast fallback and custom event
-            const notificationData = {
-              type: 'signal_created',
-              title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-              message: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
-              signalId: newRecord.id,
-              assetName: newRecord.asset_name,
-              authorName: profile.display_name || 'Educator',
-              priority: 'high',
-              autoRemove: true,
-            };
-            
-            // Try custom notification system
-            if ((window as any).addNotification) {
-              (window as any).addNotification(notificationData);
-              console.log('✅ [INSERT] Custom notification dispatched');
-            } else {
-              console.warn('⚠️ [INSERT] Custom notification system not available, using toast fallback');
-            }
-            
-            // ✅ BUG FIX #8: Always show toast as fallback
-            toast({
-              title: '🎯 New Signal Created',
-              description: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name}`,
-            });
-            console.log('✅ [INSERT] Toast notification shown');
-            
-            // Dispatch custom event for UI listeners
-            window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
-              detail: {
-                signalId: newRecord.id,
-                assetName: newRecord.asset_name,
-                authorName: profile.display_name || 'Educator',
-                timestamp: new Date().toISOString()
-              }
-            }));
-            
-            console.log('✅ [BUG FIX #2] New signal notification dispatched:', newRecord.id);
-          }
-        })
-        .catch(error => {
-          console.error('⚠️ [BUG FIX #11] Profile fetch error, using fallback:', error);
-          
-          // ✅ BUG FIX #11: Show notification even if profile fetch fails
-          toast({
-            title: '🎯 New Signal Created',
-            description: `${newRecord.asset_name} signal is now active`,
-          });
-          
-          if (isDevToolsEnabled()) {
-            console.error('SignalRealtimeContext - Error loading profile:', error);
-          }
+        profileFetchQueueRef.current.push({
+          signalId: newRecord.id,
+          userId: newRecord.user_id,
+          assetName: newRecord.asset_name,
+          timestamp: Date.now()
         });
         
-        // Also dispatch custom event for backwards compatibility
-        window.dispatchEvent(new CustomEvent('signal-posted'));
+        // Debounce batch processing (100ms window to collect multiple inserts)
+        if (profileBatchTimerRef.current) {
+          clearTimeout(profileBatchTimerRef.current);
+        }
+        
+        profileBatchTimerRef.current = setTimeout(() => {
+          processBatchedProfileFetches();
+        }, 100);
       }
       else if (eventType === 'UPDATE' && newRecord) {
         if (isDevToolsEnabled()) {

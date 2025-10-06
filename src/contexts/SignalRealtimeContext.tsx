@@ -221,6 +221,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastSubscribeAttemptRef = useRef<number>(0); // PHASE 4: Cooldown tracking
   
+  // ============================================
+  // FIX #5: NETWORK RESILIENCE (Phase 3)
+  // Track last successful update timestamp for gap filling on reconnection
+  // ============================================
+  const lastUpdateTimestampRef = useRef<string | null>(null);
+  
   // PHASE 3: Enhanced local caching to minimize database queries
   const localCacheRef = useRef<{ 
     data: TradeAlertWithProfile[], 
@@ -379,11 +385,32 @@ console.log('🔍 DEBUG [SignalRealtimeContext] Setting signals in state:', {
   } : null
 });
 
+// ============================================
+// FIX #4: RACE CONDITION GUARD (Phase 3)
+// Filter out older updates to prevent stale data overwrites
+// ============================================
+const filteredWithTimestamps = filteredAlerts.filter(newSignal => {
+  const existingSignal = signals.find(s => s.id === newSignal.id);
+  if (!existingSignal) return true; // New signal, keep it
+  
+  // Compare timestamps - only keep if newer or equal
+  return new Date(newSignal.updatedAt) >= new Date(existingSignal.updatedAt);
+});
+
+console.log('🛡️ Race Condition Guard:', {
+  totalIncoming: filteredAlerts.length,
+  afterTimestampFilter: filteredWithTimestamps.length,
+  blocked: filteredAlerts.length - filteredWithTimestamps.length
+});
+
 unstable_batchedUpdates(() => {
-  setSignals(filteredAlerts);
+  setSignals(filteredWithTimestamps);
   setLastUpdated(new Date());
   setError(null);
 });
+      
+// Update timestamp for network resilience tracking
+lastUpdateTimestampRef.current = new Date().toISOString();
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
@@ -1175,11 +1202,62 @@ unstable_batchedUpdates(() => {
           consecutiveFailures: 0
         });
         
+        // ============================================
+        // FIX #5: NETWORK RESILIENCE - Add reconnection handler
+        // Fetch missed updates when reconnecting after network issues
+        // ============================================
+        if (typeof window !== 'undefined') {
+          const reconnectionHandler = async () => {
+            console.log('🔄 Network Resilience: Detected reconnection, checking for missed updates');
+            
+            if (lastUpdateTimestampRef.current) {
+              try {
+                const { data: missedSignals, error } = await supabase
+                  .from('trade_alerts')
+                  .select('*')
+                  .in('user_id', educatorUserIds)
+                  .gte('updated_at', lastUpdateTimestampRef.current)
+                  .order('updated_at', { ascending: false });
+                
+                if (error) {
+                  console.error('❌ Network Resilience: Failed to fetch missed updates', error);
+                } else if (missedSignals && missedSignals.length > 0) {
+                  console.log(`✅ Network Resilience: Fetched ${missedSignals.length} missed updates`);
+                  
+                  // Process each missed update through the realtime handler
+                  for (const signal of missedSignals) {
+                    await handleRealtimeUpdate({
+                      eventType: 'UPDATE',
+                      new: signal,
+                      old: null
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error('❌ Network Resilience: Error during reconnection sync', err);
+              }
+            }
+          };
+          
+          // Listen for reconnection events from Supabase Realtime
+          window.addEventListener('supabase:realtime:reconnect', reconnectionHandler);
+          
+          // Cleanup listener on unmount
+          const originalUnsubscribe = unsubscribeRef.current;
+          unsubscribeRef.current = () => {
+            window.removeEventListener('supabase:realtime:reconnect', reconnectionHandler);
+            if (originalUnsubscribe) originalUnsubscribe();
+          };
+        }
+        
         // Populate initial signal data (only if not already populated by polling)
         const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
         if (!pollingEnabled) {
           await refreshSignals();
         }
+        
+        // Update timestamp tracking for network resilience
+        lastUpdateTimestampRef.current = new Date().toISOString();
         
         console.log('✅ HYBRID MODE ACTIVE: Realtime (instant) + Polling (60s backup)');
       }

@@ -389,19 +389,17 @@ const LivePriceWidgetComponent = ({
       // Trigger auto-close with existing TP hits
       onTakeProfitHit(alert, currentHits, true, `tp${maxAvailableTP}`);
       
-      // ✅ BUG FIX #9: Manually dispatch signal-closed-confirmed event for instant UI update
+      // ✅ BUG FIX #9 & #13: Manually dispatch signal-closed-confirmed event with correct structure
       console.log('📢 [STARTUP AUTO-CLOSE] Manually dispatching signal-closed-confirmed event');
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('signal-closed-confirmed', { 
-          detail: { ...alert, status: 'closed' }
+          detail: { 
+            signalId: alert.id, 
+            closeReason: alert.closeReason || 'max_tp_hit',
+            assetName: alert.asset_name
+          }
         }));
       }, 100); // Small delay to ensure database update completes first
-      
-      // Manually dispatch signal-closed-confirmed event for instant UI update
-      console.log('📢 [STARTUP AUTO-CLOSE] Manually dispatching signal-closed-confirmed event');
-      window.dispatchEvent(new CustomEvent('signal-closed-confirmed', { 
-        detail: { ...alert, status: 'closed' }
-      }));
     }
   }, []); // Empty deps = run once on mount
 

@@ -557,8 +557,13 @@ unstable_batchedUpdates(() => {
           cache.data = [optimisticSignal, ...cache.data];
         }
         
-        // PHASE 1: ASYNC PROFILE FETCH - Get real profile without blocking
-        getCachedProfile(newRecord.user_id)
+        // PHASE 1: ASYNC PROFILE FETCH with 5-second timeout - Get real profile without blocking
+        const profilePromise = getCachedProfile(newRecord.user_id);
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
+        );
+        
+        Promise.race([profilePromise, timeoutPromise])
           .then(profile => {
             if (profile) {
               // PHASE 1 CLEANUP: Check if signal still exists before updating (race condition fix)

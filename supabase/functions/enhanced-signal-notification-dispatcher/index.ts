@@ -187,32 +187,48 @@ function createRichNotificationContent(notification: NotificationPayload): {
   // Provider name format: "${providerName} • ${notificationType}"
   switch (notification_type) {
     case 'signal_created':
-      title = `${safeAuthorName} • New Signal`;
+      title = `🔔 ${safeAuthorName} • New Signal`;
       body = `${asset_name} • ${trade_type.toUpperCase()} at ${entry_price}`;
       break;
       
     case 'tp_hit':
     case 'take_profit_hit':
       const tpLevel = tp_hits?.[tp_hits.length - 1] || 1;
-      title = `${safeAuthorName} • TP${tpLevel} Hit`;
+      title = `🎯 ${safeAuthorName} • TP${tpLevel} Hit`;
       body = `${asset_name} • ${pipsText || 'Target reached'}`;
+      if (notification.triggered_price) {
+        body += `\nAsset reached: $${notification.triggered_price.toFixed(2)}`;
+      }
       break;
       
     case 'stop_loss_hit':
-      title = `${safeAuthorName} • Stop Loss Hit`;
+      title = `🔻 ${safeAuthorName} • Stop Loss Hit`;
       body = `${asset_name} • ${pipsText || `SL at ${notification.triggered_price}`}`;
+      if (notification.triggered_price) {
+        body += `\nAsset reached: $${notification.triggered_price.toFixed(2)}`;
+      }
       break;
       
     case 'limit_order_activated':
-      title = `${safeAuthorName} • Order Activated`;
+      title = `🚀 ${safeAuthorName} • Order Activated`;
       body = `${asset_name} • ${trade_type.replace('_', ' ').toUpperCase()} now active`;
       break;
       
     case 'manual_close':
-      title = `${safeAuthorName} • Signal Closed`;
+      title = `🛑 ${safeAuthorName} • Signal Closed`;
       body = `${asset_name} • Manually closed`;
       if (notification.close_reason) {
         body += ` (${notification.close_reason})`;
+      }
+      // Calculate pips for manual close
+      const closePrice = notification.triggered_price || notification.entry_price;
+      if (closePrice && notification.entry_price) {
+        const closePips = calculatePips(notification.entry_price, closePrice, safeSymbol);
+        const isBuyClose = trade_type === 'buy' || trade_type === 'buy_limit';
+        const isProfitClose = (isBuyClose && closePrice > entry_price) || 
+                              (!isBuyClose && closePrice < entry_price);
+        body += `\n${isProfitClose ? 'Profit' : 'Loss'}: ${isProfitClose ? '+' : '-'}${closePips} pips`;
+        body += `\nClosed at: $${closePrice.toFixed(2)}`;
       }
       break;
       
@@ -220,42 +236,58 @@ function createRichNotificationContent(notification: NotificationPayload): {
     // BUG #24 FIX - PHASE 3: All Targets Hit notification
     // ============================================
     case 'all_targets_hit':
-      title = `${safeAuthorName} • All Targets Hit`;
+    case 'all_tps_hit':
+      title = `💰 ${safeAuthorName} • All Targets Hit`;
       body = `${asset_name} • Signal completed successfully`;
       if (tp_hits && tp_hits.length > 0) {
         body += ` (${tp_hits.length} TPs)`;
       }
+      // Calculate pips for all targets hit
+      const allTpPrice = notification.triggered_price || notification.entry_price;
+      if (allTpPrice && notification.entry_price) {
+        const allTpPips = calculatePips(notification.entry_price, allTpPrice, safeSymbol);
+        const isBuyAllTp = trade_type === 'buy' || trade_type === 'buy_limit';
+        const isProfitAllTp = (isBuyAllTp && allTpPrice > entry_price) || 
+                              (!isBuyAllTp && allTpPrice < entry_price);
+        body += `\n${isProfitAllTp ? 'Profit' : 'Loss'}: ${isProfitAllTp ? '+' : '-'}${allTpPips} pips`;
+        body += `\nClosed at: $${allTpPrice.toFixed(2)}`;
+      }
+      break;
+      
+    case 'limit_cancelled':
+      title = `🔒 ${safeAuthorName} • Limit Order Cancelled`;
+      body = `${asset_name} • ${trade_type.replace('_', ' ').toUpperCase()} order cancelled`;
       break;
       
     case 'notes_updated':
-      title = `${safeAuthorName} • Notes Updated`;
+      title = `📝 ${safeAuthorName} • Notes Updated`;
       body = `${asset_name} • New trading notes added`;
       break;
       
     case 'signal_updated':
       if (notification.change_types?.includes('tp_hits')) {
         const tpNum = tp_hits?.[tp_hits.length - 1] || 1;
-        title = `${safeAuthorName} • TP${tpNum} Hit`;
+        title = `🎯 ${safeAuthorName} • TP${tpNum} Hit`;
         body = `${asset_name} • ${pipsText || 'Take profit reached'}`;
       } else if (notification.change_types?.includes('status_change')) {
         if (status === 'closed') {
-          title = `${safeAuthorName} • Signal Closed`;
+          title = `🛑 ${safeAuthorName} • Signal Closed`;
           body = `${asset_name} • Trade completed`;
         } else if (status === 'active') {
-          title = `${safeAuthorName} • Signal Active`;
+          title = `🚀 ${safeAuthorName} • Signal Active`;
           body = `${asset_name} • Now trading`;
         } else {
-          title = `${safeAuthorName} • Status Update`;
+          title = `🔄 ${safeAuthorName} • Status Update`;
           body = `${asset_name} • Status: ${status}`;
         }
       } else {
-        title = `${safeAuthorName} • Signal Updated`;
+        title = `🔄 ${safeAuthorName} • Signal Updated`;
         body = `${asset_name} • Parameters modified`;
       }
       break;
       
     default:
-      title = `${safeAuthorName} • Trading Alert`;
+      title = `ℹ️ ${safeAuthorName} • Trading Alert`;
       body = `${asset_name} • ${trade_type.toUpperCase()}`;
   }
 

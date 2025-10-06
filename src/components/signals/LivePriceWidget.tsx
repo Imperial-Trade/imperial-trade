@@ -354,6 +354,43 @@ const LivePriceWidgetComponent = ({
     }
   }, [currentPrice, checkLevels]);
 
+  // 🔧 BUG FIX #22: Auto-close signals that have all TPs hit but weren't closed
+  useEffect(() => {
+    // Only run once on mount for active/partially_profited signals
+    if (!alert || (alert.status !== 'active' && alert.status !== 'partially_profited')) {
+      return;
+    }
+
+    const validTPs = [
+      { level: 1, price: alert.tp1 },
+      { level: 2, price: alert.tp2 },
+      { level: 3, price: alert.tp3 },
+      { level: 4, price: alert.tp4 },
+      { level: 5, price: alert.tp5 }
+    ].filter(tp => tp.price != null && tp.price > 0);
+    
+    const currentHits = alert.tp_hits || [];
+    
+    if (validTPs.length === 0 || currentHits.length === 0) {
+      return;
+    }
+
+    const maxAvailableTP = Math.max(...validTPs.map(tp => tp.level));
+    const allTPsHit = currentHits.includes(maxAvailableTP);
+
+    if (allTPsHit && onTakeProfitHit) {
+      console.log(`🚨 [STARTUP AUTO-CLOSE] Signal ${alert.id} (${alert.asset_name}) has max TP${maxAvailableTP} already hit but is still ${alert.status}. Triggering auto-close...`, {
+        validTPs: validTPs.map(tp => `TP${tp.level}: ${tp.price}`),
+        currentHits,
+        maxAvailableTP,
+        status: alert.status
+      });
+      
+      // Trigger auto-close with existing TP hits
+      onTakeProfitHit(alert, currentHits, true, `tp${maxAvailableTP}`);
+    }
+  }, []); // Empty deps = run once on mount
+
   // Debug logging
   useEffect(() => {
     if (isDevToolsEnabled()) {

@@ -469,7 +469,7 @@ serve(async (req) => {
                     notificationTriggers.push({
                       signal_id: alert.signal_id,
                       alert_type: 'all_targets_hit',
-                      notification_type: 'signal_closed',
+                      notification_type: 'all_tps_hit',
                       triggered_price: currentPrice,
                       symbol: priceUpdate.symbol,
                       timestamp: priceUpdate.timestamp || new Date().toISOString(),

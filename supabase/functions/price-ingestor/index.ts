@@ -458,19 +458,41 @@ serve(async (req) => {
                     p_is_buy: isBuyTrade
                   });
 
-                if (!tpError && tpResult && tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                  console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
-                  
-                  notificationTriggers.push({
-                    signal_id: alert.signal_id,
-                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                    notification_type: 'take_profit_hit',
-                    triggered_price: currentPrice,
-                    symbol: priceUpdate.symbol,
-                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                    priority_level: 3, // High priority for TP hits
-                    tp_level: tpResult.tp_hit_this_cycle[0]
-                  });
+                if (!tpError && tpResult) {
+                  // ============================================
+                  // BUG #24 FIX - PHASE 2: Check if all TPs are hit
+                  // ============================================
+                  if (tpResult.all_tps_hit && tpResult.signal_auto_closed) {
+                    console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
+                    
+                    // Send "All Targets Hit" notification with HIGHEST priority
+                    notificationTriggers.push({
+                      signal_id: alert.signal_id,
+                      alert_type: 'all_targets_hit',
+                      notification_type: 'signal_closed',
+                      triggered_price: currentPrice,
+                      symbol: priceUpdate.symbol,
+                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                      priority_level: 4, // HIGHEST priority for completion
+                      close_reason: 'all_targets_hit',
+                      tp_hits_completed: tpResult.total_tps_hit
+                    });
+                  }
+                  // Regular TP hit notification (if a new TP was hit but not all)
+                  else if (tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                    console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
+                    
+                    notificationTriggers.push({
+                      signal_id: alert.signal_id,
+                      alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                      notification_type: 'take_profit_hit',
+                      triggered_price: currentPrice,
+                      symbol: priceUpdate.symbol,
+                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                      priority_level: 3, // High priority for TP hits
+                      tp_level: tpResult.tp_hit_this_cycle[0]
+                    });
+                  }
                 }
               }
             } catch (tpError) {

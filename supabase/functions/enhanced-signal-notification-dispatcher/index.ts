@@ -216,6 +216,17 @@ function createRichNotificationContent(notification: NotificationPayload): {
       }
       break;
       
+    // ============================================
+    // BUG #24 FIX - PHASE 3: All Targets Hit notification
+    // ============================================
+    case 'all_targets_hit':
+      title = `${safeAuthorName} • All Targets Hit`;
+      body = `${asset_name} • Signal completed successfully`;
+      if (tp_hits && tp_hits.length > 0) {
+        body += ` (${tp_hits.length} TPs)`;
+      }
+      break;
+      
     case 'notes_updated':
       title = `${safeAuthorName} • Notes Updated`;
       body = `${asset_name} • New trading notes added`;

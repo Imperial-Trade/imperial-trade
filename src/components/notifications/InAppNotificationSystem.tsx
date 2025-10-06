@@ -100,6 +100,9 @@ const InAppNotificationSystem = () => {
       setLastNotificationTime(now);
 
       const id = `${Date.now()}-${Math.random()}`;
+      // ============================================
+      // BUG #39 FIX: Use author name without generic fallback
+      // ============================================
       const enhancedNotification: SignalNotification = {
         id,
         type: notification.type || 'signal_updated',
@@ -108,7 +111,7 @@ const InAppNotificationSystem = () => {
         timestamp: new Date(),
         signalId: notification.signalId || '',
         assetName: notification.assetName || '',
-        authorName: notification.authorName || 'Imperial Trading',
+        authorName: notification.authorName || 'Unknown Trader', // Changed from 'Imperial Trading'
         eventKey: notification.eventKey,
         deliveryChannel: 'in_app',
         priority: notification.priority || 'medium',

@@ -174,14 +174,16 @@ function createRichNotificationContent(notification: NotificationPayload): {
   
   const safeSymbol = tradermade_symbol || symbol || asset_name;
 
-  // Calculate pips for relevant notifications
+  // ============================================
+  // BUG #40 FIX: Calculate pips for relevant notifications
+  // ============================================
   let pipsText = '';
   if (notification.triggered_price && notification.entry_price) {
     const pips = calculatePips(notification.entry_price, notification.triggered_price, safeSymbol);
     const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
     const isProfit = (isBuy && notification.triggered_price > entry_price) || 
                      (!isBuy && notification.triggered_price < entry_price);
-    pipsText = `${isProfit ? 'Profit' : 'Loss'}: ${isProfit ? '+' : '-'}${pips} pips`;
+    pipsText = `${isProfit ? '+' : '-'}${pips} pips`;
   }
 
   // Provider name format: "${providerName} • ${notificationType}"
@@ -195,12 +197,14 @@ function createRichNotificationContent(notification: NotificationPayload): {
     case 'take_profit_hit':
       const tpLevel = tp_hits?.[tp_hits.length - 1] || 1;
       title = `🎯 ${safeAuthorName} • TP${tpLevel} Hit`;
-      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)} • TP${tpLevel} hit`;
+      const tpPipsDisplay = pipsText ? ` • ${pipsText}` : '';
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)}${tpPipsDisplay} • TP${tpLevel} hit`;
       break;
       
     case 'stop_loss_hit':
       title = `🔻 ${safeAuthorName} • Stop Loss Hit`;
-      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)} • Stop Loss hit`;
+      const slPipsDisplay = pipsText ? ` • ${pipsText}` : '';
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)}${slPipsDisplay} • Stop Loss hit`;
       break;
       
     case 'limit_order_activated':

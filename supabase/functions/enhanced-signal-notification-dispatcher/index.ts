@@ -156,7 +156,22 @@ function createRichNotificationContent(notification: NotificationPayload): {
   
   let title = '';
   let body = '';
-  const safeAuthorName = author_name || 'Educator';
+  
+  // ============================================
+  // BUG #22 FIX: Only use fallback when author_name is truly undefined/null/empty
+  // ============================================
+  const safeAuthorName = (author_name && author_name.trim() !== '') ? author_name : 'Unknown Trader';
+  
+  // Log when fallback is used
+  if (safeAuthorName === 'Unknown Trader') {
+    logProfessional('warn', '⚠️ BUG #22: Using fallback author name', {
+      signal_id: notification.signal_id,
+      notification_type: notification.notification_type,
+      original_author_name: author_name,
+      author_id: notification.author_id
+    });
+  }
+  
   const safeSymbol = tradermade_symbol || symbol || asset_name;
 
   // Calculate pips for relevant notifications
@@ -738,6 +753,31 @@ serve(async (req) => {
     for (const notification of notifications) {
       try {
         metrics.processed++;
+        
+        // ============================================
+        // BUG #22 FIX: Defensive logging for incoming notification payload
+        // ============================================
+        logProfessional('info', '📦 INCOMING NOTIFICATION PAYLOAD', {
+          signal_id: notification.signal_id,
+          notification_type: notification.notification_type,
+          author_id: notification.author_id,
+          author_name: notification.author_name,
+          author_avatar_url: notification.author_avatar_url,
+          asset_name: notification.asset_name,
+          tradermade_symbol: notification.tradermade_symbol,
+          priority_level: notification.priority_level,
+          change_types: notification.change_types
+        });
+        
+        // Validate critical fields
+        if (!notification.author_name || notification.author_name.trim() === '') {
+          logProfessional('warn', '⚠️ BUG #22: Missing author_name in payload, will use fallback', {
+            signal_id: notification.signal_id,
+            author_id: notification.author_id,
+            notification_type: notification.notification_type
+          });
+        }
+        
         // PHASE 3: Include trigger source in event key
         const triggerSource = notification.change_types?.includes('signal_created') ? 'insert' : 'update';
         const eventKey = generateEventKey(notification, triggerSource);

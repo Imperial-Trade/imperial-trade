@@ -129,10 +129,34 @@ serve(async (req) => {
 
           // Send order activated notification ONLY if status genuinely changed
           try {
-            // Extract author profile data with safe fallbacks
-            const authorProfile = alert.profiles as any;
+            // ============================================
+            // BUG #23 FIX: Correctly extract profile from Supabase array
+            // ============================================
+            // Supabase foreign key JOINs return arrays, not objects
+            const profileArray = alert.profiles as any;
+            const authorProfile = Array.isArray(profileArray) ? profileArray[0] : profileArray;
+            
+            // Log raw structure for debugging
+            console.log('📊 BUG #23: Profile extraction debug', {
+              signal_id: alert.id,
+              raw_profiles_type: Array.isArray(profileArray) ? 'array' : typeof profileArray,
+              raw_profiles: profileArray,
+              extracted_profile: authorProfile,
+              has_display_name: !!authorProfile?.display_name
+            });
+            
             const authorName = authorProfile?.display_name || 'Unknown Trader';
             const authorAvatar = authorProfile?.avatar_url || null;
+            
+            // Warn if profile is missing or incomplete
+            if (!authorProfile || !authorProfile.display_name) {
+              console.warn('⚠️ BUG #23: Profile missing or incomplete', {
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                has_profile: !!authorProfile,
+                profile_data: authorProfile
+              });
+            }
 
             // Construct COMPLETE notification payload with all required fields
             const notificationPayload = {

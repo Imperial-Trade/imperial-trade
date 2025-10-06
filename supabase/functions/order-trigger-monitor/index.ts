@@ -20,11 +20,16 @@ serve(async (req) => {
     
     console.log('🚀 Starting order trigger monitor...');
 
-    // Check for limit orders that should be activated
+    // Check for limit orders that should be activated - FETCH COMPLETE SIGNAL DATA WITH AUTHOR PROFILE
     const { data: pendingLimits, error: fetchError } = await supabase
       .from('trade_alerts')
       .select(`
-        id, tradermade_symbol, entry_price, trade_type, asset_name, user_id
+        id, tradermade_symbol, entry_price, trade_type, asset_name, user_id,
+        created_at, updated_at, tp1, tp2, tp3, tp4, tp5, stop_loss, notes,
+        profiles:user_id (
+          display_name,
+          avatar_url
+        )
       `)
       .eq('status', 'pending')
       .in('trade_type', ['buy_limit', 'sell_limit']);
@@ -124,24 +129,53 @@ serve(async (req) => {
 
           // Send order activated notification ONLY if status genuinely changed
           try {
+            // Extract author profile data with safe fallbacks
+            const authorProfile = alert.profiles as any;
+            const authorName = authorProfile?.display_name || 'Unknown Trader';
+            const authorAvatar = authorProfile?.avatar_url || null;
+
+            // Construct COMPLETE notification payload with all required fields
+            const notificationPayload = {
+              notifications: [{
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                author_id: alert.user_id,
+                author_name: authorName,
+                author_avatar_url: authorAvatar,
+                asset_name: alert.asset_name,
+                tradermade_symbol: alert.tradermade_symbol,
+                symbol: alert.tradermade_symbol, // Duplicate for compatibility
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                activation_price: currentPrice,
+                stop_loss: alert.stop_loss,
+                tp1: alert.tp1,
+                tp2: alert.tp2,
+                tp3: alert.tp3,
+                tp4: alert.tp4,
+                tp5: alert.tp5,
+                created_at: alert.created_at,
+                updated_at: alert.updated_at,
+                notification_type: 'limit_order_activated',
+                alert_type: 'limit_order_activated',
+                status: 'active',
+                change_types: ['limit_order_activated'],
+                priority_level: 2,
+                delivery_channels: ['push', 'in_app']
+              }]
+            };
+
+            // Log complete payload for debugging
+            console.log(`📦 Sending notification payload:`, JSON.stringify(notificationPayload, null, 2));
+
+            // Verify critical fields are present
+            if (!authorName || authorName === 'Unknown Trader') {
+              console.warn(`⚠️ Missing author profile data for signal ${alert.id}, user ${alert.user_id}`);
+            }
+
             const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
-                body: {
-                  notifications: [{
-                    signal_id: alert.id,
-                    user_id: alert.user_id,
-                    asset_name: alert.asset_name,
-                    trade_type: alert.trade_type,
-                    entry_price: alert.entry_price,
-                    activation_price: currentPrice,
-                    notification_type: 'limit_order_activated',
-                    alert_type: 'limit_order_activated',
-                    status: 'active',
-                    change_types: ['limit_order_activated'],
-                    priority_level: 2,
-                    delivery_channels: ['push', 'in_app']
-                  }]
-                }
-              });
+              body: notificationPayload
+            });
 
             if (notifyError) {
               console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);

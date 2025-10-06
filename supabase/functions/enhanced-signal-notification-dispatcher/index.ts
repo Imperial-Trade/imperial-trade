@@ -195,18 +195,12 @@ function createRichNotificationContent(notification: NotificationPayload): {
     case 'take_profit_hit':
       const tpLevel = tp_hits?.[tp_hits.length - 1] || 1;
       title = `🎯 ${safeAuthorName} • TP${tpLevel} Hit`;
-      body = `${asset_name} • ${pipsText || 'Target reached'}`;
-      if (notification.triggered_price) {
-        body += `\nAsset reached: $${notification.triggered_price.toFixed(2)}`;
-      }
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)} • TP${tpLevel} hit`;
       break;
       
     case 'stop_loss_hit':
       title = `🔻 ${safeAuthorName} • Stop Loss Hit`;
-      body = `${asset_name} • ${pipsText || `SL at ${notification.triggered_price}`}`;
-      if (notification.triggered_price) {
-        body += `\nAsset reached: $${notification.triggered_price.toFixed(2)}`;
-      }
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)} • Stop Loss hit`;
       break;
       
     case 'limit_order_activated':
@@ -215,21 +209,9 @@ function createRichNotificationContent(notification: NotificationPayload): {
       break;
       
     case 'manual_close':
-      title = `🛑 ${safeAuthorName} • Signal Closed`;
-      body = `${asset_name} • Manually closed`;
-      if (notification.close_reason) {
-        body += ` (${notification.close_reason})`;
-      }
-      // Calculate pips for manual close
+      title = `🔒 ${safeAuthorName} • Signal Closed`;
       const closePrice = notification.triggered_price || notification.entry_price;
-      if (closePrice && notification.entry_price) {
-        const closePips = calculatePips(notification.entry_price, closePrice, safeSymbol);
-        const isBuyClose = trade_type === 'buy' || trade_type === 'buy_limit';
-        const isProfitClose = (isBuyClose && closePrice > entry_price) || 
-                              (!isBuyClose && closePrice < entry_price);
-        body += `\n${isProfitClose ? 'Profit' : 'Loss'}: ${isProfitClose ? '+' : '-'}${closePips} pips`;
-        body += `\nClosed at: $${closePrice.toFixed(2)}`;
-      }
+      body = `${asset_name} • Closed at: $${closePrice.toFixed(2)} • ${notification.close_reason || 'Manual close'}`;
       break;
       
     // ============================================
@@ -238,20 +220,8 @@ function createRichNotificationContent(notification: NotificationPayload): {
     case 'all_targets_hit':
     case 'all_tps_hit':
       title = `💰 ${safeAuthorName} • All Targets Hit`;
-      body = `${asset_name} • Signal completed successfully`;
-      if (tp_hits && tp_hits.length > 0) {
-        body += ` (${tp_hits.length} TPs)`;
-      }
-      // Calculate pips for all targets hit
       const allTpPrice = notification.triggered_price || notification.entry_price;
-      if (allTpPrice && notification.entry_price) {
-        const allTpPips = calculatePips(notification.entry_price, allTpPrice, safeSymbol);
-        const isBuyAllTp = trade_type === 'buy' || trade_type === 'buy_limit';
-        const isProfitAllTp = (isBuyAllTp && allTpPrice > entry_price) || 
-                              (!isBuyAllTp && allTpPrice < entry_price);
-        body += `\n${isProfitAllTp ? 'Profit' : 'Loss'}: ${isProfitAllTp ? '+' : '-'}${allTpPips} pips`;
-        body += `\nClosed at: $${allTpPrice.toFixed(2)}`;
-      }
+      body = `${asset_name} • Asset reached: $${allTpPrice.toFixed(2)} • All targets hit`;
       break;
       
     case 'limit_cancelled':

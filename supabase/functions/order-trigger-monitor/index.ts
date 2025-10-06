@@ -78,8 +78,8 @@ serve(async (req) => {
         console.log(`🔍 Checking ${alert.asset_name} (${alert.trade_type}): price=${currentPrice}, entry=${alert.entry_price}, shouldTrigger=${shouldTrigger}`);
 
         if (shouldTrigger) {
-          // Activate the order
-          const { error: updateError } = await supabase
+          // PHASE 2: Enhanced error handling with explicit status verification
+          const { data: updateResult, error: updateError } = await supabase
             .from('trade_alerts')
             .update({
               status: 'active',
@@ -87,17 +87,44 @@ serve(async (req) => {
               activation_price: currentPrice, // Use actual trigger price
               updated_at: new Date().toISOString()
             })
-            .eq('id', alert.id);
+            .eq('id', alert.id)
+            .select('id, status, activated_at, activation_price')
+            .single();
 
           if (updateError) {
-            console.error(`❌ Failed to activate order ${alert.id}:`, updateError);
-          } else {
-            console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice} (entry: ${alert.entry_price})`);
-            triggered++;
+            console.error(`❌ CRITICAL: Failed to activate order ${alert.id}:`, {
+              error: updateError,
+              message: updateError.message,
+              details: updateError.details,
+              hint: updateError.hint,
+              code: updateError.code
+            });
+            continue; // Skip notification if update failed
+          }
 
-            // Send order activated notification
-            try {
-              const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
+          // PHASE 3: Verify the status actually changed to 'active'
+          if (!updateResult || updateResult.status !== 'active') {
+            console.error(`❌ VERIFICATION FAILED: Order ${alert.id} update succeeded but status is not 'active'`, {
+              expectedStatus: 'active',
+              actualStatus: updateResult?.status,
+              updateResult
+            });
+            continue; // Skip notification if status didn't change
+          }
+
+          // SUCCESS: Status genuinely changed to 'active'
+          console.log(`✅ VERIFIED ACTIVATION: ${alert.trade_type} order for ${alert.asset_name}`, {
+            orderId: alert.id,
+            activationPrice: currentPrice,
+            entryPrice: alert.entry_price,
+            activatedAt: updateResult.activated_at,
+            statusConfirmed: updateResult.status === 'active'
+          });
+          triggered++;
+
+          // Send order activated notification ONLY if status genuinely changed
+          try {
+            const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
                 body: {
                   notifications: [{
                     signal_id: alert.id,
@@ -116,14 +143,13 @@ serve(async (req) => {
                 }
               });
 
-              if (notifyError) {
-                console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);
-              } else {
-                console.log(`📡 Sent activation notification for ${alert.asset_name}`);
-              }
-            } catch (notifyException) {
-              console.error(`❌ Exception sending activation notification:`, notifyException);
+            if (notifyError) {
+              console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);
+            } else {
+              console.log(`📡 Sent activation notification for ${alert.asset_name}`);
             }
+          } catch (notifyException) {
+            console.error(`❌ Exception sending activation notification:`, notifyException);
           }
         }
       }

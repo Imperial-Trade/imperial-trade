@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
@@ -539,11 +540,11 @@ unstable_batchedUpdates(() => {
         setSignals(prev => {
           const existsInState = prev.find(s => s.id === newRecord.id);
           if (existsInState) {
-            console.log(`⚠️  [DUPLICATE BLOCKED] Signal ${newRecord.id} already in state`);
+            console.log(`⚠️ [DUPLICATE BLOCKED] Signal ${newRecord.id} already in state`);
             return prev; // ✅ Return unchanged state
           }
           
-          // ✅ Mark as seen BEFORE adding to state
+          // ✅ BUG FIX #7: Mark as seen BEFORE adding to state (race condition fix)
           seenSignalIdsRef.current.add(newRecord.id);
           console.log(`✅ [INSERT] Adding NEW signal ${newRecord.id} - ${newRecord.asset_name}`);
           
@@ -557,16 +558,17 @@ unstable_batchedUpdates(() => {
         }
         
         // PHASE 1: ASYNC PROFILE FETCH - Get real profile without blocking
-        getCachedProfile(newRecord.user_id).then(profile => {
-          if (profile) {
-            // PHASE 1 CLEANUP: Check if signal still exists before updating (race condition fix)
-            setSignals(prev => {
-              const signalExists = prev.find(s => s.id === newRecord.id);
-              if (!signalExists) {
-                if (isDevToolsEnabled()) {
-                  console.log('SignalRealtimeContext - Signal no longer exists, skipping profile update:', newRecord.id);
-                }
-                return prev;
+        getCachedProfile(newRecord.user_id)
+          .then(profile => {
+            if (profile) {
+              // PHASE 1 CLEANUP: Check if signal still exists before updating (race condition fix)
+              setSignals(prev => {
+                const signalExists = prev.find(s => s.id === newRecord.id);
+                if (!signalExists) {
+                  if (isDevToolsEnabled()) {
+                    console.log('SignalRealtimeContext - Signal no longer exists, skipping profile update:', newRecord.id);
+                  }
+                  return prev;
               }
               
               return prev.map(signal => 
@@ -626,7 +628,17 @@ unstable_batchedUpdates(() => {
             // Try custom notification system
             if ((window as any).addNotification) {
               (window as any).addNotification(notificationData);
+              console.log('✅ [INSERT] Custom notification dispatched');
+            } else {
+              console.warn('⚠️ [INSERT] Custom notification system not available, using toast fallback');
             }
+            
+            // ✅ BUG FIX #8: Always show toast as fallback
+            toast({
+              title: '🎯 New Signal Created',
+              description: `${profile.display_name || 'Educator'} posted ${newRecord.asset_name}`,
+            });
+            console.log('✅ [INSERT] Toast notification shown');
             
             // Dispatch custom event for UI listeners
             window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
@@ -640,7 +652,16 @@ unstable_batchedUpdates(() => {
             
             console.log('✅ [BUG FIX #2] New signal notification dispatched:', newRecord.id);
           }
-        }).catch(error => {
+        })
+        .catch(error => {
+          console.error('⚠️ [BUG FIX #11] Profile fetch error, using fallback:', error);
+          
+          // ✅ BUG FIX #11: Show notification even if profile fetch fails
+          toast({
+            title: '🎯 New Signal Created',
+            description: `${newRecord.asset_name} signal is now active`,
+          });
+          
           if (isDevToolsEnabled()) {
             console.error('SignalRealtimeContext - Error loading profile:', error);
           }
@@ -708,9 +729,17 @@ unstable_batchedUpdates(() => {
               
               if ((window as any).addNotification) {
                 (window as any).addNotification(activationNotification);
+                console.log('✅ [BUG FIX #4] Custom activation notification dispatched:', targetSignalId);
+              } else {
+                console.warn('⚠️ [BUG FIX #4] Custom notification system not available, using toast fallback');
               }
               
-              console.log('✅ [BUG FIX #4] Activation notification dispatched:', targetSignalId);
+              // ✅ BUG FIX #8: Always show toast as fallback
+              toast({
+                title: '📈 Order Activated',
+                description: `${newRecord.asset_name} order is now active at market price`,
+              });
+              console.log('✅ [BUG FIX #4] Toast activation notification shown:', targetSignalId);
             }, 0);
           }
 

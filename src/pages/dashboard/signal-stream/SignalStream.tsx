@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
+import { toast as toastUtil } from '@/hooks/use-toast';
 export default function SignalStream() {
   const {
     user,
@@ -45,9 +46,20 @@ export default function SignalStream() {
     educator: ''
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [connectionIssue, setConnectionIssue] = useState(false);
 
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
+  
+  // Check notification system initialization
+  useEffect(() => {
+    if (!(window as any).addNotification) {
+      console.warn('⚠️ [SignalStream] Custom notification system not initialized, using toast fallback');
+      setConnectionIssue(true);
+    } else {
+      console.log('✅ [SignalStream] Custom notification system initialized');
+    }
+  }, []);
 
   // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
   const {
@@ -374,6 +386,35 @@ export default function SignalStream() {
       window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     };
   }, [allAlerts]); // ✅ BUG FIX #5: Remove staticClosedAlerts from deps to prevent stale closure
+
+  // Listen for new signal creation and scroll to top
+  useEffect(() => {
+    const handleNewSignalCreated = (event: CustomEvent) => {
+      const newSignal = event.detail;
+      console.log('🆕 [SignalStream] Received signal-created-confirmed event:', newSignal);
+      
+      if (!newSignal?.id) {
+        console.warn('⚠️ [SignalStream] Invalid new signal data received');
+        return;
+      }
+
+      // Scroll to top to show new signal
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      console.log('✅ [SignalStream] Scrolled to top for new signal');
+
+      // Show toast notification
+      toastUtil({
+        title: '🎯 New Signal Added',
+        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
+      });
+    };
+
+    window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
+    
+    return () => {
+      window.removeEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
+    };
+  }, []);
 
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
@@ -873,6 +914,38 @@ export default function SignalStream() {
                 </p>
               </div>
               
+              {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
+              <div className="flex items-center gap-3">
+                {connectionStatus === 'connected' && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-500 font-medium">Live</span>
+                  </div>
+                )}
+                {connectionStatus === 'connecting' && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-yellow-500 font-medium">Connecting...</span>
+                  </div>
+                )}
+                {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-xs text-red-500 font-medium">Connection Issue</span>
+                    </div>
+                    <Button
+                      onClick={refreshAlerts}
+                      size="sm"
+                      variant="outline"
+                      className="border-yellow-500/20 hover:bg-yellow-500/10"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh Now
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -349,6 +349,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                         created_date: alert.createdAt,
                         updated_date: alert.updatedAt
                       }}
+                      currentUserId={currentUser?.id || ''}
                       onStatusUpdate={handleSignalStatusUpdate}
                       onTakeProfitHit={handleTakeProfitHit}
                       onStopLossHit={handleStopLossHit}
@@ -391,6 +392,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
                     }}
+                    currentUserId={currentUser?.id || ''}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}
                     onStopLossHit={handleStopLossHit}
@@ -422,6 +424,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
                     }}
+                    currentUserId={currentUser?.id || ''}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}
                     onStopLossHit={handleStopLossHit}

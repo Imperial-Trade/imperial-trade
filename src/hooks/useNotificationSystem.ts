@@ -3,6 +3,7 @@ import { notificationService, NotificationBadgeState } from '@/services/Notifica
 import { notificationReliabilityService, NotificationMetrics } from '@/services/NotificationReliabilityService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { notificationStore } from '@/services/SharedNotificationStore';
 
 export interface NotificationSystemState {
   badgeState: NotificationBadgeState;
@@ -20,13 +21,33 @@ export const useNotificationSystem = () => {
     preferences: null
   });
 
-  // Subscribe to badge updates
+  // Subscribe to badge updates from both notification store and service
   useEffect(() => {
-    const unsubscribe = notificationService.subscribeToBadgeUpdates((badgeState) => {
-      setState(prev => ({ ...prev, badgeState }));
+    // Subscribe to shared notification store for unread count
+    const unsubscribeStore = notificationStore.subscribe((notifications) => {
+      const unreadCount = notifications.filter(n => !n.isRead).length;
+      setState(prev => ({
+        ...prev,
+        badgeState: {
+          ...prev.badgeState,
+          unreadCount,
+          hasNewAlerts: unreadCount > 0
+        }
+      }));
     });
 
-    return unsubscribe;
+    // Subscribe to notification service for additional badge data
+    const unsubscribeService = notificationService.subscribeToBadgeUpdates((badgeState) => {
+      setState(prev => ({ 
+        ...prev, 
+        badgeState: { ...prev.badgeState, ...badgeState }
+      }));
+    });
+
+    return () => {
+      unsubscribeStore();
+      unsubscribeService();
+    };
   }, []);
 
   // Load user preferences

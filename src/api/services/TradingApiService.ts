@@ -132,52 +132,25 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - PHASE 2: Atomic update with isolation for signal:', { id, dto, userId });
-
-      // PHASE 2: Use atomic UPDATE with WHERE clause for ownership validation
-      // This prevents race conditions and ensures signal isolation
-      const rawUpdateData: TableUpdate<'trade_alerts'> = {
+      // RPC handles all sanitization and security - no client-side filtering needed
+      const updateData: TableUpdate<'trade_alerts'> = {
         status: dto.status,
         tp_hits: dto.tpHits,
         close_reason: dto.closeReason,
-        notes: dto.notes,
-        updated_at: new Date().toISOString()
+        notes: dto.notes
       };
 
-      // CRITICAL FIX: Explicitly exclude is_xeon_stream and filter empty/null/undefined values
-      // This prevents "invalid input syntax for type boolean" PostgreSQL errors
-      const updateData = Object.entries(rawUpdateData).reduce((acc, [key, value]) => {
-        // Exclude is_xeon_stream completely
-        if (key === 'is_xeon_stream') return acc;
-        // Exclude empty strings, null, and undefined values
-        if (value === '' || value === null || value === undefined) return acc;
-        // Also exclude values that become empty when stringified and trimmed
-        if (typeof value === 'string' && value.trim() === '') return acc;
-        return { ...acc, [key]: value };
-      }, {} as TableUpdate<'trade_alerts'>);
-
-      // 🔒 SECURITY: Explicit delete as final safeguard
-      delete (updateData as any).is_xeon_stream;
-
-      console.log('🔍 [PRE-UPDATE DEBUG] Data being sent to Supabase:', {
-        signalId: id,
+      console.log('🔒 [TradingApiService] Sending update via RPC:', {
+        id,
         updateData,
-        hasXeonStream: 'is_xeon_stream' in updateData,
-        xeonStreamValue: (updateData as any).is_xeon_stream,
-        rawDataKeys: Object.keys(rawUpdateData),
-        filteredDataKeys: Object.keys(updateData)
+        userId
       });
 
-      console.log('TradingApiService - ATOMIC UPDATE with signal isolation:', { 
-        signalId: id, 
-        updateData 
-      });
-
-      // PHASE 2: Atomic update with signal isolation - single operation prevents race conditions
+      // Call update API (routes to RPC for trade_alerts)
       const result = await apiClient.update('trade_alerts', id, updateData);
       
-      console.log('TradingApiService - ISOLATED update result:', result);
-      
+      console.log('🔒 [TradingApiService] RPC update result:', result);
+
       if (!result.success || !result.data) {
         return {
           success: false,

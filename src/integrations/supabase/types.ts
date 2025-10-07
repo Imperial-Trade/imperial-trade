@@ -4377,6 +4377,42 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      update_trade_alert_safe: {
+        Args: {
+          p_close_reason?: Database["public"]["Enums"]["close_reason"]
+          p_id: string
+          p_notes?: string
+          p_status?: Database["public"]["Enums"]["trade_alert_status"]
+          p_tp_hits?: number[]
+        }
+        Returns: {
+          activated_at: string | null
+          activation_price: number | null
+          asset_name: string
+          close_reason: Database["public"]["Enums"]["close_reason"] | null
+          created_at: string
+          entry_price: number
+          expires_at: string | null
+          expiry_type: string | null
+          id: string
+          is_xeon_stream: boolean | null
+          notes: string | null
+          provider_name: string | null
+          status: Database["public"]["Enums"]["trade_alert_status"]
+          stop_loss: number
+          tp_hit_mask: number | null
+          tp_hits: number[] | null
+          tp1: number | null
+          tp2: number | null
+          tp3: number | null
+          tp4: number | null
+          tp5: number | null
+          trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          tradermade_symbol: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
         Returns: undefined

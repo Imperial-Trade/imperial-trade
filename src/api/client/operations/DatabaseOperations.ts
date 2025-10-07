@@ -136,35 +136,35 @@ export class DatabaseOperations {
 
     try {
       return await withRetry(async () => {
-        const executeQuery = async () => {
-          // 🛡️ LAYER 2: Explicitly strip is_xeon_stream from trade_alerts updates
-          let sanitizedData = data;
+      const executeQuery = async () => {
+          // 🎯 SPECIAL HANDLING: Use RPC for trade_alerts to bypass client schema merging
           if (table === 'trade_alerts') {
-            const { is_xeon_stream, ...cleanData } = data as any;
-            sanitizedData = cleanData as TableUpdate<T>;
+            console.log('🔒 [RPC Mode] Using update_trade_alert_safe for trade_alerts');
             
-            // 🚨 CRITICAL: Runtime check to ensure is_xeon_stream never makes it through
-            if ('is_xeon_stream' in sanitizedData) {
-              console.error('🚨 CRITICAL: is_xeon_stream found in sanitizedData after filtering!');
-              delete (sanitizedData as any).is_xeon_stream;
+            const tradeAlertData = data as TableUpdate<'trade_alerts'>;
+            
+            // Call RPC function with only the fields we want to update
+            // is_xeon_stream is NEVER included in the RPC parameters
+            const { data: rpcData, error: rpcError } = await supabase.rpc(
+              'update_trade_alert_safe',
+              {
+                p_id: id,
+                p_status: tradeAlertData.status || null,
+                p_tp_hits: tradeAlertData.tp_hits || null,
+                p_close_reason: tradeAlertData.close_reason || null,
+                p_notes: tradeAlertData.notes || null
+              }
+            ).maybeSingle();
+
+            if (rpcError) {
+              throw new Error(rpcError.message);
             }
-            
-            console.log('🔒 [DatabaseOperations] Sanitized trade_alerts update:', {
-              originalKeys: Object.keys(data),
-              sanitizedKeys: Object.keys(sanitizedData),
-              strippedIsXeonStream: 'is_xeon_stream' in data,
-              finalCheck: 'is_xeon_stream' in sanitizedData
-            });
+
+            return { data: rpcData, error: null };
           }
-          
-          // 🎯 Type-safe exclusion: Cast to explicitly exclude is_xeon_stream from TypeScript types
-          type SafeUpdate = T extends 'trade_alerts' 
-            ? Omit<TableUpdate<'trade_alerts'>, 'is_xeon_stream'>
-            : TableUpdate<T>;
-          
-          const safeData = sanitizedData as SafeUpdate;
-          
-          return supabase.from(table).update(safeData as any).eq('id' as any, id).select().maybeSingle();
+
+          // For all other tables, use standard update method
+          return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
         };
         
         const response = await withTimeout(

@@ -142,10 +142,6 @@ export class TradingApiService {
       ...(dto.tpHits && { tp_hits: dto.tpHits }),
       ...(dto.closeReason && { close_reason: dto.closeReason }),
       ...(dto.notes !== undefined && { notes: dto.notes }),
-      // ✅ Ensure is_xeon_stream is never empty string (prevents boolean cast errors)
-      ...(dto.isXeonStream !== undefined && dto.isXeonStream !== '' && { 
-        is_xeon_stream: Boolean(dto.isXeonStream) 
-      }),
       updated_at: new Date().toISOString()
     };
 

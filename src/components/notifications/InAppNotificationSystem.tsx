@@ -217,8 +217,15 @@ const InAppNotificationSystem = () => {
     console.log('🔌 InAppNotificationSystem: Subscribing to signal notifications');
     
     const channel = supabase
-      .channel('signal_notification')
+      .channel('instant-alerts') // FIX #2: Changed from 'signal_notification' to match dispatcher
       .on('broadcast', { event: 'signal_notification' }, (payload) => {
+        // FIX #5: Add comprehensive logging
+        console.log('📡 [InAppNotificationSystem] Received signal notification:', {
+          payload,
+          channel: 'instant-alerts',
+          event: 'signal_notification',
+          timestamp: new Date().toISOString()
+        });
         console.log('📡 Received signal notification:', payload);
         
         if (payload.payload) {

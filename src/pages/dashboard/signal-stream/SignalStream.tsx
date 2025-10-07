@@ -668,28 +668,38 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (isDevToolsEnabled()) {
-      console.log('SignalStream - handleStatusUpdate authorization check:', {
-        alertId: alert.id,
-        alertCreatorId: alert.creator?.id,
-        currentUserId: profile?.id,
-        isCreator: alertIsCreator,
-        isAdmin,
-        canUpdate: alertIsCreator || isAdmin
-      });
-    }
+    // Check BOTH alert.creator?.id AND alert.userId for proper authorization
+    const alertCreatorId = alert.creator?.id || alert.userId || alert.user_id;
+    const alertIsCreator = isCreator(alert.creator?.id) || (profile?.id === alert.userId) || (profile?.id === alert.user_id);
+    
+    console.log('🔍 [Cancel Order Debug] Authorization check:', {
+      alertId: alert.id,
+      alertCreatorId,
+      alertUserId: alert.userId,
+      alertUserIdAlt: alert.user_id,
+      currentUserId: profile?.id,
+      isCreatorCheck: alertIsCreator,
+      isAdmin,
+      canUpdate: alertIsCreator || isAdmin
+    });
+    
     if (!alertIsCreator && !isAdmin) {
-      if (isDevToolsEnabled()) {
-        console.warn('SignalStream - User not authorized to update this signal:', {
-          userId: profile?.id,
-          creatorId: alert.creator?.id,
-          userRole: profile?.role,
-          userAccessLevel: profile?.access_level,
-          isCreator: alertIsCreator,
-          isAdmin
-        });
-      }
+      console.error('❌ [Cancel Order Failed] Authorization denied:', {
+        userId: profile?.id,
+        creatorId: alert.creator?.id,
+        alertUserId: alert.userId,
+        userRole: profile?.role,
+        userAccessLevel: profile?.access_level,
+        isCreator: alertIsCreator,
+        isAdmin
+      });
+      
+      toast({
+        title: 'Access Denied',
+        description: 'You can only close your own signals',
+        variant: 'destructive'
+      });
+      
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',

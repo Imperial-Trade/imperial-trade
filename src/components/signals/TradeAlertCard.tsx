@@ -129,10 +129,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
+    console.log('🎯 [TradeAlertCard] Cancel Order clicked:', {
+      alertId: alert.id,
+      currentStatus: alert.status,
+      newStatus,
+      creatorFromProp: creator?.id
+    });
+    
     try {
       await onStatusUpdate(alert, newStatus);
+      console.log('✅ [TradeAlertCard] Status update successful');
     } catch (error) {
-      console.error('Failed to update status:', error);
+      console.error('❌ [TradeAlertCard] Failed to update status:', error);
+      toast({
+        title: 'Update Failed',
+        description: error instanceof Error ? error.message : 'Failed to update signal status',
+        variant: 'destructive'
+      });
     }
   };
 

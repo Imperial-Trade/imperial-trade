@@ -143,14 +143,28 @@ export class DatabaseOperations {
             const { is_xeon_stream, ...cleanData } = data as any;
             sanitizedData = cleanData as TableUpdate<T>;
             
+            // 🚨 CRITICAL: Runtime check to ensure is_xeon_stream never makes it through
+            if ('is_xeon_stream' in sanitizedData) {
+              console.error('🚨 CRITICAL: is_xeon_stream found in sanitizedData after filtering!');
+              delete (sanitizedData as any).is_xeon_stream;
+            }
+            
             console.log('🔒 [DatabaseOperations] Sanitized trade_alerts update:', {
               originalKeys: Object.keys(data),
               sanitizedKeys: Object.keys(sanitizedData),
-              strippedIsXeonStream: 'is_xeon_stream' in data
+              strippedIsXeonStream: 'is_xeon_stream' in data,
+              finalCheck: 'is_xeon_stream' in sanitizedData
             });
           }
           
-          return supabase.from(table).update(sanitizedData as any).eq('id' as any, id).select().maybeSingle();
+          // 🎯 Type-safe exclusion: Cast to explicitly exclude is_xeon_stream from TypeScript types
+          type SafeUpdate = T extends 'trade_alerts' 
+            ? Omit<TableUpdate<'trade_alerts'>, 'is_xeon_stream'>
+            : TableUpdate<T>;
+          
+          const safeData = sanitizedData as SafeUpdate;
+          
+          return supabase.from(table).update(safeData as any).eq('id' as any, id).select().maybeSingle();
         };
         
         const response = await withTimeout(

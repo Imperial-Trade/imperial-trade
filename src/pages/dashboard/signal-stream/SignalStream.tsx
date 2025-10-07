@@ -671,7 +671,16 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    // CRITICAL FIX: Must match isCreator prop logic with fallback to alert.userId
+    const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
+    console.log('🔐 [Authorization Check]', { 
+      alertId: alert.id, 
+      creatorId: alert.creator?.id, 
+      userId: alert.userId, 
+      profileId: profile?.id, 
+      isCreator: alertIsCreator,
+      isAdmin 
+    });
     if (isDevToolsEnabled()) {
       console.log('SignalStream - handleStatusUpdate authorization check:', {
         alertId: alert.id,

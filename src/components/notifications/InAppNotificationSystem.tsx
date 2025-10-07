@@ -91,7 +91,21 @@ export interface SignalNotification {
 }
 
 const InAppNotificationSystem = () => {
-  const { user } = useAuth();
+  // SAFEGUARD: Prevent crash if rendered outside AuthProvider
+  let user;
+  try {
+    const auth = useAuth();
+    user = auth.user;
+  } catch (error) {
+    console.error('❌ InAppNotificationSystem: Not inside AuthProvider', error);
+    return null; // Don't crash the app
+  }
+
+  // Don't render until user is loaded
+  if (!user) {
+    return null;
+  }
+
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
   const lastNotificationTimeRef = useRef<{ [key: string]: number }>({});
   

@@ -15,6 +15,7 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
@@ -167,12 +168,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       
       console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
       
-      const { error } = await supabase
-        .from('trade_alerts')
-        .update({ notes: notesDraft })
-        .eq('id', alert.id);
+      // Guard: Ensure we have creator info for authorization
+      if (!creator?.id) {
+        throw new Error('Unable to save notes: user information not available');
+      }
+      
+      // Use API service to properly filter data and avoid boolean field issues
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { notes: notesDraft },
+        creator.id
+      );
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to save notes');
 
       console.log(`✅ Notes saved successfully for alert ${alert.id}`);
       setNotesSyncStatus('saved');

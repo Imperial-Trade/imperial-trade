@@ -46,6 +46,7 @@ export interface TradeAlertData {
 
 export interface TradeAlertCardProps extends BaseComponentProps {
   alert: TradeAlertData;
+  currentUserId: string; // ✅ CRITICAL FIX: Required for RLS policy compliance
   onStatusUpdate: (alert: TradeAlertData, newStatus: string) => Promise<void>;
   onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
   onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;

@@ -21,7 +21,8 @@ import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
-  alert, 
+  alert,
+  currentUserId, // ✅ CRITICAL FIX: Receive current user ID for RLS
   onStatusUpdate, 
   onTakeProfitHit, 
   onStopLossHit, 
@@ -175,6 +176,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   };
 
   const handleNotesSave = async () => {
+    console.log('💾 [NOTES UPDATE] Starting notes save with RLS compliance:', {
+      alertId: alert.id,
+      currentUserId,
+      creatorId: creator?.id,
+      isCreator,
+      canEditNotes
+    });
+
+    if (!currentUserId || !currentUserId.trim()) {
+      toast({
+        title: "Error",
+        description: "Cannot save notes: User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
@@ -190,14 +208,18 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setLocalNotes(notesDraft);
       setIsEditingNotes(false);
       
-      console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
+      console.log(`📝 [NOTES UPDATE] Executing Supabase query with user_id filter`);
       
       const { error } = await supabase
         .from('trade_alerts')
         .update({ notes: notesDraft })
-        .eq('id', alert.id);
+        .eq('id', alert.id)
+        .eq('user_id', currentUserId); // ✅ CRITICAL FIX: Add user_id filter for RLS
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [NOTES UPDATE] RLS policy violation or database error:', error);
+        throw error;
+      }
 
       console.log(`✅ Notes saved successfully for alert ${alert.id}`);
       setNotesSyncStatus('saved');

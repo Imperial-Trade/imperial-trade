@@ -1073,7 +1073,8 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }} 
+                    }}
+                            currentUserId={profile?.id || ''} // ✅ CRITICAL FIX: Pass current user ID for RLS
                             onStatusUpdate={handleStatusUpdate} 
                             onTakeProfitHit={handleTakeProfitHit} 
                             onStopLossHit={handleStopLossHit} 
@@ -1133,7 +1134,8 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }} 
+                    }}
+                            currentUserId={profile?.id || ''} // ✅ CRITICAL FIX: Pass current user ID for RLS
                             onStatusUpdate={handleStatusUpdate} 
                             onTakeProfitHit={handleTakeProfitHit} 
                             onStopLossHit={handleStopLossHit} 

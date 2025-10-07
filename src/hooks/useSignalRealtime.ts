@@ -70,10 +70,23 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   }, [contextError]);
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    // ✅ CRITICAL FIX: Pre-flight validation for userId
     if (!userId || !userId.trim()) {
-      console.warn('useSignalRealtime - Cannot update alert: invalid userId');
-      return null;
+      const errorMsg = 'Cannot update alert: User ID is missing or invalid';
+      console.error('❌ [useSignalRealtime] PRE-FLIGHT CHECK FAILED:', {
+        userId,
+        alertId: id,
+        updateData: dto
+      });
+      setLocalError(errorMsg);
+      throw new Error(errorMsg);
     }
+
+    console.log('🚀 [useSignalRealtime] Initiating alert update:', {
+      alertId: id,
+      userId,
+      updateFields: Object.keys(dto)
+    });
 
     try {
       setLocalLoading(true);

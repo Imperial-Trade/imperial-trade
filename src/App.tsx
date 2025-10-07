@@ -117,11 +117,11 @@ function App() {
           <CacheCleanerMount />
           <Sonner />
           <ModernNotificationSystem />
-          <InAppNotificationSystem />
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>
                 <WelcomeProvider>
+                  <InAppNotificationSystem />
                   <NotificationPromptProvider>
                     <NavigationGuard>
                        <RealtimeHealthProvider>

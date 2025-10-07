@@ -3999,6 +3999,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_synthetic_test_signal: {
+        Args: { p_test_scenario?: string }
+        Returns: string
+      }
       delete_comment_cascade: {
         Args: { p_comment_id: string }
         Returns: number

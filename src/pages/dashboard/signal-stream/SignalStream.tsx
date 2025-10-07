@@ -700,19 +700,17 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    // ✅ BUG FIX #9: Convert all IDs to strings for reliable comparison
+    // ✅ CRITICAL FIX: alert.user_id doesn't exist on TradeAlertResponseDto, only userId (camelCase)
     const creatorIdMatch = 
       String(alert.creator?.id) === String(profile.id) ||
-      String(alert.userId) === String(profile.id) ||
-      String(alert.user_id) === String(profile.id);
+      String(alert.userId) === String(profile.id);
 
     const alertIsCreator = creatorIdMatch;
     
-    console.log('🔍 [Authorization Result]:', {
+    console.log('🔍 [Authorization Result - FIXED]:', {
       alertId: alert.id,
       alertCreatorId: alert.creator?.id,
       alertUserId: alert.userId,
-      alertUserIdAlt: alert.user_id,
       currentUserId: profile.id,
       creatorIdMatch: alertIsCreator,
       isAdmin,

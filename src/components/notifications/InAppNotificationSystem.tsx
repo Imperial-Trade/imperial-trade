@@ -126,9 +126,13 @@ const InAppNotificationSystem = () => {
       notificationStore.addNotification({
         id: enhancedNotification.id,
         type: enhancedNotification.type,
+        title: enhancedNotification.title,
         message: enhancedNotification.message,
         timestamp: enhancedNotification.timestamp.toISOString(),
         priority: enhancedNotification.priority,
+        signalId: enhancedNotification.signalId,
+        assetName: enhancedNotification.assetName,
+        authorName: enhancedNotification.authorName,
       });
       
       // Auto-remove based on priority

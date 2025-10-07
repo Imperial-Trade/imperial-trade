@@ -1,9 +1,13 @@
 export interface SignalNotification {
   id: string;
   type: 'signal_created' | 'tp_hit' | 'stop_loss_hit' | 'limit_activated' | 'limit_cancelled' | 'manual_close' | 'notes_updated' | 'all_tps_hit' | 'signal_updated';
+  title: string;
   message: string;
   timestamp: string;
   priority: 'critical' | 'high' | 'medium' | 'low';
+  signalId?: string;
+  assetName?: string;
+  authorName?: string;
   isRead?: boolean;
 }
 

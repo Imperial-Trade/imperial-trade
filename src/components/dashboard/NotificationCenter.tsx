@@ -159,7 +159,7 @@ export const NotificationCenter = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <h4 className="font-semibold text-foreground text-sm leading-tight">
-                          {notification.type.split('_').map(word => 
+                          {notification.title || notification.type.split('_').map(word => 
                             word.charAt(0).toUpperCase() + word.slice(1)
                           ).join(' ')}
                         </h4>

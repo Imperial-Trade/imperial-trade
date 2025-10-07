@@ -29,7 +29,7 @@ export const useNotificationSystem = () => {
     return unsubscribe;
   }, []);
 
-  // Load user preferences
+  // Load user preferences and sync badge count with database
   useEffect(() => {
     if (!user) return;
 
@@ -42,7 +42,27 @@ export const useNotificationSystem = () => {
       }
     };
 
+    const syncBadgeCount = async () => {
+      try {
+        // Get actual unread count from database
+        const { count } = await supabase
+          .from('notification_delivery_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .neq('status', 'viewed')
+          .neq('status', 'clicked');
+
+        if (count !== null) {
+          // Sync with NotificationService
+          notificationService.setUnreadCount(count);
+        }
+      } catch (error) {
+        console.warn('Failed to sync badge count:', error);
+      }
+    };
+
     loadPreferences();
+    syncBadgeCount();
   }, [user]);
 
   // Start reliability monitoring

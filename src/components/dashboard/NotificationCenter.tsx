@@ -64,63 +64,96 @@ export const NotificationCenter: React.FC = () => {
     try {
       setLoading(true);
       
-      // Get user's notification history from various sources
-      const { data: userNotifications } = await supabase
-        .rpc('get_user_notifications', { 
-          p_limit: 50 
-        });
-
-      // Get recent signal notifications from delivery logs
-      const { data: signalNotifications } = await supabase
+      // Direct query to notification_delivery_log - 2,120 notifications stored
+      const { data: allNotifications, error } = await supabase
         .from('notification_delivery_log')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
-      // Transform and combine notifications
-      const transformedNotifications: Notification[] = [];
+      if (error) throw error;
 
-      // Add forum notifications
-      if (userNotifications) {
-        userNotifications.forEach((notif: any) => {
-          transformedNotifications.push({
-            id: notif.event_id,
-            type: notif.event_type === 'like' ? 'follower' : 'message',
-            title: notif.event_type === 'like' ? 'Post Liked' : 'New Reply',
-            message: notif.event_type === 'like' 
-              ? `Someone liked your post: "${notif.post_title}"` 
-              : `Someone replied to your post: "${notif.post_title}"`,
-            timestamp: new Date(notif.created_at),
-            isRead: !notif.unread,
-            priority: 'medium'
-          });
-        });
-      }
-
-      // Add signal notifications
-      if (signalNotifications) {
-        signalNotifications.forEach((notif: any) => {
-          if (notif.notification_type?.includes('signal')) {
-            transformedNotifications.push({
-              id: notif.id,
-              type: 'signal',
-              title: notif.notification_type === 'signal_created' ? 'New Signal' : 'Signal Updated',
-              message: notif.message || `${notif.notification_type} notification`,
-              timestamp: new Date(notif.created_at),
-              isRead: notif.status === 'viewed' || notif.status === 'clicked',
-              priority: notif.priority_level === 2 ? 'high' : 'medium',
-              signal_id: notif.signal_id,
-              user_id: notif.author_id
-            });
-          }
-        });
-      }
-
-      // Sort by timestamp (most recent first)
-      transformedNotifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      // Transform notifications with enhanced metadata parsing
+      const transformedNotifications: Notification[] = (allNotifications || []).map((notif: any) => {
+        const metadata = notif.metadata || {};
+        const notifType = notif.notification_type;
+        
+        let title = 'Notification';
+        let message = 'You have a new notification';
+        let priority: 'low' | 'medium' | 'high' = 'medium';
+        let type: 'signal' | 'follower' | 'message' | 'system' | 'alert' = 'signal';
+        
+        // Parse based on notification type
+        switch (notifType) {
+          case 'signal_created':
+            title = '🚀 New Signal Created';
+            message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} - ${metadata.trade_type || 'Trade'} @ ${metadata.entry_price || 'Market'}`;
+            priority = 'high';
+            type = 'signal';
+            break;
+          case 'tp_hit':
+            title = '🎯 Take Profit Hit';
+            const tpLevel = metadata.tp_level || (metadata.tp_hits && metadata.tp_hits[metadata.tp_hits.length - 1]);
+            message = `TP${tpLevel || ''} reached for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
+            priority = 'high';
+            type = 'alert';
+            break;
+          case 'multiple_tps_hit':
+            title = '🎯🎯 Multiple TPs Hit';
+            message = `${metadata.new_tp_count || metadata.tp_hits?.length || 'Multiple'} targets reached for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
+            priority = 'high';
+            type = 'alert';
+            break;
+          case 'limit_order_activated':
+            title = '✅ Limit Order Activated';
+            message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} limit order activated at ${metadata.entry_price || 'target price'}`;
+            priority = 'high';
+            type = 'signal';
+            break;
+          case 'manual_close':
+            title = '📊 Signal Closed';
+            message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} signal manually closed - ${metadata.close_reason || 'Manual close'}`;
+            priority = 'medium';
+            type = 'signal';
+            break;
+          case 'stop_loss':
+            title = '⚠️ Stop Loss Hit';
+            message = `Stop loss triggered for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
+            priority = 'high';
+            type = 'alert';
+            break;
+          case 'signal_updated':
+            title = '🔄 Signal Updated';
+            message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} signal updated`;
+            priority = 'medium';
+            type = 'signal';
+            break;
+          default:
+            title = notif.title || 'Notification';
+            message = notif.message || `${notifType} notification`;
+            type = 'system';
+        }
+        
+        // Add author info if available
+        if (metadata.author_name) {
+          message += ` by ${metadata.author_name}`;
+        }
+        
+        return {
+          id: notif.id,
+          type,
+          title,
+          message,
+          timestamp: new Date(notif.created_at),
+          isRead: notif.status === 'viewed' || notif.status === 'clicked',
+          priority,
+          signal_id: notif.signal_id,
+          user_id: notif.author_id || metadata.author_id
+        };
+      });
       
-      setNotifications(transformedNotifications.slice(0, 50));
+      setNotifications(transformedNotifications);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {
@@ -128,8 +161,33 @@ export const NotificationCenter: React.FC = () => {
     }
   };
 
+  // Real-time auto-refresh when new notifications arrive
   useEffect(() => {
+    if (!user) return;
+
     loadNotifications();
+
+    // Subscribe to new notifications
+    const channel = supabase
+      .channel('notification-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notification_delivery_log',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('📩 New notification received:', payload);
+          loadNotifications();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const filteredNotifications = notifications.filter(n => 
@@ -140,33 +198,62 @@ export const NotificationCenter: React.FC = () => {
 
   const markAsRead = async (id: string) => {
     try {
-      // Update local state immediately
+      const notification = notifications.find(n => n.id === id);
+      if (!notification || notification.isRead) return;
+
+      // Optimistic update
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
 
-      // Update in database if it's a forum notification
-      const notification = notifications.find(n => n.id === id);
-      if (notification && (notification.type === 'message' || notification.type === 'follower')) {
-        await supabase.rpc('mark_notifications_read', {
-          p_event_type: notification.type === 'follower' ? 'like' : 'comment',
-          p_event_ids: [id]
-        });
-      }
+      // Update database - set status to 'viewed' and opened_at timestamp
+      const { error } = await supabase
+        .from('notification_delivery_log')
+        .update({ 
+          status: 'viewed',
+          opened_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Decrement badge count
+      const { notificationService } = await import('@/services/NotificationService');
+      notificationService.decrementUnreadCount(1);
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+      // Revert optimistic update on error
+      loadNotifications();
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      // Update local state immediately
+      const unreadNotifications = notifications.filter(n => !n.isRead);
+      if (unreadNotifications.length === 0) return;
+
+      // Optimistic update
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
 
-      // Update in database
-      await supabase.rpc('mark_notifications_cleared');
+      // Update all unread notifications in database
+      const { error } = await supabase
+        .from('notification_delivery_log')
+        .update({ 
+          status: 'viewed',
+          opened_at: new Date().toISOString()
+        })
+        .eq('user_id', user?.id)
+        .neq('status', 'viewed')
+        .neq('status', 'clicked');
+
+      if (error) throw error;
+
+      // Clear badge
+      const { notificationService } = await import('@/services/NotificationService');
+      notificationService.clearUnreadCount();
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
+      loadNotifications();
     }
   };
 

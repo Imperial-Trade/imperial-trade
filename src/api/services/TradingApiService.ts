@@ -137,13 +137,17 @@ export class TradingApiService {
       // PHASE 2: Use atomic UPDATE with WHERE clause for ownership validation
       // This prevents race conditions and ensures signal isolation
       // ✅ BUG FIX #1: Filter undefined values to prevent PostgreSQL cast errors
-      const updateData: TableUpdate<'trade_alerts'> = {
-        ...(dto.status && { status: dto.status }),
-        ...(dto.tpHits && { tp_hits: dto.tpHits }),
-        ...(dto.closeReason && { close_reason: dto.closeReason }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-        updated_at: new Date().toISOString()
-      };
+    const updateData: TableUpdate<'trade_alerts'> = {
+      ...(dto.status && { status: dto.status }),
+      ...(dto.tpHits && { tp_hits: dto.tpHits }),
+      ...(dto.closeReason && { close_reason: dto.closeReason }),
+      ...(dto.notes !== undefined && { notes: dto.notes }),
+      // ✅ Ensure is_xeon_stream is never empty string (prevents boolean cast errors)
+      ...(dto.isXeonStream !== undefined && dto.isXeonStream !== '' && { 
+        is_xeon_stream: Boolean(dto.isXeonStream) 
+      }),
+      updated_at: new Date().toISOString()
+    };
 
       console.log('TradingApiService - ATOMIC UPDATE with signal isolation:', { 
         signalId: id, 

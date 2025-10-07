@@ -718,11 +718,14 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           return [optimisticSignal, ...prev];
         });
         
-        // Update local cache with optimistic signal
-        const cache = localCacheRef.current;
-        if (cache.data.length > 0) {
-          cache.data = [optimisticSignal, ...cache.data];
-        }
+      // Update local cache with optimistic signal
+      const cache = localCacheRef.current;
+      if (cache.data.length > 0) {
+        cache.data = [optimisticSignal, ...cache.data];
+      }
+      
+      // ✅ BUG FIX #3: Expose signals to window for InAppNotificationSystem
+      (window as any).__signalsCache = signals;
         
         // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
         if (!profileFetchQueueRef.current) {
@@ -1370,7 +1373,12 @@ unstable_batchedUpdates(() => {
       emergencyRealtimeBreaker.recordRouteGateBlock('signals');
       unsubscribe();
     }
-  }, [isSignalSubscriptionAllowed]); // PHASE 1 FIX: Removed subscribe/unsubscribe to break dependency loop
+  }, [isSignalSubscriptionAllowed]);
+  
+  // ✅ BUG FIX #3: Expose signals to window for InAppNotificationSystem cache
+  useEffect(() => {
+    (window as any).__signalsCache = signals;
+  }, [signals]);
 
   const contextValue: SignalRealtimeContextType = {
     signals,

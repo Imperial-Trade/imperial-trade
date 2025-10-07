@@ -136,11 +136,12 @@ export class TradingApiService {
 
       // PHASE 2: Use atomic UPDATE with WHERE clause for ownership validation
       // This prevents race conditions and ensures signal isolation
+      // ✅ BUG FIX #1: Filter undefined values to prevent PostgreSQL cast errors
       const updateData: TableUpdate<'trade_alerts'> = {
-        status: dto.status,
-        tp_hits: dto.tpHits,
-        close_reason: dto.closeReason,
-        notes: dto.notes,
+        ...(dto.status && { status: dto.status }),
+        ...(dto.tpHits && { tp_hits: dto.tpHits }),
+        ...(dto.closeReason && { close_reason: dto.closeReason }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
         updated_at: new Date().toISOString()
       };
 

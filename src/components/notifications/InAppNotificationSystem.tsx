@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, TrendingUp, TrendingDown, AlertCircle, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 // FIX #5: Notification Queue Class for first-come-first-serve with 5-second delays
 class NotificationQueue {
@@ -61,8 +62,8 @@ class NotificationQueue {
     // Show notification
     this.onShow(notification);
     
-    // Wait 5 seconds
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // ✅ BUG FIX #5: Reduced delay from 5s to 2s for faster notifications
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Remove notification
     this.onRemove(notification.id);
@@ -91,6 +92,10 @@ export interface SignalNotification {
 }
 
 const InAppNotificationSystem = () => {
+  // ✅ BUG FIX #6: Route-based filtering
+  const location = useLocation();
+  const isSignalStreamPage = location.pathname === '/dashboard/signal-stream';
+  
   // SAFEGUARD: Prevent crash if rendered outside AuthProvider
   let user;
   try {
@@ -108,6 +113,9 @@ const InAppNotificationSystem = () => {
 
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
   const lastNotificationTimeRef = useRef<{ [key: string]: number }>({});
+  
+  // ✅ BUG FIX #5: Cross-source notification cache with 30-second TTL
+  const notificationCacheRef = useRef(new Map<string, number>());
   
   // FIX #5: Initialize notification queue
   const notificationQueueRef = useRef<NotificationQueue | null>(null);
@@ -162,7 +170,29 @@ const InAppNotificationSystem = () => {
   
   // FIX #2 & #4: Improved addNotification with real author names
   const addNotification = useCallback((notification: Partial<SignalNotification>) => {
+    // ✅ BUG FIX #6: Route-based filtering for signal notifications
+    const isSignalNotification = notification.type && (
+      notification.type.includes('signal') || 
+      notification.type.includes('limit') || 
+      notification.type.includes('tp') || 
+      notification.type.includes('stop_loss')
+    );
+    
+    if (isSignalNotification && !isSignalStreamPage) {
+      console.log('🚫 Signal notification suppressed - not on signal stream page:', notification.title);
+      return;
+    }
+    
     const now = Date.now();
+    
+    // ✅ BUG FIX #5: Cross-source deduplication with 30-second cache
+    const cacheKey = `${notification.signalId}-${notification.type}`;
+    const lastCacheTime = notificationCacheRef.current.get(cacheKey) || 0;
+    if (now - lastCacheTime < 30000) {
+      console.log('🚫 Duplicate notification from different source blocked:', notification.title);
+      return;
+    }
+    notificationCacheRef.current.set(cacheKey, now);
     
     // FIX #2: No cooldown for signal_created - each new signal should always notify
     if (notification.type !== 'signal_created') {
@@ -222,7 +252,7 @@ const InAppNotificationSystem = () => {
     
     // FIX #5: Add to queue instead of showing immediately
     notificationQueueRef.current?.add(enhancedNotification);
-  }, []);
+  }, [isSignalStreamPage]);
   
   // Subscribe to Supabase real-time notifications
   useEffect(() => {

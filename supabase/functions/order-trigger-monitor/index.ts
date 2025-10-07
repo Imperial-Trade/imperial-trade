@@ -89,16 +89,29 @@ serve(async (req) => {
         console.log(`🔍 Checking ${alert.asset_name} (${alert.trade_type}): price=${currentPrice}, entry=${alert.entry_price}, shouldTrigger=${shouldTrigger}`);
 
         if (shouldTrigger) {
+          // ✅ BUG FIX #2: Add debounce check to prevent twitching
+          const { data: currentSignalCheck } = await supabase
+            .from('trade_alerts')
+            .select('status, activated_at')
+            .eq('id', alert.id)
+            .single();
+          
+          if (currentSignalCheck?.status !== 'pending') {
+            console.log(`⏭️ Signal ${alert.id} already activated (status: ${currentSignalCheck?.status}), skipping`);
+            continue;
+          }
+          
           // PHASE 2: Enhanced error handling with explicit status verification
           const { data: updateResult, error: updateError } = await supabase
             .from('trade_alerts')
             .update({
               status: 'active',
               activated_at: new Date().toISOString(),
-              activation_price: currentPrice, // Use actual trigger price
+              activation_price: currentPrice,
               updated_at: new Date().toISOString()
             })
             .eq('id', alert.id)
+            .eq('status', 'pending') // Double-check status hasn't changed
             .select('id, status, activated_at, activation_price')
             .single();
 

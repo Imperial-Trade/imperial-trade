@@ -20,6 +20,15 @@ export interface UpdateTradeAlertDto {
   notes?: string;
 }
 
+// ✅ Sanitized DTO for database operations - explicitly excludes is_xeon_stream
+export interface SanitizedUpdateTradeAlertDto {
+  status?: 'pending' | 'active' | 'closed' | 'partially_profited';
+  tpHits?: number[];
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
+  notes?: string;
+  // ❌ is_xeon_stream explicitly excluded from sanitized DTO
+}
+
 export interface TradeAlertResponseDto {
   id: string;
   userId: string;

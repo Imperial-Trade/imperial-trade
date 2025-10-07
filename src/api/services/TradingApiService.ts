@@ -156,6 +156,9 @@ export class TradingApiService {
         return { ...acc, [key]: value };
       }, {} as TableUpdate<'trade_alerts'>);
 
+      // 🔒 SECURITY: Explicit delete as final safeguard
+      delete (updateData as any).is_xeon_stream;
+
       console.log('🔍 [PRE-UPDATE DEBUG] Data being sent to Supabase:', {
         signalId: id,
         updateData,

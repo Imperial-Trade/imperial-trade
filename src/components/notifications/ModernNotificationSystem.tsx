@@ -219,7 +219,7 @@ const ModernNotificationSystem = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => removeNotification(notification.id)}
-                    className="text-muted-foreground hover:text-foreground p-1 h-auto"
+                    className="text-foreground hover:text-destructive p-1 h-8 w-8 flex items-center justify-center shrink-0 z-10"
                   >
                     <X className="w-4 h-4" />
                   </Button>

@@ -424,11 +424,9 @@ export default function SignalStream() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
-      // Show toast notification
-      toastUtil({
-        title: '🎯 New Signal Added',
-        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
-      });
+      // FIX #2: Remove duplicate toast - use unified notification system
+      // Notification is already handled by SignalRealtimeContext and InAppNotificationSystem
+      console.log('✅ [SignalStream] New signal created, notification handled by unified system');
     };
 
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);

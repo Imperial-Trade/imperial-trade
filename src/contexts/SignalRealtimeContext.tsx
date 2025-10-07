@@ -746,14 +746,25 @@ lastUpdateTimestampRef.current = new Date().toISOString();
         }, 100);
       }
       else if (eventType === 'UPDATE' && newRecord) {
+        // FIX #3: CRITICAL - Prevent closed signals from becoming active
+        if (oldRecord?.status === 'closed' && newRecord.status !== 'closed') {
+          console.warn(`⚠️ BLOCKED: Invalid status change ${oldRecord.status} → ${newRecord.status} for ${newRecord.id}`);
+          return;
+        }
+        
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         }
         
         setSignals(prev => {
-          // PHASE 3: CRITICAL SIGNAL ISOLATION - Only update the specific signal being modified
+          // Additional validation in state update
+          const currentSignal = prev.find(s => s.id === newRecord.id);
+          if (currentSignal?.status === 'closed' && newRecord.status === 'active') {
+            console.warn(`⚠️ BLOCKED: State update prevented for closed signal ${newRecord.id}`);
+            return prev;
+          }
+          
           const targetSignalId = newRecord.id;
-          const currentSignal = prev.find(signal => signal.id === targetSignalId);
           
           if (!currentSignal) {
             if (isDevToolsEnabled()) {

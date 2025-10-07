@@ -17,7 +17,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { notificationStore } from "@/services/SharedNotificationStore";
 
 // Enhanced notification interface for all signal events
 interface SignalNotification {
@@ -72,7 +71,6 @@ const InAppNotificationSystem = () => {
 
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    // Note: Don't remove from store - bell notifications persist longer
   }, []);
 
   const addNotification = useCallback(
@@ -121,19 +119,6 @@ const InAppNotificationSystem = () => {
       };
       
       setNotifications((prev) => [enhancedNotification, ...prev.slice(0, 4)]); // Keep only 5 notifications max
-      
-      // Add to shared store for bell notifications
-      notificationStore.addNotification({
-        id: enhancedNotification.id,
-        type: enhancedNotification.type,
-        title: enhancedNotification.title,
-        message: enhancedNotification.message,
-        timestamp: enhancedNotification.timestamp.toISOString(),
-        priority: enhancedNotification.priority,
-        signalId: enhancedNotification.signalId,
-        assetName: enhancedNotification.assetName,
-        authorName: enhancedNotification.authorName,
-      });
       
       // Auto-remove based on priority
       const autoRemoveDelay = {

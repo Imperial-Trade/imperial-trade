@@ -15,7 +15,6 @@ import {
   Users,
   Plus
 } from 'lucide-react';
-import { NotificationBellButton } from '@/components/notifications/NotificationBellButton';
 
 interface FilterState {
   search: string;
@@ -170,9 +169,6 @@ export function SignalStreamFilters({
             
             {/* Filter Controls - All same height */}
             <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
-              {/* Notification Bell */}
-              <NotificationBellButton />
-              
               {/* Status Filter */}
               <div className="min-w-0 sm:min-w-[140px]">
                 <select

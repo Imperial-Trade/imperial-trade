@@ -9,6 +9,7 @@ export interface AssetDefinition {
 }
 
 // Centralized asset registry for Tradermade symbols
+// COST OPTIMIZATION: Only XAUUSD and BTCUSD are supported for live streaming
 export const ASSET_REGISTRY: Record<string, AssetDefinition> = {
   GOLD: {
     symbol: 'XAUUSD',
@@ -23,27 +24,6 @@ export const ASSET_REGISTRY: Record<string, AssetDefinition> = {
     category: 'crypto',
     displaySymbol: 'BTC/USD',
     tradermadeSymbol: 'BTCUSD'
-  },
-  USA30: {
-    symbol: 'USA30',
-    name: 'Dow Jones',
-    category: 'indices',
-    displaySymbol: 'US30',
-    tradermadeSymbol: 'USA30USD'
-  },
-  NAS100: {
-    symbol: 'NAS100',
-    name: 'Nasdaq 100',
-    category: 'indices',
-    displaySymbol: 'NAS100',
-    tradermadeSymbol: 'NAS100USD'
-  },
-  EURUSD: {
-    symbol: 'EURUSD',
-    name: 'Euro/Dollar',
-    category: 'forex',
-    displaySymbol: 'EUR/USD',
-    tradermadeSymbol: 'EURUSD'
   }
 } as const;
 
@@ -64,25 +44,9 @@ export function validateAssetSymbol(symbol: string): AssetDefinition | null {
   
   if (assetBySymbol) return assetBySymbol;
   
-  // Enhanced composite label handling - create compact form for matching
-  const compact = upperSymbol.replace(/[^A-Z0-9]/g, ''); // Remove spaces, special chars
-  
-  // USA30/Dow Jones matching (handle "Dow Jones USA30", "US30", etc.)
-  if (compact.includes('USA30') || compact.includes('US30') || compact.includes('DOWJONES')) {
-    console.log(`🔄 Normalized composite label '${symbol}' → 'USA30'`);
-    return ASSET_REGISTRY.USA30;
-  }
-  
-  // NAS100/Nasdaq matching (handle "Nasdaq 100 NAS100", "NASDAQ100", etc.)
-  if (compact.includes('NAS100') || compact.includes('NASDAQ100') || compact.includes('NASDAQ')) {
-    console.log(`🔄 Normalized composite label '${symbol}' → 'NAS100'`);
-    return ASSET_REGISTRY.NAS100;
-  }
-  
   // Legacy alternative name matching (kept for backwards compatibility)
   if (upperSymbol === 'GOLD' || upperSymbol === 'XAUUSD') return ASSET_REGISTRY.GOLD;
-  if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTCUSD') return ASSET_REGISTRY.BITCOIN;
-  if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return ASSET_REGISTRY.EURUSD;
+  if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTCUSD' || upperSymbol === 'BTC') return ASSET_REGISTRY.BITCOIN;
   
   return null;
 }

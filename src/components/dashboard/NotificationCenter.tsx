@@ -10,10 +10,13 @@ import {
   Check, 
   X, 
   TrendingUp, 
-  Users, 
-  MessageSquare,
-  Settings,
-  AlertTriangle
+  Target,
+  XCircle,
+  Rocket,
+  StopCircle,
+  CheckCircle,
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,34 +24,52 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Notification {
   id: string;
-  type: 'signal' | 'follower' | 'message' | 'system' | 'alert';
+  type: string;
   title: string;
   message: string;
   timestamp: Date;
   isRead: boolean;
-  priority: 'low' | 'medium' | 'high';
+  priority: 'low' | 'medium' | 'high' | 'critical';
   signal_id?: string;
   user_id?: string;
 }
 
-const getNotificationIcon = (type: string) => {
-  switch (type) {
-    case 'signal': return <TrendingUp className="w-4 h-4" />;
-    case 'follower': return <Users className="w-4 h-4" />;
-    case 'message': return <MessageSquare className="w-4 h-4" />;
-    case 'system': return <Settings className="w-4 h-4" />;
-    case 'alert': return <AlertTriangle className="w-4 h-4" />;
-    default: return <Bell className="w-4 h-4" />;
-  }
+// Icon mapping by notification type (matching InAppNotificationSystem)
+const icons: Record<string, React.ReactNode> = {
+  signal_created: <Bell className="w-5 h-5 text-blue-400" />,
+  tp_hit: <Target className="w-5 h-5 text-green-400" />,
+  multiple_tps_hit: <Target className="w-5 h-5 text-green-400" />,
+  all_tps_hit: <DollarSign className="w-5 h-5 text-amber-400" />,
+  stop_loss: <XCircle className="w-5 h-5 text-red-400" />,
+  stop_loss_hit: <XCircle className="w-5 h-5 text-red-400" />,
+  limit_order_activated: <Rocket className="w-5 h-5 text-purple-400" />,
+  limit_cancelled: <StopCircle className="w-5 h-5 text-orange-400" />,
+  manual_close: <CheckCircle className="w-5 h-5 text-blue-400" />,
+  signal_updated: <AlertCircle className="w-5 h-5 text-blue-400" />,
+  default: <TrendingUp className="w-5 h-5 text-primary" />,
 };
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high': return 'border-l-red-500 bg-red-50 dark:bg-red-950/20';
-    case 'medium': return 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950/20';
-    case 'low': return 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20';
-    default: return 'border-l-gray-500';
-  }
+// Color mapping by notification type (matching InAppNotificationSystem)
+const colors: Record<string, string> = {
+  signal_created: "border-blue-500 bg-blue-500/10",
+  tp_hit: "border-green-500 bg-green-500/10",
+  multiple_tps_hit: "border-green-500 bg-green-500/10",
+  all_tps_hit: "border-amber-500 bg-amber-500/10",
+  stop_loss: "border-red-500 bg-red-500/10",
+  stop_loss_hit: "border-red-500 bg-red-500/10",
+  limit_order_activated: "border-purple-500 bg-purple-500/10",
+  limit_cancelled: "border-orange-500 bg-orange-500/10",
+  manual_close: "border-blue-500 bg-blue-500/10",
+  signal_updated: "border-blue-500 bg-blue-500/10",
+  default: "border-primary bg-primary/10",
+};
+
+// Priority glow effects (matching InAppNotificationSystem)
+const priorityGlow: Record<string, string> = {
+  critical: "shadow-lg shadow-red-500/20 ring-1 ring-red-500/30",
+  high: "shadow-lg shadow-blue-500/20 ring-1 ring-blue-500/30",
+  medium: "shadow-md shadow-gray-500/10",
+  low: "shadow-sm",
 };
 
 export const NotificationCenter: React.FC = () => {
@@ -81,8 +102,8 @@ export const NotificationCenter: React.FC = () => {
         
         let title = 'Notification';
         let message = 'You have a new notification';
-        let priority: 'low' | 'medium' | 'high' = 'medium';
-        let type: 'signal' | 'follower' | 'message' | 'system' | 'alert' = 'signal';
+        let priority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
+        let type = notifType; // Use the actual notification type
         
         // Parse based on notification type
         switch (notifType) {
@@ -90,49 +111,42 @@ export const NotificationCenter: React.FC = () => {
             title = '🚀 New Signal Created';
             message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} - ${metadata.trade_type || 'Trade'} @ ${metadata.entry_price || 'Market'}`;
             priority = 'high';
-            type = 'signal';
             break;
           case 'tp_hit':
             title = '🎯 Take Profit Hit';
             const tpLevel = metadata.tp_level || (metadata.tp_hits && metadata.tp_hits[metadata.tp_hits.length - 1]);
             message = `TP${tpLevel || ''} reached for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
-            priority = 'high';
-            type = 'alert';
+            priority = 'critical';
             break;
           case 'multiple_tps_hit':
             title = '🎯🎯 Multiple TPs Hit';
             message = `${metadata.new_tp_count || metadata.tp_hits?.length || 'Multiple'} targets reached for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
-            priority = 'high';
-            type = 'alert';
+            priority = 'critical';
             break;
           case 'limit_order_activated':
             title = '✅ Limit Order Activated';
             message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} limit order activated at ${metadata.entry_price || 'target price'}`;
-            priority = 'high';
-            type = 'signal';
+            priority = 'critical';
             break;
           case 'manual_close':
             title = '📊 Signal Closed';
             message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} signal manually closed - ${metadata.close_reason || 'Manual close'}`;
             priority = 'medium';
-            type = 'signal';
             break;
           case 'stop_loss':
+          case 'stop_loss_hit':
             title = '⚠️ Stop Loss Hit';
             message = `Stop loss triggered for ${metadata.asset_name || metadata.asset_symbol || 'Asset'}`;
-            priority = 'high';
-            type = 'alert';
+            priority = 'critical';
             break;
           case 'signal_updated':
             title = '🔄 Signal Updated';
             message = `${metadata.asset_name || metadata.asset_symbol || 'Asset'} signal updated`;
             priority = 'medium';
-            type = 'signal';
             break;
           default:
             title = notif.title || 'Notification';
             message = notif.message || `${notifType} notification`;
-            type = 'system';
         }
         
         // Add author info if available
@@ -315,58 +329,47 @@ export const NotificationCenter: React.FC = () => {
               filteredNotifications.map((notification, index) => (
                 <div key={notification.id}>
                   <div
-                    className={`p-3 rounded-lg border-l-4 transition-colors cursor-pointer hover:bg-muted/50 ${
-                      getPriorityColor(notification.priority)
-                    } ${!notification.isRead ? 'bg-muted/20' : ''}`}
+                    className={`p-3 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:bg-background/95 ${
+                      colors[notification.type] || colors.default
+                    } ${priorityGlow[notification.priority]} backdrop-blur-md bg-background/90 ${
+                      !notification.isRead ? 'ring-2 ring-blue-400/30' : ''
+                    }`}
                     onClick={() => !notification.isRead && markAsRead(notification.id)}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className="mt-0.5">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-medium truncate">
-                              {notification.title}
-                            </p>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
-                          </p>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 flex-shrink-0">
+                        {icons[notification.type] || icons.default}
                       </div>
-                      <div className="flex gap-1">
-                        {!notification.isRead && (
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm mb-1 truncate">
+                              {notification.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                              </p>
+                              {notification.priority === 'critical' && (
+                                <span className="text-red-400 text-xs font-medium">URGENT</span>
+                              )}
+                            </div>
+                          </div>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
+                            size="icon"
+                            className="h-6 w-6 flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              markAsRead(notification.id);
+                              deleteNotification(notification.id);
                             }}
                           >
-                            <Check className="w-3 h-3" />
+                            <X className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotification(notification.id);
-                          }}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
                   </div>

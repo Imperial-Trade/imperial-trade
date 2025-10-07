@@ -25,6 +25,15 @@ export const useOrderManagement = () => {
     console.log('🚀 [useOrderManagement] cancelOrder called:', { orderId, userId });
     const currentUserId = ensureAuthAndOwnershipContext();
 
+    console.log('🔍 [useOrderManagement] Calling API with:', {
+      orderId,
+      userId: currentUserId,
+      updatePayload: {
+        status: 'closed',
+        closeReason: 'manual'
+      }
+    });
+
     // Update order to closed status with cancellation reason
     const response = await tradingApiService.updateAlert(
       orderId,

@@ -661,31 +661,67 @@ export default function SignalStream() {
   };
   // ✅ BUG FIX #17: Memoize all callbacks with stable dependencies
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
+    // 🔍 DIAGNOSTIC: Log everything before any checks
+    console.log('====== CANCEL ORDER DIAGNOSTIC START ======');
+    console.log('🔍 [Pre-Check] Alert object:', {
+      alertId: alert.id,
+      alertUserId: alert.userId,
+      alertUserIdSnake: alert.user_id,
+      alertCreatorId: alert.creator?.id,
+      alertCreatorObj: alert.creator,
+      alertStatus: alert.status,
+      requestedNewStatus: newStatus
+    });
+    
+    console.log('🔍 [Pre-Check] Current user context:', {
+      profileExists: !!profile,
+      profileId: profile?.id,
+      profileAccessLevel: profile?.access_level,
+      profileRole: profile?.role,
+      isAdmin,
+      isEducator
+    });
+    
     // ✅ Check if already processing THIS specific signal
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
       return;
     }
 
+    // Guard: Ensure profile is loaded
+    if (!profile) {
+      console.error('❌ [Cancel Order Failed] Profile not loaded');
+      toast({
+        title: 'Not Ready',
+        description: 'User profile is still loading. Please wait and try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     // Check if user can edit this signal (creator or admin only)
-    // Check BOTH alert.creator?.id AND alert.userId for proper authorization
-    const alertCreatorId = alert.creator?.id || alert.userId || alert.user_id;
-    const alertIsCreator = isCreator(alert.creator?.id) || (profile?.id === alert.userId) || (profile?.id === alert.user_id);
+    // Check ALL possible ID fields directly for proper authorization
+    const creatorIdMatch = 
+      (alert.creator?.id && profile.id === alert.creator.id) ||
+      (alert.userId && profile.id === alert.userId) ||
+      (alert.user_id && profile.id === alert.user_id);
+
+    const alertIsCreator = creatorIdMatch;
     
-    console.log('🔍 [Cancel Order Debug] Authorization check:', {
+    console.log('🔍 [Authorization Result]:', {
       alertId: alert.id,
-      alertCreatorId,
+      alertCreatorId: alert.creator?.id,
       alertUserId: alert.userId,
       alertUserIdAlt: alert.user_id,
-      currentUserId: profile?.id,
-      isCreatorCheck: alertIsCreator,
+      currentUserId: profile.id,
+      creatorIdMatch: alertIsCreator,
       isAdmin,
-      canUpdate: alertIsCreator || isAdmin
+      willAllow: alertIsCreator || isAdmin
     });
     
     if (!alertIsCreator && !isAdmin) {
       console.error('❌ [Cancel Order Failed] Authorization denied:', {
-        userId: profile?.id,
+        userId: profile.id,
         creatorId: alert.creator?.id,
         alertUserId: alert.userId,
         userRole: profile?.role,

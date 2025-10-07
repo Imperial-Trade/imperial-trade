@@ -151,8 +151,19 @@ export class TradingApiService {
         if (key === 'is_xeon_stream') return acc;
         // Exclude empty strings, null, and undefined values
         if (value === '' || value === null || value === undefined) return acc;
+        // Also exclude values that become empty when stringified and trimmed
+        if (typeof value === 'string' && value.trim() === '') return acc;
         return { ...acc, [key]: value };
       }, {} as TableUpdate<'trade_alerts'>);
+
+      console.log('🔍 [PRE-UPDATE DEBUG] Data being sent to Supabase:', {
+        signalId: id,
+        updateData,
+        hasXeonStream: 'is_xeon_stream' in updateData,
+        xeonStreamValue: (updateData as any).is_xeon_stream,
+        rawDataKeys: Object.keys(rawUpdateData),
+        filteredDataKeys: Object.keys(updateData)
+      });
 
       console.log('TradingApiService - ATOMIC UPDATE with signal isolation:', { 
         signalId: id, 

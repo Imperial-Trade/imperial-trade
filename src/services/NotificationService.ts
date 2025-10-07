@@ -59,22 +59,6 @@ class NotificationService {
     this.notifyListeners();
   }
 
-  decrementUnreadCount(count = 1) {
-    this.badgeState.unreadCount = Math.max(0, this.badgeState.unreadCount - count);
-    if (this.badgeState.unreadCount === 0) {
-      this.badgeState.hasNewAlerts = false;
-    }
-    this.saveBadgeState();
-    this.notifyListeners();
-  }
-
-  setUnreadCount(count: number) {
-    this.badgeState.unreadCount = Math.max(0, count);
-    this.badgeState.hasNewAlerts = count > 0;
-    this.saveBadgeState();
-    this.notifyListeners();
-  }
-
   clearUnreadCount() {
     this.badgeState.unreadCount = 0;
     this.badgeState.hasNewAlerts = false;

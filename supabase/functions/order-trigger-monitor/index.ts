@@ -21,12 +21,13 @@ serve(async (req) => {
     console.log('🚀 Starting order trigger monitor...');
 
     // Check for limit orders that should be activated - FETCH COMPLETE SIGNAL DATA WITH AUTHOR PROFILE
+    // FIX #3: Correct Supabase foreign key syntax (profiles!user_id, not profiles:user_id)
     const { data: pendingLimits, error: fetchError } = await supabase
       .from('trade_alerts')
       .select(`
         id, tradermade_symbol, entry_price, trade_type, asset_name, user_id,
         created_at, updated_at, tp1, tp2, tp3, tp4, tp5, stop_loss, notes,
-        profiles:user_id (
+        profiles!trade_alerts_user_id_fkey (
           display_name,
           avatar_url
         )

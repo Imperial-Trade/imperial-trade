@@ -149,23 +149,42 @@ const InAppNotificationSystem = () => {
   // FIX #2 & #4: Improved addNotification with real author names
   const addNotification = useCallback((notification: Partial<SignalNotification>) => {
     const now = Date.now();
-    const cooldownKey = `${notification.signalId}-${notification.type}`;
-    const lastTime = lastNotificationTimeRef.current[cooldownKey] || 0;
     
-    // 10-second cooldown for same signal + type
-    if (now - lastTime < 10000) {
-      console.log('🚫 Notification blocked by cooldown:', notification.title);
-      return;
+    // FIX #2: No cooldown for signal_created - each new signal should always notify
+    if (notification.type !== 'signal_created') {
+      const cooldownKey = `${notification.signalId}-${notification.type}`;
+      const lastTime = lastNotificationTimeRef.current[cooldownKey] || 0;
+      
+      // 10-second cooldown for same signal + type (except signal_created)
+      if (now - lastTime < 10000) {
+        console.log('🚫 Notification blocked by cooldown:', notification.title);
+        return;
+      }
+      
+      lastNotificationTimeRef.current[cooldownKey] = now;
+    } else {
+      console.log('✅ Signal created - bypassing cooldown for new signal');
     }
     
-    lastNotificationTimeRef.current[cooldownKey] = now;
+    // FIX #4: Improved author name handling - fetch from signal context if available
+    let authorName = notification.authorName || 'Unknown Trader';
     
-    // FIX #4: Validate author name (no "Provider" or "Unknown Trader")
-    const authorName = notification.authorName && 
-                       notification.authorName !== 'Provider' && 
-                       notification.authorName !== 'Unknown Trader'
-                       ? notification.authorName
-                       : 'Signal Provider';
+    // Try to get real author name from signals context if notification doesn't have it
+    if (authorName === 'Unknown Trader' || authorName === 'Provider') {
+      try {
+        // Access signals from SignalRealtimeContext if available via window
+        const signalFromContext = (window as any).__signalsCache?.find((s: any) => s.id === notification.signalId);
+        if (signalFromContext?.profiles?.display_name) {
+          authorName = signalFromContext.profiles.display_name;
+          console.log('✅ Fetched author name from context:', authorName);
+        } else {
+          authorName = 'Signal Provider'; // Generic fallback
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not fetch author from context:', error);
+        authorName = 'Signal Provider';
+      }
+    }
     
     const enhancedNotification: SignalNotification = {
       id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

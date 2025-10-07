@@ -154,7 +154,8 @@ export default function SignalStream() {
     }
     return canCreate;
   }, [isAdmin, isEducator, profile]);
-  const isCreator = useCallback((alertCreatorId: string) => {
+  const isCreator = useCallback((alertCreatorId: string | undefined) => {
+    if (!alertCreatorId) return false;
     return profile?.id === alertCreatorId;
   }, [profile?.id]);
 
@@ -1037,7 +1038,7 @@ export default function SignalStream() {
                             onStopLossHit={handleStopLossHit} 
                             onOrderActivation={handleOrderActivation} 
                             isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id)} 
+                            isCreator={isCreator(alert.creator?.id) || alert.userId === profile?.id}
                             livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                             priceSource={priceSource} 

@@ -121,7 +121,6 @@ function App() {
               <ScrollToTop />
               <AuthProvider>
                 <WelcomeProvider>
-                  <InAppNotificationSystem />
                   <NotificationPromptProvider>
                     <NavigationGuard>
                        <RealtimeHealthProvider>

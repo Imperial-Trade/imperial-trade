@@ -124,10 +124,11 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleSignalStatusUpdate = async (alert: any, newStatus: string): Promise<void> => {
     try {
+      // ✅ CRITICAL FIX: Use signal's creator ID, not current user ID
       const result = await tradingApiService.updateAlert(
         alert.id, 
         { status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited' }, 
-        currentUser?.id || ''
+        alert.user_id || alert.userId || ''
       );
       
       if (result.success && currentUser) {
@@ -150,6 +151,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleTakeProfitHit = async (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string): Promise<void> => {
     try {      
+      // ✅ CRITICAL FIX: Use signal's creator ID, not current user ID
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
@@ -157,7 +159,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
           closeReason: closeReason as any,
           status: shouldAutoClose ? 'closed' as const : alert.status
         },
-        currentUser?.id || ''
+        alert.user_id || alert.userId || ''
       );
       
       if (result.success && currentUser) {
@@ -178,13 +180,14 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleStopLossHit = async (alert: any, closeReason: string): Promise<void> => {
     try {
+      // ✅ CRITICAL FIX: Use signal's creator ID, not current user ID
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
           closeReason: closeReason as any,
           status: 'closed' as const
         },
-        currentUser?.id || ''
+        alert.user_id || alert.userId || ''
       );
       
       if (result.success && currentUser) {
@@ -205,10 +208,11 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleOrderActivation = async (alert: any): Promise<void> => {
     try {
+      // ✅ CRITICAL FIX: Use signal's creator ID, not current user ID
       const result = await tradingApiService.updateAlert(
         alert.id,
         { status: 'active' as const },
-        currentUser?.id || ''
+        alert.user_id || alert.userId || ''
       );
       
       if (result.success && currentUser) {

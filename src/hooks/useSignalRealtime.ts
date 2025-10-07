@@ -10,7 +10,7 @@ interface UseSignalRealtimeReturn {
   error: string | null;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   nextRetryAt: number | null;
-  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
+  updateAlert: (id: string, dto: UpdateTradeAlertDto, signalOwnerId?: string) => Promise<TradeAlertResponseDto | null>;
   refreshAlerts: () => Promise<void>;
   lastUpdated: Date | null;
   getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
@@ -69,12 +69,17 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     setLocalError(contextError);
   }, [contextError]);
 
-  const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    // ✅ CRITICAL FIX: Pre-flight validation for userId
-    if (!userId || !userId.trim()) {
-      const errorMsg = 'Cannot update alert: User ID is missing or invalid';
+  const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto, signalOwnerId?: string): Promise<TradeAlertResponseDto | null> => {
+    // ✅ CRITICAL FIX: Use signalOwnerId if provided, otherwise fall back to userId
+    const ownerIdToUse = signalOwnerId || userId;
+    
+    // ✅ Pre-flight validation
+    if (!ownerIdToUse || !ownerIdToUse.trim()) {
+      const errorMsg = 'Cannot update alert: Owner ID is missing or invalid';
       console.error('❌ [useSignalRealtime] PRE-FLIGHT CHECK FAILED:', {
         userId,
+        signalOwnerId,
+        ownerIdToUse,
         alertId: id,
         updateData: dto
       });
@@ -85,12 +90,14 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     console.log('🚀 [useSignalRealtime] Initiating alert update:', {
       alertId: id,
       userId,
+      signalOwnerId,
+      ownerIdToUse,
       updateFields: Object.keys(dto)
     });
 
     try {
       setLocalLoading(true);
-      const result = await tradingApiService.updateAlert(id, dto, userId);
+      const result = await tradingApiService.updateAlert(id, dto, ownerIdToUse);
       
       if (result.success && result.data) {
         // The realtime context will handle the update automatically

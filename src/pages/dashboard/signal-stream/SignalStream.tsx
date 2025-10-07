@@ -754,7 +754,10 @@ export default function SignalStream() {
         status: newStatus as 'pending' | 'active' | 'closed',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
-      const result = await updateAlert(alert.id, updateDto);
+      // ✅ CRITICAL FIX: Pass signal's creator ID, not current user ID
+      const signalCreatorId = alert.user_id || alert.userId || alert.creator?.id;
+      console.log('🔍 [Update Query] Using creator ID:', { signalCreatorId, alertId: alert.id });
+      const result = await updateAlert(alert.id, updateDto, signalCreatorId);
       console.log('SignalStream - Update result:', result);
       
       // ✅ BUG FIX #4: Enhanced notification with toast fallback

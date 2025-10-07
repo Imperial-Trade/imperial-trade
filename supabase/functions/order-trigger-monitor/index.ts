@@ -1,3 +1,8 @@
+// ⚠️ DEPRECATED: This edge function has been replaced by the instant_limit_order_activation trigger
+// Limit orders now activate instantly via database trigger on market_prices updates
+// This function is kept for backward compatibility but should not be invoked
+// To disable this function completely, remove its cron job from the database
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 

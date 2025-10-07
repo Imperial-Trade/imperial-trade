@@ -212,21 +212,27 @@ const InAppNotificationSystem = () => {
   
   // Subscribe to Supabase real-time notifications
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('⚠️ [InAppNotificationSystem] No user ID - skipping subscription');
+      return;
+    }
     
-    console.log('🔌 InAppNotificationSystem: Subscribing to signal notifications');
+    console.log('🔌 [InAppNotificationSystem] Subscribing to signal notifications', {
+      userId: user.id,
+      channel: 'instant-alerts',
+      timestamp: new Date().toISOString()
+    });
     
     const channel = supabase
-      .channel('instant-alerts') // FIX #2: Changed from 'signal_notification' to match dispatcher
+      .channel('instant-alerts')
       .on('broadcast', { event: 'signal_notification' }, (payload) => {
-        // FIX #5: Add comprehensive logging
-        console.log('📡 [InAppNotificationSystem] Received signal notification:', {
+        console.log('📡 [InAppNotificationSystem] ✅ RECEIVED signal notification:', {
           payload,
           channel: 'instant-alerts',
           event: 'signal_notification',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          payloadKeys: Object.keys(payload)
         });
-        console.log('📡 Received signal notification:', payload);
         
         if (payload.payload) {
           addNotification({
@@ -242,10 +248,26 @@ const InAppNotificationSystem = () => {
           });
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('🔌 [InAppNotificationSystem] Subscription status:', {
+          status,
+          error: err,
+          timestamp: new Date().toISOString()
+        });
+      });
+    
+    // ✅ TEST CONNECTION WITH PING
+    setTimeout(() => {
+      console.log('🏓 [InAppNotificationSystem] Testing channel with ping');
+      channel.send({
+        type: 'broadcast',
+        event: 'ping',
+        payload: { test: true }
+      });
+    }, 2000);
     
     return () => {
-      console.log('🔌 InAppNotificationSystem: Unsubscribing from signal notifications');
+      console.log('🔌 [InAppNotificationSystem] ❌ Unsubscribing from signal notifications');
       supabase.removeChannel(channel);
     };
   }, [user?.id, addNotification]);

@@ -13,9 +13,9 @@ import {
   Clock,
   CheckCircle,
   Users,
-  Plus,
-  Bell
+  Plus
 } from 'lucide-react';
+import { NotificationBellButton } from '@/components/notifications/NotificationBellButton';
 
 interface FilterState {
   search: string;
@@ -170,13 +170,15 @@ export function SignalStreamFilters({
             
             {/* Filter Controls - All same height */}
             <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
+              {/* Notification Bell */}
+              <NotificationBellButton />
+              
               {/* Status Filter */}
-              <div className="min-w-0 sm:min-w-[140px] relative">
-                <Bell className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+              <div className="min-w-0 sm:min-w-[140px]">
                 <select
                   value={filters.status}
                   onChange={(e) => updateFilter('status', e.target.value)}
-                  className="w-full h-10 pl-10 pr-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
+                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
                   style={{ 
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',

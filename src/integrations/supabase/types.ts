@@ -185,6 +185,36 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_outputs: {
+        Row: {
+          agent_name: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          output_text: string
+          user_id: string | null
+          user_readable_text: string | null
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output_text: string
+          user_id?: string | null
+          user_readable_text?: string | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output_text?: string
+          user_id?: string | null
+          user_readable_text?: string | null
+        }
+        Relationships: []
+      }
       ai_coach_feedback: {
         Row: {
           coaching_analysis: Json
@@ -1969,8 +1999,10 @@ export type Database = {
           engagement_score: number | null
           id: string
           in_app_notifications_enabled: boolean | null
+          last_dashboard_message: Json | null
           last_device_info: Json | null
           last_login: string | null
+          last_message_date: string | null
           legal_accepted: boolean
           legal_accepted_at: string | null
           legal_version: string | null
@@ -2020,8 +2052,10 @@ export type Database = {
           engagement_score?: number | null
           id: string
           in_app_notifications_enabled?: boolean | null
+          last_dashboard_message?: Json | null
           last_device_info?: Json | null
           last_login?: string | null
+          last_message_date?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
@@ -2071,8 +2105,10 @@ export type Database = {
           engagement_score?: number | null
           id?: string
           in_app_notifications_enabled?: boolean | null
+          last_dashboard_message?: Json | null
           last_device_info?: Json | null
           last_login?: string | null
+          last_message_date?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null

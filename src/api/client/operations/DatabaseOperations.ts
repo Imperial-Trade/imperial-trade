@@ -137,7 +137,20 @@ export class DatabaseOperations {
     try {
       return await withRetry(async () => {
         const executeQuery = async () => {
-          return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
+          // 🛡️ LAYER 2: Explicitly strip is_xeon_stream from trade_alerts updates
+          let sanitizedData = data;
+          if (table === 'trade_alerts') {
+            const { is_xeon_stream, ...cleanData } = data as any;
+            sanitizedData = cleanData as TableUpdate<T>;
+            
+            console.log('🔒 [DatabaseOperations] Sanitized trade_alerts update:', {
+              originalKeys: Object.keys(data),
+              sanitizedKeys: Object.keys(sanitizedData),
+              strippedIsXeonStream: 'is_xeon_stream' in data
+            });
+          }
+          
+          return supabase.from(table).update(sanitizedData as any).eq('id' as any, id).select().maybeSingle();
         };
         
         const response = await withTimeout(

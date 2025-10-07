@@ -144,13 +144,13 @@ export class TradingApiService {
         updated_at: new Date().toISOString()
       };
 
-      // CRITICAL FIX: Explicitly exclude is_xeon_stream and filter empty/null values
+      // CRITICAL FIX: Explicitly exclude is_xeon_stream and filter empty/null/undefined values
       // This prevents "invalid input syntax for type boolean" PostgreSQL errors
       const updateData = Object.entries(rawUpdateData).reduce((acc, [key, value]) => {
         // Exclude is_xeon_stream completely
         if (key === 'is_xeon_stream') return acc;
-        // Exclude empty strings and null for non-string fields
-        if (value === '' || value === null) return acc;
+        // Exclude empty strings, null, and undefined values
+        if (value === '' || value === null || value === undefined) return acc;
         return { ...acc, [key]: value };
       }, {} as TableUpdate<'trade_alerts'>);
 

@@ -110,6 +110,16 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
+  
+  console.log('🔍 [TradeAlertCard] Render check for alert:', {
+    alertId: alert.id,
+    status: alert.status,
+    isPending,
+    isClosed,
+    isCreator,
+    canCloseSignal,
+    willShowButton: canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited')
+  });
   const { getPrice } = useOptimizedWebSocketPrices();
 
   // Stop-Loss Proximity state management (moved to top level to fix React Hooks violation)
@@ -129,11 +139,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
-    console.log('🎯 [TradeAlertCard] Cancel Order clicked:', {
+    console.log('====== CANCEL ORDER BUTTON CLICKED ======');
+    console.log('🎯 [TradeAlertCard] Button clicked:', {
       alertId: alert.id,
       currentStatus: alert.status,
       newStatus,
-      creatorFromProp: creator?.id
+      creatorId: creator?.id,
+      isCreatorProp: isCreator
     });
     
     try {

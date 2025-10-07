@@ -4,7 +4,6 @@ import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useWelcome } from '@/contexts/WelcomeContext';
-import { ConnectionStatus } from '@/components/ui/connection-status';
 
 export const DashboardLayout: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
@@ -23,9 +22,6 @@ export const DashboardLayout: React.FC = () => {
       {hasSeenWelcome && (
         <div className="animate-dashboard-fade-in">
           <DashboardNav />
-          <div className="fixed top-20 left-4 z-40">
-            <ConnectionStatus showText={false} />
-          </div>
         </div>
       )}
       

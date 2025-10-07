@@ -718,14 +718,11 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           return [optimisticSignal, ...prev];
         });
         
-      // Update local cache with optimistic signal
-      const cache = localCacheRef.current;
-      if (cache.data.length > 0) {
-        cache.data = [optimisticSignal, ...cache.data];
-      }
-      
-      // ✅ BUG FIX #3: Expose signals to window for InAppNotificationSystem
-      (window as any).__signalsCache = signals;
+        // Update local cache with optimistic signal
+        const cache = localCacheRef.current;
+        if (cache.data.length > 0) {
+          cache.data = [optimisticSignal, ...cache.data];
+        }
         
         // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
         if (!profileFetchQueueRef.current) {
@@ -749,25 +746,14 @@ lastUpdateTimestampRef.current = new Date().toISOString();
         }, 100);
       }
       else if (eventType === 'UPDATE' && newRecord) {
-        // FIX #3: CRITICAL - Prevent closed signals from becoming active
-        if (oldRecord?.status === 'closed' && newRecord.status !== 'closed') {
-          console.warn(`⚠️ BLOCKED: Invalid status change ${oldRecord.status} → ${newRecord.status} for ${newRecord.id}`);
-          return;
-        }
-        
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         }
         
         setSignals(prev => {
-          // Additional validation in state update
-          const currentSignal = prev.find(s => s.id === newRecord.id);
-          if (currentSignal?.status === 'closed' && newRecord.status === 'active') {
-            console.warn(`⚠️ BLOCKED: State update prevented for closed signal ${newRecord.id}`);
-            return prev;
-          }
-          
+          // PHASE 3: CRITICAL SIGNAL ISOLATION - Only update the specific signal being modified
           const targetSignalId = newRecord.id;
+          const currentSignal = prev.find(signal => signal.id === targetSignalId);
           
           if (!currentSignal) {
             if (isDevToolsEnabled()) {
@@ -1373,12 +1359,7 @@ unstable_batchedUpdates(() => {
       emergencyRealtimeBreaker.recordRouteGateBlock('signals');
       unsubscribe();
     }
-  }, [isSignalSubscriptionAllowed]);
-  
-  // ✅ BUG FIX #3: Expose signals to window for InAppNotificationSystem cache
-  useEffect(() => {
-    (window as any).__signalsCache = signals;
-  }, [signals]);
+  }, [isSignalSubscriptionAllowed]); // PHASE 1 FIX: Removed subscribe/unsubscribe to break dependency loop
 
   const contextValue: SignalRealtimeContextType = {
     signals,

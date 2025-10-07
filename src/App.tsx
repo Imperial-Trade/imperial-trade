@@ -28,7 +28,6 @@ import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
-import InAppNotificationSystem from "@/components/notifications/InAppNotificationSystem";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";

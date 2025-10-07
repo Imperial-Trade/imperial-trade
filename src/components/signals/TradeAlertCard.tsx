@@ -21,8 +21,7 @@ import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
-  alert,
-  currentUserId, // ✅ CRITICAL FIX: Receive current user ID for RLS
+  alert, 
   onStatusUpdate, 
   onTakeProfitHit, 
   onStopLossHit, 
@@ -111,16 +110,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  
-  console.log('🔍 [TradeAlertCard] Render check for alert:', {
-    alertId: alert.id,
-    status: alert.status,
-    isPending,
-    isClosed,
-    isCreator,
-    canCloseSignal,
-    willShowButton: canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited')
-  });
   const { getPrice } = useOptimizedWebSocketPrices();
 
   // Stop-Loss Proximity state management (moved to top level to fix React Hooks violation)
@@ -140,25 +129,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
-    console.log('====== CANCEL ORDER BUTTON CLICKED ======');
-    console.log('🎯 [TradeAlertCard] Button clicked:', {
-      alertId: alert.id,
-      currentStatus: alert.status,
-      newStatus,
-      creatorId: creator?.id,
-      isCreatorProp: isCreator
-    });
-    
     try {
       await onStatusUpdate(alert, newStatus);
-      console.log('✅ [TradeAlertCard] Status update successful');
     } catch (error) {
-      console.error('❌ [TradeAlertCard] Failed to update status:', error);
-      toast({
-        title: 'Update Failed',
-        description: error instanceof Error ? error.message : 'Failed to update signal status',
-        variant: 'destructive'
-      });
+      console.error('Failed to update status:', error);
     }
   };
 
@@ -176,23 +150,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   };
 
   const handleNotesSave = async () => {
-    console.log('💾 [NOTES UPDATE] Starting notes save with RLS compliance:', {
-      alertId: alert.id,
-      currentUserId,
-      creatorId: creator?.id,
-      isCreator,
-      canEditNotes
-    });
-
-    if (!currentUserId || !currentUserId.trim()) {
-      toast({
-        title: "Error",
-        description: "Cannot save notes: User not authenticated",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
@@ -208,18 +165,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setLocalNotes(notesDraft);
       setIsEditingNotes(false);
       
-      console.log(`📝 [NOTES UPDATE] Executing Supabase query with user_id filter`);
+      console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
       
       const { error } = await supabase
         .from('trade_alerts')
         .update({ notes: notesDraft })
-        .eq('id', alert.id)
-        .eq('user_id', currentUserId); // ✅ CRITICAL FIX: Add user_id filter for RLS
+        .eq('id', alert.id);
 
-      if (error) {
-        console.error('❌ [NOTES UPDATE] RLS policy violation or database error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       console.log(`✅ Notes saved successfully for alert ${alert.id}`);
       setNotesSyncStatus('saved');
@@ -509,7 +462,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       )}
       
-      {/* Cancel/Close Actions - Only for signal creator (owner-only authorization) */}
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
         <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
             <Button 
@@ -517,7 +469,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               variant="ghost" 
               className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
               onClick={() => handleStatusUpdate('closed')}
-              title="Only the signal creator can cancel this order"
             >
                 <Lock className="w-3 h-3 mr-1.5" />
                 {isPending ? 'Cancel Order' : getCloseButtonText()}

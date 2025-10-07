@@ -424,9 +424,11 @@ export default function SignalStream() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
-      // FIX #2: Remove duplicate toast - use unified notification system
-      // Notification is already handled by SignalRealtimeContext and InAppNotificationSystem
-      console.log('✅ [SignalStream] New signal created, notification handled by unified system');
+      // Show toast notification
+      toastUtil({
+        title: '🎯 New Signal Added',
+        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
+      });
     };
 
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
@@ -661,77 +663,35 @@ export default function SignalStream() {
   };
   // ✅ BUG FIX #17: Memoize all callbacks with stable dependencies
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
-    // 🔍 DIAGNOSTIC: Log everything before any checks
-    console.log('====== CANCEL ORDER DIAGNOSTIC START ======');
-    console.log('🔍 [Pre-Check] Alert object:', {
-      alertId: alert.id,
-      alertUserId: alert.userId,
-      alertUserIdSnake: alert.user_id,
-      alertCreatorId: alert.creator?.id,
-      alertCreatorObj: alert.creator,
-      alertStatus: alert.status,
-      requestedNewStatus: newStatus
-    });
-    
-    console.log('🔍 [Pre-Check] Current user context:', {
-      profileExists: !!profile,
-      profileId: profile?.id,
-      profileAccessLevel: profile?.access_level,
-      profileRole: profile?.role,
-      isAdmin,
-      isEducator
-    });
-    
     // ✅ Check if already processing THIS specific signal
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
       return;
     }
 
-    // Guard: Ensure profile is loaded
-    if (!profile) {
-      console.error('❌ [Cancel Order Failed] Profile not loaded');
-      toast({
-        title: 'Not Ready',
-        description: 'User profile is still loading. Please wait and try again.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     // Check if user can edit this signal (creator or admin only)
-    // ✅ CRITICAL FIX: alert.user_id doesn't exist on TradeAlertResponseDto, only userId (camelCase)
-    const creatorIdMatch = 
-      String(alert.creator?.id) === String(profile.id) ||
-      String(alert.userId) === String(profile.id);
-
-    const alertIsCreator = creatorIdMatch;
-    
-    console.log('🔍 [Authorization Result - FIXED]:', {
-      alertId: alert.id,
-      alertCreatorId: alert.creator?.id,
-      alertUserId: alert.userId,
-      currentUserId: profile.id,
-      creatorIdMatch: alertIsCreator,
-      isAdmin,
-      willAllow: alertIsCreator || isAdmin
-    });
-    
-    // CRITICAL: Owner-only authorization - no admin override
-    if (!alertIsCreator) {
-      console.error('❌ [Cancel Order Failed] Authorization denied - Owner only:', {
-        userId: profile.id,
-        creatorId: alert.creator?.id,
-        alertUserId: alert.userId,
-        isCreator: alertIsCreator
+    const alertIsCreator = isCreator(alert.creator?.id);
+    if (isDevToolsEnabled()) {
+      console.log('SignalStream - handleStatusUpdate authorization check:', {
+        alertId: alert.id,
+        alertCreatorId: alert.creator?.id,
+        currentUserId: profile?.id,
+        isCreator: alertIsCreator,
+        isAdmin,
+        canUpdate: alertIsCreator || isAdmin
       });
-      
-      toast({
-        title: 'Cannot Cancel Order',
-        description: 'Only the signal creator can cancel this order.',
-        variant: 'destructive'
-      });
-      
+    }
+    if (!alertIsCreator && !isAdmin) {
+      if (isDevToolsEnabled()) {
+        console.warn('SignalStream - User not authorized to update this signal:', {
+          userId: profile?.id,
+          creatorId: alert.creator?.id,
+          userRole: profile?.role,
+          userAccessLevel: profile?.access_level,
+          isCreator: alertIsCreator,
+          isAdmin
+        });
+      }
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
@@ -752,10 +712,7 @@ export default function SignalStream() {
         status: newStatus as 'pending' | 'active' | 'closed',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
-      // ✅ CRITICAL FIX: Pass signal's creator ID, not current user ID
-      const signalCreatorId = alert.user_id || alert.userId || alert.creator?.id;
-      console.log('🔍 [Update Query] Using creator ID:', { signalCreatorId, alertId: alert.id });
-      const result = await updateAlert(alert.id, updateDto, signalCreatorId);
+      const result = await updateAlert(alert.id, updateDto);
       console.log('SignalStream - Update result:', result);
       
       // ✅ BUG FIX #4: Enhanced notification with toast fallback
@@ -1074,8 +1031,7 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }}
-                            currentUserId={profile?.id || ''} // ✅ CRITICAL FIX: Pass current user ID for RLS
+                    }} 
                             onStatusUpdate={handleStatusUpdate} 
                             onTakeProfitHit={handleTakeProfitHit} 
                             onStopLossHit={handleStopLossHit} 
@@ -1135,8 +1091,7 @@ export default function SignalStream() {
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
-                    }}
-                            currentUserId={profile?.id || ''} // ✅ CRITICAL FIX: Pass current user ID for RLS
+                    }} 
                             onStatusUpdate={handleStatusUpdate} 
                             onTakeProfitHit={handleTakeProfitHit} 
                             onStopLossHit={handleStopLossHit} 

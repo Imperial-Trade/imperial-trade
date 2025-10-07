@@ -435,7 +435,7 @@ async function checkCircuitBreaker(
       {
         p_signal_id: signalId,
         p_user_id: userId,
-        p_cooldown_minutes: 1 // FIX #4: Changed from 5 to 1 minute
+        p_cooldown_minutes: 5
       }
     );
 
@@ -594,16 +594,6 @@ async function sendRealtimeNotification(
       timestamp: new Date().toISOString()
     };
 
-    // FIX #5: Add comprehensive logging before broadcast
-    logProfessional('info', '📡 Realtime broadcast details', {
-      channel: 'instant-alerts',
-      event: 'signal_notification',
-      signalId: notification.signal_id,
-      notificationType: notification.notification_type,
-      assetName: notification.asset_name,
-      recipientCount: 'all_subscribed_users'
-    });
-
     await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
@@ -677,13 +667,13 @@ async function checkUserEligibility(
   notificationType: string
 ): Promise<{ allowed: boolean; reason?: string }> {
   try {
-    // Check circuit breaker at user level (FIX #4: 1-minute cooldown, changed from 5)
+    // Check circuit breaker at user level (5-minute cooldown)
     const { data: canSend, error } = await supabase.rpc(
       'check_notification_circuit_breaker',
       {
         p_signal_id: signalId,
         p_user_id: userId,
-        p_cooldown_minutes: 1 // FIX #4: Changed from 5 to 1 minute
+        p_cooldown_minutes: 5
       }
     );
 
@@ -695,7 +685,7 @@ async function checkUserEligibility(
     if (!canSend) {
       return { 
         allowed: false, 
-        reason: 'User-level circuit breaker active (1-min cooldown)' // FIX #4: Updated message
+        reason: 'User-level circuit breaker active (5-min cooldown)' 
       };
     }
 
@@ -818,9 +808,7 @@ serve(async (req) => {
 
         // EMERGENCY FIX: Multi-layer deduplication and circuit breaker checks
         
-      // 1. Request-level deduplication
-      // FIX #3: BYPASS for signal_created - each new signal should always notify
-      if (notification.notification_type !== 'signal_created') {
+        // 1. Request-level deduplication
         const allowRequest = await checkRequestDeduplication(
           supabase, 
           notification, 
@@ -831,9 +819,6 @@ serve(async (req) => {
           logProfessional('warn', `EMERGENCY: Request blocked by deduplication for signal ${notification.signal_id}`);
           continue;
         }
-      } else {
-        logProfessional('info', `✅ Signal creation bypassing request deduplication for signal ${notification.signal_id}`);
-      }
 
         // 2. Event-level deduplication (existing)
         const isDuplicate = await checkNotificationDeduplication(supabase, eventKey, notification.signal_id);

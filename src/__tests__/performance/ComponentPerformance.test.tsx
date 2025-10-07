@@ -35,7 +35,6 @@ describe('Component Performance Tests', () => {
       const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
-        currentUserId: 'test-user-id',
         onStatusUpdate: vi.fn(),
         onTakeProfitHit: vi.fn(),
         onStopLossHit: vi.fn(),
@@ -68,7 +67,6 @@ describe('Component Performance Tests', () => {
       const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
-        currentUserId: 'test-user-id',
         onStatusUpdate: vi.fn(),
         onTakeProfitHit: vi.fn(),
         onStopLossHit: vi.fn(),
@@ -132,7 +130,6 @@ describe('Component Performance Tests', () => {
       const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
-        currentUserId: 'test-user-id',
         onTakeProfitHit: vi.fn(),
         onStopLossHit: vi.fn(),
         onOrderActivation: vi.fn(),

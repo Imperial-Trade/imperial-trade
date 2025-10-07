@@ -22,17 +22,7 @@ export const useOrderManagement = () => {
   };
 
   const cancelOrder = useCallback(async (orderId: string): Promise<void> => {
-    console.log('🚀 [useOrderManagement] cancelOrder called:', { orderId, userId });
     const currentUserId = ensureAuthAndOwnershipContext();
-
-    console.log('🔍 [useOrderManagement] Calling API with:', {
-      orderId,
-      userId: currentUserId,
-      updatePayload: {
-        status: 'closed',
-        closeReason: 'manual'
-      }
-    });
 
     // Update order to closed status with cancellation reason
     const response = await tradingApiService.updateAlert(
@@ -45,20 +35,10 @@ export const useOrderManagement = () => {
     );
 
     if (!response.success) {
-      const errorMsg = response.error || 'Failed to cancel order - Unknown error';
-      console.error('❌ [useOrderManagement] Cancel order failed:', {
-        orderId,
-        error: errorMsg,
-        response
-      });
-      throw new Error(errorMsg);
+      throw new Error(response.error || 'Failed to cancel order');
     }
 
-    console.log('✅ [useOrderManagement] Order cancelled successfully:', orderId);
-    toast({
-      title: 'Order Cancelled',
-      description: 'Your limit order has been cancelled successfully',
-    });
+    console.log('✅ Order cancelled successfully:', orderId);
   }, [toast, userId]);
 
   const modifyOrderPrice = useCallback(async (orderId: string, newPrice: number): Promise<void> => {

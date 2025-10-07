@@ -1,8 +1,3 @@
-// ⚠️ DEPRECATED: This edge function has been replaced by the instant_limit_order_activation trigger
-// Limit orders now activate instantly via database trigger on market_prices updates
-// This function is kept for backward compatibility but should not be invoked
-// To disable this function completely, remove its cron job from the database
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
@@ -26,13 +21,12 @@ serve(async (req) => {
     console.log('🚀 Starting order trigger monitor...');
 
     // Check for limit orders that should be activated - FETCH COMPLETE SIGNAL DATA WITH AUTHOR PROFILE
-    // FIX #3: Correct Supabase foreign key syntax (profiles!user_id, not profiles:user_id)
     const { data: pendingLimits, error: fetchError } = await supabase
       .from('trade_alerts')
       .select(`
         id, tradermade_symbol, entry_price, trade_type, asset_name, user_id,
         created_at, updated_at, tp1, tp2, tp3, tp4, tp5, stop_loss, notes,
-        profiles!trade_alerts_user_id_fkey (
+        profiles:user_id (
           display_name,
           avatar_url
         )
@@ -89,29 +83,16 @@ serve(async (req) => {
         console.log(`🔍 Checking ${alert.asset_name} (${alert.trade_type}): price=${currentPrice}, entry=${alert.entry_price}, shouldTrigger=${shouldTrigger}`);
 
         if (shouldTrigger) {
-          // ✅ BUG FIX #2: Add debounce check to prevent twitching
-          const { data: currentSignalCheck } = await supabase
-            .from('trade_alerts')
-            .select('status, activated_at')
-            .eq('id', alert.id)
-            .single();
-          
-          if (currentSignalCheck?.status !== 'pending') {
-            console.log(`⏭️ Signal ${alert.id} already activated (status: ${currentSignalCheck?.status}), skipping`);
-            continue;
-          }
-          
           // PHASE 2: Enhanced error handling with explicit status verification
           const { data: updateResult, error: updateError } = await supabase
             .from('trade_alerts')
             .update({
               status: 'active',
               activated_at: new Date().toISOString(),
-              activation_price: currentPrice,
+              activation_price: currentPrice, // Use actual trigger price
               updated_at: new Date().toISOString()
             })
             .eq('id', alert.id)
-            .eq('status', 'pending') // Double-check status hasn't changed
             .select('id, status, activated_at, activation_price')
             .single();
 

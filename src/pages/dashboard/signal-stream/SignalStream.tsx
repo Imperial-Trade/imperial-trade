@@ -719,20 +719,18 @@ export default function SignalStream() {
       willAllow: alertIsCreator || isAdmin
     });
     
-    if (!alertIsCreator && !isAdmin) {
-      console.error('❌ [Cancel Order Failed] Authorization denied:', {
+    // CRITICAL: Owner-only authorization - no admin override
+    if (!alertIsCreator) {
+      console.error('❌ [Cancel Order Failed] Authorization denied - Owner only:', {
         userId: profile.id,
         creatorId: alert.creator?.id,
         alertUserId: alert.userId,
-        userRole: profile?.role,
-        userAccessLevel: profile?.access_level,
-        isCreator: alertIsCreator,
-        isAdmin
+        isCreator: alertIsCreator
       });
       
       toast({
-        title: 'Access Denied',
-        description: 'You can only close your own signals',
+        title: 'Cannot Cancel Order',
+        description: 'Only the signal creator can cancel this order.',
         variant: 'destructive'
       });
       

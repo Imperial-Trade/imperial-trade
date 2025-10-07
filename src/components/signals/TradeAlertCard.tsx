@@ -475,6 +475,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       )}
       
+      {/* Cancel/Close Actions - Only for signal creator (owner-only authorization) */}
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
         <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
             <Button 
@@ -482,6 +483,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               variant="ghost" 
               className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
               onClick={() => handleStatusUpdate('closed')}
+              title="Only the signal creator can cancel this order"
             >
                 <Lock className="w-3 h-3 mr-1.5" />
                 {isPending ? 'Cancel Order' : getCloseButtonText()}

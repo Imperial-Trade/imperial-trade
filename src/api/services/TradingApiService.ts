@@ -149,10 +149,10 @@ export class TradingApiService {
         updateData 
       });
 
-      // PHASE 2: Atomic update with signal isolation - single operation prevents race conditions
-      const result = await apiClient.update('trade_alerts', id, updateData);
+      // CRITICAL FIX: Pass userId to satisfy RLS owner-only policy
+      const result = await apiClient.update('trade_alerts', id, updateData, userId);
       
-      console.log('TradingApiService - ISOLATED update result:', result);
+      console.log('✅ [TradingApiService] Update with ownership:', { id, userId, result });
       
       if (!result.success || !result.data) {
         return {

@@ -111,7 +111,8 @@ export class ApiClient {
   async update<T extends DatabaseTable>(
     table: T,
     id: string,
-    data: TableUpdate<T>
+    data: TableUpdate<T>,
+    userId?: string
   ): Promise<ApiResponse<TableRow<T>>> {
     try {
       if (!isValidUUID(id)) {
@@ -122,10 +123,19 @@ export class ApiClient {
         };
       }
 
-      const { data: result, error } = await supabase
+      // Build query with id filter
+      let query = supabase
         .from(table)
         .update(data as any)
-        .eq('id' as any, id)
+        .eq('id' as any, id);
+
+      // CRITICAL FIX: Add user_id filter for trade_alerts to satisfy RLS policies
+      if (table === 'trade_alerts' && userId) {
+        query = query.eq('user_id' as any, userId);
+        console.log(`🔒 [ApiClient] UPDATE with ownership filter: ${table} id=${id} user_id=${userId}`);
+      }
+
+      const { data: result, error } = await query
         .select()
         .single();
 

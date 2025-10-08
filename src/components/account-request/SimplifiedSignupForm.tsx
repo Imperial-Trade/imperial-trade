@@ -65,13 +65,13 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
           name="full_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium text-gray-600">Your Name</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-600 dark:text-gray-300">Your Name</FormLabel>
               <FormControl>
                 <Input
                   {...field}
                   type="text"
                   autoComplete="name"
-                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 rounded-none px-1 py-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 dark:border-gray-600 rounded-none px-1 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-gray-800 dark:focus:border-gray-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -88,13 +88,13 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium text-gray-600">Email</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-600 dark:text-gray-300">Email</FormLabel>
               <FormControl>
                 <Input
                   {...field}
                   type="email"
                   autoComplete="email"
-                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 rounded-none px-1 py-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 dark:border-gray-600 rounded-none px-1 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-gray-800 dark:focus:border-gray-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -111,7 +111,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium text-gray-600">Password</FormLabel>
+              <FormLabel className="text-sm font-medium text-gray-600 dark:text-gray-300">Password</FormLabel>
               <FormControl>
                 <div className="relative">
                   <Input
@@ -119,14 +119,14 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
                     className={`w-full mt-1 bg-transparent border-0 border-b ${
-                      form.formState.errors.password ? 'border-red-500' : 'border-gray-300'
-                    } rounded-none px-1 py-3 pr-10 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
+                      form.formState.errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    } rounded-none px-1 py-3 pr-10 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-gray-800 dark:focus:border-gray-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
                     disabled={isSubmitting}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -155,13 +155,13 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
                 />
               </FormControl>
               <div className="leading-none">
-                <FormLabel className="text-xs text-gray-600 font-normal cursor-pointer">
+                <FormLabel className="text-xs text-gray-600 dark:text-gray-300 font-normal cursor-pointer">
                   By signing up you agree to the{" "}
-                  <a href="#" className="font-semibold text-gray-800 hover:underline">
+                  <a href="#" className="font-semibold text-gray-800 dark:text-white hover:underline">
                     terms of service
                   </a>{" "}
                   and{" "}
-                  <a href="#" className="font-semibold text-gray-800 hover:underline">
+                  <a href="#" className="font-semibold text-gray-800 dark:text-white hover:underline">
                     privacy policy
                   </a>
                 </FormLabel>
@@ -175,18 +175,28 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
           <Button
             type="submit"
             disabled={isSubmitting || !canSubmit}
-            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5"
+            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
             style={{
               background: '#1f2937',
               color: '#ffffff',
               boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#111827';
+              const isDark = document.documentElement.classList.contains('dark');
+              if (isDark) {
+                e.currentTarget.style.background = '#f3f4f6';
+              } else {
+                e.currentTarget.style.background = '#111827';
+              }
               e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#1f2937';
+              const isDark = document.documentElement.classList.contains('dark');
+              if (isDark) {
+                e.currentTarget.style.background = '#ffffff';
+              } else {
+                e.currentTarget.style.background = '#1f2937';
+              }
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.08)';
             }}
           >
@@ -197,7 +207,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
             type="button"
             onClick={onFacebookSignup}
             disabled={isSubmitting}
-            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5"
+            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700"
             style={{
               background: '#ffffff',
               color: '#1f2937',
@@ -205,11 +215,21 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
               boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f9fafb';
+              const isDark = document.documentElement.classList.contains('dark');
+              if (isDark) {
+                e.currentTarget.style.background = '#374151';
+              } else {
+                e.currentTarget.style.background = '#f9fafb';
+              }
               e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#ffffff';
+              const isDark = document.documentElement.classList.contains('dark');
+              if (isDark) {
+                e.currentTarget.style.background = '#1f2937';
+              } else {
+                e.currentTarget.style.background = '#ffffff';
+              }
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)';
             }}
           >
@@ -230,10 +250,10 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
         </div>
 
         {/* Login Link */}
-        <div className="text-center text-gray-500 text-sm pt-4">
+        <div className="text-center text-gray-500 dark:text-gray-400 text-sm pt-4">
           <p>
             Already have an account?{" "}
-            <Link to="/signin" className="font-semibold text-gray-800 hover:underline">
+            <Link to="/signin" className="font-semibold text-gray-800 dark:text-white hover:underline">
               Log in
             </Link>
           </p>

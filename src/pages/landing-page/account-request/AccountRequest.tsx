@@ -6,6 +6,7 @@ import { AdvancedTypingEffect } from "@/components/account-request/AdvancedTypin
 import { SuccessMessage } from "@/components/account-request/SuccessMessage";
 import { GlassCard } from "@/components/account-request/GlassCard";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { toast } from "sonner";
 
 export default function AccountRequestPage() {
@@ -26,6 +27,12 @@ export default function AccountRequestPage() {
   return (
     <>
       <GradientBackground />
+      
+      {/* Theme Toggle - Fixed Position */}
+      <div className="fixed top-6 right-6 z-50">
+        <ThemeToggle />
+      </div>
+
       <div className="min-h-screen flex">
         {/* Left Side - Signup Form */}
         <div className="w-full md:w-1/2 lg:w-2/5 flex items-center justify-center p-4 lg:p-8">
@@ -35,7 +42,7 @@ export default function AccountRequestPage() {
             ) : (
               <GlassCard>
                 <div className="text-left mb-8">
-                  <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                     Create your account
                   </h1>
                 </div>

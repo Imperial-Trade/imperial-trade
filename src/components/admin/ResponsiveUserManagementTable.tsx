@@ -86,7 +86,7 @@ export function ResponsiveUserManagementTable() {
             
           return (
             <Badge key={role} className={badgeClass}>
-              {role === 'educator+' ? 'VIP Educator' : role.charAt(0).toUpperCase() + role.slice(1)}
+              {role === 'educator+' ? 'Educator+' : role.charAt(0).toUpperCase() + role.slice(1)}
             </Badge>
           );
         })}

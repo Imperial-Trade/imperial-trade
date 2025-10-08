@@ -143,12 +143,12 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
           
           <div>
             <Label htmlFor="display_name" className="text-primary">
-              Display Name
+              Display Name (Optional)
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Name shown throughout the application</TooltipContent>
+                <TooltipContent>Optional - Users can set their own display name after first login</TooltipContent>
               </Tooltip>
             </Label>
             <Input
@@ -156,7 +156,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
               value={formData.display_name}
               onChange={(e) => handleInputChange('display_name', e.target.value)}
               className={`bg-background border-default text-primary ${errors.display_name ? 'border-red-500' : ''}`}
-              placeholder="Full Name"
+              placeholder="Optional - User can set later"
             />
             {errors.display_name && (
               <p className="text-red-400 text-sm mt-1">{errors.display_name}</p>

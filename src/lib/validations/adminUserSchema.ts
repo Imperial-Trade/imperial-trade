@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 export const adminUserUpdateSchema = z.object({
-  display_name: z.string().min(1, 'Display name is required').max(100, 'Display name is too long'),
+  display_name: z.string().max(100, 'Display name is too long').optional().nullable(),
   user_type: z.enum(['member', 'educator', 'admin'], {
     required_error: 'User type is required',
     invalid_type_error: 'Invalid user type'
@@ -26,7 +26,7 @@ export const adminUserUpdateSchema = z.object({
 
 // Partial update schema for single field updates
 export const adminUserPartialUpdateSchema = z.object({
-  display_name: z.string().min(1, 'Display name is required').max(100, 'Display name is too long').optional(),
+  display_name: z.string().max(100, 'Display name is too long').optional().nullable(),
   user_type: z.enum(['member', 'educator', 'admin'], {
     invalid_type_error: 'Invalid user type'
   }).optional(),
@@ -48,7 +48,7 @@ export const adminUserPartialUpdateSchema = z.object({
 export const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  display_name: z.string().min(1, 'Display name is required').max(100, 'Display name is too long'),
+  display_name: z.string().max(100, 'Display name is too long').optional().nullable(),
   user_type: z.enum(['member', 'educator', 'admin']),
   access_level: z.enum(['user', 'moderator', 'admin']),
   role: z.string().default('user'),

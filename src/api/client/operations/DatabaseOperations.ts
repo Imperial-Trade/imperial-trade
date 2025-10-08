@@ -151,6 +151,17 @@ export class DatabaseOperations {
           throw new Error(response.error.message);
         }
 
+        // PHASE 1 - Task 1B: Detect RLS silent blocks
+        if (!response.data) {
+          console.error('🔒 [DatabaseOperations] RLS BLOCK DETECTED:', {
+            table,
+            id,
+            updateData: data,
+            hint: 'auth.uid() may not match user_id OR missing admin bypass in RLS policy'
+          });
+          throw new Error(`RLS policy blocked update for ${table}/${id}. Check authorization.`);
+        }
+
         return {
           success: true,
           data: response.data as unknown as TableRow<T>,

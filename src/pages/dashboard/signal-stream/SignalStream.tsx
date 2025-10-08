@@ -680,22 +680,34 @@ export default function SignalStream() {
     // Check if user can edit this signal (creator or admin only)
     // CRITICAL FIX: Must match isCreator prop logic with fallback to alert.userId
     const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
-    console.log('🔐 [Authorization Check]', { 
+    
+    // PHASE 1 - Task 1D: Enhanced auth debugging with RLS prediction
+    const authUser = await supabase.auth.getUser();
+    const authUid = authUser.data.user?.id;
+    const rlsWillPass = authUid === alert.userId || isAdmin;
+    
+    console.log('🔐 [Authorization Check - PHASE 1 Enhanced]', { 
       alertId: alert.id, 
       creatorId: alert.creator?.id, 
       userId: alert.userId, 
-      profileId: profile?.id, 
+      profileId: profile?.id,
+      authUid: authUid,
       isCreator: alertIsCreator,
-      isAdmin 
+      isAdmin,
+      rlsWillPass,
+      rlsHint: rlsWillPass ? '✅ RLS should ALLOW' : '❌ RLS will BLOCK'
     });
     if (isDevToolsEnabled()) {
       console.log('SignalStream - handleStatusUpdate authorization check:', {
         alertId: alert.id,
         alertCreatorId: alert.creator?.id,
         currentUserId: profile?.id,
+        authUid: authUid,
         isCreator: alertIsCreator,
         isAdmin,
-        canUpdate: alertIsCreator || isAdmin
+        canUpdate: alertIsCreator || isAdmin,
+        rlsWillPass,
+        rlsPolicy: 'owners_can_update_their_own_trade_alerts'
       });
     }
     if (!alertIsCreator && !isAdmin) {

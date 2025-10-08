@@ -143,16 +143,16 @@ export class DatabaseOperations {
             
             const tradeAlertData = data as TableUpdate<'trade_alerts'>;
             
-            // Call RPC function with only the fields we want to update
-            // is_xeon_stream is NEVER included in the RPC parameters
+            // Call RPC function - pass undefined as null, but keep actual values
+            // This allows the RPC to distinguish between "not provided" and "explicitly set"
             const { data: rpcData, error: rpcError } = await supabase.rpc(
               'update_trade_alert_safe',
               {
                 p_id: id,
-                p_status: tradeAlertData.status || null,
-                p_tp_hits: tradeAlertData.tp_hits || null,
-                p_close_reason: tradeAlertData.close_reason || null,
-                p_notes: tradeAlertData.notes || null
+                p_status: tradeAlertData.status ?? null,
+                p_tp_hits: tradeAlertData.tp_hits ?? null,
+                p_close_reason: tradeAlertData.close_reason ?? null,
+                p_notes: tradeAlertData.notes ?? null
               }
             ).maybeSingle();
 

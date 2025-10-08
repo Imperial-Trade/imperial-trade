@@ -50,7 +50,7 @@ describe('Validation Schemas', () => {
         email: 'test@example.com',
         password: 'password123',
         display_name: 'Test User',
-        roles: ['user']
+        role: 'user'
       };
 
       const result = createUserSchema.safeParse(validData);

@@ -29,7 +29,10 @@ export const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   display_name: z.string().max(100, 'Display name is too long').optional().nullable(),
-  roles: z.array(z.enum(['admin', 'educator+', 'moderator', 'educator', 'user'])).default(['user']),
+  role: z.enum(['admin', 'educator+', 'moderator', 'educator', 'user'], {
+    required_error: 'Role is required',
+    invalid_type_error: 'Invalid role selected'
+  }).default('user'),
 });
 
 export type AdminUserUpdate = z.infer<typeof adminUserUpdateSchema>;

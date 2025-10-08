@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AdminUser } from '@/hooks/useAdminUserManagement';
 import { adminUserUpdateSchema, AdminUserUpdate } from '@/lib/validations/adminUserSchema';
@@ -26,7 +26,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
     account_status: user.account_status,
     phone_number: user.phone_number || '',
   });
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRole, setSelectedRole] = useState<string>('user');
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -40,7 +40,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
       });
       setErrors({});
       
-      // Fetch user roles
+      // Fetch user role (single role)
       const fetchUserRoles = async () => {
         setLoadingRoles(true);
         const { data, error } = await supabase.rpc('get_user_roles_array', {
@@ -49,9 +49,10 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
         if (error) {
           console.error('Error fetching roles:', error);
           toast.error('Failed to load user roles');
-          setSelectedRoles([]);
+          setSelectedRole('user');
         } else {
-          setSelectedRoles(data || []);
+          // Get first role or default to 'user'
+          setSelectedRole(data && data.length > 0 ? data[0] : 'user');
         }
         setLoadingRoles(false);
       };
@@ -91,25 +92,19 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
         _user_id: user.id
       });
       
-      // 2. Remove roles that are no longer selected
+      // 2. Remove ALL existing roles
       for (const role of currentRoles || []) {
-        if (!selectedRoles.includes(role)) {
-          await supabase.rpc('remove_user_role', {
-            _user_id: user.id,
-            _role: role as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
-          });
-        }
+        await supabase.rpc('remove_user_role', {
+          _user_id: user.id,
+          _role: role as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
+        });
       }
       
-      // 3. Add newly selected roles
-      for (const role of selectedRoles) {
-        if (!currentRoles?.includes(role)) {
-          await supabase.rpc('add_user_role', {
-            _user_id: user.id,
-            _role: role as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
-          });
-        }
-      }
+      // 3. Add the ONE selected role
+      await supabase.rpc('add_user_role', {
+        _user_id: user.id,
+        _role: selectedRole as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
+      });
       
       // 4. Update other profile fields
       await onSave(user.id, formData);
@@ -166,18 +161,22 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
           
           <div>
             <Label className="text-primary">
-              Roles (Select all that apply)
+              Role (Select one)
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Assign roles to control user permissions and admin panel access</TooltipContent>
+                <TooltipContent>Assign a single role to control user permissions and admin panel access</TooltipContent>
               </Tooltip>
             </Label>
             {loadingRoles ? (
-              <div className="text-sm text-secondary">Loading roles...</div>
+              <div className="text-sm text-secondary">Loading role...</div>
             ) : (
-              <div className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background">
+              <RadioGroup 
+                value={selectedRole} 
+                onValueChange={setSelectedRole}
+                className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background"
+              >
                 {[
                   { value: 'admin', label: 'Admin', description: 'Full system access' },
                   { value: 'educator+', label: 'VIP Educator', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
@@ -186,16 +185,9 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
                   { value: 'user', label: 'User', description: 'Basic access (default)' }
                 ].map(role => (
                   <div key={role.value} className="flex items-start gap-2">
-                    <Checkbox
+                    <RadioGroupItem
+                      value={role.value}
                       id={`role-${role.value}`}
-                      checked={selectedRoles.includes(role.value)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedRoles(prev => [...prev, role.value]);
-                        } else {
-                          setSelectedRoles(prev => prev.filter(r => r !== role.value));
-                        }
-                      }}
                       className="mt-1"
                     />
                     <label htmlFor={`role-${role.value}`} className="text-sm cursor-pointer flex-1">
@@ -204,7 +196,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
                     </label>
                   </div>
                 ))}
-              </div>
+              </RadioGroup>
             )}
           </div>
           

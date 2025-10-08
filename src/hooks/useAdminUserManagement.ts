@@ -28,7 +28,7 @@ export interface CreateUserData {
   email: string;
   password: string;
   display_name?: string;
-  roles: string[];
+  role: string;
 }
 
 export const useAdminUserManagement = () => {
@@ -130,15 +130,13 @@ export const useAdminUserManagement = () => {
 
       if (authError) throw authError;
       
-      // Add roles to user_roles table
+      // Add single role to user_roles table
       if (authData.user) {
-        for (const role of validatedData.roles) {
-          const { error: roleError } = await supabase.rpc('add_user_role', {
-            _user_id: authData.user.id,
-            _role: role
-          });
-          if (roleError) throw roleError;
-        }
+        const { error: roleError } = await supabase.rpc('add_user_role', {
+          _user_id: authData.user.id,
+          _role: validatedData.role
+        });
+        if (roleError) throw roleError;
       }
       
       toast.success('User created successfully');

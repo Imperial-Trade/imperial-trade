@@ -146,7 +146,7 @@ describe('useAdminUserManagement - Enhanced Tests', () => {
         email: 'invalid-email',
         password: '123', // Too short
         display_name: '',
-        roles: []
+        role: 'user'
       };
 
       await act(async () => {

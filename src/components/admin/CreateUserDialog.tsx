@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { createUserSchema } from '@/lib/validations/adminUserSchema';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ interface CreateUserData {
   email: string;
   password: string;
   display_name?: string;
-  roles: string[];
+  role: string;
 }
 
 interface CreateUserDialogProps {
@@ -28,7 +28,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
     email: '',
     password: '',
     display_name: '',
-    roles: ['user']
+    role: 'user'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -65,7 +65,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
         email: '',
         password: '',
         display_name: '',
-        roles: ['user']
+        role: 'user'
       });
     } catch (error) {
       console.error('Error creating user:', error);
@@ -167,15 +167,19 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
           
           <div>
             <Label className="text-primary">
-              Roles (Select all that apply)
+              Role (Select one)
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Assign roles to control user permissions</TooltipContent>
+                <TooltipContent>Assign a single role to control user permissions</TooltipContent>
               </Tooltip>
             </Label>
-            <div className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background">
+            <RadioGroup 
+              value={formData.role} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
+              className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background"
+            >
               {[
                 { value: 'admin', label: 'Admin', description: 'Full system access' },
                 { value: 'educator+', label: 'VIP Educator', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
@@ -184,16 +188,9 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
                 { value: 'user', label: 'User', description: 'Basic access (default)' }
               ].map(role => (
                 <div key={role.value} className="flex items-start gap-2">
-                  <Checkbox
+                  <RadioGroupItem
+                    value={role.value}
                     id={`create-role-${role.value}`}
-                    checked={formData.roles.includes(role.value)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setFormData(prev => ({ ...prev, roles: [...prev.roles, role.value] }));
-                      } else {
-                        setFormData(prev => ({ ...prev, roles: prev.roles.filter(r => r !== role.value) }));
-                      }
-                    }}
                     className="mt-1"
                   />
                   <label htmlFor={`create-role-${role.value}`} className="text-sm cursor-pointer flex-1">
@@ -202,9 +199,9 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
                   </label>
                 </div>
               ))}
-            </div>
-            {errors.roles && (
-              <p className="text-red-400 text-sm mt-1">{errors.roles}</p>
+            </RadioGroup>
+            {errors.role && (
+              <p className="text-red-400 text-sm mt-1">{errors.role}</p>
             )}
           </div>
           

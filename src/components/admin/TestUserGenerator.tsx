@@ -132,7 +132,7 @@ export function TestUserGenerator() {
         email: user.email,
         password: user.password,
         display_name: user.display_name,
-        roles: ['user']
+        role: 'user'
       });
       
       setCreatedUsers(prev => [...prev, user.email]);

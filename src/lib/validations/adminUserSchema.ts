@@ -15,8 +15,8 @@ export const adminUserUpdateSchema = z.object({
     required_error: 'Account status is required',
     invalid_type_error: 'Invalid account status'
   }),
-  phone_number: z.string().optional().refine(
-    (val) => !val || /^[\+]?[\d\s\-\(\)]+$/.test(val),
+  phone_number: z.string().optional().nullable().refine(
+    (val) => !val || val.trim() === '' || /^[\+]?[\d\s\-\(\)]+$/.test(val),
     'Invalid phone number format'
   ),
   registration_source: z.enum(['direct', 'account_request', 'social', 'admin_created', 'invitation']).optional(),
@@ -36,8 +36,8 @@ export const adminUserPartialUpdateSchema = z.object({
   account_status: z.enum(['active', 'suspended', 'pending_verification', 'inactive'], {
     invalid_type_error: 'Invalid account status'
   }).optional(),
-  phone_number: z.string().optional().refine(
-    (val) => !val || /^[\+]?[\d\s\-\(\)]+$/.test(val),
+  phone_number: z.string().optional().nullable().refine(
+    (val) => !val || val.trim() === '' || /^[\+]?[\d\s\-\(\)]+$/.test(val),
     'Invalid phone number format'
   ),
   registration_source: z.enum(['direct', 'account_request', 'social', 'admin_created', 'invitation']).optional(),

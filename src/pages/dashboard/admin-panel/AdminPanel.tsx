@@ -81,19 +81,18 @@ const AdminPanel: React.FC = () => {
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
   return <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-          <Shield className="w-3 h-3 mr-1" />
-          {isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'} Access
-        </Badge>
-        {canAccessDevTools && <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
-            <Code className="w-3 h-3 mr-1" />
-            Dev Tools Enabled
-          </Badge>}
-      </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="inline-flex w-auto gap-1" style={{
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+            <Shield className="w-3 h-3 mr-1" />
+            {isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'} Access
+          </Badge>
+          {canAccessDevTools && <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+              <Code className="w-3 h-3 mr-1" />
+              Dev Tools Enabled
+            </Badge>}
+          
+          <TabsList className="inline-flex w-auto gap-1" style={{
         gridTemplateColumns: `repeat(${[canAccessRequests, canAccessUsers, canAccessSignals, canAccessNotifications, canAccessSystem, canAccessRateLimits, canAccessDiagnostics, canAccessOptimization, canAccessMonitoring, canAccessSettings, canAccessDevTools].filter(Boolean).length}, minmax(0, 1fr))`
       }}>
           {canAccessRequests && <TabsTrigger value="requests" className="flex items-center gap-2">
@@ -140,7 +139,8 @@ const AdminPanel: React.FC = () => {
               <Code className="w-4 h-4" />
               Dev Tools
             </TabsTrigger>}
-        </TabsList>
+          </TabsList>
+        </div>
 
         {canAccessRequests && <TabsContent value="requests" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>

@@ -13,6 +13,7 @@ interface AuthorizationAwareReturn {
   isEducatorPlus: boolean;
   userRoles: string[];
   isLoading: boolean;
+  error: Error | null;
   userPermissions: {
     level: 'basic' | 'educator' | 'admin';
     canModifyAlerts: boolean;
@@ -29,7 +30,7 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
   const { user, profile } = useAuth();
 
   // Fetch user roles securely from database using RPC
-  const { data: userRoles, isLoading } = useQuery({
+  const { data: userRoles, isLoading, error } = useQuery({
     queryKey: ['user-roles', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -76,9 +77,10 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
       isEducatorPlus,
       userRoles: roles,
       isLoading,
+      error: error as Error | null,
       userPermissions
     };
-  }, [userRoles, profile, user, isLoading]);
+  }, [userRoles, profile, user, isLoading, error]);
 
   return permissions;
 }

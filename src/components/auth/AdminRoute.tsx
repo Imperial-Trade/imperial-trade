@@ -2,7 +2,9 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
+import { useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { AuthorizationError } from './AuthorizationError';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -18,11 +20,24 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({
   allowedRoles = ['admin'] 
 }) => {
   const { user, loading: authLoading } = useAuth();
-  const { userRoles, isLoading: rolesLoading } = useAuthorizationAware();
+  const { userRoles, isLoading: rolesLoading, error } = useAuthorizationAware();
+  const queryClient = useQueryClient();
   
   // Wait for both auth AND roles to finish loading
   if (authLoading || rolesLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/signin" replace />;
+  
+  // Show error UI if role fetching failed
+  if (error) {
+    return (
+      <AuthorizationError 
+        error={error}
+        onRetry={() => {
+          queryClient.invalidateQueries({ queryKey: ['user-roles', user?.id] });
+        }}
+      />
+    );
+  }
   
   const hasAccess = allowedRoles.some(role => userRoles?.includes(role));
   

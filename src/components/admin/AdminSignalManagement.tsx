@@ -31,8 +31,6 @@ export function AdminSignalManagement() {
     toast
   } = useToast();
   const {
-    alerts: allAlerts,
-    isLoading,
     refreshAlerts
   } = useOptimizedTrading(user?.id || '', false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,12 +39,83 @@ export function AdminSignalManagement() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   const [viewingAlert, setViewingAlert] = useState<any>(null);
   const [editingAlert, setEditingAlert] = useState<any>(null);
+  const [userSignals, setUserSignals] = useState<any[]>([]);
+  const [isLoadingSignals, setIsLoadingSignals] = useState(true);
 
-  // Filter alerts to show only the current admin's own signals
-  const userAlerts = useMemo(() => {
-    if (!user?.id || !allAlerts) return [];
-    return allAlerts.filter(alert => alert.userId === user.id);
-  }, [allAlerts, user?.id]);
+  // Fetch user's own signals directly from database (no time filters)
+  const fetchUserSignals = async () => {
+    if (!user?.id) {
+      setIsLoadingSignals(false);
+      return;
+    }
+
+    try {
+      setIsLoadingSignals(true);
+      const { data, error } = await supabase
+        .from('trade_alerts')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            display_name,
+            role,
+            avatar_url,
+            user_type,
+            access_level
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Map to expected format
+      const mappedSignals = (data || []).map((signal: any) => ({
+        id: signal.id,
+        userId: signal.user_id,
+        assetName: signal.asset_name,
+        tradermadeSymbol: signal.tradermade_symbol,
+        tradeType: signal.trade_type,
+        entryPrice: signal.entry_price,
+        stopLoss: signal.stop_loss,
+        status: signal.status,
+        tp1: signal.tp1,
+        tp2: signal.tp2,
+        tp3: signal.tp3,
+        tp4: signal.tp4,
+        tp5: signal.tp5,
+        tpHits: signal.tp_hits || [],
+        notes: signal.notes,
+        closeReason: signal.close_reason,
+        createdAt: signal.created_at,
+        updatedAt: signal.updated_at,
+        creator: signal.profiles ? {
+          id: signal.profiles.id,
+          display_name: signal.profiles.display_name,
+          role: signal.profiles.role,
+          avatar_url: signal.profiles.avatar_url,
+          user_type: signal.profiles.user_type,
+          access_level: signal.profiles.access_level
+        } : null
+      }));
+
+      setUserSignals(mappedSignals);
+    } catch (error) {
+      console.error('Error fetching user signals:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your signals",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSignals(false);
+    }
+  };
+
+  // Fetch signals on mount and when user changes
+  useEffect(() => {
+    fetchUserSignals();
+  }, [user?.id]);
 
   // Helper function to calculate pips for a signal
   const calculateSignalPips = (signal: any): { gained: number; lost: number } => {
@@ -164,14 +233,14 @@ export function AdminSignalManagement() {
     fetchAnalytics();
   }, [toast, user?.id]);
 
-  // Filter alerts based on search and status - now using userAlerts
+  // Filter alerts based on search and status - using userSignals (direct DB fetch)
   const filteredAlerts = useMemo(() => {
-    return userAlerts.filter(alert => {
+    return userSignals.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) || alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase()) || alert.creator?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [userAlerts, searchTerm, filterStatus]);
+  }, [userSignals, searchTerm, filterStatus]);
   const getStatusBadge = (status: string) => {
     const variants = {
       active: {
@@ -214,7 +283,8 @@ export function AdminSignalManagement() {
         title: "Success",
         description: "Signal deleted successfully"
       });
-      refreshAlerts();
+      // Refresh both local signals and analytics
+      await Promise.all([fetchUserSignals(), refreshAlerts()]);
     } catch (error) {
       console.error('Error deleting signal:', error);
       toast({
@@ -242,7 +312,8 @@ export function AdminSignalManagement() {
         description: "Signal updated successfully"
       });
       setEditingAlert(null);
-      refreshAlerts();
+      // Refresh both local signals and analytics
+      await Promise.all([fetchUserSignals(), refreshAlerts()]);
     } catch (error) {
       console.error('Error updating signal:', error);
       toast({
@@ -334,7 +405,7 @@ export function AdminSignalManagement() {
         </CardContent>
       </Card>
     </motion.div>;
-  if (isLoading || loadingAnalytics) {
+  if (isLoadingSignals || loadingAnalytics) {
     return <div className="flex items-center justify-center h-64">
         <motion.div animate={{
         rotate: 360
@@ -520,7 +591,7 @@ export function AdminSignalManagement() {
                 <option value="closed">Closed</option>
                 <option value="pending">Pending</option>
               </select>
-              <Button onClick={refreshAlerts} variant="outline" size="sm">
+              <Button onClick={() => fetchUserSignals()} variant="outline" size="sm">
                 Refresh
               </Button>
             </div>

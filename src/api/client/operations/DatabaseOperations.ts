@@ -143,6 +143,14 @@ export class DatabaseOperations {
             
             const tradeAlertData = data as TableUpdate<'trade_alerts'>;
             
+            console.log('🔒 [DatabaseOperations] Calling RPC update_trade_alert_safe:', {
+              p_id: id,
+              p_status: tradeAlertData.status ?? null,
+              p_tp_hits: tradeAlertData.tp_hits ?? null,
+              p_close_reason: tradeAlertData.close_reason ?? null,
+              p_notes: tradeAlertData.notes ?? null
+            });
+            
             // Call RPC function - pass undefined as null, but keep actual values
             // This allows the RPC to distinguish between "not provided" and "explicitly set"
             const { data: rpcData, error: rpcError } = await supabase.rpc(
@@ -155,6 +163,8 @@ export class DatabaseOperations {
                 p_notes: tradeAlertData.notes ?? null
               }
             ).maybeSingle();
+
+            console.log('🔒 [DatabaseOperations] RPC result:', { rpcData, rpcError });
 
             if (rpcError) {
               throw new Error(rpcError.message);

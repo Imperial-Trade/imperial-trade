@@ -1,7 +1,7 @@
 import React, { useState, memo, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil } from 'lucide-react';
+import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -45,6 +45,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [localNotes, setLocalNotes] = useState(alert.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isClosing, setIsClosing] = useState(false);
   
   // PHASE 7: Get signal retrieval function for instant UI updates
   const { getSignalById } = useSignalRealtime();
@@ -476,10 +477,35 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               size="sm" 
               variant="ghost" 
               className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-              onClick={() => handleStatusUpdate('closed')}
+              onClick={async () => {
+                console.log('🖱️ [TradeAlertCard] Close button CLICKED:', {
+                  alertId: alert.id,
+                  newStatus: 'closed',
+                  timestamp: new Date().toISOString()
+                });
+                
+                setIsClosing(true);
+                try {
+                  await handleStatusUpdate('closed');
+                } catch (error) {
+                  console.error('💥 [TradeAlertCard] Status update failed:', error);
+                } finally {
+                  setIsClosing(false);
+                }
+              }}
+              disabled={isClosing}
             >
-                <Lock className="w-3 h-3 mr-1.5" />
-                {isPending ? 'Cancel Order' : getCloseButtonText()}
+                {isClosing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    Closing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3 h-3 mr-1.5" />
+                    {isPending ? 'Cancel Order' : getCloseButtonText()}
+                  </>
+                )}
             </Button>
         </div>
       )}

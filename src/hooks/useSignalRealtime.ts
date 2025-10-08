@@ -70,28 +70,47 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   }, [contextError]);
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    console.log('🔍 [useSignalRealtime] updateAlert called:', { 
+      id, 
+      dto, 
+      userId,
+      userIdValid: !!(userId && userId.trim())
+    });
+    
     if (!userId || !userId.trim()) {
-      console.warn('useSignalRealtime - Cannot update alert: invalid userId');
+      console.error('❌ [useSignalRealtime] Invalid userId:', userId);
+      setLocalError('User not authenticated');
       return null;
     }
 
     try {
       setLocalLoading(true);
+      console.log('📤 [useSignalRealtime] Calling tradingApiService.updateAlert...');
+      
       const result = await tradingApiService.updateAlert(id, dto, userId);
       
+      console.log('📥 [useSignalRealtime] API result:', {
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error,
+        resultData: result.data
+      });
+      
       if (result.success && result.data) {
-        // The realtime context will handle the update automatically
+        console.log('✅ [useSignalRealtime] Update successful');
         return result.data;
       } else {
-        console.error('useSignalRealtime - Failed to update alert:', result.error);
+        console.error('❌ [useSignalRealtime] Update failed:', result.error);
         setLocalError(result.error || 'Failed to update alert');
         return null;
       }
     } catch (error) {
-      console.error('useSignalRealtime - Error updating alert:', error);
-      setLocalError(error instanceof Error ? error.message : 'Unknown error');
+      console.error('💥 [useSignalRealtime] Exception thrown:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLocalError(errorMessage);
       return null;
     } finally {
+      console.log('🏁 [useSignalRealtime] updateAlert completed, setting loading to false');
       setLocalLoading(false);
     }
   }, [userId]);

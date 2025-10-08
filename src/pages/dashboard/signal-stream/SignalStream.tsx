@@ -664,6 +664,13 @@ export default function SignalStream() {
   };
   // ✅ BUG FIX #17: Memoize all callbacks with stable dependencies
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
+    console.log('🎬 [SignalStream] handleStatusUpdate CALLED:', {
+      alertId: alert.id,
+      newStatus,
+      currentStatus: alert.status,
+      timestamp: new Date().toISOString()
+    });
+    
     // ✅ Check if already processing THIS specific signal
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
@@ -702,6 +709,13 @@ export default function SignalStream() {
           isAdmin
         });
       }
+      
+      toast({
+        title: 'Access Denied',
+        description: 'You can only close your own signals',
+        variant: 'destructive'
+      });
+      
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
@@ -717,16 +731,28 @@ export default function SignalStream() {
     updateInProgressRef.current.set(alert.id, true);
     console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
     try {
-      console.log(`Updating alert ${alert.id} status to ${newStatus}`);
+      console.log(`🔄 [SignalStream] Updating alert ${alert.id} to status: ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
         status: newStatus as 'pending' | 'active' | 'closed',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
+      
+      console.log('📤 [SignalStream] Calling updateAlert with DTO:', updateDto);
       const result = await updateAlert(alert.id, updateDto);
-      console.log('SignalStream - Update result:', result);
+      
+      console.log('📥 [SignalStream] Update result:', { 
+        success: !!result,
+        resultData: result
+      });
+      
+      if (!result) {
+        throw new Error('Update returned null - check console logs above for details');
+      }
+      
+      console.log('✅ [SignalStream] Update successful:', result);
       
       // ✅ BUG FIX #4: Enhanced notification with toast fallback
-      if (result && newStatus === 'closed') {
+      if (newStatus === 'closed') {
         const notificationData = {
           type: 'trade_closed',
           title: `🔒 Signal Closed`,
@@ -738,24 +764,29 @@ export default function SignalStream() {
           (window as any).addNotification(notificationData);
         }
         
-        // Fallback to toast (always show for redundancy)
-        import('@/hooks/use-toast').then(({ toast }) => {
-          toast({
-            title: notificationData.title,
-            description: notificationData.message,
-          });
+        // Show toast notification
+        toast({
+          title: notificationData.title,
+          description: notificationData.message,
         });
         
         console.log('✅ [Notification Sent] Signal closed notification dispatched');
       }
     } catch (err) {
-      console.error("Failed to update status:", err);
-      // ✅ BUG FIX #1 & #3: Removed localClosed revert (property doesn't exist)
+      console.error('💥 [SignalStream] Update failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      
+      toast({
+        title: 'Update Failed',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+      
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
           title: 'Update Failed',
-          message: 'Could not update signal status. Please try again.'
+          message: errorMessage
         });
       }
     } finally {
@@ -763,7 +794,7 @@ export default function SignalStream() {
       updateInProgressRef.current.delete(alert.id);
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert, profile, isAdmin, isCreator, toast]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     // 🔍 PHASE 1 DIAGNOSTIC: Log what we receive
     console.log(`🔍 [PHASE 1 - handleTakeProfitHit] Called for ${alert.asset_name}:`, {

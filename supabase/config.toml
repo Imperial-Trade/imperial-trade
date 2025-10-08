@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.admin-user-management]
 verify_jwt = true
+
+[functions.simplified-signup]
+verify_jwt = false

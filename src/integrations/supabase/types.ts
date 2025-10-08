@@ -71,6 +71,7 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           original_rejection_reason: string | null
+          password_hash: string | null
           phone_number: string | null
           reason: string | null
           referrer: string | null
@@ -79,13 +80,15 @@ export type Database = {
           social_id: string | null
           social_provider: Database["public"]["Enums"]["social_provider"] | null
           status: Database["public"]["Enums"]["request_status"]
+          terms_accepted: boolean | null
+          terms_accepted_at: string | null
           updated_at: string
           username: string | null
           vt_market_account_number: string | null
           website: string | null
         }
         Insert: {
-          account_type: Database["public"]["Enums"]["account_type"]
+          account_type?: Database["public"]["Enums"]["account_type"]
           approved_by?: string | null
           created_at?: string
           email: string
@@ -96,6 +99,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           original_rejection_reason?: string | null
+          password_hash?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
@@ -106,6 +110,8 @@ export type Database = {
             | Database["public"]["Enums"]["social_provider"]
             | null
           status?: Database["public"]["Enums"]["request_status"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null
@@ -123,6 +129,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           original_rejection_reason?: string | null
+          password_hash?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
@@ -133,6 +140,8 @@ export type Database = {
             | Database["public"]["Enums"]["social_provider"]
             | null
           status?: Database["public"]["Enums"]["request_status"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null

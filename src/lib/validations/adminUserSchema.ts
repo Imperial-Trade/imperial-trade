@@ -20,8 +20,8 @@ export const adminUserUpdateSchema = z.object({
     z.string().regex(/^[\+]?[\d\s\-\(\)]+$/, 'Invalid phone number format').optional().nullable()
   ),
   registration_source: z.enum(['direct', 'account_request', 'social', 'admin_created', 'invitation']).optional(),
-  approved_at: z.string().optional(),
-  approved_by: z.string().optional(),
+  approved_at: z.string().optional().nullable(),
+  approved_by: z.string().optional().nullable(),
 });
 
 // Partial update schema for single field updates
@@ -41,8 +41,8 @@ export const adminUserPartialUpdateSchema = z.object({
     z.string().regex(/^[\+]?[\d\s\-\(\)]+$/, 'Invalid phone number format').optional().nullable()
   ),
   registration_source: z.enum(['direct', 'account_request', 'social', 'admin_created', 'invitation']).optional(),
-  approved_at: z.string().optional(),
-  approved_by: z.string().optional(),
+  approved_at: z.string().optional().nullable(),
+  approved_by: z.string().optional().nullable(),
 });
 
 export const createUserSchema = z.object({

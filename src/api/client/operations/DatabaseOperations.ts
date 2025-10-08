@@ -136,67 +136,8 @@ export class DatabaseOperations {
 
     try {
       return await withRetry(async () => {
-      const executeQuery = async () => {
-          // 🎯 SPECIAL HANDLING: Use RPC for trade_alerts to bypass client schema merging
-          if (table === 'trade_alerts') {
-            console.log('🔒 [RPC Mode] Using update_trade_alert_safe for trade_alerts');
-            
-            const tradeAlertData = data as TableUpdate<'trade_alerts'>;
-            
-            console.log('🔒 [DatabaseOperations] Calling RPC update_trade_alert_safe:', {
-              p_id: id,
-              p_status: tradeAlertData.status ?? null,
-              p_tp_hits: tradeAlertData.tp_hits ?? null,
-              p_close_reason: tradeAlertData.close_reason ?? null,
-              p_notes: tradeAlertData.notes ?? null,
-              p_is_xeon_stream: (tradeAlertData.is_xeon_stream === undefined || (tradeAlertData.is_xeon_stream as unknown) === '')
-                ? null
-                : tradeAlertData.is_xeon_stream
-            });
-            
-            // Call RPC function - pass undefined as null, but keep actual values
-            // This allows the RPC to distinguish between "not provided" and "explicitly set"
-            const { data: rpcData, error: rpcError } = await supabase.rpc(
-              'update_trade_alert_safe',
-              {
-                p_id: id,
-                p_status: tradeAlertData.status ?? null,
-                p_tp_hits: tradeAlertData.tp_hits ?? null,
-                p_close_reason: tradeAlertData.close_reason ?? null,
-                p_notes: tradeAlertData.notes ?? null,
-                p_is_xeon_stream: (tradeAlertData.is_xeon_stream === undefined || (tradeAlertData.is_xeon_stream as unknown) === '')
-                  ? null
-                  : tradeAlertData.is_xeon_stream
-              }
-            ).maybeSingle();
-
-            console.log('🔒 [DatabaseOperations] RPC result:', { 
-              rpcData, 
-              rpcError,
-              hasData: !!rpcData,
-              errorCode: rpcError?.code,
-              errorMessage: rpcError?.message,
-              errorDetails: rpcError?.details
-            });
-
-            if (rpcError) {
-              console.error('❌ [DatabaseOperations] RPC error:', {
-                message: rpcError.message,
-                details: rpcError.details,
-                hint: rpcError.hint,
-                code: rpcError.code
-              });
-              throw new Error(`RPC Error: ${rpcError.message}`);
-            }
-
-            if (!rpcData) {
-              throw new Error('Update returned null - authorization may have failed');
-            }
-
-            return { data: rpcData, error: null };
-          }
-
-          // For all other tables, use standard update method
+        const executeQuery = async () => {
+          // Simple direct update for all tables - let RLS handle authorization
           return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
         };
         

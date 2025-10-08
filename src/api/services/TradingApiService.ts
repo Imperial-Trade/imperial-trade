@@ -132,8 +132,7 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      // ✅ FIX: Only include fields that are explicitly provided in the DTO
-      // This prevents undefined values from interfering with RPC updates
+      // Only include fields that are explicitly provided in the DTO
       const updateData: Partial<TableUpdate<'trade_alerts'>> = {};
       
       if (dto.status !== undefined) {
@@ -146,28 +145,11 @@ export class TradingApiService {
         updateData.close_reason = dto.closeReason;
       }
       if (dto.notes !== undefined) {
-        // Convert empty string to undefined to prevent database errors
         updateData.notes = dto.notes === '' ? undefined : dto.notes;
       }
 
-      // ✅ CRITICAL: Ensure is_xeon_stream is NOT included unless explicitly set
-      // This prevents empty string errors for boolean fields
-      console.log('🔒 [TradingApiService] Update data before API call:', {
-        id,
-        updateData,
-        updateDataKeys: Object.keys(updateData),
-        hasIsXeonStream: 'is_xeon_stream' in updateData,
-        userId
-      });
-
-      // Call update API (routes to RPC for trade_alerts)
+      // Call direct Supabase update - RLS handles authorization
       const result = await apiClient.update('trade_alerts', id, updateData);
-      
-      console.log('🔒 [TradingApiService] API update result:', {
-        success: result.success,
-        hasData: !!result.data,
-        error: result.error
-      });
 
       if (!result.success || !result.data) {
         return {

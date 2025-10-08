@@ -243,7 +243,7 @@ export function ResponsiveUserManagementTable() {
                   <SelectContent className="bg-surface border-default">
                     <SelectItem value="all">All Roles</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="educator+">VIP Educator</SelectItem>
+                    <SelectItem value="educator+">Educator+</SelectItem>
                     <SelectItem value="educator">Educator</SelectItem>
                     <SelectItem value="moderator">Moderator</SelectItem>
                     <SelectItem value="user">User</SelectItem>

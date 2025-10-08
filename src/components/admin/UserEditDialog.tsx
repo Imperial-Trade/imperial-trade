@@ -179,7 +179,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
               >
                 {[
                   { value: 'admin', label: 'Admin', description: 'Full system access' },
-                  { value: 'educator+', label: 'VIP Educator', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
+                  { value: 'educator+', label: 'Educator+', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
                   { value: 'moderator', label: 'Moderator', description: 'Content moderation + Admin panel (Requests only)' },
                   { value: 'educator', label: 'Educator', description: 'Signal creation + Content moderation + Admin panel (Signals only)' },
                   { value: 'user', label: 'User', description: 'Basic access (default)' }

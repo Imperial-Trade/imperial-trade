@@ -62,7 +62,7 @@ const AdminPanel: React.FC = () => {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
             <Shield className="w-3 h-3 mr-1" />
-            {isAdmin ? 'Admin' : isEducatorPlus ? 'VIP Educator' : isModerator ? 'Moderator' : 'Educator'} Access
+            {isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'} Access
           </Badge>
           {canAccessDevTools && (
             <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">

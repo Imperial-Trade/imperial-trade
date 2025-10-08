@@ -37,9 +37,8 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
   });
 
   return (
-    <div className="space-y-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           {/* Honeypot field */}
           <div style={{ display: 'none' }} aria-hidden="true">
             <FormField
@@ -60,156 +59,186 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
             />
           </div>
 
-          {/* Full Name */}
-          <FormField
-            control={form.control}
-            name="full_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Your Name</FormLabel>
-                <FormControl>
+        {/* Full Name */}
+        <FormField
+          control={form.control}
+          name="full_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-600">Your Name</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="text"
+                  autoComplete="name"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 rounded-none px-1 py-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              {form.formState.errors.full_name && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.full_name.message}</p>
+              )}
+            </FormItem>
+          )}
+        />
+
+        {/* Email */}
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-600">Email</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="email"
+                  autoComplete="email"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-gray-300 rounded-none px-1 py-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              {form.formState.errors.email && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
+              )}
+            </FormItem>
+          )}
+        />
+
+        {/* Password */}
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-600">Password</FormLabel>
+              <FormControl>
+                <div className="relative">
                   <Input
                     {...field}
-                    placeholder="Enter your full name"
-                    className="h-12 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    className={`w-full mt-1 bg-transparent border-0 border-b ${
+                      form.formState.errors.password ? 'border-red-500' : 'border-gray-300'
+                    } rounded-none px-1 py-3 pr-10 text-gray-900 placeholder:text-gray-400 focus:border-gray-800 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
                     disabled={isSubmitting}
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Email */}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type="email"
-                    placeholder="Enter your email"
-                    className="h-12 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Password */}
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      {...field}
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
-                      className="h-12 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500 pr-10"
-                      disabled={isSubmitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Terms Checkbox */}
-          <FormField
-            control={form.control}
-            name="terms_accepted"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isSubmitting}
-                    className="mt-1"
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="text-sm text-gray-600 font-normal">
-                    By signing up you agree to the{" "}
-                    <Link to="/terms" className="text-purple-600 hover:underline font-medium">
-                      terms of service
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy" className="text-purple-600 hover:underline font-medium">
-                      privacy policy
-                    </Link>
-                  </FormLabel>
-                  <FormMessage />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-              </FormItem>
-            )}
-          />
+              </FormControl>
+              {form.formState.errors.password && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.password.message}</p>
+              )}
+            </FormItem>
+          )}
+        />
 
-          {/* Sign Up Button */}
+        {/* Terms Checkbox */}
+        <FormField
+          control={form.control}
+          name="terms_accepted"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center space-x-3 space-y-0 pt-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+              </FormControl>
+              <div className="leading-none">
+                <FormLabel className="text-xs text-gray-600 font-normal cursor-pointer">
+                  By signing up you agree to the{" "}
+                  <a href="#" className="font-semibold text-gray-800 hover:underline">
+                    terms of service
+                  </a>{" "}
+                  and{" "}
+                  <a href="#" className="font-semibold text-gray-800 hover:underline">
+                    privacy policy
+                  </a>
+                </FormLabel>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        {/* Buttons */}
+        <div className="pt-4 space-y-4">
           <Button
             type="submit"
-            className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-all duration-200"
             disabled={isSubmitting || !canSubmit}
+            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5"
+            style={{
+              background: '#1f2937',
+              color: '#ffffff',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#111827';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#1f2937';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.08)';
+            }}
           >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Creating account...
-              </span>
-            ) : (
-              "Sign Up"
-            )}
+            {isSubmitting ? "Submitting..." : "Sign Up"}
           </Button>
-        </form>
-      </Form>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300"></div>
+          <Button
+            type="button"
+            onClick={onFacebookSignup}
+            disabled={isSubmitting}
+            className="w-full p-3 rounded-xl font-semibold transition-all duration-300 ease-in-out hover:-translate-y-0.5"
+            style={{
+              background: '#ffffff',
+              color: '#1f2937',
+              border: '1px solid rgba(0,0,0,0.05)',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f9fafb';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)';
+            }}
+          >
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                d="M20 10c0-5.523-4.477-10-10-10S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Sign up with Facebook
+          </Button>
         </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500">Or</span>
+
+        {/* Login Link */}
+        <div className="text-center text-gray-500 text-sm pt-4">
+          <p>
+            Already have an account?{" "}
+            <Link to="/signin" className="font-semibold text-gray-800 hover:underline">
+              Log in
+            </Link>
+          </p>
         </div>
-      </div>
-
-      {/* Facebook Sign Up Button */}
-      <Button
-        type="button"
-        onClick={onFacebookSignup}
-        variant="outline"
-        className="w-full h-12 border-2 border-gray-300 hover:bg-gray-50 text-gray-900 font-medium rounded-lg transition-all duration-200"
-        disabled={isSubmitting}
-      >
-        <Facebook className="w-5 h-5 mr-2 text-blue-600" />
-        Sign up with Facebook
-      </Button>
-
-      {/* Already have account link */}
-      <div className="text-center text-sm text-gray-600">
-        Already have an account?{" "}
-        <Link to="/signin" className="text-gray-900 font-bold hover:underline">
-          Log in
-        </Link>
-      </div>
-    </div>
+      </form>
+    </Form>
   );
 };

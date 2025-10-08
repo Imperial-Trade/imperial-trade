@@ -18,12 +18,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredRoles = ['user']
 }) => {
-  const { user, loading } = useAuth();
-  const { userRoles } = useAuthorizationAware();
+  const { user, loading: authLoading } = useAuth();
+  const { userRoles, isLoading: rolesLoading } = useAuthorizationAware();
   const location = useLocation();
 
-
-  if (loading) return <LoadingSpinner />;
+  // Wait for both auth AND roles to finish loading
+  if (authLoading || rolesLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
   
   // Check if user has any of the required roles (server-validated)

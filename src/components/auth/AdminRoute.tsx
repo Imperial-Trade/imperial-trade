@@ -17,10 +17,11 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({
   children, 
   allowedRoles = ['admin'] 
 }) => {
-  const { user, loading } = useAuth();
-  const { userRoles } = useAuthorizationAware();
+  const { user, loading: authLoading } = useAuth();
+  const { userRoles, isLoading: rolesLoading } = useAuthorizationAware();
   
-  if (loading) return <LoadingSpinner />;
+  // Wait for both auth AND roles to finish loading
+  if (authLoading || rolesLoading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/signin" replace />;
   
   const hasAccess = allowedRoles.some(role => userRoles?.includes(role));

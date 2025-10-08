@@ -359,7 +359,7 @@ export function AdminSignalManagement() {
             
             
           </div>
-          <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-primary hover:bg-primary/90">
+          <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
             <Plus className="w-4 h-4 mr-2" />
             Create Signal
           </Button>
@@ -426,7 +426,7 @@ export function AdminSignalManagement() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Win Rate</p>
-                      <p className="text-2xl font-bold text-purple-400">{analytics.win_rate.toFixed(1)}%</p>
+                      <p className="text-2xl font-bold text-purple-400">{(analytics.win_rate ?? 0).toFixed(1)}%</p>
                       <p className="text-xs text-muted-foreground mt-0.5">TP1+ Signals</p>
                     </div>
                     <div className="p-3 bg-purple-500/20 rounded-full">
@@ -443,7 +443,7 @@ export function AdminSignalManagement() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Pips Gained</p>
-                      <p className="text-2xl font-bold text-emerald-400">+{analytics.total_pips_gained.toFixed(1)}</p>
+                      <p className="text-2xl font-bold text-emerald-400">+{(analytics.total_pips_gained ?? 0).toFixed(1)}</p>
                     </div>
                     <div className="p-3 bg-emerald-500/20 rounded-full">
                       <TrendingUp className="w-5 h-5 text-emerald-400" />
@@ -459,7 +459,7 @@ export function AdminSignalManagement() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Pips Lost</p>
-                      <p className="text-2xl font-bold text-rose-400">-{analytics.total_pips_lost.toFixed(1)}</p>
+                      <p className="text-2xl font-bold text-rose-400">-{(analytics.total_pips_lost ?? 0).toFixed(1)}</p>
                     </div>
                     <div className="p-3 bg-rose-500/20 rounded-full">
                       <TrendingDown className="w-5 h-5 text-rose-400" />
@@ -475,8 +475,8 @@ export function AdminSignalManagement() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Net Pips</p>
-                      <p className={`text-2xl font-bold ${analytics.net_pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {analytics.net_pips >= 0 ? '+' : ''}{analytics.net_pips.toFixed(1)}
+                      <p className={`text-2xl font-bold ${(analytics.net_pips ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(analytics.net_pips ?? 0) >= 0 ? '+' : ''}{(analytics.net_pips ?? 0).toFixed(1)}
                       </p>
                     </div>
                     <div className="p-3 bg-cyan-500/20 rounded-full">
@@ -531,15 +531,13 @@ export function AdminSignalManagement() {
       {/* Signals Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
-          <TabsTrigger value="active" className="text-black" style={{
-          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))'
-        }}>
+          <TabsTrigger value="all">
+            My Signals ({filteredAlerts.length})
+          </TabsTrigger>
+          <TabsTrigger value="active">
             Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})
           </TabsTrigger>
-          <TabsTrigger value="closed" className="text-black" style={{
-          background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))'
-        }}>
+          <TabsTrigger value="closed">
             Closed ({filteredAlerts.filter(a => a.status === 'closed').length})
           </TabsTrigger>
         </TabsList>
@@ -556,7 +554,7 @@ export function AdminSignalManagement() {
                 <p className="text-muted-foreground mb-4">
                   {searchTerm || filterStatus !== 'all' ? 'No signals match your search criteria.' : 'You haven\'t created any trading signals yet.'}
                 </p>
-                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-primary hover:bg-primary/90">
+                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Your First Signal
                 </Button>
@@ -574,7 +572,7 @@ export function AdminSignalManagement() {
                 <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Active Signals</h3>
                 <p className="text-muted-foreground mb-4">You don't have any active trading signals at the moment.</p>
-                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-primary hover:bg-primary/90">
+                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
                   <Plus className="w-4 h-4 mr-2" />
                   Create New Signal
                 </Button>
@@ -592,7 +590,7 @@ export function AdminSignalManagement() {
                 <CheckCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Closed Signals</h3>
                 <p className="text-muted-foreground mb-4">You don't have any closed trading signals yet.</p>
-                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-primary hover:bg-primary/90">
+                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
                   <Plus className="w-4 h-4 mr-2" />
                   Create New Signal
                 </Button>

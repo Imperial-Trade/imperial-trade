@@ -2,66 +2,34 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredAccessLevel?: string;
-  requiredUserType?: string | string[];
+  requiredRoles?: ('admin' | 'moderator' | 'educator' | 'educator+' | 'user')[];
 }
 
+/**
+ * ✅ SECURITY FIX: Secure route protection using server-validated roles
+ * Replaces insecure client-side metadata checks with RPC-based validation
+ */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requiredAccessLevel,
-  requiredUserType 
+  requiredRoles = ['user']
 }) => {
   const { user, loading } = useAuth();
+  const { userRoles } = useAuthorizationAware();
   const location = useLocation();
 
 
-  if (loading) {
-    console.log('🔄 ProtectedRoute: Loading authentication state...');
-    return (
-      <div data-current-component="ProtectedRoute-Loading">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!user) {
-    console.log('🚫 ProtectedRoute: No user found, redirecting to signin');
-    console.log('📍 ProtectedRoute: Current location:', location.pathname + location.search);
-    // Save the attempted location for redirecting after login
-    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
-  }
-
-  // Check access level (admin, moderator, user)
-  if (requiredAccessLevel) {
-    const userAccessLevel = user.user_metadata?.access_level || 'user';
-    console.log('🔐 ProtectedRoute: Checking access level:', { required: requiredAccessLevel, user: userAccessLevel });
-    if (userAccessLevel !== requiredAccessLevel) {
-      console.log('🚫 ProtectedRoute: Access denied - insufficient access level');
-      return <Navigate to="/access-denied" replace />;
-    }
-  }
-
-  // Check user type (educator, ib_partner, etc.)
-  if (requiredUserType) {
-    const userType = user.user_metadata?.user_type || 'member';
-    const allowedTypes = Array.isArray(requiredUserType) ? requiredUserType : [requiredUserType];
-    console.log('🔐 ProtectedRoute: Checking user type:', { required: allowedTypes, user: userType });
-    
-    if (!allowedTypes.includes(userType)) {
-      console.log('🚫 ProtectedRoute: Access denied - insufficient user type');
-      return <Navigate to="/access-denied" replace />;
-    }
-  }
-
-  console.log('✅ ProtectedRoute: Authentication and authorization checks passed');
-
-  return (
-    <div data-current-component="ProtectedRoute-Content">
-      {children}
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  
+  // Check if user has any of the required roles (server-validated)
+  const hasAccess = requiredRoles.some(role => userRoles?.includes(role));
+  
+  if (!hasAccess) return <Navigate to="/access-denied" replace />;
+  
+  return <>{children}</>;
 };

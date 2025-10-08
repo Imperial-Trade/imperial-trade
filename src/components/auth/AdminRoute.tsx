@@ -10,8 +10,8 @@ interface AdminRouteProps {
 }
 
 /**
- * ✅ SECURITY FIX: Secure admin route protection using server-validated roles
- * Replaces insecure client-side metadata checks with RPC-based validation
+ * ✅ SECURITY: Secure admin route protection using server-validated roles
+ * Uses RPC-based validation to prevent privilege escalation attacks
  */
 export const AdminRoute: React.FC<AdminRouteProps> = ({ 
   children, 
@@ -23,7 +23,6 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/signin" replace />;
   
-  // Check if user has any of the allowed roles
   const hasAccess = allowedRoles.some(role => userRoles?.includes(role));
   
   if (!hasAccess) return <Navigate to="/access-denied" replace />;

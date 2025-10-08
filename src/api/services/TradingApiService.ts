@@ -132,14 +132,23 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      // Pass all DTO fields to RPC - it will handle NULL vs undefined properly
-      // Convert empty strings to undefined to prevent database errors
-      const updateData: TableUpdate<'trade_alerts'> = {
-        status: dto.status,
-        tp_hits: dto.tpHits,
-        close_reason: dto.closeReason,
-        notes: dto.notes === '' ? undefined : dto.notes
-      };
+      // ✅ FIX: Only include fields that are explicitly provided in the DTO
+      // This prevents undefined values from interfering with RPC updates
+      const updateData: Partial<TableUpdate<'trade_alerts'>> = {};
+      
+      if (dto.status !== undefined) {
+        updateData.status = dto.status;
+      }
+      if (dto.tpHits !== undefined) {
+        updateData.tp_hits = dto.tpHits;
+      }
+      if (dto.closeReason !== undefined) {
+        updateData.close_reason = dto.closeReason;
+      }
+      if (dto.notes !== undefined) {
+        // Convert empty string to undefined to prevent database errors
+        updateData.notes = dto.notes === '' ? undefined : dto.notes;
+      }
 
       console.log('🔒 [TradingApiService] Sending update via RPC:', {
         id,

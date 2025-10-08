@@ -57,6 +57,10 @@ export default function SigninPage() {
       // Login logic will be handled in the hook
       await onSubmit(data);
 
+      // Wait for auth context and roles to propagate
+      console.log('✅ Login successful, waiting for auth state...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // Redirect to dashboard after successful login
       navigate("/dashboard/home");
     } catch (error) {

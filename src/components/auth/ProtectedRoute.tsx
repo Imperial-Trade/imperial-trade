@@ -41,8 +41,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
   
-  // Check if user has any of the required roles (server-validated)
-  const hasAccess = requiredRoles.some(role => userRoles?.includes(role));
+  // ✅ SECURITY FIX: Implement role hierarchy
+  // Admins, moderators, and educators automatically have 'user' access
+  const hasPrivilegedRole = userRoles?.some(role => 
+    ['admin', 'moderator', 'educator', 'educator+'].includes(role)
+  );
+
+  const hasExactRole = requiredRoles.some(role => userRoles?.includes(role));
+
+  // Grant access if user has either:
+  // 1. The exact required role(s), OR
+  // 2. A privileged role (which includes 'user' permissions)
+  const hasAccess = hasExactRole || (requiredRoles.includes('user') && hasPrivilegedRole);
   
   if (!hasAccess) return <Navigate to="/access-denied" replace />;
   

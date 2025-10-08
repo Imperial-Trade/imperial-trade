@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
@@ -12,6 +11,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
+import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
 
 const DashboardNav: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -267,9 +267,7 @@ const DashboardNav: React.FC = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <div className="flex flex-col space-y-1 p-2">
                 <p className="text-sm font-medium leading-none">{user?.email}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.user_metadata?.access_level === 'admin' ? 'Administrator' : 'Member'}
-                </p>
+                <DashboardUserRole userId={user?.id} />
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

@@ -6,6 +6,7 @@ import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 
 // ✅ BUG FIX #17: Memoize TradeAlertCard for performance
 const MemoizedTradeAlertCard = React.memo(TradeAlertCard, (prevProps, nextProps) => {
@@ -132,28 +133,17 @@ export default function SignalStream() {
     }
   }, [refreshAlerts, user?.id]);
 
-  // Helper functions for role checking
-  const isAdmin = useMemo(() => {
-    return profile?.access_level === 'admin' || profile?.role === 'admin';
-  }, [profile]);
-  const isEducator = useMemo(() => {
-    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-  }, [profile]);
-  const canCreateSignals = useMemo(() => {
-    const canCreate = isAdmin || isEducator;
-    if (isDevToolsEnabled()) {
-      console.log('SignalStream - canCreateSignals check:', {
-        profile,
-        isAdmin,
-        isEducator,
-        canCreate,
-        access_level: profile?.access_level,
-        role: profile?.role,
-        user_type: profile?.user_type
-      });
-    }
-    return canCreate;
-  }, [isAdmin, isEducator, profile]);
+  // ✅ SECURITY FIX (ERROR #14): Use secure RPC-based authorization
+  const { isAdmin, isEducator, canCreateSignals } = useAuthorizationAware();
+  
+  if (isDevToolsEnabled()) {
+    console.log('SignalStream - Secure authorization check:', {
+      isAdmin,
+      isEducator,
+      canCreateSignals,
+      userId: user?.id
+    });
+  }
   const isCreator = useCallback((alertCreatorId: string | undefined) => {
     if (!alertCreatorId) return false;
     return profile?.id === alertCreatorId;

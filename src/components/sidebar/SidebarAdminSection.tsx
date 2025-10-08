@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -12,25 +13,26 @@ import { Settings } from "lucide-react";
 
 interface SidebarAdminSectionProps {
   isCollapsed: boolean;
-  userAccessLevel?: string;
 }
 
-export function SidebarAdminSection({
-  isCollapsed,
-  userAccessLevel,
-}: SidebarAdminSectionProps) {
+/**
+ * ✅ SECURITY FIX (ERROR #17): Use secure RPC-based authorization
+ * Removed userAccessLevel prop in favor of useAuthorizationAware hook
+ */
+export function SidebarAdminSection({ isCollapsed }: SidebarAdminSectionProps) {
   const location = useLocation();
-
+  const { isAdmin } = useAuthorizationAware();
+  
   const isActive = (url: string) => {
     return location.pathname === url;
   };
 
   const handleNavigationClick = (e: React.MouseEvent) => {
-    // Prevent the sidebar click handler from being triggered
     e.stopPropagation();
   };
-
-  if (userAccessLevel !== "admin") {
+  
+  // Only show for admin users
+  if (!isAdmin) {
     return null;
   }
 

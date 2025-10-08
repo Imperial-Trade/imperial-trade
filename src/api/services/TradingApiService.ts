@@ -27,23 +27,22 @@ export class TradingApiService {
     return TradingApiService.instance;
   }
 
-  // Helper method to check if user is admin
+  // ✅ SECURITY FIX (ERROR #16): Use secure RPC-based authorization
   private async isUserAdmin(userId: string): Promise<boolean> {
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('access_level, role')
-        .eq('id', userId)
-        .single();
-
+      const { data, error } = await supabase.rpc('get_user_roles', {
+        p_user_id: userId
+      });
+      
       if (error) {
-        console.error('Error checking user admin status:', error);
+        console.error('🔒 [isUserAdmin] RPC error:', error);
         return false;
       }
-
-      return profile?.access_level === 'admin' || profile?.role === 'admin';
+      
+      const roles = (data || []).map((r: any) => r.role);
+      return roles.includes('admin');
     } catch (error) {
-      console.error('Error in isUserAdmin:', error);
+      console.error('🔒 [isUserAdmin] Unexpected error:', error);
       return false;
     }
   }

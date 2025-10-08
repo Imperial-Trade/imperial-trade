@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Crown } from "lucide-react";
 import { useSimplifiedSignup } from "@/hooks/useSimplifiedSignup";
 import { SimplifiedSignupForm } from "@/components/account-request/SimplifiedSignupForm";
 import { GradientBackground } from "@/components/account-request/GradientBackground";
@@ -28,8 +29,12 @@ export default function AccountRequestPage() {
     <>
       <GradientBackground />
       
-      {/* Theme Toggle - Fixed Position */}
-      <div className="fixed top-6 right-6 z-50">
+      {/* Top Right Header - Logo and Theme Toggle */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Crown className="w-6 h-6 text-[#D4AF37]" />
+          <span className="text-lg font-bold text-zinc-100 tracking-wider uppercase">IMPERIAL</span>
+        </div>
         <ThemeToggle />
       </div>
 
@@ -42,7 +47,7 @@ export default function AccountRequestPage() {
             ) : (
               <GlassCard>
                 <div className="text-left mb-8">
-                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-100">
                     Create your account
                   </h1>
                 </div>
@@ -60,7 +65,7 @@ export default function AccountRequestPage() {
         </div>
 
         {/* Right Side - Typing Effect */}
-        <div className="hidden md:flex md:w-1/2 lg:w-3/5 items-start justify-center pt-20 lg:pt-32 p-8">
+        <div className="hidden md:flex md:w-1/2 lg:w-3/5 items-center justify-center p-8">
           <AdvancedTypingEffect />
         </div>
       </div>

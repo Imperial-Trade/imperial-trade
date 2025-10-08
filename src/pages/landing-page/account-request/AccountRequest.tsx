@@ -9,14 +9,16 @@ import { GlassCard } from "@/components/account-request/GlassCard";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { toast } from "sonner";
-
 export default function AccountRequestPage() {
   const [showSuccess, setShowSuccess] = useState(false);
-  const { handleEmailSignup, handleFacebookSignup, isSubmitting, canSubmit } = useSimplifiedSignup();
-
+  const {
+    handleEmailSignup,
+    handleFacebookSignup,
+    isSubmitting,
+    canSubmit
+  } = useSimplifiedSignup();
   const handleFormSubmit = async (data: any) => {
     const result = await handleEmailSignup(data);
-    
     if (result.success) {
       toast.success("Account request submitted successfully!");
       setShowSuccess(true);
@@ -24,17 +26,12 @@ export default function AccountRequestPage() {
       toast.error(result.error || "Failed to submit account request");
     }
   };
-
-  return (
-    <>
+  return <>
       <GradientBackground />
       
       {/* Top Right Header - Logo and Theme Toggle */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Crown className="w-6 h-6 text-[#D4AF37]" />
-          <span className="text-lg font-bold text-zinc-100 tracking-wider uppercase">IMPERIAL</span>
-        </div>
+        
         <ThemeToggle />
       </div>
 
@@ -42,25 +39,16 @@ export default function AccountRequestPage() {
         {/* Left Side - Signup Form */}
         <div className="w-full md:w-1/2 lg:w-2/5 flex items-center justify-center p-4 lg:p-8">
           <div className="w-full max-w-sm">
-            {showSuccess ? (
-              <SuccessMessage />
-            ) : (
-              <GlassCard>
+            {showSuccess ? <SuccessMessage /> : <GlassCard>
                 <div className="text-left mb-8">
                   <h1 className="text-3xl font-bold tracking-tight text-gray-100">
                     Create your account
                   </h1>
                 </div>
                 <ErrorBoundary componentName="Simplified Signup Form">
-                  <SimplifiedSignupForm
-                    onSubmit={handleFormSubmit}
-                    onFacebookSignup={handleFacebookSignup}
-                    isSubmitting={isSubmitting}
-                    canSubmit={canSubmit}
-                  />
+                  <SimplifiedSignupForm onSubmit={handleFormSubmit} onFacebookSignup={handleFacebookSignup} isSubmitting={isSubmitting} canSubmit={canSubmit} />
                 </ErrorBoundary>
-              </GlassCard>
-            )}
+              </GlassCard>}
           </div>
         </div>
 
@@ -69,6 +57,5 @@ export default function AccountRequestPage() {
           <AdvancedTypingEffect />
         </div>
       </div>
-    </>
-  );
+    </>;
 }

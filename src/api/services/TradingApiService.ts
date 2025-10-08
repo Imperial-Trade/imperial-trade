@@ -132,13 +132,21 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      // RPC handles all sanitization and security - no client-side filtering needed
-      const updateData: TableUpdate<'trade_alerts'> = {
-        status: dto.status,
-        tp_hits: dto.tpHits,
-        close_reason: dto.closeReason,
-        notes: dto.notes
-      };
+      // Build updateData conditionally - only include fields with actual values
+      const updateData: Partial<TableUpdate<'trade_alerts'>> = {};
+
+      if (dto.status !== undefined && dto.status !== null) {
+        updateData.status = dto.status;
+      }
+      if (dto.tpHits !== undefined && dto.tpHits !== null) {
+        updateData.tp_hits = dto.tpHits;
+      }
+      if (dto.closeReason !== undefined && dto.closeReason !== null) {
+        updateData.close_reason = dto.closeReason;
+      }
+      if (dto.notes !== undefined && dto.notes !== null && dto.notes !== '') {
+        updateData.notes = dto.notes;
+      }
 
       console.log('🔒 [TradingApiService] Sending update via RPC:', {
         id,

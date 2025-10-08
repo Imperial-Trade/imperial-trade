@@ -61,18 +61,20 @@ export const AdvancedTypingEffect: React.FC = () => {
       </style>
       
       {/* Imperial Logo Section */}
-      <div className="flex items-center gap-3 mb-8 lg:mb-12">
-        <Crown className="w-10 h-10 lg:w-12 lg:h-12 text-[#D4AF37]" />
-        <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 tracking-wider uppercase imperial-tech-font">
+      <div className="flex items-center gap-4 mb-12 lg:mb-16">
+        <Crown className="w-14 h-14 lg:w-16 lg:h-16 text-[#D4AF37]" />
+        <h1 className="text-4xl lg:text-5xl font-bold text-gray-800 tracking-wider uppercase imperial-tech-font">
           IMPERIAL
         </h1>
       </div>
 
-      {/* Typing Animation */}
-      <h2 className="text-5xl lg:text-6xl font-bold text-gray-800 tracking-tight">
-        {text}
-        <span className="inline-block w-[3px] h-12 lg:h-16 bg-gray-800 ml-2 animate-blink" />
-      </h2>
+      {/* Typing Animation - Fixed height container to prevent logo movement */}
+      <div className="min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+        <h2 className="text-5xl lg:text-6xl font-bold text-gray-800 tracking-tight">
+          {text}
+          <span className="inline-block w-[3px] h-12 lg:h-16 bg-gray-800 ml-2 animate-blink" />
+        </h2>
+      </div>
     </div>
   );
 };

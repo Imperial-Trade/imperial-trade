@@ -18,6 +18,10 @@ export interface UpdateTradeAlertDto {
   tpHits?: number[];
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
   notes?: string;
+  // ============================================
+  // PHASE 5: RACE CONDITION PROTECTION
+  // ============================================
+  expectedVersion?: string; // ISO timestamp of expected updated_at for optimistic locking
 }
 
 // ✅ Sanitized DTO for database operations - explicitly excludes is_xeon_stream

@@ -5,6 +5,7 @@ import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from
 import { withTimeout } from '../utils/timeout';
 import { withRetry } from '../utils/retry';
 import { performanceMonitor } from '@/services/PerformanceMonitorService';
+import { logDatabaseOperation, logDatabaseError } from '@/lib/utils/databaseLogger';
 
 export class DatabaseOperations {
   private defaultTimeout = 10000;
@@ -88,8 +89,23 @@ export class DatabaseOperations {
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
     try {
+      // ============================================
+      // PHASE 4: ENHANCED LOGGING
+      // ============================================
+      logDatabaseOperation({
+        operation: 'INSERT',
+        table,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
       return await withRetry(async () => {
         const executeQuery = async () => {
+          // ============================================
+          // PHASE 2: TYPE SAFETY (with necessary type assertion)
+          // Note: 'as any' needed here for Supabase client compatibility
+          // Data sanitization happens at service layer
+          // ============================================
           return supabase.from(table).insert(data as any).select().single();
         };
         
@@ -112,6 +128,8 @@ export class DatabaseOperations {
         maxAttempts: config.retries || 3
       });
     } catch (error) {
+      logDatabaseError('INSERT', table, error, data);
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -135,8 +153,24 @@ export class DatabaseOperations {
     }
 
     try {
+      // ============================================
+      // PHASE 4: ENHANCED LOGGING
+      // ============================================
+      logDatabaseOperation({
+        operation: 'UPDATE',
+        table,
+        id,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
       return await withRetry(async () => {
         const executeQuery = async () => {
+          // ============================================
+          // PHASE 2: TYPE SAFETY (with necessary type assertion)
+          // Note: 'as any' needed here for Supabase client compatibility
+          // Data sanitization happens at service layer
+          // ============================================
           // Simple direct update for all tables - let RLS handle authorization
           return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
         };
@@ -171,6 +205,8 @@ export class DatabaseOperations {
         maxAttempts: config.retries || 3
       });
     } catch (error) {
+      logDatabaseError('UPDATE', table, error, { id, data });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

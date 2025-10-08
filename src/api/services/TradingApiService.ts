@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
+import { sanitizeDatabasePayload } from '@/lib/validations/sanitization';
+import { validateUpdateTradeAlert } from '@/lib/validations/tradeAlertSchemas';
 
 export interface TradeAlertWithProfile extends TradeAlertResponseDto {
   creator?: {
@@ -131,6 +133,20 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      // ============================================
+      // PHASE 3: ZOD VALIDATION
+      // ============================================
+      const validationResult = validateUpdateTradeAlert(dto);
+      
+      if (!validationResult.success) {
+        console.error('❌ [TradingApiService] Validation failed:', validationResult.error);
+        return {
+          success: false,
+          error: `Validation error: ${validationResult.error.errors.map(e => e.message).join(', ')}`,
+          data: undefined
+        };
+      }
+
       // Only include fields that are explicitly provided in the DTO
       const updateData: Partial<TableUpdate<'trade_alerts'>> = {};
       
@@ -147,8 +163,15 @@ export class TradingApiService {
         updateData.notes = dto.notes === '' ? undefined : dto.notes;
       }
 
+      // ============================================
+      // PHASE 1: SANITIZE DATABASE PAYLOAD
+      // ============================================
+      const sanitizedData = sanitizeDatabasePayload(updateData);
+      
+      console.log('🔧 [TradingApiService] Sanitized update data:', sanitizedData);
+
       // Call direct Supabase update - RLS handles authorization
-      const result = await apiClient.update('trade_alerts', id, updateData);
+      const result = await apiClient.update('trade_alerts', id, sanitizedData);
 
       if (!result.success || !result.data) {
         return {

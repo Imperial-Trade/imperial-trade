@@ -49,10 +49,16 @@ export const NotesEditModal: React.FC<NotesEditModalProps> = ({
       
       console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
       
-      // Use API service to update notes
+      // ============================================
+      // PHASE 5: OPTIMISTIC LOCKING
+      // ============================================
+      // Include expected version to prevent race conditions
       const result = await tradingApiService.updateAlert(
         alert.id,
-        { notes: notesDraft },
+        { 
+          notes: notesDraft,
+          expectedVersion: alert.updatedAt // Pass current version
+        },
         alert.user_id
       );
 

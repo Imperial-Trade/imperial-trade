@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import EditSignalForm from '@/components/signals/EditSignalForm';
 import { NotesEditModal } from '@/components/signals/NotesEditModal';
 import { calculatePipsFromPrice } from '@/utils/pipCalculations';
+import { sanitizeDatabasePayload } from '@/lib/validations/sanitization';
 interface AdminSignalAnalytics {
   total_signals: number;
   active_signals: number;
@@ -354,13 +355,20 @@ export function AdminSignalManagement() {
     if (!confirm(confirmMsg)) return;
     
     try {
+      // ============================================
+      // PHASE 1: APPLY SANITIZATION TO ADMIN PANEL
+      // ============================================
+      const updatePayload = sanitizeDatabasePayload({
+        status: 'closed' as const,
+        close_reason: 'manual' as const,
+        updated_at: new Date().toISOString()
+      });
+      
+      console.log('🔧 [AdminSignalManagement] Sanitized close payload:', updatePayload);
+      
       const { error } = await supabase
         .from('trade_alerts')
-        .update({
-          status: 'closed',
-          close_reason: 'manual',
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', alertId);
       
       if (error) throw error;

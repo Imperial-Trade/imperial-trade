@@ -232,11 +232,17 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
         </div>
 
         {/* Login Link */}
-        <div className="text-center text-gray-400 text-sm pt-4">
+        <div className="text-center text-gray-400 text-sm pt-4 space-y-2">
           <p>
             Already have an account?{" "}
             <Link to="/signin" className="font-semibold text-gray-200 hover:underline">
               Log in
+            </Link>
+          </p>
+          <p>
+            Want to check your request status?{" "}
+            <Link to="/account-request-status" className="font-semibold text-gray-200 hover:underline">
+              Check status
             </Link>
           </p>
         </div>

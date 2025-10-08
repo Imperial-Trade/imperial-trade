@@ -9,21 +9,6 @@ import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 // PHASE 2: Error boundary for signal stream
 import SignalStreamErrorBoundary from '@/components/errors/SignalStreamErrorBoundary';
-
-// ✅ BUG FIX #17: Memoize TradeAlertCard for performance
-const MemoizedTradeAlertCard = React.memo(TradeAlertCard, (prevProps, nextProps) => {
-  // Custom comparison function for optimal re-render prevention
-  return (
-    prevProps.alert.id === nextProps.alert.id &&
-    prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.tp_hits?.join(',') === nextProps.alert.tp_hits?.join(',') &&
-    prevProps.livePrice === nextProps.livePrice &&
-    prevProps.connectionStatus === nextProps.connectionStatus &&
-    prevProps.isAdmin === nextProps.isAdmin &&
-    prevProps.isCreator === nextProps.isCreator &&
-    prevProps.justAdded === nextProps.justAdded
-  );
-});
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -1063,9 +1048,9 @@ export default function SignalStream() {
                         Alerts
                       </span>
                       <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
-                    </h2>
+                     </h2>
                      {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {activeAlerts.map(alert => <MemoizedTradeAlertCard 
+                        {activeAlerts.map(alert => <TradeAlertCard
                             key={alert.id}
                             alert={{
                       ...alert,
@@ -1125,7 +1110,7 @@ export default function SignalStream() {
                         ))}
                       </div>
                     ) : sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {sortedClosedAlerts.map(alert => <MemoizedTradeAlertCard 
+                        {sortedClosedAlerts.map(alert => <TradeAlertCard
                             key={alert.id}
                             alert={{
                       ...alert,

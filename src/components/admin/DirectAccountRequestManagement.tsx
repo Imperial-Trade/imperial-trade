@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Search, Eye, CheckCircle, XCircle, Clock, AlertCircle, Mail, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRealTimeRequests } from '@/hooks/useRealTimeRequests';
 
@@ -119,13 +120,14 @@ export const DirectAccountRequestManagement: React.FC = () => {
       }
 
       // Step 3: ✅ TASK 1.8B - Assign role based on account_type
-      const roleToAssign = request.account_type === 'educator' ? 'educator' : 'user';
+      const roleToAssign: Database["public"]["Enums"]["app_role"] = 
+        request.account_type === 'educator' ? 'educator' : 'user';
       
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert([{
           user_id: newUser.user.id,
-          role: roleToAssign as any // Cast to any until types are regenerated
+          role: roleToAssign
         }]);
       
       if (roleError) {

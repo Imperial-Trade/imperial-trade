@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 import { adminAuditService } from '@/api/services/AdminAuditService';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -140,7 +141,7 @@ export function UserManagementTable() {
         .from('user_roles')
         .insert([{
           user_id: userId,
-          role: newRole as any // Cast to any until types are regenerated
+          role: newRole as Database["public"]["Enums"]["app_role"]
         }]);
 
       if (insertError) {

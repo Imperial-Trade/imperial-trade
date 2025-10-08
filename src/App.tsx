@@ -233,18 +233,18 @@ function App() {
                                  <Route path="athena" element={<AthenaTest />} />
                                  <Route path="dev-tests" element={<DevTests />} />
                                  <Route path="price-testing" element={<PriceTestingPage />} />
-                                 <Route 
-                                   path="realtime-cost-status" 
-                                   element={
-                                     <ProtectedRoute requiredAccessLevel="admin">
-                                       <div className="p-4">
-                                         {React.createElement(
-                                           React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
-                                         )}
-                                       </div>
-                                     </ProtectedRoute>
-                                   } 
-                                 />
+                                  <Route 
+                                    path="realtime-cost-status" 
+                                    element={
+                                      <ProtectedRoute requiredRoles={['admin']}>
+                                        <div className="p-4">
+                                          {React.createElement(
+                                            React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                          )}
+                                        </div>
+                                      </ProtectedRoute>
+                                    } 
+                                  />
                                </>
                              )}
 
@@ -261,9 +261,7 @@ function App() {
                             <Route
                               path="signals"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <EducatorSignalManagement />
                                 </ProtectedRoute>
                               }
@@ -271,9 +269,7 @@ function App() {
                             <Route
                               path="analytics"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       Performance Analytics
@@ -288,9 +284,7 @@ function App() {
                             <Route
                               path="followers"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       Followers & Engagement
@@ -305,9 +299,7 @@ function App() {
                             <Route
                               path="ib-dashboard"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       IB Partner Dashboard

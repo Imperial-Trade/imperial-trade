@@ -15,6 +15,8 @@ import EditSignalForm from '@/components/signals/EditSignalForm';
 import { NotesEditModal } from '@/components/signals/NotesEditModal';
 import { calculatePipsFromPrice } from '@/utils/pipCalculations';
 import { sanitizeDatabasePayload } from '@/lib/validations/sanitization';
+import { tradingApiService } from '@/api/services/TradingApiService';
+import type { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 interface AdminSignalAnalytics {
   total_signals: number;
   active_signals: number;
@@ -292,55 +294,83 @@ export function AdminSignalManagement() {
         {isProfit ? 'TP REACHED' : 'STOP LOSS'}
       </Badge>;
   };
+  /**
+   * ✅ SECURITY FIX: Admin Delete Signal via Validated API Service
+   * Uses tradingApiService.deleteAlert() for proper authorization and audit logging
+   */
   const handleDeleteSignal = async (alertId: string) => {
-    if (!confirm('Are you sure you want to delete this signal? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this signal? This action cannot be undone.') || !user?.id) {
       return;
     }
+    
     try {
-      const {
-        error
-      } = await supabase.from('trade_alerts').delete().eq('id', alertId);
-      if (error) throw error;
+      const result = await tradingApiService.deleteAlert(alertId, user.id);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete signal');
+      }
+      
       toast({
         title: "Success",
         description: "Signal deleted successfully"
       });
+      
       // Refresh signals, analytics, and global alerts
       await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
     } catch (error) {
-      console.error('Error deleting signal:', error);
+      console.error('❌ Error deleting signal:', error);
       toast({
         title: "Error",
-        description: "Failed to delete signal",
+        description: error instanceof Error ? error.message : "Failed to delete signal",
         variant: "destructive"
       });
     }
   };
+  /**
+   * ✅ SECURITY FIX (BUG #7): Admin Edit Signal via Validated API Service
+   * Replaces direct Supabase bypass with tradingApiService.updateAlert()
+   * - Uses UpdateTradeAlertDto for type safety
+   * - Applies Zod validation via API service
+   * - Includes authentication check
+   * - Removes manual updated_at injection (handled by database)
+   */
   const handleEditSignal = async (updateData: any) => {
-    if (!editingAlert) return;
+    if (!editingAlert || !user?.id) return;
+    
     try {
-      const {
-        error
-      } = await supabase.from('trade_alerts').update({
+      // Build validated DTO
+      const updateDto: UpdateTradeAlertDto = {
         status: updateData.status,
         notes: updateData.notes,
-        tp_hits: updateData.tpHits,
-        close_reason: updateData.closeReason,
-        updated_at: new Date().toISOString()
-      }).eq('id', editingAlert.id);
-      if (error) throw error;
+        tpHits: updateData.tpHits,
+        closeReason: updateData.closeReason
+      };
+
+      // Use API service with full validation pipeline
+      const result = await tradingApiService.updateAlert(
+        editingAlert.id,
+        updateDto,
+        user.id
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update signal');
+      }
+
       toast({
         title: "Success",
         description: "Signal updated successfully"
       });
+      
       setEditingAlert(null);
+      
       // Refresh signals, analytics, and global alerts
       await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
     } catch (error) {
-      console.error('Error updating signal:', error);
+      console.error('❌ Error updating signal:', error);
       toast({
         title: "Error",
-        description: "Failed to update signal",
+        description: error instanceof Error ? error.message : "Failed to update signal",
         variant: "destructive"
       });
     }

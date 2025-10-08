@@ -35,7 +35,12 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User";
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+      navigate('/auth/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
   
   // Handle profile click - redirect privileged users to admin panel

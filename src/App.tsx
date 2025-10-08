@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -94,7 +94,7 @@ function App() {
   console.log('🏗️ App component initializing...');
 
   // Initialize app state on startup
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🔧 Initializing app state...');
     try {
       initializeAppState();

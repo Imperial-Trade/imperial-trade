@@ -260,12 +260,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         console.log('⚡ [Realtime] Unsubscribed from postgres_changes');
       }
       
-      // ✅ PHASE 2B: Enhanced cleanup - clear all refs
-      subscriptionsRef.current.clear();
-      priceUpdateTimestamps.current.clear();
-      arrivalTimestamps.current.clear();
-      lastDatabaseTimestampRef.current = {};
-      
       // Cleanup channels
       if (privateFallbackChannelRef.current) {
         privateFallbackChannelRef.current.unsubscribe();
@@ -274,20 +268,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
         broadcastChannelRef.current = null;
-      }
-      
-      // Verify cleanup
-      const remainingRefs = [
-        subscriptionsRef.current.size,
-        priceUpdateTimestamps.current.size,
-        arrivalTimestamps.current.size
-      ];
-      if (remainingRefs.some(size => size > 0)) {
-        console.warn('⚠️ [OptimizedWebSocketPriceContext] Incomplete cleanup:', {
-          subscriptions: subscriptionsRef.current.size,
-          priceTimestamps: priceUpdateTimestamps.current.size,
-          arrivalTimestamps: arrivalTimestamps.current.size
-        });
       }
     };
   }, []);
@@ -651,9 +631,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // ⚡ PHASE 5: NUCLEAR CACHE-BUSTING - Force fresh database reads every poll
   const fetchPricesFromDatabase = useCallback(async (targetSymbols: string[]) => {
-    // ✅ PHASE 2 AREA 4: Performance monitoring for database polling
-    const perfStart = performance.now();
-    
     if (targetSymbols.length === 0) return;
 
     try {
@@ -1002,10 +979,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     
     // 🚀 Smart polling strategy:
     // - Signal stream with fresh data: 5s (slow backup polling)
-    // - Signal stream without fresh data: 2s (OPTIMIZED from 500ms - BUG #25 FIX)
+    // - Signal stream without fresh data: 500ms (fast initial hydration)
     // - Other pages: 30s
     const pollingInterval = isSignalStreamPage 
-      ? (hasRecentData ? 5000 : 2000)  // ✅ BUG #25 FIXED: 2s minimum instead of 500ms
+      ? (hasRecentData ? 5000 : 500)  // ✅ Dynamic: 5s if fresh, 500ms during hydration
       : 30000;
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';

@@ -19,6 +19,7 @@ import { tradingApiService } from '@/api/services/TradingApiService';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
+import { perfMonitor } from '@/utils/performanceMonitor';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -38,6 +39,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   creator,
   justAdded = false
 }) => {
+  // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
+  const perfStartRef = useRef<number>(performance.now());
   const [showCopyPanel, setShowCopyPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);

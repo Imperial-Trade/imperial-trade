@@ -53,7 +53,7 @@ export default function AccountRequestPage() {
         </div>
 
         {/* Right Side - Typing Effect */}
-        <div className="hidden md:flex md:w-1/2 lg:w-3/5 items-center justify-center p-8">
+        <div className="hidden md:flex md:w-1/2 lg:w-3/5 items-start justify-center pt-20 lg:pt-32 p-8">
           <AdvancedTypingEffect />
         </div>
       </div>

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Crown } from "lucide-react";
 import { useSimplifiedSignup } from "@/hooks/useSimplifiedSignup";
 import { SimplifiedSignupForm } from "@/components/account-request/SimplifiedSignupForm";
-import { GradientBackground } from "@/components/account-request/GradientBackground";
+
 import { AdvancedTypingEffect } from "@/components/account-request/AdvancedTypingEffect";
 import { SuccessMessage } from "@/components/account-request/SuccessMessage";
 import { GlassCard } from "@/components/account-request/GlassCard";
@@ -27,7 +27,19 @@ export default function AccountRequestPage() {
     }
   };
   return <>
-      <GradientBackground />
+      {/* Video Background */}
+      <div className="fixed inset-0 w-screen h-screen overflow-hidden z-0">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover dark:brightness-[0.4] brightness-[0.7] transition-all duration-300"
+        >
+          <source src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+      </div>
       
       {/* Top Right Header - Logo and Theme Toggle */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-4">

@@ -108,6 +108,15 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     }
   }, [alert.id, alert.notes, isEditingNotes]); // Removed localNotes from deps
   
+  // ✅ PHASE 2: Performance monitoring cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (perfStartRef.current) {
+        perfMonitor.mark('alert-card-render', perfStartRef.current);
+      }
+    };
+  }, []);
+  
   // Type-safe derivations
   const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
   const hitTPs = alert.tp_hits || [];

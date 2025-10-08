@@ -148,7 +148,8 @@ export class DatabaseOperations {
               p_status: tradeAlertData.status ?? null,
               p_tp_hits: tradeAlertData.tp_hits ?? null,
               p_close_reason: tradeAlertData.close_reason ?? null,
-              p_notes: tradeAlertData.notes ?? null
+              p_notes: tradeAlertData.notes ?? null,
+              p_is_xeon_stream: tradeAlertData.is_xeon_stream ?? null
             });
             
             // Call RPC function - pass undefined as null, but keep actual values
@@ -160,7 +161,8 @@ export class DatabaseOperations {
                 p_status: tradeAlertData.status ?? null,
                 p_tp_hits: tradeAlertData.tp_hits ?? null,
                 p_close_reason: tradeAlertData.close_reason ?? null,
-                p_notes: tradeAlertData.notes ?? null
+                p_notes: tradeAlertData.notes ?? null,
+                p_is_xeon_stream: tradeAlertData.is_xeon_stream ?? null
               }
             ).maybeSingle();
 

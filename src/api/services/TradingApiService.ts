@@ -150,16 +150,24 @@ export class TradingApiService {
         updateData.notes = dto.notes === '' ? undefined : dto.notes;
       }
 
-      console.log('🔒 [TradingApiService] Sending update via RPC:', {
+      // ✅ CRITICAL: Ensure is_xeon_stream is NOT included unless explicitly set
+      // This prevents empty string errors for boolean fields
+      console.log('🔒 [TradingApiService] Update data before API call:', {
         id,
         updateData,
+        updateDataKeys: Object.keys(updateData),
+        hasIsXeonStream: 'is_xeon_stream' in updateData,
         userId
       });
 
       // Call update API (routes to RPC for trade_alerts)
       const result = await apiClient.update('trade_alerts', id, updateData);
       
-      console.log('🔒 [TradingApiService] RPC update result:', result);
+      console.log('🔒 [TradingApiService] API update result:', {
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error
+      });
 
       if (!result.success || !result.data) {
         return {

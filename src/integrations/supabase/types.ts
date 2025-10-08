@@ -4381,6 +4381,7 @@ export type Database = {
         Args: {
           p_close_reason?: Database["public"]["Enums"]["close_reason"]
           p_id: string
+          p_is_xeon_stream?: boolean
           p_notes?: string
           p_status?: Database["public"]["Enums"]["trade_alert_status"]
           p_tp_hits?: number[]

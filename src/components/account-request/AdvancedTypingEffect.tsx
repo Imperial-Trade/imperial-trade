@@ -69,10 +69,10 @@ export const AdvancedTypingEffect: React.FC = () => {
       </div>
 
       {/* Typing Animation - Fixed height container to prevent logo movement */}
-      <div className="min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
-        <h2 className="text-5xl lg:text-6xl font-bold text-zinc-100 tracking-tight">
+      <div className="min-h-[80px] lg:min-h-[100px] flex items-center justify-center">
+        <h2 className="text-3xl lg:text-4xl font-light text-zinc-100 tracking-tight">
           {text}
-          <span className="inline-block w-[3px] h-12 lg:h-16 bg-zinc-100 ml-2 animate-blink" />
+          <span className="inline-block w-[2px] h-8 lg:h-10 bg-zinc-100 ml-2 animate-blink" />
         </h2>
       </div>
     </div>

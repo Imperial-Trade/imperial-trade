@@ -3915,6 +3915,13 @@ export type Database = {
         Args: { p_duration_seconds?: number; p_holder_id: string }
         Returns: boolean
       }
+      add_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       auto_cleanup_stale_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -4228,6 +4235,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_user_roles_array: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_type: {
         Args: { user_id_param?: string }
         Returns: string
@@ -4261,6 +4272,13 @@ export type Database = {
       }
       has_active_ui_listeners: {
         Args: { p_threshold_seconds?: number }
+        Returns: boolean
+      }
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
         Returns: boolean
       }
       has_role: {
@@ -4358,6 +4376,13 @@ export type Database = {
       }
       register_ui_activity_enhanced: {
         Args: { p_session_id: string; p_symbols: string[]; p_user_id: string }
+        Returns: undefined
+      }
+      remove_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
         Returns: undefined
       }
       should_show_onesignal_prompt: {
@@ -4488,7 +4513,7 @@ export type Database = {
       account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
-      app_role: "admin" | "moderator" | "user" | "educator"
+      app_role: "admin" | "moderator" | "user" | "educator" | "educator+"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
       close_reason:
         | "manual"
@@ -4672,7 +4697,7 @@ export const Constants = {
       account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
-      app_role: ["admin", "moderator", "user", "educator"],
+      app_role: ["admin", "moderator", "user", "educator", "educator+"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
       close_reason: [
         "manual",

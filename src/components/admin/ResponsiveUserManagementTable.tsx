@@ -58,7 +58,6 @@ export function ResponsiveUserManagementTable() {
   const { users, loading, loadUsers, updateUser, deleteUser, createUser, resetPassword } = useAdminUserManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
-  const [accessLevelFilter, setAccessLevelFilter] = useState<string>('all');
   const [accountStatusFilter, setAccountStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -67,26 +66,42 @@ export function ResponsiveUserManagementTable() {
     loadUsers();
   }, [loadUsers]);
 
-  const getUserTypeBadge = (userType: string) => {
-    switch (userType) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'educator':
-        return <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">Educator</Badge>;
-      default:
-        return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">Member</Badge>;
+  const getRolesBadge = (userRoles?: string[]) => {
+    if (!userRoles || userRoles.length === 0) {
+      return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">No Roles</Badge>;
     }
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {userRoles.map((role) => {
+          const badgeClass = role === 'admin' 
+            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+            : role === 'educator+' 
+            ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+            : role === 'educator'
+            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            : role === 'moderator'
+            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+            : 'bg-green-500/10 text-green-400 border-green-500/20';
+            
+          return (
+            <Badge key={role} className={badgeClass}>
+              {role === 'educator+' ? 'VIP Educator' : role.charAt(0).toUpperCase() + role.slice(1)}
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const getUserTypeBadge = (userType: string) => {
+    // DEPRECATED - Display warning
+    return <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">⚠️ Deprecated</Badge>;
   };
 
   const getAccessLevelBadge = (accessLevel: string) => {
-    switch (accessLevel) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'moderator':
-        return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Moderator</Badge>;
-      default:
-        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">User</Badge>;
-    }
+    // DEPRECATED - Display warning
+    return <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">⚠️ Deprecated</Badge>;
   };
 
   const getAccountStatusBadge = (status: string) => {
@@ -123,11 +138,12 @@ export function ResponsiveUserManagementTable() {
       user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
-    const matchesUserType = userTypeFilter === 'all' || user.user_type === userTypeFilter;
-    const matchesAccessLevel = accessLevelFilter === 'all' || user.access_level === accessLevelFilter;
     const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;
     
-    return matchesSearch && matchesUserType && matchesAccessLevel && matchesAccountStatus;
+    // Filter by roles
+    const matchesRoleFilter = userTypeFilter === 'all' || user.userRoles?.includes(userTypeFilter);
+    
+    return matchesSearch && matchesAccountStatus && matchesRoleFilter;
   });
 
   const handleToggleAccountStatus = async (user: AdminUser) => {
@@ -222,25 +238,15 @@ export function ResponsiveUserManagementTable() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
                   <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
-                    <SelectValue placeholder="User Type" />
+                    <SelectValue placeholder="Role Filter" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border-default">
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="educator+">VIP Educator</SelectItem>
                     <SelectItem value="educator">Educator</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={accessLevelFilter} onValueChange={setAccessLevelFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
-                    <SelectValue placeholder="Access Level" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface border-default">
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
                     <SelectItem value="moderator">Moderator</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -269,8 +275,7 @@ export function ResponsiveUserManagementTable() {
                     <thead>
                       <tr className="border-b border-default">
                         <th className="text-left p-4 text-primary font-medium">User</th>
-                        <th className="text-left p-4 text-primary font-medium">Type</th>
-                        <th className="text-left p-4 text-primary font-medium">Access</th>
+                        <th className="text-left p-4 text-primary font-medium">Roles</th>
                         <th className="text-left p-4 text-primary font-medium">Status</th>
                         <th className="text-left p-4 text-primary font-medium">Source</th>
                         <th className="text-left p-4 text-primary font-medium">Created</th>
@@ -297,8 +302,7 @@ export function ResponsiveUserManagementTable() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">{getUserTypeBadge(user.user_type)}</td>
-                          <td className="p-4">{getAccessLevelBadge(user.access_level)}</td>
+                          <td className="p-4">{getRolesBadge(user.userRoles)}</td>
                           <td className="p-4">{getAccountStatusBadge(user.account_status)}</td>
                           <td className="p-4">{getRegistrationSourceBadge(user.registration_source)}</td>
                           <td className="p-4">
@@ -442,7 +446,7 @@ export function ResponsiveUserManagementTable() {
                   No Users Found
                 </h3>
                 <p className="text-secondary">
-                  {searchTerm || userTypeFilter !== 'all' || accessLevelFilter !== 'all' || accountStatusFilter !== 'all'
+                  {searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all'
                     ? 'No users match your search criteria.'
                     : 'No users found in the system.'}
                 </p>

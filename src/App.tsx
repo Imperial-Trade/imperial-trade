@@ -29,6 +29,10 @@ import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
 
+// Auth Components
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminRoute } from "@/components/auth/AdminRoute";
+
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
 import ResetPasswordLayout from "@/pages/layouts/ResetPasswordLayout";
@@ -74,7 +78,6 @@ import PriceTestingPage from "@/pages/dashboard/dev-tests/PriceTestingPage";
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
 
 // Other Components
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
@@ -258,9 +261,9 @@ function App() {
                           <Route
                             path="admin"
                             element={
-                              <ProtectedRoute requiredAccessLevel="admin">
+                              <AdminRoute allowedRoles={['admin', 'moderator', 'educator', 'educator+']}>
                                 <AdminPanel />
-                              </ProtectedRoute>
+                              </AdminRoute>
                             }
                           />
 

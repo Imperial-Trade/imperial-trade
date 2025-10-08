@@ -9,6 +9,9 @@ interface AuthorizationAwareReturn {
   canViewAllSignals: boolean;
   isAdmin: boolean;
   isEducator: boolean;
+  isModerator: boolean;
+  isEducatorPlus: boolean;
+  userRoles: string[];
   userPermissions: {
     level: 'basic' | 'educator' | 'admin';
     canModifyAlerts: boolean;
@@ -45,9 +48,11 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
   const permissions = useMemo(() => {
     const roles = (userRoles || []).map((r: any) => r.role);
     const isAdmin = roles.includes('admin');
-    const isEducator = roles.includes('moderator') || roles.includes('educator');
+    const isModerator = roles.includes('moderator');
+    const isEducator = roles.includes('educator') || roles.includes('educator+');
+    const isEducatorPlus = roles.includes('educator+');
 
-    const canCreateSignals = isAdmin || isEducator;
+    const canCreateSignals = isAdmin || isEducator || isEducatorPlus;
     const canViewAllSignals = true; // All authenticated users can view
     
     const userPermissions = {
@@ -66,6 +71,9 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
       canViewAllSignals,
       isAdmin,
       isEducator,
+      isModerator,
+      isEducatorPlus,
+      userRoles: roles,
       userPermissions
     };
   }, [userRoles, profile, user]);

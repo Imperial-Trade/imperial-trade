@@ -9,8 +9,11 @@ export interface AdminUser {
   email: string;
   display_name: string;
   role: string;
-  user_type: 'member' | 'educator' | 'admin';
-  access_level: 'user' | 'moderator' | 'admin';
+  // DEPRECATED: Replaced by user_roles table
+  user_type?: 'member' | 'educator' | 'admin';
+  access_level?: 'user' | 'moderator' | 'admin';
+  // NEW: Server-validated roles from user_roles table
+  userRoles?: string[];
   account_status: 'active' | 'suspended' | 'pending_verification' | 'inactive';
   registration_source: 'direct' | 'account_request' | 'social' | 'admin_created' | 'invitation';
   phone_number?: string;
@@ -38,16 +41,30 @@ export const useAdminUserManagement = () => {
     try {
       setLoading(true);
       
-      // Direct query to profiles table (now has email column)
-      const { data, error } = await supabase
+      // Query profiles table and fetch roles using RPC
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
       
-      console.log('Loaded users from profiles:', data);
-      setUsers(data || []);
+      // Fetch roles for each user
+      const usersWithRoles = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          const { data: rolesData } = await supabase.rpc('get_user_roles_array', {
+            _user_id: profile.id
+          });
+          
+          return {
+            ...profile,
+            userRoles: rolesData || []
+          };
+        })
+      );
+      
+      console.log('Loaded users with roles:', usersWithRoles);
+      setUsers(usersWithRoles);
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Failed to load users: ' + (error as Error).message);

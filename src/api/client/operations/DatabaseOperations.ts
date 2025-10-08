@@ -166,10 +166,27 @@ export class DatabaseOperations {
               }
             ).maybeSingle();
 
-            console.log('🔒 [DatabaseOperations] RPC result:', { rpcData, rpcError });
+            console.log('🔒 [DatabaseOperations] RPC result:', { 
+              rpcData, 
+              rpcError,
+              hasData: !!rpcData,
+              errorCode: rpcError?.code,
+              errorMessage: rpcError?.message,
+              errorDetails: rpcError?.details
+            });
 
             if (rpcError) {
-              throw new Error(rpcError.message);
+              console.error('❌ [DatabaseOperations] RPC error:', {
+                message: rpcError.message,
+                details: rpcError.details,
+                hint: rpcError.hint,
+                code: rpcError.code
+              });
+              throw new Error(`RPC Error: ${rpcError.message}`);
+            }
+
+            if (!rpcData) {
+              throw new Error('Update returned null - authorization may have failed');
             }
 
             return { data: rpcData, error: null };

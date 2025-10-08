@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { SignalStreamErrorBoundary } from '@/components/errors/SignalStreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useUIActivityRegistration } from '@/hooks/useUIActivityRegistration';

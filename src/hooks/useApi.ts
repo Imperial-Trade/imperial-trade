@@ -8,7 +8,8 @@ interface UseApiOptions<T> {
   onError?: (error: string) => void;
 }
 
-export function useApi<T = unknown>(
+// ✅ PHASE 2A: Enhanced Type Safety with strict generic constraints
+export function useApi<T extends Record<string, any> | Array<any>>(
   apiCall: () => Promise<T>,
   options: UseApiOptions<T> = {}
 ) {
@@ -49,7 +50,11 @@ export function useApi<T = unknown>(
   };
 }
 
-export function useMutation<T = unknown, P = unknown>(
+// ✅ PHASE 2A: Enhanced Type Safety with strict generic constraints
+export function useMutation<
+  T extends Record<string, any> | Array<any>, 
+  P extends Record<string, any> | Array<any> = Record<string, any>
+>(
   mutationFn: (params: P) => Promise<T>,
   options: UseApiOptions<T> = {}
 ) {

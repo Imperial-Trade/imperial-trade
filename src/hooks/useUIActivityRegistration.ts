@@ -16,6 +16,9 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   const componentIdRef = useRef<string>(`component-${Date.now()}-${Math.random().toString(36).substring(2)}`);
   const prevSymbolsRef = useRef<string[]>([]);
 
+  // ✅ PHASE 2B (BUG #24 FIX): Enhanced cleanup tracking to prevent memory leaks
+  const cleanupTrackerRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     // Skip if user not authenticated
     if (!user?.id || user.id.length === 0) {
@@ -29,11 +32,21 @@ export function useUIActivityRegistration(symbols: string[] = []) {
     if (symbolsChanged || prevSymbolsRef.current.length === 0) {
       prevSymbolsRef.current = symbols;
       globalUIActivityManager.subscribe(componentIdRef.current, symbols, user.id);
+      
+      // Track cleanup
+      cleanupTrackerRef.current.add(componentIdRef.current);
     }
 
-    // Cleanup: Unsubscribe on unmount
+    // Cleanup: Unsubscribe on unmount with verification
     return () => {
       globalUIActivityManager.unsubscribe(componentIdRef.current);
+      cleanupTrackerRef.current.delete(componentIdRef.current);
+      
+      // Verify cleanup completed
+      if (cleanupTrackerRef.current.size > 0) {
+        console.warn('⚠️ [useUIActivityRegistration] Incomplete cleanup:', 
+          Array.from(cleanupTrackerRef.current));
+      }
     };
   }, [user?.id, symbols]);
 

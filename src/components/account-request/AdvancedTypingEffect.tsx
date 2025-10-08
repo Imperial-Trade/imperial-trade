@@ -62,8 +62,8 @@ export const AdvancedTypingEffect: React.FC = () => {
       
       {/* Imperial Logo Section */}
       <div className="flex items-center gap-5 mb-16 lg:mb-20">
-        <Crown className="w-20 h-20 lg:w-24 lg:h-24 text-[#D4AF37]" />
-        <h1 className="text-5xl lg:text-6xl font-bold text-zinc-100 tracking-wider uppercase imperial-tech-font">
+        <Crown className="w-20 h-20 lg:w-24 lg:h-24 text-[#D4AF37] drop-shadow-[0_2px_10px_rgba(212,175,55,0.6)]" />
+        <h1 className="text-5xl lg:text-6xl font-bold text-[#D4AF37] tracking-wider uppercase imperial-tech-font drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
           IMPERIAL
         </h1>
       </div>

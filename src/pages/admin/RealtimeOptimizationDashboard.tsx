@@ -112,10 +112,12 @@ const RealtimeOptimizationDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+    if (isAdmin) {
+      fetchData();
+      const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   const isLockActive = broadcastLock && new Date(broadcastLock.expires_at) > new Date();
   const activeListenerCount = uiListeners.length;

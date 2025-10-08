@@ -7,7 +7,7 @@ import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity, BarCh
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 
 // Lazy load heavy admin components to prevent simultaneous hook initialization
-const EnhancedUserManagementTable = lazy(() => import("@/components/admin/EnhancedUserManagementTable").then(m => ({ default: m.EnhancedUserManagementTable })));
+const ResponsiveUserManagementTable = lazy(() => import("@/components/admin/ResponsiveUserManagementTable").then(m => ({ default: m.ResponsiveUserManagementTable })));
 const DirectAccountRequestManagement = lazy(() => import("@/components/admin/DirectAccountRequestManagement").then(m => ({ default: m.DirectAccountRequestManagement })));
 const AdminNotificationSystem = lazy(() => import("@/components/admin/AdminNotificationSystem").then(m => ({ default: m.AdminNotificationSystem })));
 const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({ default: m.SystemMonitoring })));
@@ -116,7 +116,7 @@ const AdminPanel: React.FC = () => {
 
         <TabsContent value="users" className="space-y-4">
           <Suspense fallback={<LoadingFallback />}>
-            <EnhancedUserManagementTable />
+            <ResponsiveUserManagementTable />
           </Suspense>
         </TabsContent>
 

@@ -143,6 +143,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
   
+  // PHASE 2: Memory leak prevention - cleanup tracker
+  const cleanupTrackerRef = useRef({ 
+    hasUnmounted: false,
+    activeTimers: new Set<NodeJS.Timeout>()
+  });
+  
   // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - track ALL signal IDs we've ever seen
   const seenSignalIdsRef = useRef(new Set<string>());
   
@@ -236,6 +242,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
   const refreshSignals = useCallback(async () => {
+    // PHASE 2: Performance monitoring start
+    const perfStart = performance.now();
+    
     try {
       // PHASE 3: Throttle refresh requests to reduce database load
       const now = Date.now();
@@ -411,10 +420,18 @@ unstable_batchedUpdates(() => {
       
 // Update timestamp for network resilience tracking
 lastUpdateTimestampRef.current = new Date().toISOString();
+
+      // PHASE 2: Performance monitoring end
+      const { perfMonitor } = await import('@/utils/performanceMonitor');
+      perfMonitor.mark('signal-refresh', perfStart);
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh signals');
+      
+      // PHASE 2: Track error performance
+      const { perfMonitor } = await import('@/utils/performanceMonitor');
+      perfMonitor.mark('signal-refresh-error', perfStart);
     }
   }, []);
 

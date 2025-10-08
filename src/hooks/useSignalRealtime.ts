@@ -53,16 +53,24 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     return allSignals;
   }, [allSignals, showAllSignals, userId]);
 
-  // Subscribe to realtime updates - always subscribe since RLS handles filtering
-  useEffect(() => {
+  // ✅ PHASE 2 - BUG #20 FIX: Wrap subscribe/unsubscribe in useCallback for stable references
+  const stableSubscribe = useCallback(() => {
     console.log('useSignalRealtime - Subscribing to RLS-filtered real-time updates');
     subscribe();
-    
+  }, [subscribe]);
+
+  const stableUnsubscribe = useCallback(() => {
+    console.log('useSignalRealtime - Unsubscribing from real-time updates');
+    unsubscribe();
+  }, [unsubscribe]);
+
+  // Subscribe to realtime updates with stable dependencies
+  useEffect(() => {
+    stableSubscribe();
     return () => {
-      console.log('useSignalRealtime - Unsubscribing from real-time updates');
-      unsubscribe();
+      stableUnsubscribe();
     };
-  }, []); // PHASE 6: Remove subscribe/unsubscribe to prevent hook-level subscription loops
+  }, [stableSubscribe, stableUnsubscribe]);
 
   // Sync realtime error with local error state
   useEffect(() => {

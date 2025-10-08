@@ -7,6 +7,8 @@ import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from '
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
+// PHASE 2: Error boundary for signal stream
+import SignalStreamErrorBoundary from '@/components/errors/SignalStreamErrorBoundary';
 
 // ✅ BUG FIX #17: Memoize TradeAlertCard for performance
 const MemoizedTradeAlertCard = React.memo(TradeAlertCard, (prevProps, nextProps) => {
@@ -966,7 +968,10 @@ export default function SignalStream() {
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
   }, [updateAlert, profile, isAdmin, isCreator]);
-  return <StreamErrorBoundary>
+  
+  // PHASE 2: Wrap entire signal stream with error boundary
+  return <SignalStreamErrorBoundary>
+    <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <GlobalLeadershipBanner />
         
@@ -1177,5 +1182,6 @@ export default function SignalStream() {
            </DialogContent>
          </Dialog>
       </div>
-    </StreamErrorBoundary>;
+    </StreamErrorBoundary>
+  </SignalStreamErrorBoundary>;
 }

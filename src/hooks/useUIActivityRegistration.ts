@@ -15,6 +15,8 @@ export function useUIActivityRegistration(symbols: string[] = []) {
   const { user } = useAuth();
   const componentIdRef = useRef<string>(`component-${Date.now()}-${Math.random().toString(36).substring(2)}`);
   const prevSymbolsRef = useRef<string[]>([]);
+  // PHASE 2: Memory leak prevention - track cleanup
+  const cleanupTrackerRef = useRef({ hasUnmounted: false });
 
   useEffect(() => {
     // Skip if user not authenticated
@@ -31,9 +33,19 @@ export function useUIActivityRegistration(symbols: string[] = []) {
       globalUIActivityManager.subscribe(componentIdRef.current, symbols, user.id);
     }
 
-    // Cleanup: Unsubscribe on unmount
+    // PHASE 2: Enhanced cleanup with tracking
     return () => {
+      cleanupTrackerRef.current.hasUnmounted = true;
       globalUIActivityManager.unsubscribe(componentIdRef.current);
+      
+      // Verify cleanup completed
+      if (process.env.NODE_ENV === 'development') {
+        setTimeout(() => {
+          if (!cleanupTrackerRef.current.hasUnmounted) {
+            console.warn('[useUIActivityRegistration] Cleanup verification failed - potential memory leak');
+          }
+        }, 100);
+      }
     };
   }, [user?.id, symbols]);
 

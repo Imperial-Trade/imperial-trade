@@ -140,30 +140,31 @@ export default function AccountRequestStatusPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
-      {/* Video Background with Gradient Overlay */}
-      <div className="fixed inset-0 z-0">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="https://kmuoqkcxguafxulqlbmi.supabase.co/storage/v1/object/public/videos/landing-page-bg.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/70 to-primary/20" />
-      </div>
+    <div className="min-h-screen flex">
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0 dark:brightness-[0.4] brightness-[0.7] transition-all duration-300"
+      >
+        <source
+          src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div className="fixed inset-0 bg-gradient-to-t from-black/40 to-transparent z-10"></div>
 
       {/* Theme Toggle */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-6 right-6 z-50">
         <ThemeToggle />
       </div>
       
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12">
-          {/* Left Section - Status Check Form */}
-          <div className="w-full md:w-1/2 lg:w-2/5">
+      {/* Main Content */}
+      <div className="relative z-20 w-full flex flex-col md:flex-row gap-8 md:gap-12 items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Left Section - Status Check Form */}
+        <div className="w-full md:w-1/2 lg:w-2/5">
 
         {viewMode === 'check' && (
           <Card className="glass-effect border-default">
@@ -348,12 +349,11 @@ export default function AccountRequestStatusPage() {
             </div>
           </div>
         )}
-          </div>
+        </div>
 
-          {/* Right Section - Animated Text (Hidden on Mobile) */}
-          <div className="hidden md:block md:w-1/2 lg:w-3/5">
-            <AdvancedTypingEffect />
-          </div>
+        {/* Right Section - Animated Text (Hidden on Mobile) */}
+        <div className="hidden md:block md:w-1/2 lg:w-3/5">
+          <AdvancedTypingEffect />
         </div>
       </div>
 

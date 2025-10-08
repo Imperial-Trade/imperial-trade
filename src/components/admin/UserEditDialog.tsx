@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AdminUser } from '@/hooks/useAdminUserManagement';
 import { adminUserUpdateSchema, AdminUserUpdate } from '@/lib/validations/adminUserSchema';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Save, X, Info } from 'lucide-react';
 
@@ -21,32 +23,41 @@ interface UserEditDialogProps {
 export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDialogProps) {
   const [formData, setFormData] = useState<AdminUserUpdate>({
     display_name: user.display_name,
-    user_type: user.user_type,
-    access_level: user.access_level,
     account_status: user.account_status,
     phone_number: user.phone_number || '',
-    registration_source: user.registration_source,
-    approved_at: user.approved_at,
-    approved_by: user.approved_by,
   });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && open) {
       setFormData({
         display_name: user.display_name,
-        user_type: user.user_type,
-        access_level: user.access_level,
         account_status: user.account_status,
         phone_number: user.phone_number || '',
-        registration_source: user.registration_source,
-        approved_at: user.approved_at,
-        approved_by: user.approved_by,
       });
       setErrors({});
+      
+      // Fetch user roles
+      const fetchUserRoles = async () => {
+        setLoadingRoles(true);
+        const { data, error } = await supabase.rpc('get_user_roles_array', {
+          _user_id: user.id
+        });
+        if (error) {
+          console.error('Error fetching roles:', error);
+          toast.error('Failed to load user roles');
+          setSelectedRoles([]);
+        } else {
+          setSelectedRoles(data || []);
+        }
+        setLoadingRoles(false);
+      };
+      fetchUserRoles();
     }
-  }, [user]);
+  }, [user, open]);
 
   const validateForm = () => {
     try {
@@ -74,7 +85,35 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
 
     try {
       setLoading(true);
+      
+      // 1. Fetch current roles
+      const { data: currentRoles } = await supabase.rpc('get_user_roles_array', {
+        _user_id: user.id
+      });
+      
+      // 2. Remove roles that are no longer selected
+      for (const role of currentRoles || []) {
+        if (!selectedRoles.includes(role)) {
+          await supabase.rpc('remove_user_role', {
+            _user_id: user.id,
+            _role: role as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
+          });
+        }
+      }
+      
+      // 3. Add newly selected roles
+      for (const role of selectedRoles) {
+        if (!currentRoles?.includes(role)) {
+          await supabase.rpc('add_user_role', {
+            _user_id: user.id,
+            _role: role as 'admin' | 'educator+' | 'moderator' | 'educator' | 'user'
+          });
+        }
+      }
+      
+      // 4. Update other profile fields
       await onSave(user.id, formData);
+      
       toast.success('User updated successfully');
       onOpenChange(false);
     } catch (error) {
@@ -126,52 +165,46 @@ export function UserEditDialog({ user, open, onOpenChange, onSave }: UserEditDia
           </div>
           
           <div>
-            <Label htmlFor="user_type" className="text-primary">
-              User Type
+            <Label className="text-primary">
+              Roles (Select all that apply)
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Defines the user's role in the system</TooltipContent>
+                <TooltipContent>Assign roles to control user permissions and admin panel access</TooltipContent>
               </Tooltip>
             </Label>
-            <Select value={formData.user_type} onValueChange={(value: 'member' | 'educator' | 'admin') => handleInputChange('user_type', value)}>
-              <SelectTrigger className={`bg-background border-default text-primary ${errors.user_type ? 'border-red-500' : ''}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-default">
-                <SelectItem value="member">Member - Regular user access</SelectItem>
-                <SelectItem value="educator">Educator - Can create educational content</SelectItem>
-                <SelectItem value="admin">Admin - Full system access</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.user_type && (
-              <p className="text-red-400 text-sm mt-1">{errors.user_type}</p>
-            )}
-          </div>
-          
-          <div>
-            <Label htmlFor="access_level" className="text-primary">
-              Access Level
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3 h-3 ml-1 inline" />
-                </TooltipTrigger>
-                <TooltipContent>Controls what features the user can access</TooltipContent>
-              </Tooltip>
-            </Label>
-            <Select value={formData.access_level} onValueChange={(value: 'user' | 'moderator' | 'admin') => handleInputChange('access_level', value)}>
-              <SelectTrigger className={`bg-background border-default text-primary ${errors.access_level ? 'border-red-500' : ''}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-default">
-                <SelectItem value="user">User - Standard access</SelectItem>
-                <SelectItem value="moderator">Moderator - Can moderate content</SelectItem>
-                <SelectItem value="admin">Admin - Full administrative access</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.access_level && (
-              <p className="text-red-400 text-sm mt-1">{errors.access_level}</p>
+            {loadingRoles ? (
+              <div className="text-sm text-secondary">Loading roles...</div>
+            ) : (
+              <div className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background">
+                {[
+                  { value: 'admin', label: 'Admin', description: 'Full system access' },
+                  { value: 'educator+', label: 'VIP Educator', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
+                  { value: 'moderator', label: 'Moderator', description: 'Content moderation + Admin panel (Requests only)' },
+                  { value: 'educator', label: 'Educator', description: 'Signal creation + Content moderation + Admin panel (Signals only)' },
+                  { value: 'user', label: 'User', description: 'Basic access (default)' }
+                ].map(role => (
+                  <div key={role.value} className="flex items-start gap-2">
+                    <Checkbox
+                      id={`role-${role.value}`}
+                      checked={selectedRoles.includes(role.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedRoles(prev => [...prev, role.value]);
+                        } else {
+                          setSelectedRoles(prev => prev.filter(r => r !== role.value));
+                        }
+                      }}
+                      className="mt-1"
+                    />
+                    <label htmlFor={`role-${role.value}`} className="text-sm cursor-pointer flex-1">
+                      <div className="font-medium text-primary">{role.label}</div>
+                      <div className="text-xs text-secondary">{role.description}</div>
+                    </label>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
           

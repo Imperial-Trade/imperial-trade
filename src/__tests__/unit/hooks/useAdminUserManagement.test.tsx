@@ -146,9 +146,7 @@ describe('useAdminUserManagement', () => {
       email: 'newuser@test.com',
       password: 'password123',
       display_name: 'New User',
-      user_type: 'member' as const,
-      access_level: 'user' as const,
-      role: 'user'
+      roles: ['user']
     };
 
     await act(async () => {

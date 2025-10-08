@@ -4,12 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CreateUserData } from '@/hooks/useAdminUserManagement';
 import { createUserSchema } from '@/lib/validations/adminUserSchema';
 import { toast } from 'sonner';
 import { UserPlus, Save, X, Info } from 'lucide-react';
+
+interface CreateUserData {
+  email: string;
+  password: string;
+  display_name?: string;
+  roles: string[];
+}
 
 interface CreateUserDialogProps {
   onCreateUser: (userData: CreateUserData) => Promise<void>;
@@ -22,9 +28,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
     email: '',
     password: '',
     display_name: '',
-    user_type: 'member',
-    access_level: 'user',
-    role: 'user'
+    roles: ['user']
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -61,9 +65,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
         email: '',
         password: '',
         display_name: '',
-        user_type: 'member',
-        access_level: 'user',
-        role: 'user'
+        roles: ['user']
       });
     } catch (error) {
       console.error('Error creating user:', error);
@@ -164,52 +166,45 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
           </div>
           
           <div>
-            <Label htmlFor="user_type" className="text-primary">
-              User Type
+            <Label className="text-primary">
+              Roles (Select all that apply)
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Defines the user's role in the system</TooltipContent>
+                <TooltipContent>Assign roles to control user permissions</TooltipContent>
               </Tooltip>
             </Label>
-            <Select value={formData.user_type} onValueChange={(value: 'member' | 'educator' | 'admin') => handleInputChange('user_type', value)}>
-              <SelectTrigger className={`bg-background border-default text-primary ${errors.user_type ? 'border-red-500' : ''}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-default">
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="educator">Educator</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.user_type && (
-              <p className="text-red-400 text-sm mt-1">{errors.user_type}</p>
-            )}
-          </div>
-          
-          <div>
-            <Label htmlFor="access_level" className="text-primary">
-              Access Level
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3 h-3 ml-1 inline" />
-                </TooltipTrigger>
-                <TooltipContent>Controls system permissions</TooltipContent>
-              </Tooltip>
-            </Label>
-            <Select value={formData.access_level} onValueChange={(value: 'user' | 'moderator' | 'admin') => handleInputChange('access_level', value)}>
-              <SelectTrigger className={`bg-background border-default text-primary ${errors.access_level ? 'border-red-500' : ''}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-default">
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="moderator">Moderator</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.access_level && (
-              <p className="text-red-400 text-sm mt-1">{errors.access_level}</p>
+            <div className="space-y-2 mt-2 border border-default rounded-md p-3 bg-background">
+              {[
+                { value: 'admin', label: 'Admin', description: 'Full system access' },
+                { value: 'educator+', label: 'VIP Educator', description: 'Signal creation + Content moderation + Admin panel (Requests + Signals)' },
+                { value: 'moderator', label: 'Moderator', description: 'Content moderation + Admin panel (Requests only)' },
+                { value: 'educator', label: 'Educator', description: 'Signal creation + Content moderation + Admin panel (Signals only)' },
+                { value: 'user', label: 'User', description: 'Basic access (default)' }
+              ].map(role => (
+                <div key={role.value} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`create-role-${role.value}`}
+                    checked={formData.roles.includes(role.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setFormData(prev => ({ ...prev, roles: [...prev.roles, role.value] }));
+                      } else {
+                        setFormData(prev => ({ ...prev, roles: prev.roles.filter(r => r !== role.value) }));
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  <label htmlFor={`create-role-${role.value}`} className="text-sm cursor-pointer flex-1">
+                    <div className="font-medium text-primary">{role.label}</div>
+                    <div className="text-xs text-secondary">{role.description}</div>
+                  </label>
+                </div>
+              ))}
+            </div>
+            {errors.roles && (
+              <p className="text-red-400 text-sm mt-1">{errors.roles}</p>
             )}
           </div>
           

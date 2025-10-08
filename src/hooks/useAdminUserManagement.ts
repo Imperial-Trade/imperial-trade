@@ -27,10 +27,8 @@ export interface AdminUser {
 export interface CreateUserData {
   email: string;
   password: string;
-  display_name: string;
-  role: string;
-  access_level: 'user' | 'moderator' | 'admin';
-  user_type: 'member' | 'educator' | 'admin';
+  display_name?: string;
+  roles: string[];
 }
 
 export const useAdminUserManagement = () => {
@@ -127,24 +125,20 @@ export const useAdminUserManagement = () => {
         email_confirm: true,
         user_metadata: {
           display_name: validatedData.display_name,
-          role: validatedData.role,
         }
       });
 
       if (authError) throw authError;
       
-      // Profile will be created automatically by trigger
-      // Update profile with additional fields
+      // Add roles to user_roles table
       if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            user_type: validatedData.user_type,
-            access_level: validatedData.access_level,
-          })
-          .eq('id', authData.user.id);
-
-        if (profileError) throw profileError;
+        for (const role of validatedData.roles) {
+          const { error: roleError } = await supabase.rpc('add_user_role', {
+            _user_id: authData.user.id,
+            _role: role
+          });
+          if (roleError) throw roleError;
+        }
       }
       
       toast.success('User created successfully');

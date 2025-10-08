@@ -239,7 +239,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
               Log in
             </Link>
           </p>
-          <p>
+          <p className="text-xs">
             Want to check your request status?{" "}
             <Link to="/account-request-status" className="font-semibold text-gray-200 hover:underline">
               Check status

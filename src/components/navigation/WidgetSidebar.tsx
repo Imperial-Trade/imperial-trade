@@ -489,6 +489,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       await signOut();
     } catch (error) {
       console.error("Error signing out:", error);
+      navigate('/signin');
     }
   };
 

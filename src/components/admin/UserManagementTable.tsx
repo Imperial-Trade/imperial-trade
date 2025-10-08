@@ -140,7 +140,7 @@ export function UserManagementTable() {
         .from('user_roles')
         .insert([{
           user_id: userId,
-          role: newRole
+          role: newRole as any // Cast to any until types are regenerated
         }]);
 
       if (insertError) {
@@ -362,15 +362,16 @@ export function UserManagementTable() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <select
-                            value={user.role || 'user'}
-                            onChange={(e) => updateUserRole(user.id, e.target.value)}
-                            className="px-2 py-1 text-sm bg-surface border border-default rounded text-primary"
-                          >
-                            <option value="user">User</option>
-                            <option value="moderator">Moderator</option>
-                            <option value="admin">Admin</option>
-                          </select>
+            <select
+              value={user.role || 'user'}
+              onChange={(e) => updateUserRole(user.id, e.target.value)}
+              className="px-2 py-1 text-sm bg-surface border border-default rounded text-primary"
+            >
+              <option value="user">User</option>
+              <option value="educator">Educator</option>
+              <option value="moderator">Moderator</option>
+              <option value="admin">Admin</option>
+            </select>
                           
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

@@ -119,14 +119,13 @@ export const DirectAccountRequestManagement: React.FC = () => {
       }
 
       // Step 3: ✅ TASK 1.8B - Assign role based on account_type
-      const roleToAssign: 'educator' | 'user' | 'admin' | 'moderator' = 
-        request.account_type === 'educator' ? 'educator' : 'user';
+      const roleToAssign = request.account_type === 'educator' ? 'educator' : 'user';
       
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert([{
           user_id: newUser.user.id,
-          role: roleToAssign
+          role: roleToAssign as any // Cast to any until types are regenerated
         }]);
       
       if (roleError) {

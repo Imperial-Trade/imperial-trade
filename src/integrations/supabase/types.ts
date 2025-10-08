@@ -4485,7 +4485,7 @@ export type Database = {
       account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "educator"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
       close_reason:
         | "manual"
@@ -4669,7 +4669,7 @@ export const Constants = {
       account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "educator"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
       close_reason: [
         "manual",

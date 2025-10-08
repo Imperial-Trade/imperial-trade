@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
-import { Bell } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DashboardUserRole } from '@/components/dashboard/DashboardUserRole';
 
@@ -114,6 +114,21 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
           </ContextMenu>
         </SidebarMenuItem>
       </SidebarMenu>
+      
+      {/* Visible Sign Out Button */}
+      {!isCollapsed && (
+        <div className="px-2 mt-3">
+          <Button
+            onClick={handleSignOut}
+            variant="ghost"
+            className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 transition-all duration-200"
+            size="sm"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-sm font-medium">Sign Out</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

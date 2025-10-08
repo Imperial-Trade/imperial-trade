@@ -46,7 +46,7 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
   };
 
   return (
-    <div className="mt-auto border-t border-sidebar-border pt-4">
+    <div className="w-full border-t border-sidebar-border pt-4 space-y-3">
       <SidebarMenu>
         <SidebarMenuItem>
           {/* Main Profile Container with Context Menu */}
@@ -117,17 +117,15 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
       
       {/* Visible Sign Out Button */}
       {!isCollapsed && (
-        <div className="px-2 mt-3">
-          <Button
-            onClick={handleSignOut}
-            variant="ghost"
-            className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 transition-all duration-200"
-            size="sm"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="text-sm font-medium">Sign Out</span>
-          </Button>
-        </div>
+        <Button
+          onClick={handleSignOut}
+          variant="ghost"
+          className="w-full justify-start gap-2 mx-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 border border-red-500/30 transition-all duration-200"
+          size="sm"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="text-sm font-medium">Sign Out</span>
+        </Button>
       )}
     </div>
   );

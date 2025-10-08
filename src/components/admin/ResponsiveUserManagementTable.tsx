@@ -416,11 +416,14 @@ export function ResponsiveUserManagementTable() {
                           </DropdownMenu>
                         </div>
                         
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {getUserTypeBadge(user.user_type)}
-                          {getAccessLevelBadge(user.access_level)}
-                          {getAccountStatusBadge(user.account_status)}
-                          {getRegistrationSourceBadge(user.registration_source)}
+                        <div className="mt-3 space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {getRolesBadge(user.userRoles || [])}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {getAccountStatusBadge(user.account_status)}
+                            {getRegistrationSourceBadge(user.registration_source)}
+                          </div>
                         </div>
                         
                         <div className="mt-3 text-xs text-secondary flex items-center gap-1">

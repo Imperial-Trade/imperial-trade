@@ -66,10 +66,11 @@ export const useAdminUserManagement = () => {
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Failed to load users: ' + (error as Error).message);
+      setUsers([]); // Set empty array on error to prevent hook instability
     } finally {
       setLoading(false);
     }
-  }, [callAdminFunction]);
+  }, []); // Remove callAdminFunction dependency to break circular dependency
 
   const updateUser = useCallback(async (userId: string, userData: Partial<AdminUser>) => {
     try {
@@ -89,7 +90,7 @@ export const useAdminUserManagement = () => {
       }
       throw error;
     }
-  }, [callAdminFunction, loadUsers]);
+  }, [loadUsers]); // Remove callAdminFunction, only depend on loadUsers
 
   const deleteUser = useCallback(async (userId: string, userEmail: string) => {
     try {
@@ -105,7 +106,7 @@ export const useAdminUserManagement = () => {
       }
       throw error;
     }
-  }, [callAdminFunction, loadUsers]);
+  }, [loadUsers]); // Remove callAdminFunction dependency
 
   const createUser = useCallback(async (userData: CreateUserData) => {
     try {
@@ -125,7 +126,7 @@ export const useAdminUserManagement = () => {
       }
       throw error;
     }
-  }, [callAdminFunction, loadUsers]);
+  }, [loadUsers]); // Remove callAdminFunction dependency
 
   const resetPassword = useCallback(async (userId: string, userEmail: string) => {
     try {
@@ -140,7 +141,7 @@ export const useAdminUserManagement = () => {
       }
       throw error;
     }
-  }, [callAdminFunction]);
+  }, []); // Remove callAdminFunction dependency
 
   return {
     users,

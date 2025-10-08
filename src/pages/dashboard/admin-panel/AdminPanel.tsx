@@ -1,25 +1,38 @@
 
-import React, { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity, BarChart3 } from "lucide-react";
-import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
-import { DirectAccountRequestManagement } from "@/components/admin/DirectAccountRequestManagement";
-import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
-import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
-import { RateLimitManager } from "@/components/admin/RateLimitManager";
-import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
-import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
-import { RealtimeDiagnostics } from "@/pages/admin/RealtimeDiagnostics";
-import RealtimeOptimizationDashboard from "@/pages/admin/RealtimeOptimizationDashboard";
-import { NotificationAnalyticsDashboard } from "@/components/admin/NotificationAnalyticsDashboard";
-import { NotificationRateLimitManager } from "@/components/admin/NotificationRateLimitManager";
-import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
-import CostMonitorDashboard from "@/components/monitoring/CostMonitorDashboard";
-import { RealtimeRateMonitor } from "@/components/admin/RealtimeRateMonitor";
-import { WebSocketHealthMonitor } from "@/components/testing/WebSocketHealthMonitor";
+
+// Lazy load heavy admin components to prevent simultaneous hook initialization
+const EnhancedUserManagementTable = lazy(() => import("@/components/admin/EnhancedUserManagementTable").then(m => ({ default: m.EnhancedUserManagementTable })));
+const DirectAccountRequestManagement = lazy(() => import("@/components/admin/DirectAccountRequestManagement").then(m => ({ default: m.DirectAccountRequestManagement })));
+const AdminNotificationSystem = lazy(() => import("@/components/admin/AdminNotificationSystem").then(m => ({ default: m.AdminNotificationSystem })));
+const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({ default: m.SystemMonitoring })));
+const RateLimitManager = lazy(() => import("@/components/admin/RateLimitManager").then(m => ({ default: m.RateLimitManager })));
+const AdminSignalManagement = lazy(() => import("@/components/admin/AdminSignalManagement").then(m => ({ default: m.AdminSignalManagement })));
+const DevToolsPanel = lazy(() => import("@/components/admin/DevToolsPanel").then(m => ({ default: m.DevToolsPanel })));
+const RealtimeDiagnostics = lazy(() => import("@/pages/admin/RealtimeDiagnostics").then(m => ({ default: m.RealtimeDiagnostics })));
+const RealtimeOptimizationDashboard = lazy(() => import("@/pages/admin/RealtimeOptimizationDashboard"));
+const NotificationAnalyticsDashboard = lazy(() => import("@/components/admin/NotificationAnalyticsDashboard").then(m => ({ default: m.NotificationAnalyticsDashboard })));
+const NotificationRateLimitManager = lazy(() => import("@/components/admin/NotificationRateLimitManager").then(m => ({ default: m.NotificationRateLimitManager })));
+const NotificationTestPanel = lazy(() => import("@/components/admin/NotificationTestPanel").then(m => ({ default: m.NotificationTestPanel })));
+const CostMonitorDashboard = lazy(() => import("@/components/monitoring/CostMonitorDashboard"));
+const RealtimeRateMonitor = lazy(() => import("@/components/admin/RealtimeRateMonitor").then(m => ({ default: m.RealtimeRateMonitor })));
+const WebSocketHealthMonitor = lazy(() => import("@/components/testing/WebSocketHealthMonitor").then(m => ({ default: m.WebSocketHealthMonitor })));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <Card className="glass-effect border-default">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-center h-32">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
@@ -96,30 +109,42 @@ const AdminPanel: React.FC = () => {
         </TabsList>
 
         <TabsContent value="requests" className="space-y-4">
-          <DirectAccountRequestManagement />
+          <Suspense fallback={<LoadingFallback />}>
+            <DirectAccountRequestManagement />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          <EnhancedUserManagementTable />
+          <Suspense fallback={<LoadingFallback />}>
+            <EnhancedUserManagementTable />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="signals" className="space-y-4">
-          <AdminSignalManagement />
+          <Suspense fallback={<LoadingFallback />}>
+            <AdminSignalManagement />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
-          <NotificationTestPanel />
-          <NotificationAnalyticsDashboard />
-          <AdminNotificationSystem />
+          <Suspense fallback={<LoadingFallback />}>
+            <NotificationTestPanel />
+            <NotificationAnalyticsDashboard />
+            <AdminNotificationSystem />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
-          <SystemMonitoring />
+          <Suspense fallback={<LoadingFallback />}>
+            <SystemMonitoring />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="rate-limits" className="space-y-4">
-          <NotificationRateLimitManager />
-          <RateLimitManager />
+          <Suspense fallback={<LoadingFallback />}>
+            <NotificationRateLimitManager />
+            <RateLimitManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
@@ -131,11 +156,15 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="diagnostics" className="space-y-4">
-          <RealtimeDiagnostics />
+          <Suspense fallback={<LoadingFallback />}>
+            <RealtimeDiagnostics />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="optimization" className="space-y-4">
-          <RealtimeOptimizationDashboard />
+          <Suspense fallback={<LoadingFallback />}>
+            <RealtimeOptimizationDashboard />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="monitoring" className="space-y-4">
@@ -147,24 +176,32 @@ const AdminPanel: React.FC = () => {
             </TabsList>
             
             <TabsContent value="cost" className="space-y-4">
-              <CostMonitorDashboard />
+              <Suspense fallback={<LoadingFallback />}>
+                <CostMonitorDashboard />
+              </Suspense>
             </TabsContent>
             
             <TabsContent value="messages" className="space-y-4">
-              <RealtimeRateMonitor />
+              <Suspense fallback={<LoadingFallback />}>
+                <RealtimeRateMonitor />
+              </Suspense>
             </TabsContent>
             
             <TabsContent value="health" className="space-y-4">
-              <Card className="p-6">
-                <WebSocketHealthMonitor />
-              </Card>
+              <Suspense fallback={<LoadingFallback />}>
+                <Card className="p-6">
+                  <WebSocketHealthMonitor />
+                </Card>
+              </Suspense>
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         {isDevToolsEnabled() && (
           <TabsContent value="dev-tools" className="space-y-4">
-            <DevToolsPanel />
+            <Suspense fallback={<LoadingFallback />}>
+              <DevToolsPanel />
+            </Suspense>
           </TabsContent>
         )}
       </Tabs>

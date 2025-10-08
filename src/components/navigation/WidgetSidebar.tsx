@@ -21,6 +21,8 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
+import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
 import { EdgeIndicator } from "./EdgeIndicator";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -80,6 +82,10 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  
+  // Authorization checks
+  const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
+  const canAccessAdminPanel = isAdmin || isEducatorPlus || isEducator || isModerator;
 
   // Device detection and responsive behavior
   const {
@@ -598,7 +604,14 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 {/* Profile Section */}
                 <motion.button
                   className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  onClick={() => {
+                    if (canAccessAdminPanel) {
+                      navigate('/dashboard/admin');
+                      setShowProfileDropdown(false);
+                    } else {
+                      setShowProfileDropdown(!showProfileDropdown);
+                    }
+                  }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -625,11 +638,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                           "User"}
                     </div>
                     <div className="text-foreground/60 text-xs">
-                      {user?.user_metadata?.access_level === "admin"
-                        ? "Administrator"
-                        : user?.user_metadata?.user_type === "educator"
-                        ? "Educator"
-                        : "Member"}
+                      <DashboardUserRole />
                     </div>
                   </div>
                 </motion.button>
@@ -650,8 +659,8 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               </div>
             </motion.div>
 
-            {/* Profile Dropdown */}
-            {showProfileDropdown && (
+            {/* Profile Dropdown - Only for regular users */}
+            {showProfileDropdown && !canAccessAdminPanel && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -663,61 +672,31 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);
-                      navigate("/dashboard/my-progress");
-                    }}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">My Progress</span>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() => {
-                      setShowProfileDropdown(false);
-                      navigate("/dashboard/administration");
+                      navigate("/dashboard/settings");
                     }}
                     className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
                     whileHover={{ scale: 1.02, x: 4 }}
                     whileTap={{ scale: 0.98 }}
                   >
                     <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">
-                      Administration
-                    </span>
+                    <span className="text-foreground text-xs sm:text-sm">Settings</span>
                   </motion.button>
 
-                  {user?.user_metadata?.access_level === "admin" && (
-                    <motion.button
-                      onClick={() => {
-                        setShowProfileDropdown(false);
-                        navigate("/dashboard/admin");
-                      }}
-                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                      whileHover={{ scale: 1.02, x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                      <span className="text-foreground text-xs sm:text-sm">Admin Panel</span>
-                    </motion.button>
-                  )}
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      handleSignOut();
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm">Sign Out</span>
+                  </motion.button>
                 </div>
               </motion.div>
             )}
-
-            {/* Sign Out Button - Standalone */}
-            <motion.button
-              onClick={handleSignOut}
-              className="w-full mt-2 text-red-400 hover:text-red-300 text-xs sm:text-sm transition-colors duration-200 text-center py-1 sm:py-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="flex items-center justify-center gap-1 sm:gap-2">
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Sign Out</span>
-              </div>
-            </motion.button>
           </div>
         </div>
       </motion.aside>

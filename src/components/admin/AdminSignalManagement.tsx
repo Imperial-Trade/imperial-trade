@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Plus, Search, TrendingUp, TrendingDown, Users, Eye, Edit, Trash2, BarChart3, Signal, CheckCircle, Clock, AlertCircle, Shield } from 'lucide-react';
+import { Plus, Search, TrendingUp, TrendingDown, Users, Eye, Edit, Trash2, BarChart3, Signal, CheckCircle, Clock, AlertCircle, Shield, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import EditSignalForm from '@/components/signals/EditSignalForm';
@@ -34,7 +34,6 @@ export function AdminSignalManagement() {
     refreshAlerts
   } = useOptimizedTrading(user?.id || '', false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [analytics, setAnalytics] = useState<AdminSignalAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   const [viewingAlert, setViewingAlert] = useState<any>(null);
@@ -45,12 +44,15 @@ export function AdminSignalManagement() {
   // Fetch user's own signals directly from database (no time filters)
   const fetchUserSignals = async () => {
     if (!user?.id) {
+      console.warn('No user ID available for fetchUserSignals');
       setIsLoadingSignals(false);
       return;
     }
 
     try {
       setIsLoadingSignals(true);
+      console.log('Fetching signals for user:', user.id);
+      
       const { data, error } = await supabase
         .from('trade_alerts')
         .select(`
@@ -67,7 +69,12 @@ export function AdminSignalManagement() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase query error:', error);
+        throw error;
+      }
+
+      console.log('Fetched signals:', data?.length || 0);
 
       // Map to expected format
       const mappedSignals = (data || []).map((signal: any) => ({
@@ -100,11 +107,18 @@ export function AdminSignalManagement() {
       }));
 
       setUserSignals(mappedSignals);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user signals:', error);
+      
+      // Enhanced error message
+      const errorMsg = error?.message || 'Failed to load your signals';
+      const isRLSError = errorMsg.includes('policy') || errorMsg.includes('permission');
+      
       toast({
-        title: "Error",
-        description: "Failed to load your signals",
+        title: "Error Loading Signals",
+        description: isRLSError 
+          ? "Permission denied. Please contact support."
+          : errorMsg,
         variant: "destructive"
       });
     } finally {
@@ -156,9 +170,8 @@ export function AdminSignalManagement() {
     return { gained: pipsGained, lost: pipsLost };
   };
 
-  // Fetch admin analytics - now based on user's own signals
-  useEffect(() => {
-    const fetchAnalytics = async () => {
+  // Extract analytics fetching as standalone function for reusability
+  const fetchAnalytics = async () => {
       try {
         setLoadingAnalytics(true);
         if (!user?.id) {
@@ -230,17 +243,19 @@ export function AdminSignalManagement() {
         setLoadingAnalytics(false);
       }
     };
+  
+  // Fetch admin analytics on mount
+  useEffect(() => {
     fetchAnalytics();
-  }, [toast, user?.id]);
+  }, [user?.id]);
 
-  // Filter alerts based on search and status - using userSignals (direct DB fetch)
+  // Filter alerts based on search - using userSignals (direct DB fetch)
   const filteredAlerts = useMemo(() => {
     return userSignals.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) || alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase()) || alert.creator?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-  }, [userSignals, searchTerm, filterStatus]);
+  }, [userSignals, searchTerm]);
   const getStatusBadge = (status: string) => {
     const variants = {
       active: {
@@ -283,8 +298,8 @@ export function AdminSignalManagement() {
         title: "Success",
         description: "Signal deleted successfully"
       });
-      // Refresh both local signals and analytics
-      await Promise.all([fetchUserSignals(), refreshAlerts()]);
+      // Refresh signals, analytics, and global alerts
+      await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
     } catch (error) {
       console.error('Error deleting signal:', error);
       toast({
@@ -312,13 +327,52 @@ export function AdminSignalManagement() {
         description: "Signal updated successfully"
       });
       setEditingAlert(null);
-      // Refresh both local signals and analytics
-      await Promise.all([fetchUserSignals(), refreshAlerts()]);
+      // Refresh signals, analytics, and global alerts
+      await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
     } catch (error) {
       console.error('Error updating signal:', error);
       toast({
         title: "Error",
         description: "Failed to update signal",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCloseSignal = async (alertId: string) => {
+    const signal = userSignals.find(s => s.id === alertId);
+    const confirmMsg = signal?.status === 'pending' 
+      ? 'Are you sure you want to cancel this pending order?' 
+      : 'Are you sure you want to close this active signal?';
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('trade_alerts')
+        .update({
+          status: 'closed',
+          close_reason: 'manual',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', alertId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: signal?.status === 'pending' 
+          ? "Pending order cancelled successfully"
+          : "Signal closed successfully"
+      });
+      
+      // Refresh signals, analytics, and global alerts
+      await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
+    } catch (error) {
+      console.error('Error closing signal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to close signal",
         variant: "destructive"
       });
     }
@@ -388,18 +442,51 @@ export function AdminSignalManagement() {
             </div>
             
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
-                <Eye className="w-4 h-4 mr-1" />
-                View
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
-                <Edit className="w-4 h-4 mr-1" />
-                Edit
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleDeleteSignal(alert.id)} className="text-red-500 hover:text-red-600">
-                <Trash2 className="w-4 h-4 mr-1" />
-                Delete
-              </Button>
+              {/* PENDING SIGNALS */}
+              {alert.status === 'pending' && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)}>
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Cancel Order
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                </>
+              )}
+
+              {/* ACTIVE/PARTIALLY_PROFITED SIGNALS */}
+              {(alert.status === 'active' || alert.status === 'partially_profited') && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)}>
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Close Signal
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                </>
+              )}
+
+              {/* CLOSED SIGNALS */}
+              {alert.status === 'closed' && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDeleteSignal(alert.id)} className="text-red-500 hover:text-red-600">
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -584,17 +671,9 @@ export function AdminSignalManagement() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input placeholder="Search your signals by asset or symbol..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-            <div className="flex gap-2">
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 bg-background border border-input rounded-md">
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="closed">Closed</option>
-                <option value="pending">Pending</option>
-              </select>
-              <Button onClick={() => fetchUserSignals()} variant="outline" size="sm">
-                Refresh
-              </Button>
-            </div>
+            <Button onClick={() => fetchUserSignals()} variant="outline" size="sm">
+              Refresh
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -604,6 +683,9 @@ export function AdminSignalManagement() {
         <TabsList>
           <TabsTrigger value="all">
             My Signals ({filteredAlerts.length})
+          </TabsTrigger>
+          <TabsTrigger value="pending">
+            Pending ({filteredAlerts.filter(a => a.status === 'pending').length})
           </TabsTrigger>
           <TabsTrigger value="active">
             Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})
@@ -623,11 +705,29 @@ export function AdminSignalManagement() {
                 <Signal className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Signals Found</h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchTerm || filterStatus !== 'all' ? 'No signals match your search criteria.' : 'You haven\'t created any trading signals yet.'}
+                  {searchTerm ? 'No signals match your search criteria.' : 'You haven\'t created any trading signals yet.'}
                 </p>
                 <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Your First Signal
+                </Button>
+              </CardContent>
+            </Card>}
+        </TabsContent>
+
+        <TabsContent value="pending" className="space-y-4">
+          <AnimatePresence>
+            {filteredAlerts.filter(alert => alert.status === 'pending').map((alert, index) => renderSignalCard(alert, index))}
+          </AnimatePresence>
+
+          {filteredAlerts.filter(alert => alert.status === 'pending').length === 0 && <Card>
+              <CardContent className="p-8 text-center">
+                <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Pending Signals</h3>
+                <p className="text-muted-foreground mb-4">You don't have any pending limit orders at the moment.</p>
+                <Button onClick={() => window.open('/dashboard/new-signal', '_blank')} className="bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-600 hover:to-amber-700 text-white transition-all duration-300 hover:scale-105">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New Signal
                 </Button>
               </CardContent>
             </Card>}

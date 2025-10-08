@@ -12,12 +12,15 @@ import { Plus, Search, TrendingUp, TrendingDown, Users, Eye, Edit, Trash2, BarCh
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import EditSignalForm from '@/components/signals/EditSignalForm';
+import { calculatePipsFromPrice } from '@/utils/pipCalculations';
 interface AdminSignalAnalytics {
   total_signals: number;
   active_signals: number;
   closed_signals: number;
-  success_rate: number;
-  total_educators: number;
+  win_rate: number;
+  total_pips_gained: number;
+  total_pips_lost: number;
+  net_pips: number;
   recent_activity: number;
 }
 export function AdminSignalManagement() {
@@ -45,6 +48,45 @@ export function AdminSignalManagement() {
     return allAlerts.filter(alert => alert.userId === user.id);
   }, [allAlerts, user?.id]);
 
+  // Helper function to calculate pips for a signal
+  const calculateSignalPips = (signal: any): { gained: number; lost: number } => {
+    const { 
+      entry_price, 
+      stop_loss, 
+      tp1, tp2, tp3, tp4, tp5, 
+      tp_hits, 
+      tradermade_symbol, 
+      trade_type,
+      close_reason 
+    } = signal;
+
+    let pipsGained = 0;
+    let pipsLost = 0;
+
+    if (close_reason === 'stop_loss' && stop_loss && entry_price) {
+      const lossPips = calculatePipsFromPrice(entry_price, stop_loss, tradermade_symbol);
+      pipsLost = lossPips;
+    } else if (tp_hits?.length > 0) {
+      const tpPrices: Record<number, number> = { 1: tp1, 2: tp2, 3: tp3, 4: tp4, 5: tp5 };
+      const highestTPHit = Math.max(...tp_hits);
+      const highestTPPrice = tpPrices[highestTPHit];
+      
+      if (highestTPPrice && entry_price) {
+        const gainPips = calculatePipsFromPrice(entry_price, highestTPPrice, tradermade_symbol);
+        const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
+        const isProfit = isBuy ? highestTPPrice > entry_price : highestTPPrice < entry_price;
+        
+        if (isProfit) {
+          pipsGained = gainPips;
+        } else {
+          pipsLost = gainPips;
+        }
+      }
+    }
+
+    return { gained: pipsGained, lost: pipsLost };
+  };
+
   // Fetch admin analytics - now based on user's own signals
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -55,39 +97,57 @@ export function AdminSignalManagement() {
           return;
         }
 
-        // Get signal statistics for current admin only
+        // Get signal statistics with all needed fields
         const {
           data: signalStats,
           error: signalError
-        } = await supabase.from('trade_alerts').select('status, user_id, tp_hits, created_at').eq('user_id', user.id) // Filter by current admin's ID
-        .order('created_at', {
-          ascending: false
-        });
+        } = await supabase
+          .from('trade_alerts')
+          .select('status, user_id, tp_hits, created_at, entry_price, stop_loss, tp1, tp2, tp3, tp4, tp5, tradermade_symbol, trade_type, close_reason')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
         if (signalError) throw signalError;
 
-        // Get unique educators count (this can remain global)
-        const {
-          data: profiles,
-          error: profileError
-        } = await supabase.from('profiles').select('id, user_type, access_level, display_name').or('user_type.eq.educator,access_level.eq.admin');
-        if (profileError) throw profileError;
         const totalSignals = signalStats?.length || 0;
-        const activeSignals = signalStats?.filter(s => s.status === 'active' || s.status === 'partially_profited').length || 0;
-        const closedSignals = signalStats?.filter(s => s.status === 'closed').length || 0;
-        const successfulSignals = signalStats?.filter(s => s.status === 'closed' && s.tp_hits?.length > 0).length || 0;
-        const successRate = closedSignals > 0 ? successfulSignals / closedSignals : 0;
-        const totalEducators = profiles?.length || 0;
+        const activeSignals = signalStats?.filter(s => 
+          s.status === 'active' || s.status === 'partially_profited'
+        ).length || 0;
+        
+        const closedSignals = signalStats?.filter(s => s.status === 'closed') || [];
+        const closedSignalsCount = closedSignals.length;
+        
+        // Calculate win rate based on TP1+ hits
+        const winningSignals = closedSignals.filter(s => 
+          s.tp_hits?.length > 0 && s.tp_hits.some((hit: number) => hit >= 1)
+        ).length;
+        const winRate = closedSignalsCount > 0 ? (winningSignals / closedSignalsCount) * 100 : 0;
+        
+        // Calculate total pips gained and lost
+        let totalPipsGained = 0;
+        let totalPipsLost = 0;
+        
+        closedSignals.forEach(signal => {
+          const { gained, lost } = calculateSignalPips(signal);
+          totalPipsGained += gained;
+          totalPipsLost += lost;
+        });
 
-        // Recent activity (last 24 hours) - for current admin only
+        const netPips = totalPipsGained - totalPipsLost;
+
+        // Recent activity (last 24 hours)
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const recentActivity = signalStats?.filter(s => new Date(s.created_at) > yesterday).length || 0;
+
         setAnalytics({
           total_signals: totalSignals,
           active_signals: activeSignals,
-          closed_signals: closedSignals,
-          success_rate: successRate,
-          total_educators: totalEducators,
+          closed_signals: closedSignalsCount,
+          win_rate: winRate,
+          total_pips_gained: Math.round(totalPipsGained * 10) / 10,
+          total_pips_lost: Math.round(totalPipsLost * 10) / 10,
+          net_pips: Math.round(netPips * 10) / 10,
           recent_activity: recentActivity
         });
       } catch (error) {
@@ -305,80 +365,144 @@ export function AdminSignalManagement() {
           </Button>
         </div>
 
-        {/* Analytics Cards - now showing admin's own signals */}
-        {analytics && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">My Signals</p>
-                    <p className="text-2xl font-bold">{analytics.total_signals}</p>
+        {/* Analytics Cards - now showing admin's own signals with premium design */}
+        {analytics && <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ staggerChildren: 0.1 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+          >
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">My Signals</p>
+                      <p className="text-2xl font-bold">{analytics.total_signals}</p>
+                    </div>
+                    <div className="p-3 bg-blue-500/20 rounded-full">
+                      <Signal className="w-5 h-5 text-blue-400" />
+                    </div>
                   </div>
-                  <Signal className="w-8 h-8 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active</p>
-                    <p className="text-2xl font-bold text-green-400">{analytics.active_signals}</p>
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active</p>
+                      <p className="text-2xl font-bold text-green-400">{analytics.active_signals}</p>
+                    </div>
+                    <div className="p-3 bg-green-500/20 rounded-full">
+                      <Clock className="w-5 h-5 text-green-400" />
+                    </div>
                   </div>
-                  <Clock className="w-8 h-8 text-green-400" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Closed</p>
-                    <p className="text-2xl font-bold text-blue-400">{analytics.closed_signals}</p>
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Closed</p>
+                      <p className="text-2xl font-bold text-blue-400">{analytics.closed_signals}</p>
+                    </div>
+                    <div className="p-3 bg-blue-500/20 rounded-full">
+                      <CheckCircle className="w-5 h-5 text-blue-400" />
+                    </div>
                   </div>
-                  <CheckCircle className="w-8 h-8 text-blue-400" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">My Success Rate</p>
-                    <p className="text-2xl font-bold text-green-400">{(analytics.success_rate * 100).toFixed(1)}%</p>
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Win Rate</p>
+                      <p className="text-2xl font-bold text-purple-400">{analytics.win_rate.toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">TP1+ Signals</p>
+                    </div>
+                    <div className="p-3 bg-purple-500/20 rounded-full">
+                      <BarChart3 className="w-5 h-5 text-purple-400" />
+                    </div>
                   </div>
-                  <BarChart3 className="w-8 h-8 text-green-400" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Educators</p>
-                    <p className="text-2xl font-bold text-purple-400">{analytics.total_educators}</p>
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border-emerald-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pips Gained</p>
+                      <p className="text-2xl font-bold text-emerald-400">+{analytics.total_pips_gained.toFixed(1)}</p>
+                    </div>
+                    <div className="p-3 bg-emerald-500/20 rounded-full">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                    </div>
                   </div>
-                  <Users className="w-8 h-8 text-purple-400" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">My 24h Activity</p>
-                    <p className="text-2xl font-bold text-orange-400">{analytics.recent_activity}</p>
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-rose-500/10 to-rose-600/10 border-rose-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pips Lost</p>
+                      <p className="text-2xl font-bold text-rose-400">-{analytics.total_pips_lost.toFixed(1)}</p>
+                    </div>
+                    <div className="p-3 bg-rose-500/20 rounded-full">
+                      <TrendingDown className="w-5 h-5 text-rose-400" />
+                    </div>
                   </div>
-                  <AlertCircle className="w-8 h-8 text-orange-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Net Pips</p>
+                      <p className={`text-2xl font-bold ${analytics.net_pips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {analytics.net_pips >= 0 ? '+' : ''}{analytics.net_pips.toFixed(1)}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-cyan-500/20 rounded-full">
+                      <BarChart3 className="w-5 h-5 text-cyan-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
+              <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">24h Activity</p>
+                      <p className="text-2xl font-bold text-orange-400">{analytics.recent_activity}</p>
+                    </div>
+                    <div className="p-3 bg-orange-500/20 rounded-full">
+                      <AlertCircle className="w-5 h-5 text-orange-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>}
       </motion.div>
 
       {/* Search and Filter Controls */}

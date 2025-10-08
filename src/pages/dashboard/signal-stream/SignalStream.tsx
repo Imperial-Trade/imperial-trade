@@ -703,12 +703,11 @@ export default function SignalStream() {
     if (!alertIsCreator && !isAdmin) {
       if (isDevToolsEnabled()) {
         console.warn('SignalStream - User not authorized to update this signal:', {
-          userId: profile?.id,
+          userId: user?.id,
           creatorId: alert.creator?.id,
-          userRole: profile?.role,
-          userAccessLevel: profile?.access_level,
-          isCreator: alertIsCreator,
-          isAdmin
+          isAdmin,
+          isEducator,
+          isCreator: alertIsCreator
         });
       }
       

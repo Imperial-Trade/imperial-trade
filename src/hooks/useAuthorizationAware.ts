@@ -45,7 +45,7 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
   const permissions = useMemo(() => {
     const roles = (userRoles || []).map((r: any) => r.role);
     const isAdmin = roles.includes('admin');
-    const isEducator = roles.includes('moderator') || profile?.user_type === 'educator';
+    const isEducator = roles.includes('moderator') || roles.includes('educator');
 
     const canCreateSignals = isAdmin || isEducator;
     const canViewAllSignals = true; // All authenticated users can view
@@ -57,7 +57,7 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
     };
 
     const canEditSignal = (creatorId: string) => {
-      return isAdmin || profile?.id === creatorId;
+      return isAdmin || user?.id === creatorId;
     };
 
     return {

@@ -84,19 +84,28 @@ export function UserManagementTable() {
         console.error('Error loading profiles:', profilesError);
       }
 
-      // Combine auth data with profile data
-      const combinedUsers = authUsers.users.map(user => {
-        const profile = profiles?.find(p => p.id === user.id);
-        return {
-          id: user.id,
-          email: user.email || '',
-          display_name: profile?.display_name || user.user_metadata?.full_name || 'Unknown',
-          role: profile?.role || user.user_metadata?.role || 'user',
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-          email_confirmed_at: user.email_confirmed_at,
-        };
-      });
+      // Combine auth data with profile data and fetch authoritative roles from user_roles table
+      const combinedUsers = await Promise.all(
+        authUsers.users.map(async (user) => {
+          const profile = profiles?.find(p => p.id === user.id);
+          
+          // ✅ SECURITY FIX (ERROR #48): Fetch authoritative roles from user_roles table
+          const { data: userRolesData } = await supabase.rpc('get_user_roles', { 
+            p_user_id: user.id 
+          });
+          const roles = userRolesData?.map((r: any) => r.role).join(', ') || 'user';
+          
+          return {
+            id: user.id,
+            email: user.email || '',
+            display_name: profile?.display_name || user.user_metadata?.full_name || 'Unknown',
+            role: roles,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+            email_confirmed_at: user.email_confirmed_at,
+          };
+        })
+      );
 
       setUsers(combinedUsers);
     } catch (error) {

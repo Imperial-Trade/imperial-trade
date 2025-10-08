@@ -698,6 +698,19 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               </motion.div>
             )}
           </div>
+
+          {/* Visible Sign Out Button */}
+          <div className="mt-3 sm:mt-4">
+            <motion.button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-start gap-2 sm:gap-3 p-2 sm:p-3 bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl border border-red-500/30 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base font-medium">Sign Out</span>
+            </motion.button>
+          </div>
         </div>
       </motion.aside>
     </>

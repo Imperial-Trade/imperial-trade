@@ -39,7 +39,35 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({
     );
   }
   
-  const hasAccess = allowedRoles.some(role => userRoles?.includes(role));
+  // ✅ SECURITY FIX: Implement role hierarchy (consistent with ProtectedRoute)
+  // Admins automatically have access to all routes
+  const hasPrivilegedRole = userRoles?.some(role => 
+    ['admin', 'moderator', 'educator', 'educator+'].includes(role)
+  );
+
+  const hasExactRole = allowedRoles.some(role => userRoles?.includes(role));
+
+  // Grant access if user has either:
+  // 1. The exact required role(s), OR
+  // 2. Admin role (has access to everything)
+  // 3. A higher privileged role in the hierarchy
+  const hasAccess = hasExactRole || (
+    // Admin has access to all routes
+    (userRoles?.includes('admin')) ||
+    // Moderator has access to educator and user routes
+    (userRoles?.includes('moderator') && allowedRoles.some(r => ['educator', 'educator+', 'user'].includes(r))) ||
+    // Educators have access to user routes
+    (hasPrivilegedRole && allowedRoles.includes('user'))
+  );
+
+  // Debug logging
+  console.log('[AdminRoute] Role Check:', {
+    userRoles,
+    allowedRoles,
+    hasExactRole,
+    hasPrivilegedRole,
+    hasAccess
+  });
   
   if (!hasAccess) return <Navigate to="/access-denied" replace />;
   

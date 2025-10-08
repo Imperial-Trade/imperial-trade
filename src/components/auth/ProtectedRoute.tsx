@@ -53,6 +53,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // 1. The exact required role(s), OR
   // 2. A privileged role (which includes 'user' permissions)
   const hasAccess = hasExactRole || (requiredRoles.includes('user') && hasPrivilegedRole);
+
+  // Debug logging
+  console.log('[ProtectedRoute] Role Check:', {
+    userRoles,
+    requiredRoles,
+    hasExactRole,
+    hasPrivilegedRole,
+    hasAccess,
+    currentPath: location.pathname
+  });
   
   if (!hasAccess) return <Navigate to="/access-denied" replace />;
   

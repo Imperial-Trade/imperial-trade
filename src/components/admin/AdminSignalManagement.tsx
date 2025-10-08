@@ -12,6 +12,7 @@ import { Plus, Search, TrendingUp, TrendingDown, Users, Eye, Edit, Trash2, BarCh
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import EditSignalForm from '@/components/signals/EditSignalForm';
+import { NotesEditModal } from '@/components/signals/NotesEditModal';
 import { calculatePipsFromPrice } from '@/utils/pipCalculations';
 interface AdminSignalAnalytics {
   total_signals: number;
@@ -38,6 +39,7 @@ export function AdminSignalManagement() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   const [viewingAlert, setViewingAlert] = useState<any>(null);
   const [editingAlert, setEditingAlert] = useState<any>(null);
+  const [editingNotesAlert, setEditingNotesAlert] = useState<any>(null);
   const [userSignals, setUserSignals] = useState<any[]>([]);
   const [isLoadingSignals, setIsLoadingSignals] = useState(true);
 
@@ -449,7 +451,7 @@ export function AdminSignalManagement() {
               {/* PENDING SIGNALS */}
               {alert.status === 'pending' && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
+                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)}>
                     <Edit className="w-4 h-4 mr-1" />
                     Edit Notes
                   </Button>
@@ -467,7 +469,7 @@ export function AdminSignalManagement() {
               {/* ACTIVE/PARTIALLY_PROFITED SIGNALS */}
               {(alert.status === 'active' || alert.status === 'partially_profited') && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
+                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)}>
                     <Edit className="w-4 h-4 mr-1" />
                     Edit Notes
                   </Button>
@@ -865,6 +867,19 @@ export function AdminSignalManagement() {
             </div>}
         </DialogContent>
       </Dialog>
+
+      {/* Notes Edit Modal */}
+      {editingNotesAlert && (
+        <NotesEditModal
+          alert={editingNotesAlert}
+          isOpen={!!editingNotesAlert}
+          onClose={() => setEditingNotesAlert(null)}
+          onSave={async () => {
+            await Promise.all([fetchUserSignals(), fetchAnalytics(), refreshAlerts()]);
+            setEditingNotesAlert(null);
+          }}
+        />
+      )}
 
       {/* Edit Signal Modal */}
       <Dialog open={!!editingAlert} onOpenChange={() => setEditingAlert(null)}>

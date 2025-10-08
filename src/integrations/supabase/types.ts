@@ -3936,7 +3936,7 @@ export type Database = {
         Returns: Json
       }
       check_account_request_rate_limit: {
-        Args: { p_email: string; p_ip_address?: string }
+        Args: { p_email: string } | { p_email: string; p_ip_address?: string }
         Returns: Json
       }
       check_alert_cooldown: {
@@ -3989,19 +3989,19 @@ export type Database = {
       }
       cleanup_old_cron_logs: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_cron_logs_optimized: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_economic_events: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_notification_logs: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
@@ -4009,7 +4009,7 @@ export type Database = {
       }
       cleanup_old_rate_limits_optimized: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_ui_listeners: {
         Args: Record<PropertyKey, never>
@@ -4021,7 +4021,7 @@ export type Database = {
       }
       cleanup_stale_market_prices: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_trigger_execution_logs: {
         Args: Record<PropertyKey, never>
@@ -4075,11 +4075,13 @@ export type Database = {
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       get_active_alert_symbols: {
         Args: Record<PropertyKey, never>
-        Returns: string[]
+        Returns: {
+          symbol: string
+        }[]
       }
       get_active_notification_triggers: {
         Args: Record<PropertyKey, never>
@@ -4092,7 +4094,7 @@ export type Database = {
       get_active_users_for_broadcasting: {
         Args: Record<PropertyKey, never>
         Returns: {
-          last_activity: string
+          display_name: string
           onesignal_player_id: string
           user_id: string
         }[]
@@ -4147,12 +4149,10 @@ export type Database = {
       get_cron_job_status: {
         Args: Record<PropertyKey, never>
         Returns: {
-          active: boolean
+          error_message: string
           job_name: string
-          last_run_ended_at: string
-          last_run_started_at: string
-          last_run_status: string
-          schedule: string
+          last_run: string
+          status: string
         }[]
       }
       get_latest_market_price: {
@@ -4305,7 +4305,9 @@ export type Database = {
         Returns: boolean
       }
       log_deprecated_function_usage: {
-        Args: Record<PropertyKey, never>
+        Args:
+          | Record<PropertyKey, never>
+          | { p_function_name: string; p_metadata?: Json; p_user_id?: string }
         Returns: undefined
       }
       mark_notifications_cleared: {
@@ -4322,7 +4324,7 @@ export type Database = {
       }
       populate_alert_monitoring_for_existing_signals: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
@@ -4399,17 +4401,19 @@ export type Database = {
         Returns: boolean
       }
       system_update_trade_alert: {
-        Args: {
-          p_close_reason?: string
-          p_signal_id: string
-          p_status?: string
-          p_tp_hits?: number[]
-        }
-        Returns: boolean
+        Args:
+          | {
+              p_close_reason?: string
+              p_signal_id: string
+              p_status?: string
+              p_tp_hits?: number[]
+            }
+          | { p_signal_id: string; p_updates: Json }
+        Returns: undefined
       }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       update_trade_alert_safe: {
         Args: {

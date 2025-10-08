@@ -565,6 +565,15 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
   // Creator comparison (last, most expensive)
   const creatorMatch = JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator);
   
+  // ✅ PHASE 2: Performance monitoring cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (perfStartRef.current) {
+        perfMonitor.mark('alert-card-render', perfStartRef.current);
+      }
+    };
+  }, []);
+  
   return creatorMatch;
   // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
 });

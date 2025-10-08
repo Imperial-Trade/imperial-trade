@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminAuditService } from '@/api/services/AdminAuditService';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export function UserManagementTable() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     getCurrentUser();
@@ -117,8 +119,42 @@ export function UserManagementTable() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      // Update in profiles table
-      const { error: profileError } = await supabase
+      // Step 1: ✅ TASK 1.8C - Remove ALL existing roles for this user from user_roles table
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteError) {
+        console.error('Error removing old roles:', deleteError);
+        toast({
+          title: "Error",
+          description: `Failed to remove old roles: ${deleteError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 2: Insert new role into user_roles table (authoritative source)
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert([{
+          user_id: userId,
+          role: newRole
+        }]);
+
+      if (insertError) {
+        console.error('Error assigning new role:', insertError);
+        toast({
+          title: "Error",
+          description: `Failed to assign new role: ${insertError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 3: Update profile for display purposes (optional)
+      await supabase
         .from('profiles')
         .upsert({
           id: userId,
@@ -126,35 +162,41 @@ export function UserManagementTable() {
           updated_at: new Date().toISOString()
         });
 
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-        return;
-      }
-
-      // Update in auth metadata
-      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+      // Step 4: Update auth metadata for backwards compatibility (optional)
+      await supabase.auth.admin.updateUserById(userId, {
         user_metadata: { role: newRole }
       });
 
-      if (authError) {
-        console.error('Error updating auth metadata:', authError);
-      }
-
-      // Log the action
+      // Step 5: Log the action
       if (currentUser) {
         await adminAuditService.logAdminAction(
           'update_user_role',
           currentUser.email || 'unknown',
           'user',
           userId,
-          { old_role: users.find(u => u.id === userId)?.role, new_role: newRole }
+          { 
+            old_role: users.find(u => u.id === userId)?.role, 
+            new_role: newRole,
+            method: 'manual_ui_update'
+          }
         );
       }
 
-      // Reload users to show updated data
+      toast({
+        title: "Role Updated",
+        description: `User role updated to ${newRole} successfully.`,
+        variant: "default",
+      });
+
+      // Reload users to show updated roles
       loadUsers();
     } catch (error) {
       console.error('Error updating user role:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while updating the role.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -97,7 +97,64 @@ export const DirectAccountRequestManagement: React.FC = () => {
   const handleApprove = async (request: AccountRequest) => {
     setActionLoading(request.id);
     try {
-      const { error } = await supabase
+      // Step 1: Generate temporary password
+      const temporaryPassword = Math.random().toString(36).slice(-12) + 
+                               Math.random().toString(36).slice(-12).toUpperCase() + 
+                               '!@#';
+
+      // Step 2: Create user in auth.users
+      const { data: newUser, error: userError } = await supabase.auth.admin.createUser({
+        email: request.email,
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: request.full_name,
+          display_name: request.full_name,
+          account_type: request.account_type
+        }
+      });
+
+      if (userError || !newUser.user) {
+        throw new Error(`Failed to create user: ${userError?.message}`);
+      }
+
+      // Step 3: ✅ TASK 1.8B - Assign role based on account_type
+      const roleToAssign: 'educator' | 'user' | 'admin' | 'moderator' = 
+        request.account_type === 'educator' ? 'educator' : 'user';
+      
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert([{
+          user_id: newUser.user.id,
+          role: roleToAssign
+        }]);
+      
+      if (roleError) {
+        console.error('Failed to assign role:', roleError);
+        toast({
+          title: "Warning",
+          description: `User created but role assignment failed: ${roleError.message}`,
+          variant: "destructive",
+        });
+      }
+
+      // Step 4: Create profile entry
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: newUser.user.id,
+          display_name: request.full_name,
+          email: request.email,
+          user_type: request.account_type === 'educator' ? 'educator' : 'member',
+          account_status: 'active'
+        });
+
+      if (profileError) {
+        console.error('Failed to create profile:', profileError);
+      }
+
+      // Step 5: Update request status to approved
+      const { error: updateError } = await supabase
         .from('account_requests')
         .update({ 
           status: 'approved',
@@ -105,25 +162,25 @@ export const DirectAccountRequestManagement: React.FC = () => {
         })
         .eq('id', request.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Send approval email notification
+      // Step 6: Send approval email notification
       try {
         await supabase.functions.invoke('account-request-notifications', {
           body: {
             type: 'request_approved',
             userEmail: request.email,
-            userName: request.full_name
+            userName: request.full_name,
+            temporaryPassword: temporaryPassword
           }
         });
       } catch (emailError) {
         console.error('Failed to send approval email:', emailError);
-        // Don't fail the approval if email fails
       }
 
       toast({
         title: "Request Approved",
-        description: `${request.full_name}'s request has been approved and they've been notified.`,
+        description: `${request.full_name}'s account has been created with ${roleToAssign} role.`,
         variant: "default",
       });
 
@@ -132,7 +189,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
       console.error('Error approving request:', error);
       toast({
         title: "Error",
-        description: "Failed to approve request. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to approve request",
         variant: "destructive",
       });
     } finally {

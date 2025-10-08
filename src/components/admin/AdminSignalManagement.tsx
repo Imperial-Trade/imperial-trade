@@ -453,13 +453,13 @@ export function AdminSignalManagement() {
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Close Signal
-                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
                     <Edit className="w-4 h-4 mr-1" />
                     Edit Notes
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Close
                   </Button>
                 </>
               )}
@@ -471,13 +471,13 @@ export function AdminSignalManagement() {
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Close Signal
-                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setEditingAlert(alert)}>
                     <Edit className="w-4 h-4 mr-1" />
                     Edit Notes
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Close
                   </Button>
                 </>
               )}

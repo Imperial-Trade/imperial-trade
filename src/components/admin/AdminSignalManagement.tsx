@@ -53,30 +53,34 @@ export function AdminSignalManagement() {
       setIsLoadingSignals(true);
       console.log('Fetching signals for user:', user.id);
       
-      const { data, error } = await supabase
+      // First fetch the signals
+      const { data: signalsData, error: signalsError } = await supabase
         .from('trade_alerts')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase query error:', error);
-        throw error;
+      if (signalsError) {
+        console.error('Supabase query error:', signalsError);
+        throw signalsError;
       }
+
+      // Then fetch profile data separately
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, role, avatar_url, user_type, access_level')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.warn('Profile fetch error:', profileError);
+      }
+
+      const data = signalsData;
 
       console.log('Fetched signals:', data?.length || 0);
 
-      // Map to expected format
+      // Map to expected format with profile data
       const mappedSignals = (data || []).map((signal: any) => ({
         id: signal.id,
         userId: signal.user_id,
@@ -96,13 +100,13 @@ export function AdminSignalManagement() {
         closeReason: signal.close_reason,
         createdAt: signal.created_at,
         updatedAt: signal.updated_at,
-        creator: signal.profiles ? {
-          id: signal.profiles.id,
-          display_name: signal.profiles.display_name,
-          role: signal.profiles.role,
-          avatar_url: signal.profiles.avatar_url,
-          user_type: signal.profiles.user_type,
-          access_level: signal.profiles.access_level
+        creator: profileData ? {
+          id: profileData.id,
+          display_name: profileData.display_name,
+          role: profileData.role,
+          avatar_url: profileData.avatar_url,
+          user_type: profileData.user_type,
+          access_level: profileData.access_level
         } : null
       }));
 

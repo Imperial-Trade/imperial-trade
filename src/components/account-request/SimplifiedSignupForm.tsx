@@ -71,7 +71,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
                   {...field}
                   type="text"
                   autoComplete="name"
-                  className="w-full mt-1 bg-transparent border-0 border-b border-zinc-600 rounded-none px-1 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-zinc-600 rounded-none px-1 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:bg-white focus:text-zinc-900 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-200"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -94,7 +94,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
                   {...field}
                   type="email"
                   autoComplete="email"
-                  className="w-full mt-1 bg-transparent border-0 border-b border-zinc-600 rounded-none px-1 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-zinc-600 rounded-none px-1 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:bg-white focus:text-zinc-900 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-200"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -120,7 +120,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
                     autoComplete="new-password"
                     className={`w-full mt-1 bg-transparent border-0 border-b ${
                       form.formState.errors.password ? 'border-red-500' : 'border-zinc-600'
-                    } rounded-none px-1 py-3 pr-10 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
+                    } rounded-none px-1 py-3 pr-10 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:bg-white focus:text-zinc-900 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-200`}
                     disabled={isSubmitting}
                   />
                   <button

@@ -47,7 +47,7 @@ export const AdvancedTypingEffect: React.FC = () => {
   }, [charIndex, isDeleting, sentenceIndex]);
 
   return (
-    <div className="typing-container flex items-center justify-center">
+    <div className="typing-container flex flex-col items-center justify-center">
       <style>
         {`
           @keyframes blink {
@@ -59,12 +59,22 @@ export const AdvancedTypingEffect: React.FC = () => {
           }
         `}
       </style>
+      
+      {/* Imperial Logo Section */}
+      <div className="flex items-center gap-5 mb-16 lg:mb-20">
+        <Crown className="w-20 h-20 lg:w-24 lg:h-24 text-[#D4AF37]" />
+        <h1 className="text-5xl lg:text-6xl font-bold text-zinc-100 tracking-wider uppercase imperial-tech-font">
+          IMPERIAL
+        </h1>
+      </div>
 
-      {/* Typing Animation */}
-      <h2 className="text-5xl lg:text-6xl font-bold text-zinc-100 tracking-tight">
-        {text}
-        <span className="inline-block w-[3px] h-12 lg:h-16 bg-zinc-100 ml-2 animate-blink" />
-      </h2>
+      {/* Typing Animation - Fixed height container to prevent logo movement */}
+      <div className="min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+        <h2 className="text-5xl lg:text-6xl font-bold text-zinc-100 tracking-tight">
+          {text}
+          <span className="inline-block w-[3px] h-12 lg:h-16 bg-zinc-100 ml-2 animate-blink" />
+        </h2>
+      </div>
     </div>
   );
 };

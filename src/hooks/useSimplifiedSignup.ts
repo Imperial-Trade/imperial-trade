@@ -6,6 +6,26 @@ import type { SimplifiedSignupFormData } from "@/lib/validations/simplifiedSignu
 import { withTimeout } from "@/api/client/utils/timeout";
 import { withRetry } from "@/api/client/utils/retry";
 
+// Client-side password hashing using Web Crypto API
+async function hashPasswordClient(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordData = encoder.encode(password);
+  
+  const combined = new Uint8Array(salt.length + passwordData.length);
+  combined.set(salt);
+  combined.set(passwordData, salt.length);
+  
+  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
+  const hashArray = new Uint8Array(hashBuffer);
+  
+  const result = new Uint8Array(salt.length + hashArray.length);
+  result.set(salt);
+  result.set(hashArray, salt.length);
+  
+  return btoa(String.fromCharCode(...result));
+}
+
 export const useSimplifiedSignup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canSubmit, setCanSubmit] = useState(true);
@@ -113,41 +133,92 @@ export const useSimplifiedSignup = () => {
         return signupData;
       };
 
-      // Wrap with timeout (30s) and retry (1 retry with 2s delay)
-      const signupData = await withRetry(
-        () => withTimeout(signupOperation(), 30000),
-        { maxAttempts: 2, initialDelay: 2000 }
-      );
+      // Try edge function with timeout and retry
+      try {
+        const signupData = await withRetry(
+          () => withTimeout(signupOperation(), 30000),
+          { maxAttempts: 2, initialDelay: 2000 }
+        );
 
-      console.log('📥 [SIGNUP-DEBUG] Edge function response received:', {
-        has_signupData: !!signupData,
-        signupData_keys: signupData ? Object.keys(signupData) : []
-      });
+        console.log('📥 [SIGNUP-DEBUG] Edge function response received:', {
+          has_signupData: !!signupData,
+          signupData_keys: signupData ? Object.keys(signupData) : []
+        });
 
-      console.log('✅ [SIGNUP-DEBUG] Signup successful!');
-      toast.success("Account request submitted successfully!");
-      return { success: true };
+        console.log('✅ [SIGNUP-DEBUG] Signup successful via edge function!');
+        toast.success("Account request submitted successfully!");
+        return { success: true };
+
+      } catch (edgeFunctionError: any) {
+        console.error("💥 [SIGNUP-DEBUG] Edge function failed:", {
+          message: edgeFunctionError.message,
+          name: edgeFunctionError.name,
+        });
+        
+        console.log('🔄 [FALLBACK] Attempting direct database insert...');
+        
+        // EMERGENCY FALLBACK: Direct database insert with client-side password hashing
+        try {
+          const password_hash = await hashPasswordClient(data.password);
+          console.log('🔐 [FALLBACK] Password hash created on client-side');
+          
+          const { data: insertData, error: insertError } = await supabase
+            .from('account_requests')
+            .insert({
+              full_name: data.full_name,
+              email: data.email.toLowerCase(),
+              phone_number: data.phone_number || null,
+              password_hash: password_hash,
+              terms_accepted: data.terms_accepted,
+              terms_accepted_at: new Date().toISOString(),
+              status: 'pending',
+              account_type: 'user',
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('❌ [FALLBACK] Database insert failed:', insertError);
+            throw new Error(insertError.message);
+          }
+
+          console.log('✅ [FALLBACK] Account request created via direct database insert!', {
+            request_id: insertData?.id,
+          });
+          
+          toast.success("Account request submitted successfully!");
+          return { success: true };
+
+        } catch (fallbackError: any) {
+          console.error("💥 [FALLBACK] Direct database insert failed:", {
+            message: fallbackError.message,
+            name: fallbackError.name,
+          });
+          
+          let errorMessage = "Failed to submit account request. Please try again.";
+          
+          if (fallbackError.message?.includes('duplicate') || fallbackError.message?.includes('unique')) {
+            errorMessage = "An account with this email already exists. Please use a different email or check your account status.";
+          } else if (fallbackError.message) {
+            errorMessage = fallbackError.message;
+          }
+          
+          toast.error(errorMessage);
+          return { success: false, error: errorMessage };
+        }
+      }
 
     } catch (error: any) {
-      console.error("💥 [SIGNUP-DEBUG] Exception caught:", {
+      console.error("💥 [SIGNUP-DEBUG] Unexpected error:", {
         message: error.message,
         name: error.name,
         stack: error.stack
       });
       
-      // Enhanced error messages
-      let errorMessage = "Failed to submit account request. Please try again.";
-      
-      if (error.message?.includes('timeout')) {
-        errorMessage = "Request timed out. The server may be busy. Please try again in a moment.";
-      } else if (error.message?.includes('fetch')) {
-        errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+      const errorMessage = error.message || "Failed to submit account request. Please try again.";
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
+      
     } finally {
       console.log('🏁 [SIGNUP-DEBUG] Process complete, resetting isSubmitting');
       setIsSubmitting(false);

@@ -52,18 +52,63 @@ export const useSimplifiedSignup = () => {
       });
 
       const signupOperation = async () => {
-        const { data: signupData, error: signupError } = await supabase.functions.invoke('simplified-signup', {
-          body: {
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI';
+        
+        // Network debugging
+        console.log('🌐 [NETWORK-DEBUG] Direct fetch request details:', {
+          url: 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/simplified-signup',
+          method: 'POST',
+          has_anon_key: true,
+          anon_key_prefix: ANON_KEY.substring(0, 20) + '...',
+          timestamp: new Date().toISOString(),
+          request_body: {
             full_name: data.full_name,
-            email: data.email,
-            phone_number: data.phone_number || null,
-            password: data.password,
+            email: data.email?.substring(0, 3) + '***',
+            has_phone: !!data.phone_number,
+            has_password: !!data.password,
             terms_accepted: data.terms_accepted,
           }
         });
 
-        if (signupError) throw signupError;
-        if (signupData?.error) throw new Error(signupData.error);
+        const response = await fetch(
+          'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/simplified-signup',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${ANON_KEY}`,
+              'apikey': ANON_KEY,
+            },
+            body: JSON.stringify({
+              full_name: data.full_name,
+              email: data.email,
+              phone_number: data.phone_number || null,
+              password: data.password,
+              terms_accepted: data.terms_accepted,
+            })
+          }
+        );
+
+        console.log('📥 [NETWORK-DEBUG] Response received:', {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText,
+          headers: {
+            contentType: response.headers.get('content-type'),
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [NETWORK-DEBUG] Error response:', errorText);
+          throw new Error(errorText || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const signupData = await response.json();
+        
+        if (signupData?.error) {
+          throw new Error(signupData.error);
+        }
         
         return signupData;
       };

@@ -156,7 +156,7 @@ const AppBar: React.FC = () => {
           ? ""
           : isSigninPage
           ? "bg-transparent"
-          : "backdrop-blur-xl border-b border-border/50 bg-background/80"
+          : "nav-glass-effect border-b"
       }`}
     >
       <div
@@ -185,7 +185,7 @@ const AppBar: React.FC = () => {
 
         {/* Desktop Navigation - Compact - show on signin page but simplified */}
         {!isSigninPage ? (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
             {navigationItems.map((item) => (
               <div
                 key={item.to}
@@ -205,7 +205,7 @@ const AppBar: React.FC = () => {
 
                 {/* Apple/Stripe style dropdown */}
                 {activeDropdown === item.label && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 nav-glass-effect rounded-2xl shadow-2xl p-6 animate-fade-in-up z-50">
                     <div className="space-y-4">
                       <div>
                         <h3 className="font-semibold text-foreground mb-1">
@@ -238,7 +238,7 @@ const AppBar: React.FC = () => {
             ))}
           </nav>
         ) : (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
             {navigationItems.map((item) => (
               <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button
@@ -278,7 +278,7 @@ const AppBar: React.FC = () => {
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[90vw] max-w-md bg-background/98 backdrop-blur-xl border-r border-border/50 overflow-y-auto"
+              className="w-[90vw] max-w-md nav-glass-effect border-r overflow-y-auto"
             >
               <SheetHeader className="border-b border-border/50 pb-6">
                 <SheetTitle className="flex items-center gap-2 text-left">

@@ -67,7 +67,6 @@ export default function AdminPanelSidebar({
         if (window.innerWidth >= 1280) {
           mainContent.style.marginRight = isCollapsed ? '80px' : '240px';
         } else {
-          // On mobile/tablet, remove margin so content uses full width
           mainContent.style.marginRight = '0';
         }
       }
@@ -90,6 +89,56 @@ export default function AdminPanelSidebar({
       document.body.style.overflow = '';
     };
   }, [isCollapsed]);
+
+  // Add swipe gesture support for mobile
+  useEffect(() => {
+    if (window.innerWidth >= 1280) return;
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].screenX;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const swipeDistance = touchStartX - touchEndX;
+      const swipeThreshold = 75;
+      
+      // Swipe left to close
+      if (swipeDistance > swipeThreshold && !isCollapsed) {
+        setIsCollapsed(true);
+      }
+      // Swipe right from edge to open (within 50px from right edge)
+      else if (swipeDistance < -swipeThreshold && isCollapsed && touchStartX > window.innerWidth - 50) {
+        setIsCollapsed(false);
+      }
+    };
+
+    const sidebar = document.querySelector('.admin-sidebar');
+    if (sidebar) {
+      sidebar.addEventListener('touchstart', handleTouchStart, { passive: true });
+      sidebar.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    return () => {
+      if (sidebar) {
+        sidebar.removeEventListener('touchstart', handleTouchStart);
+        sidebar.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [isCollapsed]);
+
+  // Listen for custom toggle event from mobile menu button
+  useEffect(() => {
+    const handleToggle = () => {
+      setIsCollapsed(prev => !prev);
+    };
+
+    window.addEventListener('toggle-admin-sidebar', handleToggle);
+    return () => window.removeEventListener('toggle-admin-sidebar', handleToggle);
+  }, []);
   
   const navItems = [
     { value: 'requests', label: 'Account Requests', icon: Users, show: canAccessRequests },

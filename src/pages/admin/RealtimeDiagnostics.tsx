@@ -158,7 +158,7 @@ export const RealtimeDiagnostics: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{telemetry.counters.price_update}</div>
               <div className="text-xs text-muted-foreground">Price Updates (v2)</div>
@@ -184,7 +184,7 @@ export const RealtimeDiagnostics: React.FC = () => {
       </Card>
 
       {/* PHASE C: Per-Channel Telemetry Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

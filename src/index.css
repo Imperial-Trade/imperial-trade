@@ -889,6 +889,73 @@ body:not(.dark) .admin-toggle-button:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* ========================================
+   MOBILE ADMIN PANEL OPTIMIZATION
+   ======================================== */
+
+/* Mobile: Optimize spacing and layout */
+@media (max-width: 640px) {
+  #admin-main-content {
+    padding: 0.75rem;
+  }
+  
+  /* Mobile: Reduce card padding */
+  #admin-main-content .glass-effect {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Mobile: Force single column */
+  #admin-main-content .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+  
+  /* Mobile: Smaller headings */
+  #admin-main-content h1,
+  #admin-main-content h2 {
+    font-size: 1.125rem;
+  }
+  
+  #admin-main-content h3 {
+    font-size: 1rem;
+  }
+  
+  /* Mobile: Compact stat cards */
+  #admin-main-content .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+/* Tablet: 2-column optimization */
+@media (min-width: 641px) and (max-width: 1024px) {
+  #admin-main-content .grid-cols-3,
+  #admin-main-content .grid-cols-4,
+  #admin-main-content .grid-cols-5 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Touch-friendly elements on mobile/tablet */
+@media (max-width: 1279px) {
+  .admin-sidebar-item {
+    min-height: 48px;
+    padding: 1rem 1.25rem;
+  }
+  
+  button, a {
+    min-height: 44px;
+  }
+  
+  /* Better mobile transitions */
+  .admin-sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .admin-sidebar:not(.collapsed) {
+    box-shadow: -8px 0 32px 0 rgba(0, 0, 0, 0.6);
+  }
+}
+
 .subtle-bg-gradient {
   background: linear-gradient(180deg, 
     hsl(var(--bg-gradient-white)) 0%, 

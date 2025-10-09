@@ -42,7 +42,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleFormSubmit)}
-        className="space-y-4"
+        className="space-y-3"
       >
         {/* Honeypot Field */}
         <HoneypotField form={form as any} />

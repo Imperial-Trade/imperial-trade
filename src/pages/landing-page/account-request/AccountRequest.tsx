@@ -49,18 +49,16 @@ export default function AccountRequestPage() {
         {/* Left Side - Signup Form */}
         <div className="w-full md:w-1/2 lg:w-2/5 flex items-center justify-center p-4 lg:p-8">
           <div className="w-full max-w-sm">
-            <div className="min-h-[600px] max-h-[85vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-              {showSuccess ? <SuccessMessage email={submittedEmail} /> : <GlassCard>
-                  <div className="text-left mb-8">
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-100">
-                      Create your account
-                    </h1>
-                  </div>
-                  <ErrorBoundary componentName="Simplified Signup Form">
-                    <SimplifiedSignupForm onSubmit={handleFormSubmit} onFacebookSignup={handleFacebookSignup} isSubmitting={isSubmitting} canSubmit={canSubmit} />
-                  </ErrorBoundary>
-                </GlassCard>}
-            </div>
+            {showSuccess ? <SuccessMessage email={submittedEmail} /> : <GlassCard className="!p-6">
+                <div className="text-left mb-6">
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-100">
+                    Create your account
+                  </h1>
+                </div>
+                <ErrorBoundary componentName="Simplified Signup Form">
+                  <SimplifiedSignupForm onSubmit={handleFormSubmit} onFacebookSignup={handleFacebookSignup} isSubmitting={isSubmitting} canSubmit={canSubmit} />
+                </ErrorBoundary>
+              </GlassCard>}
           </div>
         </div>
 

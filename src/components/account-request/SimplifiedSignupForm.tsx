@@ -39,7 +39,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
           {/* Honeypot field */}
           <div style={{ display: 'none' }} aria-hidden="true">
             <FormField
@@ -196,7 +196,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
         />
 
         {/* Buttons */}
-        <div className="pt-4 space-y-4">
+        <div className="pt-2 space-y-3">
           <Button
             type="submit"
             disabled={isSubmitting || !canSubmit}
@@ -257,7 +257,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
         </div>
 
         {/* Login Link */}
-        <div className="text-center text-gray-400 text-sm pt-4 space-y-2">
+        <div className="text-center text-gray-400 text-sm pt-2 space-y-2">
           <p>
             Already have an account?{" "}
             <Link to="/signin" className="font-semibold text-gray-200 hover:underline">

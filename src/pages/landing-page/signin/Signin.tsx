@@ -71,7 +71,7 @@ export default function SigninPage() {
       });
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+  return <div className="min-h-screen relative flex justify-center p-4 sm:p-6 py-6 overflow-y-auto">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>

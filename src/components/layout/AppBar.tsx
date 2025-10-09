@@ -98,7 +98,7 @@ const AppBar: React.FC = () => {
           <Link to="/account-request">
             <Button
               size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="glass-button-primary"
             >
               Get Started
             </Button>
@@ -131,7 +131,7 @@ const AppBar: React.FC = () => {
         <Link to="/account-request">
           <Button
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="glass-button-primary"
           >
             Get Started
           </Button>
@@ -139,8 +139,7 @@ const AppBar: React.FC = () => {
         <Link to="/signin">
           <Button
             size="sm"
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10"
+            className="glass-button-outline"
           >
             Sign In
           </Button>
@@ -345,29 +344,28 @@ const AppBar: React.FC = () => {
                        </Link>
                      </div>
                    ) : (
-                     <div className="space-y-3">
-                       {!isAccountRequestPage && (
-                         <Link to="/account-request" onClick={closeMobileMenu}>
-                           <Button
-                             size="lg"
-                             className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                             aria-label="Get Started - Request Account"
-                           >
-                             Get Started
-                           </Button>
-                         </Link>
-                       )}
-                       {!isSigninPage && !isResetPasswordPage && (
-                         <Link to="/signin" onClick={closeMobileMenu}>
-                           <Button
-                             size="lg"
-                             variant="outline"
-                             className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                             aria-label="Sign In to Account"
-                           >
-                             Sign In
-                           </Button>
-                         </Link>
+                      <div className="space-y-3">
+                        {!isAccountRequestPage && (
+                          <Link to="/account-request" onClick={closeMobileMenu}>
+                            <Button
+                              size="lg"
+                              className="w-full min-h-[56px] glass-button-primary font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                              aria-label="Get Started - Request Account"
+                            >
+                              Get Started
+                            </Button>
+                          </Link>
+                        )}
+                        {!isSigninPage && !isResetPasswordPage && (
+                          <Link to="/signin" onClick={closeMobileMenu}>
+                            <Button
+                              size="lg"
+                              className="w-full min-h-[56px] glass-button-outline font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                              aria-label="Sign In to Account"
+                            >
+                              Sign In
+                            </Button>
+                          </Link>
                        )}
                      </div>
                   )}

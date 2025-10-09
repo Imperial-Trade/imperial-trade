@@ -24,7 +24,7 @@ export function ThemeToggle({ isCollapsed = false }: ThemeToggleProps) {
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground theme-toggle-glass"
+      className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
       aria-label={getThemeLabel()}
     >
       {getThemeIcon()}

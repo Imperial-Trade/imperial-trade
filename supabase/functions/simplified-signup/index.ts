@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +7,30 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Max-Age': '86400',
 };
+
+// Deno-native password hashing using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordData = encoder.encode(password);
+  
+  // Combine salt and password
+  const combined = new Uint8Array(salt.length + passwordData.length);
+  combined.set(salt);
+  combined.set(passwordData, salt.length);
+  
+  // Hash using SHA-256
+  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
+  const hashArray = new Uint8Array(hashBuffer);
+  
+  // Combine salt and hash for storage
+  const result = new Uint8Array(salt.length + hashArray.length);
+  result.set(salt);
+  result.set(hashArray, salt.length);
+  
+  // Convert to base64 for storage
+  return btoa(String.fromCharCode(...result));
+}
 
 serve(async (req) => {
   // Health check endpoint
@@ -81,9 +104,8 @@ serve(async (req) => {
       }
     }
 
-    // Hash password with bcrypt
-    const salt = await bcrypt.genSalt(12);
-    const password_hash = await bcrypt.hash(password, salt);
+    // Hash password with Deno crypto
+    const password_hash = await hashPassword(password);
     console.log('🔐 Password hash created successfully');
 
     // Create account request with password hash and phone number

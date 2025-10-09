@@ -81,9 +81,9 @@ const AdminPanel: React.FC = () => {
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
   return (
-    <div className="flex w-full min-h-screen overflow-x-hidden">
+    <div className="flex w-full min-h-screen overflow-hidden">
       {/* Main Content Area */}
-      <div className="flex-1 container mx-auto p-4 md:p-6 xl:pr-0">
+      <div id="admin-main-content" className="flex-1 container mx-auto p-4 md:p-6 xl:pr-0 transition-[margin-right] duration-400">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
         {canAccessRequests && <TabsContent value="requests" className="space-y-4">

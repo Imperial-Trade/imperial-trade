@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { 
-  Users, Signal, Bell, Settings, RefreshCw, 
-  Activity, Shield, BarChart3, Code, Menu 
+  Users, User, TrendingUp, Bell, Monitor, Clock, 
+  Activity, Sparkles, Server, Settings as SettingsIcon, Code, 
+  Shield, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 
 interface AdminPanelSidebarProps {
@@ -43,79 +42,109 @@ export default function AdminPanelSidebar({
   isDevToolsEnabled,
 }: AdminPanelSidebarProps) {
   
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Auto-collapse on mobile/tablet, expand on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1280) {
+        setIsCollapsed(true);
+      } else {
+        setIsCollapsed(false);
+      }
+    };
+
+    handleResize(); // Set initial state
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Adjust main content margin based on sidebar state
+  useEffect(() => {
+    const mainContent = document.getElementById('admin-main-content');
+    if (mainContent) {
+      mainContent.style.marginRight = isCollapsed ? '88px' : '280px';
+    }
+  }, [isCollapsed]);
+  
   const navItems = [
     { value: 'requests', label: 'Account Requests', icon: Users, show: canAccessRequests },
-    { value: 'users', label: 'User Management', icon: Users, show: canAccessUsers },
-    { value: 'signals', label: 'Trading Signals', icon: Signal, show: canAccessSignals },
+    { value: 'users', label: 'User Management', icon: User, show: canAccessUsers },
+    { value: 'signals', label: 'Trading Signals', icon: TrendingUp, show: canAccessSignals },
     { value: 'notifications', label: 'Notifications', icon: Bell, show: canAccessNotifications },
-    { value: 'system', label: 'System Monitor', icon: Settings, show: canAccessSystem },
-    { value: 'rate-limits', label: 'Rate Limits', icon: RefreshCw, show: canAccessRateLimits },
+    { value: 'system', label: 'System Monitor', icon: Monitor, show: canAccessSystem },
+    { value: 'rate-limits', label: 'Rate Limits', icon: Clock, show: canAccessRateLimits },
     { value: 'diagnostics', label: 'Diagnostics', icon: Activity, show: canAccessDiagnostics },
-    { value: 'optimization', label: 'Optimization', icon: Shield, show: canAccessOptimization },
-    { value: 'monitoring', label: 'Monitoring', icon: BarChart3, show: canAccessMonitoring },
-    { value: 'settings', label: 'Settings', icon: Settings, show: canAccessSettings },
+    { value: 'optimization', label: 'Optimization', icon: Sparkles, show: canAccessOptimization },
+    { value: 'monitoring', label: 'Monitoring', icon: Server, show: canAccessMonitoring },
+    { value: 'settings', label: 'Settings', icon: SettingsIcon, show: canAccessSettings },
     { value: 'devtools', label: 'Dev Tools', icon: Code, show: canAccessDevTools },
   ].filter(item => item.show);
 
-  const SidebarContent = () => (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border/50">
-        <Badge variant="outline" className="w-full justify-center py-2 admin-sidebar-badge">
-          <Shield className="w-3 h-3 mr-2" />
-          {userRole} Access
-        </Badge>
-        {isDevToolsEnabled && (
-          <Badge variant="outline" className="w-full justify-center py-2 mt-2 bg-blue-500/10 border-blue-500/30 text-blue-400">
-            <Code className="w-3 h-3 mr-2" />
-            Dev Mode
-          </Badge>
-        )}
-      </div>
-
-      {/* Navigation Items */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.value;
-          
-          return (
-            <button
-              key={item.value}
-              onClick={() => setActiveTab(item.value)}
-              className={`admin-sidebar-item ${isActive ? 'active' : ''}`}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-sm font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </div>
-  );
-
   return (
     <>
-      {/* MOBILE & TABLET: Hamburger Menu (< 1280px) */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="xl:hidden fixed top-20 right-4 z-50 glass-effect border-border/50 hover:bg-primary/10"
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-[280px] p-0 admin-sidebar border-l">
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
+      {/* Admin Sidebar */}
+      <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+        <nav className="h-full flex flex-col">
+          {/* Header with padding-top for clearance */}
+          <div className="pt-20 px-2">
+            <div className={`flex items-center mb-4 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
+              <Shield className="w-8 h-8 shrink-0 text-gray-300" />
+              {!isCollapsed && (
+                <h2 className="nav-text text-xl font-bold text-gray-200 ml-2">
+                  {userRole} Access
+                </h2>
+              )}
+            </div>
+            {!isCollapsed && (
+              <>
+                {isDevToolsEnabled && (
+                  <Badge variant="outline" className="w-full justify-center py-2 bg-blue-500/10 border-blue-500/30 text-blue-400">
+                    <Code className="w-3 h-3 mr-2" />
+                    <span className="nav-text">Dev Mode</span>
+                  </Badge>
+                )}
+                <hr className="my-4 border-gray-600 nav-text" />
+              </>
+            )}
+          </div>
 
-      {/* DESKTOP: Fixed Right Sidebar (≥ 1280px) */}
-      <aside className="hidden xl:flex admin-sidebar">
-        <SidebarContent />
+          {/* Navigation Items */}
+          <ul className="space-y-2 flex-grow px-2 overflow-y-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.value;
+              
+              return (
+                <li key={item.value}>
+                  <button
+                    onClick={() => setActiveTab(item.value)}
+                    className={`admin-sidebar-item ${isActive ? 'active' : ''}`}
+                  >
+                    <Icon className="w-6 h-6 shrink-0" />
+                    {!isCollapsed && (
+                      <span className="nav-text text-sm font-medium">{item.label}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       </aside>
+
+      {/* Toggle Button (Circular Chevron) */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={`admin-toggle-button ${isCollapsed ? 'collapsed' : ''}`}
+        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {isCollapsed ? (
+          <ChevronLeft className="w-6 h-6" />
+        ) : (
+          <ChevronRight className="w-6 h-6" />
+        )}
+      </button>
     </>
   );
 }

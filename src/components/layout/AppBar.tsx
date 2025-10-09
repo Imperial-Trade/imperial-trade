@@ -32,6 +32,7 @@ const AppBar: React.FC = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const isAccountRequestPage = location.pathname === "/account-request";
+  const isAccountRequestStatusPage = location.pathname === "/account-request-status";
   const isSigninPage = location.pathname === "/signin";
   const isResetPasswordPage = false; // No longer used since reset is handled by isolated flow
   const { user, loading } = useAuth();
@@ -174,8 +175,8 @@ const AppBar: React.FC = () => {
           </Link>
         )}
 
-        {/* Logo - hide on signin page */}
-        {!isSigninPage && (
+        {/* Logo - hide on signin, account request, and account request status pages */}
+        {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
           <Link to="/" className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
             <span className="text-xl imperial-tech-font">IMPERIAL</span>

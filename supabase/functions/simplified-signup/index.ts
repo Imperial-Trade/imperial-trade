@@ -21,8 +21,17 @@ serve(async (req) => {
 
     const { full_name, email, phone_number, password, terms_accepted } = await req.json();
 
+    // Log incoming request (with PII sanitization)
+    console.log('📥 Received signup request:', { 
+      email_prefix: email?.substring(0, 3) + '***',
+      has_password: !!password,
+      has_phone: !!phone_number,
+      timestamp: new Date().toISOString()
+    });
+
     // Validate input
     if (!full_name || !email || !password || !terms_accepted) {
+      console.error('❌ Validation failed: Missing required fields');
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,6 +67,7 @@ serve(async (req) => {
     // Hash password with bcrypt
     const salt = await bcrypt.genSalt(12);
     const password_hash = await bcrypt.hash(password, salt);
+    console.log('🔐 Password hash created successfully');
 
     // Create account request with password hash and phone number
     const { data: accountRequest, error: insertError } = await supabase
@@ -76,11 +86,16 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error('Error creating account request:', insertError);
+      console.error('❌ Error creating account request:', insertError);
       throw insertError;
     }
 
-    console.log('Account request created successfully:', accountRequest.id);
+    console.log('✅ Account request inserted successfully:', { 
+      id: accountRequest.id,
+      email_prefix: accountRequest.email?.substring(0, 3) + '***',
+      has_password_hash: !!accountRequest.password_hash,
+      has_phone: !!accountRequest.phone_number
+    });
 
     // TODO: Send confirmation email to user
     // TODO: Send notification to admins

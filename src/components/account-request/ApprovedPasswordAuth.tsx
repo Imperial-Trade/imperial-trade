@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Mail, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,56 +14,35 @@ interface ApprovedPasswordAuthProps {
 export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({ 
   accountRequest 
 }) => {
-  const navigate = useNavigate();
   const { width, height } = useWindowSize();
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!password.trim()) {
-      toast.error("Please enter your password");
-      return;
-    }
-
-    setIsAuthenticating(true);
+  const handleResendEmail = async () => {
+    setIsResending(true);
 
     try {
-      // Authenticate with the password they created during signup
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: accountRequest.email,
-        password: password,
+      // Call create-approved-account to resend password setup email
+      const { data, error } = await supabase.functions.invoke('create-approved-account', {
+        body: {
+          email: accountRequest.email,
+          accountRequestId: accountRequest.id,
+          password: null, // Trigger password reset email
+        }
       });
 
-      if (authError) {
-        console.error("Authentication error:", authError);
-        
-        // Provide helpful error messages
-        if (authError.message.includes("Invalid login credentials")) {
-          toast.error("Incorrect password. Please try again or contact support if you forgot your password.");
-        } else {
-          toast.error(authError.message || "Failed to sign in. Please try again.");
-        }
+      if (error) {
+        console.error("Error resending email:", error);
+        toast.error("Failed to resend email. Please try again or contact support.");
         return;
       }
 
-      if (authData.user) {
-        toast.success(`Welcome back, ${accountRequest.full_name}!`);
-        
-        // Redirect to dashboard after successful login
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-      }
-
+      toast.success("Password setup email sent! Check your inbox.");
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      console.error("Resend email error:", error);
       toast.error("An unexpected error occurred. Please try again.");
     } finally {
-      setIsAuthenticating(false);
+      setIsResending(false);
     }
   };
 
@@ -126,64 +103,59 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
             </div>
           </div>
 
-          {/* Sign In Form */}
+          {/* Check Your Email Section */}
           <div className="space-y-4 pt-2">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Enter Your Password to Continue
-              </h3>
-              <p className="text-sm text-gray-400">
-                Use the password you created when you submitted your account request
-              </p>
-            </div>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 text-center space-y-4">
+              <div className="mx-auto w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-blue-400" />
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-white">
+                  Check Your Email
+                </h3>
+                <p className="text-sm text-gray-300">
+                  We've sent a password setup link to:
+                </p>
+                <p className="text-base font-medium text-blue-400">
+                  {accountRequest.email}
+                </p>
+              </div>
 
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                  disabled={isAuthenticating}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+              <div className="space-y-2 text-sm text-gray-400">
+                <p>📧 Click the link in your email to set your password</p>
+                <p>🔍 Check your spam folder if you don't see it</p>
+                <p>⏱️ The link expires in 24 hours</p>
               </div>
 
               <Button
-                type="submit"
-                disabled={isAuthenticating || !password.trim()}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
+                onClick={handleResendEmail}
+                disabled={isResending}
+                variant="outline"
+                className="w-full border-blue-500/30 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300"
               >
-                {isAuthenticating ? (
+                {isResending ? (
                   <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Signing In...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
                   </>
                 ) : (
-                  "Sign In to Dashboard"
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Resend Password Setup Email
+                  </>
                 )}
               </Button>
-            </form>
+            </div>
 
-            <div className="text-center text-sm text-gray-400">
-              <p>
-                Forgot your password?{" "}
-                <a 
-                  href="/reset-password" 
-                  className="text-green-400 hover:text-green-300 font-medium"
-                >
-                  Reset it here
-                </a>
-              </p>
+            <div className="text-center text-sm text-gray-400 space-y-1">
+              <p>Need help?</p>
+              <a 
+                href="/contact" 
+                className="text-green-400 hover:text-green-300 font-medium inline-flex items-center gap-1"
+              >
+                Contact Support
+              </a>
             </div>
           </div>
         </CardContent>

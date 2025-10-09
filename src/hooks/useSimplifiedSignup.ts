@@ -30,6 +30,7 @@ export const useSimplifiedSignup = () => {
         body: {
           full_name: data.full_name,
           email: data.email,
+          phone_number: data.phone_number || null,
           password: data.password,
           terms_accepted: data.terms_accepted,
         }

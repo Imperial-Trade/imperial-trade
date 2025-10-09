@@ -661,20 +661,22 @@
   top: 0;
   right: 0;
   height: 100vh;
-  width: 280px;
-  padding: 1.5rem 1rem;
+  width: 240px;
+  padding: 0;
   z-index: 40;
-  background: rgba(28, 28, 32, 0.6);
-  backdrop-filter: blur(25px) saturate(150%);
-  -webkit-backdrop-filter: blur(25px) saturate(150%);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-  overflow-y: auto;
+  background: rgba(15, 15, 20, 0.85);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: -4px 0 24px 0 rgba(0, 0, 0, 0.5);
+  transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-sidebar.collapsed {
-  width: 88px;
+  width: 80px;
 }
 
 /* Mobile: Sidebar should overlay content, not push it */
@@ -701,6 +703,32 @@
   }
 }
 
+/* Only navigation list scrolls, not entire sidebar */
+.admin-sidebar nav ul {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 1rem;
+}
+
+.admin-sidebar nav ul::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-sidebar nav ul::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar nav ul::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.admin-sidebar nav ul::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* Light mode variant */
 body:not(.dark) .admin-sidebar {
   background: rgba(255, 255, 255, 0.08);
@@ -715,21 +743,23 @@ body:not(.dark) .admin-sidebar {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
   background: transparent;
   border: 1px solid transparent;
   color: #d4d4d8;
   font-weight: 500;
+  font-size: 0.9rem;
   transition: all 0.2s ease;
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
+  margin-bottom: 0.25rem;
 }
 
 .admin-sidebar.collapsed .admin-sidebar-item {
   justify-content: center;
-  padding: 0.75rem;
+  padding: 0.875rem 0.5rem;
 }
 
 .admin-sidebar-item:hover {
@@ -740,11 +770,13 @@ body:not(.dark) .admin-sidebar {
 /* Active State - BLUE (matching reference) */
 .admin-sidebar-item.active {
   background: linear-gradient(135deg, 
-    rgba(59, 130, 246, 0.2) 0%, 
-    rgba(59, 130, 246, 0.1) 100%);
+    rgba(59, 130, 246, 0.25) 0%, 
+    rgba(59, 130, 246, 0.12) 100%);
   color: #fafafa;
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  border-left: 3px solid rgba(59, 130, 246, 1);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* Light mode active state */
@@ -774,14 +806,14 @@ body:not(.dark) .admin-sidebar-item.active {
 .admin-toggle-button {
   position: fixed;
   top: 1.5rem;
-  right: 20px;
+  right: 16px;
   z-index: 50;
-  background-color: rgba(28, 28, 32, 0.8);
+  background-color: rgba(15, 15, 20, 0.9);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fafafa;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -792,7 +824,7 @@ body:not(.dark) .admin-sidebar-item.active {
 
 /* Collapsed state - button shifts right */
 .admin-toggle-button.collapsed {
-  transform: translateX(12px);
+  transform: translateX(10px);
 }
 
 /* Expanded state - button aligns with expanded sidebar edge */
@@ -807,7 +839,7 @@ body:not(.dark) .admin-sidebar-item.active {
 
 /* Maintain translateX on hover based on collapsed state */
 .admin-toggle-button.collapsed:hover {
-  transform: scale(1.1) translateX(12px);
+  transform: scale(1.1) translateX(10px);
 }
 
 .admin-toggle-button:not(.collapsed):hover {

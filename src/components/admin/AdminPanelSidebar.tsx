@@ -65,7 +65,7 @@ export default function AdminPanelSidebar({
       const mainContent = document.getElementById('admin-main-content');
       if (mainContent) {
         if (window.innerWidth >= 1280) {
-          mainContent.style.marginRight = isCollapsed ? '88px' : '280px';
+          mainContent.style.marginRight = isCollapsed ? '80px' : '240px';
         } else {
           // On mobile/tablet, remove margin so content uses full width
           mainContent.style.marginRight = '0';
@@ -76,6 +76,19 @@ export default function AdminPanelSidebar({
     adjustMargin();
     window.addEventListener('resize', adjustMargin);
     return () => window.removeEventListener('resize', adjustMargin);
+  }, [isCollapsed]);
+
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (!isCollapsed && window.innerWidth < 1280) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isCollapsed]);
   
   const navItems = [
@@ -107,11 +120,11 @@ export default function AdminPanelSidebar({
       <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <nav className="h-full flex flex-col">
           {/* Header with padding-top for clearance */}
-          <div className="pt-20 px-2">
+          <div className="pt-20 px-4 pb-4">
             <div className={`flex items-center mb-4 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
-              <Shield className="w-8 h-8 shrink-0 text-gray-300" />
+              <Shield className="w-8 h-8 shrink-0 text-primary" />
               {!isCollapsed && (
-                <h2 className="nav-text text-xl font-bold text-gray-200 ml-2">
+                <h2 className="nav-text text-lg font-bold text-foreground ml-3">
                   {userRole} Access
                 </h2>
               )}
@@ -119,18 +132,18 @@ export default function AdminPanelSidebar({
             {!isCollapsed && (
               <>
                 {isDevToolsEnabled && (
-                  <Badge variant="outline" className="w-full justify-center py-2 bg-blue-500/10 border-blue-500/30 text-blue-400">
+                  <Badge variant="outline" className="w-full justify-center py-2 bg-blue-500/10 border-blue-500/30 text-blue-400 mb-3">
                     <Code className="w-3 h-3 mr-2" />
-                    <span className="nav-text">Dev Mode</span>
+                    <span className="nav-text text-xs">Dev Mode</span>
                   </Badge>
                 )}
-                <hr className="my-4 border-gray-600 nav-text" />
+                <hr className="border-border/50 nav-text" />
               </>
             )}
           </div>
 
           {/* Navigation Items */}
-          <ul className="space-y-2 flex-grow px-2 overflow-y-auto">
+          <ul className="space-y-2 flex-grow overflow-y-auto overflow-x-hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.value;

@@ -152,20 +152,20 @@ const AppBar: React.FC = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${
-        isAccountRequestPage
-          ? ""
-          : isSigninPage
+        isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
           : "nav-glass-effect border-b"
       }`}
     >
       <div
         className={`w-full max-w-7xl flex items-center ${
-          isSigninPage ? "justify-between" : "justify-between"
+          isSigninPage || isAccountRequestPage || isAccountRequestStatusPage 
+            ? "justify-between" 
+            : "justify-between"
         }`}
       >
-        {/* Go back button for signin page */}
-        {isSigninPage && (
+        {/* Go back button for signin, account request, and account request status pages */}
+        {(isSigninPage || isAccountRequestPage || isAccountRequestStatusPage) && (
           <Link
             to="/"
             className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
@@ -183,8 +183,8 @@ const AppBar: React.FC = () => {
           </Link>
         )}
 
-        {/* Desktop Navigation - Compact - show on signin page but simplified */}
-        {!isSigninPage ? (
+        {/* Desktop Navigation - Compact with dropdowns for regular pages, simplified for signin/account-request pages */}
+        {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage ? (
           <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
             {navigationItems.map((item) => (
               <div

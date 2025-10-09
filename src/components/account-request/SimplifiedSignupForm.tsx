@@ -29,6 +29,7 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
     defaultValues: {
       full_name: "",
       email: "",
+      phone_number: "",
       password: "",
       terms_accepted: false,
       website: "",
@@ -100,6 +101,30 @@ export const SimplifiedSignupForm: React.FC<SimplifiedSignupFormProps> = ({
               </FormControl>
               {form.formState.errors.email && (
                 <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
+              )}
+            </FormItem>
+          )}
+        />
+
+        {/* Phone Number */}
+        <FormField
+          control={form.control}
+          name="phone_number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-zinc-400">Phone Number (Optional)</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+1 (555) 000-0000"
+                  className="w-full mt-1 bg-transparent border-0 border-b border-zinc-600 rounded-none px-1 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-200 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors duration-200"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              {form.formState.errors.phone_number && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.phone_number.message}</p>
               )}
             </FormItem>
           )}

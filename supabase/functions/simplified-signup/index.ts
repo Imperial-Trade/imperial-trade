@@ -19,7 +19,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { full_name, email, password, terms_accepted } = await req.json();
+    const { full_name, email, phone_number, password, terms_accepted } = await req.json();
 
     // Validate input
     if (!full_name || !email || !password || !terms_accepted) {
@@ -59,12 +59,13 @@ serve(async (req) => {
     const salt = await bcrypt.genSalt(12);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // Create account request
+    // Create account request with password hash and phone number
     const { data: accountRequest, error: insertError } = await supabase
       .from('account_requests')
       .insert({
         full_name,
         email: email.toLowerCase(),
+        phone_number: phone_number || null,
         password_hash,
         terms_accepted,
         terms_accepted_at: new Date().toISOString(),

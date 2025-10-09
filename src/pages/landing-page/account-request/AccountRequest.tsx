@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { toast } from "sonner";
 export default function AccountRequestPage() {
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState<string>('');
   const {
     handleEmailSignup,
     handleFacebookSignup,
@@ -21,6 +22,7 @@ export default function AccountRequestPage() {
     const result = await handleEmailSignup(data);
     if (result.success) {
       toast.success("Account request submitted successfully!");
+      setSubmittedEmail(data.email);
       setShowSuccess(true);
     } else {
       toast.error(result.error || "Failed to submit account request");
@@ -51,7 +53,7 @@ export default function AccountRequestPage() {
         {/* Left Side - Signup Form */}
         <div className="w-full md:w-1/2 lg:w-2/5 flex items-center justify-center p-4 lg:p-8">
           <div className="w-full max-w-sm">
-            {showSuccess ? <SuccessMessage /> : <GlassCard>
+            {showSuccess ? <SuccessMessage email={submittedEmail} /> : <GlassCard>
                 <div className="text-left mb-8">
                   <h1 className="text-3xl font-bold tracking-tight text-gray-100">
                     Create your account

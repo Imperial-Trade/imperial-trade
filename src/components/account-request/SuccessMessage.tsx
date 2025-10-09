@@ -1,7 +1,12 @@
 import React from 'react';
 import { CheckCircle } from 'lucide-react';
+import { CheckAccountRequestButton } from './CheckAccountRequestButton';
 
-export const SuccessMessage: React.FC = () => {
+interface SuccessMessageProps {
+  email?: string;
+}
+
+export const SuccessMessage: React.FC<SuccessMessageProps> = ({ email }) => {
   return (
     <div 
       className="rounded-2xl p-8 text-center animate-fade-in"
@@ -27,6 +32,8 @@ export const SuccessMessage: React.FC = () => {
       <CheckCircle className="mx-auto h-16 w-16 text-gray-700 dark:text-gray-300" strokeWidth={2} />
       <h2 className="text-2xl font-bold mt-4 text-gray-800 dark:text-gray-100">Account Created!</h2>
       <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome! Your account has been successfully created.</p>
+      
+      <CheckAccountRequestButton email={email} />
     </div>
   );
 };

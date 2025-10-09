@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { AdvancedTypingEffect } from '@/components/account-request/AdvancedTypingEffect';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -24,10 +24,18 @@ type ViewMode = 'check' | 'status' | 'update' | 'success' | 'result';
 
 export default function AccountRequestStatusPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('check');
   const [currentRequest, setCurrentRequest] = useState<any>(null);
+
+  useEffect(() => {
+    const prefilledEmail = location.state?.prefilledEmail;
+    if (prefilledEmail) {
+      setEmail(prefilledEmail);
+    }
+  }, [location.state]);
 
   const { 
     status, 

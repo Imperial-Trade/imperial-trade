@@ -5,11 +5,28 @@ import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 serve(async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET') {
+    console.log('🏥 Health check requested');
+    return new Response(
+      JSON.stringify({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        function: 'simplified-signup',
+        version: '1.0.0'
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight request handled');
     return new Response(null, { headers: corsHeaders });
   }
 

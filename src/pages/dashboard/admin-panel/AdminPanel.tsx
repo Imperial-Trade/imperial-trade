@@ -1,10 +1,10 @@
 import React, { useState, Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity, BarChart3 } from "lucide-react";
+import { Shield } from "lucide-react";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
+import AdminPanelSidebar from "@/components/admin/AdminPanelSidebar";
 
 // Lazy load heavy admin components to prevent simultaneous hook initialization
 const ResponsiveUserManagementTable = lazy(() => import("@/components/admin/ResponsiveUserManagementTable").then(m => ({
@@ -80,67 +80,11 @@ const AdminPanel: React.FC = () => {
   const canAccessSettings = isAdmin; // Only admins
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
-  return <div className="container mx-auto p-6 space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-            <Shield className="w-3 h-3 mr-1" />
-            {isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'} Access
-          </Badge>
-          {canAccessDevTools && <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
-              <Code className="w-3 h-3 mr-1" />
-              Dev Tools Enabled
-            </Badge>}
-          
-          <TabsList className="inline-flex w-auto gap-1" style={{
-        gridTemplateColumns: `repeat(${[canAccessRequests, canAccessUsers, canAccessSignals, canAccessNotifications, canAccessSystem, canAccessRateLimits, canAccessDiagnostics, canAccessOptimization, canAccessMonitoring, canAccessSettings, canAccessDevTools].filter(Boolean).length}, minmax(0, 1fr))`
-      }}>
-          {canAccessRequests && <TabsTrigger value="requests" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Requests
-            </TabsTrigger>}
-          {canAccessUsers && <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Users
-            </TabsTrigger>}
-          {canAccessSignals && <TabsTrigger value="signals" className="flex items-center gap-2">
-              <Signal className="w-4 h-4" />
-              Signals
-            </TabsTrigger>}
-          {canAccessNotifications && <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="w-4 h-4" />
-              Notifications
-            </TabsTrigger>}
-          {canAccessSystem && <TabsTrigger value="system" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              System
-            </TabsTrigger>}
-          {canAccessRateLimits && <TabsTrigger value="rate-limits" className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Rate Limits
-            </TabsTrigger>}
-          {canAccessDiagnostics && <TabsTrigger value="diagnostics" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Diagnostics
-            </TabsTrigger>}
-          {canAccessOptimization && <TabsTrigger value="optimization" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Optimization
-            </TabsTrigger>}
-          {canAccessMonitoring && <TabsTrigger value="monitoring" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Monitoring
-            </TabsTrigger>}
-          {canAccessSettings && <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Settings
-            </TabsTrigger>}
-          {canAccessDevTools && <TabsTrigger value="devtools" className="flex items-center gap-2">
-              <Code className="w-4 h-4" />
-              Dev Tools
-            </TabsTrigger>}
-          </TabsList>
-        </div>
+  return (
+    <div className="flex w-full min-h-screen overflow-x-hidden">
+      {/* Main Content Area */}
+      <div className="flex-1 container mx-auto p-4 md:p-6 xl:pr-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
         {canAccessRequests && <TabsContent value="requests" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
@@ -236,7 +180,28 @@ const AdminPanel: React.FC = () => {
               <DevToolsPanel />
             </Suspense>
           </TabsContent>}
-      </Tabs>
-    </div>;
+        </Tabs>
+      </div>
+
+      {/* Right Sidebar - Desktop & Mobile */}
+      <AdminPanelSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        canAccessRequests={canAccessRequests}
+        canAccessUsers={canAccessUsers}
+        canAccessSignals={canAccessSignals}
+        canAccessNotifications={canAccessNotifications}
+        canAccessSystem={canAccessSystem}
+        canAccessRateLimits={canAccessRateLimits}
+        canAccessDiagnostics={canAccessDiagnostics}
+        canAccessOptimization={canAccessOptimization}
+        canAccessMonitoring={canAccessMonitoring}
+        canAccessSettings={canAccessSettings}
+        canAccessDevTools={canAccessDevTools}
+        userRole={isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'}
+        isDevToolsEnabled={canAccessDevTools}
+      />
+    </div>
+  );
 };
 export default AdminPanel;

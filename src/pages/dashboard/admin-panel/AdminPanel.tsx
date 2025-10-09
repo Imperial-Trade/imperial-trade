@@ -1,7 +1,7 @@
 import React, { useState, Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Menu } from "lucide-react";
+import { Shield } from "lucide-react";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
 import AdminPanelSidebar from "@/components/admin/AdminPanelSidebar";
@@ -50,16 +50,13 @@ const WebSocketHealthMonitor = lazy(() => import("@/components/testing/WebSocket
 })));
 
 // Loading fallback component
-const LoadingFallback = () => (
-  <Card className="glass-effect border-border/50">
-    <CardContent className="p-8">
-      <div className="flex flex-col items-center justify-center h-32 space-y-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <p className="text-sm text-muted-foreground">Loading...</p>
+const LoadingFallback = () => <Card className="glass-effect border-default">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-center h-32">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
       </div>
     </CardContent>
-  </Card>
-);
+  </Card>;
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
   const {
@@ -84,47 +81,30 @@ const AdminPanel: React.FC = () => {
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
   return (
-    <div className="flex w-full h-screen overflow-hidden">
+    <div className="flex w-full min-h-screen overflow-x-hidden">
       {/* Main Content Area */}
-      <div id="admin-main-content" className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 xl:pr-0 transition-[margin-right] duration-400">
-        {/* Mobile breadcrumb navigation */}
-        <div className="xl:hidden mb-4 flex items-center justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-border/50">
-          <button
-            onClick={() => {
-              const sidebar = document.querySelector('.admin-sidebar');
-              if (sidebar?.classList.contains('collapsed')) {
-                const event = new CustomEvent('toggle-admin-sidebar');
-                window.dispatchEvent(event);
-              }
-            }}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Menu className="w-4 h-4" />
-            <span className="font-medium capitalize">{activeTab.replace('-', ' ')}</span>
-          </button>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+      <div className="flex-1 container mx-auto p-4 md:p-6 xl:pr-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
-        {canAccessRequests && <TabsContent value="requests" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessRequests && <TabsContent value="requests" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <DirectAccountRequestManagement />
             </Suspense>
           </TabsContent>}
 
-        {canAccessUsers && <TabsContent value="users" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessUsers && <TabsContent value="users" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <ResponsiveUserManagementTable />
             </Suspense>
           </TabsContent>}
 
-        {canAccessSignals && <TabsContent value="signals" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessSignals && <TabsContent value="signals" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <AdminSignalManagement />
             </Suspense>
           </TabsContent>}
 
-        {canAccessNotifications && <TabsContent value="notifications" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessNotifications && <TabsContent value="notifications" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <NotificationTestPanel />
               <NotificationAnalyticsDashboard />
@@ -132,20 +112,20 @@ const AdminPanel: React.FC = () => {
             </Suspense>
           </TabsContent>}
 
-        {canAccessSystem && <TabsContent value="system" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessSystem && <TabsContent value="system" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <SystemMonitoring />
             </Suspense>
           </TabsContent>}
 
-        {canAccessRateLimits && <TabsContent value="rate-limits" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessRateLimits && <TabsContent value="rate-limits" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <NotificationRateLimitManager />
               <RateLimitManager />
             </Suspense>
           </TabsContent>}
 
-        {canAccessSettings && <TabsContent value="settings" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessSettings && <TabsContent value="settings" className="space-y-4">
             <div className="text-center py-12">
               <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
@@ -153,19 +133,19 @@ const AdminPanel: React.FC = () => {
             </div>
           </TabsContent>}
 
-        {canAccessDiagnostics && <TabsContent value="diagnostics" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessDiagnostics && <TabsContent value="diagnostics" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <RealtimeDiagnostics />
             </Suspense>
           </TabsContent>}
 
-        {canAccessOptimization && <TabsContent value="optimization" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessOptimization && <TabsContent value="optimization" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <RealtimeOptimizationDashboard />
             </Suspense>
           </TabsContent>}
 
-        {canAccessMonitoring && <TabsContent value="monitoring" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessMonitoring && <TabsContent value="monitoring" className="space-y-4">
             <Tabs defaultValue="cost" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="cost">Cost Tracking</TabsTrigger>
@@ -187,7 +167,7 @@ const AdminPanel: React.FC = () => {
               
               <TabsContent value="health" className="space-y-4">
                 <Suspense fallback={<LoadingFallback />}>
-                  <Card className="glass-effect border-border/50 p-6">
+                  <Card className="p-6">
                     <WebSocketHealthMonitor />
                   </Card>
                 </Suspense>
@@ -195,7 +175,7 @@ const AdminPanel: React.FC = () => {
             </Tabs>
           </TabsContent>}
 
-        {canAccessDevTools && <TabsContent value="devtools" className="flex-1 overflow-y-auto space-y-4 data-[state=active]:flex data-[state=active]:flex-col">
+        {canAccessDevTools && <TabsContent value="devtools" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
               <DevToolsPanel />
             </Suspense>

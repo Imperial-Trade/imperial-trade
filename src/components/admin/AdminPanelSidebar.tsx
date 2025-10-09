@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { 
-  Users, User, TrendingUp, Bell, Monitor, Clock, 
-  Activity, Sparkles, Server, Settings as SettingsIcon, Code, 
-  Shield, ChevronLeft, ChevronRight 
+  Users, Signal, Bell, Settings, RefreshCw, 
+  Activity, Shield, BarChart3, Code, Menu 
 } from 'lucide-react';
 
 interface AdminPanelSidebarProps {
@@ -42,191 +43,79 @@ export default function AdminPanelSidebar({
   isDevToolsEnabled,
 }: AdminPanelSidebarProps) {
   
-  const [isCollapsed, setIsCollapsed] = useState(true);
-
-  // Auto-collapse on mobile/tablet, expand on desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1280) {
-        setIsCollapsed(true);
-      } else {
-        setIsCollapsed(false);
-      }
-    };
-
-    handleResize(); // Set initial state
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Adjust main content margin based on sidebar state (desktop only)
-  useEffect(() => {
-    const adjustMargin = () => {
-      const mainContent = document.getElementById('admin-main-content');
-      if (mainContent) {
-        if (window.innerWidth >= 1280) {
-          mainContent.style.marginRight = isCollapsed ? '80px' : '240px';
-        } else {
-          mainContent.style.marginRight = '0';
-        }
-      }
-    };
-
-    adjustMargin();
-    window.addEventListener('resize', adjustMargin);
-    return () => window.removeEventListener('resize', adjustMargin);
-  }, [isCollapsed]);
-
-  // Prevent body scroll when sidebar is open on mobile
-  useEffect(() => {
-    if (!isCollapsed && window.innerWidth < 1280) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isCollapsed]);
-
-  // Add swipe gesture support for mobile
-  useEffect(() => {
-    if (window.innerWidth >= 1280) return;
-
-    let touchStartX = 0;
-    let touchEndX = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      touchEndX = e.changedTouches[0].screenX;
-      const swipeDistance = touchStartX - touchEndX;
-      const swipeThreshold = 75;
-      
-      // Swipe left to close
-      if (swipeDistance > swipeThreshold && !isCollapsed) {
-        setIsCollapsed(true);
-      }
-      // Swipe right from edge to open (within 50px from right edge)
-      else if (swipeDistance < -swipeThreshold && isCollapsed && touchStartX > window.innerWidth - 50) {
-        setIsCollapsed(false);
-      }
-    };
-
-    const sidebar = document.querySelector('.admin-sidebar');
-    if (sidebar) {
-      sidebar.addEventListener('touchstart', handleTouchStart, { passive: true });
-      sidebar.addEventListener('touchend', handleTouchEnd, { passive: true });
-    }
-
-    return () => {
-      if (sidebar) {
-        sidebar.removeEventListener('touchstart', handleTouchStart);
-        sidebar.removeEventListener('touchend', handleTouchEnd);
-      }
-    };
-  }, [isCollapsed]);
-
-  // Listen for custom toggle event from mobile menu button
-  useEffect(() => {
-    const handleToggle = () => {
-      setIsCollapsed(prev => !prev);
-    };
-
-    window.addEventListener('toggle-admin-sidebar', handleToggle);
-    return () => window.removeEventListener('toggle-admin-sidebar', handleToggle);
-  }, []);
-  
   const navItems = [
     { value: 'requests', label: 'Account Requests', icon: Users, show: canAccessRequests },
-    { value: 'users', label: 'User Management', icon: User, show: canAccessUsers },
-    { value: 'signals', label: 'Trading Signals', icon: TrendingUp, show: canAccessSignals },
+    { value: 'users', label: 'User Management', icon: Users, show: canAccessUsers },
+    { value: 'signals', label: 'Trading Signals', icon: Signal, show: canAccessSignals },
     { value: 'notifications', label: 'Notifications', icon: Bell, show: canAccessNotifications },
-    { value: 'system', label: 'System Monitor', icon: Monitor, show: canAccessSystem },
-    { value: 'rate-limits', label: 'Rate Limits', icon: Clock, show: canAccessRateLimits },
+    { value: 'system', label: 'System Monitor', icon: Settings, show: canAccessSystem },
+    { value: 'rate-limits', label: 'Rate Limits', icon: RefreshCw, show: canAccessRateLimits },
     { value: 'diagnostics', label: 'Diagnostics', icon: Activity, show: canAccessDiagnostics },
-    { value: 'optimization', label: 'Optimization', icon: Sparkles, show: canAccessOptimization },
-    { value: 'monitoring', label: 'Monitoring', icon: Server, show: canAccessMonitoring },
-    { value: 'settings', label: 'Settings', icon: SettingsIcon, show: canAccessSettings },
+    { value: 'optimization', label: 'Optimization', icon: Shield, show: canAccessOptimization },
+    { value: 'monitoring', label: 'Monitoring', icon: BarChart3, show: canAccessMonitoring },
+    { value: 'settings', label: 'Settings', icon: Settings, show: canAccessSettings },
     { value: 'devtools', label: 'Dev Tools', icon: Code, show: canAccessDevTools },
   ].filter(item => item.show);
 
+  const SidebarContent = () => (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-border/50">
+        <Badge variant="outline" className="w-full justify-center py-2 admin-sidebar-badge">
+          <Shield className="w-3 h-3 mr-2" />
+          {userRole} Access
+        </Badge>
+        {isDevToolsEnabled && (
+          <Badge variant="outline" className="w-full justify-center py-2 mt-2 bg-blue-500/10 border-blue-500/30 text-blue-400">
+            <Code className="w-3 h-3 mr-2" />
+            Dev Mode
+          </Badge>
+        )}
+      </div>
+
+      {/* Navigation Items */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.value;
+          
+          return (
+            <button
+              key={item.value}
+              onClick={() => setActiveTab(item.value)}
+              className={`admin-sidebar-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="text-sm font-medium">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+
   return (
     <>
-      {/* Backdrop for mobile when sidebar is open */}
-      {!isCollapsed && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 xl:hidden"
-          onClick={() => setIsCollapsed(true)}
-          aria-hidden="true"
-        />
-      )}
-      
-      {/* Admin Sidebar */}
-      <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-        <nav className="h-full flex flex-col">
-          {/* Header with padding-top for clearance */}
-          <div className="pt-20 px-4 pb-4">
-            <div className={`flex items-center mb-4 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
-              <Shield className="w-8 h-8 shrink-0 text-primary" />
-              {!isCollapsed && (
-                <h2 className="nav-text text-lg font-bold text-foreground ml-3">
-                  {userRole} Access
-                </h2>
-              )}
-            </div>
-            {!isCollapsed && (
-              <>
-                {isDevToolsEnabled && (
-                  <Badge variant="outline" className="w-full justify-center py-2 bg-blue-500/10 border-blue-500/30 text-blue-400 mb-3">
-                    <Code className="w-3 h-3 mr-2" />
-                    <span className="nav-text text-xs">Dev Mode</span>
-                  </Badge>
-                )}
-                <hr className="border-border/50 nav-text" />
-              </>
-            )}
-          </div>
+      {/* MOBILE & TABLET: Hamburger Menu (< 1280px) */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="xl:hidden fixed top-20 right-4 z-50 glass-effect border-border/50 hover:bg-primary/10"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-[280px] p-0 admin-sidebar border-l">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
 
-          {/* Navigation Items */}
-          <ul className="space-y-2 flex-grow overflow-y-auto overflow-x-hidden">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.value;
-              
-              return (
-                <li key={item.value}>
-                  <button
-                    onClick={() => setActiveTab(item.value)}
-                    className={`admin-sidebar-item ${isActive ? 'active' : ''}`}
-                  >
-                    <Icon className="w-6 h-6 shrink-0" />
-                    {!isCollapsed && (
-                      <span className="nav-text text-sm font-medium">{item.label}</span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+      {/* DESKTOP: Fixed Right Sidebar (≥ 1280px) */}
+      <aside className="hidden xl:flex admin-sidebar">
+        <SidebarContent />
       </aside>
-
-      {/* Toggle Button (Circular Chevron) */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className={`admin-toggle-button ${isCollapsed ? 'collapsed' : ''}`}
-        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {isCollapsed ? (
-          <ChevronLeft className="w-6 h-6" />
-        ) : (
-          <ChevronRight className="w-6 h-6" />
-        )}
-      </button>
     </>
   );
 }

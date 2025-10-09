@@ -50,13 +50,16 @@ const WebSocketHealthMonitor = lazy(() => import("@/components/testing/WebSocket
 })));
 
 // Loading fallback component
-const LoadingFallback = () => <Card className="glass-effect border-default">
-    <CardContent className="p-6">
-      <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
+const LoadingFallback = () => (
+  <Card className="glass-effect border-border/50">
+    <CardContent className="p-8">
+      <div className="flex flex-col items-center justify-center h-32 space-y-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     </CardContent>
-  </Card>;
+  </Card>
+);
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
   const {
@@ -167,7 +170,7 @@ const AdminPanel: React.FC = () => {
               
               <TabsContent value="health" className="space-y-4">
                 <Suspense fallback={<LoadingFallback />}>
-                  <Card className="p-6">
+                  <Card className="glass-effect border-border/50 p-6">
                     <WebSocketHealthMonitor />
                   </Card>
                 </Suspense>

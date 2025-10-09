@@ -669,12 +669,36 @@
   -webkit-backdrop-filter: blur(25px) saturate(150%);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
   overflow-y: auto;
 }
 
 .admin-sidebar.collapsed {
   width: 88px;
+}
+
+/* Mobile: Sidebar should overlay content, not push it */
+@media (max-width: 1279px) {
+  .admin-sidebar {
+    z-index: 100;
+  }
+  
+  /* Hide sidebar off-screen when collapsed on mobile */
+  .admin-sidebar.collapsed {
+    transform: translateX(100%);
+  }
+  
+  /* Show sidebar when expanded on mobile */
+  .admin-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+}
+
+/* Desktop: Sidebar is always visible, just changes width */
+@media (min-width: 1280px) {
+  .admin-sidebar {
+    transform: translateX(0) !important;
+  }
 }
 
 /* Light mode variant */
@@ -715,9 +739,12 @@ body:not(.dark) .admin-sidebar {
 
 /* Active State - BLUE (matching reference) */
 .admin-sidebar-item.active {
-  background-color: rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.2) 0%, 
+    rgba(59, 130, 246, 0.1) 100%);
   color: #fafafa;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 /* Light mode active state */
@@ -750,6 +777,7 @@ body:not(.dark) .admin-sidebar-item.active {
   right: 20px;
   z-index: 50;
   background-color: rgba(28, 28, 32, 0.8);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fafafa;
   width: 48px;
@@ -760,19 +788,29 @@ body:not(.dark) .admin-sidebar-item.active {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
+}
+
+/* Collapsed state - button shifts right */
+.admin-toggle-button.collapsed {
   transform: translateX(12px);
 }
 
-.admin-sidebar:not(.collapsed) ~ .admin-toggle-button {
+/* Expanded state - button aligns with expanded sidebar edge */
+.admin-toggle-button:not(.collapsed) {
   transform: translateX(0);
 }
 
 .admin-toggle-button:hover {
   background-color: rgba(50, 50, 55, 0.9);
+  transform: scale(1.1);
+}
+
+/* Maintain translateX on hover based on collapsed state */
+.admin-toggle-button.collapsed:hover {
   transform: scale(1.1) translateX(12px);
 }
 
-.admin-sidebar:not(.collapsed) ~ .admin-toggle-button:hover {
+.admin-toggle-button:not(.collapsed):hover {
   transform: scale(1.1) translateX(0);
 }
 

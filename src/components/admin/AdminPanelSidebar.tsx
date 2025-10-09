@@ -59,12 +59,23 @@ export default function AdminPanelSidebar({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Adjust main content margin based on sidebar state
+  // Adjust main content margin based on sidebar state (desktop only)
   useEffect(() => {
-    const mainContent = document.getElementById('admin-main-content');
-    if (mainContent) {
-      mainContent.style.marginRight = isCollapsed ? '88px' : '280px';
-    }
+    const adjustMargin = () => {
+      const mainContent = document.getElementById('admin-main-content');
+      if (mainContent) {
+        if (window.innerWidth >= 1280) {
+          mainContent.style.marginRight = isCollapsed ? '88px' : '280px';
+        } else {
+          // On mobile/tablet, remove margin so content uses full width
+          mainContent.style.marginRight = '0';
+        }
+      }
+    };
+
+    adjustMargin();
+    window.addEventListener('resize', adjustMargin);
+    return () => window.removeEventListener('resize', adjustMargin);
   }, [isCollapsed]);
   
   const navItems = [
@@ -83,6 +94,15 @@ export default function AdminPanelSidebar({
 
   return (
     <>
+      {/* Backdrop for mobile when sidebar is open */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 xl:hidden"
+          onClick={() => setIsCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+      
       {/* Admin Sidebar */}
       <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <nav className="h-full flex flex-col">

@@ -58,7 +58,7 @@ export default function AdminPanelSidebar({
   return (
     <aside 
       id="admin-sidebar" 
-      className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}
+      className={isCollapsed ? 'collapsed' : ''}
     >
       <nav className="h-full flex flex-col">
         {/* Header */}

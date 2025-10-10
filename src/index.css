@@ -780,6 +780,18 @@
     margin-right: 120px !important;
   }
   
+  /* Ensure sidebar is always accessible with touch */
+  #admin-sidebar {
+    touch-action: pan-y; /* Allow vertical scrolling */
+  }
+  
+  /* Larger touch target for mobile toggle button */
+  #sidebar-toggle {
+    width: 56px !important; /* Larger for touch */
+    height: 56px !important;
+    transform: translateX(12px);
+  }
+  
   #admin-dashboard-card {
     transform: scale(1) !important;
   }

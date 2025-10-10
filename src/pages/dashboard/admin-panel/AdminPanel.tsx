@@ -109,14 +109,18 @@ const AdminPanel: React.FC = () => {
     
     if (!mainContent || !dashboardCard) return;
     
-    if (isDesktop && !isCollapsed) {
+    // Measure window size directly at mount (matching HTML DOMContentLoaded)
+    const isInitialDesktop = window.innerWidth > 768;
+    const shouldBeOpen = isInitialDesktop; // Open on desktop, collapsed on mobile
+    
+    if (isInitialDesktop && shouldBeOpen) {
       mainContent.classList.add('shifted');
       dashboardCard.classList.add('shifted');
     } else {
       mainContent.classList.remove('shifted');
       dashboardCard.classList.remove('shifted');
     }
-  }, []); // Run once on mount
+  }, []); // Runs once on mount, measuring window directly
 
   // Dynamic class management like HTML JavaScript
   useEffect(() => {

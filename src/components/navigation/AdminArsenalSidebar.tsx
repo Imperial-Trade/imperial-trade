@@ -94,7 +94,7 @@ const AdminToolWidget = ({ tool }: { tool: AdminTool }) => {
   return (
     <motion.button
       onClick={() => navigate(tool.route)}
-      className="col-span-1 h-28 bg-background/50 backdrop-blur-md rounded-xl p-3 shadow-lg border border-border hover:border-primary/50 transition-all"
+      className="col-span-1 h-28 bg-slate-800/40 backdrop-blur-md rounded-xl p-3 shadow-lg border border-slate-600/40 hover:border-slate-500/60 hover:shadow-xl transition-all"
       whileHover={{
         y: -4,
         scale: 1.03,
@@ -108,7 +108,7 @@ const AdminToolWidget = ({ tool }: { tool: AdminTool }) => {
           </h3>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <Icon className="w-8 h-8 text-primary" />
+          <Icon className="w-8 h-8 text-slate-300" />
         </div>
       </div>
     </motion.button>
@@ -188,12 +188,12 @@ export function AdminArsenalSidebar() {
           whileTap={{ opacity: 0.7 }}
         >
           <div 
-            className="bg-primary/20 backdrop-blur-md px-2 py-6 rounded-l-lg border-l border-t border-b border-border hover:bg-primary/30 transition-colors"
+            className="bg-slate-800/60 backdrop-blur-md px-3 py-6 rounded-l-lg border-l border-t border-b border-slate-600/50 hover:bg-slate-700/70 transition-colors"
             style={{ writingMode: 'vertical-rl' }}
           >
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="font-bold tracking-wider text-sm">ADMIN</span>
+              <Shield className="w-4 h-4 text-white" />
+              <span className="font-bold tracking-wider text-sm text-white">ADMIN</span>
             </div>
           </div>
         </motion.button>
@@ -201,7 +201,7 @@ export function AdminArsenalSidebar() {
       
       {/* Main Sidebar Panel */}
       <motion.aside
-        className={`fixed right-0 top-20 h-[calc(100vh-5rem)] z-[60] bg-background/95 backdrop-blur-xl border-l border-border shadow-2xl ${
+        className={`fixed right-0 top-20 h-[calc(100vh-5rem)] z-[60] bg-slate-900/90 backdrop-blur-xl border-l border-slate-700/50 shadow-2xl ${
           isMobile ? 'w-[90vw]' : 'w-80'
         }`}
         initial={{ x: "100%" }}
@@ -223,7 +223,7 @@ export function AdminArsenalSidebar() {
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Shield className="w-6 h-6 text-primary" />
+              <Shield className="w-6 h-6 text-slate-300" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Admin Arsenal</h1>
                 <p className="text-sm text-muted-foreground">Control Panel</p>

@@ -59,7 +59,9 @@ const LoadingFallback = () => <Card className="glass-effect border-default">
   </Card>;
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
   
   const {
@@ -100,12 +102,30 @@ const AdminPanel: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Initialize desktop state on mount (like DOMContentLoaded in HTML)
+  useEffect(() => {
+    const mainContent = document.getElementById('admin-main-content');
+    const dashboardCard = document.getElementById('admin-dashboard-card');
+    
+    if (!mainContent || !dashboardCard) return;
+    
+    if (isDesktop && !isCollapsed) {
+      mainContent.classList.add('shifted');
+      dashboardCard.classList.add('shifted');
+    } else {
+      mainContent.classList.remove('shifted');
+      dashboardCard.classList.remove('shifted');
+    }
+  }, []); // Run once on mount
+
   // Dynamic class management like HTML JavaScript
   useEffect(() => {
     const mainContent = document.getElementById('admin-main-content');
     const dashboardCard = document.getElementById('admin-dashboard-card');
     
-    if (mainContent && dashboardCard && isDesktop) {
+    if (!mainContent || !dashboardCard) return;
+    
+    if (isDesktop) {
       if (isCollapsed) {
         mainContent.classList.remove('shifted');
         dashboardCard.classList.remove('shifted');
@@ -113,7 +133,7 @@ const AdminPanel: React.FC = () => {
         mainContent.classList.add('shifted');
         dashboardCard.classList.add('shifted');
       }
-    } else if (mainContent && dashboardCard && !isDesktop) {
+    } else {
       mainContent.classList.remove('shifted');
       dashboardCard.classList.remove('shifted');
     }
@@ -124,9 +144,7 @@ const AdminPanel: React.FC = () => {
       {/* Main Content with Dynamic Margin */}
       <div 
         id="admin-main-content"
-        className={`w-full min-h-screen p-4 md:p-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
-          isDesktop ? (isCollapsed ? 'md:mr-[120px]' : '') : ''
-        }`}
+        className="w-full min-h-screen p-4 md:p-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
       >
         <div 
           id="admin-dashboard-card"
@@ -236,13 +254,16 @@ const AdminPanel: React.FC = () => {
       <button
         id="sidebar-toggle"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="hover:scale-110"
+        className="transition-transform duration-300 ease-in-out hover:scale-110"
+        style={{
+          transform: isCollapsed ? 'translateX(12px)' : 'translateX(0)',
+        }}
         title="Toggle Sidebar"
       >
         {isCollapsed ? (
-          <ChevronLeft className="w-6 h-6 text-gray-300" />
-        ) : (
           <ChevronRight className="w-6 h-6 text-gray-300" />
+        ) : (
+          <ChevronLeft className="w-6 h-6 text-gray-300" />
         )}
       </button>
 

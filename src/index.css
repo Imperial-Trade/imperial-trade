@@ -706,6 +706,7 @@
 
 #sidebar-toggle:hover {
   background-color: rgba(50, 50, 55, 0.9);
+  transform: scale(1.1) !important; /* Force scale regardless of translateX */
 }
 
 /* Main Content Transitions */

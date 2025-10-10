@@ -433,73 +433,78 @@ export function AdminSignalManagement() {
   }} transition={{
     delay: index * 0.05
   }}>
-      <Card className="hover:shadow-lg transition-all duration-300">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">{alert.assetName}</h3>
-                  <Badge variant="outline" className="text-xs">
-                    {alert.tradermadeSymbol}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  {getStatusBadge(alert.status)}
-                  {getPerformanceBadge(alert)}
-                  <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
-                    {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                    {alert.tradeType.toUpperCase()}
-                  </Badge>
-                  {alert.creator && <Badge variant="secondary" className="text-xs">
-                      by {alert.creator.display_name || 'Unknown'}
-                    </Badge>}
-                </div>
+      <Card className="hover:shadow-lg transition-all duration-300 w-full max-w-full overflow-hidden">
+        <CardContent className="p-4 sm:p-6 w-full max-w-full">
+          {/* Mobile-First Layout: Stack everything vertically on mobile */}
+          <div className="flex flex-col gap-4 w-full">
+            
+            {/* Header Section: Asset Name and Symbol */}
+            <div className="flex flex-col gap-2 w-full min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-semibold truncate">{alert.assetName}</h3>
+                <Badge variant="outline" className="text-xs flex-shrink-0">
+                  {alert.tradermadeSymbol}
+                </Badge>
+              </div>
+              
+              {/* Status Badges Row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {getStatusBadge(alert.status)}
+                {getPerformanceBadge(alert)}
+                <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                  {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                  <span className="text-xs">{alert.tradeType.toUpperCase()}</span>
+                </Badge>
+                {alert.creator && <Badge variant="secondary" className="text-xs truncate max-w-[150px]">
+                    by {alert.creator.display_name || 'Unknown'}
+                  </Badge>}
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Entry Price</p>
-                <p className="font-semibold">${alert.entryPrice}</p>
+            {/* Price Details Grid - Responsive 2/3 columns */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full bg-muted/30 rounded-lg p-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs text-muted-foreground truncate">Entry Price</p>
+                <p className="font-semibold text-sm sm:text-base truncate">${alert.entryPrice}</p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Stop Loss</p>
-                <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs text-muted-foreground truncate">Stop Loss</p>
+                <p className="font-semibold text-sm sm:text-base text-red-400 truncate">${alert.stopLoss}</p>
               </div>
-              {alert.tp1 && <div className="text-right">
-                  <p className="text-sm text-muted-foreground">TP1</p>
-                  <p className="font-semibold text-green-400">${alert.tp1}</p>
+              {alert.tp1 && <div className="flex flex-col gap-1 min-w-0 col-span-2 sm:col-span-1">
+                  <p className="text-xs text-muted-foreground truncate">TP1</p>
+                  <p className="font-semibold text-sm sm:text-base text-green-400 truncate">${alert.tp1}</p>
                 </div>}
             </div>
-          </div>
 
-          {alert.notes && <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <p className="text-sm">{alert.notes}</p>
-            </div>}
+            {/* Notes Section */}
+            {alert.notes && <div className="p-3 bg-muted/50 rounded-lg w-full max-w-full overflow-hidden">
+                <p className="text-xs sm:text-sm break-words">{alert.notes}</p>
+              </div>}
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
-              <span>•</span>
-              <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+            {/* Timestamps - Stack on mobile */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-muted-foreground pt-3 border-t">
+              <span className="truncate">Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="truncate">Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* Action Buttons - Responsive layout */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 w-full">
               {/* PENDING SIGNALS */}
               {alert.status === 'pending' && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)}>
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit Notes
+                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)} className="w-full sm:w-auto">
+                    <Eye className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">View</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
+                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)} className="w-full sm:w-auto">
+                    <Edit className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Edit Notes</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Close
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                    <XCircle className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Close</span>
                   </Button>
                 </>
               )}
@@ -507,17 +512,17 @@ export function AdminSignalManagement() {
               {/* ACTIVE/PARTIALLY_PROFITED SIGNALS */}
               {(alert.status === 'active' || alert.status === 'partially_profited') && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)}>
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit Notes
+                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)} className="w-full sm:w-auto">
+                    <Eye className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">View</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
+                  <Button variant="outline" size="sm" onClick={() => setEditingNotesAlert(alert)} className="w-full sm:w-auto">
+                    <Edit className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Edit Notes</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Close
+                  <Button variant="outline" size="sm" onClick={() => handleCloseSignal(alert.id)} className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                    <XCircle className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Close</span>
                   </Button>
                 </>
               )}
@@ -525,13 +530,13 @@ export function AdminSignalManagement() {
               {/* CLOSED SIGNALS */}
               {alert.status === 'closed' && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)}>
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
+                  <Button variant="outline" size="sm" onClick={() => setViewingAlert(alert)} className="w-full sm:w-auto">
+                    <Eye className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">View</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDeleteSignal(alert.id)} className="text-red-500 hover:text-red-600">
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
+                  <Button variant="outline" size="sm" onClick={() => handleDeleteSignal(alert.id)} className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                    <Trash2 className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Delete</span>
                   </Button>
                 </>
               )}

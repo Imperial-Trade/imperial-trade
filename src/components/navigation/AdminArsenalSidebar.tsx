@@ -182,13 +182,10 @@ export function AdminArsenalSidebar() {
       {/* Handle/Tab - visible when closed */}
       {!isOpen && (
         <motion.button
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-[60] cursor-grab active:cursor-grabbing"
+          className="fixed right-0 top-1/2 -translate-y-1/2 z-[60] cursor-pointer"
           onClick={() => setIsOpen(true)}
-          drag="x"
-          dragConstraints={{ left: -200, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
           whileHover={{ paddingRight: '0.75rem' }}
+          whileTap={{ scale: 0.95 }}
         >
           <div 
             className="bg-primary/20 backdrop-blur-md px-2 py-6 rounded-l-lg border-l border-t border-b border-border hover:bg-primary/30 transition-colors"

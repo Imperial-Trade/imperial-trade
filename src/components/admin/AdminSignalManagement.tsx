@@ -508,7 +508,7 @@ export function AdminSignalManagement() {
 
       {/* Filters */}
       <Tabs defaultValue="my-signals" className="w-full">
-        <div className="flex items-center p-1 mb-6 rounded-full bg-slate-800/60 backdrop-blur-sm border border-slate-700 flex-wrap gap-1">
+        <TabsList className="flex items-center p-1 mb-6 rounded-full bg-slate-800/60 backdrop-blur-sm border border-slate-700 flex-wrap gap-1 w-full h-auto">
           <TabsTrigger 
             value="my-signals" 
             className="flex-1 min-w-[80px] text-center text-[13px] py-2 px-2 rounded-full font-semibold text-gray-400 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
@@ -533,7 +533,7 @@ export function AdminSignalManagement() {
           >
             Closed <span className="font-normal text-gray-500 data-[state=active]:text-gray-200">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
           </TabsTrigger>
-        </div>
+        </TabsList>
 
         {/* Search and Refresh */}
         <div className="flex gap-4 mb-6">

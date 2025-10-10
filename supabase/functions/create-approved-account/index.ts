@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { email, accountRequestId } = await req.json()
+    const { email, accountRequestId, password } = await req.json()
 
     if (!email || !accountRequestId) {
       return new Response(
@@ -26,7 +26,10 @@ serve(async (req) => {
       )
     }
 
-    console.log('Creating account for approved user:', email)
+    // Password is optional - if not provided, we'll generate one and send reset email
+    const shouldSendResetEmail = !password
+
+    console.log('Creating account for approved user:', email, 'with provided password:', !!password)
 
     // Get the account request to verify it's approved
     const { data: accountRequest, error: requestError } = await supabaseAdmin
@@ -45,22 +48,21 @@ serve(async (req) => {
       )
     }
 
-    // Check if password_hash exists
-    if (!accountRequest.password_hash) {
+    // Check if password_hash exists (backwards compatibility - older requests may not have it)
+    if (!accountRequest.password_hash && !password) {
       return new Response(
-        JSON.stringify({ error: 'No password found for this account request' }),
+        JSON.stringify({ error: 'No password found for this account request. Please contact support.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Create a temporary strong password for the Supabase auth account
-    // User will need to use password reset to set their own password
-    const tempPassword = crypto.randomUUID() + crypto.randomUUID()
+    // Use provided password or generate temporary one
+    const accountPassword = password || (crypto.randomUUID() + crypto.randomUUID())
 
-    // Create the user in Supabase Auth
+    // Create the user in Supabase Auth with actual password
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
-      password: tempPassword,
+      password: accountPassword,
       email_confirm: true,
       user_metadata: {
         full_name: accountRequest.full_name,
@@ -78,21 +80,23 @@ serve(async (req) => {
 
     console.log('User created successfully:', authData.user.id)
 
-    // Send password reset email so user can set their own password
-    const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email: email.toLowerCase().trim(),
-    })
+    // Only send password reset email if no password was provided
+    if (shouldSendResetEmail) {
+      const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email.toLowerCase().trim(),
+      })
 
-    if (resetError) {
-      console.error('Error sending password reset:', resetError)
+      if (resetError) {
+        console.error('Error sending password reset:', resetError)
+      }
     }
 
-    // Update the account request to mark password_hash as used
+    // Don't clear password_hash - user needs it to login
+    // Just update the timestamp
     await supabaseAdmin
       .from('account_requests')
       .update({ 
-        password_hash: null, // Clear it for security
         updated_at: new Date().toISOString()
       })
       .eq('id', accountRequestId)
@@ -100,7 +104,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Account created successfully. Check your email for password reset link.',
+        message: shouldSendResetEmail 
+          ? 'Account created successfully. Check your email for password setup instructions.'
+          : 'Account created successfully. You can now sign in with your password.',
         userId: authData.user.id
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

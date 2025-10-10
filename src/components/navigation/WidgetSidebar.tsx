@@ -605,7 +605,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 {/* Profile Section */}
                 <motion.button
                   className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  onClick={() => {
+                    setShowProfileDropdown(!showProfileDropdown);
+                  }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

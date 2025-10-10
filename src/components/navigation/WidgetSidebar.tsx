@@ -605,14 +605,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 {/* Profile Section */}
                 <motion.button
                   className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                  onClick={() => {
-                    if (canAccessAdminPanel) {
-                      navigate('/dashboard/admin');
-                      setShowProfileDropdown(false);
-                    } else {
-                      setShowProfileDropdown(!showProfileDropdown);
-                    }
-                  }}
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -660,7 +653,74 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               </div>
             </motion.div>
 
-            {/* Profile Dropdown - Only for regular users */}
+            {/* Profile Dropdown - Admin users */}
+            {showProfileDropdown && canAccessAdminPanel && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
+              >
+                <div className="p-1 sm:p-2">
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      navigate("/dashboard/admin");
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-primary/20 dark:hover:bg-primary/30 rounded-lg transition-all duration-200 border border-transparent hover:border-primary/30"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                    <span className="text-foreground text-xs sm:text-sm font-medium">Admin Panel</span>
+                  </motion.button>
+
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      navigate("/dashboard/advanced-tools");
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-primary/20 dark:hover:bg-primary/30 rounded-lg transition-all duration-200 border border-transparent hover:border-primary/30"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                    <span className="text-foreground text-xs sm:text-sm font-medium">Admin Tools</span>
+                  </motion.button>
+
+                  <div className="my-1 h-px bg-white/10 dark:bg-white/5" />
+
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      navigate("/dashboard/settings");
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
+                    <span className="text-foreground text-xs sm:text-sm">Settings</span>
+                  </motion.button>
+
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      handleSignOut();
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm">Sign Out</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Profile Dropdown - Regular users */}
             {showProfileDropdown && !canAccessAdminPanel && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}

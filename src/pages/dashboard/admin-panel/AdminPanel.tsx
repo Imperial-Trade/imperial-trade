@@ -111,12 +111,14 @@ const AdminPanel: React.FC = () => {
     
     // Measure window size directly at mount (matching HTML DOMContentLoaded)
     const isInitialDesktop = window.innerWidth > 768;
-    const shouldBeOpen = isInitialDesktop; // Open on desktop, collapsed on mobile
+    const isInitialCollapsed = !isInitialDesktop; // Collapsed on mobile, open on desktop
     
-    if (isInitialDesktop && shouldBeOpen) {
+    if (isInitialCollapsed) {
+      // Apply .shifted class when COLLAPSED
       mainContent.classList.add('shifted');
       dashboardCard.classList.add('shifted');
     } else {
+      // NO class when OPEN (default CSS state)
       mainContent.classList.remove('shifted');
       dashboardCard.classList.remove('shifted');
     }
@@ -131,15 +133,18 @@ const AdminPanel: React.FC = () => {
     
     if (isDesktop) {
       if (isCollapsed) {
-        mainContent.classList.remove('shifted');
-        dashboardCard.classList.remove('shifted');
-      } else {
+        // When COLLAPSED, apply .shifted class
         mainContent.classList.add('shifted');
         dashboardCard.classList.add('shifted');
+      } else {
+        // When OPEN, remove .shifted class (default CSS state)
+        mainContent.classList.remove('shifted');
+        dashboardCard.classList.remove('shifted');
       }
     } else {
-      mainContent.classList.remove('shifted');
-      dashboardCard.classList.remove('shifted');
+      // Mobile: always collapsed, always shifted
+      mainContent.classList.add('shifted');
+      dashboardCard.classList.add('shifted');
     }
   }, [isCollapsed, isDesktop]);
 

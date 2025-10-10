@@ -721,15 +721,19 @@
 /* Desktop: Main content margin adjustments */
 @media (min-width: 768px) {
   #admin-main-content {
-    margin-right: 120px; /* Collapsed sidebar + gap */
+    margin-right: 312px; /* DEFAULT: Open sidebar (280px) + gap (32px) */
   }
 
   #admin-main-content.shifted {
-    margin-right: 312px; /* Open sidebar + gap */
+    margin-right: 120px; /* SHIFTED: Collapsed sidebar (88px) + gap (32px) */
+  }
+
+  #admin-dashboard-card {
+    transform: scale(0.95); /* DEFAULT: Zoom out when sidebar open */
   }
 
   #admin-dashboard-card.shifted {
-    transform: scale(0.95); /* Zoom out when sidebar open */
+    transform: scale(1); /* SHIFTED: Normal size when collapsed */
   }
 }
 

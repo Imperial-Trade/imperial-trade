@@ -658,9 +658,9 @@
 /* Sidebar Container */
 #admin-sidebar {
   position: fixed;
-  top: 0;
+  top: 5rem; /* 80px - height of SharedHeader navigation */
   right: 0;
-  height: 100vh;
+  height: calc(100vh - 5rem); /* Full height minus nav bar */
   width: 280px;
   z-index: 50;
   transform: translateX(0);
@@ -689,7 +689,7 @@
 /* Sidebar Toggle Button */
 #sidebar-toggle {
   position: fixed;
-  top: 2rem;
+  top: calc(5rem + 1rem); /* Nav height (80px) + spacing (16px) = 96px */
   right: 20px;
   z-index: 100;
   width: 48px;

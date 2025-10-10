@@ -153,7 +153,7 @@ const AdminPanel: React.FC = () => {
       {/* Main Content with Dynamic Margin */}
       <div 
         id="admin-main-content"
-        className="w-full min-h-screen p-4 md:p-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+        className="w-full min-h-screen pt-20 p-4 md:p-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
       >
         <div 
           id="admin-dashboard-card"

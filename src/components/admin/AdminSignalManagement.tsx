@@ -576,177 +576,209 @@ export function AdminSignalManagement() {
           </Button>
         </div>
 
-        {/* Analytics Cards - now showing admin's own signals with premium design */}
+        {/* Analytics Cards - Modern Glassmorphism Design */}
         {analytics && <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ staggerChildren: 0.1 }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
           >
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">My Signals</p>
-                      <p className="text-2xl font-bold">{analytics.total_signals}</p>
+            {/* My Signals Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-transparent backdrop-blur-xl border border-blue-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">My Signals</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-foreground truncate">{analytics.total_signals}</p>
                     </div>
-                    <div className="p-3 bg-blue-500/20 rounded-full">
-                      <Signal className="w-5 h-5 text-blue-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Active</p>
-                      <p className="text-2xl font-bold text-green-400">{analytics.active_signals}</p>
-                    </div>
-                    <div className="p-3 bg-green-500/20 rounded-full">
-                      <Clock className="w-5 h-5 text-green-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-blue-500/20 rounded-xl backdrop-blur-sm">
+                      <Signal className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Closed</p>
-                      <p className="text-2xl font-bold text-blue-400">{analytics.closed_signals}</p>
+            {/* Active Signals Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500/20 via-green-500/10 to-transparent backdrop-blur-xl border border-green-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Active</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-green-400 truncate">{analytics.active_signals}</p>
                     </div>
-                    <div className="p-3 bg-blue-500/20 rounded-full">
-                      <CheckCircle className="w-5 h-5 text-blue-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-green-500/20 rounded-xl backdrop-blur-sm">
+                      <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Win Rate</p>
-                      <p className="text-2xl font-bold text-purple-400">{(analytics.win_rate ?? 0).toFixed(1)}%</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">TP1+ Signals</p>
+            {/* Closed Signals Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-400/20 via-blue-400/10 to-transparent backdrop-blur-xl border border-blue-400/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-300/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Closed</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-blue-400 truncate">{analytics.closed_signals}</p>
                     </div>
-                    <div className="p-3 bg-purple-500/20 rounded-full">
-                      <BarChart3 className="w-5 h-5 text-purple-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-blue-400/20 rounded-xl backdrop-blur-sm">
+                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border-emerald-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pips Gained</p>
-                      <p className="text-2xl font-bold text-emerald-400">+{(analytics.total_pips_gained ?? 0).toFixed(1)}</p>
+            {/* Win Rate Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/20 via-purple-500/10 to-transparent backdrop-blur-xl border border-purple-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Win Rate</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-purple-400 truncate">{(analytics.win_rate ?? 0).toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">TP1+ Signals</p>
                     </div>
-                    <div className="p-3 bg-emerald-500/20 rounded-full">
-                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-purple-500/20 rounded-xl backdrop-blur-sm">
+                      <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-rose-500/10 to-rose-600/10 border-rose-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pips Lost</p>
-                      <p className="text-2xl font-bold text-rose-400">-{(analytics.total_pips_lost ?? 0).toFixed(1)}</p>
+            {/* Pips Gained Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent backdrop-blur-xl border border-emerald-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Pips Gained</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-emerald-400 truncate">+{(analytics.total_pips_gained ?? 0).toFixed(1)}</p>
                     </div>
-                    <div className="p-3 bg-rose-500/20 rounded-full">
-                      <TrendingDown className="w-5 h-5 text-rose-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-emerald-500/20 rounded-xl backdrop-blur-sm">
+                      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border-cyan-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Net Pips</p>
-                      <p className={`text-2xl font-bold ${(analytics.net_pips ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {/* Pips Lost Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-transparent backdrop-blur-xl border border-rose-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-rose-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Pips Lost</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-rose-400 truncate">-{(analytics.total_pips_lost ?? 0).toFixed(1)}</p>
+                    </div>
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-rose-500/20 rounded-xl backdrop-blur-sm">
+                      <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Net Pips Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-transparent backdrop-blur-xl border border-cyan-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">Net Pips</p>
+                      <p className={`text-2xl sm:text-3xl font-bold truncate ${(analytics.net_pips ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {(analytics.net_pips ?? 0) >= 0 ? '+' : ''}{(analytics.net_pips ?? 0).toFixed(1)}
                       </p>
                     </div>
-                    <div className="p-3 bg-cyan-500/20 rounded-full">
-                      <BarChart3 className="w-5 h-5 text-cyan-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-cyan-500/20 rounded-xl backdrop-blur-sm">
+                      <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
 
-            <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">24h Activity</p>
-                      <p className="text-2xl font-bold text-orange-400">{analytics.recent_activity}</p>
+            {/* 24h Activity Card */}
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} transition={{ duration: 0.2 }}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-transparent backdrop-blur-xl border border-orange-500/30 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-400/5 to-transparent" />
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium mb-1">24h Activity</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-orange-400 truncate">{analytics.recent_activity}</p>
                     </div>
-                    <div className="p-3 bg-orange-500/20 rounded-full">
-                      <AlertCircle className="w-5 h-5 text-orange-400" />
+                    <div className="flex-shrink-0 ml-3 p-2.5 sm:p-3 bg-orange-500/20 rounded-xl backdrop-blur-sm">
+                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           </motion.div>}
       </motion.div>
 
-      {/* Search and Filter Controls */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+      {/* Search and Filter Controls - Modern Glassmorphism Design */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-muted/50 via-muted/30 to-transparent backdrop-blur-xl border border-border/50 shadow-lg">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+        <div className="relative p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            {/* Search Input with Icon */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input placeholder="Search your signals by asset or symbol..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10" />
+              <Input 
+                placeholder="Search your signals by asset or symbol..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                className="pl-11 h-11 bg-background/50 backdrop-blur-sm border-border/50 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all"
+              />
             </div>
-            <Button onClick={() => fetchUserSignals()} variant="outline" size="sm">
+            {/* Refresh Button */}
+            <Button 
+              onClick={() => fetchUserSignals()} 
+              variant="outline" 
+              size="default"
+              className="h-11 px-6 rounded-xl bg-background/50 backdrop-blur-sm border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+            >
+              <Shield className="w-4 h-4 mr-2" />
               Refresh
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Signals Tabs */}
+      {/* Signals Tabs - Modern Design */}
       <Tabs defaultValue="all" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">
-            My Signals ({filteredAlerts.length})
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            Pending ({filteredAlerts.filter(a => a.status === 'pending').length})
-          </TabsTrigger>
-          <TabsTrigger value="active">
-            Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})
-          </TabsTrigger>
-          <TabsTrigger value="closed">
-            Closed ({filteredAlerts.filter(a => a.status === 'closed').length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-muted/50 backdrop-blur-sm p-1.5 text-muted-foreground w-full sm:w-auto min-w-full sm:min-w-0">
+            <TabsTrigger value="all" className="rounded-lg px-4 sm:px-6 h-9 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+              My Signals ({filteredAlerts.length})
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-lg px-4 sm:px-6 h-9 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+              Pending ({filteredAlerts.filter(a => a.status === 'pending').length})
+            </TabsTrigger>
+            <TabsTrigger value="active" className="rounded-lg px-4 sm:px-6 h-9 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+              Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="rounded-lg px-4 sm:px-6 h-9 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all whitespace-nowrap">
+              Closed ({filteredAlerts.filter(a => a.status === 'closed').length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all" className="space-y-4">
           <AnimatePresence>

@@ -204,19 +204,20 @@ export function ResponsiveUserManagementTable() {
               </Badge>
             </CardTitle>
             
-            {/* Search and Controls */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
+            {/* Search and Controls - Mobile optimized */}
+            <div className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1 w-full min-w-0">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4 pointer-events-none" />
                   <Input
                     placeholder="Search by name, email, or phone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-surface border-default text-primary"
+                    className="pl-10 bg-surface border-default text-primary w-full h-11"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <CreateUserDialog onCreateUser={createUser} />
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -224,7 +225,7 @@ export function ResponsiveUserManagementTable() {
                         onClick={loadUsers}
                         variant="outline"
                         size="sm"
-                        className="border-default text-secondary hover:bg-surface hover:text-primary"
+                        className="border-default text-secondary hover:bg-surface hover:text-primary h-11 w-11"
                       >
                         <RefreshCw className="w-4 h-4" />
                       </Button>
@@ -234,10 +235,10 @@ export function ResponsiveUserManagementTable() {
                 </div>
               </div>
               
-              {/* Filter Row */}
-              <div className="flex flex-col sm:flex-row gap-2">
+              {/* Filter Row - Full width on mobile */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
+                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary h-11">
                     <SelectValue placeholder="Role Filter" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border-default">
@@ -251,7 +252,7 @@ export function ResponsiveUserManagementTable() {
                 </Select>
                 
                 <Select value={accountStatusFilter} onValueChange={setAccountStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
+                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary h-11">
                     <SelectValue placeholder="Account Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border-default">
@@ -268,10 +269,11 @@ export function ResponsiveUserManagementTable() {
           
           <CardContent className="p-0">
             {filteredUsers.length > 0 ? (
-              <div className="space-y-4 p-4">
-                {/* Desktop Table View */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full">
+              <div className="space-y-0">
+                {/* Desktop Table View - Keep hidden on mobile */}
+                <div className="hidden lg:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px]">
                     <thead>
                       <tr className="border-b border-default">
                         <th className="text-left p-4 text-primary font-medium">User</th>
@@ -356,30 +358,30 @@ export function ResponsiveUserManagementTable() {
                   </table>
                 </div>
 
-                {/* Mobile Card View */}
-                <div className="lg:hidden space-y-4">
+                {/* Mobile Card View - MOBILE OPTIMIZED */}
+                <div className="lg:hidden space-y-3 p-4">
                   {filteredUsers.map((user) => (
-                    <Card key={user.id} className="bg-surface border-default">
+                    <Card key={user.id} className="bg-surface border-default overflow-hidden">
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center flex-shrink-0">
                               <User className="w-5 h-5 text-secondary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-primary truncate">{user.display_name}</div>
-                              <div className="text-sm text-secondary truncate">{user.email}</div>
+                              <div className="font-medium text-primary break-words">{user.display_name}</div>
+                              <div className="text-sm text-secondary break-all">{user.email}</div>
                               {user.phone_number && (
-                                <div className="text-xs text-secondary flex items-center gap-1 mt-1">
-                                  <Phone className="w-3 h-3" />
-                                  {user.phone_number}
+                                <div className="text-xs text-secondary flex items-center gap-1 mt-1 break-all">
+                                  <Phone className="w-3 h-3 flex-shrink-0" />
+                                  <span className="break-all">{user.phone_number}</span>
                                 </div>
                               )}
                             </div>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button variant="ghost" className="h-10 w-10 p-0 flex-shrink-0">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -426,14 +428,14 @@ export function ResponsiveUserManagementTable() {
                           </div>
                         </div>
                         
-                        <div className="mt-3 text-xs text-secondary flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          Created: {new Date(user.created_at).toLocaleDateString()}
+                        <div className="mt-3 text-xs text-secondary flex flex-wrap items-center gap-1">
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          <span className="break-words">Created: {new Date(user.created_at).toLocaleDateString()}</span>
                           {user.last_login && (
                             <>
                               <span className="mx-2">•</span>
-                              <Clock className="w-3 h-3" />
-                              Last login: {new Date(user.last_login).toLocaleDateString()}
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span className="break-words">Last login: {new Date(user.last_login).toLocaleDateString()}</span>
                             </>
                           )}
                         </div>
@@ -441,6 +443,7 @@ export function ResponsiveUserManagementTable() {
                     </Card>
                   ))}
                 </div>
+                  </div>
               </div>
             ) : (
               <div className="text-center py-8">

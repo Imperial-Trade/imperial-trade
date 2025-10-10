@@ -259,14 +259,20 @@ export const DirectAccountRequestManagement: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      {/* Filters - Mobile optimized */}
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input placeholder="Search by name or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 bg-background text-foreground border-border" />
+          <Input 
+            placeholder="Search by name or email..." 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)} 
+            className="pl-10 bg-background text-foreground border-border w-full h-11"
+            style={{ fontSize: '16px' }}
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48 bg-background text-foreground border-border">
+          <SelectTrigger className="w-full sm:w-48 bg-background text-foreground border-border h-11">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent className="bg-background border-border">
@@ -290,15 +296,15 @@ export const DirectAccountRequestManagement: React.FC = () => {
                 </p>
               </div>
             </CardContent>
-          </Card> : filteredRequests.map(request => <Card key={request.id} className="bg-card border-border">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg text-foreground">{request.full_name}</CardTitle>
-                    <p className="text-muted-foreground mt-1">{request.email}</p>
-                    {request.phone_number && <p className="text-sm text-muted-foreground">{request.phone_number}</p>}
+          </Card> : filteredRequests.map(request => <Card key={request.id} className="bg-card border-border overflow-hidden">
+              <CardHeader className="pb-3 px-4 sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base sm:text-lg text-foreground break-words">{request.full_name}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1 break-all">{request.email}</p>
+                    {request.phone_number && <p className="text-xs sm:text-sm text-muted-foreground break-all">{request.phone_number}</p>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {getStatusBadge(request.status)}
                     {request.resubmission_count && request.resubmission_count > 0 && <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50">
                         Resubmitted {request.resubmission_count}x
@@ -306,15 +312,15 @@ export const DirectAccountRequestManagement: React.FC = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <CardContent className="px-4 sm:px-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">Account Type</p>
-                    <p className="text-sm text-muted-foreground capitalize">{request.account_type}</p>
+                    <p className="text-sm text-muted-foreground capitalize break-words">{request.account_type}</p>
                   </div>
                   {request.vt_market_account_number && <div>
                       <p className="text-sm font-medium text-foreground">VT Markets Account</p>
-                      <p className="text-sm text-muted-foreground">{request.vt_market_account_number}</p>
+                      <p className="text-sm text-muted-foreground break-all">{request.vt_market_account_number}</p>
                     </div>}
                   <div>
                     <p className="text-sm font-medium text-foreground">Submitted</p>
@@ -322,26 +328,35 @@ export const DirectAccountRequestManagement: React.FC = () => {
                   </div>
                   {request.website && <div>
                       <p className="text-sm font-medium text-foreground">Website</p>
-                      <p className="text-sm text-muted-foreground">{request.website}</p>
+                      <p className="text-sm text-muted-foreground break-all">{request.website}</p>
                     </div>}
                 </div>
 
                 {request.reason && <div className="mb-4">
                     <p className="text-sm font-medium text-foreground mb-1">Reason for Request</p>
-                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded border">{request.reason}</p>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded border break-words">{request.reason}</p>
                   </div>}
 
                 {request.rejection_reason && <div className="mb-4">
                     <p className="text-sm font-medium text-red-700 mb-1">Rejection Reason</p>
-                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">{request.rejection_reason}</p>
+                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200 break-words">{request.rejection_reason}</p>
                   </div>}
 
-                {request.status === 'pending' && <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={() => handleApprove(request)} disabled={actionLoading === request.id} className="bg-green-600 hover:bg-green-700 text-white flex-1">
+                {request.status === 'pending' && <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button 
+                      onClick={() => handleApprove(request)} 
+                      disabled={actionLoading === request.id} 
+                      className="bg-green-600 hover:bg-green-700 text-white flex-1 h-11 sm:h-10 touch-manipulation"
+                    >
                       <CheckCircle className="w-4 h-4 mr-2" />
                       {actionLoading === request.id ? 'Approving...' : 'Approve'}
                     </Button>
-                    <Button onClick={() => openRejectionDialog(request)} disabled={actionLoading === request.id} variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 flex-1">
+                    <Button 
+                      onClick={() => openRejectionDialog(request)} 
+                      disabled={actionLoading === request.id} 
+                      variant="outline" 
+                      className="border-red-300 text-red-700 hover:bg-red-50 flex-1 h-11 sm:h-10 touch-manipulation"
+                    >
                       <XCircle className="w-4 h-4 mr-2" />
                       Reject
                     </Button>

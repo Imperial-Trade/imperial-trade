@@ -62,14 +62,14 @@ export default function AdminTools() {
   const adminSection = searchParams.get('admin');
 
   return (
-    <div className="min-h-screen w-full bg-background p-8">
+    <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <Shield className="w-10 h-10 text-primary" />
-          <div>
-            <h1 className="text-4xl font-bold text-foreground">Admin Tools</h1>
-            <p className="text-muted-foreground mt-1">
+        {/* Header - Mobile optimized */}
+        <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
+          <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-primary flex-shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words">Admin Tools</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Use the Admin Arsenal sidebar on the right to select a tool
             </p>
           </div>

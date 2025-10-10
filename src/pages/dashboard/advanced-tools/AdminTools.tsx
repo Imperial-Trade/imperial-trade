@@ -46,63 +46,94 @@ const WebSocketHealthMonitor = lazy(() => import("@/components/testing/WebSocket
 const DevToolsPanel = lazy(() => import("@/components/admin/DevToolsPanel").then(m => ({
   default: m.DevToolsPanel
 })));
-const LoadingFallback = () => <Card className="glass-effect border-default">
+
+const LoadingFallback = () => (
+  <Card className="glass-effect border-default">
     <CardContent className="p-6">
       <div className="flex items-center justify-center h-32">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
       </div>
     </CardContent>
-  </Card>;
+  </Card>
+);
+
 export default function AdminTools() {
   const [searchParams] = useSearchParams();
   const adminSection = searchParams.get('admin');
-  return <div className="min-h-screen w-full bg-background p-8">
+
+  return (
+    <div className="min-h-screen w-full bg-background p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        
+        <div className="mb-8 flex items-center gap-4">
+          <Shield className="w-10 h-10 text-primary" />
+          <div>
+            <h1 className="text-4xl font-bold text-foreground">Admin Tools</h1>
+            <p className="text-muted-foreground mt-1">
+              Use the Admin Arsenal sidebar on the right to select a tool
+            </p>
+          </div>
+        </div>
         
         {/* Dynamic content based on selected admin section */}
         <div className="space-y-4">
-          {adminSection === 'requests' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'requests' && (
+            <Suspense fallback={<LoadingFallback />}>
               <DirectAccountRequestManagement />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'users' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'users' && (
+            <Suspense fallback={<LoadingFallback />}>
               <ResponsiveUserManagementTable />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'signals' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'signals' && (
+            <Suspense fallback={<LoadingFallback />}>
               <AdminSignalManagement />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'notifications' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'notifications' && (
+            <Suspense fallback={<LoadingFallback />}>
               <div className="space-y-4">
                 <NotificationTestPanel />
                 <NotificationAnalyticsDashboard />
                 <AdminNotificationSystem />
               </div>
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'monitor' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'monitor' && (
+            <Suspense fallback={<LoadingFallback />}>
               <SystemMonitoring />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'limits' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'limits' && (
+            <Suspense fallback={<LoadingFallback />}>
               <div className="space-y-4">
                 <NotificationRateLimitManager />
                 <RateLimitManager />
               </div>
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'diagnostics' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'diagnostics' && (
+            <Suspense fallback={<LoadingFallback />}>
               <RealtimeDiagnostics />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'optimization' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'optimization' && (
+            <Suspense fallback={<LoadingFallback />}>
               <RealtimeOptimizationDashboard />
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'monitoring' && <Suspense fallback={<LoadingFallback />}>
+          {adminSection === 'monitoring' && (
+            <Suspense fallback={<LoadingFallback />}>
               <div className="space-y-4">
                 <Tabs defaultValue="cost" className="w-full">
                   <TabsList className="grid w-full grid-cols-3">
@@ -126,17 +157,21 @@ export default function AdminTools() {
                   </TabsContent>
                 </Tabs>
               </div>
-            </Suspense>}
+            </Suspense>
+          )}
           
-          {adminSection === 'settings' && <div className="glass-container rounded-3xl p-8 border border-border">
+          {adminSection === 'settings' && (
+            <div className="glass-container rounded-3xl p-8 border border-border">
               <div className="text-center py-12">
                 <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
                 <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
               </div>
-            </div>}
+            </div>
+          )}
           
-          {!adminSection && <div className="glass-container rounded-3xl p-8 border border-border">
+          {!adminSection && (
+            <div className="glass-container rounded-3xl p-8 border border-border">
               <div className="text-center py-12">
                 <Shield className="w-16 h-16 text-primary mx-auto mb-4 opacity-50" />
                 <p className="text-xl text-muted-foreground">
@@ -146,8 +181,10 @@ export default function AdminTools() {
                   Swipe from the right edge or press <kbd className="px-2 py-1 bg-accent rounded text-xs border border-border">Alt+A</kbd>
                 </p>
               </div>
-            </div>}
+            </div>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

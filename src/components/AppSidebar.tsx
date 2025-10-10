@@ -22,7 +22,7 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
 
   // Base responsive classes for all devices
-  const baseClasses = "border-r-0 nav-glass-effect flex flex-col";
+  const baseClasses = "border-r-0 bg-background/95 backdrop-blur-xl flex flex-col";
   const responsiveClasses = "w-full sm:w-80 md:w-72 lg:w-80 xl:w-96";
   const heightClasses = "h-[100vh] max-h-[100vh] min-h-0";
 

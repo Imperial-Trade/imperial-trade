@@ -87,7 +87,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 nav-glass-effect border-b`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
         {/* Logo - Fixed to leftmost position */}
         <div className="fixed top-4 left-6 z-60">
           <Link to={`${baseUrl}/dashboard/home`} className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
         <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
           {/* Desktop Navigation */}
           {!isHeaderCollapsed && (
-            <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+            <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;
               const ButtonComponent = (
@@ -158,7 +158,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                   <span className="sr-only">Open navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-80 nav-glass-effect border-r">
+              <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
                 <SheetHeader className="border-b border-border/50 pb-6">
                   <SheetTitle className="flex items-center gap-2 text-left">
                     <Crown className="h-6 w-6 text-primary" />

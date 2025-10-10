@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { AdvancedTypingEffect } from '@/components/account-request/AdvancedTypingEffect';
-import AppBar from '@/components/layout/AppBar';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAccountStatus } from '@/hooks/useAccountStatus';
 import { useAccountRequestCheck } from '@/hooks/useAccountRequestCheck';
 import { ApprovedAccountFlow } from '@/components/account-request/ApprovedAccountFlow';
@@ -24,18 +24,10 @@ type ViewMode = 'check' | 'status' | 'update' | 'success' | 'result';
 
 export default function AccountRequestStatusPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [email, setEmail] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('check');
   const [currentRequest, setCurrentRequest] = useState<any>(null);
-
-  useEffect(() => {
-    const prefilledEmail = location.state?.prefilledEmail;
-    if (prefilledEmail) {
-      setEmail(prefilledEmail);
-    }
-  }, [location.state]);
 
   const { 
     status, 
@@ -148,10 +140,7 @@ export default function AccountRequestStatusPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Navigation Bar */}
-      <AppBar />
-      
+    <div className="min-h-screen flex">
       {/* Video Background */}
       <video
         autoPlay
@@ -166,9 +155,14 @@ export default function AccountRequestStatusPage() {
         />
       </video>
       <div className="fixed inset-0 bg-gradient-to-t from-black/40 to-transparent z-10"></div>
+
+      {/* Theme Toggle */}
+      <div className="fixed top-6 right-6 z-50">
+        <ThemeToggle />
+      </div>
       
       {/* Main Content */}
-      <div className="relative z-20 w-full flex flex-col md:flex-row gap-8 md:gap-12 items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-20">
+      <div className="relative z-20 w-full flex flex-col md:flex-row gap-8 md:gap-12 items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Left Section - Status Check Form */}
         <div className="w-full md:w-1/2 lg:w-2/5">
 

@@ -72,40 +72,6 @@ serve(async (req) => {
     const requestHash = await hashIdentifier(request.email)
     console.log(`Account request ${status}: email_hash=${requestHash} by approver_hash=${approverHash} request_id=${requestId}`)
 
-    // CRITICAL: Auto-create Supabase auth account for approved users
-    if (status === 'approved') {
-      console.log(`🎯 Approved request ${requestId}, calling create-approved-account...`)
-      
-      try {
-        // Call create-approved-account edge function
-        const createAccountUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-approved-account`
-        const createResponse = await fetch(createAccountUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: request.email,
-            accountRequestId: requestId,
-            password: null, // Trigger password reset email flow
-          }),
-        })
-
-        const createResult = await createResponse.json()
-        
-        if (!createResponse.ok) {
-          console.error('❌ Failed to create auth account:', createResult)
-          // Don't throw - approval still succeeded, account creation can be retried
-        } else {
-          console.log(`✅ Auth account created successfully for: ${requestHash}`)
-        }
-      } catch (createError) {
-        console.error('❌ Error calling create-approved-account:', createError)
-        // Don't throw - approval still succeeded
-      }
-    }
-
     return new Response(
       JSON.stringify({ success: true, data: request }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

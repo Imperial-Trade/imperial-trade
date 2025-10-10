@@ -1,10 +1,10 @@
-import React, { useState, Suspense, lazy, useEffect } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Shield, Settings, RefreshCw, Signal, Bell, Code, Activity, BarChart3 } from "lucide-react";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
-import AdminPanelSidebar from "@/components/admin/AdminPanelSidebar";
 
 // Lazy load heavy admin components to prevent simultaneous hook initialization
 const ResponsiveUserManagementTable = lazy(() => import("@/components/admin/ResponsiveUserManagementTable").then(m => ({
@@ -59,11 +59,6 @@ const LoadingFallback = () => <Card className="glass-effect border-default">
   </Card>;
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
-  const [isCollapsed, setIsCollapsed] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  );
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
-  
   const {
     isAdmin,
     isModerator,
@@ -85,81 +80,67 @@ const AdminPanel: React.FC = () => {
   const canAccessSettings = isAdmin; // Only admins
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
-  // Responsive handler matching HTML behavior
-  useEffect(() => {
-    const handleResize = () => {
-      const desktop = window.innerWidth > 768;
-      setIsDesktop(desktop);
-      
-      if (!desktop) {
-        setIsCollapsed(true);
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Initialize
-    
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Initialize desktop state on mount (like DOMContentLoaded in HTML)
-  useEffect(() => {
-    const mainContent = document.getElementById('admin-main-content');
-    const dashboardCard = document.getElementById('admin-dashboard-card');
-    
-    if (!mainContent || !dashboardCard) return;
-    
-    // Measure window size directly at mount (matching HTML DOMContentLoaded)
-    const isInitialDesktop = window.innerWidth > 768;
-    const isInitialCollapsed = !isInitialDesktop; // Collapsed on mobile, open on desktop
-    
-    if (isInitialCollapsed) {
-      // When COLLAPSED, remove .shifted class (default CSS: 120px margin)
-      mainContent.classList.remove('shifted');
-      dashboardCard.classList.remove('shifted');
-    } else {
-      // When OPEN, apply .shifted class (CSS: 312px margin + scale)
-      mainContent.classList.add('shifted');
-      dashboardCard.classList.add('shifted');
-    }
-  }, []); // Runs once on mount, measuring window directly
-
-  // Dynamic class management like HTML JavaScript
-  useEffect(() => {
-    const mainContent = document.getElementById('admin-main-content');
-    const dashboardCard = document.getElementById('admin-dashboard-card');
-    
-    if (!mainContent || !dashboardCard) return;
-    
-    if (isDesktop) {
-      if (isCollapsed) {
-        // When COLLAPSED, remove .shifted class (default CSS: 120px margin)
-        mainContent.classList.remove('shifted');
-        dashboardCard.classList.remove('shifted');
-      } else {
-        // When OPEN, apply .shifted class (CSS: 312px margin + scale)
-        mainContent.classList.add('shifted');
-        dashboardCard.classList.add('shifted');
-      }
-    } else {
-      // Mobile: always collapsed, no .shifted class (uses default 120px)
-      mainContent.classList.remove('shifted');
-      dashboardCard.classList.remove('shifted');
-    }
-  }, [isCollapsed, isDesktop]);
-
-  return (
-    <>
-      {/* Main Content with Dynamic Margin */}
-      <div 
-        id="admin-main-content"
-        className="w-full min-h-screen pt-4 px-4 pb-4 md:px-6 md:pb-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
-      >
-        <div 
-          id="admin-dashboard-card"
-          className="transition-transform duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+  return <div className="container mx-auto p-6 space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+            <Shield className="w-3 h-3 mr-1" />
+            {isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'} Access
+          </Badge>
+          {canAccessDevTools && <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+              <Code className="w-3 h-3 mr-1" />
+              Dev Tools Enabled
+            </Badge>}
+          
+          <TabsList className="inline-flex w-auto gap-1" style={{
+        gridTemplateColumns: `repeat(${[canAccessRequests, canAccessUsers, canAccessSignals, canAccessNotifications, canAccessSystem, canAccessRateLimits, canAccessDiagnostics, canAccessOptimization, canAccessMonitoring, canAccessSettings, canAccessDevTools].filter(Boolean).length}, minmax(0, 1fr))`
+      }}>
+          {canAccessRequests && <TabsTrigger value="requests" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Requests
+            </TabsTrigger>}
+          {canAccessUsers && <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Users
+            </TabsTrigger>}
+          {canAccessSignals && <TabsTrigger value="signals" className="flex items-center gap-2">
+              <Signal className="w-4 h-4" />
+              Signals
+            </TabsTrigger>}
+          {canAccessNotifications && <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Notifications
+            </TabsTrigger>}
+          {canAccessSystem && <TabsTrigger value="system" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              System
+            </TabsTrigger>}
+          {canAccessRateLimits && <TabsTrigger value="rate-limits" className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Rate Limits
+            </TabsTrigger>}
+          {canAccessDiagnostics && <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Diagnostics
+            </TabsTrigger>}
+          {canAccessOptimization && <TabsTrigger value="optimization" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Optimization
+            </TabsTrigger>}
+          {canAccessMonitoring && <TabsTrigger value="monitoring" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Monitoring
+            </TabsTrigger>}
+          {canAccessSettings && <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Settings
+            </TabsTrigger>}
+          {canAccessDevTools && <TabsTrigger value="devtools" className="flex items-center gap-2">
+              <Code className="w-4 h-4" />
+              Dev Tools
+            </TabsTrigger>}
+          </TabsList>
+        </div>
 
         {canAccessRequests && <TabsContent value="requests" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
@@ -255,47 +236,7 @@ const AdminPanel: React.FC = () => {
               <DevToolsPanel />
             </Suspense>
           </TabsContent>}
-          </Tabs>
-        </div>
-      </div>
-
-      {/* Toggle Button - Always Visible */}
-      <button
-        id="sidebar-toggle"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="transition-transform duration-300 ease-in-out hover:scale-110"
-        style={{
-          transform: isCollapsed ? 'translateX(12px)' : 'translateX(0)',
-        }}
-        title="Toggle Sidebar"
-      >
-        {isCollapsed ? (
-          <ChevronRight className="w-6 h-6 text-gray-300" />
-        ) : (
-          <ChevronLeft className="w-6 h-6 text-gray-300" />
-        )}
-      </button>
-
-      {/* Fixed Right Sidebar */}
-      <AdminPanelSidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isCollapsed={isCollapsed}
-        canAccessRequests={canAccessRequests}
-        canAccessUsers={canAccessUsers}
-        canAccessSignals={canAccessSignals}
-        canAccessNotifications={canAccessNotifications}
-        canAccessSystem={canAccessSystem}
-        canAccessRateLimits={canAccessRateLimits}
-        canAccessDiagnostics={canAccessDiagnostics}
-        canAccessOptimization={canAccessOptimization}
-        canAccessMonitoring={canAccessMonitoring}
-        canAccessSettings={canAccessSettings}
-        canAccessDevTools={canAccessDevTools}
-        userRole={isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'}
-        isDevToolsEnabled={canAccessDevTools}
-      />
-    </>
-  );
+      </Tabs>
+    </div>;
 };
 export default AdminPanel;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, useMotionValue, PanInfo } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -119,7 +119,6 @@ export function AdminArsenalSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const dragX = useMotionValue(0);
   
   const { isAdmin, isEducatorPlus } = useAuthorizationAware();
   const canAccessAdmin = isAdmin || isEducatorPlus;
@@ -175,7 +174,6 @@ export function AdminArsenalSidebar() {
       }
     }
     
-    dragX.set(0);
     setIsDragging(false);
   };
   
@@ -219,12 +217,9 @@ export function AdminArsenalSidebar() {
         drag="x"
         dragConstraints={{ left: -sidebarWidth, right: 0 }}
         dragElastic={0.2}
+        dragMomentum={false}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={handleDragEnd}
-        style={{ 
-          x: dragX,
-          pointerEvents: isOpen ? 'auto' : 'none'
-        }}
       >
         <div className="p-4 h-full overflow-y-auto">
           {/* Header */}

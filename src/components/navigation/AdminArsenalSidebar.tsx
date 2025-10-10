@@ -184,8 +184,8 @@ export function AdminArsenalSidebar() {
         <motion.button
           className="fixed right-0 top-[calc(50vh+2.5rem)] -translate-y-1/2 z-[60] cursor-pointer"
           onClick={() => setIsOpen(true)}
-          whileHover={{ paddingRight: '0.75rem' }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ opacity: 0.9 }}
+          whileTap={{ opacity: 0.7 }}
         >
           <div 
             className="bg-primary/20 backdrop-blur-md px-2 py-6 rounded-l-lg border-l border-t border-b border-border hover:bg-primary/30 transition-colors"

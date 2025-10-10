@@ -66,13 +66,15 @@ export default function AdminTools() {
           right: 0;
           top: 5rem;
           height: calc(100vh - 5rem);
-          background: hsl(var(--card) / 0.6);
-          backdrop-filter: blur(20px);
-          border-left: 1px solid hsl(var(--border) / 0.3);
+          background: hsl(var(--muted) / 0.3);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border-left: 1px solid hsl(var(--border) / 0.5);
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 40;
           overflow-y: auto;
-          box-shadow: -10px 0 30px hsl(var(--background) / 0.3);
+          overflow-x: hidden;
+          box-shadow: -10px 0 40px hsl(var(--background) / 0.4);
         }
 
         .admin-sidebar.expanded {
@@ -105,25 +107,67 @@ export default function AdminTools() {
           margin: 0.5rem;
           border-radius: 0.75rem;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           gap: 1rem;
           border: 1px solid transparent;
+          background: transparent;
+          position: relative;
         }
 
         .admin-nav-item:hover {
-          background: hsl(var(--accent) / 0.1);
-          border-color: hsl(var(--primary) / 0.2);
+          background: hsl(var(--accent) / 0.15);
+          border-color: hsl(var(--primary) / 0.3);
           transform: translateX(-4px);
+          box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
         }
 
         .admin-nav-item.active {
           background: linear-gradient(135deg, hsl(var(--primary) / 0.2) 0%, hsl(var(--accent) / 0.15) 100%);
-          border-color: hsl(var(--primary) / 0.4);
-          box-shadow: 0 4px 12px hsl(var(--primary) / 0.2);
+          border-color: hsl(var(--primary) / 0.5);
+          box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
         }
 
         .admin-nav-item.collapsed {
           justify-content: center;
+          padding: 0.875rem;
+        }
+
+        .admin-nav-item svg {
+          transition: all 0.3s ease;
+        }
+
+        .admin-nav-item.collapsed:hover svg {
+          transform: scale(1.1);
+        }
+        
+        .admin-sidebar.collapsed .admin-nav-item:hover::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          left: -0.5rem;
+          transform: translateX(-100%);
+          padding: 0.625rem 1rem;
+          background: hsl(var(--card) / 0.95);
+          backdrop-filter: blur(10px);
+          border: 1px solid hsl(var(--border) / 0.5);
+          border-radius: 0.5rem;
+          white-space: nowrap;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: hsl(var(--foreground));
+          z-index: 60;
+          box-shadow: 0 4px 16px hsl(var(--background) / 0.4);
+          animation: tooltip-fade-in 0.2s ease forwards;
+        }
+
+        @keyframes tooltip-fade-in {
+          from {
+            opacity: 0;
+            transform: translateX(-90%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-100%);
+          }
         }
 
         .glass-card {
@@ -135,24 +179,50 @@ export default function AdminTools() {
         }
 
         .toggle-button {
-          position: fixed;
-          top: 5.5rem;
-          right: 1rem;
-          z-index: 50;
-          background: hsl(var(--primary) / 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.2));
           backdrop-filter: blur(10px);
-          border: 1px solid hsl(var(--primary) / 0.5);
-          border-radius: 0.5rem;
-          padding: 0.5rem;
+          border: 1px solid hsl(var(--primary) / 0.3);
+          border-radius: 0.75rem;
           cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .toggle-button:hover {
-          background: hsl(var(--primary));
-          transform: scale(1.05);
-          box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
+          background: linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--accent) / 0.3));
+          border-color: hsl(var(--primary) / 0.5);
+          transform: scale(1.02);
+          box-shadow: 0 4px 16px hsl(var(--primary) / 0.3);
+        }
+
+        .toggle-button.collapsed {
+          padding: 0.75rem;
+          justify-content: center;
+        }
+        
+        .admin-sidebar.collapsed::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 3px;
+          height: 100%;
+          background: linear-gradient(180deg, 
+            hsl(var(--primary) / 0.8) 0%, 
+            hsl(var(--accent) / 0.6) 50%, 
+            hsl(var(--primary) / 0.8) 100%
+          );
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .admin-sidebar.collapsed:hover::before {
+          opacity: 1;
         }
 
         @media (max-width: 768px) {
@@ -160,33 +230,63 @@ export default function AdminTools() {
             width: 240px;
           }
           
+          .admin-sidebar.collapsed {
+            width: 72px;
+          }
+          
           .admin-content.sidebar-open {
-            margin-right: 260px;
+            margin-right: 256px;
+            transform: scale(0.98);
+          }
+          
+          .admin-content.sidebar-closed {
+            margin-right: 88px;
+          }
+          
+          .admin-sidebar.collapsed .admin-nav-item:hover::after {
+            display: none;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .admin-sidebar.expanded {
+            width: 200px;
+          }
+          
+          .admin-content.sidebar-open {
+            margin-right: 216px;
           }
         }
       `}</style>
 
       <div className="admin-tools-container min-h-screen w-full relative overflow-hidden">
-        {/* Toggle Button */}
-        <button
-          className="toggle-button"
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {sidebarCollapsed ? (
-            <ChevronLeft className="w-5 h-5 text-primary-foreground" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-primary-foreground" />
-          )}
-        </button>
-
         {/* Admin Sidebar */}
         <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
           <div className="p-4">
+            {/* Toggle Button - FIRST ELEMENT */}
+            <button
+              className={`toggle-button ${sidebarCollapsed ? 'collapsed' : ''}`}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? (
+                <ChevronLeft className="w-6 h-6 text-primary" />
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-sm font-medium text-primary">Collapse</span>
+                  <ChevronRight className="w-5 h-5 text-primary" />
+                </div>
+              )}
+            </button>
+
+            {/* Admin Tools Header */}
             {!sidebarCollapsed && (
-              <h2 className="text-lg font-semibold text-foreground mb-6 px-2">
-                Admin Tools
-              </h2>
+              <>
+                <h2 className="text-lg font-semibold text-foreground mb-4 px-2">
+                  Admin Tools
+                </h2>
+                <hr className="mb-4 border-border/30" />
+              </>
             )}
 
             <nav>
@@ -199,8 +299,13 @@ export default function AdminTools() {
                     key={section.id}
                     className={`admin-nav-item ${isActive ? 'active' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}
                     onClick={() => setActiveSection(section.id)}
+                    data-tooltip={sidebarCollapsed ? section.label : undefined}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <Icon 
+                      className={`${sidebarCollapsed ? 'w-8 h-8' : 'w-6 h-6'} shrink-0 transition-all duration-300 ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`} 
+                    />
                     {!sidebarCollapsed && (
                       <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
                         {section.label}

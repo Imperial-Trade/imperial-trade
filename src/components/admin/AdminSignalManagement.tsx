@@ -375,19 +375,19 @@ export function AdminSignalManagement() {
         </div>
 
         {/* Price Section */}
-        <div className="grid grid-cols-3 text-center gap-2">
-          <div>
-            <p className="text-xs text-muted-foreground">Entry Price</p>
-            <p className="font-semibold text-foreground text-lg">{alert.entryPrice}</p>
+        <div className="grid grid-cols-3 text-center gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Entry Price</p>
+            <p className="font-semibold text-foreground text-sm sm:text-base truncate">{alert.entryPrice}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Stop Loss</p>
-            <p className="font-semibold text-red-400 text-lg">{alert.stopLoss}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Stop Loss</p>
+            <p className="font-semibold text-red-400 text-sm sm:text-base truncate">{alert.stopLoss}</p>
           </div>
           {alert.tp1 && (
-            <div>
-              <p className="text-xs text-muted-foreground">TP1</p>
-              <p className="font-semibold text-green-400 text-lg">{alert.tp1}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">TP1</p>
+              <p className="font-semibold text-green-400 text-sm sm:text-base truncate">{alert.tp1}</p>
             </div>
           )}
         </div>
@@ -458,48 +458,48 @@ export function AdminSignalManagement() {
       {analytics && (
         <div className="glass-card p-5">
           <h2 className="text-lg font-semibold mb-4 text-foreground">Overall Performance</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-4">
             {/* Win Rate */}
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-500/20 p-2 rounded-full">
-                <BarChart3 className="w-6 h-6" stroke="#3b82f6" strokeWidth={2} />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-blue-500/20 p-2 rounded-full flex-shrink-0">
+                <BarChart3 className="w-5 h-5" stroke="#3b82f6" strokeWidth={2} />
               </div>
-              <div>
-                <p className="text-sm text-gray-300">Win Rate</p>
-                <p className="text-xl font-bold text-foreground">{analytics.win_rate.toFixed(1)}%</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Win Rate</p>
+                <p className="text-base sm:text-lg font-bold text-foreground truncate">{analytics.win_rate.toFixed(1)}%</p>
               </div>
             </div>
             
             {/* Pips Gained */}
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-500/20 p-2 rounded-full">
-                <TrendingUp className="w-6 h-6" stroke="#22c55e" strokeWidth={2} />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-green-500/20 p-2 rounded-full flex-shrink-0">
+                <TrendingUp className="w-5 h-5" stroke="#22c55e" strokeWidth={2} />
               </div>
-              <div>
-                <p className="text-sm text-gray-300">Pips Gained</p>
-                <p className="text-xl font-bold text-green-400">+{analytics.total_pips_gained}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Pips Gained</p>
+                <p className="text-base sm:text-lg font-bold text-green-400 truncate">+{analytics.total_pips_gained}</p>
               </div>
             </div>
             
             {/* Total Signals */}
-            <div className="flex items-center space-x-3">
-              <div className="bg-gray-400/20 p-2 rounded-full">
-                <Signal className="w-6 h-6" stroke="#9ca3af" strokeWidth={2} />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-gray-400/20 p-2 rounded-full flex-shrink-0">
+                <Signal className="w-5 h-5" stroke="#9ca3af" strokeWidth={2} />
               </div>
-              <div>
-                <p className="text-sm text-gray-300">Total Signals</p>
-                <p className="text-xl font-bold text-foreground">{analytics.total_signals}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Total Signals</p>
+                <p className="text-base sm:text-lg font-bold text-foreground truncate">{analytics.total_signals}</p>
               </div>
             </div>
             
             {/* Pips Lost */}
-            <div className="flex items-center space-x-3">
-              <div className="bg-red-500/20 p-2 rounded-full">
-                <TrendingDown className="w-6 h-6" stroke="#ef4444" strokeWidth={2} />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-red-500/20 p-2 rounded-full flex-shrink-0">
+                <TrendingDown className="w-5 h-5" stroke="#ef4444" strokeWidth={2} />
               </div>
-              <div>
-                <p className="text-sm text-gray-300">Pips Lost</p>
-                <p className="text-xl font-bold text-red-400">-{analytics.total_pips_lost}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Pips Lost</p>
+                <p className="text-base sm:text-lg font-bold text-red-400 truncate">-{analytics.total_pips_lost}</p>
               </div>
             </div>
           </div>

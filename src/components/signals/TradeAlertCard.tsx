@@ -311,7 +311,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      className={`signal-card-container w-full max-w-full bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
       data-testid={testId}
     >
       {/* Glowing top indicator for closed trades */}
@@ -325,10 +325,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         }`} />
       )}
 
-      <div className="p-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="p-3 sm:p-4 w-full max-w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 w-full">
           {/* Use the new AnimatedStatusHeader component with primitive props */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <AnimatedStatusHeader 
               creator={creator} 
               assetName={alert.asset_name}
@@ -343,56 +343,58 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               updatedDate={alert.updated_date}
             />
           </div>
-        </div>
 
-        {/* Actions - moved to the right */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">
-          {/* Copy Button */}
-          <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                onClick={handleCopyPanelToggle}
-              >
-                <Copy className="w-4 h-4 mr-1" />
-                {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-          
-          {/* Share Button */}
-          <SignalSharingModal 
-            signal={tradeSignal}
-            trigger={
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-              >
-                <Share2 className="w-4 h-4 mr-1" />
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            }
-          />
-          
-          {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
-          {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-            <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
+          {/* Actions - Mobile optimized */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 justify-end sm:justify-start" data-prevent-widget-open="true">
+            {/* Copy Button */}
+            <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
               <CollapsibleTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                  onClick={handleCalculatorToggle}
+                  className="h-9 px-2 sm:px-3 text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                  onClick={handleCopyPanelToggle}
                 >
-                  <Calculator className="w-4 h-4 mr-1" />
-                  {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <Copy className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline ml-1">Copy</span>
+                  {showCopyPanel ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
                 </Button>
               </CollapsibleTrigger>
             </Collapsible>
-          )}
+            
+            {/* Share Button */}
+            <SignalSharingModal 
+              signal={tradeSignal}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-9 px-2 sm:px-3 text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                >
+                  <Share2 className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline ml-1">Share</span>
+                </Button>
+              }
+            />
+            
+            {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
+            {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
+              <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-9 px-2 sm:px-3 text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                    onClick={handleCalculatorToggle}
+                  >
+                    <Calculator className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline ml-1">Calc</span>
+                    {showCalculator ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            )}
+          </div>
         </div>
       </div>
 
@@ -484,11 +486,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-        <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
+        <div className="bg-muted/50 px-3 sm:px-4 py-2 flex justify-end w-full max-w-full">
             <Button 
               size="sm" 
               variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
+              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-9 sm:h-7 px-3 sm:px-2 text-sm sm:text-xs w-full sm:w-auto" 
               onClick={async () => {
                 console.log('🖱️ [TradeAlertCard] Close button CLICKED:', {
                   alertId: alert.id,
@@ -509,13 +511,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             >
                 {isClosing ? (
                   <>
-                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    Closing...
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin flex-shrink-0" />
+                    <span>Closing...</span>
                   </>
                 ) : (
                   <>
-                    <Lock className="w-3 h-3 mr-1.5" />
-                    {isPending ? 'Cancel Order' : getCloseButtonText()}
+                    <Lock className="w-3 h-3 mr-1.5 flex-shrink-0" />
+                    <span>{isPending ? 'Cancel Order' : getCloseButtonText()}</span>
                   </>
                 )}
             </Button>

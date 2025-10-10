@@ -259,6 +259,28 @@
     hyphens: auto;
   }
 
+  /* Signal Card Mobile Utilities */
+  .signal-card-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .signal-text-safe {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    max-width: 100%;
+  }
+
+  /* Mobile button sizing */
+  @media (max-width: 640px) {
+    .signal-card-container button {
+      min-height: 36px;
+    }
+  }
+
   /* Apple typography hierarchy */
   h1, h2, h3, h4, h5, h6 {
     color: hsl(var(--foreground));

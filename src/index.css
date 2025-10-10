@@ -258,9 +258,11 @@
   /* Mobile-only: remove blur effects for performance */
   @media (max-width: 767px) {
     .backdrop-blur-sm, 
-    .backdrop-blur-md {
+    .backdrop-blur-md,
+    .backdrop-blur-xl {
       backdrop-filter: none !important;
-      background-color: rgba(42, 45, 62, 0.95) !important;
+      /* Use slate-900/90 equivalent for consistency with desktop */
+      background-color: rgba(15, 23, 42, 0.9) !important;
     }
   }
   

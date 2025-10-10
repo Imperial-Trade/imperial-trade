@@ -182,9 +182,16 @@ export function ResponsiveUserManagementTable() {
   if (loading) {
     return (
       <Card className="glass-effect border-default">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
+        <CardHeader>
+          <CardTitle className="text-primary flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading users...</p>
           </div>
         </CardContent>
       </Card>
@@ -358,12 +365,13 @@ export function ResponsiveUserManagementTable() {
                   </table>
                 </div>
 
-                {/* Mobile Card View - MOBILE OPTIMIZED */}
-                <div className="lg:hidden space-y-3 p-4">
+                {/* Mobile Card View - ENHANCED WITH SECTION LABELS */}
+                <div className="lg:hidden space-y-4 p-4 sm:p-6">
                   {filteredUsers.map((user) => (
-                    <Card key={user.id} className="bg-surface border-default overflow-hidden">
+                    <Card key={user.id} className="bg-surface border-default overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
+                        {/* User Header Section */}
+                        <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/50">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center flex-shrink-0">
                               <User className="w-5 h-5 text-secondary" />
@@ -418,26 +426,43 @@ export function ResponsiveUserManagementTable() {
                           </DropdownMenu>
                         </div>
                         
-                        <div className="mt-3 space-y-2">
-                          <div className="flex flex-wrap gap-2">
-                            {getRolesBadge(user.userRoles || [])}
+                        {/* Metadata Sections with Clear Labels */}
+                        <div className="mt-4 space-y-3">
+                          {/* Roles Section */}
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Roles</div>
+                            <div className="flex flex-wrap gap-2">
+                              {getRolesBadge(user.userRoles || [])}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {getAccountStatusBadge(user.account_status)}
-                            {getRegistrationSourceBadge(user.registration_source)}
+                          
+                          {/* Status & Source Section */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</div>
+                              <div>{getAccountStatusBadge(user.account_status)}</div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Source</div>
+                              <div>{getRegistrationSourceBadge(user.registration_source)}</div>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="mt-3 text-xs text-secondary flex flex-wrap items-center gap-1">
-                          <Calendar className="w-3 h-3 flex-shrink-0" />
-                          <span className="break-words">Created: {new Date(user.created_at).toLocaleDateString()}</span>
-                          {user.last_login && (
-                            <>
-                              <span className="mx-2">•</span>
-                              <Clock className="w-3 h-3 flex-shrink-0" />
-                              <span className="break-words">Last login: {new Date(user.last_login).toLocaleDateString()}</span>
-                            </>
-                          )}
+                          
+                          {/* Created Date Section */}
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Created</div>
+                            <div className="flex items-center gap-1 text-sm text-secondary">
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <span>{new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              {user.last_login && (
+                                <>
+                                  <span className="mx-2 text-muted-foreground">•</span>
+                                  <Clock className="w-3 h-3 flex-shrink-0" />
+                                  <span className="text-xs">Last: {new Date(user.last_login).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -446,16 +471,31 @@ export function ResponsiveUserManagementTable() {
                   </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Users className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-primary mb-2">
+              <div className="text-center py-12 px-4">
+                <div className="w-20 h-20 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-10 h-10 text-secondary/50" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-primary mb-2">
                   No Users Found
                 </h3>
-                <p className="text-secondary">
+                <p className="text-sm sm:text-base text-secondary max-w-md mx-auto">
                   {searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all'
-                    ? 'No users match your search criteria.'
-                    : 'No users found in the system.'}
+                    ? 'Try adjusting your search or filter criteria.'
+                    : 'No users found in the system. Create your first user to get started.'}
                 </p>
+                {(searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSearchTerm('');
+                      setUserTypeFilter('all');
+                      setAccountStatusFilter('all');
+                    }}
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>

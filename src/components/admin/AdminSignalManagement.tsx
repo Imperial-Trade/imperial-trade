@@ -508,30 +508,30 @@ export function AdminSignalManagement() {
 
       {/* Filters */}
       <Tabs defaultValue="my-signals" className="w-full">
-        <TabsList className="flex items-center p-1.5 mb-6 rounded-full bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap gap-1 w-full h-auto overflow-x-auto scrollbar-hide">
+        <TabsList className="flex items-center p-1.5 mb-6 rounded-full bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap gap-0.5 w-full h-auto">
           <TabsTrigger 
             value="my-signals" 
-            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
+            className="flex-1 text-center text-xs py-2 px-3 rounded-full font-medium text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white whitespace-nowrap"
           >
-            My Signals <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.length})</span>
+            My Signals <span className="ml-1">({filteredAlerts.length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="pending" 
-            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
+            className="flex-1 text-center text-xs py-2 px-3 rounded-full font-medium text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white whitespace-nowrap"
           >
-            Pending <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
+            Pending <span className="ml-1">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="active" 
-            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
+            className="flex-1 text-center text-xs py-2 px-3 rounded-full font-medium text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white whitespace-nowrap"
           >
-            Active <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
+            Active <span className="ml-1">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="closed" 
-            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
+            className="flex-1 text-center text-xs py-2 px-3 rounded-full font-medium text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white whitespace-nowrap"
           >
-            Closed <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
+            Closed <span className="ml-1">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
           </TabsTrigger>
         </TabsList>
 

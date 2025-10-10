@@ -12,13 +12,13 @@ interface PriceRowProps {
 }
 
 const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
-  <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 w-full max-w-full ${isHit ? 'bg-accent-green/20' : ''}`}>
-    <div className="flex items-center space-x-2 text-muted-foreground min-w-0 flex-1">
-      <Icon className={`w-4 h-4 flex-shrink-0 ${colorClass}`} />
-      <span className="truncate">{label}</span>
-      {isHit && <Check className="w-4 h-4 flex-shrink-0 text-accent-green" />}
+  <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
+    <div className="flex items-center space-x-2 text-muted-foreground">
+      <Icon className={`w-4 h-4 ${colorClass}`} />
+      <span>{label}</span>
+      {isHit && <Check className="w-4 h-4 text-accent-green" />}
     </div>
-    <span className={`font-mono font-semibold text-foreground flex-shrink-0 whitespace-nowrap ml-2 ${isHit ? 'text-accent-green' : ''}`}>
+    <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
       {value ? `$${value.toFixed(2)}` : '-'}
     </span>
   </div>
@@ -64,7 +64,7 @@ const StaticLevelsBlock = memo<{
   const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (
-    <div className="bg-muted/50 rounded-md p-2.5 mt-2 w-full max-w-full overflow-hidden">
+    <div className="bg-muted/50 rounded-md p-2.5 mt-2">
       <PriceRow 
         label="Entry Price" 
         value={entryPrice} 
@@ -84,7 +84,7 @@ const StaticLevelsBlock = memo<{
         return (
           <PriceRow 
             key={index} 
-            label={`TP ${tpLevel}`} 
+            label={`Take Profit ${tpLevel}`} 
             value={tp} 
             icon={Target} 
             colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
@@ -122,7 +122,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
   // For active/pending/partially_profited trades, show LivePriceWidget + static levels
   if (status === 'active' || status === 'pending' || status === 'partially_profited') {
     return (
-      <div className="px-3 sm:px-4 pb-3 w-full max-w-full overflow-hidden">
+      <div className="px-3 pb-3">
         <LivePriceWidget 
           alert={alert} 
           onTakeProfitHit={onTakeProfitHit}
@@ -149,7 +149,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
 
   // For closed trades, show only static levels
   return (
-    <div className="px-3 sm:px-4 pb-3 w-full max-w-full overflow-hidden">
+    <div className="px-3 pb-3">
       <StaticLevelsBlock
         tradeType={tradeType}
         entryPrice={entryPrice}

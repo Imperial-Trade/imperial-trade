@@ -75,7 +75,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   };
 
   return (
-    <div className="mb-2 w-full max-w-full">
+    <div className="mb-2">
       {/* Glowing top indicator for closed trades - computed from primitives only */}
       {status === 'closed' && (
         <div className={`h-1 w-full mb-2 ${
@@ -89,16 +89,16 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
 
       {/* Signal Creator Attribution */}
       {creator && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 pb-2 border-b border-border/30 w-full min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div className="flex-shrink-0">{getRoleIcon(creator.role)}</div>
-            <span className="text-sm font-semibold text-foreground truncate">{creator.display_name}</span>
-            <Badge className={`text-xs flex-shrink-0 ${getRoleBadgeClass(creator.role)}`}>
+        <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">
+          <div className="flex items-center gap-1.5">
+            {getRoleIcon(creator.role)}
+            <span className="text-sm font-semibold text-foreground">{creator.display_name}</span>
+            <Badge className={`text-xs ${getRoleBadgeClass(creator.role)}`}>
               {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
             </Badge>
           </div>
-          <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 sm:gap-0.5 flex-shrink-0">
-            <div className="text-xs text-muted-foreground whitespace-nowrap">
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="text-xs text-muted-foreground">
               {formatTimeAgo(createdDate)}
             </div>
           </div>
@@ -106,17 +106,15 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       )}
 
       {/* Currency Pair and Status - Decoupled from price updates */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 w-full min-w-0">
-        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="text-base sm:text-lg font-bold truncate min-w-0">{assetName}</h3>
-            <div className="flex-shrink-0">
-              <TradeStatusBadge 
-                alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
-                updatedDate={updatedDate} 
-                isRecentClosure={isRecentClosure} 
-              />
-            </div>
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-base font-bold">{assetName}</h3>
+            <TradeStatusBadge 
+              alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
+              updatedDate={updatedDate} 
+              isRecentClosure={isRecentClosure} 
+            />
           </div>
         </div>
       </div>

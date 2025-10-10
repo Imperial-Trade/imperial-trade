@@ -1,7 +1,7 @@
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense, lazy, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield } from "lucide-react";
+import { Shield, ChevronLeft, ChevronRight } from "lucide-react";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
 import AdminPanelSidebar from "@/components/admin/AdminPanelSidebar";
@@ -59,6 +59,9 @@ const LoadingFallback = () => <Card className="glass-effect border-default">
   </Card>;
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
+  
   const {
     isAdmin,
     isModerator,
@@ -80,11 +83,56 @@ const AdminPanel: React.FC = () => {
   const canAccessSettings = isAdmin; // Only admins
   const canAccessDevTools = isAdmin && isDevToolsEnabled(); // Only admins with dev mode
 
+  // Responsive handler matching HTML behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const desktop = window.innerWidth > 768;
+      setIsDesktop(desktop);
+      
+      if (!desktop) {
+        setIsCollapsed(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initialize
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Dynamic class management like HTML JavaScript
+  useEffect(() => {
+    const mainContent = document.getElementById('admin-main-content');
+    const dashboardCard = document.getElementById('admin-dashboard-card');
+    
+    if (mainContent && dashboardCard && isDesktop) {
+      if (isCollapsed) {
+        mainContent.classList.remove('shifted');
+        dashboardCard.classList.remove('shifted');
+      } else {
+        mainContent.classList.add('shifted');
+        dashboardCard.classList.add('shifted');
+      }
+    } else if (mainContent && dashboardCard && !isDesktop) {
+      mainContent.classList.remove('shifted');
+      dashboardCard.classList.remove('shifted');
+    }
+  }, [isCollapsed, isDesktop]);
+
   return (
-    <div className="flex w-full min-h-screen overflow-x-hidden">
-      {/* Main Content Area */}
-      <div className="flex-1 container mx-auto p-4 md:p-6 xl:pr-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <>
+      {/* Main Content with Dynamic Margin */}
+      <div 
+        id="admin-main-content"
+        className={`w-full min-h-screen p-4 md:p-6 transition-[margin-right] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+          isDesktop ? (isCollapsed ? 'md:mr-[120px]' : '') : ''
+        }`}
+      >
+        <div 
+          id="admin-dashboard-card"
+          className="transition-transform duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+        >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
         {canAccessRequests && <TabsContent value="requests" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
@@ -180,13 +228,29 @@ const AdminPanel: React.FC = () => {
               <DevToolsPanel />
             </Suspense>
           </TabsContent>}
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
 
-      {/* Right Sidebar - Desktop & Mobile */}
+      {/* Toggle Button - Always Visible */}
+      <button
+        id="sidebar-toggle"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="hover:scale-110"
+        title="Toggle Sidebar"
+      >
+        {isCollapsed ? (
+          <ChevronLeft className="w-6 h-6 text-gray-300" />
+        ) : (
+          <ChevronRight className="w-6 h-6 text-gray-300" />
+        )}
+      </button>
+
+      {/* Fixed Right Sidebar */}
       <AdminPanelSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        isCollapsed={isCollapsed}
         canAccessRequests={canAccessRequests}
         canAccessUsers={canAccessUsers}
         canAccessSignals={canAccessSignals}
@@ -201,7 +265,7 @@ const AdminPanel: React.FC = () => {
         userRole={isAdmin ? 'Admin' : isEducatorPlus ? 'Educator+' : isModerator ? 'Moderator' : 'Educator'}
         isDevToolsEnabled={canAccessDevTools}
       />
-    </div>
+    </>
   );
 };
 export default AdminPanel;

@@ -721,19 +721,19 @@
 /* Desktop: Main content margin adjustments */
 @media (min-width: 768px) {
   #admin-main-content {
-    margin-right: 312px; /* DEFAULT: Open sidebar (280px) + gap (32px) */
+    margin-right: 120px; /* DEFAULT: Collapsed sidebar (88px) + gap (32px) */
   }
 
   #admin-main-content.shifted {
-    margin-right: 120px; /* SHIFTED: Collapsed sidebar (88px) + gap (32px) */
+    margin-right: 312px; /* SHIFTED: Open sidebar (280px) + gap (32px) */
   }
 
   #admin-dashboard-card {
-    transform: scale(0.95); /* DEFAULT: Zoom out when sidebar open */
+    transform: scale(1); /* DEFAULT: Normal size when collapsed */
   }
 
   #admin-dashboard-card.shifted {
-    transform: scale(1); /* SHIFTED: Normal size when collapsed */
+    transform: scale(0.95); /* SHIFTED: Zoom out when sidebar open */
   }
 }
 

@@ -114,13 +114,13 @@ const AdminPanel: React.FC = () => {
     const isInitialCollapsed = !isInitialDesktop; // Collapsed on mobile, open on desktop
     
     if (isInitialCollapsed) {
-      // Apply .shifted class when COLLAPSED
-      mainContent.classList.add('shifted');
-      dashboardCard.classList.add('shifted');
-    } else {
-      // NO class when OPEN (default CSS state)
+      // When COLLAPSED, remove .shifted class (default CSS: 120px margin)
       mainContent.classList.remove('shifted');
       dashboardCard.classList.remove('shifted');
+    } else {
+      // When OPEN, apply .shifted class (CSS: 312px margin + scale)
+      mainContent.classList.add('shifted');
+      dashboardCard.classList.add('shifted');
     }
   }, []); // Runs once on mount, measuring window directly
 
@@ -133,18 +133,18 @@ const AdminPanel: React.FC = () => {
     
     if (isDesktop) {
       if (isCollapsed) {
-        // When COLLAPSED, apply .shifted class
-        mainContent.classList.add('shifted');
-        dashboardCard.classList.add('shifted');
-      } else {
-        // When OPEN, remove .shifted class (default CSS state)
+        // When COLLAPSED, remove .shifted class (default CSS: 120px margin)
         mainContent.classList.remove('shifted');
         dashboardCard.classList.remove('shifted');
+      } else {
+        // When OPEN, apply .shifted class (CSS: 312px margin + scale)
+        mainContent.classList.add('shifted');
+        dashboardCard.classList.add('shifted');
       }
     } else {
-      // Mobile: always collapsed, always shifted
-      mainContent.classList.add('shifted');
-      dashboardCard.classList.add('shifted');
+      // Mobile: always collapsed, no .shifted class (uses default 120px)
+      mainContent.classList.remove('shifted');
+      dashboardCard.classList.remove('shifted');
     }
   }, [isCollapsed, isDesktop]);
 

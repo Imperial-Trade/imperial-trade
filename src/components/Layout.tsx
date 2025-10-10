@@ -97,10 +97,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <WidgetSidebar />
         </ErrorBoundary>
         
-        {/* Admin Arsenal Sidebar - Right side */}
-        <ErrorBoundary componentName="Admin Arsenal Sidebar">
-          <AdminArsenalSidebar />
-        </ErrorBoundary>
+        {/* Admin Arsenal Sidebar - Right side - Only on Advanced Tools page */}
+        {location.pathname === '/dashboard/advanced-tools' && (
+          <ErrorBoundary componentName="Admin Arsenal Sidebar">
+            <AdminArsenalSidebar />
+          </ErrorBoundary>
+        )}
         
         {/* Compliance Footer */}
         <ComplianceFooter />

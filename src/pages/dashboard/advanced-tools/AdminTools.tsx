@@ -124,33 +124,6 @@ export default function AdminTools() {
 
         .admin-nav-item.collapsed {
           justify-content: center;
-          padding: 0.875rem;
-        }
-
-        .admin-nav-item svg {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .admin-nav-item.collapsed svg {
-          transform: scale(1.1);
-        }
-
-        .admin-nav-item.collapsed:hover svg {
-          transform: scale(1.2);
-        }
-
-        .admin-nav-item.collapsed:hover::after {
-          content: attr(data-label);
-          position: absolute;
-          left: 100%;
-          margin-left: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: hsl(var(--card));
-          border: 1px solid hsl(var(--border));
-          border-radius: 0.5rem;
-          white-space: nowrap;
-          z-index: 60;
-          box-shadow: 0 4px 12px hsl(var(--background) / 0.3);
         }
 
         .glass-card {
@@ -163,7 +136,8 @@ export default function AdminTools() {
 
         .toggle-button {
           position: fixed;
-          top: 6rem;
+          top: 5.5rem;
+          right: 1rem;
           z-index: 50;
           background: hsl(var(--primary) / 0.9);
           backdrop-filter: blur(10px);
@@ -173,14 +147,6 @@ export default function AdminTools() {
           cursor: pointer;
           transition: all 0.3s ease;
           box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
-        }
-
-        .toggle-button.sidebar-expanded {
-          right: 292px;
-        }
-
-        .toggle-button.sidebar-collapsed {
-          right: 100px;
         }
 
         .toggle-button:hover {
@@ -193,25 +159,9 @@ export default function AdminTools() {
           .admin-sidebar.expanded {
             width: 240px;
           }
-
-          .admin-sidebar.collapsed {
-            width: 72px;
-          }
           
           .admin-content.sidebar-open {
             margin-right: 260px;
-          }
-
-          .admin-content.sidebar-closed {
-            margin-right: 88px;
-          }
-
-          .toggle-button.sidebar-expanded {
-            right: 252px;
-          }
-
-          .toggle-button.sidebar-collapsed {
-            right: 84px;
           }
         }
       `}</style>
@@ -219,7 +169,7 @@ export default function AdminTools() {
       <div className="admin-tools-container min-h-screen w-full relative overflow-hidden">
         {/* Toggle Button */}
         <button
-          className={`toggle-button ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}
+          className="toggle-button"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -233,21 +183,11 @@ export default function AdminTools() {
         {/* Admin Sidebar */}
         <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
           <div className="p-4">
-            {/* Header - adapts to collapsed state */}
-            <div className="mb-6">
-              {sidebarCollapsed ? (
-                <div className="flex items-center justify-center">
-                  <Settings className="w-8 h-8 text-primary" />
-                </div>
-              ) : (
-                <>
-                  <h2 className="text-lg font-semibold text-foreground px-2">
-                    Admin Tools
-                  </h2>
-                  <hr className="mt-4 border-border/30" />
-                </>
-              )}
-            </div>
+            {!sidebarCollapsed && (
+              <h2 className="text-lg font-semibold text-foreground mb-6 px-2">
+                Admin Tools
+              </h2>
+            )}
 
             <nav>
               {adminSections.map((section) => {
@@ -259,9 +199,8 @@ export default function AdminTools() {
                     key={section.id}
                     className={`admin-nav-item ${isActive ? 'active' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}
                     onClick={() => setActiveSection(section.id)}
-                    data-label={section.label}
                   >
-                    <Icon className={`${sidebarCollapsed ? 'w-7 h-7' : 'w-6 h-6'} shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                     {!sidebarCollapsed && (
                       <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
                         {section.label}

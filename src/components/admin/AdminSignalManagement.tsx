@@ -456,12 +456,12 @@ export function AdminSignalManagement() {
 
       {/* Overall Performance Card */}
       {analytics && (
-        <div className="glass-card p-5">
+        <div className="glass-card p-6 bg-[#2a2d3e]/60 border-slate-600/40">
           <h2 className="text-lg font-semibold mb-4 text-foreground">Overall Performance</h2>
           <div className="grid grid-cols-2 gap-x-3 gap-y-4">
             {/* Win Rate */}
             <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-blue-500/20 p-2 rounded-full flex-shrink-0">
+              <div className="bg-blue-500/30 p-2 rounded-full flex-shrink-0">
                 <BarChart3 className="w-5 h-5" stroke="#3b82f6" strokeWidth={2} />
               </div>
               <div className="min-w-0 flex-1">
@@ -472,7 +472,7 @@ export function AdminSignalManagement() {
             
             {/* Pips Gained */}
             <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-green-500/20 p-2 rounded-full flex-shrink-0">
+              <div className="bg-green-500/30 p-2 rounded-full flex-shrink-0">
                 <TrendingUp className="w-5 h-5" stroke="#22c55e" strokeWidth={2} />
               </div>
               <div className="min-w-0 flex-1">
@@ -483,7 +483,7 @@ export function AdminSignalManagement() {
             
             {/* Total Signals */}
             <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-gray-400/20 p-2 rounded-full flex-shrink-0">
+              <div className="bg-gray-400/30 p-2 rounded-full flex-shrink-0">
                 <Signal className="w-5 h-5" stroke="#9ca3af" strokeWidth={2} />
               </div>
               <div className="min-w-0 flex-1">
@@ -494,7 +494,7 @@ export function AdminSignalManagement() {
             
             {/* Pips Lost */}
             <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-red-500/20 p-2 rounded-full flex-shrink-0">
+              <div className="bg-red-500/30 p-2 rounded-full flex-shrink-0">
                 <TrendingDown className="w-5 h-5" stroke="#ef4444" strokeWidth={2} />
               </div>
               <div className="min-w-0 flex-1">
@@ -508,30 +508,30 @@ export function AdminSignalManagement() {
 
       {/* Filters */}
       <Tabs defaultValue="my-signals" className="w-full">
-        <TabsList className="flex items-center p-1 mb-6 rounded-full bg-slate-800/60 backdrop-blur-sm border border-slate-700 flex-wrap gap-1 w-full h-auto">
+        <TabsList className="flex items-center p-1.5 mb-6 rounded-full bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap gap-1 w-full h-auto overflow-x-auto scrollbar-hide">
           <TabsTrigger 
             value="my-signals" 
-            className="flex-1 min-w-[80px] text-center text-[13px] py-2 px-2 rounded-full font-semibold text-gray-400 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
+            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
           >
-            My Signals <span className="font-normal text-gray-500 data-[state=active]:text-white/50">({filteredAlerts.length})</span>
+            My Signals <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="pending" 
-            className="flex-1 min-w-[80px] text-center text-[13px] py-2 px-2 rounded-full font-semibold text-gray-400 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
+            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
           >
-            Pending <span className="font-normal text-gray-500 data-[state=active]:text-white/50">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
+            Pending <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="active" 
-            className="flex-1 min-w-[80px] text-center text-[13px] py-2 px-2 rounded-full font-semibold text-gray-400 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
+            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
           >
-            Active <span className="font-normal text-gray-500 data-[state=active]:text-white/50">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
+            Active <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
           </TabsTrigger>
           <TabsTrigger 
             value="closed" 
-            className="flex-1 min-w-[80px] text-center text-[13px] py-2 px-2 rounded-full font-semibold text-gray-400 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
+            className="flex-1 text-center text-sm py-2.5 px-4 rounded-full font-semibold text-gray-400/80 transition-all data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-[0_0_20px_rgba(99,102,241,0.5)] whitespace-nowrap"
           >
-            Closed <span className="font-normal text-gray-500 data-[state=active]:text-white/50">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
+            Closed <span className="font-normal text-gray-400/70 data-[state=active]:text-white/70">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
           </TabsTrigger>
         </TabsList>
 

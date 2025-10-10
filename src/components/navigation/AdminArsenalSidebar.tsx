@@ -79,6 +79,12 @@ const adminTools: AdminTool[] = [
     description: "Analytics and monitoring dashboards",
     route: "/dashboard/advanced-tools?admin=monitoring",
   },
+  {
+    name: "Admin Settings",
+    icon: Settings,
+    description: "Configure admin preferences and settings",
+    route: "/dashboard/advanced-tools?admin=settings",
+  },
 ];
 
 const AdminToolWidget = ({ tool }: { tool: AdminTool }) => {
@@ -241,28 +247,10 @@ export function AdminArsenalSidebar() {
           </div>
           
           {/* Admin Tools Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3">
             {adminTools.map((tool) => (
               <AdminToolWidget key={tool.name} tool={tool} />
             ))}
-          </div>
-          
-          {/* Settings Section */}
-          <motion.button 
-            className="w-full p-3 bg-background/50 backdrop-blur-md rounded-xl flex items-center gap-3 border border-border hover:border-primary/50 transition-colors"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Settings className="w-5 h-5 text-primary" />
-            <span className="font-medium">Admin Settings</span>
-          </motion.button>
-          
-          {/* Help Text */}
-          <div className="mt-6 p-3 bg-accent/50 rounded-lg border border-border">
-            <p className="text-xs text-muted-foreground">
-              <strong>Tip:</strong> Swipe left to open, swipe right to close. 
-              Use <kbd className="px-1 py-0.5 bg-background rounded text-[10px] border border-border">Alt+A</kbd> to toggle.
-            </p>
           </div>
         </div>
       </motion.aside>

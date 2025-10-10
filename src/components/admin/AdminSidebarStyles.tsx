@@ -25,14 +25,15 @@ export function AdminSidebarStyles() {
       .admin-sidebar {
         position: fixed;
         right: 0;
-        top: 5rem;
-        height: calc(100vh - 5rem);
+        top: 0;
+        bottom: 0;
+        padding-top: 5rem;
         background: hsl(var(--muted) / 0.3);
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
         border-left: 1px solid hsl(var(--border) / 0.5);
         transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 40;
+        z-index: 45;
         overflow-y: auto;
         overflow-x: hidden;
         box-shadow: -10px 0 40px hsl(var(--background) / 0.4);

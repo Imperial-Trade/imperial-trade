@@ -13,12 +13,13 @@ function AdminToolsContent() {
     <>
       <AdminSidebarStyles />
       
+      {/* Sidebar at root level - fixed to viewport, not to parent container */}
+      <AdminSidebar 
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
+      
       <div className="admin-tools-container min-h-screen w-full relative">
-        <AdminSidebar 
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-        
         <main className={`admin-content ${sidebarCollapsed ? 'sidebar-closed' : 'sidebar-open'}`}>
           <div className="container mx-auto p-6 md:p-8">
             <div className="glass-card p-8 md:p-12 min-h-[60vh] flex flex-col items-center justify-center">

@@ -182,7 +182,7 @@ export function AdminArsenalSidebar() {
       {/* Handle/Tab - visible when closed */}
       {!isOpen && (
         <motion.button
-          className="fixed right-0 top-1/2 -translate-y-1/2 z-[60] cursor-pointer"
+          className="fixed right-0 top-[calc(50vh+2.5rem)] -translate-y-1/2 z-[60] cursor-pointer"
           onClick={() => setIsOpen(true)}
           whileHover={{ paddingRight: '0.75rem' }}
           whileTap={{ scale: 0.95 }}

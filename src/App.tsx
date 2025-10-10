@@ -64,7 +64,7 @@ import Live from "@/pages/dashboard/live/Live";
 import SignalStreamOptimized from "@/components/dashboard/SignalStreamOptimized";
 import NewSignalPage from "@/pages/dashboard/new-signal/NewSignalPage";
 import Education from "@/pages/dashboard/education/Education";
-import AdvancedTools from "@/pages/dashboard/advanced-tools/AdvancedTools";
+import AdminTools from "@/pages/dashboard/advanced-tools/AdminTools";
 import MyProgress from "@/pages/dashboard/my-progress/MyProgress";
 import Progress from "@/pages/dashboard/progress/Progress";
 import Settings from "@/pages/dashboard/settings/Settings";
@@ -223,7 +223,11 @@ function App() {
                           />
                           <Route
                             path="advanced-tools"
-                            element={<AdvancedTools />}
+                            element={
+                              <AdminRoute allowedRoles={['admin']}>
+                                <AdminTools />
+                              </AdminRoute>
+                            }
                           />
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />

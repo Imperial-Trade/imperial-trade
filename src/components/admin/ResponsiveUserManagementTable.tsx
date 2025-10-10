@@ -364,9 +364,10 @@ export function ResponsiveUserManagementTable() {
                     </tbody>
                   </table>
                 </div>
+              </div>
 
-                {/* Mobile Card View - ENHANCED WITH SECTION LABELS */}
-                <div className="lg:hidden space-y-4 p-4 sm:p-6">
+              {/* Mobile Card View - ENHANCED WITH SECTION LABELS */}
+              <div className="lg:hidden space-y-4 p-4 sm:p-6">
                   {filteredUsers.map((user) => (
                     <Card key={user.id} className="bg-surface border-default overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
@@ -468,7 +469,6 @@ export function ResponsiveUserManagementTable() {
                     </Card>
                   ))}
                 </div>
-                  </div>
               </div>
             ) : (
               <div className="text-center py-12 px-4">

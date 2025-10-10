@@ -307,10 +307,9 @@ export function AdminSignalManagement() {
   const renderSignalCard = (alert: any, index: number) => (
     <motion.div
       key={alert.id}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ delay: index * 0.05 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className="signal-card-container"
     >
       <div className="glass-card p-4 flex flex-col gap-4">
         {/* Top Section */}
@@ -441,7 +440,7 @@ export function AdminSignalManagement() {
   }
 
   return (
-    <div className="space-y-6 max-w-md mx-auto px-4 sm:px-6">
+    <div className="space-y-6 max-w-md mx-auto px-4 sm:px-6" style={{ touchAction: 'pan-y' }}>
       {/* Header */}
       <header className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-foreground">Signal Management</h1>

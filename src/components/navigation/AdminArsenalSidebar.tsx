@@ -215,10 +215,11 @@ export function AdminArsenalSidebar() {
         dragConstraints={{ left: -sidebarWidth, right: 0 }}
         dragElastic={0.2}
         dragMomentum={false}
+        dragDirectionLock
         onDragStart={() => setIsDragging(true)}
         onDragEnd={handleDragEnd}
       >
-        <div className="p-4 h-full overflow-y-auto">
+        <div className="p-4 h-full overflow-y-auto" style={{ touchAction: 'pan-y' }}>
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">

@@ -62,7 +62,7 @@ export default function AdminTools() {
   const adminSection = searchParams.get('admin');
 
   return (
-    <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8">
+    <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header - Mobile optimized */}
         <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">

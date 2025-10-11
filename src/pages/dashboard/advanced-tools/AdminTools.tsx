@@ -64,17 +64,6 @@ export default function AdminTools() {
   return (
     <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
       <div className="max-w-7xl mx-auto">
-        {/* Header - Mobile optimized */}
-        <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
-          <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 flex-shrink-0" />
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words">Admin Tools</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Use the Admin Arsenal sidebar on the right to select a tool
-            </p>
-          </div>
-        </div>
-        
         {/* Dynamic content based on selected admin section */}
         <div className="space-y-4">
           {adminSection === 'requests' && (

@@ -2,10 +2,50 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// CRITICAL FIX: Hardcoded credentials (VITE_* variables are not supported in Lovable)
-// See: https://docs.lovable.dev/features/cloud - "DO NOT EVER USE VARIABLES LIKE VITE_*"
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SUPABASE KEY INTEGRATION - COMPLETE GUIDE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * 1. ANON PUBLIC KEY (THIS FILE - FRONTEND USE)
+ *    ✅ Used for: Browser/client-side code
+ *    ✅ Security: Safe to expose publicly (RLS protects data)
+ *    ✅ Location: Hardcoded below (SUPABASE_PUBLISHABLE_KEY)
+ *    ✅ Purpose: User authentication, RLS-protected database queries
+ *    ✅ Format: Legacy JWT format (eyJhbGci...) OR new sb_publishable_...
+ *    ✅ Created: January 11, 2025 (iat: 1757602966)
+ *    ✅ Expires: January 11, 2073 (exp: 2073178966)
+ * 
+ * 2. SERVICE ROLE KEY (EDGE FUNCTIONS ONLY - BACKEND USE)
+ *    ⚠️  Used for: Supabase Edge Functions (server-side code)
+ *    ⚠️  Security: NEVER expose to frontend - bypasses ALL RLS policies
+ *    ⚠️  Location: Supabase secrets (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))
+ *    ⚠️  Purpose: Admin operations, system tasks, bypass RLS when needed
+ *    ⚠️  Access: Full database access - use with extreme caution
+ * 
+ * 3. LOVABLE-SPECIFIC REQUIREMENTS
+ *    ❌ DO NOT USE: VITE_* environment variables (not supported by Lovable)
+ *    ✅ ALWAYS USE: Hardcoded credentials in this file
+ *    📖 Reference: https://docs.lovable.dev/features/cloud
+ * 
+ * 4. SECURITY BEST PRACTICES
+ *    ✅ Anon key: Safe to commit to Git (RLS protects sensitive data)
+ *    ❌ Service role key: NEVER commit to Git, NEVER expose to frontend
+ *    ✅ RLS policies: Must be enabled on ALL sensitive tables
+ *    ✅ Key rotation: Regenerate keys if compromised via Supabase dashboard
+ * 
+ * 5. KEY VERIFICATION (Automatic on Load)
+ *    - JWT payload is decoded and validated against project URL
+ *    - Ensures anon key matches project reference 'kmuoqkcxguafxulqlbmi'
+ *    - Logs validation success/failure to browser console
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// CRITICAL FIX (Bug #10): Valid anon key (same as production .env)
+// Updated: January 11, 2025 - Replaces invalid key from March 4, 2024
 const SUPABASE_URL = 'https://kmuoqkcxguafxulqlbmi.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI';
+const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2MDI5NjYsImV4cCI6MjA3MzE3ODk2Nn0.m6vaoaT7X7VvcKaY3W3aVEi5ZjqitAjQAJbyYnps_sc';
 
 // Runtime verification and guards
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

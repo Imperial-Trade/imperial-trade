@@ -275,6 +275,19 @@
     background: rgba(15, 15, 20, 0.5) !important;
   }
   
+  /* Admin Arsenal Restricted Tool Styling */
+  .admin-tool-restricted {
+    filter: blur(2px) grayscale(100%);
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .admin-tool-restricted:hover {
+    transform: none !important;
+    scale: 1 !important;
+  }
+  
   /* Touch-friendly utilities */
   .touch-target {
     min-height: 44px;

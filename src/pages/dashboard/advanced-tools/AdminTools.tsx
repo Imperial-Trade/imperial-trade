@@ -3,6 +3,7 @@ import { Shield } from 'lucide-react';
 import React, { Suspense, lazy } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 
 // Lazy load admin components for performance
 const DirectAccountRequestManagement = lazy(() => import("@/components/admin/DirectAccountRequestManagement").then(m => ({
@@ -60,6 +61,63 @@ const LoadingFallback = () => (
 export default function AdminTools() {
   const [searchParams] = useSearchParams();
   const adminSection = searchParams.get('admin');
+  
+  const { 
+    isAdmin, 
+    isModerator, 
+    isEducatorPlus, 
+    isEducator, 
+    userRoles 
+  } = useAuthorizationAware();
+  
+  // Define access rules matching AdminPanel.tsx exactly
+  const canAccessRequests = userRoles?.some(r => ['admin', 'moderator', 'educator+'].includes(r));
+  const canAccessUsers = isAdmin;
+  const canAccessSignals = userRoles?.some(r => ['admin', 'educator', 'educator+'].includes(r));
+  const canAccessNotifications = isAdmin;
+  const canAccessSystem = isAdmin;
+  const canAccessRateLimits = isAdmin;
+  const canAccessDiagnostics = isAdmin;
+  const canAccessOptimization = isAdmin;
+  const canAccessMonitoring = isAdmin;
+  const canAccessSettings = isAdmin;
+  
+  // Validate access for current section
+  const hasAccessToSection = () => {
+    switch (adminSection) {
+      case 'requests': return canAccessRequests;
+      case 'users': return canAccessUsers;
+      case 'signals': return canAccessSignals;
+      case 'notifications': return canAccessNotifications;
+      case 'monitor': return canAccessSystem;
+      case 'limits': return canAccessRateLimits;
+      case 'diagnostics': return canAccessDiagnostics;
+      case 'optimization': return canAccessOptimization;
+      case 'monitoring': return canAccessMonitoring;
+      case 'settings': return canAccessSettings;
+      default: return false;
+    }
+  };
+  
+  // Show access denied if user doesn't have permission
+  if (adminSection && !hasAccessToSection()) {
+    return (
+      <div className="min-h-screen w-full bg-background p-8 flex items-center justify-center">
+        <Card className="glass-effect border-red-500/20 max-w-md">
+          <CardContent className="p-8 text-center">
+            <Shield className="w-16 h-16 text-red-400 mx-auto mb-4 opacity-50" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">
+              You don't have permission to access this admin tool.
+            </p>
+            <p className="text-sm text-muted-foreground/70">
+              Section: {adminSection}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>

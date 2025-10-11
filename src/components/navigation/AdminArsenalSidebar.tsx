@@ -22,93 +22,59 @@ interface AdminTool {
   icon: any;
   description: string;
   route: string;
+  canAccess?: () => boolean;
 }
 
-const adminTools: AdminTool[] = [
-  {
-    name: "Account Requests",
-    icon: Users,
-    description: "Review and approve new account applications",
-    route: "/dashboard/advanced-tools?admin=requests",
-  },
-  {
-    name: "User Management",
-    icon: UserCog,
-    description: "Manage user roles, permissions, and status",
-    route: "/dashboard/advanced-tools?admin=users",
-  },
-  {
-    name: "Trading Signals",
-    icon: TrendingUp,
-    description: "Monitor and manage all trading signals",
-    route: "/dashboard/advanced-tools?admin=signals",
-  },
-  {
-    name: "Notifications",
-    icon: Bell,
-    description: "Send system-wide notifications and alerts",
-    route: "/dashboard/advanced-tools?admin=notifications",
-  },
-  {
-    name: "System Monitor",
-    icon: Activity,
-    description: "Real-time system health and performance",
-    route: "/dashboard/advanced-tools?admin=monitor",
-  },
-  {
-    name: "Rate Limits",
-    icon: Timer,
-    description: "Configure API rate limits and throttling",
-    route: "/dashboard/advanced-tools?admin=limits",
-  },
-  {
-    name: "Diagnostics",
-    icon: Zap,
-    description: "System diagnostics and troubleshooting",
-    route: "/dashboard/advanced-tools?admin=diagnostics",
-  },
-  {
-    name: "Optimization",
-    icon: Sliders,
-    description: "Performance optimization and tuning",
-    route: "/dashboard/advanced-tools?admin=optimization",
-  },
-  {
-    name: "Monitoring",
-    icon: BarChart3,
-    description: "Analytics and monitoring dashboards",
-    route: "/dashboard/advanced-tools?admin=monitoring",
-  },
-  {
-    name: "Admin Settings",
-    icon: Settings,
-    description: "Configure admin preferences and settings",
-    route: "/dashboard/advanced-tools?admin=settings",
-  },
-];
-
-const AdminToolWidget = ({ tool }: { tool: AdminTool }) => {
+const AdminToolWidget = ({ 
+  tool, 
+  hasAccess 
+}: { 
+  tool: AdminTool; 
+  hasAccess: boolean;
+}) => {
   const Icon = tool.icon;
   const navigate = useNavigate();
   
+  const handleClick = () => {
+    if (!hasAccess) {
+      console.log(`Access denied: ${tool.name}`);
+      return;
+    }
+    navigate(tool.route);
+  };
+  
   return (
     <motion.button
-      onClick={() => navigate(tool.route)}
-      className="col-span-1 h-28 bg-background/50 backdrop-blur-md rounded-xl p-3 shadow-lg border border-white/10 hover:border-white/20 hover:shadow-xl transition-all"
-      whileHover={{
+      onClick={handleClick}
+      disabled={!hasAccess}
+      className={`col-span-1 h-28 bg-background/50 backdrop-blur-md rounded-xl p-3 shadow-lg border transition-all ${
+        hasAccess 
+          ? 'border-white/10 hover:border-white/20 hover:shadow-xl cursor-pointer' 
+          : 'border-white/5 cursor-not-allowed opacity-40 blur-[2px] grayscale'
+      }`}
+      whileHover={hasAccess ? {
         y: -4,
         scale: 1.03,
-      }}
-      whileTap={{ scale: 0.97 }}
+      } : {}}
+      whileTap={hasAccess ? { scale: 0.97 } : {}}
     >
       <div className="flex flex-col h-full gap-2">
         <div className="flex items-start justify-between">
-          <h3 className="font-medium text-xs leading-tight text-foreground">
+          <h3 className={`font-medium text-xs leading-tight text-left ${
+            hasAccess ? 'text-foreground' : 'text-muted-foreground/50'
+          }`}>
             {tool.name}
           </h3>
+          {!hasAccess && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+              Locked
+            </span>
+          )}
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <Icon className="w-8 h-8 text-slate-300" />
+          <Icon className={`w-8 h-8 ${
+            hasAccess ? 'text-slate-300' : 'text-slate-500'
+          }`} />
         </div>
       </div>
     </motion.button>
@@ -120,8 +86,101 @@ export function AdminArsenalSidebar() {
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
-  const { isAdmin, isEducatorPlus } = useAuthorizationAware();
-  const canAccessAdmin = isAdmin || isEducatorPlus;
+  const { 
+    isAdmin, 
+    isModerator, 
+    isEducatorPlus, 
+    isEducator, 
+    userRoles 
+  } = useAuthorizationAware();
+  
+  // Define access rules matching AdminPanel.tsx exactly
+  const canAccessRequests = userRoles?.some(r => ['admin', 'moderator', 'educator+'].includes(r));
+  const canAccessUsers = isAdmin;
+  const canAccessSignals = userRoles?.some(r => ['admin', 'educator', 'educator+'].includes(r));
+  const canAccessNotifications = isAdmin;
+  const canAccessSystem = isAdmin;
+  const canAccessRateLimits = isAdmin;
+  const canAccessDiagnostics = isAdmin;
+  const canAccessOptimization = isAdmin;
+  const canAccessMonitoring = isAdmin;
+  const canAccessSettings = isAdmin;
+  
+  // Allow access if user has any admin role (to see blurred tools)
+  const canAccessAdmin = isAdmin || isEducatorPlus || isEducator || isModerator;
+  
+  const adminTools: AdminTool[] = [
+    {
+      name: "Account Requests",
+      icon: Users,
+      description: "Review and approve new account applications",
+      route: "/dashboard/advanced-tools?admin=requests",
+      canAccess: () => canAccessRequests,
+    },
+    {
+      name: "User Management",
+      icon: UserCog,
+      description: "Manage user roles, permissions, and status",
+      route: "/dashboard/advanced-tools?admin=users",
+      canAccess: () => canAccessUsers,
+    },
+    {
+      name: "Trading Signals",
+      icon: TrendingUp,
+      description: "Monitor and manage all trading signals",
+      route: "/dashboard/advanced-tools?admin=signals",
+      canAccess: () => canAccessSignals,
+    },
+    {
+      name: "Notifications",
+      icon: Bell,
+      description: "Send system-wide notifications and alerts",
+      route: "/dashboard/advanced-tools?admin=notifications",
+      canAccess: () => canAccessNotifications,
+    },
+    {
+      name: "System Monitor",
+      icon: Activity,
+      description: "Real-time system health and performance",
+      route: "/dashboard/advanced-tools?admin=monitor",
+      canAccess: () => canAccessSystem,
+    },
+    {
+      name: "Rate Limits",
+      icon: Timer,
+      description: "Configure API rate limits and throttling",
+      route: "/dashboard/advanced-tools?admin=limits",
+      canAccess: () => canAccessRateLimits,
+    },
+    {
+      name: "Diagnostics",
+      icon: Zap,
+      description: "System diagnostics and troubleshooting",
+      route: "/dashboard/advanced-tools?admin=diagnostics",
+      canAccess: () => canAccessDiagnostics,
+    },
+    {
+      name: "Optimization",
+      icon: Sliders,
+      description: "Performance optimization and tuning",
+      route: "/dashboard/advanced-tools?admin=optimization",
+      canAccess: () => canAccessOptimization,
+    },
+    {
+      name: "Monitoring",
+      icon: BarChart3,
+      description: "Analytics and monitoring dashboards",
+      route: "/dashboard/advanced-tools?admin=monitoring",
+      canAccess: () => canAccessMonitoring,
+    },
+    {
+      name: "Admin Settings",
+      icon: Settings,
+      description: "Configure admin preferences and settings",
+      route: "/dashboard/advanced-tools?admin=settings",
+      canAccess: () => canAccessSettings,
+    },
+  ];
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -242,7 +301,11 @@ export function AdminArsenalSidebar() {
           {/* Admin Tools Grid */}
           <div className="grid grid-cols-2 gap-3">
             {adminTools.map((tool) => (
-              <AdminToolWidget key={tool.name} tool={tool} />
+              <AdminToolWidget 
+                key={tool.name} 
+                tool={tool}
+                hasAccess={tool.canAccess ? tool.canAccess() : true}
+              />
             ))}
           </div>
         </div>

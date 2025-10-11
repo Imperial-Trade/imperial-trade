@@ -85,6 +85,7 @@ export function AdminArsenalSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const navigate = useNavigate();
   
   const { 
     isAdmin, 
@@ -113,6 +114,20 @@ export function AdminArsenalSidebar() {
     if (isEducator) return 'Educator';
     if (isModerator) return 'Moderator';
     return 'User';
+  };
+  
+  // Get default admin route based on user role
+  const getDefaultAdminRoute = () => {
+    // Admin, Educator, Educator+ → Trading Signals
+    if (isAdmin || isEducator || isEducatorPlus) {
+      return '/dashboard/advanced-tools?admin=signals';
+    }
+    // Moderator → Account Requests
+    if (isModerator) {
+      return '/dashboard/advanced-tools?admin=requests';
+    }
+    // Fallback
+    return '/dashboard/advanced-tools';
   };
   
   // Allow access if user has any admin role (to see blurred tools)
@@ -251,7 +266,10 @@ export function AdminArsenalSidebar() {
       {!isOpen && (
         <motion.button
           className="fixed right-0 top-[calc(50vh+2.5rem)] -translate-y-1/2 z-[60] cursor-pointer"
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            navigate(getDefaultAdminRoute());
+            setIsOpen(true);
+          }}
           whileHover={{ opacity: 0.9 }}
           whileTap={{ opacity: 0.7 }}
         >

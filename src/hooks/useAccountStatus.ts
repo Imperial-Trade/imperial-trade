@@ -67,28 +67,49 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
       setError(null);
       
       console.log('Checking account status for:', normalizedEmail);
+      console.log('🚀 Invoking edge function: account-status-check');
+      console.log('📧 Payload:', { email: normalizedEmail });
+      console.log('⏰ Timeout: 30 seconds');
 
-      // Create timeout promise (15 seconds)
+      const startTime = Date.now();
+
+      // Create timeout promise (30 seconds for slow networks)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout after 15 seconds')), 15000)
+        setTimeout(() => {
+          console.error('⏰ REQUEST TIMEOUT: Edge function did not respond within 30 seconds');
+          reject(new Error('Request timeout after 30 seconds'));
+        }, 30000)
       );
 
       // Race between function call and timeout
       const result = await Promise.race([
         supabase.functions.invoke('account-status-check', {
           body: { email: normalizedEmail }
+        }).then(res => {
+          const responseTime = Date.now() - startTime;
+          console.log(`✅ Edge function responded successfully in ${responseTime}ms`);
+          console.log('📦 Response data:', res);
+          return res;
+        }).catch(err => {
+          console.error('❌ Edge function invocation failed:', err);
+          console.error('❌ Error type:', err.constructor.name);
+          console.error('❌ Error message:', err.message);
+          console.error('❌ Error details:', err);
+          throw err;
         }),
         timeoutPromise
       ]).catch(error => {
         if (error.message.includes('timeout')) {
+          console.warn('⏰ Timeout triggered - falling back to direct database query');
           return { 
             data: null, 
             error: { 
-              message: 'Request timed out. Please try again.',
+              message: 'Edge function timed out. Using direct database fallback.',
               name: 'TimeoutError'
             } 
           };
         }
+        console.error('❌ Unhandled error during edge function call:', error);
         throw error;
       });
 

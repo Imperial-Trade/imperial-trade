@@ -106,6 +106,15 @@ export function AdminArsenalSidebar() {
   const canAccessMonitoring = isAdmin;
   const canAccessSettings = isAdmin;
   
+  // Helper function to get role display name
+  const getRoleDisplay = () => {
+    if (isAdmin) return 'Administrator';
+    if (isEducatorPlus) return 'Educator+';
+    if (isEducator) return 'Educator';
+    if (isModerator) return 'Moderator';
+    return 'User';
+  };
+  
   // Allow access if user has any admin role (to see blurred tools)
   const canAccessAdmin = isAdmin || isEducatorPlus || isEducator || isModerator;
   
@@ -284,8 +293,8 @@ export function AdminArsenalSidebar() {
             <div className="flex items-center gap-3">
               <Shield className="w-6 h-6 text-slate-300" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Admin Arsenal</h1>
-                <p className="text-sm text-muted-foreground">Control Panel</p>
+                <h1 className="text-2xl font-bold text-foreground">Control Panel</h1>
+                <p className="text-sm text-muted-foreground">{getRoleDisplay()}</p>
               </div>
             </div>
             <motion.button 

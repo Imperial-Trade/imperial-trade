@@ -49,8 +49,8 @@ const SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 // Runtime verification and guards
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.error('❌ Missing Supabase configuration. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
-  throw new Error('Missing Supabase configuration. Please check environment variables.');
+  console.error('❌ Missing Supabase configuration. Please check hardcoded SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY constants in src/integrations/supabase/client.ts');
+  throw new Error('Missing Supabase configuration. Please check hardcoded credentials in src/integrations/supabase/client.ts');
 }
 
 // JWT validation to prevent key/URL mismatches

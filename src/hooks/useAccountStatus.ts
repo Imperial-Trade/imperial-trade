@@ -141,6 +141,26 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
             return;
           } else if (directError) {
             console.error('❌ Direct database query also failed:', directError);
+            
+            // Check for 401 Unauthorized (invalid API key)
+            if (directError.message?.includes('Invalid API key') || 
+                directError.code === '401' ||
+                directError.message?.includes('JWT')) {
+              console.error('🔐 Authentication error detected - API key may be invalid or expired');
+              const errorObj = {
+                type: 'system_error' as const,
+                message: 'Authentication error. Please contact support or try again later.'
+              };
+              setError(errorObj);
+              setStatus(null);
+              
+              statusCache.set(normalizedEmail, {
+                data: null,
+                timestamp: Date.now(),
+                error: errorObj
+              });
+              return;
+            }
           }
         } catch (fallbackError) {
           console.error('❌ Fallback query error:', fallbackError);

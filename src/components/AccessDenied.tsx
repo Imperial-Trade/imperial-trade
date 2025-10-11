@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/lib/utils';
 
 export default function AccessDenied({ requiredLevel = "user" }) {
   return (
@@ -19,12 +18,12 @@ export default function AccessDenied({ requiredLevel = "user" }) {
             This content requires a full member account. Please sign in or create an account to access this feature.
           </p>
           <div className="space-y-3">
-            <Link to={createPageUrl('AccessPortal')}>
+            <Link to="/signin">
               <Button className="w-full bg-accent-green hover:bg-green-500 text-white">
                 Sign In or Join
               </Button>
             </Link>
-            <Link to={createPageUrl('Home')}>
+            <Link to="/">
               <Button variant="outline" className="w-full border-default text-secondary hover:bg-surface">
                 Return to Home
               </Button>

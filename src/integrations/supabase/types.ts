@@ -71,6 +71,7 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           original_rejection_reason: string | null
+          password_hash: string | null
           phone_number: string | null
           reason: string | null
           referrer: string | null
@@ -79,13 +80,15 @@ export type Database = {
           social_id: string | null
           social_provider: Database["public"]["Enums"]["social_provider"] | null
           status: Database["public"]["Enums"]["request_status"]
+          terms_accepted: boolean | null
+          terms_accepted_at: string | null
           updated_at: string
           username: string | null
           vt_market_account_number: string | null
           website: string | null
         }
         Insert: {
-          account_type: Database["public"]["Enums"]["account_type"]
+          account_type?: Database["public"]["Enums"]["account_type"]
           approved_by?: string | null
           created_at?: string
           email: string
@@ -96,6 +99,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           original_rejection_reason?: string | null
+          password_hash?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
@@ -106,6 +110,8 @@ export type Database = {
             | Database["public"]["Enums"]["social_provider"]
             | null
           status?: Database["public"]["Enums"]["request_status"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null
@@ -123,6 +129,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           original_rejection_reason?: string | null
+          password_hash?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
@@ -133,6 +140,8 @@ export type Database = {
             | Database["public"]["Enums"]["social_provider"]
             | null
           status?: Database["public"]["Enums"]["request_status"]
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null
@@ -182,6 +191,36 @@ export type Database = {
           sent_at?: string
           subject?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_outputs: {
+        Row: {
+          agent_name: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          output_text: string
+          user_id: string | null
+          user_readable_text: string | null
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output_text: string
+          user_id?: string | null
+          user_readable_text?: string | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          output_text?: string
+          user_id?: string | null
+          user_readable_text?: string | null
         }
         Relationships: []
       }
@@ -1965,16 +2004,20 @@ export type Database = {
           created_at: string | null
           device_fingerprint: string | null
           display_name: string | null
+          email: string | null
           email_notifications: boolean
           engagement_score: number | null
           id: string
           in_app_notifications_enabled: boolean | null
+          last_dashboard_message: Json | null
           last_device_info: Json | null
           last_login: string | null
+          last_message_date: string | null
           legal_accepted: boolean
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          module_completion_messages: Json | null
           notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
@@ -2016,16 +2059,20 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email?: string | null
           email_notifications?: boolean
           engagement_score?: number | null
           id: string
           in_app_notifications_enabled?: boolean | null
+          last_dashboard_message?: Json | null
           last_device_info?: Json | null
           last_login?: string | null
+          last_message_date?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          module_completion_messages?: Json | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
@@ -2067,16 +2114,20 @@ export type Database = {
           created_at?: string | null
           device_fingerprint?: string | null
           display_name?: string | null
+          email?: string | null
           email_notifications?: boolean
           engagement_score?: number | null
           id?: string
           in_app_notifications_enabled?: boolean | null
+          last_dashboard_message?: Json | null
           last_device_info?: Json | null
           last_login?: string | null
+          last_message_date?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          module_completion_messages?: Json | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
@@ -2991,6 +3042,33 @@ export type Database = {
         }
         Relationships: []
       }
+      trigger_execution_log: {
+        Row: {
+          created_at: string | null
+          execution_time: string | null
+          id: number
+          signal_id: string
+          trigger_name: string
+          trigger_operation: string
+        }
+        Insert: {
+          created_at?: string | null
+          execution_time?: string | null
+          id?: number
+          signal_id: string
+          trigger_name: string
+          trigger_operation: string
+        }
+        Update: {
+          created_at?: string | null
+          execution_time?: string | null
+          id?: number
+          signal_id?: string
+          trigger_name?: string
+          trigger_operation?: string
+        }
+        Relationships: []
+      }
       ui_activity_sessions: {
         Row: {
           created_at: string
@@ -3849,6 +3927,17 @@ export type Database = {
         Args: { p_duration_seconds?: number; p_holder_id: string }
         Returns: boolean
       }
+      add_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      auto_cleanup_stale_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number
@@ -3859,7 +3948,7 @@ export type Database = {
         Returns: Json
       }
       check_account_request_rate_limit: {
-        Args: { p_email: string; p_ip_address?: string }
+        Args: { p_email: string } | { p_email: string; p_ip_address?: string }
         Returns: Json
       }
       check_alert_cooldown: {
@@ -3912,19 +4001,19 @@ export type Database = {
       }
       cleanup_old_cron_logs: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_cron_logs_optimized: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_economic_events: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_notification_logs: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
@@ -3932,7 +4021,7 @@ export type Database = {
       }
       cleanup_old_rate_limits_optimized: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       cleanup_old_ui_listeners: {
         Args: Record<PropertyKey, never>
@@ -3944,7 +4033,11 @@ export type Database = {
       }
       cleanup_stale_market_prices: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
+      }
+      cleanup_trigger_execution_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       cleanup_webhook_debounce: {
         Args: Record<PropertyKey, never>
@@ -3962,6 +4055,10 @@ export type Database = {
           p_priority_level?: number
           p_signal_id: string
         }
+        Returns: string
+      }
+      create_synthetic_test_signal: {
+        Args: { p_test_scenario?: string }
         Returns: string
       }
       delete_comment_cascade: {
@@ -3990,11 +4087,13 @@ export type Database = {
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       get_active_alert_symbols: {
         Args: Record<PropertyKey, never>
-        Returns: string[]
+        Returns: {
+          symbol: string
+        }[]
       }
       get_active_notification_triggers: {
         Args: Record<PropertyKey, never>
@@ -4007,7 +4106,7 @@ export type Database = {
       get_active_users_for_broadcasting: {
         Args: Record<PropertyKey, never>
         Returns: {
-          last_activity: string
+          display_name: string
           onesignal_player_id: string
           user_id: string
         }[]
@@ -4062,12 +4161,10 @@ export type Database = {
       get_cron_job_status: {
         Args: Record<PropertyKey, never>
         Returns: {
-          active: boolean
+          error_message: string
           job_name: string
-          last_run_ended_at: string
-          last_run_started_at: string
-          last_run_status: string
-          schedule: string
+          last_run: string
+          status: string
         }[]
       }
       get_latest_market_price: {
@@ -4144,6 +4241,16 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: string
       }
+      get_user_roles: {
+        Args: { p_user_id?: string }
+        Returns: {
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      get_user_roles_array: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_type: {
         Args: { user_id_param?: string }
         Returns: string
@@ -4179,6 +4286,13 @@ export type Database = {
         Args: { p_threshold_seconds?: number }
         Returns: boolean
       }
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4203,7 +4317,9 @@ export type Database = {
         Returns: boolean
       }
       log_deprecated_function_usage: {
-        Args: Record<PropertyKey, never>
+        Args:
+          | Record<PropertyKey, never>
+          | { p_function_name: string; p_metadata?: Json; p_user_id?: string }
         Returns: undefined
       }
       mark_notifications_cleared: {
@@ -4220,7 +4336,7 @@ export type Database = {
       }
       populate_alert_monitoring_for_existing_signals: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
       }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
@@ -4273,7 +4389,14 @@ export type Database = {
         Returns: undefined
       }
       register_ui_activity_enhanced: {
-        Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
+        Args: { p_session_id: string; p_symbols: string[]; p_user_id: string }
+        Returns: undefined
+      }
+      remove_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
         Returns: undefined
       }
       should_show_onesignal_prompt: {
@@ -4290,17 +4413,56 @@ export type Database = {
         Returns: boolean
       }
       system_update_trade_alert: {
-        Args: {
-          p_close_reason?: string
-          p_signal_id: string
-          p_status?: string
-          p_tp_hits?: number[]
-        }
-        Returns: boolean
+        Args:
+          | {
+              p_close_reason?: string
+              p_signal_id: string
+              p_status?: string
+              p_tp_hits?: number[]
+            }
+          | { p_signal_id: string; p_updates: Json }
+        Returns: undefined
       }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>
-        Returns: number
+        Returns: undefined
+      }
+      update_trade_alert_safe: {
+        Args: {
+          p_close_reason?: Database["public"]["Enums"]["close_reason"]
+          p_id: string
+          p_is_xeon_stream?: boolean
+          p_notes?: string
+          p_status?: Database["public"]["Enums"]["trade_alert_status"]
+          p_tp_hits?: number[]
+        }
+        Returns: {
+          activated_at: string | null
+          activation_price: number | null
+          asset_name: string
+          close_reason: Database["public"]["Enums"]["close_reason"] | null
+          created_at: string
+          entry_price: number
+          expires_at: string | null
+          expiry_type: string | null
+          id: string
+          is_xeon_stream: boolean | null
+          notes: string | null
+          provider_name: string | null
+          status: Database["public"]["Enums"]["trade_alert_status"]
+          stop_loss: number
+          tp_hit_mask: number | null
+          tp_hits: number[] | null
+          tp1: number | null
+          tp2: number | null
+          tp3: number | null
+          tp4: number | null
+          tp5: number | null
+          trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          tradermade_symbol: string
+          updated_at: string
+          user_id: string
+        }[]
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
@@ -4367,7 +4529,7 @@ export type Database = {
       account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "educator" | "educator+"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
       close_reason:
         | "manual"
@@ -4551,7 +4713,7 @@ export const Constants = {
       account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "educator", "educator+"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
       close_reason: [
         "manual",

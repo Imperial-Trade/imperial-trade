@@ -1,129 +1,119 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { AdvancedTypingEffect } from '@/components/account-request/AdvancedTypingEffect';
+import AppBar from '@/components/layout/AppBar';
+import { useAccountStatus } from '@/hooks/useAccountStatus';
+import { ApprovedAccountFlow } from '@/components/account-request/ApprovedAccountFlow';
+import { ExistingRequestNotice } from '@/components/account-request/ExistingRequestNotice';
+import { RequestHistoryTimeline } from '@/components/account-request/RequestHistoryTimeline';
+import { UpdateAccountRequestForm } from '@/components/account-request/UpdateAccountRequestForm';
+import { ResubmissionConfirmation } from '@/components/account-request/ResubmissionConfirmation';
+import { NoRequestFound } from '@/components/account-request/NoRequestFound';
+import { ErrorDisplay } from '@/components/account-request/ErrorDisplay';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/lib/utils';
+import { PageStyles } from '@/components/account-request/PageStyles';
 
-import React, { useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Mail, Clock, XCircle } from "lucide-react";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
-import { BrandHeader } from "@/components/account-request/BrandHeader";
-import { VideoBackground } from "@/components/account-request/VideoBackground";
-import { PageStyles } from "@/components/account-request/PageStyles";
-import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
-import { NoRequestFound } from "@/components/account-request/NoRequestFound";
-import { ErrorDisplay } from "@/components/account-request/ErrorDisplay";
-import { ExistingRequestNotice } from "@/components/account-request/ExistingRequestNotice";
-import { UpdateAccountRequestForm } from "@/components/account-request/UpdateAccountRequestForm";
-import { useAccountStatus } from "@/hooks/useAccountStatus";
-import { useAccountRequestCheck } from "@/hooks/useAccountRequestCheck";
-import { AccountRequestData } from "@/api/entities/AccountRequest";
-import { ResubmissionConfirmation } from "@/components/account-request/ResubmissionConfirmation";
-import { RequestHistoryTimeline } from "@/components/account-request/RequestHistoryTimeline";
-
-type ViewMode = 'check' | 'result' | 'status' | 'update' | 'success';
+type ViewMode = 'check' | 'status' | 'update' | 'success' | 'result';
 
 export default function AccountRequestStatusPage() {
-  const [email, setEmail] = useState("");
-  const [searchEmail, setSearchEmail] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('check');
-  const [currentRequest, setCurrentRequest] = useState<AccountRequestData | null>(null);
+  const [currentRequest, setCurrentRequest] = useState<any>(null);
 
-  const {
-    status,
-    error,
-    isLoading,
+  useEffect(() => {
+    const prefilledEmail = location.state?.prefilledEmail;
+    if (prefilledEmail) {
+      setEmail(prefilledEmail);
+    }
+  }, [location.state]);
+
+  const { 
+    status, 
+    isLoading, 
+    error, 
     checkStatus,
-    retryCheck,
-    resetState,
+    clearError: clearStatusError 
   } = useAccountStatus();
-
-  const {
-    existingRequest,
-    isChecking,
-    error: checkError,
-    checkForExistingRequest,
-    clearCheck,
-  } = useAccountRequestCheck();
 
   const handleCheckStatus = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || isLoading) return;
-    
-    const emailToCheck = email.toLowerCase().trim();
-    setSearchEmail(emailToCheck);
-    
-    // First check for existing request in our new system
-    const existingReq = await checkForExistingRequest(emailToCheck);
-    if (existingReq) {
-      setCurrentRequest(existingReq);
-      // For approved requests, use result mode to trigger ApprovedAccountFlow
-      if (existingReq.status === 'approved') {
-        setViewMode('result');
-      } else {
-        // For pending/rejected requests, use status mode to show ExistingRequestNotice
-        setViewMode('status');
-      }
-    } else {
-      // Fall back to original status check for legacy requests
-      await checkStatus(emailToCheck);
-      setViewMode('result');
-    }
-  }, [email, isLoading, checkStatus, checkForExistingRequest]);
+    if (!email.trim()) return;
+
+    const trimmedEmail = email.trim().toLowerCase();
+    setSearchEmail(trimmedEmail);
+    clearStatusError();
+
+    await checkStatus(trimmedEmail);
+    setViewMode('result');
+  }, [email, checkStatus, clearStatusError]);
 
   const handleShowUpdate = useCallback(() => {
     setViewMode('update');
   }, []);
 
-  const handleUpdateSuccess = useCallback((updatedRequest: AccountRequestData) => {
+  const handleUpdateSuccess = useCallback((updatedRequest: any) => {
     setCurrentRequest(updatedRequest);
     setViewMode('success');
   }, []);
 
   const handleBackToCheck = useCallback(() => {
     setViewMode('check');
+    setEmail('');
+    setSearchEmail('');
     setCurrentRequest(null);
-    setEmail("");
-    setSearchEmail("");
-    resetState();
-    clearCheck();
-  }, [resetState, clearCheck]);
+    clearStatusError();
+  }, [clearStatusError]);
 
   const handleCheckAnother = useCallback(() => {
-    console.log('Checking another email - resetting state');
     handleBackToCheck();
   }, [handleBackToCheck]);
 
-  const handleRefreshStatus = useCallback(() => {
+  const retryCheck = useCallback(() => {
     if (searchEmail) {
-      console.log('Refreshing status for:', searchEmail);
-      retryCheck();
+      checkStatus(searchEmail);
     }
-  }, [searchEmail, retryCheck]);
+  }, [searchEmail, checkStatus]);
+
+  const handleRefreshStatus = useCallback(() => {
+    if (currentRequest?.email || status?.email) {
+      const emailToCheck = currentRequest?.email || status?.email;
+      checkStatus(emailToCheck);
+    }
+  }, [currentRequest, status, checkStatus]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Clock className="w-8 h-8 text-yellow-400" />;
-      case "rejected":
-        return <XCircle className="w-8 h-8 text-red-400" />;
+      case 'pending':
+        return <Clock className="w-12 h-12 text-yellow-400 mx-auto" />;
+      case 'rejected':
+        return <XCircle className="w-12 h-12 text-red-400 mx-auto" />;
       default:
-        return <Clock className="w-8 h-8 text-gray-400" />;
+        return <AlertCircle className="w-12 h-12 text-gray-400 mx-auto" />;
     }
   };
 
   const getStatusMessage = (status: string) => {
     switch (status) {
-      case "pending":
+      case 'pending':
         return {
           title: "Request Pending",
-          message: "Your account request is currently being reviewed by our administrators.",
-          instructions: "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed."
+          message: "Your account request is being reviewed by our team.",
+          instructions: "We'll notify you via email once a decision has been made. This usually takes 1-2 business days."
         };
-      case "rejected":
+      case 'rejected':
         return {
-          title: "Request Denied",
-          message: "We're sorry, but your account request has been denied.",
-          instructions: "We cannot validate your VT Market credentials. Please contact support if you believe this is an error."
+          title: "Request Not Approved",
+          message: "Unfortunately, your account request was not approved.",
+          instructions: "You can resubmit your request with updated information if you believe this was in error."
         };
       default:
         return {
@@ -135,11 +125,29 @@ export default function AccountRequestStatusPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-      <VideoBackground />
-
-      <div className="relative z-20 max-w-2xl w-full">
-        <BrandHeader />
+    <div className="min-h-screen">
+      {/* Navigation Bar */}
+      <AppBar />
+      
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0 dark:brightness-[0.4] brightness-[0.7] transition-all duration-300"
+      >
+        <source
+          src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div className="fixed inset-0 bg-gradient-to-t from-black/40 to-transparent z-10"></div>
+      
+      {/* Main Content */}
+      <div className="relative z-20 w-full flex flex-col md:flex-row gap-8 md:gap-12 items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-20">
+        {/* Left Section - Status Check Form */}
+        <div className="w-full md:w-1/2 lg:w-2/5">
 
         {viewMode === 'check' && (
           <Card className="glass-effect border-default">
@@ -166,17 +174,17 @@ export default function AccountRequestStatusPage() {
                       placeholder="Enter your email address"
                       className="pl-10 bg-white border-gray-300 text-gray-900"
                       required
-                      disabled={isLoading || isChecking}
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isLoading || isChecking || !email.trim()}
+                  disabled={isLoading || !email.trim()}
                   className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
                 >
-                  {isLoading || isChecking ? (
+                  {isLoading ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
                   ) : (
                     "Check Status"
@@ -324,6 +332,12 @@ export default function AccountRequestStatusPage() {
             </div>
           </div>
         )}
+        </div>
+
+        {/* Right Section - Animated Text (Hidden on Mobile) */}
+        <div className="hidden md:block md:w-1/2 lg:w-3/5">
+          <AdvancedTypingEffect />
+        </div>
       </div>
 
       <PageStyles />

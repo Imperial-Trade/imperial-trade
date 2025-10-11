@@ -43,35 +43,77 @@ export const handleAuthRedirect = (path: string) => {
   window.location.reload();
 };
 
-export const validateUserAccess = (user: User | null, requiredLevel: string): boolean => {
-  if (!user || !user.user_metadata) return false;
+// ============================================
+// SECURITY FIX (ERROR #14-#44): Secure RPC-based authorization
+// Replaced all client-side checks with server-validated role checks
+// ============================================
+import { supabase } from '@/integrations/supabase/client';
+
+export const validateUserAccess = async (userId: string | null, requiredLevel: string): Promise<boolean> => {
+  if (!userId) return false;
   
-  const userAccessLevel = user.user_metadata.access_level;
-  const userRole = user.user_metadata.role;
-  
-  // Check if user has the required access level or role
-  return userAccessLevel === requiredLevel || userRole === requiredLevel;
+  try {
+    const { data, error } = await supabase.rpc('get_user_roles', {
+      p_user_id: userId
+    });
+    
+    if (error) {
+      console.error('🔒 [validateUserAccess] RPC error:', error);
+      return false;
+    }
+    
+    const roles = (data || []).map((r: any) => r.role);
+    return roles.includes(requiredLevel);
+  } catch (error) {
+    console.error('🔒 [validateUserAccess] Unexpected error:', error);
+    return false;
+  }
 };
 
-export const hasAdminAccess = (user: User | null): boolean => {
-  if (!user || !user.user_metadata) return false;
+export const hasAdminAccess = async (userId: string | null): Promise<boolean> => {
+  if (!userId) return false;
   
-  return user.user_metadata.access_level === 'admin' || user.user_metadata.role === 'admin';
+  try {
+    const { data, error } = await supabase.rpc('get_user_roles', {
+      p_user_id: userId
+    });
+    
+    if (error) {
+      console.error('🔒 [hasAdminAccess] RPC error:', error);
+      return false;
+    }
+    
+    const roles = (data || []).map((r: any) => r.role);
+    return roles.includes('admin');
+  } catch (error) {
+    console.error('🔒 [hasAdminAccess] Unexpected error:', error);
+    return false;
+  }
 };
 
-export const hasModeratorAccess = (user: User | null): boolean => {
-  if (!user || !user.user_metadata) return false;
+export const hasModeratorAccess = async (userId: string | null): Promise<boolean> => {
+  if (!userId) return false;
   
-  const accessLevel = user.user_metadata.access_level;
-  const role = user.user_metadata.role;
-  
-  // Admin has moderator privileges, plus explicit moderator access
-  return accessLevel === 'admin' || accessLevel === 'moderator' || 
-         role === 'admin' || role === 'moderator';
+  try {
+    const { data, error } = await supabase.rpc('get_user_roles', {
+      p_user_id: userId
+    });
+    
+    if (error) {
+      console.error('🔒 [hasModeratorAccess] RPC error:', error);
+      return false;
+    }
+    
+    const roles = (data || []).map((r: any) => r.role);
+    return roles.includes('admin') || roles.includes('moderator');
+  } catch (error) {
+    console.error('🔒 [hasModeratorAccess] Unexpected error:', error);
+    return false;
+  }
 };
 
-export const canAccessAdminPanel = (user: User | null): boolean => {
-  return hasAdminAccess(user) || hasModeratorAccess(user);
+export const canAccessAdminPanel = async (userId: string | null): Promise<boolean> => {
+  return (await hasAdminAccess(userId)) || (await hasModeratorAccess(userId));
 };
 
 export const getUserDisplayName = (user: User | null): string => {

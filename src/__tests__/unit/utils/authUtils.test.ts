@@ -52,77 +52,77 @@ describe('Auth Utils', () => {
   });
 
   describe('validateUserAccess', () => {
-    it('returns true for valid user with matching access level', () => {
-      expect(validateUserAccess(mockUser, 'user')).toBe(true);
+    it('returns true for valid user with matching access level', async () => {
+      await expect(validateUserAccess(mockUser.id, 'user')).resolves.toBe(true);
     });
 
-    it('returns false for user without required access level', () => {
-      expect(validateUserAccess(mockUser, 'admin')).toBe(false);
+    it('returns false for user without required access level', async () => {
+      await expect(validateUserAccess(mockUser.id, 'admin')).resolves.toBe(false);
     });
 
-    it('returns false for null user', () => {
-      expect(validateUserAccess(null, 'user')).toBe(false);
+    it('returns false for null user', async () => {
+      await expect(validateUserAccess(null, 'user')).resolves.toBe(false);
     });
 
-    it('returns false for user without metadata', () => {
+    it('returns false for user without metadata', async () => {
       const userWithoutMetadata = createMockUser({
         user_metadata: undefined as any
       });
-      expect(validateUserAccess(userWithoutMetadata, 'user')).toBe(false);
+      await expect(validateUserAccess(userWithoutMetadata.id, 'user')).resolves.toBe(false);
     });
   });
 
   describe('hasAdminAccess', () => {
-    it('returns true for admin user', () => {
-      expect(hasAdminAccess(mockAdminUser)).toBe(true);
+    it('returns true for admin user', async () => {
+      await expect(hasAdminAccess(mockAdminUser.id)).resolves.toBe(true);
     });
 
-    it('returns false for regular user', () => {
-      expect(hasAdminAccess(mockUser)).toBe(false);
+    it('returns false for regular user', async () => {
+      await expect(hasAdminAccess(mockUser.id)).resolves.toBe(false);
     });
 
-    it('returns false for moderator user', () => {
-      expect(hasAdminAccess(mockModeratorUser)).toBe(false);
+    it('returns false for moderator user', async () => {
+      await expect(hasAdminAccess(mockModeratorUser.id)).resolves.toBe(false);
     });
 
-    it('returns false for null user', () => {
-      expect(hasAdminAccess(null)).toBe(false);
+    it('returns false for null user', async () => {
+      await expect(hasAdminAccess(null)).resolves.toBe(false);
     });
   });
 
   describe('hasModeratorAccess', () => {
-    it('returns true for moderator user', () => {
-      expect(hasModeratorAccess(mockModeratorUser)).toBe(true);
+    it('returns true for moderator user', async () => {
+      await expect(hasModeratorAccess(mockModeratorUser.id)).resolves.toBe(true);
     });
 
-    it('returns true for admin user (admin has moderator privileges)', () => {
-      expect(hasModeratorAccess(mockAdminUser)).toBe(true);
+    it('returns true for admin user (admin has moderator privileges)', async () => {
+      await expect(hasModeratorAccess(mockAdminUser.id)).resolves.toBe(true);
     });
 
-    it('returns false for regular user', () => {
-      expect(hasModeratorAccess(mockUser)).toBe(false);
+    it('returns false for regular user', async () => {
+      await expect(hasModeratorAccess(mockUser.id)).resolves.toBe(false);
     });
 
-    it('returns false for null user', () => {
-      expect(hasModeratorAccess(null)).toBe(false);
+    it('returns false for null user', async () => {
+      await expect(hasModeratorAccess(null)).resolves.toBe(false);
     });
   });
 
   describe('canAccessAdminPanel', () => {
-    it('returns true for admin user', () => {
-      expect(canAccessAdminPanel(mockAdminUser)).toBe(true);
+    it('returns true for admin user', async () => {
+      await expect(canAccessAdminPanel(mockAdminUser.id)).resolves.toBe(true);
     });
 
-    it('returns true for moderator user', () => {
-      expect(canAccessAdminPanel(mockModeratorUser)).toBe(true);
+    it('returns true for moderator user', async () => {
+      await expect(canAccessAdminPanel(mockModeratorUser.id)).resolves.toBe(true);
     });
 
-    it('returns false for regular user', () => {
-      expect(canAccessAdminPanel(mockUser)).toBe(false);
+    it('returns false for regular user', async () => {
+      await expect(canAccessAdminPanel(mockUser.id)).resolves.toBe(false);
     });
 
-    it('returns false for null user', () => {
-      expect(canAccessAdminPanel(null)).toBe(false);
+    it('returns false for null user', async () => {
+      await expect(canAccessAdminPanel(null)).resolves.toBe(false);
     });
   });
 

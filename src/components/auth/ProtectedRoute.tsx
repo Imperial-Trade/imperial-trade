@@ -2,66 +2,69 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
+import { useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { AuthorizationError } from './AuthorizationError';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredAccessLevel?: string;
-  requiredUserType?: string | string[];
+  requiredRoles?: ('admin' | 'moderator' | 'educator' | 'educator+' | 'user')[];
 }
 
+/**
+ * ✅ SECURITY FIX: Secure route protection using server-validated roles
+ * Replaces insecure client-side metadata checks with RPC-based validation
+ */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requiredAccessLevel,
-  requiredUserType 
+  requiredRoles = ['user']
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { userRoles, isLoading: rolesLoading, error } = useAuthorizationAware();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
-
-  if (loading) {
-    console.log('🔄 ProtectedRoute: Loading authentication state...');
+  // Wait for both auth AND roles to finish loading
+  if (authLoading || rolesLoading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  
+  // Show error UI if role fetching failed
+  if (error) {
     return (
-      <div data-current-component="ProtectedRoute-Loading">
-        <LoadingSpinner />
-      </div>
+      <AuthorizationError 
+        error={error}
+        onRetry={() => {
+          queryClient.invalidateQueries({ queryKey: ['user-roles', user?.id] });
+        }}
+      />
     );
   }
-
-  if (!user) {
-    console.log('🚫 ProtectedRoute: No user found, redirecting to signin');
-    console.log('📍 ProtectedRoute: Current location:', location.pathname + location.search);
-    // Save the attempted location for redirecting after login
-    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
-  }
-
-  // Check access level (admin, moderator, user)
-  if (requiredAccessLevel) {
-    const userAccessLevel = user.user_metadata?.access_level || 'user';
-    console.log('🔐 ProtectedRoute: Checking access level:', { required: requiredAccessLevel, user: userAccessLevel });
-    if (userAccessLevel !== requiredAccessLevel) {
-      console.log('🚫 ProtectedRoute: Access denied - insufficient access level');
-      return <Navigate to="/access-denied" replace />;
-    }
-  }
-
-  // Check user type (educator, ib_partner, etc.)
-  if (requiredUserType) {
-    const userType = user.user_metadata?.user_type || 'member';
-    const allowedTypes = Array.isArray(requiredUserType) ? requiredUserType : [requiredUserType];
-    console.log('🔐 ProtectedRoute: Checking user type:', { required: allowedTypes, user: userType });
-    
-    if (!allowedTypes.includes(userType)) {
-      console.log('🚫 ProtectedRoute: Access denied - insufficient user type');
-      return <Navigate to="/access-denied" replace />;
-    }
-  }
-
-  console.log('✅ ProtectedRoute: Authentication and authorization checks passed');
-
-  return (
-    <div data-current-component="ProtectedRoute-Content">
-      {children}
-    </div>
+  
+  // ✅ SECURITY FIX: Implement role hierarchy
+  // Admins, moderators, and educators automatically have 'user' access
+  const hasPrivilegedRole = userRoles?.some(role => 
+    ['admin', 'moderator', 'educator', 'educator+'].includes(role)
   );
+
+  const hasExactRole = requiredRoles.some(role => userRoles?.includes(role));
+
+  // Grant access if user has either:
+  // 1. The exact required role(s), OR
+  // 2. A privileged role (which includes 'user' permissions)
+  const hasAccess = hasExactRole || (requiredRoles.includes('user') && hasPrivilegedRole);
+
+  // Debug logging
+  console.log('[ProtectedRoute] Role Check:', {
+    userRoles,
+    requiredRoles,
+    hasExactRole,
+    hasPrivilegedRole,
+    hasAccess,
+    currentPath: location.pathname
+  });
+  
+  if (!hasAccess) return <Navigate to="/access-denied" replace />;
+  
+  return <>{children}</>;
 };

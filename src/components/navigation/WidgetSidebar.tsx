@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Sparkles,
   User,
-  Bell,
   BarChart3,
   Settings,
   Shield,
@@ -21,6 +20,8 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
+import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
 import { EdgeIndicator } from "./EdgeIndicator";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -72,7 +73,6 @@ interface WidgetSidebarProps {
 
 export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -80,6 +80,10 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  
+  // Authorization checks
+  const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
+  const canAccessAdminPanel = isAdmin || isEducatorPlus || isEducator || isModerator;
 
   // Device detection and responsive behavior
   const {
@@ -109,15 +113,11 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   const handleToggleSidebar = useCallback(() => {
     setIsVisible(prev => !prev);
-    if (isVisible) {
-      setShowProfileDropdown(false);
-    }
   }, [isVisible]);
 
   const handleCloseSidebar = useCallback(() => {
     if (isVisible) {
       setIsVisible(false);
-      setShowProfileDropdown(false);
       dragX.set(0);
     }
   }, [isVisible, dragX]);
@@ -283,7 +283,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   const handleClose = () => {
     setIsVisible(false);
-    setShowProfileDropdown(false);
     dragX.set(0); // Reset drag position
   };
 
@@ -483,8 +482,28 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       await signOut();
     } catch (error) {
       console.error("Error signing out:", error);
+      navigate('/signin');
     }
   };
+
+  // Role-based navigation handler for profile click
+  const handleProfileClick = useCallback(() => {
+    // Admin, Educator+, and Educator → Trading Signals tab
+    if (isAdmin || isEducatorPlus || isEducator) {
+      navigate("/dashboard/admin-tools?admin=signals");
+      handleClose();
+      return;
+    }
+    
+    // Moderator → Account Requests tab
+    if (isModerator) {
+      navigate("/dashboard/admin-tools?admin=requests");
+      handleClose();
+      return;
+    }
+    
+    // Regular users → No navigation (do nothing)
+  }, [isAdmin, isEducatorPlus, isEducator, isModerator, navigate]);
 
   return (
     <>
@@ -526,7 +545,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
           setIsHovering(false);
           if (!isDragging) {
             setIsVisible(false);
-            setShowProfileDropdown(false);
           }
         }}
         whileHover={!isDragging && !isMobile ? {
@@ -598,7 +616,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 {/* Profile Section */}
                 <motion.button
                   className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  onClick={handleProfileClick}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -625,11 +643,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                           "User"}
                     </div>
                     <div className="text-foreground/60 text-xs">
-                      {user?.user_metadata?.access_level === "admin"
-                        ? "Administrator"
-                        : user?.user_metadata?.user_type === "educator"
-                        ? "Educator"
-                        : "Member"}
+                      <DashboardUserRole />
                     </div>
                   </div>
                 </motion.button>
@@ -637,11 +651,12 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 {/* Controls */}
                 <div className="flex items-center gap-1 sm:gap-1.5">
                   <motion.button
+                    onClick={() => navigate("/dashboard/settings")}
                     className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
+                    <User className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
                   </motion.button>
                   <div className="flex items-center justify-center">
                     <ThemeToggle />
@@ -649,74 +664,44 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 </div>
               </div>
             </motion.div>
+          </div>
 
-            {/* Profile Dropdown */}
-            {showProfileDropdown && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
+          {/* Admin Tools Access - Only for privileged users */}
+          {canAccessAdminPanel && (
+            <div className="mt-3 sm:mt-4">
+              <motion.button
+                onClick={() => {
+                  if (isAdmin || isEducatorPlus || isEducator) {
+                    navigate('/dashboard/admin-tools?admin=signals');
+                  } else if (isModerator) {
+                    navigate('/dashboard/admin-tools?admin=requests');
+                  }
+                  handleClose();
+                }}
+                className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all duration-200 group backdrop-blur-md"
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <div className="p-1 sm:p-2">
-                  <motion.button
-                    onClick={() => {
-                      setShowProfileDropdown(false);
-                      navigate("/dashboard/my-progress");
-                    }}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">My Progress</span>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() => {
-                      setShowProfileDropdown(false);
-                      navigate("/dashboard/administration");
-                    }}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">
-                      Administration
-                    </span>
-                  </motion.button>
-
-                  {user?.user_metadata?.access_level === "admin" && (
-                    <motion.button
-                      onClick={() => {
-                        setShowProfileDropdown(false);
-                        navigate("/dashboard/admin");
-                      }}
-                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                      whileHover={{ scale: 1.02, x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                      <span className="text-foreground text-xs sm:text-sm">Admin Panel</span>
-                    </motion.button>
-                  )}
+                <Shield className="h-4 h-4 sm:h-5 sm:w-5 text-amber-400 group-hover:text-amber-300 transition-colors" />
+                <div className="flex-1 text-left">
+                  <p className="text-xs sm:text-sm font-semibold text-amber-300">Admin Tools</p>
+                  <p className="text-[10px] sm:text-xs text-amber-400/70">Manage signals, users & more</p>
                 </div>
-              </motion.div>
-            )}
+                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-amber-400/50 group-hover:text-amber-300 transition-colors" />
+              </motion.button>
+            </div>
+          )}
 
-            {/* Sign Out Button - Standalone */}
+          {/* Visible Sign Out Button */}
+          <div className="mt-3 sm:mt-4">
             <motion.button
               onClick={handleSignOut}
-              className="w-full mt-2 text-red-400 hover:text-red-300 text-xs sm:text-sm transition-colors duration-200 text-center py-1 sm:py-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="w-full flex items-center justify-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 dark:border-white/5 text-foreground hover:bg-white/15 dark:hover:bg-black/30 transition-all duration-200"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <div className="flex items-center justify-center gap-1 sm:gap-2">
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Sign Out</span>
-              </div>
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base font-medium">Sign Out</span>
             </motion.button>
           </div>
         </div>

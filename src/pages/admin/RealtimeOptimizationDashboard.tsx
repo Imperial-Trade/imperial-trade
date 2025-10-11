@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 import { Loader2, Activity, Lock, Users, Radio, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -39,8 +40,10 @@ const RealtimeOptimizationDashboard: React.FC = () => {
   const [telemetry, setTelemetry] = useState<EdgeFunctionTelemetry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  if (profile?.access_level !== 'admin') {
+  // ✅ SECURITY FIX (ERROR #40): Use secure RPC-based authorization
+  const { isAdmin } = useAuthorizationAware();
+
+  if (!isAdmin) {
     return (
       <div className="container mx-auto p-6">
         <Card>
@@ -109,10 +112,12 @@ const RealtimeOptimizationDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+    if (isAdmin) {
+      fetchData();
+      const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
 
   const isLockActive = broadcastLock && new Date(broadcastLock.expires_at) > new Date();
   const activeListenerCount = uiListeners.length;

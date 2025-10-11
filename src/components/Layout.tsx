@@ -2,6 +2,7 @@ import React from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { WidgetSidebar } from "@/components/navigation/WidgetSidebar"
+import { AdminArsenalSidebar } from "@/components/navigation/AdminArsenalSidebar"
 import { Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -91,10 +92,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </ErrorBoundary>
         </main>
         
-        {/* Trading Arsenal Sidebar - Floating overlay */}
+        {/* Trading Arsenal Sidebar - Left side */}
         <ErrorBoundary componentName="Trading Arsenal Sidebar">
           <WidgetSidebar />
         </ErrorBoundary>
+        
+        {/* Admin Arsenal Sidebar - Right side - Only on Admin Tools page */}
+        {location.pathname === '/dashboard/admin-tools' && (
+          <ErrorBoundary componentName="Admin Arsenal Sidebar">
+            <AdminArsenalSidebar />
+          </ErrorBoundary>
+        )}
         
         {/* Compliance Footer */}
         <ComplianceFooter />

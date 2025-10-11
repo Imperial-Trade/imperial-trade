@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
+import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 
 import { useToast } from '@/hooks/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
@@ -37,6 +38,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   onCancel
 }) => {
   const { toast } = useToast();
+  const { refreshPrice } = useOptimizedWebSocketPrices(); // 🔥 For manual cache-busting
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<typeof ALLOWED_ASSETS[0] | null>(null);
   const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
@@ -71,9 +73,13 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     tp5_pips: ''
   });
 
-  const handleAssetSelection = useCallback((symbol: string) => {
+  const handleAssetSelection = useCallback(async (symbol: string) => {
     const asset = ALLOWED_ASSETS.find(a => a.symbol === symbol);
     if (!asset) return;
+    
+    // 🔥 AGGRESSIVE CACHE-BUSTING: Force fresh price fetch on modal open
+    console.log(`🔥 [Cache-Bust] Forcing fresh price fetch for ${asset.symbol}`);
+    refreshPrice(asset.symbol); // Force immediate refresh bypassing cache
     
     setIsLoadingPriceData(true);
     setSelectedAsset(asset);
@@ -126,7 +132,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     setTimeout(() => {
       setIsLoadingPriceData(false);
     }, 1500);
-  }, []);
+  }, [refreshPrice]);
 
   // Centralized helper to recalculate SL/TP prices from pip inputs
   const recalcTargetsFromPips = useCallback((
@@ -241,6 +247,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       });
     }
   }, [errors, selectedAsset, formData.trade_type, formData.entry_price, pipInputs, takeProfits, recalcTargetsFromPips]);
+
+  // 🚀 ANTI-CHURN: Stable callbacks with useCallback to prevent EnhancedLivePriceDisplay re-renders
+  const handlePriceUpdate = useCallback((price: number) => {
+    setCurrentPrice(price);
+  }, []);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
     const priceStr = price.toString();
@@ -530,7 +541,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               <EnhancedLivePriceDisplay
                 symbol={selectedAsset.symbol}
                 assetName={selectedAsset.name}
-                onPriceUpdate={setCurrentPrice}
+                onPriceUpdate={handlePriceUpdate}
                 onUseCurrentPrice={handleUseCurrentPrice}
               />
             </div>

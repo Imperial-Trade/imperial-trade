@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { 
   RefreshCw, 
   TrendingUp, 
@@ -28,7 +29,7 @@ interface EnhancedLivePriceDisplayProps {
   className?: string;
 }
 
-const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
+const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.memo(({
   symbol,
   assetName,
   onUseCurrentPrice,
@@ -56,8 +57,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return price;
   }, [price, symbol]);
 
-  // Critical: Monitor price staleness for trading safety - Sub-2s Live Guarantee
-  const stalenessStatus = usePriceStalenessMonitor(symbol, 2); // 2-second staleness threshold
+  // Critical: Monitor price staleness for trading safety - Robust Live Guarantee
+  const stalenessStatus = usePriceStalenessMonitor(symbol, 8); // 8-second staleness threshold for continuous Live display
   
   // ✅ FLICKER ELIMINATION: Stability management
   const { shouldAllowQualityChange } = useConnectionStability();
@@ -67,23 +68,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
   const [debouncedConnectionStatus, setDebouncedConnectionStatus] = useState(connectionStatus);
+  const [pulseKey, setPulseKey] = useState(0);
+  const [mountTime] = useState(Date.now()); // 🔥 PHASE 3: Track mount time for initial load grace period
+  const [heartbeatPulse, setHeartbeatPulse] = useState(0); // 🔥 REACTIVE FIX: Visual heartbeat indicator
 
-  // GUARANTEED 2s Updates: Use current timestamp vs last updated for accurate staleness
+  // ACCURATE AGE: Use actual message arrival timestamp for precise age calculation
   useEffect(() => {
     const updateAge = () => {
-      if (!lastUpdated) {
-        setDataAge('--');
+      // Handle undefined, Infinity, or NaN gracefully - these indicate no data received yet
+      if (arrivalAgeSeconds === undefined || !isFinite(arrivalAgeSeconds) || isNaN(arrivalAgeSeconds)) {
+        setDataAge('Connecting...');
         return;
       }
       
-      // Calculate age from lastUpdated timestamp for guaranteed accuracy
-      const ageMs = Date.now() - lastUpdated.getTime();
-      const ageSeconds = Math.floor(ageMs / 1000);
+      const ageSeconds = arrivalAgeSeconds;
       
-      if (ageSeconds < 2) {
-        setDataAge('Live'); // Show "Live" for sub-2-second data
-      } else if (ageSeconds < 3) {
-        setDataAge('Live'); // Extended to 3 seconds for heartbeat tolerance
+      // Show "Live" for data within 3 seconds (aligned with 500ms polling)
+      if (ageSeconds < 3) {
+        setDataAge('Live');
       } else if (ageSeconds < 60) {
         setDataAge(`${ageSeconds}s ago`);
       } else if (ageSeconds < 3600) {
@@ -98,18 +100,18 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     // Update every 500ms for smooth, guaranteed real-time experience
     const interval = setInterval(updateAge, 500);
     return () => clearInterval(interval);
-  }, [lastUpdated]);
+  }, [arrivalAgeSeconds, lastUpdated, mountTime]); // 🔥 lastUpdated forces re-calculation
 
-  // Optimized price change animation effect
+  // 🚀 PHASE 2C: Micro-animation pulses every 200ms for live feel
   useEffect(() => {
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
-      // Only animate for significant changes to reduce visual noise
-      const changePercent = Math.abs((price - prevPrice) / prevPrice) * 100;
-      if (changePercent >= 0.02) { // Increased threshold to 0.02% for less noise
-        setPriceAnimation(price > prevPrice ? 'up' : 'down');
-        const timer = setTimeout(() => setPriceAnimation(null), 250); // Reduced to 250ms
-        return () => clearTimeout(timer);
-      }
+      // 🚀 Trigger animation for ANY price change (zero pause)
+      setPriceAnimation(price > prevPrice ? 'up' : 'down');
+      setPulseKey(prev => prev + 1);
+      
+      // Ultra-fast 200ms animation for continuous live feel
+      const timer = setTimeout(() => setPriceAnimation(null), 200);
+      return () => clearTimeout(timer);
     }
     if (price > 0 && price !== prevPrice) {
       setPrevPrice(price);
@@ -127,6 +129,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       setDebouncedConnectionStatus(connectionStatus);
     }
   }, [connectionStatus, shouldAllowQualityChange, symbol]);
+
+  // 🔥 REACTIVE FIX: Visual heartbeat triggers on every database poll
+  useEffect(() => {
+    if (lastUpdated) {
+      setHeartbeatPulse(prev => prev + 1);
+      console.log(`💓 [Heartbeat] Triggered at ${lastUpdated.toISOString()} for ${symbol}`);
+    }
+  }, [lastUpdated, symbol]);
 
   // Price update effect with validation
   useEffect(() => {
@@ -166,8 +176,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    // GUARANTEED 2s Updates: Use timestamp-based freshness for accurate status
-    const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
+    // ACCURATE FRESHNESS: Use actual arrival age for precise freshness calculation
+    const dataFreshness = arrivalAgeSeconds ?? Infinity;
     
     if (isLoading || debouncedConnectionStatus === 'connecting') {
       return { 
@@ -199,24 +209,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    // Guaranteed Live indicator for sub-2-second data
-    if (dataFreshness < 2 && price > 0) {
+    // Guaranteed Live indicator for fresh data (within broadcast interval)
+    if (dataFreshness < 8 && price > 0) {
       return { 
         color: 'text-green-400', 
         icon: Wifi, 
         text: 'Live',
-        description: 'Guaranteed 2-second updates via heartbeat system',
+        description: 'Real-time updates active',
         animate: false
       };
     }
     
-    // Recent data (2-5 seconds)
-    if (dataFreshness < 5 && price > 0) {
+    // Recent data (6-10 seconds)
+    if (dataFreshness < 10 && price > 0) {
       return { 
         color: 'text-yellow-400', 
         icon: Timer, 
         text: 'Recent',
-        description: 'Recent price data, heartbeat incoming',
+        description: 'Price data slightly delayed',
         animate: false
       };
     }
@@ -317,13 +327,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
       {/* Market Status Banner removed to eliminate blinking and market closed displays */}
 
-      {/* Main Price Display - Always visible */}
+      {/* 🚀 PHASE 4: Main Price Display with Pulse Animation */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {displayPrice > 0 ? (
-            <div className={`font-mono text-xl font-bold ${
-              'text-accent-green'
-            }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+            <div 
+              key={pulseKey}
+              className={cn(
+                'font-mono text-xl font-bold transition-all duration-300',
+                'text-accent-green',
+                priceAnimation === 'up' && 'animate-pulse text-green-400 scale-105',
+                priceAnimation === 'down' && 'animate-pulse text-red-400 scale-105'
+              )} 
+              style={{ willChange: 'transform', transform: 'translateZ(0)' }}
+            >
               ${formatPrice(displayPrice)}
             </div>
           ) : price > 0 && !isPricePlausibleForSymbol(price, apiSymbol) ? (
@@ -352,13 +369,45 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         )}
       </div>
 
-      {/* Enhanced Footer with Trading Safety and Real-time Data Age */}
+      {/* 🚀 PHASE 4: Enhanced Footer with Data Source Indicators */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Data Age */}
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <Clock className="w-3 h-3" />
             <span>{dataAge}</span>
           </div>
+          
+          {/* 🚀 PHASE 3: Enhanced data source indicator with streaming badge */}
+          <div className={cn(
+            'flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded',
+            arrivalAgeSeconds < 3 ? 'text-green-400 bg-green-400/10' : 
+            arrivalAgeSeconds < 10 ? 'text-blue-400 bg-blue-400/10' : 
+            'text-orange-400 bg-orange-400/10'
+          )}>
+            <connectionStatusInfo.icon className="w-3 h-3" />
+            <span>
+              {arrivalAgeSeconds < 3 ? '🟢 Streaming' : arrivalAgeSeconds < 10 ? '🟡 Live' : '🔴 Stale'}
+              {arrivalAgeSeconds < 60 && arrivalAgeSeconds > 0 && ` (${arrivalAgeSeconds}s)`}
+            </span>
+          </div>
+          
+          {/* 🚀 ALWAYS ACTIVE: Visual confirmation of persistent connection */}
+          {connectionStatus === 'connected' && arrivalAgeSeconds < 10 && (
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
+              <div 
+                key={heartbeatPulse} 
+                className="w-2 h-2 bg-green-400 rounded-full animate-pulse" 
+              />
+              <span>🟢 LIVE POLLING (500ms)</span>
+            </div>
+          )}
+          {connectionStatus === 'connected' && arrivalAgeSeconds >= 10 && (
+            <div className="flex items-center gap-1 text-[10px] text-yellow-400">
+              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+              <span>🟡 POLLING (Delayed)</span>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-1">
@@ -393,6 +442,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if symbol or callbacks actually change
+  return prevProps.symbol === nextProps.symbol &&
+         prevProps.assetName === nextProps.assetName &&
+         prevProps.className === nextProps.className;
+  // Intentionally omit onUseCurrentPrice and onPriceUpdate from comparison
+  // to prevent re-renders when parent re-creates these callbacks
+});
+
+EnhancedLivePriceDisplay.displayName = 'EnhancedLivePriceDisplay';
 
 export default EnhancedLivePriceDisplay;

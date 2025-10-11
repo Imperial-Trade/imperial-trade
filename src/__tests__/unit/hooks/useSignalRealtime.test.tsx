@@ -10,7 +10,7 @@ import { TestWrapper } from '@/test/utils/test-helpers';
 vi.mock('@/contexts/SignalRealtimeContext');
 vi.mock('@/api/services/TradingApiService');
 
-const mockUseSignalRealtimeContext = useSignalRealtime as any;
+const mockUseSignalRealtimeContext = useSignalRealtimeContext as any;
 
 describe('useSignalRealtime', () => {
   const mockSignals = [
@@ -57,9 +57,15 @@ describe('useSignalRealtime', () => {
     connectionStatus: 'connected' as const,
     lastUpdated: new Date(),
     error: null,
+    nextRetryAt: null,
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
-    refreshSignals: vi.fn()
+    refreshSignals: vi.fn(),
+    getSignalById: vi.fn(),
+    restartConnection: vi.fn(),
+    getConnectionHealth: vi.fn(),
+    forcePollingMode: vi.fn(),
+    getCachedProfile: vi.fn()
   };
 
   beforeEach(() => {
@@ -68,37 +74,26 @@ describe('useSignalRealtime', () => {
     (tradingApiService.updateAlert as any) = vi.fn();
   });
 
-  it('filters signals by userId when showAllSignals is false', () => {
+  it('returns all signals from context (RLS-filtered)', () => {
     const { result } = renderHook(
       () => useSignalRealtime('user-123', false),
       { wrapper: TestWrapper }
     );
-
-    const expectedFilteredSignals = mockSignals.filter(
-      signal => signal.creator?.id === 'user-123'
-    );
     
-    expect(result.current.alerts).toEqual(expectedFilteredSignals);
-    expect(result.current.alerts).toHaveLength(1);
+    // RLS policies handle filtering at database level
+    expect(result.current.alerts).toEqual(mockSignals);
+    expect(result.current.alerts).toHaveLength(2);
   });
 
-  it('returns all signals when showAllSignals is true', () => {
+  it('returns signals regardless of showAllSignals flag', () => {
     const { result } = renderHook(
       () => useSignalRealtime('user-123', true),
       { wrapper: TestWrapper }
     );
 
+    // RLS policies handle filtering, showAllSignals is for backward compatibility
     expect(result.current.alerts).toEqual(mockSignals);
     expect(result.current.alerts).toHaveLength(2);
-  });
-
-  it('returns empty array for empty userId when showAllSignals is false', () => {
-    const { result } = renderHook(
-      () => useSignalRealtime('', false),
-      { wrapper: TestWrapper }
-    );
-
-    expect(result.current.alerts).toEqual([]);
   });
 
   it('subscribes on mount and unsubscribes on unmount', () => {

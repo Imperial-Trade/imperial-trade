@@ -330,27 +330,21 @@ export function ComprehensiveTestSuite() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('No authenticated user');
         
-        // Query the profile with proper error handling
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        // ✅ SECURITY FIX (ERROR #41): Use secure RPC-based authorization check
+        const { data: roles, error } = await supabase.rpc('get_user_roles', {
+          p_user_id: user.id
+        });
         
         if (error) {
-          // If the query fails due to missing columns, that means our migration didn't apply
-          if (error.message.includes('access_level') || error.message.includes('does not exist')) {
-            throw new Error('Database schema not properly updated - missing columns');
-          }
-          throw new Error(`Profile query failed: ${error.message}`);
+          throw new Error(`Failed to verify roles: ${error.message}`);
         }
         
-        // Type-safe access to profile properties
-        const profileData = profile as any;
-        const isAdmin = profileData?.access_level === 'admin' || profileData?.role === 'admin';
+        const rolesList = (roles || []).map((r: any) => r.role);
+        const isAdmin = rolesList.includes('admin');
+        
         if (!isAdmin) throw new Error('Current user does not have admin access');
         
-        return { success: true, message: 'Admin access control verified' };
+        return { success: true, message: 'Admin access control verified via secure RPC' };
       },
       async (): Promise<TestResponse> => {
         return { success: true, message: 'Non-admin restrictions validated (mock)' };

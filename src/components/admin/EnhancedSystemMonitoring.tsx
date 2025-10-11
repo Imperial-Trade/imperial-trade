@@ -20,8 +20,10 @@ import {
 import { performanceMonitor } from '@/services/PerformanceMonitorService';
 import { adminSecurity } from '@/services/AdminSecurityService';
 import { cacheService } from '@/services/CacheService';
+import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
 export const EnhancedSystemMonitoring: React.FC = () => {
+  const { shouldEnableMonitoring } = useMonitoringRouteGate();
   const [systemHealth, setSystemHealth] = useState(performanceMonitor.getSystemHealth());
   const [metrics, setMetrics] = useState(performanceMonitor.getMetrics());
   const [securityAlerts, setSecurityAlerts] = useState(adminSecurity.getSecurityAlerts(10));
@@ -29,6 +31,11 @@ export const EnhancedSystemMonitoring: React.FC = () => {
   const [cacheStats, setCacheStats] = useState(cacheService.getStats());
 
   useEffect(() => {
+    if (!shouldEnableMonitoring) {
+      console.log('🚫 EnhancedSystemMonitoring: Route gating disabled monitoring');
+      return;
+    }
+
     const interval = setInterval(() => {
       setSystemHealth(performanceMonitor.getSystemHealth());
       setMetrics(performanceMonitor.getMetrics());
@@ -38,7 +45,7 @@ export const EnhancedSystemMonitoring: React.FC = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldEnableMonitoring]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

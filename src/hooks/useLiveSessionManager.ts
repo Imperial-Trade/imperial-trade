@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 import { toast } from 'sonner';
 import { CreateLiveSessionData, UpdateLiveSessionData, StatusUpdateData } from '@/lib/validations/liveSessionSchema';
 
@@ -29,12 +30,12 @@ export const useLiveSessionManager = () => {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
 
-  // Check if user can manage sessions
+  // ✅ SECURITY FIX (ERROR #42): Use secure RPC-based authorization
+  const { isAdmin, isEducator } = useAuthorizationAware();
+  
   const canManageSessions = useCallback(() => {
-    return profile?.access_level === 'admin' || 
-           profile?.user_type === 'educator' || 
-           profile?.access_level === 'moderator';
-  }, [profile]);
+    return isAdmin || isEducator;
+  }, [isAdmin, isEducator]);
 
   // Fetch all sessions
   const fetchSessions = useCallback(async () => {

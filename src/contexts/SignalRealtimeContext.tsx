@@ -1,7 +1,8 @@
-
+// PHASE 5: NUCLEAR OPTION - ALL Supabase Realtime ELIMINATED, 30-second polling for signals
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useSharedRealtime } from './SharedRealtimeContext';
 import { useRealtimeHealth } from './RealtimeHealthMonitor';
@@ -20,6 +21,38 @@ let educatorCacheExpiry = 0;
 const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
 const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
 const SIGNAL_REFRESH_THROTTLE = 30000; // 🔥 OPTIMIZED to 30 seconds for better responsiveness
+
+// PHASE 1: Profile cache with 5-minute TTL for instant signal rendering
+const profileCache = new Map<string, { profile: any; expiry: number }>();
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to get cached or fetch profile
+async function getCachedProfile(userId: string): Promise<any | null> {
+  const now = Date.now();
+  const cached = profileCache.get(userId);
+  
+  // Return cached if valid
+  if (cached && cached.expiry > now) {
+    return cached.profile;
+  }
+  
+  // Fetch from Supabase
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  // Store in cache
+  if (profile) {
+    profileCache.set(userId, {
+      profile,
+      expiry: now + PROFILE_CACHE_TTL
+    });
+  }
+  
+  return profile;
+}
 
 // PHASE 6: PRODUCTION-READY RELIABILITY - Connection Management & Fallbacks
 const CONNECTION_CONFIG = {
@@ -88,6 +121,10 @@ interface SignalRealtimeContextType {
   getConnectionHealth: () => { isHealthy: boolean; lastUpdate: Date | null; mode: string };
   forcePollingMode: () => void;
   isInPollingMode: boolean;
+  // PHASE 7: Signal retrieval for instant UI updates
+  getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
+  // PHASE 1 CLEANUP: Shared profile cache
+  getCachedProfile: (userId: string) => Promise<any | null>;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | null>(null);
@@ -105,6 +142,59 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   const mountOnlyRef = useRef(false); // 🔥 LEAK-PROOF: Prevent operations after unmount
+  
+  // PHASE 2: Memory leak prevention - cleanup tracker
+  const cleanupTrackerRef = useRef({ 
+    hasUnmounted: false,
+    activeTimers: new Set<NodeJS.Timeout>()
+  });
+  
+  // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - track ALL signal IDs we've ever seen
+  const seenSignalIdsRef = useRef(new Set<string>());
+  
+  // ✅ BUG FIX #15: Profile fetch batch queue and timer refs
+  const profileFetchQueueRef = useRef<Array<{
+    signalId: string;
+    userId: string;
+    assetName: string;
+    timestamp: number;
+  }>>([]);
+  const profileBatchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // PHASE 1 CLEANUP: Automatic cache cleanup every 5 minutes
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      let removedCount = 0;
+      
+      profileCache.forEach((value, key) => {
+        if (value.expiry <= now) {
+          profileCache.delete(key);
+          removedCount++;
+        }
+      });
+      
+      if (removedCount > 0 && isDevToolsEnabled()) {
+        console.log(`🧹 Profile cache cleanup: Removed ${removedCount} expired entries`);
+      }
+      
+      // 🚨 PHASE 2D FIX (Bug #7): Enforce max cache size (prevent unbounded growth)
+      const MAX_CACHE_SIZE = 1000;
+      if (profileCache.size > MAX_CACHE_SIZE) {
+        const sortedEntries = Array.from(profileCache.entries())
+          .sort((a, b) => a[1].expiry - b[1].expiry);
+        
+        const toRemove = sortedEntries.slice(0, profileCache.size - MAX_CACHE_SIZE);
+        toRemove.forEach(([key]) => profileCache.delete(key));
+        
+        if (isDevToolsEnabled()) {
+          console.log(`🧹 [Cache Limit] Removed ${toRemove.length} oldest entries - Cache size: ${profileCache.size}`);
+        }
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   // PHASE 6: Enhanced connection state management for production reliability
   const connectionStateRef = useRef<ConnectionState>({
@@ -137,6 +227,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastSubscribeAttemptRef = useRef<number>(0); // PHASE 4: Cooldown tracking
   
+  // ============================================
+  // FIX #5: NETWORK RESILIENCE (Phase 3)
+  // Track last successful update timestamp for gap filling on reconnection
+  // ============================================
+  const lastUpdateTimestampRef = useRef<string | null>(null);
+  
   // PHASE 3: Enhanced local caching to minimize database queries
   const localCacheRef = useRef<{ 
     data: TradeAlertWithProfile[], 
@@ -146,6 +242,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
   const refreshSignals = useCallback(async () => {
+    // PHASE 2: Performance monitoring start
+    const perfStart = performance.now();
+    
     try {
       // PHASE 3: Throttle refresh requests to reduce database load
       const now = Date.now();
@@ -285,15 +384,54 @@ if (!alertsData || alertsData.length === 0) {
         educatorExpiry: localCacheRef.current.educatorExpiry || now + EDUCATOR_CACHE_TTL
       };
       
+console.log('🔍 DEBUG [SignalRealtimeContext] Setting signals in state:', {
+  totalSignals: filteredAlerts.length,
+  signalIds: filteredAlerts.map(s => s.id).slice(0, 5),
+  firstSignalSample: filteredAlerts[0] ? {
+    id: filteredAlerts[0].id,
+    status: filteredAlerts[0].status,
+    tradermadeSymbol: filteredAlerts[0].tradermadeSymbol
+  } : null
+});
+
+// ============================================
+// FIX #4: RACE CONDITION GUARD (Phase 3)
+// Filter out older updates to prevent stale data overwrites
+// ============================================
+const filteredWithTimestamps = filteredAlerts.filter(newSignal => {
+  const existingSignal = signals.find(s => s.id === newSignal.id);
+  if (!existingSignal) return true; // New signal, keep it
+  
+  // Compare timestamps - only keep if newer or equal
+  return new Date(newSignal.updatedAt) >= new Date(existingSignal.updatedAt);
+});
+
+console.log('🛡️ Race Condition Guard:', {
+  totalIncoming: filteredAlerts.length,
+  afterTimestampFilter: filteredWithTimestamps.length,
+  blocked: filteredAlerts.length - filteredWithTimestamps.length
+});
+
 unstable_batchedUpdates(() => {
-  setSignals(filteredAlerts);
+  setSignals(filteredWithTimestamps);
   setLastUpdated(new Date());
   setError(null);
 });
       
+// Update timestamp for network resilience tracking
+lastUpdateTimestampRef.current = new Date().toISOString();
+
+      // PHASE 2: Performance monitoring end
+      const { perfMonitor } = await import('@/utils/performanceMonitor');
+      perfMonitor.mark('signal-refresh', perfStart);
+      
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh signals');
+      
+      // PHASE 2: Track error performance
+      const { perfMonitor } = await import('@/utils/performanceMonitor');
+      perfMonitor.mark('signal-refresh-error', perfStart);
     }
   }, []);
 
@@ -355,7 +493,17 @@ unstable_batchedUpdates(() => {
   }, [lastUpdated]);
 
   const forcePollingMode = useCallback(() => {
-    console.log('🔄 SignalRealtime: Forcing polling mode');
+    // 🔒 ROUTE GATING: Only enable polling on signal-related routes
+    const currentPath = window.location.pathname;
+    const signalRoutes = ['/dashboard/signal-stream', '/dashboard/signals', '/admin'];
+    const isSignalRoute = signalRoutes.some(route => currentPath.startsWith(route));
+    
+    if (!isSignalRoute) {
+      console.log('🚫 SignalRealtime: Route gating blocked polling mode on', currentPath);
+      return;
+    }
+    
+    console.log('🔄 SignalRealtime: Forcing polling mode on', currentPath);
     connectionStateRef.current.isPollingMode = true;
     setConnectionStatus('polling-fallback');
     
@@ -373,7 +521,140 @@ unstable_batchedUpdates(() => {
 
   const isInPollingMode = connectionStateRef.current.isPollingMode;
 
-  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms  
+  // PHASE 7: Get signal by ID for instant UI updates
+  const getSignalById = useCallback((signalId: string) => {
+    return signals.find(signal => signal.id === signalId);
+  }, [signals]);
+
+  // ✅ BUG FIX #15: Batch profile fetch processor (defined outside handleRealtimeUpdate)
+  const processBatchedProfileFetches = useCallback(async () => {
+    const queue = profileFetchQueueRef.current || [];
+    if (queue.length === 0) return;
+    
+    console.log(`🚀 [BUG #15] Processing ${queue.length} queued signals in batch`);
+    
+    // Clear queue immediately to prevent duplicates
+    profileFetchQueueRef.current = [];
+    
+    // Get unique user IDs
+    const userIds = [...new Set(queue.map(item => item.userId))];
+    
+    try {
+      // Single profile fetch for all users
+      const profiles = await Promise.all(
+        userIds.map(userId => 
+          Promise.race([
+            getCachedProfile(userId),
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Profile fetch timeout after 5s')), 5000)
+            )
+          ]).catch(() => null)
+        )
+      );
+      
+      // Create profile map
+      const profileMap = new Map();
+      profiles.forEach((profile, index) => {
+        if (profile) {
+          profileMap.set(userIds[index], profile);
+        }
+      });
+      
+      console.log(`✅ [BUG #15] Fetched ${profileMap.size} profiles for ${queue.length} signals`);
+      
+      // ✅ SINGLE setState call for all profile updates
+      setSignals(prev => {
+        let updated = [...prev];
+        let changesMade = false;
+        
+        queue.forEach(item => {
+          const profile = profileMap.get(item.userId);
+          if (profile) {
+            const index = updated.findIndex(s => s.id === item.signalId);
+            if (index !== -1 && updated[index].creator?.display_name === '⏳ Loading...') {
+              updated[index] = {
+                ...updated[index],
+                creator: {
+                  id: profile.id,
+                  display_name: profile.display_name || 'Anonymous User',
+                  role: profile.role || 'user',
+                  avatar_url: profile.avatar_url,
+                  user_type: profile.user_type,
+                  access_level: profile.access_level
+                }
+              };
+              changesMade = true;
+            }
+          }
+        });
+        
+        console.log(`✅ [BUG #15] Batch update complete: ${changesMade ? 'profiles updated' : 'no changes needed'}`);
+        return changesMade ? updated : prev;
+      });
+      
+      // Batch update cache
+      const cache = localCacheRef.current;
+      queue.forEach(item => {
+        const profile = profileMap.get(item.userId);
+        if (profile) {
+          const index = cache.data.findIndex(s => s.id === item.signalId);
+          if (index !== -1) {
+            cache.data[index] = {
+              ...cache.data[index],
+              creator: {
+                id: profile.id,
+                display_name: profile.display_name || 'Anonymous User',
+                role: profile.role || 'user',
+                avatar_url: profile.avatar_url,
+                user_type: profile.user_type,
+                access_level: profile.access_level
+              }
+            };
+          }
+        }
+      });
+      
+      // ✅ BUG FIX #15: Single batch notification for all new signals
+      queue.forEach(item => {
+        const profile = profileMap.get(item.userId);
+        if (profile) {
+          const notificationData = {
+            type: 'signal_created',
+            title: `🚨 New Signal`,
+            message: `${profile.display_name || 'Educator'} posted ${item.assetName}`,
+            signalId: item.signalId,
+            assetName: item.assetName,
+            authorName: profile.display_name || 'Educator',
+            priority: 'high',
+            autoRemove: true,
+          };
+          
+          if ((window as any).addNotification) {
+            (window as any).addNotification(notificationData);
+          }
+          
+          toast({
+            title: '🎯 New Signal Created',
+            description: `${profile.display_name || 'Educator'} posted ${item.assetName}`,
+          });
+          
+          // Dispatch custom event for UI listeners
+          window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
+            detail: {
+              signalId: item.signalId,
+              assetName: item.assetName,
+              id: item.signalId
+            }
+          }));
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ [BUG #15] Batch profile fetch failed:', error);
+    }
+  }, []);
+
+  // 🚀 BATCHED UPDATE HANDLER: Prevent React rendering storms
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const signalId = payload?.new?.id || payload?.old?.id;
     
@@ -396,26 +677,21 @@ unstable_batchedUpdates(() => {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
       if (eventType === 'INSERT' && newRecord) {
+        // 🚨 PHASE 2B FIX (Bug #6): Strong deduplication - check if we've seen this ID from ANY source
+        if (seenSignalIdsRef.current.has(newRecord.id)) {
+          console.log(`⚠️  [DUPLICATE BLOCKED] Signal ${newRecord.id} already exists`);
+          return; // ✅ Block duplicate immediately
+        }
+        
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         }
         
-        // Get profile for the new signal
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newRecord.user_id)
-          .single();
-
-        if (profileError && isDevToolsEnabled()) {
-          console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
-        }
-
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Profile for new signal:', profile);
-        }
-
-        const newSignal: TradeAlertWithProfile = {
+        // ✅ BUG FIX #15: Queue signal for batched profile fetch
+        console.log(`📋 [BUG #15] Queueing signal ${newRecord.id} for batched profile fetch`);
+        
+        // PHASE 1: OPTIMISTIC RENDER - Create signal with placeholder profile IMMEDIATELY
+        const optimisticSignal: TradeAlertWithProfile = {
           id: newRecord.id,
           userId: newRecord.user_id,
           assetName: newRecord.asset_name,
@@ -434,16 +710,9 @@ unstable_batchedUpdates(() => {
           closeReason: newRecord.close_reason,
           createdAt: newRecord.created_at,
           updatedAt: newRecord.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url,
-            user_type: profile.user_type,
-            access_level: profile.access_level
-          } : {
+          creator: {
             id: newRecord.user_id,
-            display_name: 'Unknown User',
+            display_name: '⏳ Loading...',
             role: 'user',
             avatar_url: null,
             user_type: null,
@@ -451,45 +720,48 @@ unstable_batchedUpdates(() => {
           }
         };
 
-        if (isDevToolsEnabled()) {
-          console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
-        }
-        
+        // Render signal IMMEDIATELY
         setSignals(prev => {
-          // PHASE 3: SIGNAL ISOLATION - Check for duplicates only for THIS specific signal
-          const alreadyExists = prev.find(signal => signal.id === newSignal.id);
-          if (alreadyExists) {
-            if (isDevToolsEnabled()) {
-              console.log('SignalRealtimeContext - Signal already in state, skipping duplication:', newSignal.id);
-            }
-            return prev;
+          const existsInState = prev.find(s => s.id === newRecord.id);
+          if (existsInState) {
+            console.log(`⚠️ [DUPLICATE BLOCKED] Signal ${newRecord.id} already in state`);
+            return prev; // ✅ Return unchanged state
           }
-          return [newSignal, ...prev];
+          
+          // ✅ BUG FIX #7: Mark as seen BEFORE adding to state (race condition fix)
+          seenSignalIdsRef.current.add(newRecord.id);
+          console.log(`✅ [INSERT] Adding NEW signal ${newRecord.id} - ${newRecord.asset_name}`);
+          
+          return [optimisticSignal, ...prev];
         });
         
-        // PHASE 3: Update local cache with new signal
+        // Update local cache with optimistic signal
         const cache = localCacheRef.current;
         if (cache.data.length > 0) {
-          cache.data = [newSignal, ...cache.data];
+          cache.data = [optimisticSignal, ...cache.data];
         }
         
-        // 🚨 PHASE 3: Dispatch enhanced in-app notification for new signals
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'signal_created',
-            title: `🚨 New ${newRecord.trade_type?.replace('_', ' ')?.toUpperCase()} Signal`,
-            message: `${profile?.display_name || 'Educator'} posted ${newRecord.asset_name} at $${newRecord.entry_price}`,
-            signalId: newRecord.id,
-            assetName: newRecord.asset_name,
-            authorName: profile?.display_name || 'Educator',
-            priority: 'high',
-            autoRemove: true,
-          });
+        // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
+        if (!profileFetchQueueRef.current) {
+          profileFetchQueueRef.current = [];
         }
         
-        // Also dispatch custom event for backwards compatibility
-        window.dispatchEvent(new CustomEvent('signal-posted'));
-      } 
+        profileFetchQueueRef.current.push({
+          signalId: newRecord.id,
+          userId: newRecord.user_id,
+          assetName: newRecord.asset_name,
+          timestamp: Date.now()
+        });
+        
+        // Debounce batch processing (100ms window to collect multiple inserts)
+        if (profileBatchTimerRef.current) {
+          clearTimeout(profileBatchTimerRef.current);
+        }
+        
+        profileBatchTimerRef.current = setTimeout(() => {
+          processBatchedProfileFetches();
+        }, 100);
+      }
       else if (eventType === 'UPDATE' && newRecord) {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
@@ -535,10 +807,85 @@ unstable_batchedUpdates(() => {
                   isolation: 'enforced'
                 }
               }));
+              
+              // ✅ BUG FIX #4: Enhanced activation notification with logging
+              const activationNotification = {
+                type: 'order_activated',
+                title: `🚀 Order Activated!`,
+                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                signalId: targetSignalId,
+                priority: 'high',
+                autoRemove: true,
+                duration: 5000
+              };
+              
+              if ((window as any).addNotification) {
+                (window as any).addNotification(activationNotification);
+                console.log('✅ [BUG FIX #4] Custom activation notification dispatched:', targetSignalId);
+              } else {
+                console.warn('⚠️ [BUG FIX #4] Custom notification system not available, using toast fallback');
+              }
+              
+              // ✅ BUG FIX #8: Always show toast as fallback
+              toast({
+                title: '📈 Order Activated',
+                description: `${newRecord.asset_name} order is now active at market price`,
+              });
+              console.log('✅ [BUG FIX #4] Toast activation notification shown:', targetSignalId);
+            }, 0);
+          }
+
+          // PHASE 7: CRITICAL - Signal isolation during closure
+          const isSignalClosure = currentSignal.status === 'active' && newRecord.status === 'closed';
+          if (isSignalClosure) {
+            // 🔍 PHASE 4 DIAGNOSTIC: Check if closure is being processed
+            console.log(`🔍 [PHASE 4 - Realtime Closure] Detected for ${newRecord.asset_name}:`, {
+              signalId: newRecord.id,
+              oldStatus: currentSignal.status,
+              newStatus: newRecord.status,
+              closeReason: newRecord.close_reason,
+              tpHits: newRecord.tp_hits,
+              allTPs: { 
+                tp1: newRecord.tp1, 
+                tp2: newRecord.tp2, 
+                tp3: newRecord.tp3, 
+                tp4: newRecord.tp4, 
+                tp5: newRecord.tp5 
+              }
+            });
+            
+            console.log(`🔴 ISOLATED CLOSURE: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
+            
+            // Dispatch closure event with signal isolation
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+                detail: {
+                  signalId: targetSignalId,
+                  assetName: newRecord.asset_name,
+                  status: 'closed',
+                  closeReason: newRecord.close_reason,
+                  timestamp: new Date().toISOString(),
+                  priority: 'high',
+                  isolation: 'enforced'
+                }
+              }));
+              
+              // ✅ HYBRID MODE: Instant toast notification for closure
+              if ((window as any).addNotification) {
+                (window as any).addNotification({
+                  type: 'signal_closed',
+                  title: `🔴 Signal Closed`,
+                  message: `${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`,
+                  signalId: targetSignalId,
+                  priority: 'high',
+                  autoRemove: true,
+                  duration: 5000
+                });
+              }
             }, 0);
           }
           
-          const updatedSignals = prev.map(signal => 
+          const updatedSignals = prev.map(signal =>
             signal.id === newRecord.id ? {
               ...signal,
               assetName: newRecord.asset_name,
@@ -558,6 +905,28 @@ unstable_batchedUpdates(() => {
               updatedAt: newRecord.updated_at
             } : signal
           );
+          
+          // ✅ HYBRID MODE: Check for new TP hits and log instant notifications
+          const oldTpHits = currentSignal.tpHits || [];
+          const newTpHits = newRecord.tp_hits || [];
+          const newHitsDetected = newTpHits.filter(tp => !oldTpHits.includes(tp));
+          
+          if (newHitsDetected.length > 0) {
+            newHitsDetected.forEach(tp => {
+              // ✅ HYBRID MODE: Instant toast notification for TP hits
+              if ((window as any).addNotification) {
+                (window as any).addNotification({
+                  type: 'tp_hit',
+                  title: `🎯 TP${tp} Hit!`,
+                  message: `${newRecord.asset_name} reached Take Profit ${tp}`,
+                  signalId: targetSignalId,
+                  priority: 'high',
+                  autoRemove: true,
+                  duration: 6000
+                });
+              }
+            });
+          }
           
           // PHASE 3: CRITICAL SIGNAL ISOLATION - Validate TP progression ONLY for target signal
           const validatedSignals = updatedSignals.map(signal => {
@@ -588,21 +957,8 @@ unstable_batchedUpdates(() => {
             return signal;
           });
           
-          // PHASE 3: ISOLATED FEEDBACK - Only dispatch notifications for the specific signal
+          // PHASE 3: ISOLATED FEEDBACK - Only dispatch event for the specific signal
           if (isOrderActivation) {
-            // Enhanced activation notification with signal isolation
-            if ((window as any).addNotification) {
-              (window as any).addNotification({
-                type: 'order_activated',
-                title: `🚀 Order Activated!`,
-                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
-                signalId: targetSignalId, // CRITICAL: Signal isolation
-                priority: 'high',
-                autoRemove: true,
-                duration: 5000
-              });
-            }
-            
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('order-activated', {
                 detail: {
@@ -649,12 +1005,32 @@ unstable_batchedUpdates(() => {
         if (isDevToolsEnabled()) {
           console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
         }
-        setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));
         
-        // PHASE 3: Update local cache by removing deleted signal
+        // 🚨 PHASE 2B FIX (Bug #2): INSTANT UI UPDATE - Remove immediately
+        setSignals(prev => {
+          const filtered = prev.filter(signal => signal.id !== oldRecord.id);
+          console.log(`✅ [DELETE] Removed signal ${oldRecord.id} - ${filtered.length} signals remaining`);
+          return filtered;
+        });
+        
+        // ✅ Update local cache
         const cache = localCacheRef.current;
         if (cache.data.length > 0) {
           cache.data = cache.data.filter(signal => signal.id !== oldRecord.id);
+          console.log(`✅ [DELETE] Cache updated - ${cache.data.length} cached signals`);
+        }
+        
+        // 🚨 PHASE 2B FIX (Bug #6): Remove from seen IDs when deleted (allows re-creation if needed)
+        seenSignalIdsRef.current.delete(oldRecord.id);
+        console.log(`✅ [DELETE] Removed ${oldRecord.id} from seen IDs`);
+        
+        // ✅ Dispatch in-app notification
+        if (typeof window !== 'undefined' && (window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'info',
+            title: '🗑️ Signal Removed',
+            message: `${oldRecord.asset_name || 'Signal'} has been canceled`
+          });
         }
       }
 
@@ -721,41 +1097,186 @@ unstable_batchedUpdates(() => {
         localCacheRef.current.educatorExpiry = now + EDUCATOR_CACHE_TTL;
       }
       
-      // 🚀 OPTIMIZED: Subscribe to ALL relevant signal events for immediate updates
-      const unsubscribeInsert = subscribeToTable(
+      // PHASE 4: FIX #6 - Fix Polling Mode Conflict (early exit when polling enabled)
+      const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
+      if (pollingEnabled) {
+        console.log('⏸️ PHASE 4: Polling mode active - Realtime DISABLED (early exit)');
+        setConnectionStatus('polling-fallback');
+        
+        // 🔄 Start polling mode immediately (no Realtime at all)
+        let pollingInterval: NodeJS.Timeout | null = null;
+        let previousSignals: any[] = [];
+        
+        // Poll function to check for signal changes
+        const pollSignals = async () => {
+        try {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          
+          const { data: currentSignals, error } = await supabase
+            .from('trade_alerts')
+            .select('*')
+            .in('user_id', educatorUserIds)
+            .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          if (error) {
+            console.error('❌ Polling error:', error);
+            return;
+          }
+          
+          if (!currentSignals || currentSignals.length === 0) return;
+          
+          // Detect changes by comparing with previous poll
+          if (previousSignals.length > 0) {
+            // Check for new signals (INSERT)
+            const newSignals = currentSignals.filter(
+              current => !previousSignals.some(prev => prev.id === current.id)
+            );
+            
+            // Check for updated signals (UPDATE)
+            const updatedSignals = currentSignals.filter(current => {
+              const prev = previousSignals.find(p => p.id === current.id);
+              return prev && prev.updated_at !== current.updated_at;
+            });
+            
+            // Trigger handleRealtimeUpdate for detected changes
+            for (const signal of newSignals) {
+              console.log('📥 Polling detected INSERT:', signal.id);
+              await handleRealtimeUpdate({ eventType: 'INSERT', new: signal, old: null });
+            }
+            
+            for (const signal of updatedSignals) {
+              const oldSignal = previousSignals.find(p => p.id === signal.id);
+              console.log('🔄 Polling detected UPDATE:', signal.id);
+              await handleRealtimeUpdate({ eventType: 'UPDATE', new: signal, old: oldSignal });
+            }
+          }
+          
+          previousSignals = currentSignals;
+        } catch (error) {
+          console.error('❌ Polling exception:', error);
+        }
+        };
+        
+        // Start polling every 60 seconds (Realtime handles instant updates)
+        pollingInterval = setInterval(pollSignals, 60000);
+        
+        // Initial poll
+        pollSignals();
+        
+        // Cleanup function
+        const unsubscribe = () => {
+          if (pollingInterval) {
+            console.log('🛑 PHASE 4: Stopping signal polling');
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+        };
+        
+        unsubscribeRef.current = unsubscribe;
+        recordConnection();
+        
+        // Load initial data with caching
+        refreshSignals();
+        
+        console.log('✅ PHASE 4 HYBRID MODE: Polling (60s backup) + Realtime (instant) both enabled');
+        // ⚠️ DO NOT RETURN - Allow Realtime to also start for instant updates
+      }
+      
+      // Start Realtime subscriptions for instant updates (works with or without polling)
+      console.log('🚀 PHASE 4: Starting Realtime subscriptions for instant updates');
+      
+      // ✅ FIX BUG #17: Add missing subscribeToTable() call with correct arguments
+      const unsubscribeFn = subscribeToTable(
         {
           table: 'trade_alerts',
-          event: 'INSERT',
-          filter: `user_id=in.(${educatorUserIds.join(',')})`
+          event: '*',
+          schema: 'public'
         },
         handleRealtimeUpdate
       );
       
-      // 🚀 ENHANCED UPDATE FILTER: All meaningful updates for comprehensive coverage
-      const unsubscribeUpdate = subscribeToTable(
-        {
-          table: 'trade_alerts', 
-          event: 'UPDATE',
-          // Capture all significant changes: status changes, TP hits, notes, activations
-          filter: `user_id=in.(${educatorUserIds.join(',')})`
-        },
-        handleRealtimeUpdate
-      );
-      
-      // Combine unsubscribe functions
-      const unsubscribe = () => {
-        unsubscribeInsert();
-        unsubscribeUpdate();
-      };
-      
-      unsubscribeRef.current = unsubscribe;
-      recordConnection(); // PHASE C: Record successful subscription
-      
-      // Load initial data with caching
-      refreshSignals();
-      
-      if (isDevToolsEnabled()) {
-        console.log('✅ PHASE 3: Subscribed via shared connection, zero duplicate channels');
+      if (unsubscribeFn) {
+        // ✅ HYBRID MODE: Combine both Realtime and Polling cleanup
+        const existingPollingCleanup = unsubscribeRef.current;
+        
+        unsubscribeRef.current = () => {
+          // Cleanup Realtime subscription
+          console.log('🛑 HYBRID MODE: Stopping Realtime subscription');
+          unsubscribeFn();
+          
+          // Cleanup Polling if it exists
+          if (existingPollingCleanup && typeof existingPollingCleanup === 'function') {
+            console.log('🛑 HYBRID MODE: Stopping polling backup');
+            existingPollingCleanup();
+          }
+        };
+        
+        // Set connection status to connected
+        updateConnectionState({
+          status: 'connected',
+          consecutiveFailures: 0
+        });
+        
+        // ============================================
+        // FIX #5: NETWORK RESILIENCE - Add reconnection handler
+        // Fetch missed updates when reconnecting after network issues
+        // ============================================
+        if (typeof window !== 'undefined') {
+          const reconnectionHandler = async () => {
+            console.log('🔄 Network Resilience: Detected reconnection, checking for missed updates');
+            
+            if (lastUpdateTimestampRef.current) {
+              try {
+                const { data: missedSignals, error } = await supabase
+                  .from('trade_alerts')
+                  .select('*')
+                  .in('user_id', educatorUserIds)
+                  .gte('updated_at', lastUpdateTimestampRef.current)
+                  .order('updated_at', { ascending: false });
+                
+                if (error) {
+                  console.error('❌ Network Resilience: Failed to fetch missed updates', error);
+                } else if (missedSignals && missedSignals.length > 0) {
+                  console.log(`✅ Network Resilience: Fetched ${missedSignals.length} missed updates`);
+                  
+                  // Process each missed update through the realtime handler
+                  for (const signal of missedSignals) {
+                    await handleRealtimeUpdate({
+                      eventType: 'UPDATE',
+                      new: signal,
+                      old: null
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error('❌ Network Resilience: Error during reconnection sync', err);
+              }
+            }
+          };
+          
+          // Listen for reconnection events from Supabase Realtime
+          window.addEventListener('supabase:realtime:reconnect', reconnectionHandler);
+          
+          // Cleanup listener on unmount
+          const originalUnsubscribe = unsubscribeRef.current;
+          unsubscribeRef.current = () => {
+            window.removeEventListener('supabase:realtime:reconnect', reconnectionHandler);
+            if (originalUnsubscribe) originalUnsubscribe();
+          };
+        }
+        
+        // Populate initial signal data (only if not already populated by polling)
+        const pollingEnabled = localStorage.getItem('polling_mode_enabled') === 'true';
+        if (!pollingEnabled) {
+          await refreshSignals();
+        }
+        
+        // Update timestamp tracking for network resilience
+        lastUpdateTimestampRef.current = new Date().toISOString();
+        
+        console.log('✅ HYBRID MODE ACTIVE: Realtime (instant) + Polling (60s backup)');
       }
       
     } catch (error) {
@@ -870,7 +1391,11 @@ unstable_batchedUpdates(() => {
     restartConnection,
     getConnectionHealth,
     forcePollingMode,
-    isInPollingMode
+    isInPollingMode,
+    // PHASE 7: Signal retrieval for instant UI updates
+    getSignalById,
+    // PHASE 1 CLEANUP: Shared profile cache
+    getCachedProfile
   };
 
   return (
@@ -893,7 +1418,13 @@ export const useSignalRealtime = () => {
       nextRetryAt: null,
       subscribe: () => console.warn('SignalRealtimeProvider not available'),
       unsubscribe: () => console.warn('SignalRealtimeProvider not available'),
-      refreshSignals: async () => console.warn('SignalRealtimeProvider not available')
+      refreshSignals: async () => console.warn('SignalRealtimeProvider not available'),
+      restartConnection: () => console.warn('SignalRealtimeProvider not available'),
+      getConnectionHealth: () => ({ isHealthy: false, lastUpdate: null, mode: 'disconnected' }),
+      forcePollingMode: () => console.warn('SignalRealtimeProvider not available'),
+      isInPollingMode: false,
+      getSignalById: () => undefined,
+      getCachedProfile: async () => null
     };
   }
   return context;

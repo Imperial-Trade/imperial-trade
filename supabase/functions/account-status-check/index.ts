@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma, expires',
 }
 
 Deno.serve(async (req) => {
@@ -35,15 +35,17 @@ Deno.serve(async (req) => {
       }
 
       console.log('Checking account status for email:', email);
+      console.log('Request timestamp:', new Date().toISOString());
+      console.log('Supabase URL configured:', !!Deno.env.get('SUPABASE_URL'));
 
       try {
-        // Get account request by email
+        // Get account request by email (case-insensitive)
         const { data: accountRequest, error } = await supabase
           .from('account_requests')
           .select('*')
-          .eq('email', email.toLowerCase())
+          .ilike('email', email)
           .order('created_at', { ascending: false })
-          .limit(1);
+          .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
           // PGRST116 is "not found" error, other errors are system errors
@@ -60,7 +62,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        if (!accountRequest || accountRequest.length === 0) {
+        if (!accountRequest) {
+          console.log('No account request found for:', email);
           return new Response(
             JSON.stringify({ 
               status: 'not_found',
@@ -73,10 +76,11 @@ Deno.serve(async (req) => {
           );
         }
 
+        console.log('Account request found:', accountRequest.id, accountRequest.status);
         return new Response(
           JSON.stringify({ 
             status: 'found',
-            data: accountRequest[0]
+            data: accountRequest
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,23 +1,22 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, LogOut, ChevronsUpDown } from 'lucide-react';
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
+import { User, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { DashboardUserRole } from '@/components/dashboard/DashboardUserRole';
 
 interface SidebarUserMenuProps {
   isCollapsed: boolean;
@@ -25,85 +24,121 @@ interface SidebarUserMenuProps {
 
 export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
+  
+  // Determine if user can access admin panel
+  const canAccessAdminPanel = isAdmin || isEducatorPlus || isEducator || isModerator;
+  
+  // Get display name from user metadata or email
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User";
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      navigate('/signin');
+    }
+  };
+  
+  // Handle profile click - redirect privileged users to role-appropriate admin tool
+  const handleProfileClick = () => {
+    if (!canAccessAdminPanel) return;
+    
+    // Admin, Educator, Educator+ → Trading Signals
+    if (isAdmin || isEducator || isEducatorPlus) {
+      navigate('/dashboard/admin-tools?admin=signals');
+    }
+    // Moderator → Account Requests
+    else if (isModerator) {
+      navigate('/dashboard/admin-tools?admin=requests');
+    }
   };
 
   return (
-    <div className="mt-auto border-t border-sidebar-border pt-4">
-      {/* Theme Toggle Section */}
-      <div className="px-3 py-2">
-        <ThemeToggle isCollapsed={isCollapsed} />
-      </div>
-      
+    <div className="w-full border-t border-sidebar-border pt-4 space-y-3">
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                    {user?.email?.[0]?.toUpperCase() || "J"}
-                  </AvatarFallback>
-                </Avatar>
-                {!isCollapsed && (
-                  <>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-sidebar-foreground">
-                        John Mark Bodegas
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        Member
-                      </span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4" />
-                  </>
-                )}
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg bg-popover border border-border"
-              side={isCollapsed ? "right" : "bottom"}
-              align="end"
-              sideOffset={4}
+          <div className="flex items-center gap-2 px-2 py-2">
+            {/* Left Side: Profile Section (clickable for privileged users) */}
+            <div
+              onClick={handleProfileClick}
+              className={`flex items-center gap-3 flex-1 ${
+                canAccessAdminPanel 
+                  ? 'cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1 transition-colors' 
+                  : 'px-2 py-1'
+              }`}
             >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                      {user?.email?.[0]?.toUpperCase() || "J"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold text-popover-foreground">
-                      John Mark Bodegas
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      Member
-                    </span>
-                  </div>
+              <Avatar className="h-10 w-10 rounded-lg">
+                <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                  {user?.email?.[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              {!isCollapsed && (
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold text-sidebar-foreground">
+                    {displayName}
+                  </span>
+                  <DashboardUserRole />
                 </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/settings" className="text-popover-foreground">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-popover-foreground">
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              )}
+            </div>
+
+            {/* Right Side: Profile Icon + Theme Toggle */}
+            {!isCollapsed && (
+              <div className="flex items-center gap-1">
+                {/* Profile Icon with Settings Dropdown */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                      aria-label="Profile Settings"
+                    >
+                      <User className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent 
+                    className="w-48 p-2 bg-popover border border-border"
+                    align="end"
+                    side="top"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-sm"
+                        onClick={() => navigate('/dashboard/settings')}
+                      >
+                        <SettingsIcon className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Theme Toggle */}
+                <ThemeToggle isCollapsed={false} />
+              </div>
+            )}
+          </div>
         </SidebarMenuItem>
       </SidebarMenu>
+      
+      {/* Visible Sign Out Button */}
+      {!isCollapsed && (
+        <Button
+          onClick={handleSignOut}
+          variant="ghost"
+          className="w-full justify-start gap-2 mx-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 border border-red-500/30 transition-all duration-200"
+          size="sm"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="text-sm font-medium">Sign Out</span>
+        </Button>
+      )}
     </div>
   );
 }

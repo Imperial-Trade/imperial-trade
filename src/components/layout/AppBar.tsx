@@ -32,6 +32,7 @@ const AppBar: React.FC = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const isAccountRequestPage = location.pathname === "/account-request";
+  const isAccountRequestStatusPage = location.pathname === "/account-request-status";
   const isSigninPage = location.pathname === "/signin";
   const isResetPasswordPage = false; // No longer used since reset is handled by isolated flow
   const { user, loading } = useAuth();
@@ -98,7 +99,7 @@ const AppBar: React.FC = () => {
           <Link to="/account-request">
             <Button
               size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="glass-button-primary"
             >
               Get Started
             </Button>
@@ -131,7 +132,7 @@ const AppBar: React.FC = () => {
         <Link to="/account-request">
           <Button
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="glass-button-primary"
           >
             Get Started
           </Button>
@@ -139,8 +140,7 @@ const AppBar: React.FC = () => {
         <Link to="/signin">
           <Button
             size="sm"
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10"
+            className="glass-button-outline"
           >
             Sign In
           </Button>
@@ -152,20 +152,20 @@ const AppBar: React.FC = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${
-        isAccountRequestPage
-          ? ""
-          : isSigninPage
+        isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
-          : "backdrop-blur-xl border-b border-border/50 bg-background/80"
+          : "nav-glass-effect border-b"
       }`}
     >
       <div
         className={`w-full max-w-7xl flex items-center ${
-          isSigninPage ? "justify-between" : "justify-between"
+          isSigninPage || isAccountRequestPage || isAccountRequestStatusPage 
+            ? "justify-between" 
+            : "justify-between"
         }`}
       >
-        {/* Go back button for signin page */}
-        {isSigninPage && (
+        {/* Go back button for signin, account request, and account request status pages */}
+        {(isSigninPage || isAccountRequestPage || isAccountRequestStatusPage) && (
           <Link
             to="/"
             className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
@@ -175,17 +175,17 @@ const AppBar: React.FC = () => {
           </Link>
         )}
 
-        {/* Logo - hide on signin page */}
-        {!isSigninPage && (
+        {/* Logo - hide on signin, account request, and account request status pages */}
+        {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
           <Link to="/" className="flex items-center gap-2">
             <Crown className="h-6 w-6 text-primary" />
             <span className="text-xl imperial-tech-font">IMPERIAL</span>
           </Link>
         )}
 
-        {/* Desktop Navigation - Compact - show on signin page but simplified */}
-        {!isSigninPage ? (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+        {/* Desktop Navigation - Compact with dropdowns for regular pages, simplified for signin/account-request pages */}
+        {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage ? (
+          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
             {navigationItems.map((item) => (
               <div
                 key={item.to}
@@ -205,7 +205,7 @@ const AppBar: React.FC = () => {
 
                 {/* Apple/Stripe style dropdown */}
                 {activeDropdown === item.label && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 nav-glass-effect rounded-2xl shadow-2xl p-6 animate-fade-in-up z-50">
                     <div className="space-y-4">
                       <div>
                         <h3 className="font-semibold text-foreground mb-1">
@@ -238,7 +238,7 @@ const AppBar: React.FC = () => {
             ))}
           </nav>
         ) : (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
             {navigationItems.map((item) => (
               <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button
@@ -278,7 +278,7 @@ const AppBar: React.FC = () => {
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[90vw] max-w-md bg-background/98 backdrop-blur-xl border-r border-border/50 overflow-y-auto"
+              className="w-[90vw] max-w-md nav-glass-effect border-r overflow-y-auto"
             >
               <SheetHeader className="border-b border-border/50 pb-6">
                 <SheetTitle className="flex items-center gap-2 text-left">
@@ -345,29 +345,28 @@ const AppBar: React.FC = () => {
                        </Link>
                      </div>
                    ) : (
-                     <div className="space-y-3">
-                       {!isAccountRequestPage && (
-                         <Link to="/account-request" onClick={closeMobileMenu}>
-                           <Button
-                             size="lg"
-                             className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                             aria-label="Get Started - Request Account"
-                           >
-                             Get Started
-                           </Button>
-                         </Link>
-                       )}
-                       {!isSigninPage && !isResetPasswordPage && (
-                         <Link to="/signin" onClick={closeMobileMenu}>
-                           <Button
-                             size="lg"
-                             variant="outline"
-                             className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                             aria-label="Sign In to Account"
-                           >
-                             Sign In
-                           </Button>
-                         </Link>
+                      <div className="space-y-3">
+                        {!isAccountRequestPage && (
+                          <Link to="/account-request" onClick={closeMobileMenu}>
+                            <Button
+                              size="lg"
+                              className="w-full min-h-[56px] glass-button-primary font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                              aria-label="Get Started - Request Account"
+                            >
+                              Get Started
+                            </Button>
+                          </Link>
+                        )}
+                        {!isSigninPage && !isResetPasswordPage && (
+                          <Link to="/signin" onClick={closeMobileMenu}>
+                            <Button
+                              size="lg"
+                              className="w-full min-h-[56px] glass-button-outline font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                              aria-label="Sign In to Account"
+                            >
+                              Sign In
+                            </Button>
+                          </Link>
                        )}
                      </div>
                   )}

@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { UserExistenceCheck } from './UserExistenceCheck';
+import { ApprovedPasswordAuth } from './ApprovedPasswordAuth';
 
 interface ApprovedAccountFlowProps {
   accountRequest: any;
@@ -9,5 +8,5 @@ interface ApprovedAccountFlowProps {
 export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({ 
   accountRequest 
 }) => {
-  return <UserExistenceCheck accountRequest={accountRequest} />;
+  return <ApprovedPasswordAuth accountRequest={accountRequest} />;
 };

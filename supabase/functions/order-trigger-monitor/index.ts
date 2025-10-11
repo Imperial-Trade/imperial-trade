@@ -20,11 +20,16 @@ serve(async (req) => {
     
     console.log('🚀 Starting order trigger monitor...');
 
-    // Check for limit orders that should be activated
+    // Check for limit orders that should be activated - FETCH COMPLETE SIGNAL DATA WITH AUTHOR PROFILE
     const { data: pendingLimits, error: fetchError } = await supabase
       .from('trade_alerts')
       .select(`
-        id, tradermade_symbol, entry_price, trade_type, asset_name, user_id
+        id, tradermade_symbol, entry_price, trade_type, asset_name, user_id,
+        created_at, updated_at, tp1, tp2, tp3, tp4, tp5, stop_loss, notes,
+        profiles:user_id (
+          display_name,
+          avatar_url
+        )
       `)
       .eq('status', 'pending')
       .in('trade_type', ['buy_limit', 'sell_limit']);
@@ -78,8 +83,8 @@ serve(async (req) => {
         console.log(`🔍 Checking ${alert.asset_name} (${alert.trade_type}): price=${currentPrice}, entry=${alert.entry_price}, shouldTrigger=${shouldTrigger}`);
 
         if (shouldTrigger) {
-          // Activate the order
-          const { error: updateError } = await supabase
+          // PHASE 2: Enhanced error handling with explicit status verification
+          const { data: updateResult, error: updateError } = await supabase
             .from('trade_alerts')
             .update({
               status: 'active',
@@ -87,43 +92,122 @@ serve(async (req) => {
               activation_price: currentPrice, // Use actual trigger price
               updated_at: new Date().toISOString()
             })
-            .eq('id', alert.id);
+            .eq('id', alert.id)
+            .select('id, status, activated_at, activation_price')
+            .single();
 
           if (updateError) {
-            console.error(`❌ Failed to activate order ${alert.id}:`, updateError);
-          } else {
-            console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice} (entry: ${alert.entry_price})`);
-            triggered++;
+            console.error(`❌ CRITICAL: Failed to activate order ${alert.id}:`, {
+              error: updateError,
+              message: updateError.message,
+              details: updateError.details,
+              hint: updateError.hint,
+              code: updateError.code
+            });
+            continue; // Skip notification if update failed
+          }
 
-            // Send order activated notification
-            try {
-              const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
-                body: {
-                  notifications: [{
-                    signal_id: alert.id,
-                    user_id: alert.user_id,
-                    asset_name: alert.asset_name,
-                    trade_type: alert.trade_type,
-                    entry_price: alert.entry_price,
-                    activation_price: currentPrice,
-                    notification_type: 'limit_order_activated',
-                    alert_type: 'limit_order_activated',
-                    status: 'active',
-                    change_types: ['limit_order_activated'],
-                    priority_level: 2,
-                    delivery_channels: ['push', 'in_app']
-                  }]
-                }
+          // PHASE 3: Verify the status actually changed to 'active'
+          if (!updateResult || updateResult.status !== 'active') {
+            console.error(`❌ VERIFICATION FAILED: Order ${alert.id} update succeeded but status is not 'active'`, {
+              expectedStatus: 'active',
+              actualStatus: updateResult?.status,
+              updateResult
+            });
+            continue; // Skip notification if status didn't change
+          }
+
+          // SUCCESS: Status genuinely changed to 'active'
+          console.log(`✅ VERIFIED ACTIVATION: ${alert.trade_type} order for ${alert.asset_name}`, {
+            orderId: alert.id,
+            activationPrice: currentPrice,
+            entryPrice: alert.entry_price,
+            activatedAt: updateResult.activated_at,
+            statusConfirmed: updateResult.status === 'active'
+          });
+          triggered++;
+
+          // Send order activated notification ONLY if status genuinely changed
+          try {
+            // ============================================
+            // BUG #23 FIX: Correctly extract profile from Supabase array
+            // ============================================
+            // Supabase foreign key JOINs return arrays, not objects
+            const profileArray = alert.profiles as any;
+            const authorProfile = Array.isArray(profileArray) ? profileArray[0] : profileArray;
+            
+            // Log raw structure for debugging
+            console.log('📊 BUG #23: Profile extraction debug', {
+              signal_id: alert.id,
+              raw_profiles_type: Array.isArray(profileArray) ? 'array' : typeof profileArray,
+              raw_profiles: profileArray,
+              extracted_profile: authorProfile,
+              has_display_name: !!authorProfile?.display_name
+            });
+            
+            const authorName = authorProfile?.display_name || 'Unknown Trader';
+            const authorAvatar = authorProfile?.avatar_url || null;
+            
+            // Warn if profile is missing or incomplete
+            if (!authorProfile || !authorProfile.display_name) {
+              console.warn('⚠️ BUG #23: Profile missing or incomplete', {
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                has_profile: !!authorProfile,
+                profile_data: authorProfile
               });
-
-              if (notifyError) {
-                console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);
-              } else {
-                console.log(`📡 Sent activation notification for ${alert.asset_name}`);
-              }
-            } catch (notifyException) {
-              console.error(`❌ Exception sending activation notification:`, notifyException);
             }
+
+            // Construct COMPLETE notification payload with all required fields
+            const notificationPayload = {
+              notifications: [{
+                signal_id: alert.id,
+                user_id: alert.user_id,
+                author_id: alert.user_id,
+                author_name: authorName,
+                author_avatar_url: authorAvatar,
+                asset_name: alert.asset_name,
+                tradermade_symbol: alert.tradermade_symbol,
+                symbol: alert.tradermade_symbol, // Duplicate for compatibility
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                activation_price: currentPrice,
+                stop_loss: alert.stop_loss,
+                tp1: alert.tp1,
+                tp2: alert.tp2,
+                tp3: alert.tp3,
+                tp4: alert.tp4,
+                tp5: alert.tp5,
+                created_at: alert.created_at,
+                updated_at: alert.updated_at,
+                notification_type: 'limit_order_activated',
+                alert_type: 'limit_order_activated',
+                status: 'active',
+                change_types: ['limit_order_activated'],
+                priority_level: 2,
+                delivery_channels: ['push', 'in_app']
+              }]
+            };
+
+            // Log complete payload for debugging
+            console.log(`📦 Sending notification payload:`, JSON.stringify(notificationPayload, null, 2));
+
+            // Verify critical fields are present
+            if (!authorName || authorName === 'Unknown Trader') {
+              console.warn(`⚠️ Missing author profile data for signal ${alert.id}, user ${alert.user_id}`);
+            }
+
+            const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
+              body: notificationPayload
+            });
+
+            if (notifyError) {
+              console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);
+            } else {
+              console.log(`📡 Sent activation notification for ${alert.asset_name}`);
+            }
+          } catch (notifyException) {
+            console.error(`❌ Exception sending activation notification:`, notifyException);
           }
         }
       }

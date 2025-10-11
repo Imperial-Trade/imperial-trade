@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthorizationAwareReturn {
   canCreateSignals: boolean;
@@ -7,6 +9,11 @@ interface AuthorizationAwareReturn {
   canViewAllSignals: boolean;
   isAdmin: boolean;
   isEducator: boolean;
+  isModerator: boolean;
+  isEducatorPlus: boolean;
+  userRoles: string[];
+  isLoading: boolean;
+  error: Error | null;
   userPermissions: {
     level: 'basic' | 'educator' | 'admin';
     canModifyAlerts: boolean;
@@ -15,19 +22,39 @@ interface AuthorizationAwareReturn {
 }
 
 /**
- * Authorization-Aware Hook - Pre-compute permissions to prevent repeated checks
- * Reduces authorization calculation overhead in components
+ * Authorization-Aware Hook - Pre-compute permissions using secure RPC
+ * SECURITY FIX (ERROR #13): Uses get_user_roles() RPC instead of checking profiles table
+ * This prevents privilege escalation attacks by validating roles against user_roles table
  */
 export function useAuthorizationAware(): AuthorizationAwareReturn {
   const { user, profile } = useAuth();
 
-  const permissions = useMemo(() => {
-    const isAdmin = profile?.access_level === 'admin' || profile?.role === 'admin';
-    const isEducator = profile?.user_type === 'educator' || 
-                       profile?.access_level === 'moderator' || 
-                       profile?.role === 'educator';
+  // Fetch user roles securely from database using RPC
+  const { data: userRoles, isLoading, error } = useQuery({
+    queryKey: ['user-roles', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase.rpc('get_user_roles', {
+        p_user_id: user.id
+      });
+      if (error) {
+        console.error('🔒 [useAuthorizationAware] Failed to fetch roles:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
 
-    const canCreateSignals = isAdmin || isEducator;
+  const permissions = useMemo(() => {
+    const roles = (userRoles || []).map((r: any) => r.role);
+    const isAdmin = roles.includes('admin');
+    const isModerator = roles.includes('moderator');
+    const isEducator = roles.includes('educator') || roles.includes('educator+');
+    const isEducatorPlus = roles.includes('educator+');
+
+    const canCreateSignals = isAdmin || isEducator || isEducatorPlus;
     const canViewAllSignals = true; // All authenticated users can view
     
     const userPermissions = {
@@ -37,7 +64,7 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
     };
 
     const canEditSignal = (creatorId: string) => {
-      return isAdmin || profile?.id === creatorId;
+      return isAdmin || user?.id === creatorId;
     };
 
     return {
@@ -46,9 +73,14 @@ export function useAuthorizationAware(): AuthorizationAwareReturn {
       canViewAllSignals,
       isAdmin,
       isEducator,
+      isModerator,
+      isEducatorPlus,
+      userRoles: roles,
+      isLoading,
+      error: error as Error | null,
       userPermissions
     };
-  }, [profile, user]);
+  }, [userRoles, profile, user, isLoading, error]);
 
   return permissions;
 }

@@ -25,6 +25,10 @@ const PER_SYMBOL_CLAMP = 10;
 // In-memory cache for last broadcasted prices (UI filtering only)
 const lastBroadcastedPrices: Record<string, number> = {};
 
+// 💓 HEARTBEAT SYSTEM: Guarantee continuous "Live" display
+const HEARTBEAT_INTERVAL = 4000; // 4 seconds maximum silence between broadcasts
+const lastBroadcastTime: Record<string, number> = {};
+
 // Telemetry tracking
 let totalPricesProcessed = 0;
 let totalAlertsTriggered = 0;
@@ -33,8 +37,8 @@ let totalUIBroadcasts = 0;
 let totalClampActivations = 0;
 
 // 🔒 SIMPLIFIED LOCK CONFIGURATION  
-const CHANNEL_SUBSCRIPTION_TIMEOUT = 15000;
-const BROADCAST_LOCK_DURATION = 5; // Reduced from 25 to 5 seconds for cooperation
+const CHANNEL_SUBSCRIPTION_TIMEOUT = 5000; // 5s timeout (fast fail, faster retries)
+const BROADCAST_LOCK_DURATION = 6; // Reduced from 8s to 6s for faster lock release cycles
 
 // Initialize Supabase client only
 async function initializeSupabase() {
@@ -54,13 +58,16 @@ async function initializeSupabase() {
 }
 
 // 🚀 PHASE 1: Create channel first with retries, then acquire lock
-async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 2): Promise<any> {
+async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries: number = 3): Promise<any> {
   console.log('📡 Creating broadcast channel with retries...');
+  
+  // PHASE 4 FIX: Declare priceChannel outside try block for proper cleanup
+  let priceChannel: any = null;
   
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
       console.log(`📡 Channel subscription attempt ${attempt}/${maxRetries + 1}...`);
-      const priceChannel = supabaseClient.channel('live-prices-broadcast');
+      priceChannel = supabaseClient.channel('live-prices-broadcast');
       
       const channelResult = await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -85,9 +92,22 @@ async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries
       } catch (error: any) {
         console.warn(`⚠️ Channel subscription failed on attempt ${attempt}: ${error?.message || error}`);
         
+        // 🧹 CRITICAL: Clean up failed channel to prevent memory leaks
+        try {
+          if (priceChannel) {
+            await priceChannel.unsubscribe();
+            console.log('🧹 Cleaned up failed channel instance');
+          }
+        } catch (cleanupError) {
+          console.warn('⚠️ Channel cleanup warning (non-critical):', cleanupError);
+        }
+        
         if (attempt <= maxRetries) {
-          const delay = 500 * attempt; // 500ms, 1000ms backoff
-          console.log(`⏱️ Retrying in ${delay}ms...`);
+          const baseDelay = 300; // Faster base: 300ms instead of 500ms
+          const exponentialDelay = baseDelay * Math.pow(1.5, attempt - 1); // 300ms, 450ms, 675ms
+          const jitter = Math.random() * 100; // 0-100ms jitter to prevent thundering herd
+          const delay = Math.min(exponentialDelay + jitter, 1500); // Cap at 1.5 seconds
+          console.log(`⏱️ Retrying in ${delay.toFixed(0)}ms... (attempt ${attempt}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
           console.error(`❌ All ${maxRetries + 1} channel subscription attempts failed`);
@@ -97,13 +117,13 @@ async function createBroadcastChannelWithRetries(supabaseClient: any, maxRetries
   }
 }
 
-// 🔒 COOPERATIVE LOCK: Acquire broadcast lock with reduced duration
-async function acquireBroadcastLock(supabaseClient: any): Promise<string | null> {
+// 🎯 PHASE 3: COOPERATIVE LOCK with configurable duration (1s for real-time, 6s for standard)
+async function acquireBroadcastLock(supabaseClient: any, durationSeconds: number = BROADCAST_LOCK_DURATION): Promise<string | null> {
   try {
     const holderId = `price-ingestor-${Date.now()}-${Math.random().toString(36).substring(2)}`;
     const { data, error } = await supabaseClient.rpc('acquire_broadcast_lock', {
       p_holder_id: holderId,
-      p_duration_seconds: BROADCAST_LOCK_DURATION
+      p_duration_seconds: durationSeconds
     });
     
     if (error) {
@@ -112,7 +132,7 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
     }
     
     if (data) {
-      console.log(`🔒 Acquired broadcast lock: ${holderId} (${BROADCAST_LOCK_DURATION}s)`);
+      console.log(`🔒 Acquired broadcast lock: ${holderId} (${durationSeconds}s)`);
       return holderId;
     }
     return null;
@@ -122,20 +142,53 @@ async function acquireBroadcastLock(supabaseClient: any): Promise<string | null>
   }
 }
 
-// Phase 1: Price significance filtering function (UI only)
-function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: number, timestamp: string}>) {
+// Phase 1: Price significance filtering function with REAL-TIME MODE
+function filterSignificantPrices(
+  incomingPrices: Array<{symbol: string, price: number, timestamp: string}>,
+  broadcastAll: boolean = false
+) {
+  // 🚀 REAL-TIME MODE: When active UI listeners present, broadcast ALL prices
+  if (broadcastAll) {
+    console.log(`🚀 REAL-TIME MODE: Broadcasting ALL ${incomingPrices.length} prices (active UI listeners)`);
+    const now = Date.now();
+    
+    // Update last broadcast times for all symbols
+    for (const priceData of incomingPrices) {
+      const normalizedSymbol = priceData.symbol.toUpperCase();
+      lastBroadcastedPrices[normalizedSymbol] = priceData.price;
+      lastBroadcastTime[normalizedSymbol] = now;
+    }
+    
+    return incomingPrices.map(p => ({ ...p, reason: 'real-time-update' }));
+  }
+  
+  // STANDARD MODE: Use filtering logic for background updates
   const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
+  const now = Date.now();
 
   for (const priceData of incomingPrices) {
     const { symbol, price } = priceData;
     const normalizedSymbol = symbol.toUpperCase();
     const lastPrice = lastBroadcastedPrices[normalizedSymbol];
 
-    // Always broadcast the first price for a symbol
+    // Always broadcast the first price for a symbol (check FIRST)
     if (!lastPrice) {
-      significantUpdates.push(priceData);
+      significantUpdates.push({ ...priceData, reason: 'first-price' });
       lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
       console.log(`🆕 First price for ${symbol}: ${price}`);
+      continue;
+    }
+    
+    // 💓 HEARTBEAT CHECK: Force broadcast if no update in last 4 seconds
+    const timeSinceLastBroadcast = now - (lastBroadcastTime[normalizedSymbol] || now);
+    const isHeartbeat = timeSinceLastBroadcast >= HEARTBEAT_INTERVAL;
+    
+    if (isHeartbeat) {
+      significantUpdates.push({ ...priceData, reason: 'heartbeat' });
+      lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
+      console.log(`💓 Heartbeat broadcast for ${symbol} (${timeSinceLastBroadcast}ms since last) - Price: ${price}`);
       continue;
     }
 
@@ -148,8 +201,9 @@ function filterSignificantPrices(incomingPrices: Array<{symbol: string, price: n
     const changeValue = isGoldAsset ? absoluteChange : percentChange;
 
     if (changeValue >= threshold) {
-      significantUpdates.push(priceData);
+      significantUpdates.push({ ...priceData, reason: 'significant-change' });
       lastBroadcastedPrices[normalizedSymbol] = price;
+      lastBroadcastTime[normalizedSymbol] = now;
       console.log(`📈 Significant change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
     } else {
       console.log(`⏭️ Skipping minor change for ${symbol}: ${lastPrice} → ${price} (${changeValue.toFixed(4)}${isGoldAsset ? ' pips' : '%'})`);
@@ -204,19 +258,26 @@ serve(async (req) => {
     await initializeSupabase();
     
     // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
-    const { data: hasActiveUsers, error: activityError } = await supabaseClient.rpc('has_active_ui_listeners', { 
-      p_threshold_seconds: 60 // Check for UI activity in last 60 seconds
-    });
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: activeSessions, error: activityError, count } = await supabaseClient
+      .from('ui_price_listeners')
+      .select('session_id', { count: 'exact' })
+      .gte('last_seen_at', fiveMinutesAgo);
+    
+    const activeUserCount = count || 0;
+    const hasActiveUsers = activeUserCount > 0;
     
     if (activityError) {
       console.warn('⚠️ Activity check failed, proceeding with full processing:', activityError);
     }
     
+    console.log(`👥 Active UI sessions: ${activeUserCount}`);
+    
     // Parse request payload FIRST
     const requestBody = await req.json();
     const { prices } = requestBody;
     
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${hasActiveUsers ? 'active' : 'inactive'} users (notifications always processed)`);
+    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${activeUserCount} active users (notifications always processed)`);
 
     // Validate payload
     if (!prices || !Array.isArray(prices) || prices.length === 0) {
@@ -397,19 +458,41 @@ serve(async (req) => {
                     p_is_buy: isBuyTrade
                   });
 
-                if (!tpError && tpResult && tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                  console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
-                  
-                  notificationTriggers.push({
-                    signal_id: alert.signal_id,
-                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                    notification_type: 'take_profit_hit',
-                    triggered_price: currentPrice,
-                    symbol: priceUpdate.symbol,
-                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                    priority_level: 3, // High priority for TP hits
-                    tp_level: tpResult.tp_hit_this_cycle[0]
-                  });
+                if (!tpError && tpResult) {
+                  // ============================================
+                  // BUG #24 FIX - PHASE 2: Check if all TPs are hit
+                  // ============================================
+                  if (tpResult.all_tps_hit && tpResult.signal_auto_closed) {
+                    console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
+                    
+                    // Send "All Targets Hit" notification with HIGHEST priority
+                    notificationTriggers.push({
+                      signal_id: alert.signal_id,
+                      alert_type: 'all_targets_hit',
+                      notification_type: 'all_tps_hit',
+                      triggered_price: currentPrice,
+                      symbol: priceUpdate.symbol,
+                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                      priority_level: 4, // HIGHEST priority for completion
+                      close_reason: 'all_targets_hit',
+                      tp_hits_completed: tpResult.total_tps_hit
+                    });
+                  }
+                  // Regular TP hit notification (if a new TP was hit but not all)
+                  else if (tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                    console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
+                    
+                    notificationTriggers.push({
+                      signal_id: alert.signal_id,
+                      alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                      notification_type: 'take_profit_hit',
+                      triggered_price: currentPrice,
+                      symbol: priceUpdate.symbol,
+                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                      priority_level: 3, // High priority for TP hits
+                      tp_level: tpResult.tp_hit_this_cycle[0]
+                    });
+                  }
                 }
               }
             } catch (tpError) {
@@ -573,7 +656,28 @@ serve(async (req) => {
       });
     }
 
-    // 🚀 CRITICAL: ACTIVITY-BASED GATING - Skip UI broadcast if no active users
+    // STEP 3A: Calculate prices for UI FIRST (before using significantPrices)
+    console.log('🎯 STEP 3A: Preparing prices for UI broadcast...');
+    
+    const pricesForUI = prices
+      .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))
+      .map(p => ({
+        symbol: p.symbol,
+        price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
+        timestamp: new Date().toISOString()
+      }));
+
+    // 🚀 CRITICAL FIX: Enable real-time broadcasting when active users are present
+    const broadcastAllPrices = hasActiveUsers && activeUserCount > 0;
+    console.log(`📊 Broadcast mode: ${broadcastAllPrices ? 'REAL-TIME (all prices)' : 'FILTERED (significant only)'}`);
+    
+    const significantPrices = filterSignificantPrices(pricesForUI, broadcastAllPrices);
+
+    // STEP 3B: Check if this is a heartbeat broadcast (significantPrices now exists)
+    const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
+      significantPrices.every((p: any) => p.reason === 'heartbeat');
+
+    // 🚀 CRITICAL: Skip UI broadcast if no active users
     if (!hasActiveUsers) {
       console.log('📡 UI broadcast skipped: no_active_users');
       return new Response(JSON.stringify({
@@ -589,12 +693,14 @@ serve(async (req) => {
         headers: corsHeaders
       });
     }
-
-    // Try to acquire broadcast lock
-    const lockId = await acquireBroadcastLock(supabaseClient);
-    if (!lockId) {
+    
+    // 🎯 PHASE 3: COOPERATIVE LOCK - Always acquire, use 1s duration for real-time mode
+    const lockDuration = broadcastAllPrices ? 1 : BROADCAST_LOCK_DURATION; // Fast rotation for real-time
+    const lockId = await acquireBroadcastLock(supabaseClient, lockDuration);
+    
+    if (!lockId && !isHeartbeatBroadcast) {
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
-      console.log('📡 UI broadcast skipped: no_broadcast_lock');
+      console.log('📡 UI broadcast skipped: cooperative locking active');
       return new Response(JSON.stringify({
         success: true,
         processed: prices.length,
@@ -608,67 +714,15 @@ serve(async (req) => {
         headers: corsHeaders
       });
     }
-
-    // STEP 4: Filter significant prices for UI broadcast
-    console.log('🎯 STEP 4: Filtering significant prices for UI broadcast...');
     
-    const pricesForUI = prices
-      .filter(p => typeof p.price === 'number' || (typeof p.bid === 'number' && typeof p.ask === 'number'))
-      .map(p => ({
-        symbol: p.symbol,
-        price: typeof p.price === 'number' ? p.price : (p.bid + p.ask) / 2,
-        timestamp: p.timestamp || new Date().toISOString()
-      }));
-
-    const significantPrices = filterSignificantPrices(pricesForUI);
+    if (isHeartbeatBroadcast && !lockId) {
+      console.log('💓 HEARTBEAT BYPASS: Broadcasting despite no lock - guaranteeing continuous updates');
+    }
     
-    if (significantPrices.length === 0) {
-      console.log('📡 No significant price changes for UI broadcast');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_significant_changes'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
-    }
-
-    // Create broadcast channel and send updates
-    try {
-      const priceChannel: any = await createBroadcastChannelWithRetries(supabaseClient, 2);
-      
-      let broadcastCount = 0;
-      for (const priceData of significantPrices) {
-        try {
-          await priceChannel.send({
-            type: 'broadcast',
-            event: 'price_update',
-            payload: {
-              symbol: priceData.symbol,
-              price: priceData.price,
-              timestamp: priceData.timestamp,
-              source: 'price-ingestor-v4.1'
-            }
-          });
-          
-          console.log(`💰 UI Broadcast: ${priceData.symbol}: $${priceData.price}`);
-          broadcastCount++;
-        } catch (broadcastError) {
-          console.error(`❌ Failed to broadcast ${priceData.symbol}:`, broadcastError);
-        }
-      }
-      
-      totalUIBroadcasts += broadcastCount;
-      console.log(`📈 STEP 4 COMPLETE: ${broadcastCount}/${significantPrices.length} UI updates broadcasted`);
-      
-    } catch (channelError) {
-      console.error('❌ Failed to create broadcast channel:', channelError);
-    }
+    // ✅ PHASE 1: ZERO-REALTIME ARCHITECTURE
+    // Broadcasts removed - frontend uses database polling (500ms)
+    // This eliminates $32.50/month in Realtime message costs
+    console.log(`💾 Database upserts complete. Frontend will poll for updates (no broadcasts).`);
 
     // Return success response
     return new Response(JSON.stringify({
@@ -677,13 +731,11 @@ serve(async (req) => {
       upserted: successfulUpserts,
       alerts_triggered: totalTriggeredAlerts,
       notifications_sent: notificationTriggers.length,
-      ui_broadcasts: totalUIBroadcasts,
-      broadcast_status: 'completed',
+      architecture: 'zero_realtime_polling', // No broadcasts - frontend polls database
       performance: {
         total_processed: totalPricesProcessed,
         total_alerts: totalAlertsTriggered,
-        total_upserted: totalPricesUpserted,
-        total_ui_broadcasts: totalUIBroadcasts
+        total_upserted: totalPricesUpserted
       }
     }), {
       status: 200,
@@ -698,8 +750,7 @@ serve(async (req) => {
       processed: 0,
       upserted: 0,
       alerts_triggered: 0,
-      notifications_sent: 0,
-      ui_broadcasts: 0
+      notifications_sent: 0
     }), {
       status: 500,
       headers: corsHeaders

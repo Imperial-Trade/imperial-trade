@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PriceConnectionStatus } from '@/components/realtime/PriceConnectionStatus';
 
 interface StreamStatus {
-  websocket: 'connected' | 'connecting' | 'disconnected' | 'error';
+  websocket: 'connected' | 'connecting' | 'disconnected' | 'error' | 'polling';
   monitor: 'active' | 'inactive' | 'error';
   priceData: 'live' | 'cached' | 'stale';
   alerts: number;

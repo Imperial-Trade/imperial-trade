@@ -119,6 +119,7 @@ const LivePriceWidgetComponent = ({
       return;
     }
     
+    // 🚨 PHASE 2D FIX (Bug #8): Atomic check-and-set for TP processing
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
       return;
@@ -127,6 +128,7 @@ const LivePriceWidgetComponent = ({
     if (now - lastUpdateRef.current < 2000) { // Reduced from 5000ms to 2000ms for better responsiveness
       return; // Removed rate limit logging to reduce console spam
     }
+    // ✅ Atomic check-and-set
     isProcessingRef.current = true;
     lastUpdateRef.current = now;
     try {
@@ -149,10 +151,13 @@ const LivePriceWidgetComponent = ({
         await onOrderActivation(alert);
       }
       await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log(`✅ [LEVEL HIT] Successfully processed ${hitType}`);
     } catch (error) {
       console.error(`[ERROR] Processing ${hitType} for alert ${alert.id}:`, error);
     } finally {
+      // ✅ Guaranteed cleanup
       isProcessingRef.current = false;
+      console.log(`🔓 [LEVEL HIT] Released processing lock`);
     }
   }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
   // Enhanced level checking with better logic
@@ -348,6 +353,55 @@ const LivePriceWidgetComponent = ({
       checkLevels(currentPrice);
     }
   }, [currentPrice, checkLevels]);
+
+  // 🔧 BUG FIX #22: Auto-close signals that have all TPs hit but weren't closed
+  useEffect(() => {
+    // Only run once on mount for active/partially_profited signals
+    if (!alert || (alert.status !== 'active' && alert.status !== 'partially_profited')) {
+      return;
+    }
+
+    const validTPs = [
+      { level: 1, price: alert.tp1 },
+      { level: 2, price: alert.tp2 },
+      { level: 3, price: alert.tp3 },
+      { level: 4, price: alert.tp4 },
+      { level: 5, price: alert.tp5 }
+    ].filter(tp => tp.price != null && tp.price > 0);
+    
+    const currentHits = alert.tp_hits || [];
+    
+    if (validTPs.length === 0 || currentHits.length === 0) {
+      return;
+    }
+
+    const maxAvailableTP = Math.max(...validTPs.map(tp => tp.level));
+    const allTPsHit = currentHits.includes(maxAvailableTP);
+
+    if (allTPsHit && onTakeProfitHit) {
+      console.log(`🚨 [STARTUP AUTO-CLOSE] Signal ${alert.id} (${alert.asset_name}) has max TP${maxAvailableTP} already hit but is still ${alert.status}. Triggering auto-close...`, {
+        validTPs: validTPs.map(tp => `TP${tp.level}: ${tp.price}`),
+        currentHits,
+        maxAvailableTP,
+        status: alert.status
+      });
+      
+      // Trigger auto-close with existing TP hits
+      onTakeProfitHit(alert, currentHits, true, `tp${maxAvailableTP}`);
+      
+      // ✅ BUG FIX #9 & #13: Manually dispatch signal-closed-confirmed event with correct structure
+      console.log('📢 [STARTUP AUTO-CLOSE] Manually dispatching signal-closed-confirmed event');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', { 
+          detail: { 
+            signalId: alert.id, 
+            closeReason: alert.closeReason || 'max_tp_hit',
+            assetName: alert.asset_name
+          }
+        }));
+      }, 100); // Small delay to ensure database update completes first
+    }
+  }, []); // Empty deps = run once on mount
 
   // Debug logging
   useEffect(() => {

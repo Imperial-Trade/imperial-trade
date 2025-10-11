@@ -41,8 +41,9 @@ import {
 } from 'lucide-react';
 import { useAdminUserManagement, AdminUser } from '@/hooks/useAdminUserManagement';
 import { CreateUserDialog } from './CreateUserDialog';
+import { withErrorBoundary } from '@/components/error-boundary/withErrorBoundary';
 
-export function EnhancedUserManagementTable() {
+function EnhancedUserManagementTableComponent() {
   const { users, loading, loadUsers, updateUser, deleteUser, createUser, resetPassword } = useAdminUserManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
@@ -407,3 +408,29 @@ export function EnhancedUserManagementTable() {
     </div>
   );
 }
+
+// Wrap component with error boundary for stability
+export const EnhancedUserManagementTable = withErrorBoundary(
+  EnhancedUserManagementTableComponent,
+  {
+    componentName: 'EnhancedUserManagementTable',
+    fallback: (
+      <Card className="glass-effect border-default">
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-primary mb-2">
+              User Management Unavailable
+            </h3>
+            <p className="text-secondary mb-4">
+              Unable to load user management. Please try refreshing the page.
+            </p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Refresh Page
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    ),
+  }
+);

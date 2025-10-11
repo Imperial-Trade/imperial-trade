@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -28,6 +28,10 @@ import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
+
+// Auth Components
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -61,9 +65,9 @@ import SignalStreamOptimized from "@/components/dashboard/SignalStreamOptimized"
 import NewSignalPage from "@/pages/dashboard/new-signal/NewSignalPage";
 import Education from "@/pages/dashboard/education/Education";
 import AdvancedTools from "@/pages/dashboard/advanced-tools/AdvancedTools";
+import AdminTools from "@/pages/dashboard/advanced-tools/AdminTools";
 import MyProgress from "@/pages/dashboard/my-progress/MyProgress";
 import Progress from "@/pages/dashboard/progress/Progress";
-import Administration from "@/pages/dashboard/administration/Administration";
 import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
@@ -74,7 +78,6 @@ import PriceTestingPage from "@/pages/dashboard/dev-tests/PriceTestingPage";
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
 
 // Other Components
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
@@ -92,7 +95,7 @@ function App() {
   console.log('🏗️ App component initializing...');
 
   // Initialize app state on startup
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🔧 Initializing app state...');
     try {
       initializeAppState();
@@ -219,10 +222,14 @@ function App() {
                             path="new-signal"
                             element={<NewSignalPage />}
                           />
-                          <Route
-                            path="advanced-tools"
-                            element={<AdvancedTools />}
-                          />
+            <Route
+              path="advanced-tools"
+              element={<AdvancedTools />}
+            />
+            <Route
+              path="admin-tools"
+              element={<AdminTools />}
+            />
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
                            <Route path="settings" element={<Settings />} />
@@ -231,36 +238,27 @@ function App() {
                                  <Route path="athena" element={<AthenaTest />} />
                                  <Route path="dev-tests" element={<DevTests />} />
                                  <Route path="price-testing" element={<PriceTestingPage />} />
-                                 <Route 
-                                   path="realtime-cost-status" 
-                                   element={
-                                     <ProtectedRoute requiredAccessLevel="admin">
-                                       <div className="p-4">
-                                         {React.createElement(
-                                           React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
-                                         )}
-                                       </div>
-                                     </ProtectedRoute>
-                                   } 
-                                 />
+                                  <Route 
+                                    path="realtime-cost-status" 
+                                    element={
+                                      <ProtectedRoute requiredRoles={['admin']}>
+                                        <div className="p-4">
+                                          {React.createElement(
+                                            React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                          )}
+                                        </div>
+                                      </ProtectedRoute>
+                                    } 
+                                  />
                                </>
                              )}
 
                           <Route
-                            path="administration"
-                            element={
-                              <ProtectedRoute requiredAccessLevel="admin">
-                                <Administration />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
                             path="admin"
                             element={
-                              <ProtectedRoute requiredAccessLevel="admin">
+                              <AdminRoute allowedRoles={['admin', 'moderator', 'educator', 'educator+']}>
                                 <AdminPanel />
-                              </ProtectedRoute>
+                              </AdminRoute>
                             }
                           />
 
@@ -268,9 +266,7 @@ function App() {
                             <Route
                               path="signals"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <EducatorSignalManagement />
                                 </ProtectedRoute>
                               }
@@ -278,9 +274,7 @@ function App() {
                             <Route
                               path="analytics"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       Performance Analytics
@@ -295,9 +289,7 @@ function App() {
                             <Route
                               path="followers"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["educator", "ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator', 'educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       Followers & Engagement
@@ -312,9 +304,7 @@ function App() {
                             <Route
                               path="ib-dashboard"
                               element={
-                                <ProtectedRoute
-                                  requiredUserType={["ib_partner"]}
-                                >
+                                <ProtectedRoute requiredRoles={['educator+']}>
                                   <div className="p-6">
                                     <h1 className="text-2xl font-bold">
                                       IB Partner Dashboard

@@ -1,7 +1,7 @@
-import React, { useState, memo, useEffect, useRef } from 'react';
+import React, { useState, memo, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil } from 'lucide-react';
+import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -15,8 +15,11 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { NotesSyncIndicator } from './NotesSyncIndicator';
+import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
+import { perfMonitor } from '@/utils/performanceMonitor';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -36,6 +39,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   creator,
   justAdded = false
 }) => {
+  // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
+  const perfStartRef = useRef<number>(performance.now());
   const [showCopyPanel, setShowCopyPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -43,39 +48,74 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [localNotes, setLocalNotes] = useState(alert.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isClosing, setIsClosing] = useState(false);
   
-  // 🚀 PHASE 2: Enhanced activation listener for instant UI updates
+  // PHASE 7: Get signal retrieval function for instant UI updates
+  const { getSignalById } = useSignalRealtime();
+  
+  // 🎯 BUG FIX #1 & #3: Pass full signal object to onStatusUpdate instead of just signalId
   useEffect(() => {
-    const handleActivation = (event: CustomEvent) => {
+    const handleSignalUpdate = (event: CustomEvent) => {
       const { signalId, status } = event.detail;
-      if (signalId === alert.id && status === 'active') {
-        console.log(`🎯 ACTIVATION EVENT: Signal ${alert.id} activated - forcing local update`);
-        // Force immediate local state refresh
-        if (onStatusUpdate && alert.status !== 'active') {
-          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → active for ${alert.asset_name}`);
+      
+      if (signalId !== alert.id) return;
+      
+      if (status === 'active' || status === 'closed') {
+        console.log(`🎯 SIGNAL UPDATE EVENT: Signal ${alert.id} status changed to ${status} - forcing UI sync`);
+        
+        // Pull latest data from realtime context
+        const latestSignal = getSignalById(signalId);
+        if (latestSignal && onStatusUpdate) {
+          console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → ${status} for ${alert.asset_name}`);
+          // ✅ FIX: Pass full signal object instead of just signalId
+          onStatusUpdate(latestSignal, latestSignal.status);
         }
       }
     };
 
-    window.addEventListener('order-activation-confirmed', handleActivation as EventListener);
-    return () => window.removeEventListener('order-activation-confirmed', handleActivation as EventListener);
-  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate]);
+    window.addEventListener('order-activation-confirmed', handleSignalUpdate as EventListener);
+    window.addEventListener('signal-closed-confirmed', handleSignalUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('order-activation-confirmed', handleSignalUpdate as EventListener);
+      window.removeEventListener('signal-closed-confirmed', handleSignalUpdate as EventListener);
+    };
+  }, [alert.id, alert.status, alert.asset_name, onStatusUpdate, getSignalById]);
 
+  // 🎯 FIX #4B: Optimized notes sync using useRef to prevent unnecessary re-renders
+  const notesSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}" (previous: "${localNotes}")`);
+    console.log(`📝 Notes sync for alert ${alert.id}: "${alert.notes}"`);
     
     // Only update local state if not currently editing to avoid overwriting user input
-    if (!isEditingNotes) {
+    if (!isEditingNotes && alert.notes !== localNotes) {
       setLocalNotes(alert.notes || '');
       setNotesDraft(alert.notes || '');
       
       // Show brief sync confirmation when notes change from real-time updates
-      if (alert.notes !== localNotes) {
-        setNotesSyncStatus('saved');
-        setTimeout(() => setNotesSyncStatus('idle'), 1500);
+      setNotesSyncStatus('saved');
+      
+      // Clear existing timeout
+      if (notesSyncTimeoutRef.current) {
+        clearTimeout(notesSyncTimeoutRef.current);
       }
+      
+      // Set new timeout
+      notesSyncTimeoutRef.current = setTimeout(() => {
+        setNotesSyncStatus('idle');
+      }, 1500);
     }
-  }, [alert.id, alert.notes, isEditingNotes, localNotes]);
+  }, [alert.id, alert.notes, isEditingNotes]); // Removed localNotes from deps
+  
+  // ✅ PHASE 2: Performance monitoring cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (perfStartRef.current) {
+        perfMonitor.mark('alert-card-render', perfStartRef.current);
+      }
+    };
+  }, []);
   
   // Type-safe derivations
   const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
@@ -128,26 +168,90 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
       
+      const originalNotes = alert.notes || '';
+      const newNotes = notesDraft.trim();
+      
+      // Detect meaningful changes (minimum 10 characters difference or substantial content change)
+      const lengthDiff = Math.abs(newNotes.length - originalNotes.length);
+      const isMeaningfulChange = lengthDiff >= 10 || (newNotes.length > 20 && newNotes !== originalNotes);
+      
       // Optimistic update - immediately show new notes locally
       setLocalNotes(notesDraft);
       setIsEditingNotes(false);
       
       console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
       
-      const { error } = await supabase
-        .from('trade_alerts')
-        .update({ notes: notesDraft })
-        .eq('id', alert.id);
+      // Guard: Ensure we have creator info for authorization
+      if (!creator?.id) {
+        throw new Error('Unable to save notes: user information not available');
+      }
+      
+      // Use API service to properly filter data and avoid boolean field issues
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { notes: notesDraft },
+        creator.id
+      );
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to save notes');
 
       console.log(`✅ Notes saved successfully for alert ${alert.id}`);
       setNotesSyncStatus('saved');
       
+      // Trigger notifications for meaningful notes updates
+      if (isMeaningfulChange && alert.status === 'active' && creator?.id) {
+        console.log(`🔔 Triggering notifications for meaningful notes update on signal ${alert.id}`);
+        
+        try {
+          // Call notification dispatcher
+          const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
+            body: {
+              notifications: [{
+                signal_id: alert.id,
+                user_id: creator.id,
+                asset_name: alert.asset_name,
+                trade_type: alert.trade_type,
+                entry_price: alert.entry_price,
+                stop_loss: alert.stop_loss,
+                tp1: alert.tp1,
+                tp2: alert.tp2,
+                tp3: alert.tp3,
+                tp4: alert.tp4,
+                tp5: alert.tp5,
+                symbol: alert.tradermade_symbol,
+                tradermade_symbol: alert.tradermade_symbol,
+                created_at: alert.created_date,
+                updated_at: new Date().toISOString(),
+                notification_type: 'notes_updated',
+                alert_type: 'notes_updated',
+                status: alert.status,
+                notes: newNotes,
+                change_types: ['notes_updated'],
+                priority_level: 1,
+                author_id: creator.id,
+                author_name: creator.display_name || 'Unknown',
+                author_avatar_url: creator.avatar_url,
+                delivery_channels: ['push', 'in_app'],
+                include_creator: false
+              }]
+            }
+          });
+
+          if (notifyError) {
+            console.error('⚠️ Failed to send notes update notification:', notifyError);
+          } else {
+            console.log('✅ Notes update notification sent successfully');
+          }
+        } catch (notifyErr) {
+          console.error('⚠️ Notes notification dispatch error:', notifyErr);
+          // Don't fail the notes save if notification fails
+        }
+      }
+      
       // Clear success status after 2 seconds
       setTimeout(() => setNotesSyncStatus('idle'), 2000);
       
-      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+      toast({ title: 'Notes updated', description: isMeaningfulChange ? 'Users have been notified of the new notes.' : 'Everyone can now see the new notes.' });
     } catch (e: any) {
       console.error(`❌ Failed to save notes for alert ${alert.id}:`, e);
       // Revert optimistic update on error
@@ -164,23 +268,31 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     }
   };
 
-  // Stop-Loss Proximity effect (moved to top level to fix React Hooks violation)
-  useEffect(() => {
+  // 🎯 FIX #4C: Optimized stop-loss proximity calculation with useMemo
+  const proximityData = useMemo(() => {
     if (alert.status !== 'active' || !alert.entry_price || !alert.stop_loss) {
-      return;
+      return null;
     }
 
     const wsPrice = getPrice?.(alert.tradermade_symbol?.trim().toUpperCase())?.price;
     const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
     
-    if (!currentPrice) return;
+    if (!currentPrice) return null;
 
     const totalDistance = Math.abs(alert.entry_price - alert.stop_loss);
-    if (totalDistance === 0) return;
+    if (totalDistance === 0) return null;
     
     const currentDistance = Math.abs(currentPrice - alert.stop_loss);
     const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
     
+    return { proximityPercentage };
+  }, [alert.status, alert.entry_price, alert.stop_loss, livePrice, getPrice, alert.tradermade_symbol]);
+
+  // Stop-Loss Proximity effect with throttle
+  useEffect(() => {
+    if (!proximityData) return;
+    
+    const { proximityPercentage } = proximityData;
     const now = Date.now();
     const throttleMs = 5000; // 5 second throttle
 
@@ -192,7 +304,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setShowStopLossProximity(false);
       lastToggleTimestampRef.current = now;
     }
-  }, [livePrice, alert, showStopLossProximity, getPrice]);
+  }, [proximityData, showStopLossProximity]);
 
   // Get button text (only creator can close in stream)
   const getCloseButtonText = () => 'Close My Signal';
@@ -377,10 +489,35 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               size="sm" 
               variant="ghost" 
               className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-              onClick={() => handleStatusUpdate('closed')}
+              onClick={async () => {
+                console.log('🖱️ [TradeAlertCard] Close button CLICKED:', {
+                  alertId: alert.id,
+                  newStatus: 'closed',
+                  timestamp: new Date().toISOString()
+                });
+                
+                setIsClosing(true);
+                try {
+                  await handleStatusUpdate('closed');
+                } catch (error) {
+                  console.error('💥 [TradeAlertCard] Status update failed:', error);
+                } finally {
+                  setIsClosing(false);
+                }
+              }}
+              disabled={isClosing}
             >
-                <Lock className="w-3 h-3 mr-1.5" />
-                {isPending ? 'Cancel Order' : getCloseButtonText()}
+                {isClosing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    Closing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3 h-3 mr-1.5" />
+                    {isPending ? 'Cancel Order' : getCloseButtonText()}
+                  </>
+                )}
             </Button>
         </div>
       )}
@@ -388,31 +525,56 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   );
 };
 
+// 🎯 FIX #4D: Optimized memo comparison with early exit and cached TP hits
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // 🚀 COMPREHENSIVE memo comparison to prevent unnecessary re-renders while allowing smooth price updates
-  const prevHitsKey = (prevProps.alert.tp_hits || []).join(',');
-  const nextHitsKey = (nextProps.alert.tp_hits || []).join(',');
+  // Quick reference check first (most common case - prevents expensive comparisons)
+  if (prevProps.alert === nextProps.alert && 
+      prevProps.creator === nextProps.creator) {
+    return true;
+  }
   
-  return (
+  // Check primitives first (fast operations)
+  const primitivesMatch = (
     prevProps.alert.id === nextProps.alert.id &&
     prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.asset_name === nextProps.alert.asset_name &&
-    prevProps.alert.trade_type === nextProps.alert.trade_type &&
     prevProps.alert.entry_price === nextProps.alert.entry_price &&
     prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.notes === nextProps.alert.notes &&
+    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.isCreator === nextProps.isCreator &&
+    prevProps.justAdded === nextProps.justAdded &&
+    prevProps.className === nextProps.className
+  );
+  
+  if (!primitivesMatch) return false;
+  
+  // Check TPs (already primitives, fast)
+  const tpsMatch = (
     prevProps.alert.tp1 === nextProps.alert.tp1 &&
     prevProps.alert.tp2 === nextProps.alert.tp2 &&
     prevProps.alert.tp3 === nextProps.alert.tp3 &&
     prevProps.alert.tp4 === nextProps.alert.tp4 &&
-    prevProps.alert.tp5 === nextProps.alert.tp5 &&
-    prevProps.alert.notes === nextProps.alert.notes &&
-    prevProps.alert.close_reason === nextProps.alert.close_reason &&
-    prevHitsKey === nextHitsKey &&
-    prevProps.isAdmin === nextProps.isAdmin &&
-    prevProps.isCreator === nextProps.isCreator &&
-    prevProps.justAdded === nextProps.justAdded &&
-    prevProps.className === nextProps.className &&
-    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
-    // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
+    prevProps.alert.tp5 === nextProps.alert.tp5
   );
+  
+  if (!tpsMatch) return false;
+  
+  // Only do expensive array/object comparison if primitives match
+  const prevHitsLength = prevProps.alert.tp_hits?.length || 0;
+  const nextHitsLength = nextProps.alert.tp_hits?.length || 0;
+  
+  const tpHitsMatch = (
+    prevHitsLength === nextHitsLength &&
+    (prevHitsLength === 0 || (prevProps.alert.tp_hits?.join(',') === nextProps.alert.tp_hits?.join(',')))
+  );
+  
+  if (!tpHitsMatch) return false;
+  
+  // Creator comparison (last, most expensive)
+  const creatorMatch = JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator);
+  
+  
+  return creatorMatch;
+  // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
 });

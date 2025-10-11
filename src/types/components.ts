@@ -53,7 +53,7 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   isAdmin: boolean;
   isCreator: boolean;
   livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'error' | 'polling';
   priceSource: string;
   isRecentClosure: boolean;
 }
@@ -65,7 +65,7 @@ export interface LivePriceWidgetProps extends BaseComponentProps {
   onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
   onOrderActivation: (alert: TradeAlertData) => Promise<void>;
   livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'error' | 'polling';
   priceSource: string;
 }
 

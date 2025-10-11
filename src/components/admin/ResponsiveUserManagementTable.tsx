@@ -58,7 +58,6 @@ export function ResponsiveUserManagementTable() {
   const { users, loading, loadUsers, updateUser, deleteUser, createUser, resetPassword } = useAdminUserManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
-  const [accessLevelFilter, setAccessLevelFilter] = useState<string>('all');
   const [accountStatusFilter, setAccountStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -67,26 +66,42 @@ export function ResponsiveUserManagementTable() {
     loadUsers();
   }, [loadUsers]);
 
-  const getUserTypeBadge = (userType: string) => {
-    switch (userType) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'educator':
-        return <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">Educator</Badge>;
-      default:
-        return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">Member</Badge>;
+  const getRolesBadge = (userRoles?: string[]) => {
+    if (!userRoles || userRoles.length === 0) {
+      return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">No Roles</Badge>;
     }
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {userRoles.map((role) => {
+          const badgeClass = role === 'admin' 
+            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+            : role === 'educator+' 
+            ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+            : role === 'educator'
+            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            : role === 'moderator'
+            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+            : 'bg-green-500/10 text-green-400 border-green-500/20';
+            
+          return (
+            <Badge key={role} className={badgeClass}>
+              {role === 'educator+' ? 'Educator+' : role.charAt(0).toUpperCase() + role.slice(1)}
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const getUserTypeBadge = (userType: string) => {
+    // DEPRECATED - Display warning
+    return <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">⚠️ Deprecated</Badge>;
   };
 
   const getAccessLevelBadge = (accessLevel: string) => {
-    switch (accessLevel) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'moderator':
-        return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Moderator</Badge>;
-      default:
-        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">User</Badge>;
-    }
+    // DEPRECATED - Display warning
+    return <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">⚠️ Deprecated</Badge>;
   };
 
   const getAccountStatusBadge = (status: string) => {
@@ -123,11 +138,12 @@ export function ResponsiveUserManagementTable() {
       user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
-    const matchesUserType = userTypeFilter === 'all' || user.user_type === userTypeFilter;
-    const matchesAccessLevel = accessLevelFilter === 'all' || user.access_level === accessLevelFilter;
     const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;
     
-    return matchesSearch && matchesUserType && matchesAccessLevel && matchesAccountStatus;
+    // Filter by roles
+    const matchesRoleFilter = userTypeFilter === 'all' || user.userRoles?.includes(userTypeFilter);
+    
+    return matchesSearch && matchesAccountStatus && matchesRoleFilter;
   });
 
   const handleToggleAccountStatus = async (user: AdminUser) => {
@@ -166,9 +182,16 @@ export function ResponsiveUserManagementTable() {
   if (loading) {
     return (
       <Card className="glass-effect border-default">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
+        <CardHeader>
+          <CardTitle className="text-primary flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading users...</p>
           </div>
         </CardContent>
       </Card>
@@ -188,19 +211,20 @@ export function ResponsiveUserManagementTable() {
               </Badge>
             </CardTitle>
             
-            {/* Search and Controls */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
+            {/* Search and Controls - Mobile optimized */}
+            <div className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1 w-full min-w-0">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4 pointer-events-none" />
                   <Input
                     placeholder="Search by name, email, or phone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-surface border-default text-primary"
+                    className="pl-10 bg-surface border-default text-primary w-full h-11"
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <CreateUserDialog onCreateUser={createUser} />
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -208,7 +232,7 @@ export function ResponsiveUserManagementTable() {
                         onClick={loadUsers}
                         variant="outline"
                         size="sm"
-                        className="border-default text-secondary hover:bg-surface hover:text-primary"
+                        className="border-default text-secondary hover:bg-surface hover:text-primary h-11 w-11"
                       >
                         <RefreshCw className="w-4 h-4" />
                       </Button>
@@ -218,34 +242,24 @@ export function ResponsiveUserManagementTable() {
                 </div>
               </div>
               
-              {/* Filter Row */}
-              <div className="flex flex-col sm:flex-row gap-2">
+              {/* Filter Row - Full width on mobile */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
-                    <SelectValue placeholder="User Type" />
+                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary h-11">
+                    <SelectValue placeholder="Role Filter" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border-default">
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="educator+">Educator+</SelectItem>
                     <SelectItem value="educator">Educator</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={accessLevelFilter} onValueChange={setAccessLevelFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
-                    <SelectValue placeholder="Access Level" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface border-default">
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
                     <SelectItem value="moderator">Moderator</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
                   </SelectContent>
                 </Select>
                 
                 <Select value={accountStatusFilter} onValueChange={setAccountStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary">
+                  <SelectTrigger className="w-full sm:w-40 bg-surface border-default text-primary h-11">
                     <SelectValue placeholder="Account Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface border-default">
@@ -262,15 +276,15 @@ export function ResponsiveUserManagementTable() {
           
           <CardContent className="p-0">
             {filteredUsers.length > 0 ? (
-              <div className="space-y-4 p-4">
-                {/* Desktop Table View */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full">
+              <div className="space-y-0">
+                {/* Desktop Table View - Keep hidden on mobile */}
+                <div className="hidden lg:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px]">
                     <thead>
                       <tr className="border-b border-default">
                         <th className="text-left p-4 text-primary font-medium">User</th>
-                        <th className="text-left p-4 text-primary font-medium">Type</th>
-                        <th className="text-left p-4 text-primary font-medium">Access</th>
+                        <th className="text-left p-4 text-primary font-medium">Roles</th>
                         <th className="text-left p-4 text-primary font-medium">Status</th>
                         <th className="text-left p-4 text-primary font-medium">Source</th>
                         <th className="text-left p-4 text-primary font-medium">Created</th>
@@ -297,8 +311,7 @@ export function ResponsiveUserManagementTable() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">{getUserTypeBadge(user.user_type)}</td>
-                          <td className="p-4">{getAccessLevelBadge(user.access_level)}</td>
+                          <td className="p-4">{getRolesBadge(user.userRoles)}</td>
                           <td className="p-4">{getAccountStatusBadge(user.account_status)}</td>
                           <td className="p-4">{getRegistrationSourceBadge(user.registration_source)}</td>
                           <td className="p-4">
@@ -351,31 +364,33 @@ export function ResponsiveUserManagementTable() {
                     </tbody>
                   </table>
                 </div>
+              </div>
 
-                {/* Mobile Card View */}
-                <div className="lg:hidden space-y-4">
+              {/* Mobile Card View - ENHANCED WITH SECTION LABELS */}
+              <div className="lg:hidden space-y-4 p-4 sm:p-6">
                   {filteredUsers.map((user) => (
-                    <Card key={user.id} className="bg-surface border-default">
+                    <Card key={user.id} className="bg-surface border-default overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center">
+                        {/* User Header Section */}
+                        <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/50">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center flex-shrink-0">
                               <User className="w-5 h-5 text-secondary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-primary truncate">{user.display_name}</div>
-                              <div className="text-sm text-secondary truncate">{user.email}</div>
+                              <div className="font-medium text-primary break-words">{user.display_name}</div>
+                              <div className="text-sm text-secondary break-all">{user.email}</div>
                               {user.phone_number && (
-                                <div className="text-xs text-secondary flex items-center gap-1 mt-1">
-                                  <Phone className="w-3 h-3" />
-                                  {user.phone_number}
+                                <div className="text-xs text-secondary flex items-center gap-1 mt-1 break-all">
+                                  <Phone className="w-3 h-3 flex-shrink-0" />
+                                  <span className="break-all">{user.phone_number}</span>
                                 </div>
                               )}
                             </div>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button variant="ghost" className="h-10 w-10 p-0 flex-shrink-0">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -412,23 +427,43 @@ export function ResponsiveUserManagementTable() {
                           </DropdownMenu>
                         </div>
                         
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {getUserTypeBadge(user.user_type)}
-                          {getAccessLevelBadge(user.access_level)}
-                          {getAccountStatusBadge(user.account_status)}
-                          {getRegistrationSourceBadge(user.registration_source)}
-                        </div>
-                        
-                        <div className="mt-3 text-xs text-secondary flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          Created: {new Date(user.created_at).toLocaleDateString()}
-                          {user.last_login && (
-                            <>
-                              <span className="mx-2">•</span>
-                              <Clock className="w-3 h-3" />
-                              Last login: {new Date(user.last_login).toLocaleDateString()}
-                            </>
-                          )}
+                        {/* Metadata Sections with Clear Labels */}
+                        <div className="mt-4 space-y-3">
+                          {/* Roles Section */}
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Roles</div>
+                            <div className="flex flex-wrap gap-2">
+                              {getRolesBadge(user.userRoles || [])}
+                            </div>
+                          </div>
+                          
+                          {/* Status & Source Section */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</div>
+                              <div>{getAccountStatusBadge(user.account_status)}</div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Source</div>
+                              <div>{getRegistrationSourceBadge(user.registration_source)}</div>
+                            </div>
+                          </div>
+                          
+                          {/* Created Date Section */}
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Created</div>
+                            <div className="flex items-center gap-1 text-sm text-secondary">
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <span>{new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              {user.last_login && (
+                                <>
+                                  <span className="mx-2 text-muted-foreground">•</span>
+                                  <Clock className="w-3 h-3 flex-shrink-0" />
+                                  <span className="text-xs">Last: {new Date(user.last_login).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -436,16 +471,31 @@ export function ResponsiveUserManagementTable() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Users className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-primary mb-2">
+              <div className="text-center py-12 px-4">
+                <div className="w-20 h-20 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-10 h-10 text-secondary/50" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-primary mb-2">
                   No Users Found
                 </h3>
-                <p className="text-secondary">
-                  {searchTerm || userTypeFilter !== 'all' || accessLevelFilter !== 'all' || accountStatusFilter !== 'all'
-                    ? 'No users match your search criteria.'
-                    : 'No users found in the system.'}
+                <p className="text-sm sm:text-base text-secondary max-w-md mx-auto">
+                  {searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all'
+                    ? 'Try adjusting your search or filter criteria.'
+                    : 'No users found in the system. Create your first user to get started.'}
                 </p>
+                {(searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSearchTerm('');
+                      setUserTypeFilter('all');
+                      setAccountStatusFilter('all');
+                    }}
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>

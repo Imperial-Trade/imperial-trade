@@ -57,6 +57,10 @@ export default function SigninPage() {
       // Login logic will be handled in the hook
       await onSubmit(data);
 
+      // Wait for auth context and roles to propagate
+      console.log('✅ Login successful, waiting for auth state...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // Redirect to dashboard after successful login
       navigate("/dashboard/home");
     } catch (error) {
@@ -67,7 +71,7 @@ export default function SigninPage() {
       });
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+  return <div className="min-h-screen relative flex justify-center p-4 sm:p-6 py-6 overflow-y-auto">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>

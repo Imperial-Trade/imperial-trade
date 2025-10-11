@@ -1,31 +1,88 @@
-
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, CheckCircle2, LogIn, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserExistenceCheck } from '@/hooks/useUserExistenceCheck';
-import { PasswordSetup } from './PasswordSetup';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserExistenceCheckProps {
   accountRequest: any;
 }
 
 export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountRequest }) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { checkUserExists, isChecking, error: checkError, clearError } = useUserExistenceCheck({ accountRequest });
   const [userExists, setUserExists] = useState<boolean | null>(null);
-  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck({ accountRequest });
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
+    const performCheck = async () => {
       if (accountRequest?.email) {
         const exists = await checkUserExists(accountRequest.email);
         setUserExists(exists);
+        
+        // Auto-create account if approved but doesn't exist
+        if (!exists && accountRequest.status === 'approved') {
+          await handleAutoAccountCreation();
+        }
       }
     };
-
-    checkUser();
+    performCheck();
   }, [accountRequest?.email, checkUserExists]);
+
+  const handleAutoAccountCreation = async () => {
+    setIsCreatingAccount(true);
+    try {
+      // Call edge function to create account with stored credentials
+      const { data, error } = await supabase.functions.invoke('create-approved-account', {
+        body: { 
+          email: accountRequest.email,
+          accountRequestId: accountRequest.id 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Account Created!",
+          description: "Check your email for a password reset link to set your password and sign in.",
+        });
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              email: accountRequest.email,
+              message: 'Your account has been created! Check your email for a password reset link.'
+            }
+          });
+        }, 3000);
+      }
+    } catch (error: any) {
+      console.error('Auto account creation error:', error);
+      toast({
+        title: "Account Setup Required",
+        description: "Please check your email for a password reset link to activate your account.",
+        variant: "default",
+      });
+      
+      // Still redirect to login
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            email: accountRequest.email,
+            message: 'Check your email for account setup instructions.'
+          }
+        });
+      }, 3000);
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
 
   const handleRetryCheck = async () => {
     clearError();
@@ -35,34 +92,43 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountR
     }
   };
 
-  const handlePasswordSetupSuccess = () => {
-    console.log('Password setup completed successfully');
-    // PasswordSetup component handles the dashboard redirect
-  };
-
-  // Loading state while checking user existence
-  if (isChecking || userExists === null) {
+  // Loading state (including account creation)
+  if (isChecking || userExists === null || isCreatingAccount) {
     return (
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent-green border-t-transparent mx-auto" />
-        <p className="text-gray-300">Checking account status...</p>
-      </div>
+      <Card className="w-full max-w-md mx-auto shadow-2xl border-primary/20">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">
+            {isCreatingAccount ? 'Setting Up Your Account' : 'Checking Account Status'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-muted-foreground text-center">
+            {isCreatingAccount ? 'Activating your account and sending setup instructions...' : 'Checking account status...'}
+          </p>
+          {isCreatingAccount && (
+            <p className="text-sm text-muted-foreground text-center">
+              You'll receive an email shortly with instructions to set your password.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
   // Error state
-  if (error) {
+  if (checkError) {
     return (
-      <Card className="glass-effect border-red-500/20 bg-red-500/5">
-        <CardContent className="p-6 text-center space-y-4">
-          <div className="text-red-400">
-            <p className="font-medium">Unable to verify account status</p>
-            <p className="text-sm mt-1">{error}</p>
+      <Card className="w-full max-w-md mx-auto shadow-2xl border-destructive/20">
+        <CardHeader className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-2">
+            <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <Button
-            onClick={handleRetryCheck}
-            className="bg-accent-green hover:bg-green-500 text-white"
-          >
+          <CardTitle className="text-2xl">Verification Error</CardTitle>
+          <CardDescription>{checkError}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button onClick={handleRetryCheck} className="w-full">
             Try Again
           </Button>
         </CardContent>
@@ -70,100 +136,59 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountR
     );
   }
 
-  // User already exists - show login option
+  // User exists - show login
   if (userExists) {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <LogIn className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">
-            Account Already Exists
-          </h3>
-          <p className="text-gray-300 mb-6">
-            An account with the email <span className="font-medium text-white">{accountRequest.email}</span> already exists. 
-            Please sign in to access your account.
-          </p>
-        </div>
-
-        <div className="bg-surface/20 rounded-lg p-4 space-y-2 mb-6">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Name:</span>
-            <span className="text-white">{accountRequest.full_name}</span>
+      <Card className="w-full max-w-md mx-auto shadow-2xl border-primary/20">
+        <CardHeader className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+            <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Email:</span>
-            <span className="text-white">{accountRequest.email}</span>
+          <CardTitle className="text-2xl">Account Ready!</CardTitle>
+          <CardDescription>
+            Your account is active and ready to use
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+            <p className="text-sm"><span className="font-semibold">Name:</span> {accountRequest.full_name}</p>
+            <p className="text-sm"><span className="font-semibold">Email:</span> {accountRequest.email}</p>
+            <p className="text-sm"><span className="font-semibold">Account Type:</span> {accountRequest.account_type === 'educator' ? 'Educator / IB Partner' : 'Standard Member'}</p>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Account Type:</span>
-            <span className="text-white">
-              {accountRequest.account_type === 'educator' 
-                ? 'Educator / IB Partner' 
-                : 'Standard Member'}
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <Link to="/signin">
-            <Button className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
-              <LogIn className="w-4 h-4 mr-2" />
-              Sign In to Your Account
-            </Button>
-          </Link>
-          
-          <p className="text-xs text-gray-400 text-center">
-            If you're having trouble signing in, please contact support for assistance.
-          </p>
-        </div>
-      </div>
+          <Button 
+            onClick={() => navigate('/login', { state: { email: accountRequest.email }})} 
+            className="w-full"
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            Sign In to Your Account
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
-  // User doesn't exist - show password setup
+  // User does not exist - this shouldn't happen as account is auto-created above
+  // This is a fallback state
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <UserPlus className="w-12 h-12 text-green-400 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-white mb-2">
-          Complete Your Registration
-        </h3>
-        <p className="text-gray-300 mb-6">
-          Your account request has been approved! Create your password to complete registration and gain access.
-        </p>
-      </div>
-
-      <div className="bg-surface/20 rounded-lg p-4 space-y-2 mb-6">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Name:</span>
-          <span className="text-white">{accountRequest.full_name}</span>
+    <Card className="w-full max-w-md mx-auto shadow-2xl border-primary/20">
+      <CardHeader className="text-center space-y-2">
+        <div className="mx-auto w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-2">
+          <AlertCircle className="h-8 w-8 text-yellow-500" />
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Email:</span>
-          <span className="text-white">{accountRequest.email}</span>
+        <CardTitle className="text-2xl">Account Setup In Progress</CardTitle>
+        <CardDescription>
+          Check your email for account activation instructions
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+          <p className="text-sm"><span className="font-semibold">Email:</span> {accountRequest.email}</p>
+          <p className="text-sm"><span className="font-semibold">Name:</span> {accountRequest.full_name}</p>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Account Type:</span>
-          <span className="text-white">
-            {accountRequest.account_type === 'educator' 
-              ? 'Educator / IB Partner' 
-              : 'Standard Member'}
-          </span>
-        </div>
-        {accountRequest.approved_at && (
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Approved:</span>
-            <span className="text-white">
-              {new Date(accountRequest.approved_at).toLocaleDateString()}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <PasswordSetup 
-        accountRequest={accountRequest} 
-        onSuccess={handlePasswordSetupSuccess}
-      />
-    </div>
+        <Button onClick={() => navigate('/login', { state: { email: accountRequest.email }})} className="w-full">
+          Go to Sign In
+        </Button>
+      </CardContent>
+    </Card>
   );
 };

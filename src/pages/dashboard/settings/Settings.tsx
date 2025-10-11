@@ -75,8 +75,8 @@ export default function Settings() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your account preferences and settings</p>
+          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+          <p className="text-muted-foreground">Manage your profile and account preferences</p>
         </div>
 
         {/* Profile Section */}

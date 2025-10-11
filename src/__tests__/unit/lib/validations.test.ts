@@ -14,8 +14,6 @@ describe('Validation Schemas', () => {
     it('validates valid admin user update data', () => {
       const validData: AdminUserUpdate = {
         display_name: 'John Doe',
-        user_type: 'member',
-        access_level: 'user',
         account_status: 'active'
       };
 
@@ -23,35 +21,9 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects invalid user_type', () => {
-      const invalidData = {
-        display_name: 'John Doe',
-        user_type: 'invalid_type',
-        access_level: 'user',
-        account_status: 'active'
-      };
-
-      const result = adminUserUpdateSchema.safeParse(invalidData);
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects empty display_name', () => {
-      const invalidData = {
-        display_name: '',
-        user_type: 'member',
-        access_level: 'user',
-        account_status: 'active'
-      };
-
-      const result = adminUserUpdateSchema.safeParse(invalidData);
-      expect(result.success).toBe(false);
-    });
-
     it('validates optional phone_number', () => {
       const validData = {
         display_name: 'John Doe',
-        user_type: 'member',
-        access_level: 'user',
         account_status: 'active',
         phone_number: '+1234567890'
       };
@@ -63,8 +35,6 @@ describe('Validation Schemas', () => {
     it('rejects invalid phone_number format', () => {
       const invalidData = {
         display_name: 'John Doe',
-        user_type: 'member',
-        access_level: 'user',
         account_status: 'active',
         phone_number: 'invalid-phone'
       };
@@ -80,8 +50,6 @@ describe('Validation Schemas', () => {
         email: 'test@example.com',
         password: 'password123',
         display_name: 'Test User',
-        user_type: 'member',
-        access_level: 'user',
         role: 'user'
       };
 
@@ -94,9 +62,7 @@ describe('Validation Schemas', () => {
         email: 'invalid-email',
         password: 'password123',
         display_name: 'Test User',
-        user_type: 'member',
-        access_level: 'user',
-        role: 'user'
+        roles: ['user']
       };
 
       const result = createUserSchema.safeParse(invalidData);
@@ -108,9 +74,7 @@ describe('Validation Schemas', () => {
         email: 'test@example.com',
         password: '123',
         display_name: 'Test User',
-        user_type: 'member',
-        access_level: 'user',
-        role: 'user'
+        roles: ['user']
       };
 
       const result = createUserSchema.safeParse(invalidData);

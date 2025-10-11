@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -20,14 +21,20 @@ import {
 
 interface SidebarEducatorSectionProps {
   isCollapsed: boolean;
-  userType?: string;
 }
 
-export function SidebarEducatorSection({
-  isCollapsed,
-  userType,
-}: SidebarEducatorSectionProps) {
+/**
+ * ✅ SECURITY FIX (ERROR #18): Use secure RPC-based authorization
+ * Removed userType prop in favor of useAuthorizationAware hook
+ */
+export function SidebarEducatorSection({ isCollapsed }: SidebarEducatorSectionProps) {
   const location = useLocation();
+  const { isEducator } = useAuthorizationAware();
+  
+  // Only show for educators
+  if (!isEducator) {
+    return null;
+  }
 
   const isActive = (url: string) => {
     return location.pathname === url;
@@ -36,10 +43,6 @@ export function SidebarEducatorSection({
   const handleNavigationClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
-
-  if (userType !== "educator" && userType !== "ib_partner") {
-    return null;
-  }
 
   const menuItems = [
     {
@@ -62,19 +65,10 @@ export function SidebarEducatorSection({
     }
   ];
 
-  if (userType === "ib_partner") {
-    menuItems.push({
-      title: "IB Partner Dashboard",
-      url: "/dashboard/educator/ib-dashboard",
-      icon: Award,
-      description: "IB partner tools and commissions"
-    });
-  }
-
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
-        {userType === "ib_partner" ? "IB Partner Tools" : "Educator Tools"}
+        Educator Tools
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>

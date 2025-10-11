@@ -112,13 +112,21 @@ function logProfessional(level: 'info' | 'warn' | 'error', message: string, data
   console.log(JSON.stringify(logEntry));
 }
 
-// PHASE 3: CRITICAL FIX - Enhanced event key generation with millisecond precision + sequence
-let eventSequence = 0;
-function generateEventKey(notification: NotificationPayload): string {
-  const baseKey = `${notification.notification_type}_${notification.signal_id}`;
-  const timestamp = Date.now(); // Use milliseconds for precision
-  const sequence = ++eventSequence % 10000; // Add sequence number to prevent collisions
-  return `${baseKey}_${timestamp}_${sequence}`;
+// PHASE 4: FIX #3 - Persistent Event Sequence (never resets on cold start)
+let eventSequence = Date.now() % 10000; // ✅ Starts from timestamp to prevent collisions
+function generateEventKey(
+  notification: NotificationPayload, 
+  triggerSource: string = 'unknown'
+): string {
+  const timestamp = Date.now();
+  const nanoSeconds = performance.now().toString().replace('.', ''); // Sub-millisecond precision
+  const sequence = ++eventSequence % 10000;
+  
+  // Include trigger source to prevent cross-trigger collisions
+  const changeHash = (notification.change_types || []).sort().join('-') || 'none';
+  
+  // Format: signalId-type-triggerSource-changeHash-timestamp-nanos-sequence
+  return `${notification.signal_id}-${notification.notification_type}-${triggerSource}-${changeHash}-${timestamp}-${nanoSeconds}-${sequence}`;
 }
 
 // Pips calculation helper
@@ -148,80 +156,112 @@ function createRichNotificationContent(notification: NotificationPayload): {
   
   let title = '';
   let body = '';
-  const safeAuthorName = author_name || 'Educator';
+  
+  // ============================================
+  // BUG #22 FIX: Only use fallback when author_name is truly undefined/null/empty
+  // ============================================
+  const safeAuthorName = (author_name && author_name.trim() !== '') ? author_name : 'Unknown Trader';
+  
+  // Log when fallback is used
+  if (safeAuthorName === 'Unknown Trader') {
+    logProfessional('warn', '⚠️ BUG #22: Using fallback author name', {
+      signal_id: notification.signal_id,
+      notification_type: notification.notification_type,
+      original_author_name: author_name,
+      author_id: notification.author_id
+    });
+  }
+  
   const safeSymbol = tradermade_symbol || symbol || asset_name;
 
-  // Calculate pips for relevant notifications
+  // ============================================
+  // BUG #40 FIX: Calculate pips for relevant notifications
+  // ============================================
   let pipsText = '';
   if (notification.triggered_price && notification.entry_price) {
     const pips = calculatePips(notification.entry_price, notification.triggered_price, safeSymbol);
     const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
     const isProfit = (isBuy && notification.triggered_price > entry_price) || 
                      (!isBuy && notification.triggered_price < entry_price);
-    pipsText = `${isProfit ? 'Profit' : 'Loss'}: ${isProfit ? '+' : '-'}${pips} pips`;
+    pipsText = `${isProfit ? '+' : '-'}${pips} pips`;
   }
 
   // Provider name format: "${providerName} • ${notificationType}"
   switch (notification_type) {
     case 'signal_created':
-      title = `${safeAuthorName} • New Signal`;
+      title = `🔔 ${safeAuthorName} • New Signal`;
       body = `${asset_name} • ${trade_type.toUpperCase()} at ${entry_price}`;
       break;
       
     case 'tp_hit':
     case 'take_profit_hit':
       const tpLevel = tp_hits?.[tp_hits.length - 1] || 1;
-      title = `${safeAuthorName} • TP${tpLevel} Hit`;
-      body = `${asset_name} • ${pipsText || 'Target reached'}`;
+      title = `🎯 ${safeAuthorName} • TP${tpLevel} Hit`;
+      const tpPipsDisplay = pipsText ? ` • ${pipsText}` : '';
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)}${tpPipsDisplay} • TP${tpLevel} hit`;
       break;
       
     case 'stop_loss_hit':
-      title = `${safeAuthorName} • Stop Loss Hit`;
-      body = `${asset_name} • ${pipsText || `SL at ${notification.triggered_price}`}`;
+      title = `🔻 ${safeAuthorName} • Stop Loss Hit`;
+      const slPipsDisplay = pipsText ? ` • ${pipsText}` : '';
+      body = `${asset_name} • Asset reached: $${notification.triggered_price?.toFixed(2) || entry_price.toFixed(2)}${slPipsDisplay} • Stop Loss hit`;
       break;
       
     case 'limit_order_activated':
-      title = `${safeAuthorName} • Order Activated`;
+      title = `🚀 ${safeAuthorName} • Order Activated`;
       body = `${asset_name} • ${trade_type.replace('_', ' ').toUpperCase()} now active`;
       break;
       
     case 'manual_close':
-      title = `${safeAuthorName} • Signal Closed`;
-      body = `${asset_name} • Manually closed`;
-      if (notification.close_reason) {
-        body += ` (${notification.close_reason})`;
-      }
+      title = `🔒 ${safeAuthorName} • Signal Closed`;
+      const closePrice = notification.triggered_price || notification.entry_price;
+      body = `${asset_name} • Closed at: $${closePrice.toFixed(2)} • ${notification.close_reason || 'Manual close'}`;
+      break;
+      
+    // ============================================
+    // BUG #24 FIX - PHASE 3: All Targets Hit notification
+    // ============================================
+    case 'all_targets_hit':
+    case 'all_tps_hit':
+      title = `💰 ${safeAuthorName} • All Targets Hit`;
+      const allTpPrice = notification.triggered_price || notification.entry_price;
+      body = `${asset_name} • Asset reached: $${allTpPrice.toFixed(2)} • All targets hit`;
+      break;
+      
+    case 'limit_cancelled':
+      title = `🔒 ${safeAuthorName} • Limit Order Cancelled`;
+      body = `${asset_name} • ${trade_type.replace('_', ' ').toUpperCase()} order cancelled`;
       break;
       
     case 'notes_updated':
-      title = `${safeAuthorName} • Notes Updated`;
+      title = `📝 ${safeAuthorName} • Notes Updated`;
       body = `${asset_name} • New trading notes added`;
       break;
       
     case 'signal_updated':
       if (notification.change_types?.includes('tp_hits')) {
         const tpNum = tp_hits?.[tp_hits.length - 1] || 1;
-        title = `${safeAuthorName} • TP${tpNum} Hit`;
+        title = `🎯 ${safeAuthorName} • TP${tpNum} Hit`;
         body = `${asset_name} • ${pipsText || 'Take profit reached'}`;
       } else if (notification.change_types?.includes('status_change')) {
         if (status === 'closed') {
-          title = `${safeAuthorName} • Signal Closed`;
+          title = `🛑 ${safeAuthorName} • Signal Closed`;
           body = `${asset_name} • Trade completed`;
         } else if (status === 'active') {
-          title = `${safeAuthorName} • Signal Active`;
+          title = `🚀 ${safeAuthorName} • Signal Active`;
           body = `${asset_name} • Now trading`;
         } else {
-          title = `${safeAuthorName} • Status Update`;
+          title = `🔄 ${safeAuthorName} • Status Update`;
           body = `${asset_name} • Status: ${status}`;
         }
       } else {
-        title = `${safeAuthorName} • Signal Updated`;
+        title = `🔄 ${safeAuthorName} • Signal Updated`;
         body = `${asset_name} • Parameters modified`;
       }
       break;
       
     default:
-      title = `${safeAuthorName} • Trading Alert`;
+      title = `ℹ️ ${safeAuthorName} • Trading Alert`;
       body = `${asset_name} • ${trade_type.toUpperCase()}`;
   }
 
@@ -619,6 +659,43 @@ async function logNotificationDelivery(
   }
 }
 
+// PHASE 3: User-level circuit breaker check BEFORE batching
+async function checkUserEligibility(
+  supabase: any,
+  signalId: string,
+  userId: string,
+  notificationType: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  try {
+    // Check circuit breaker at user level (5-minute cooldown)
+    const { data: canSend, error } = await supabase.rpc(
+      'check_notification_circuit_breaker',
+      {
+        p_signal_id: signalId,
+        p_user_id: userId,
+        p_cooldown_minutes: 5
+      }
+    );
+
+    if (error) {
+      logProfessional('warn', 'User eligibility check failed', { error: error.message });
+      return { allowed: true }; // Allow on error to prevent blocking
+    }
+
+    if (!canSend) {
+      return { 
+        allowed: false, 
+        reason: 'User-level circuit breaker active (5-min cooldown)' 
+      };
+    }
+
+    return { allowed: true };
+  } catch (error) {
+    logProfessional('error', 'User eligibility exception', { error: (error as Error).message });
+    return { allowed: true }; // Allow on error
+  }
+}
+
 // ===== MAIN HANDLER =====
 
 serve(async (req) => {
@@ -693,7 +770,34 @@ serve(async (req) => {
     for (const notification of notifications) {
       try {
         metrics.processed++;
-        const eventKey = generateEventKey(notification);
+        
+        // ============================================
+        // BUG #22 FIX: Defensive logging for incoming notification payload
+        // ============================================
+        logProfessional('info', '📦 INCOMING NOTIFICATION PAYLOAD', {
+          signal_id: notification.signal_id,
+          notification_type: notification.notification_type,
+          author_id: notification.author_id,
+          author_name: notification.author_name,
+          author_avatar_url: notification.author_avatar_url,
+          asset_name: notification.asset_name,
+          tradermade_symbol: notification.tradermade_symbol,
+          priority_level: notification.priority_level,
+          change_types: notification.change_types
+        });
+        
+        // Validate critical fields
+        if (!notification.author_name || notification.author_name.trim() === '') {
+          logProfessional('warn', '⚠️ BUG #22: Missing author_name in payload, will use fallback', {
+            signal_id: notification.signal_id,
+            author_id: notification.author_id,
+            notification_type: notification.notification_type
+          });
+        }
+        
+        // PHASE 3: Include trigger source in event key
+        const triggerSource = notification.change_types?.includes('signal_created') ? 'insert' : 'update';
+        const eventKey = generateEventKey(notification, triggerSource);
         
         logProfessional('info', `Processing notification for signal ${notification.signal_id}`, {
           notificationType: notification.notification_type,
@@ -724,12 +828,54 @@ serve(async (req) => {
         }
 
         // Get eligible users
-        const eligibleUsers = await getEligibleUsers(supabase, notification.user_ids);
+        const allUsers = await getEligibleUsers(supabase, notification.user_ids);
         
-        if (eligibleUsers.length === 0) {
+        if (allUsers.length === 0) {
           logProfessional('warn', `No eligible users found for signal ${notification.signal_id}`);
           continue;
         }
+
+        // PHASE 4: FIX #8 - Async Notification Batching + FIX #10 - Circuit Breaker Bypass
+        const eligibleUsers = [];
+        let skippedByCircuitBreaker = 0;
+        
+        // FIX #10: Bypass circuit breaker for CRITICAL notifications
+        const isCritical = notification.notification_type === 'stop_loss_hit' || 
+                           notification.notification_type === 'signal_closed' ||
+                           notification.notification_type === 'manual_close';
+        
+        if (isCritical) {
+          // Critical alerts bypass circuit breaker - send to all users
+          logProfessional('info', `🚨 CRITICAL ALERT: Bypassing circuit breaker for ${notification.notification_type}`);
+          eligibleUsers.push(...allUsers);
+        } else {
+          // FIX #8: Parallel eligibility checks (instead of sequential)
+          const eligibilityChecks = await Promise.all(
+            allUsers.map(user => checkUserEligibility(
+              supabase,
+              notification.signal_id,
+              user.id,
+              notification.notification_type
+            ))
+          );
+          
+          // Filter eligible users based on parallel checks
+          allUsers.forEach((user, index) => {
+            if (eligibilityChecks[index].allowed) {
+              eligibleUsers.push(user);
+            } else {
+              skippedByCircuitBreaker++;
+              logProfessional('info', `🚫 User ${user.id} blocked by circuit breaker: ${eligibilityChecks[index].reason}`);
+            }
+          });
+        }
+        
+        if (eligibleUsers.length === 0) {
+          logProfessional('warn', `All ${allUsers.length} users blocked by circuit breaker for signal ${notification.signal_id}`);
+          continue;
+        }
+        
+        logProfessional('info', `✅ ${eligibleUsers.length} eligible users (${skippedByCircuitBreaker} blocked by circuit breaker)`);
 
         // Send in-app realtime notifications
         if (notification.delivery_channels.includes('in_app')) {
@@ -738,25 +884,16 @@ serve(async (req) => {
             metrics.in_app_sent++;
             metrics.sent++;
             
-            // Log successful in-app delivery for each user (with circuit breaker check)
+            // Log successful in-app delivery for ELIGIBLE users only
             for (const user of eligibleUsers) {
-              // 3. Circuit breaker check per user
-              const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
-              if (canSend) {
-                await logNotificationDelivery(
-                  supabase,
-                  notification,
-                  user.id,
-                  'in_app',
-                  'sent',
-                  eventKey
-                );
-              } else {
-                logProfessional('info', `EMERGENCY: In-app notification blocked by circuit breaker`, {
-                  signalId: notification.signal_id,
-                  userId: user.id
-                });
-              }
+              await logNotificationDelivery(
+                supabase,
+                notification,
+                user.id,
+                'in_app',
+                'sent',
+                eventKey
+              );
             }
           } else {
             metrics.failed++;
@@ -779,28 +916,19 @@ serve(async (req) => {
             );
 
             if (pushResult.success) {
-              // Log successful deliveries (with circuit breaker check)
+              // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
               let actualSentCount = 0;
               for (const user of eligibleUsers) {
                 if (user.onesignal_player_id) {
-                  // 3. Circuit breaker check per user for push notifications
-                  const canSend = await checkCircuitBreaker(supabase, notification.signal_id, user.id);
-                  if (canSend) {
-                    await logNotificationDelivery(
-                      supabase,
-                      notification,
-                      user.id,
-                      'push',
-                      'sent',
-                      eventKey
-                    );
-                    actualSentCount++;
-                  } else {
-                    logProfessional('info', `EMERGENCY: Push notification blocked by circuit breaker`, {
-                      signalId: notification.signal_id,
-                      userId: user.id
-                    });
-                  }
+                  await logNotificationDelivery(
+                    supabase,
+                    notification,
+                    user.id,
+                    'push',
+                    'sent',
+                    eventKey
+                  );
+                  actualSentCount++;
                 }
               }
               

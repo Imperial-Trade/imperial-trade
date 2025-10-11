@@ -454,55 +454,75 @@ export function AdminSignalManagement() {
       </header>
 
       {/* Desktop Two-Column Layout / Mobile Single Column */}
-      <div className="lg:flex lg:gap-8 lg:items-start">
+      <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden lg:gap-8">
         {/* LEFT SIDEBAR - Fixed on Desktop, Normal Flow on Mobile */}
-        <aside className="space-y-6 lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-6 lg:self-start">
+        <aside className="space-y-6 lg:w-1/3 lg:flex-shrink-0 lg:overflow-y-hidden lg:pr-4">
           {/* Overall Performance Card */}
           {analytics && (
-            <div className="glass-card p-6 lg:p-8 bg-[#2a2d3e]/60 border-slate-600/40">
-              <h2 className="text-lg lg:text-xl font-semibold mb-4 lg:mb-6 text-foreground">Overall Performance</h2>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-4 lg:gap-y-6">
-                {/* Win Rate */}
-                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                  <div className="bg-blue-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
-                    <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6" stroke="#3b82f6" strokeWidth={2} />
+            <div className="glass-card p-6 lg:p-10 bg-[#2a2d3e]/60 border-slate-600/40 rounded-2xl lg:rounded-3xl">
+              <h2 className="text-lg lg:text-2xl font-bold mb-4 lg:mb-8 text-foreground">
+                Overall Performance
+              </h2>
+              
+              {/* Mobile: 2x2 grid | Desktop: Full-width vertical stack */}
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-6">
+                {/* Win Rate - Enhanced */}
+                <div className="flex items-center gap-3 lg:gap-4 min-w-0 lg:p-6 lg:bg-blue-500/10 lg:rounded-2xl lg:border lg:border-blue-500/20">
+                  <div className="bg-blue-500/30 p-2 lg:p-4 rounded-full lg:rounded-2xl flex-shrink-0">
+                    <BarChart3 className="w-5 h-5 lg:w-8 lg:h-8" stroke="#3b82f6" strokeWidth={2} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Win Rate</p>
-                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-foreground truncate">{analytics.win_rate.toFixed(1)}%</p>
+                    <p className="text-[11px] sm:text-xs lg:text-base text-gray-300 lg:text-gray-400 truncate font-medium">
+                      Win Rate
+                    </p>
+                    <p className="text-base sm:text-lg lg:text-4xl font-bold text-foreground truncate">
+                      {analytics.win_rate.toFixed(1)}%
+                    </p>
                   </div>
                 </div>
                 
-                {/* Pips Gained */}
-                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                  <div className="bg-green-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
-                    <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6" stroke="#22c55e" strokeWidth={2} />
+                {/* Pips Gained - Enhanced */}
+                <div className="flex items-center gap-3 lg:gap-4 min-w-0 lg:p-6 lg:bg-green-500/10 lg:rounded-2xl lg:border lg:border-green-500/20">
+                  <div className="bg-green-500/30 p-2 lg:p-4 rounded-full lg:rounded-2xl flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 lg:w-8 lg:h-8" stroke="#22c55e" strokeWidth={2} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Pips Gained</p>
-                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-400 truncate">+{analytics.total_pips_gained}</p>
+                    <p className="text-[11px] sm:text-xs lg:text-base text-gray-300 lg:text-gray-400 truncate font-medium">
+                      Pips Gained
+                    </p>
+                    <p className="text-base sm:text-lg lg:text-4xl font-bold text-green-400 truncate">
+                      +{analytics.total_pips_gained}
+                    </p>
                   </div>
                 </div>
                 
-                {/* Total Signals */}
-                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                  <div className="bg-gray-400/30 p-2 lg:p-3 rounded-full flex-shrink-0">
-                    <Signal className="w-5 h-5 lg:w-6 lg:h-6" stroke="#9ca3af" strokeWidth={2} />
+                {/* Total Signals - Enhanced */}
+                <div className="flex items-center gap-3 lg:gap-4 min-w-0 lg:p-6 lg:bg-gray-400/10 lg:rounded-2xl lg:border lg:border-gray-400/20">
+                  <div className="bg-gray-400/30 p-2 lg:p-4 rounded-full lg:rounded-2xl flex-shrink-0">
+                    <Signal className="w-5 h-5 lg:w-8 lg:h-8" stroke="#9ca3af" strokeWidth={2} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Total Signals</p>
-                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-foreground truncate">{analytics.total_signals}</p>
+                    <p className="text-[11px] sm:text-xs lg:text-base text-gray-300 lg:text-gray-400 truncate font-medium">
+                      Total Signals
+                    </p>
+                    <p className="text-base sm:text-lg lg:text-4xl font-bold text-foreground truncate">
+                      {analytics.total_signals}
+                    </p>
                   </div>
                 </div>
                 
-                {/* Pips Lost */}
-                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                  <div className="bg-red-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
-                    <TrendingDown className="w-5 h-5 lg:w-6 lg:h-6" stroke="#ef4444" strokeWidth={2} />
+                {/* Pips Lost - Enhanced */}
+                <div className="flex items-center gap-3 lg:gap-4 min-w-0 lg:p-6 lg:bg-red-500/10 lg:rounded-2xl lg:border lg:border-red-500/20">
+                  <div className="bg-red-500/30 p-2 lg:p-4 rounded-full lg:rounded-2xl flex-shrink-0">
+                    <TrendingDown className="w-5 h-5 lg:w-8 lg:h-8" stroke="#ef4444" strokeWidth={2} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Pips Lost</p>
-                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-400 truncate">-{analytics.total_pips_lost}</p>
+                    <p className="text-[11px] sm:text-xs lg:text-base text-gray-300 lg:text-gray-400 truncate font-medium">
+                      Pips Lost
+                    </p>
+                    <p className="text-base sm:text-lg lg:text-4xl font-bold text-red-400 truncate">
+                      -{analytics.total_pips_lost}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -511,57 +531,57 @@ export function AdminSignalManagement() {
 
           {/* Filters - Horizontal on Mobile, Vertical on Desktop */}
           <Tabs defaultValue="my-signals" className="w-full">
-            <TabsList className="flex lg:flex-col items-stretch p-1.5 rounded-xl bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap lg:flex-wrap gap-1 lg:gap-2 w-full h-auto overflow-hidden">
+            <TabsList className="flex lg:flex-col items-stretch p-2 lg:p-3 rounded-xl lg:rounded-2xl bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap lg:flex-wrap gap-2 lg:gap-3 w-full h-auto overflow-hidden">
               <TabsTrigger 
                 value="my-signals" 
-                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+                className="flex-1 lg:w-full text-center text-xs lg:text-base py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-medium lg:font-semibold text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
               >
-                ALL <span className="ml-1">({filteredAlerts.length})</span>
+                ALL <span className="ml-1 lg:ml-2 font-bold">({filteredAlerts.length})</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="pending" 
-                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+                className="flex-1 lg:w-full text-center text-xs lg:text-base py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-medium lg:font-semibold text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
               >
-                Pending <span className="ml-1">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
+                Pending <span className="ml-1 lg:ml-2 font-bold">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="active" 
-                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+                className="flex-1 lg:w-full text-center text-xs lg:text-base py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-medium lg:font-semibold text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
               >
-                Active <span className="ml-1">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
+                Active <span className="ml-1 lg:ml-2 font-bold">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="closed" 
-                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+                className="flex-1 lg:w-full text-center text-xs lg:text-base py-2.5 lg:py-4 px-4 lg:px-6 rounded-lg lg:rounded-xl font-medium lg:font-semibold text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white data-[state=active]:shadow-lg whitespace-nowrap"
               >
-                Closed <span className="ml-1">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
+                Closed <span className="ml-1 lg:ml-2 font-bold">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
               </TabsTrigger>
             </TabsList>
 
             {/* Search and Refresh */}
-            <div className="flex gap-3 lg:gap-4 mt-6">
+            <div className="flex gap-3 lg:gap-4 mt-6 lg:mt-8">
               <div className="relative flex-grow">
                 <Input 
                   type="text" 
                   placeholder="Search by asset..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-full py-3 pl-10 pr-4 text-sm lg:text-base text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition"
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-full py-3 lg:py-5 pl-10 lg:pl-14 pr-4 lg:pr-6 text-sm lg:text-lg text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition"
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 lg:h-5 lg:w-5 text-gray-400" />
+                <Search className="absolute left-3 lg:left-5 top-1/2 -translate-y-1/2 h-4 w-4 lg:h-6 lg:w-6 text-gray-400" />
               </div>
               <button 
                 onClick={() => fetchUserSignals()}
-                className="flex-shrink-0 flex items-center justify-center w-11 h-11 lg:w-12 lg:h-12 bg-slate-800/50 border border-slate-700 rounded-full text-gray-300 hover:bg-slate-700/50 transition"
+                className="flex-shrink-0 flex items-center justify-center w-11 h-11 lg:w-16 lg:h-16 bg-slate-800/50 border border-slate-700 rounded-full text-gray-300 hover:bg-slate-700/50 transition-all hover:scale-105 active:scale-95"
               >
-                <RefreshCw className="w-4 h-4 lg:w-5 lg:h-5" />
+                <RefreshCw className="w-4 h-4 lg:w-6 lg:w-6" />
               </button>
             </div>
           </Tabs>
         </aside>
 
         {/* RIGHT CONTENT - Scrollable Grid on Desktop */}
-        <main className="flex-1 mt-6 lg:mt-0">
+        <main className="flex-1 lg:w-2/3 mt-6 lg:mt-0 lg:overflow-y-auto lg:h-full lg:pr-4">
           <Tabs defaultValue="my-signals" className="w-full">
             {/* Desktop: 2-column grid, Mobile: single column */}
             <TabsContent value="my-signals" className="space-y-4">

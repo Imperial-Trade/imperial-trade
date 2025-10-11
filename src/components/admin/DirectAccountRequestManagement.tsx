@@ -87,94 +87,66 @@ export const DirectAccountRequestManagement: React.FC = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+  // FIXED: Now uses account-approval edge function instead of direct admin API
+  // Edge function chain: account-approval → create-approved-account → auth.admin.createUser()
+  // This ensures proper service role authentication and automated role/profile creation
   const handleApprove = async (request: AccountRequest) => {
     setActionLoading(request.id);
     try {
-      // Step 1: Generate temporary password
-      const temporaryPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12).toUpperCase() + '!@#';
-
-      // Step 2: Create user in auth.users
-      const {
-        data: newUser,
-        error: userError
-      } = await supabase.auth.admin.createUser({
-        email: request.email,
-        password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: request.full_name,
-          display_name: request.full_name,
-          account_type: request.account_type
+      console.log(`🎯 [Account Approval] Starting approval for request ID: ${request.id}`);
+      console.log(`📧 Email: ${request.email}, Type: ${request.account_type}`);
+      
+      // ✅ STEP 1: Call account-approval edge function (handles everything server-side)
+      const { data: approvalResult, error: approvalError } = await supabase.functions.invoke('account-approval', {
+        body: {
+          requestId: request.id,
+          status: 'approved',
+          rejectionReason: null
         }
       });
-      if (userError || !newUser.user) {
-        throw new Error(`Failed to create user: ${userError?.message}`);
+
+      // ✅ STEP 2: Handle edge function errors
+      if (approvalError) {
+        console.error('❌ [Account Approval] Edge function invocation error:', approvalError);
+        throw new Error(`Failed to approve account: ${approvalError.message}`);
       }
 
-      // Step 3: ✅ TASK 1.8B - Assign role based on account_type
-      const roleToAssign: Database["public"]["Enums"]["app_role"] = request.account_type === 'educator' ? 'educator' : 'user';
-      const {
-        error: roleError
-      } = await supabase.from('user_roles').insert([{
-        user_id: newUser.user.id,
-        role: roleToAssign
-      }]);
-      if (roleError) {
-        console.error('Failed to assign role:', roleError);
-        toast({
-          title: "Warning",
-          description: `User created but role assignment failed: ${roleError.message}`,
-          variant: "destructive"
-        });
+      if (!approvalResult?.success) {
+        console.error('❌ [Account Approval] Edge function returned error:', approvalResult);
+        throw new Error(approvalResult?.error || 'Account approval failed');
       }
 
-      // Step 4: Create profile entry
-      const {
-        error: profileError
-      } = await supabase.from('profiles').insert({
-        id: newUser.user.id,
-        display_name: request.full_name,
-        email: request.email,
-        user_type: request.account_type === 'educator' ? 'educator' : 'member',
-        account_status: 'active'
-      });
-      if (profileError) {
-        console.error('Failed to create profile:', profileError);
-      }
+      console.log('✅ [Account Approval] Edge function succeeded');
+      console.log('📊 Response:', approvalResult);
 
-      // Step 5: Update request status to approved
-      const {
-        error: updateError
-      } = await supabase.from('account_requests').update({
-        status: 'approved',
-        updated_at: new Date().toISOString()
-      }).eq('id', request.id);
-      if (updateError) throw updateError;
-
-      // Step 6: Send approval email notification
+      // ✅ STEP 3: Send email notification (optional - for UX feedback)
       try {
         await supabase.functions.invoke('account-request-notifications', {
           body: {
             type: 'request_approved',
             userEmail: request.email,
-            userName: request.full_name,
-            temporaryPassword: temporaryPassword
+            userName: request.full_name
           }
         });
       } catch (emailError) {
-        console.error('Failed to send approval email:', emailError);
+        console.warn('⚠️ Email notification failed (non-blocking):', emailError);
       }
+
+      // ✅ STEP 4: Show success message
       toast({
-        title: "Request Approved",
-        description: `${request.full_name}'s account has been created with ${roleToAssign} role.`,
+        title: "✅ Account Approved",
+        description: `${request.full_name}'s account has been created successfully. They will receive a password reset email.`,
         variant: "default"
       });
+
+      // ✅ STEP 5: Refresh the requests list
       loadRequests();
+
     } catch (error) {
-      console.error('Error approving request:', error);
+      console.error('❌ [Account Approval] Failed for', request.email, ':', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to approve request",
+        title: "❌ Approval Failed",
+        description: error instanceof Error ? error.message : "Failed to approve account request. Please try again or contact support.",
         variant: "destructive"
       });
     } finally {

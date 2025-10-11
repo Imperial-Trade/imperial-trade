@@ -581,7 +581,7 @@ export function AdminSignalManagement() {
         </aside>
 
         {/* RIGHT CONTENT - Scrollable Grid on Desktop */}
-        <main className="flex-1 lg:w-2/3 mt-6 lg:mt-0 lg:overflow-y-auto lg:h-full lg:pr-4">
+        <main className="flex-1 lg:w-2/3 mt-6 lg:mt-0 lg:overflow-y-auto lg:h-full lg:pr-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <Tabs defaultValue="my-signals" className="w-full">
             {/* Desktop: 2-column grid, Mobile: single column */}
             <TabsContent value="my-signals" className="space-y-4">

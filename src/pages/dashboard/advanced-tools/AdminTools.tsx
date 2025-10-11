@@ -1,6 +1,6 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Shield } from 'lucide-react';
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
@@ -60,6 +60,7 @@ const LoadingFallback = () => (
 
 export default function AdminTools() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const adminSection = searchParams.get('admin');
   
   const { 
@@ -81,6 +82,27 @@ export default function AdminTools() {
   const canAccessOptimization = isAdmin;
   const canAccessMonitoring = isAdmin;
   const canAccessSettings = isAdmin;
+  
+  // Get default admin route based on user role
+  const getDefaultAdminRoute = () => {
+    // Admin, Educator, Educator+ → Trading Signals
+    if (isAdmin || isEducator || isEducatorPlus) {
+      return '?admin=signals';
+    }
+    // Moderator → Account Requests
+    if (isModerator) {
+      return '?admin=requests';
+    }
+    // Fallback
+    return '?admin=signals';
+  };
+  
+  // Auto-redirect to default section if no admin section is specified
+  useEffect(() => {
+    if (!adminSection) {
+      navigate(getDefaultAdminRoute(), { replace: true });
+    }
+  }, [adminSection, navigate]);
   
   // Validate access for current section
   const hasAccessToSection = () => {
@@ -228,20 +250,6 @@ export default function AdminTools() {
                 <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
                 <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
-              </div>
-            </div>
-          )}
-          
-          {!adminSection && (
-            <div className="glass-container rounded-3xl p-8 border border-border">
-              <div className="text-center py-12">
-                <Shield className="w-16 h-16 text-slate-400 mx-auto mb-4 opacity-50" />
-                <p className="text-xl text-muted-foreground">
-                  Select a tool from the Admin Arsenal to begin
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Swipe from the right edge or press <kbd className="px-2 py-1 bg-accent rounded text-xs border border-border">Alt+A</kbd>
-                </p>
               </div>
             </div>
           )}

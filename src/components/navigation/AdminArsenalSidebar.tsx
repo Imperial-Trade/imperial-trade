@@ -120,14 +120,14 @@ export function AdminArsenalSidebar() {
   const getDefaultAdminRoute = () => {
     // Admin, Educator, Educator+ → Trading Signals
     if (isAdmin || isEducator || isEducatorPlus) {
-      return '/dashboard/advanced-tools?admin=signals';
+      return '/dashboard/admin-tools?admin=signals';
     }
     // Moderator → Account Requests
     if (isModerator) {
-      return '/dashboard/advanced-tools?admin=requests';
+      return '/dashboard/admin-tools?admin=requests';
     }
     // Fallback
-    return '/dashboard/advanced-tools';
+    return '/dashboard/admin-tools';
   };
   
   // Allow access if user has any admin role (to see blurred tools)
@@ -138,70 +138,70 @@ export function AdminArsenalSidebar() {
       name: "Account Requests",
       icon: Users,
       description: "Review and approve new account applications",
-      route: "/dashboard/advanced-tools?admin=requests",
+      route: "/dashboard/admin-tools?admin=requests",
       canAccess: () => canAccessRequests,
     },
     {
       name: "User Management",
       icon: UserCog,
       description: "Manage user roles, permissions, and status",
-      route: "/dashboard/advanced-tools?admin=users",
+      route: "/dashboard/admin-tools?admin=users",
       canAccess: () => canAccessUsers,
     },
     {
       name: "Trading Signals",
       icon: TrendingUp,
       description: "Monitor and manage all trading signals",
-      route: "/dashboard/advanced-tools?admin=signals",
+      route: "/dashboard/admin-tools?admin=signals",
       canAccess: () => canAccessSignals,
     },
     {
       name: "Notifications",
       icon: Bell,
       description: "Send system-wide notifications and alerts",
-      route: "/dashboard/advanced-tools?admin=notifications",
+      route: "/dashboard/admin-tools?admin=notifications",
       canAccess: () => canAccessNotifications,
     },
     {
       name: "System Monitor",
       icon: Activity,
       description: "Real-time system health and performance",
-      route: "/dashboard/advanced-tools?admin=monitor",
+      route: "/dashboard/admin-tools?admin=monitor",
       canAccess: () => canAccessSystem,
     },
     {
       name: "Rate Limits",
       icon: Timer,
       description: "Configure API rate limits and throttling",
-      route: "/dashboard/advanced-tools?admin=limits",
+      route: "/dashboard/admin-tools?admin=limits",
       canAccess: () => canAccessRateLimits,
     },
     {
       name: "Diagnostics",
       icon: Zap,
       description: "System diagnostics and troubleshooting",
-      route: "/dashboard/advanced-tools?admin=diagnostics",
+      route: "/dashboard/admin-tools?admin=diagnostics",
       canAccess: () => canAccessDiagnostics,
     },
     {
       name: "Optimization",
       icon: Sliders,
       description: "Performance optimization and tuning",
-      route: "/dashboard/advanced-tools?admin=optimization",
+      route: "/dashboard/admin-tools?admin=optimization",
       canAccess: () => canAccessOptimization,
     },
     {
       name: "Monitoring",
       icon: BarChart3,
       description: "Analytics and monitoring dashboards",
-      route: "/dashboard/advanced-tools?admin=monitoring",
+      route: "/dashboard/admin-tools?admin=monitoring",
       canAccess: () => canAccessMonitoring,
     },
     {
       name: "Admin Settings",
       icon: Settings,
       description: "Configure admin preferences and settings",
-      route: "/dashboard/advanced-tools?admin=settings",
+      route: "/dashboard/admin-tools?admin=settings",
       canAccess: () => canAccessSettings,
     },
   ];

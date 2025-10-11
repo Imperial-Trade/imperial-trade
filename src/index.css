@@ -968,12 +968,13 @@
 }
 
 #admin-sidebar nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(71, 85, 105, 0.3);
   border-radius: 3px;
+  backdrop-filter: blur(4px);
 }
 
 #admin-sidebar nav::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(71, 85, 105, 0.5);
 }
 
 .subtle-bg-gradient {
@@ -1081,22 +1082,29 @@
   filter: brightness(1.1);
 }
 
-/* Professional scrollbar */
+/* Minimal Dark Glass Scrollbar - Global */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(217 19% 15%);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(45 93% 58%);
+  background: rgba(71, 85, 105, 0.3);
   border-radius: 3px;
+  backdrop-filter: blur(4px);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(45 93% 65%);
+  background: rgba(71, 85, 105, 0.5);
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.3) transparent;
 }
 
 /* Apple Monochrome Design Components */

@@ -1,21 +1,20 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   SidebarMenu,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
-import { Bell, LogOut } from 'lucide-react';
+import { User, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DashboardUserRole } from '@/components/dashboard/DashboardUserRole';
 
@@ -54,69 +53,70 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
     <div className="w-full border-t border-sidebar-border pt-4 space-y-3">
       <SidebarMenu>
         <SidebarMenuItem>
-          {/* Main Profile Container with Context Menu */}
-          <ContextMenu>
-            <ContextMenuTrigger asChild>
-              <div className="flex items-center gap-2 px-2 py-2">
-                {/* Left Side: Profile Section (clickable for privileged users) */}
-                <div
-                  onClick={handleProfileClick}
-                  className={`flex items-center gap-3 flex-1 ${
-                    canAccessAdminPanel 
-                      ? 'cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1 transition-colors' 
-                      : 'px-2 py-1'
-                  }`}
-                >
-                  <Avatar className="h-10 w-10 rounded-lg">
-                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                      {user?.email?.[0]?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!isCollapsed && (
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-sidebar-foreground">
-                        {displayName}
-                      </span>
-                      <DashboardUserRole />
-                    </div>
-                  )}
+          <div className="flex items-center gap-2 px-2 py-2">
+            {/* Left Side: Profile Section (clickable for privileged users) */}
+            <div
+              onClick={handleProfileClick}
+              className={`flex items-center gap-3 flex-1 ${
+                canAccessAdminPanel 
+                  ? 'cursor-pointer hover:bg-sidebar-accent rounded-md px-2 py-1 transition-colors' 
+                  : 'px-2 py-1'
+              }`}
+            >
+              <Avatar className="h-10 w-10 rounded-lg">
+                <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
+                  {user?.email?.[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              {!isCollapsed && (
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold text-sidebar-foreground">
+                    {displayName}
+                  </span>
+                  <DashboardUserRole />
                 </div>
+              )}
+            </div>
 
-                {/* Right Side: Icons (Bell + Theme Toggle) */}
-                {!isCollapsed && (
-                  <div className="flex items-center gap-1">
-                    {/* Notification Bell (placeholder - not functional yet) */}
+            {/* Right Side: Profile Icon + Theme Toggle */}
+            {!isCollapsed && (
+              <div className="flex items-center gap-1">
+                {/* Profile Icon with Settings Dropdown */}
+                <Popover>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
-                      aria-label="Notifications"
+                      aria-label="Profile Settings"
                     >
-                      <Bell className="h-4 w-4" />
+                      <User className="h-4 w-4" />
                     </Button>
-                    
-                    {/* Theme Toggle */}
-                    <ThemeToggle isCollapsed={false} />
-                  </div>
-                )}
+                  </PopoverTrigger>
+                  <PopoverContent 
+                    className="w-48 p-2 bg-popover border border-border"
+                    align="end"
+                    side="top"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-sm"
+                        onClick={() => navigate('/dashboard/settings')}
+                      >
+                        <SettingsIcon className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Theme Toggle */}
+                <ThemeToggle isCollapsed={false} />
               </div>
-            </ContextMenuTrigger>
-            
-            {/* Context Menu for Settings and Log out (right-click) */}
-            <ContextMenuContent className="w-56 bg-popover border border-border">
-              <ContextMenuItem asChild>
-                <Link to="/dashboard/settings" className="flex items-center text-popover-foreground cursor-pointer">
-                  Settings
-                </Link>
-              </ContextMenuItem>
-              <ContextMenuItem 
-                onClick={handleSignOut}
-                className="text-popover-foreground cursor-pointer"
-              >
-                Log out
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
+            )}
+          </div>
         </SidebarMenuItem>
       </SidebarMenu>
       

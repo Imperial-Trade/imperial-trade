@@ -10,7 +10,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { SidebarBrand } from "./sidebar/SidebarBrand";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
-import { SidebarAdminSection } from "./sidebar/SidebarAdminSection";
 import { SidebarEducatorSection } from "./sidebar/SidebarEducatorSection";
 import { SidebarUserMenu } from "./sidebar/SidebarUserMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -42,7 +41,6 @@ export function AppSidebar() {
           <div className="space-y-2 sm:space-y-3 min-h-min pb-24">
             <SidebarNavigation isCollapsed={false} />
             <SidebarEducatorSection isCollapsed={false} />
-            <SidebarAdminSection isCollapsed={false} />
           </div>
         </SidebarContent>
 
@@ -68,7 +66,6 @@ export function AppSidebar() {
         <div className="space-y-3 lg:space-y-4 min-h-min pb-24">
           <SidebarNavigation isCollapsed={false} />
           <SidebarEducatorSection isCollapsed={false} />
-          <SidebarAdminSection isCollapsed={false} />
         </div>
       </SidebarContent>
 

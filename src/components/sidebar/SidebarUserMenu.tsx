@@ -42,10 +42,17 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
     }
   };
   
-  // Handle profile click - redirect privileged users to admin panel
+  // Handle profile click - redirect privileged users to role-appropriate admin tool
   const handleProfileClick = () => {
-    if (canAccessAdminPanel) {
-      navigate('/dashboard/admin');
+    if (!canAccessAdminPanel) return;
+    
+    // Admin, Educator, Educator+ → Trading Signals
+    if (isAdmin || isEducator || isEducatorPlus) {
+      navigate('/dashboard/advanced-tools?admin=signals');
+    }
+    // Moderator → Account Requests
+    else if (isModerator) {
+      navigate('/dashboard/advanced-tools?admin=requests');
     }
   };
 

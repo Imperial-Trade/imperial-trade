@@ -440,9 +440,9 @@ export function AdminSignalManagement() {
   }
 
   return (
-    <div className="space-y-6 max-w-md lg:max-w-none mx-auto px-4 sm:px-6 lg:px-8" style={{ touchAction: 'pan-y' }}>
+    <div className="space-y-6 max-w-md lg:max-w-none mx-auto px-4 sm:px-6 lg:px-8 lg:h-screen lg:overflow-hidden lg:flex lg:flex-col lg:py-6" style={{ touchAction: 'pan-y' }}>
       {/* Header */}
-      <header className="flex justify-between items-center">
+      <header className="flex justify-between items-center lg:flex-shrink-0 lg:mb-6">
         <h1 className="text-2xl font-bold text-foreground">Signal Management</h1>
         <button 
           onClick={() => window.open('/dashboard/new-signal', '_blank')}
@@ -454,7 +454,7 @@ export function AdminSignalManagement() {
       </header>
 
       {/* Desktop Two-Column Layout / Mobile Single Column */}
-      <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden lg:gap-8">
+      <div className="flex flex-col lg:flex-row lg:flex-1 lg:overflow-hidden lg:gap-8 lg:min-h-0">
         {/* LEFT SIDEBAR - Fixed on Desktop, Normal Flow on Mobile */}
         <aside className="space-y-6 lg:w-1/3 lg:flex-shrink-0 lg:overflow-y-hidden lg:pr-4">
           {/* Overall Performance Card */}

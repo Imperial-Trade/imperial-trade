@@ -2017,6 +2017,7 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          module_completion_messages: Json | null
           notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
@@ -2071,6 +2072,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          module_completion_messages?: Json | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
@@ -2125,6 +2127,7 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          module_completion_messages?: Json | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null

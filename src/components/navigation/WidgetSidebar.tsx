@@ -74,6 +74,7 @@ interface WidgetSidebarProps {
 export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showUserIconDropdown, setShowUserIconDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -116,6 +117,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     setIsVisible(prev => !prev);
     if (isVisible) {
       setShowProfileDropdown(false);
+      setShowUserIconDropdown(false);
     }
   }, [isVisible]);
 
@@ -123,6 +125,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     if (isVisible) {
       setIsVisible(false);
       setShowProfileDropdown(false);
+      setShowUserIconDropdown(false);
       dragX.set(0);
     }
   }, [isVisible, dragX]);
@@ -289,6 +292,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const handleClose = () => {
     setIsVisible(false);
     setShowProfileDropdown(false);
+    setShowUserIconDropdown(false);
     dragX.set(0); // Reset drag position
   };
 
@@ -640,13 +644,42 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
                 {/* Controls */}
                 <div className="flex items-center gap-1 sm:gap-1.5">
-                  <motion.button
-                    className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <User className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
-                  </motion.button>
+                  <div className="relative">
+                    <motion.button
+                      onClick={() => setShowUserIconDropdown(!showUserIconDropdown)}
+                      className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <User className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
+                    </motion.button>
+                    
+                    {/* User Icon Settings Dropdown */}
+                    {showUserIconDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute bottom-full right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl shadow-2xl border border-white/20 dark:border-white/10 z-50 min-w-[160px]"
+                      >
+                        <div className="p-1 sm:p-2">
+                          <motion.button
+                            onClick={() => {
+                              setShowUserIconDropdown(false);
+                              navigate("/dashboard/settings");
+                            }}
+                            className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                            whileHover={{ scale: 1.02, x: 4 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
+                            <span className="text-foreground text-xs sm:text-sm">Settings</span>
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
                   <div className="flex items-center justify-center">
                     <ThemeToggle />
                   </div>
@@ -695,19 +728,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);
-                      navigate("/dashboard/settings");
-                    }}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">Settings</span>
-                  </motion.button>
-
-                  <motion.button
-                    onClick={() => {
-                      setShowProfileDropdown(false);
                       handleSignOut();
                     }}
                     className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300"
@@ -731,19 +751,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
               >
                 <div className="p-1 sm:p-2">
-                  <motion.button
-                    onClick={() => {
-                      setShowProfileDropdown(false);
-                      navigate("/dashboard/settings");
-                    }}
-                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">Settings</span>
-                  </motion.button>
-
                   <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);

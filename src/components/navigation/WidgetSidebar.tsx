@@ -490,13 +490,15 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const handleProfileClick = useCallback(() => {
     // Admin, Educator+, and Educator → Trading Signals tab
     if (isAdmin || isEducatorPlus || isEducator) {
-      navigate("/dashboard/advanced-tools?admin=signals");
+      navigate("/dashboard/admin-tools?admin=signals");
+      handleClose();
       return;
     }
     
     // Moderator → Account Requests tab
     if (isModerator) {
-      navigate("/dashboard/advanced-tools?admin=requests");
+      navigate("/dashboard/admin-tools?admin=requests");
+      handleClose();
       return;
     }
     
@@ -663,6 +665,32 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               </div>
             </motion.div>
           </div>
+
+          {/* Admin Tools Access - Only for privileged users */}
+          {canAccessAdminPanel && (
+            <div className="mt-3 sm:mt-4">
+              <motion.button
+                onClick={() => {
+                  if (isAdmin || isEducatorPlus || isEducator) {
+                    navigate('/dashboard/admin-tools?admin=signals');
+                  } else if (isModerator) {
+                    navigate('/dashboard/admin-tools?admin=requests');
+                  }
+                  handleClose();
+                }}
+                className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all duration-200 group backdrop-blur-md"
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Shield className="h-4 h-4 sm:h-5 sm:w-5 text-amber-400 group-hover:text-amber-300 transition-colors" />
+                <div className="flex-1 text-left">
+                  <p className="text-xs sm:text-sm font-semibold text-amber-300">Admin Tools</p>
+                  <p className="text-[10px] sm:text-xs text-amber-400/70">Manage signals, users & more</p>
+                </div>
+                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-amber-400/50 group-hover:text-amber-300 transition-colors" />
+              </motion.button>
+            </div>
+          )}
 
           {/* Visible Sign Out Button */}
           <div className="mt-3 sm:mt-4">

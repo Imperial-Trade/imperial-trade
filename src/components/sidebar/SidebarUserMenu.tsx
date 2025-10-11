@@ -48,11 +48,11 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
     
     // Admin, Educator, Educator+ → Trading Signals
     if (isAdmin || isEducator || isEducatorPlus) {
-      navigate('/dashboard/advanced-tools?admin=signals');
+      navigate('/dashboard/admin-tools?admin=signals');
     }
     // Moderator → Account Requests
     else if (isModerator) {
-      navigate('/dashboard/advanced-tools?admin=requests');
+      navigate('/dashboard/admin-tools?admin=requests');
     }
   };
 

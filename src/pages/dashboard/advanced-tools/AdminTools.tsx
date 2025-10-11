@@ -99,10 +99,17 @@ export default function AdminTools() {
   
   // Auto-redirect to default section if no admin section is specified
   useEffect(() => {
-    if (!adminSection) {
-      navigate(getDefaultAdminRoute(), { replace: true });
+    // Redirect from old route to new route
+    if (window.location.pathname === '/dashboard/advanced-tools') {
+      navigate('/dashboard/admin-tools' + getDefaultAdminRoute(), { replace: true });
+      return;
     }
-  }, [adminSection, navigate]);
+    
+    // If no admin section specified on new route, add default
+    if (!adminSection && window.location.pathname === '/dashboard/admin-tools') {
+      navigate('/dashboard/admin-tools' + getDefaultAdminRoute(), { replace: true });
+    }
+  }, [adminSection, navigate, getDefaultAdminRoute]);
   
   // Validate access for current section
   const hasAccessToSection = () => {

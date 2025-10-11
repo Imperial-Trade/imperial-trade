@@ -222,10 +222,14 @@ function App() {
                             path="new-signal"
                             element={<NewSignalPage />}
                           />
-                          <Route
-                            path="advanced-tools"
-                            element={<AdminTools />}
-                          />
+            <Route
+              path="advanced-tools"
+              element={<AdvancedTools />}
+            />
+            <Route
+              path="admin-tools"
+              element={<AdminTools />}
+            />
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
                            <Route path="settings" element={<Settings />} />

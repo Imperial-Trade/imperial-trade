@@ -292,10 +292,7 @@ export function AdminArsenalSidebar() {
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Shield className="w-6 h-6 text-slate-300" />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Control Panel</h1>
-                <p className="text-sm text-muted-foreground">{getRoleDisplay()}</p>
-              </div>
+              <p className="text-2xl font-bold text-foreground">{getRoleDisplay()}</p>
             </div>
             <motion.button 
               onClick={() => setIsOpen(false)}

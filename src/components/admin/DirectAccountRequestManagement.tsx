@@ -92,61 +92,129 @@ export const DirectAccountRequestManagement: React.FC = () => {
   // This ensures proper service role authentication and automated role/profile creation
   const handleApprove = async (request: AccountRequest) => {
     setActionLoading(request.id);
+    
     try {
       console.log(`🎯 [Account Approval] Starting approval for request ID: ${request.id}`);
       console.log(`📧 Email: ${request.email}, Type: ${request.account_type}`);
       
-      // ✅ STEP 1: Call account-approval edge function (handles everything server-side)
-      const { data: approvalResult, error: approvalError } = await supabase.functions.invoke('account-approval', {
-        body: {
-          requestId: request.id,
-          status: 'approved',
-          rejectionReason: null
-        }
-      });
-
-      // ✅ STEP 2: Handle edge function errors
-      if (approvalError) {
-        console.error('❌ [Account Approval] Edge function invocation error:', approvalError);
-        throw new Error(`Failed to approve account: ${approvalError.message}`);
-      }
-
-      if (!approvalResult?.success) {
-        console.error('❌ [Account Approval] Edge function returned error:', approvalResult);
-        throw new Error(approvalResult?.error || 'Account approval failed');
-      }
-
-      console.log('✅ [Account Approval] Edge function succeeded');
-      console.log('📊 Response:', approvalResult);
-
-      // ✅ STEP 3: Send email notification (optional - for UX feedback)
+      let approvalSuccess = false;
+      let errorMessage = '';
+      
+      // ============================================
+      // ATTEMPT 1: Use Edge Function (PREFERRED)
+      // ============================================
       try {
-        await supabase.functions.invoke('account-request-notifications', {
+        console.log('🚀 [Account Approval] Attempting edge function approach...');
+        
+        const { data: approvalResult, error: approvalError } = await supabase.functions.invoke('account-approval', {
           body: {
-            type: 'request_approved',
-            userEmail: request.email,
-            userName: request.full_name
+            requestId: request.id,
+            status: 'approved',
+            rejectionReason: null
           }
         });
-      } catch (emailError) {
-        console.warn('⚠️ Email notification failed (non-blocking):', emailError);
+
+        if (approvalError) {
+          console.warn('⚠️ [Account Approval] Edge function invocation error:', approvalError);
+          throw new Error(`Edge function failed: ${approvalError.message}`);
+        }
+
+        if (!approvalResult?.success) {
+          console.warn('⚠️ [Account Approval] Edge function returned error:', approvalResult);
+          throw new Error(approvalResult?.error || 'Account approval failed');
+        }
+
+        console.log('✅ [Account Approval] Edge function succeeded');
+        approvalSuccess = true;
+        
+      } catch (edgeFunctionError) {
+        console.warn('⚠️ [Account Approval] Edge function approach failed, trying fallback...', edgeFunctionError);
+        errorMessage = edgeFunctionError instanceof Error ? edgeFunctionError.message : 'Unknown error';
+        
+        // ============================================
+        // ATTEMPT 2: Direct Supabase Fallback
+        // ============================================
+        try {
+          console.log('🔄 [Account Approval] Using direct Supabase fallback...');
+          
+          // Step 1: Update account request status
+          const { error: updateError } = await supabase
+            .from('account_requests')
+            .update({ 
+              status: 'approved',
+              approved_by: (await supabase.auth.getUser()).data.user?.email || 'admin',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', request.id);
+
+          if (updateError) {
+            throw new Error(`Failed to update account request: ${updateError.message}`);
+          }
+          
+          console.log('✅ [Account Approval] Account request updated to approved');
+          
+          // Step 2: Call create-approved-account edge function directly
+          const { data: createResult, error: createError } = await supabase.functions.invoke('create-approved-account', {
+            body: {
+              email: request.email,
+              accountRequestId: request.id,
+              password: null // Triggers password reset email
+            }
+          });
+          
+          if (createError) {
+            throw new Error(`Failed to create user account: ${createError.message}`);
+          }
+          
+          if (!createResult?.success) {
+            throw new Error(createResult?.error || 'User account creation failed');
+          }
+          
+          console.log('✅ [Account Approval] Fallback succeeded - user account created');
+          approvalSuccess = true;
+          
+        } catch (fallbackError) {
+          console.error('❌ [Account Approval] Fallback also failed:', fallbackError);
+          throw new Error(
+            `Both edge function and fallback failed. Edge function error: ${errorMessage}. ` +
+            `Fallback error: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown'}`
+          );
+        }
+      }
+      
+      // ============================================
+      // SUCCESS: Send Notification & Update UI
+      // ============================================
+      if (approvalSuccess) {
+        // Send email notification (optional - non-blocking)
+        try {
+          await supabase.functions.invoke('account-request-notifications', {
+            body: {
+              type: 'request_approved',
+              userEmail: request.email,
+              userName: request.full_name
+            }
+          });
+        } catch (emailError) {
+          console.warn('⚠️ Email notification failed (non-blocking):', emailError);
+        }
+
+        // Show success message
+        toast({
+          title: "✅ Account Approved",
+          description: `${request.full_name}'s account has been created successfully. They will receive a password reset email.`,
+          variant: "default"
+        });
+
+        // Refresh the requests list
+        loadRequests();
       }
 
-      // ✅ STEP 4: Show success message
-      toast({
-        title: "✅ Account Approved",
-        description: `${request.full_name}'s account has been created successfully. They will receive a password reset email.`,
-        variant: "default"
-      });
-
-      // ✅ STEP 5: Refresh the requests list
-      loadRequests();
-
     } catch (error) {
-      console.error('❌ [Account Approval] Failed for', request.email, ':', error);
+      console.error('❌ [Account Approval] Complete failure for', request.email, ':', error);
       toast({
         title: "❌ Approval Failed",
-        description: error instanceof Error ? error.message : "Failed to approve account request. Please try again or contact support.",
+        description: error instanceof Error ? error.message : "Failed to approve account. Please contact support.",
         variant: "destructive"
       });
     } finally {

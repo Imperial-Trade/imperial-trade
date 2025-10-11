@@ -440,7 +440,7 @@ export function AdminSignalManagement() {
   }
 
   return (
-    <div className="space-y-6 max-w-md mx-auto px-4 sm:px-6" style={{ touchAction: 'pan-y' }}>
+    <div className="space-y-6 max-w-md lg:max-w-none mx-auto px-4 sm:px-6 lg:px-8" style={{ touchAction: 'pan-y' }}>
       {/* Header */}
       <header className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-foreground">Signal Management</h1>
@@ -453,170 +453,189 @@ export function AdminSignalManagement() {
         </button>
       </header>
 
-      {/* Overall Performance Card */}
-      {analytics && (
-        <div className="glass-card p-6 bg-[#2a2d3e]/60 border-slate-600/40">
-          <h2 className="text-lg font-semibold mb-4 text-foreground">Overall Performance</h2>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-            {/* Win Rate */}
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-blue-500/30 p-2 rounded-full flex-shrink-0">
-                <BarChart3 className="w-5 h-5" stroke="#3b82f6" strokeWidth={2} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Win Rate</p>
-                <p className="text-base sm:text-lg font-bold text-foreground truncate">{analytics.win_rate.toFixed(1)}%</p>
+      {/* Desktop Two-Column Layout / Mobile Single Column */}
+      <div className="lg:flex lg:gap-8 lg:items-start">
+        {/* LEFT SIDEBAR - Fixed on Desktop, Normal Flow on Mobile */}
+        <aside className="space-y-6 lg:w-96 lg:flex-shrink-0 lg:sticky lg:top-6 lg:self-start">
+          {/* Overall Performance Card */}
+          {analytics && (
+            <div className="glass-card p-6 lg:p-8 bg-[#2a2d3e]/60 border-slate-600/40">
+              <h2 className="text-lg lg:text-xl font-semibold mb-4 lg:mb-6 text-foreground">Overall Performance</h2>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4 lg:gap-y-6">
+                {/* Win Rate */}
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                  <div className="bg-blue-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
+                    <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6" stroke="#3b82f6" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Win Rate</p>
+                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-foreground truncate">{analytics.win_rate.toFixed(1)}%</p>
+                  </div>
+                </div>
+                
+                {/* Pips Gained */}
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                  <div className="bg-green-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6" stroke="#22c55e" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Pips Gained</p>
+                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-400 truncate">+{analytics.total_pips_gained}</p>
+                  </div>
+                </div>
+                
+                {/* Total Signals */}
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                  <div className="bg-gray-400/30 p-2 lg:p-3 rounded-full flex-shrink-0">
+                    <Signal className="w-5 h-5 lg:w-6 lg:h-6" stroke="#9ca3af" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Total Signals</p>
+                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-foreground truncate">{analytics.total_signals}</p>
+                  </div>
+                </div>
+                
+                {/* Pips Lost */}
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                  <div className="bg-red-500/30 p-2 lg:p-3 rounded-full flex-shrink-0">
+                    <TrendingDown className="w-5 h-5 lg:w-6 lg:h-6" stroke="#ef4444" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] sm:text-xs lg:text-sm text-gray-300 truncate">Pips Lost</p>
+                    <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-400 truncate">-{analytics.total_pips_lost}</p>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {/* Pips Gained */}
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-green-500/30 p-2 rounded-full flex-shrink-0">
-                <TrendingUp className="w-5 h-5" stroke="#22c55e" strokeWidth={2} />
+          )}
+
+          {/* Filters - Horizontal on Mobile, Vertical on Desktop */}
+          <Tabs defaultValue="my-signals" className="w-full">
+            <TabsList className="flex lg:flex-col items-stretch p-1.5 rounded-xl bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap lg:flex-wrap gap-1 lg:gap-2 w-full h-auto overflow-hidden">
+              <TabsTrigger 
+                value="my-signals" 
+                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+              >
+                ALL <span className="ml-1">({filteredAlerts.length})</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="pending" 
+                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+              >
+                Pending <span className="ml-1">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="active" 
+                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+              >
+                Active <span className="ml-1">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="closed" 
+                className="flex-1 lg:w-full text-center text-xs lg:text-sm py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
+              >
+                Closed <span className="ml-1">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Search and Refresh */}
+            <div className="flex gap-3 lg:gap-4 mt-6">
+              <div className="relative flex-grow">
+                <Input 
+                  type="text" 
+                  placeholder="Search by asset..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-full py-3 pl-10 pr-4 text-sm lg:text-base text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 lg:h-5 lg:w-5 text-gray-400" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Pips Gained</p>
-                <p className="text-base sm:text-lg font-bold text-green-400 truncate">+{analytics.total_pips_gained}</p>
-              </div>
+              <button 
+                onClick={() => fetchUserSignals()}
+                className="flex-shrink-0 flex items-center justify-center w-11 h-11 lg:w-12 lg:h-12 bg-slate-800/50 border border-slate-700 rounded-full text-gray-300 hover:bg-slate-700/50 transition"
+              >
+                <RefreshCw className="w-4 h-4 lg:w-5 lg:h-5" />
+              </button>
             </div>
-            
-            {/* Total Signals */}
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-gray-400/30 p-2 rounded-full flex-shrink-0">
-                <Signal className="w-5 h-5" stroke="#9ca3af" strokeWidth={2} />
+          </Tabs>
+        </aside>
+
+        {/* RIGHT CONTENT - Scrollable Grid on Desktop */}
+        <main className="flex-1 mt-6 lg:mt-0">
+          <Tabs defaultValue="my-signals" className="w-full">
+            {/* Desktop: 2-column grid, Mobile: single column */}
+            <TabsContent value="my-signals" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                <AnimatePresence>
+                  {filteredAlerts.map((alert, index) => renderSignalCard(alert, index))}
+                </AnimatePresence>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Total Signals</p>
-                <p className="text-base sm:text-lg font-bold text-foreground truncate">{analytics.total_signals}</p>
-              </div>
+              {filteredAlerts.length === 0 && (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Signal className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Signals Found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm ? 'No signals match your search criteria.' : 'You haven\'t created any trading signals yet.'}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+          <TabsContent value="pending" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+              <AnimatePresence>
+                {filteredAlerts.filter(a => a.status === 'pending').map((alert, index) => renderSignalCard(alert, index))}
+              </AnimatePresence>
             </div>
-            
-            {/* Pips Lost */}
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-red-500/30 p-2 rounded-full flex-shrink-0">
-                <TrendingDown className="w-5 h-5" stroke="#ef4444" strokeWidth={2} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] sm:text-xs text-gray-300 truncate">Pips Lost</p>
-                <p className="text-base sm:text-lg font-bold text-red-400 truncate">-{analytics.total_pips_lost}</p>
-              </div>
+            {filteredAlerts.filter(a => a.status === 'pending').length === 0 && (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No Pending Signals</h3>
+                  <p className="text-muted-foreground">You don't have any pending limit orders.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="active" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+              <AnimatePresence>
+                {filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').map((alert, index) => renderSignalCard(alert, index))}
+              </AnimatePresence>
             </div>
-          </div>
-        </div>
-      )}
+            {filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length === 0 && (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No Active Signals</h3>
+                  <p className="text-muted-foreground">You don't have any active trading signals.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-      {/* Filters */}
-      <Tabs defaultValue="my-signals" className="w-full">
-        <TabsList className="flex items-center p-1.5 mb-6 rounded-xl bg-[#2a2d3e] backdrop-blur-sm border border-slate-600/50 flex-nowrap gap-1 w-full h-auto overflow-hidden">
-          <TabsTrigger 
-            value="my-signals" 
-            className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
-          >
-            ALL <span className="ml-1">({filteredAlerts.length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="pending" 
-            className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
-          >
-            Pending <span className="ml-1">({filteredAlerts.filter(a => a.status === 'pending').length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="active" 
-            className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
-          >
-            Active <span className="ml-1">({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="closed" 
-            className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:bg-slate-700/60 data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-slate-600/50 data-[state=active]:text-white whitespace-nowrap"
-          >
-            Closed <span className="ml-1">({filteredAlerts.filter(a => a.status === 'closed').length})</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Search and Refresh */}
-        <div className="flex gap-4 mb-6">
-          <div className="relative flex-grow">
-            <Input 
-              type="text" 
-              placeholder="Search by asset..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-800/50 border border-slate-700 rounded-full py-3 pl-10 pr-4 text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          </div>
-          <button 
-            onClick={() => fetchUserSignals()}
-            className="flex-shrink-0 flex items-center justify-center w-12 h-12 bg-slate-800/50 border border-slate-700 rounded-full text-gray-300 hover:bg-slate-700/50 transition"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Signal Lists */}
-        <TabsContent value="my-signals" className="space-y-4">
-          <AnimatePresence>
-            {filteredAlerts.map((alert, index) => renderSignalCard(alert, index))}
-          </AnimatePresence>
-          {filteredAlerts.length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Signal className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Signals Found</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm ? 'No signals match your search criteria.' : 'You haven\'t created any trading signals yet.'}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="pending" className="space-y-4">
-          <AnimatePresence>
-            {filteredAlerts.filter(a => a.status === 'pending').map((alert, index) => renderSignalCard(alert, index))}
-          </AnimatePresence>
-          {filteredAlerts.filter(a => a.status === 'pending').length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Pending Signals</h3>
-                <p className="text-muted-foreground">You don't have any pending limit orders.</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="active" className="space-y-4">
-          <AnimatePresence>
-            {filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').map((alert, index) => renderSignalCard(alert, index))}
-          </AnimatePresence>
-          {filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Active Signals</h3>
-                <p className="text-muted-foreground">You don't have any active trading signals.</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="closed" className="space-y-4">
-          <AnimatePresence>
-            {filteredAlerts.filter(a => a.status === 'closed').map((alert, index) => renderSignalCard(alert, index))}
-          </AnimatePresence>
-          {filteredAlerts.filter(a => a.status === 'closed').length === 0 && (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <CheckCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Closed Signals</h3>
-                <p className="text-muted-foreground">You don't have any closed trading signals yet.</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="closed" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                <AnimatePresence>
+                  {filteredAlerts.filter(a => a.status === 'closed').map((alert, index) => renderSignalCard(alert, index))}
+                </AnimatePresence>
+              </div>
+              {filteredAlerts.filter(a => a.status === 'closed').length === 0 && (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <CheckCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Closed Signals</h3>
+                    <p className="text-muted-foreground">You don't have any closed trading signals yet.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
 
       {/* View Signal Modal */}
       <Dialog open={!!viewingAlert} onOpenChange={() => setViewingAlert(null)}>

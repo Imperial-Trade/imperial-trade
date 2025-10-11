@@ -261,9 +261,18 @@
     .backdrop-blur-md,
     .backdrop-blur-xl {
       backdrop-filter: none !important;
-      /* Use slate-900/90 equivalent for consistency with desktop */
-      background-color: rgba(15, 23, 42, 0.9) !important;
+      /* Use pure background color from theme - matches nav-glass-effect */
+      background-color: rgba(15, 15, 20, 0.95) !important;
     }
+  }
+  
+  /* Admin Arsenal Pure Black Glassmorphism */
+  .admin-tabs-glassmorphism {
+    background: rgba(15, 15, 20, 0.3) !important;
+  }
+  
+  .admin-tabs-glassmorphism button[data-state="active"] {
+    background: rgba(15, 15, 20, 0.5) !important;
   }
   
   /* Touch-friendly utilities */

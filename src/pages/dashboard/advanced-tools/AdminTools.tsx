@@ -66,7 +66,7 @@ export default function AdminTools() {
       <div className="max-w-7xl mx-auto">
         {/* Header - Mobile optimized */}
         <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
-          <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-primary flex-shrink-0" />
+          <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 flex-shrink-0" />
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words">Admin Tools</h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -136,10 +136,25 @@ export default function AdminTools() {
             <Suspense fallback={<LoadingFallback />}>
               <div className="space-y-4">
                 <Tabs defaultValue="cost" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="cost">Cost Tracking</TabsTrigger>
-                    <TabsTrigger value="messages">Message Rate</TabsTrigger>
-                    <TabsTrigger value="health">WebSocket Health</TabsTrigger>
+                  <TabsList className="flex items-center p-1.5 mb-6 rounded-xl backdrop-blur-md border border-white/10 flex-wrap gap-1 w-full h-auto overflow-hidden admin-tabs-glassmorphism">
+                    <TabsTrigger 
+                      value="cost"
+                      className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-white/10 data-[state=active]:text-white whitespace-nowrap"
+                    >
+                      Cost Tracking
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="messages"
+                      className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-white/10 data-[state=active]:text-white whitespace-nowrap"
+                    >
+                      Message Rate
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="health"
+                      className="flex-1 text-center text-xs py-2.5 px-4 rounded-lg font-medium text-gray-400/80 transition-all data-[state=active]:backdrop-blur-md data-[state=active]:border data-[state=active]:border-white/10 data-[state=active]:text-white whitespace-nowrap"
+                    >
+                      WebSocket Health
+                    </TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="cost">
@@ -173,7 +188,7 @@ export default function AdminTools() {
           {!adminSection && (
             <div className="glass-container rounded-3xl p-8 border border-border">
               <div className="text-center py-12">
-                <Shield className="w-16 h-16 text-primary mx-auto mb-4 opacity-50" />
+                <Shield className="w-16 h-16 text-slate-400 mx-auto mb-4 opacity-50" />
                 <p className="text-xl text-muted-foreground">
                   Select a tool from the Admin Arsenal to begin
                 </p>

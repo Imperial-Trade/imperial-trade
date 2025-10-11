@@ -94,7 +94,7 @@ const AdminToolWidget = ({ tool }: { tool: AdminTool }) => {
   return (
     <motion.button
       onClick={() => navigate(tool.route)}
-      className="col-span-1 h-28 bg-slate-800/40 backdrop-blur-md rounded-xl p-3 shadow-lg border border-slate-600/40 hover:border-slate-500/60 hover:shadow-xl transition-all"
+      className="col-span-1 h-28 bg-background/50 backdrop-blur-md rounded-xl p-3 shadow-lg border border-white/10 hover:border-white/20 hover:shadow-xl transition-all"
       whileHover={{
         y: -4,
         scale: 1.03,
@@ -201,7 +201,7 @@ export function AdminArsenalSidebar() {
       
       {/* Main Sidebar Panel */}
       <motion.aside
-        className={`fixed right-0 top-20 h-[calc(100vh-5rem)] z-[60] bg-slate-900/90 backdrop-blur-xl border-l border-slate-700/50 shadow-2xl ${
+        className={`fixed right-0 top-20 h-[calc(100vh-5rem)] z-[60] bg-background/30 backdrop-blur-xl border-l border-white/10 shadow-2xl ${
           isMobile ? 'w-[90vw]' : 'w-80'
         }`}
         initial={{ x: "100%" }}

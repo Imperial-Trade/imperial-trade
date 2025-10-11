@@ -68,20 +68,71 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
       
       console.log('Checking account status for:', normalizedEmail);
 
-      const { data: response, error: invokeError } = await supabase.functions.invoke('account-status-check', {
-        body: { email: normalizedEmail }
+      // Create timeout promise (15 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout after 15 seconds')), 15000)
+      );
+
+      // Race between function call and timeout
+      const result = await Promise.race([
+        supabase.functions.invoke('account-status-check', {
+          body: { email: normalizedEmail }
+        }),
+        timeoutPromise
+      ]).catch(error => {
+        if (error.message.includes('timeout')) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'Request timed out. Please try again.',
+              name: 'TimeoutError'
+            } 
+          };
+        }
+        throw error;
       });
+
+      const { data: response, error: invokeError } = result as any;
 
       if (invokeError) {
         console.error('Edge function error:', invokeError);
+        
+        // Fallback: Try direct database query if edge function fails
+        console.log('⚠️ Edge function failed, attempting direct database query...');
+
+        try {
+          const { data: directData, error: directError } = await supabase
+            .from('account_requests')
+            .select('*')
+            .ilike('email', normalizedEmail)
+            .order('created_at', { ascending: false })
+            .maybeSingle();
+
+          if (!directError && directData) {
+            console.log('✅ Direct database query successful:', directData);
+            setStatus(directData as AccountStatusData);
+            setError(null);
+            
+            statusCache.set(normalizedEmail, {
+              data: directData as AccountStatusData,
+              timestamp: Date.now()
+            });
+            return;
+          } else if (directError) {
+            console.error('❌ Direct database query also failed:', directError);
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback query error:', fallbackError);
+        }
+
+        // If we reach here, both edge function and direct query failed
         const errorObj = {
           type: 'system_error' as const,
-          message: 'Unable to check account status. Please try again.'
+          message: 'Unable to check account status. Please try again or contact support.'
         };
         setError(errorObj);
         setStatus(null);
         
-        // Cache the error
         statusCache.set(normalizedEmail, {
           data: null,
           timestamp: Date.now(),

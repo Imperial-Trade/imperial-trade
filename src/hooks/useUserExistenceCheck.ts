@@ -1,8 +1,5 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { testUserExistenceFunction } from '@/utils/testUserExistence';
-
 interface UseUserExistenceCheckReturn {
   checkUserExists: (email: string) => Promise<boolean>;
   isChecking: boolean;
@@ -35,10 +32,6 @@ export const useUserExistenceCheck = (options: UseUserExistenceCheckOptions = {}
       
       console.log('Calling edge function check-user-existence...');
       const startTime = Date.now();
-      
-      // First run diagnostic test
-      console.log('Running diagnostic test...');
-      await testUserExistenceFunction(email.toLowerCase().trim());
       
       const { data, error } = await supabase.functions.invoke('check-user-existence', {
         body: { email: email.toLowerCase().trim() }

@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-rea
 import { AdvancedTypingEffect } from '@/components/account-request/AdvancedTypingEffect';
 import AppBar from '@/components/layout/AppBar';
 import { useAccountStatus } from '@/hooks/useAccountStatus';
-import { useAccountRequestCheck } from '@/hooks/useAccountRequestCheck';
 import { ApprovedAccountFlow } from '@/components/account-request/ApprovedAccountFlow';
 import { ExistingRequestNotice } from '@/components/account-request/ExistingRequestNotice';
 import { RequestHistoryTimeline } from '@/components/account-request/RequestHistoryTimeline';
@@ -45,38 +44,17 @@ export default function AccountRequestStatusPage() {
     clearError: clearStatusError 
   } = useAccountStatus();
 
-  const {
-    isChecking,
-    error: checkError,
-    checkForExistingRequest,
-    clearCheck
-  } = useAccountRequestCheck();
-
   const handleCheckStatus = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
     const trimmedEmail = email.trim().toLowerCase();
     setSearchEmail(trimmedEmail);
-
     clearStatusError();
-    clearCheck();
 
-    try {
-      const existingRequest = await checkForExistingRequest(trimmedEmail);
-      
-      if (existingRequest) {
-        setCurrentRequest(existingRequest);
-        setViewMode('status');
-      } else {
-        await checkStatus(trimmedEmail);
-        setViewMode('result');
-      }
-    } catch (err) {
-      console.error('Error checking status:', err);
-      setViewMode('result');
-    }
-  }, [email, checkStatus, checkForExistingRequest, clearStatusError, clearCheck]);
+    await checkStatus(trimmedEmail);
+    setViewMode('result');
+  }, [email, checkStatus, clearStatusError]);
 
   const handleShowUpdate = useCallback(() => {
     setViewMode('update');
@@ -93,8 +71,7 @@ export default function AccountRequestStatusPage() {
     setSearchEmail('');
     setCurrentRequest(null);
     clearStatusError();
-    clearCheck();
-  }, [clearStatusError, clearCheck]);
+  }, [clearStatusError]);
 
   const handleCheckAnother = useCallback(() => {
     handleBackToCheck();
@@ -197,17 +174,17 @@ export default function AccountRequestStatusPage() {
                       placeholder="Enter your email address"
                       className="pl-10 bg-white border-gray-300 text-gray-900"
                       required
-                      disabled={isLoading || isChecking}
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isLoading || isChecking || !email.trim()}
+                  disabled={isLoading || !email.trim()}
                   className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
                 >
-                  {isLoading || isChecking ? (
+                  {isLoading ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
                   ) : (
                     "Check Status"

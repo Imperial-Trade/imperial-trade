@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CheckCircle2, Loader2, Sparkles, Lock, Key } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, Lock, Key, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/hooks/useWindowSize";
+import { EmailRedirectFix } from "@/utils/emailRedirectFix";
 
 interface ApprovedPasswordAuthProps {
   accountRequest: any;
@@ -21,6 +22,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   const [password, setPassword] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +84,27 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       console.error("Password authentication error:", error);
       toast.error("An unexpected error occurred. Please try again or contact support.");
       setIsAuthenticating(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setIsSendingResetEmail(true);
+    try {
+      const result = await EmailRedirectFix.sendPasswordResetEmail(accountRequest.email);
+      
+      if (result.success) {
+        toast.success(
+          `Password reset email sent to ${accountRequest.email}! Please check your inbox.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(result.error || 'Failed to send reset email. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending reset email:', error);
+      toast.error('Failed to send reset email. Please try again.');
+    } finally {
+      setIsSendingResetEmail(false);
     }
   };
 
@@ -199,16 +222,29 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
               </div>
             </div>
 
-            <div className="text-center text-sm text-gray-400 space-y-1">
-              <p>
-                Forgot your password?{" "}
-                <a 
-                  href="/reset-password" 
-                  className="text-green-400 hover:text-green-300 font-medium"
-                >
-                  Reset it here
-                </a>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-400">
+                Forgot your password?
               </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetPassword}
+                disabled={isSendingResetEmail}
+                className="w-full bg-transparent border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300"
+              >
+                {isSendingResetEmail ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending Reset Email...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Send Password Reset Email
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>

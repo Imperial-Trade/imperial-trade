@@ -10,7 +10,7 @@ export interface AdminUser {
   display_name: string;
   role: string;
   // DEPRECATED: Replaced by user_roles table
-  user_type?: 'member' | 'educator' | 'admin';
+  user_type?: 'user' | 'educator' | 'admin';
   access_level?: 'user' | 'moderator' | 'admin';
   // NEW: Server-validated roles from user_roles table
   userRoles?: string[];

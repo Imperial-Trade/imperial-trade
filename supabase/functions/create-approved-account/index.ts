@@ -54,44 +54,20 @@ serve(async (req) => {
       )
     }
 
-    // Handle legacy users without password_hash (fallback flow)
+    // Handle legacy users without password_hash (SECURITY FIX: Force password reset)
     if (!accountRequest.password_hash) {
-      console.log('Legacy user detected (no password_hash), using fallback flow')
+      console.log('⚠️ Legacy user detected (no password_hash) - Requires password reset')
       
-      // Create user with provided password
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: accountRequest.full_name,
-          account_request_id: accountRequestId,
-        }
-      })
-
-      if (authError) {
-        console.error('Error creating auth user (legacy flow):', authError)
-        return new Response(
-          JSON.stringify({ error: 'Failed to create user account', details: authError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('Legacy user account created successfully:', authData.user.id)
+      // Log security event
+      console.log('Security: Legacy user activation blocked - Email:', email)
       
-      await supabaseAdmin
-        .from('account_requests')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', accountRequestId)
-
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          message: 'Account created successfully. You can now sign in.',
-          userId: authData.user.id,
-          legacyFlow: true
+          error: 'Your account requires a password reset before activation. Please click "Send Password Reset Email" to continue.',
+          requiresPasswordReset: true,
+          isLegacyUser: true
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

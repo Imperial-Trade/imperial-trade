@@ -23,6 +23,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [resetEmailCooldown, setResetEmailCooldown] = useState(0);
 
   const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +89,12 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   };
 
   const handleResetPassword = async () => {
+    // Check cooldown
+    if (resetEmailCooldown > 0) {
+      toast.error(`Please wait ${resetEmailCooldown} seconds before requesting another reset email.`);
+      return;
+    }
+
     setIsSendingResetEmail(true);
     try {
       const result = await EmailRedirectFix.sendPasswordResetEmail(accountRequest.email);
@@ -97,6 +104,8 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
           `Password reset email sent to ${accountRequest.email}! Please check your inbox.`,
           { duration: 5000 }
         );
+        // Set 60-second cooldown
+        setResetEmailCooldown(60);
       } else {
         toast.error(result.error || 'Failed to send reset email. Please try again.');
       }
@@ -113,6 +122,16 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     const timer = setTimeout(() => setShowConfetti(false), 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Countdown timer for reset email cooldown
+  React.useEffect(() => {
+    if (resetEmailCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResetEmailCooldown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetEmailCooldown]);
 
   return (
     <>
@@ -230,13 +249,18 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
                 type="button"
                 variant="outline"
                 onClick={handleResetPassword}
-                disabled={isSendingResetEmail}
+                disabled={isSendingResetEmail || resetEmailCooldown > 0}
                 className="w-full bg-transparent border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300"
               >
                 {isSendingResetEmail ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Sending Reset Email...
+                  </>
+                ) : resetEmailCooldown > 0 ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Wait {resetEmailCooldown}s...
                   </>
                 ) : (
                   <>

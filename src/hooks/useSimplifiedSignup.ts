@@ -6,26 +6,6 @@ import type { SimplifiedSignupFormData } from "@/lib/validations/simplifiedSignu
 import { withTimeout } from "@/api/client/utils/timeout";
 import { withRetry } from "@/api/client/utils/retry";
 
-// Client-side password hashing using Web Crypto API
-async function hashPasswordClient(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const passwordData = encoder.encode(password);
-  
-  const combined = new Uint8Array(salt.length + passwordData.length);
-  combined.set(salt);
-  combined.set(passwordData, salt.length);
-  
-  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
-  const hashArray = new Uint8Array(hashBuffer);
-  
-  const result = new Uint8Array(salt.length + hashArray.length);
-  result.set(salt);
-  result.set(hashArray, salt.length);
-  
-  return btoa(String.fromCharCode(...result));
-}
-
 export const useSimplifiedSignup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canSubmit, setCanSubmit] = useState(true);

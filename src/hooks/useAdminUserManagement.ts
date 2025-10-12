@@ -40,11 +40,36 @@ export const useAdminUserManagement = () => {
     try {
       setLoading(true);
       
-      // Query profiles table and fetch roles using RPC
-      const { data: profilesData, error: profilesError } = await supabase
+      // Log current user's auth state
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔐 Current Admin User:', {
+        id: user?.id,
+        email: user?.email,
+        role: user?.role
+      });
+      
+      // Check admin's roles from user_roles table
+      if (user?.id) {
+        const { data: adminRoles, error: rolesError } = await supabase.rpc('get_user_roles_array', {
+          _user_id: user.id
+        });
+        console.log('👤 Admin Roles from user_roles:', { roles: adminRoles, error: rolesError });
+      }
+      
+      // Query profiles table with detailed error logging
+      console.log('📊 Attempting to query profiles table...');
+      const { data: profilesData, error: profilesError, count } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
+
+      console.log('📊 Profiles Query Result:', {
+        success: !profilesError,
+        error: profilesError,
+        count: count,
+        dataLength: profilesData?.length || 0,
+        firstUser: profilesData?.[0]
+      });
 
       if (profilesError) throw profilesError;
       

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { CheckCircle2, Mail, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, Lock, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/hooks/useWindowSize";
 
@@ -15,34 +17,59 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   accountRequest 
 }) => {
   const { width, height } = useWindowSize();
-  const [isResending, setIsResending] = useState(false);
+  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
 
-  const handleResendEmail = async () => {
-    setIsResending(true);
+  const handlePasswordAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthenticating(true);
 
     try {
-      // Call create-approved-account to resend password setup email
-      const { data, error } = await supabase.functions.invoke('create-approved-account', {
+      console.log('🔐 Activating account with password authentication...');
+      
+      // Step 1: Call edge function to create auth user with provided password
+      const { data, error: createError } = await supabase.functions.invoke('create-approved-account', {
         body: {
           email: accountRequest.email,
           accountRequestId: accountRequest.id,
-          password: null, // Trigger password reset email
+          password: password,
         }
       });
 
-      if (error) {
-        console.error("Error resending email:", error);
-        toast.error("Failed to resend email. Please try again or contact support.");
+      if (createError) {
+        console.error("Account creation error:", createError);
+        toast.error("Failed to activate account. Please check your password and try again.");
+        setIsAuthenticating(false);
         return;
       }
 
-      toast.success("Password setup email sent! Check your inbox.");
+      console.log('✅ Auth user created successfully');
+
+      // Step 2: Immediately sign in with the same password
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: accountRequest.email.toLowerCase().trim(),
+        password: password,
+      });
+
+      if (signInError) {
+        console.error("Sign in error:", signInError);
+        toast.error("Account created but login failed. Please try signing in manually.");
+        navigate('/signin');
+        return;
+      }
+
+      console.log('✅ Authentication successful!');
+      toast.success("Welcome! Your account is now active.");
+      
+      // Step 3: Redirect to dashboard
+      navigate('/dashboard/home');
+      
     } catch (error: any) {
-      console.error("Resend email error:", error);
+      console.error("Password authentication error:", error);
       toast.error("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsResending(false);
+      setIsAuthenticating(false);
     }
   };
 
@@ -103,59 +130,73 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
             </div>
           </div>
 
-          {/* Check Your Email Section */}
+          {/* Enter Password Section */}
           <div className="space-y-4 pt-2">
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
-                <Mail className="w-8 h-8 text-blue-400" />
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 space-y-4">
+              <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-green-400" />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <h3 className="text-xl font-semibold text-white">
-                  Check Your Email
+                  Your Account is Ready!
                 </h3>
                 <p className="text-sm text-gray-300">
-                  We've sent a password setup link to:
-                </p>
-                <p className="text-base font-medium text-blue-400">
-                  {accountRequest.email}
+                  Enter your password to activate and login
                 </p>
               </div>
 
-              <div className="space-y-2 text-sm text-gray-400">
-                <p>📧 Click the link in your email to set your password</p>
-                <p>🔍 Check your spam folder if you don't see it</p>
-                <p>⏱️ The link expires in 24 hours</p>
-              </div>
+              <form onSubmit={handlePasswordAuth} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="bg-white border-gray-300 text-gray-900"
+                    required
+                    disabled={isAuthenticating}
+                    autoFocus
+                  />
+                </div>
 
-              <Button
-                onClick={handleResendEmail}
-                disabled={isResending}
-                variant="outline"
-                className="w-full border-blue-500/30 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300"
-              >
-                {isResending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Resend Password Setup Email
-                  </>
-                )}
-              </Button>
+                <Button
+                  type="submit"
+                  disabled={isAuthenticating || !password.trim()}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Activating Account...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="w-4 h-4 mr-2" />
+                      Activate Account & Login
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="text-center text-sm text-gray-400">
+                <p>Use the password you created during signup</p>
+              </div>
             </div>
 
             <div className="text-center text-sm text-gray-400 space-y-1">
-              <p>Need help?</p>
-              <a 
-                href="/contact" 
-                className="text-green-400 hover:text-green-300 font-medium inline-flex items-center gap-1"
-              >
-                Contact Support
-              </a>
+              <p>
+                Forgot your password?{" "}
+                <a 
+                  href="/reset-password" 
+                  className="text-green-400 hover:text-green-300 font-medium"
+                >
+                  Reset it here
+                </a>
+              </p>
             </div>
           </div>
         </CardContent>

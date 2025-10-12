@@ -277,7 +277,7 @@ serve(async (req) => {
         }
 
         // Create auth user
-        const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
+        const { data: newAuthUser, error: authError } = await supabaseClient.auth.admin.createUser({
           email: request.email.toLowerCase().trim(),
           password: activationPassword,
           email_confirm: true,
@@ -319,12 +319,12 @@ serve(async (req) => {
           )
         }
 
-        console.log(`✅ Auth account created: user_id=${authUser.user?.id}`)
+        console.log(`✅ Auth account created: user_id=${newAuthUser.user?.id}`)
 
         // Create profile record directly (no trigger on auth.users allowed)
         console.log('📝 Creating profile record...')
         
-        const metadata = authUser.user?.user_metadata || {}
+        const metadata = newAuthUser.user?.user_metadata || {}
         
         // Compute role mappings (same logic as handle_new_user() function)
         const computed_role = 
@@ -349,7 +349,7 @@ serve(async (req) => {
         const { error: profileError } = await supabaseClient
           .from('profiles')
           .insert({
-            id: authUser.user.id,
+            id: newAuthUser.user.id,
             real_name: metadata.full_name || request.full_name || 'User',
             display_name: null,
             role: computed_role,
@@ -369,14 +369,14 @@ serve(async (req) => {
             execution_time: new Date().toISOString(),
             records_affected: 0,
             status: 'error',
-            error_message: `Profile creation failed for user ${authUser.user.id}: ${profileError.message}`
+            error_message: `Profile creation failed for user ${newAuthUser.user.id}: ${profileError.message}`
           })
           
           return new Response(
             JSON.stringify({ 
               error: `Auth account created but profile creation failed: ${profileError.message}`,
               success: false,
-              userId: authUser.user?.id
+              userId: newAuthUser.user?.id
             }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
@@ -397,7 +397,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             message: 'Account approved and activated successfully',
-            userId: authUser.user?.id,
+            userId: newAuthUser.user?.id,
             needsActivation: false
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -27,9 +27,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     setIsAuthenticating(true);
 
     try {
-      console.log('🔐 Activating account with password authentication...');
-      
-      // Step 1: Call edge function to create auth user with provided password
+      // Step 1: Create the auth user with their password
       const { data, error: createError } = await supabase.functions.invoke('create-approved-account', {
         body: {
           email: accountRequest.email,
@@ -38,9 +36,18 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
         }
       });
 
-      if (createError) {
-        console.error("Account creation error:", createError);
-        toast.error("Failed to activate account. Please check your password and try again.");
+      if (createError || !data?.success) {
+        console.error("Account creation error:", createError || data?.error);
+        
+        // Handle specific error cases
+        if (data?.error?.includes('Invalid password')) {
+          toast.error("Incorrect password. Please try again with your signup password.");
+        } else if (data?.error?.includes('not found') || data?.error?.includes('not approved')) {
+          toast.error("Account request not found or not approved. Please contact support.");
+        } else {
+          toast.error(data?.error || "Failed to activate account. Please contact support.");
+        }
+        
         setIsAuthenticating(false);
         return;
       }
@@ -48,27 +55,32 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       console.log('✅ Auth user created successfully');
 
       // Step 2: Immediately sign in with the same password
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: accountRequest.email.toLowerCase().trim(),
         password: password,
       });
 
       if (signInError) {
         console.error("Sign in error:", signInError);
-        toast.error("Account created but login failed. Please try signing in manually.");
+        toast.error("Account created but login failed. Please sign in manually.");
+        setIsAuthenticating(false);
         navigate('/signin');
         return;
       }
 
       console.log('✅ Authentication successful!');
+      
+      // Show success and redirect
       toast.success("Welcome! Your account is now active.");
       
-      // Step 3: Redirect to dashboard
-      navigate('/dashboard/home');
+      // Redirect to dashboard after short delay
+      setTimeout(() => {
+        navigate('/dashboard/home');
+      }, 1500);
       
     } catch (error: any) {
       console.error("Password authentication error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error("An unexpected error occurred. Please try again or contact support.");
       setIsAuthenticating(false);
     }
   };

@@ -8,6 +8,7 @@ export interface AdminUser {
   id: string;
   email: string;
   display_name: string;
+  real_name?: string;
   role: string;
   // DEPRECATED: Replaced by user_roles table
   user_type?: 'user' | 'educator' | 'admin';

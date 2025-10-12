@@ -134,8 +134,9 @@ export function ResponsiveUserManagementTable() {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.real_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
     const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;

@@ -151,7 +151,63 @@ export class SimplePasswordReset {
         }
       }
 
-      // Execute password update
+      // Step 1: Check if this is an approved account without Auth user
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const userEmail = currentSession?.user?.email;
+
+      if (userEmail) {
+        // Check if account request exists and is approved
+        const { data: accountRequest } = await supabase
+          .from('account_requests')
+          .select('id, status, email')
+          .eq('email', userEmail.toLowerCase())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (accountRequest) {
+          console.log('✅ Found approved account request for:', userEmail);
+          
+          // This is an approved account activating via password reset
+          // Call unified-account-approval to create Auth user
+          const { data: activationResult, error: activationError } = await supabase.functions.invoke(
+            'unified-account-approval',
+            {
+              body: {
+                requestId: accountRequest.id,
+                status: 'approved',
+                activationPassword: newPassword
+              }
+            }
+          );
+
+          if (activationError) {
+            console.error('❌ Failed to create Auth user:', activationError);
+            return {
+              success: false,
+              error: 'Failed to activate account. Please contact support.'
+            };
+          }
+
+          if (!activationResult?.success) {
+            console.error('❌ Auth user creation failed:', activationResult?.error);
+            return {
+              success: false,
+              error: activationResult?.error || 'Failed to activate account.'
+            };
+          }
+
+          console.log('✅ Auth user created successfully via password reset');
+          
+          // Clear tokens and return success
+          this.clearTokensFromURL();
+          return {
+            success: true,
+            warnings: ['Account activated successfully with new password']
+          };
+        }
+      }
+
+      // Execute password update for existing Auth users
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });

@@ -29,6 +29,17 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     e.preventDefault();
     setIsAuthenticating(true);
 
+    // Detect old base64 hash format (incompatible with current system)
+    if (accountRequest.password_hash && 
+        accountRequest.password_hash.length > 64) {
+      toast.error(
+        "Your account was approved before a system update. Please use 'Send Password Reset Email' below to activate your account.",
+        { duration: 8000 }
+      );
+      setIsAuthenticating(false);
+      return;
+    }
+
     console.log('🔐 Starting account activation with unified function');
 
     try {

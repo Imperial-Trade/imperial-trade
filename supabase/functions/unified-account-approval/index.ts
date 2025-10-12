@@ -161,6 +161,27 @@ serve(async (req) => {
 
         console.log('✅ Password verified - creating Supabase Auth user...')
 
+        // Check if auth user already exists to prevent duplicate creation
+        const { data: existingUsers } = await supabaseClient.auth.admin.listUsers();
+        const authUserExists = existingUsers?.users?.some(u => 
+          u.email?.toLowerCase() === request.email.toLowerCase()
+        );
+
+        if (authUserExists) {
+          console.log(`✅ Auth account already exists for: ${request.email}`);
+          return new Response(
+            JSON.stringify({ 
+              success: true,
+              message: 'Account already activated. You can now sign in.',
+              alreadyExists: true
+            }),
+            { 
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
         // Create auth user
         const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
           email: request.email.toLowerCase().trim(),

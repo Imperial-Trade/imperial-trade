@@ -166,27 +166,118 @@ serve(async (req) => {
 
         // Check if auth user already exists to prevent duplicate creation
         const { data: existingUsers } = await supabaseClient.auth.admin.listUsers();
-        const authUserExists = existingUsers?.users?.some(u => 
+        const authUser = existingUsers?.users?.find(u => 
           u.email?.toLowerCase() === request.email.toLowerCase()
         );
 
-        if (authUserExists) {
-          console.log(`✅ Auth account already exists for: ${request.email}`);
+        if (authUser) {
+          console.log(`🔍 Auth user exists for: ${request.email} - checking profile...`);
+          
+          // Check if profile also exists
+          const { data: profile, error: profileCheckError } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('id', authUser.id)
+            .maybeSingle();
+          
+          if (profileCheckError) {
+            console.error('❌ Error checking profile:', profileCheckError);
+          }
+          
+          if (profile) {
+            // Both auth user AND profile exist - fully activated
+            console.log(`✅ Profile exists - account fully activated`);
+            return new Response(
+              JSON.stringify({ 
+                success: true,
+                message: 'Account already activated. You can now sign in.',
+                alreadyExists: true
+              }),
+              { 
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+          
+          // Auth user exists but profile missing - create profile now
+          console.log('⚠️ Auth user exists but profile missing - creating profile...');
+          
+          const metadata = authUser.user_metadata || {};
+          const computed_role = 
+            metadata.role === 'admin' ? 'admin' :
+            metadata.role === 'educator' ? 'educator' : 'user';
+          const computed_user_type = 
+            metadata.account_type === 'educator' ? 'educator' : 'user';
+          const computed_access_level = 
+            metadata.role === 'admin' ? 'admin' :
+            metadata.role === 'educator' ? 'moderator' : 'user';
+          
+          console.log('🔍 Creating missing profile with values:', {
+            role: computed_role,
+            user_type: computed_user_type,
+            access_level: computed_access_level
+          });
+          
+          const { error: missingProfileError } = await supabaseClient
+            .from('profiles')
+            .insert({
+              id: authUser.id,
+              real_name: metadata.full_name || request.full_name || 'User',
+              display_name: null,
+              role: computed_role,
+              user_type: computed_user_type,
+              access_level: computed_access_level,
+              account_status: 'active',
+              registration_source: 'account_request',
+              phone_number: metadata.phone_number || request.phone_number
+            });
+          
+          if (missingProfileError) {
+            console.error('❌ Failed to create missing profile:', missingProfileError);
+            
+            // Log error to cron_job_logs
+            await supabaseClient.from('cron_job_logs').insert({
+              job_name: 'missing_profile_creation',
+              execution_time: new Date().toISOString(),
+              records_affected: 0,
+              status: 'error',
+              error_message: `Failed to create missing profile for ${authUser.id}: ${missingProfileError.message}`
+            });
+            
+            return new Response(
+              JSON.stringify({ 
+                error: `Profile creation failed: ${missingProfileError.message}`,
+                success: false
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          console.log('✅ Missing profile created successfully');
+          
+          // Log success to cron_job_logs
+          await supabaseClient.from('cron_job_logs').insert({
+            job_name: 'missing_profile_creation',
+            execution_time: new Date().toISOString(),
+            records_affected: 1,
+            status: 'success',
+            error_message: `Profile created for existing auth user ${request.email} - role: ${computed_role}, user_type: ${computed_user_type}, access_level: ${computed_access_level}`
+          });
+          
           return new Response(
             JSON.stringify({ 
-              success: true,
-              message: 'Account already activated. You can now sign in.',
-              alreadyExists: true
+              success: true, 
+              message: 'Account activated successfully',
+              profileCreated: true,
+              alreadyExists: false
             }),
-            { 
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         // Create auth user
-        const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
+        const { data: newAuthUser, error: authError } = await supabaseClient.auth.admin.createUser({
           email: request.email.toLowerCase().trim(),
           password: activationPassword,
           email_confirm: true,
@@ -197,8 +288,8 @@ serve(async (req) => {
             account_status: 'active',
             approved_at: new Date().toISOString(),
             approved_by: approvedBy,
-            // Explicit role mappings to prevent enum confusion
-            account_type: 'member',  // user_type_enum: admin | educator | member
+            // FIXED: Explicit role mappings with correct enum values
+            account_type: 'user',    // user_type_enum: user | educator | admin (NOT 'member')
             role: 'user',            // profiles.role string field
             access_level: 'user'     // access_level_enum: admin | moderator | user
           }
@@ -228,13 +319,86 @@ serve(async (req) => {
           )
         }
 
-        console.log(`✅ Auth account created: user_id=${authUser.user?.id}`)
+        console.log(`✅ Auth account created: user_id=${newAuthUser.user?.id}`)
+
+        // Create profile record directly (no trigger on auth.users allowed)
+        console.log('📝 Creating profile record...')
+        
+        const metadata = newAuthUser.user?.user_metadata || {}
+        
+        // Compute role mappings (same logic as handle_new_user() function)
+        const computed_role = 
+          metadata.role === 'admin' ? 'admin' :
+          metadata.role === 'educator' ? 'educator' : 'user'
+        
+        // FIXED: Map to 'user' instead of 'member'
+        const computed_user_type = 
+          metadata.account_type === 'educator' ? 'educator' : 'user'
+        
+        const computed_access_level = 
+          metadata.role === 'admin' ? 'admin' :
+          metadata.role === 'educator' ? 'moderator' : 'user'
+        
+        console.log('🔍 Computed profile values:', {
+          role: computed_role,
+          user_type: computed_user_type,
+          access_level: computed_access_level
+        })
+        
+        // Insert profile into public.profiles
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .insert({
+            id: newAuthUser.user.id,
+            email: request.email.toLowerCase().trim(),
+            real_name: metadata.full_name || request.full_name || 'User',
+            display_name: null,
+            role: computed_role,
+            user_type: computed_user_type,
+            access_level: computed_access_level,
+            account_status: 'active',
+            registration_source: 'account_request',
+            phone_number: metadata.phone_number || request.phone_number
+          })
+        
+        if (profileError) {
+          console.error('❌ Failed to create profile:', profileError)
+          
+          // Log error to cron_job_logs for visibility
+          await supabaseClient.from('cron_job_logs').insert({
+            job_name: 'profile_creation_edge_function',
+            execution_time: new Date().toISOString(),
+            records_affected: 0,
+            status: 'error',
+            error_message: `Profile creation failed for user ${newAuthUser.user.id}: ${profileError.message}`
+          })
+          
+          return new Response(
+            JSON.stringify({ 
+              error: `Auth account created but profile creation failed: ${profileError.message}`,
+              success: false,
+              userId: newAuthUser.user?.id
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        console.log('✅ Profile created successfully')
+        
+        // Log success to cron_job_logs
+        await supabaseClient.from('cron_job_logs').insert({
+          job_name: 'profile_creation_edge_function',
+          execution_time: new Date().toISOString(),
+          records_affected: 1,
+          status: 'success',
+          error_message: `Profile created for ${request.email} - role: ${computed_role}, user_type: ${computed_user_type}, access_level: ${computed_access_level}`
+        })
 
         return new Response(
           JSON.stringify({ 
             success: true, 
             message: 'Account approved and activated successfully',
-            userId: authUser.user?.id,
+            userId: newAuthUser.user?.id,
             needsActivation: false
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

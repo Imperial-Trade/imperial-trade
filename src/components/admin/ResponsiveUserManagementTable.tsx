@@ -134,8 +134,9 @@ export function ResponsiveUserManagementTable() {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.real_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
     const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;
@@ -300,8 +301,8 @@ export function ResponsiveUserManagementTable() {
                                 <User className="w-4 h-4 text-secondary" />
                               </div>
                               <div>
-                                <div className="font-medium text-primary">{user.display_name}</div>
-                                <div className="text-sm text-secondary">{user.email}</div>
+                                <div className="font-medium text-primary">{user.display_name || user.real_name || user.email || 'Unknown User'}</div>
+                                <div className="text-sm text-secondary">{user.email || 'No email'}</div>
                                 {user.phone_number && (
                                   <div className="text-xs text-secondary flex items-center gap-1">
                                     <Phone className="w-3 h-3" />
@@ -378,8 +379,8 @@ export function ResponsiveUserManagementTable() {
                               <User className="w-5 h-5 text-secondary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-primary break-words">{user.display_name}</div>
-                              <div className="text-sm text-secondary break-all">{user.email}</div>
+                              <div className="font-medium text-primary break-words">{user.display_name || user.real_name || user.email || 'Unknown User'}</div>
+                              <div className="text-sm text-secondary break-all">{user.email || 'No email'}</div>
                               {user.phone_number && (
                                 <div className="text-xs text-secondary flex items-center gap-1 mt-1 break-all">
                                   <Phone className="w-3 h-3 flex-shrink-0" />

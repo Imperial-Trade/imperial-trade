@@ -230,6 +230,77 @@ serve(async (req) => {
 
         console.log(`✅ Auth account created: user_id=${authUser.user?.id}`)
 
+        // Create profile record directly (no trigger on auth.users allowed)
+        console.log('📝 Creating profile record...')
+        
+        const metadata = authUser.user?.user_metadata || {}
+        
+        // Compute role mappings (same logic as handle_new_user() function)
+        const computed_role = 
+          metadata.role === 'admin' ? 'admin' :
+          metadata.role === 'educator' ? 'educator' : 'user'
+        
+        const computed_user_type = 
+          metadata.account_type === 'educator' ? 'educator' : 'member'
+        
+        const computed_access_level = 
+          metadata.role === 'admin' ? 'admin' :
+          metadata.role === 'educator' ? 'moderator' : 'user'
+        
+        console.log('🔍 Computed profile values:', {
+          role: computed_role,
+          user_type: computed_user_type,
+          access_level: computed_access_level
+        })
+        
+        // Insert profile into public.profiles
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .insert({
+            id: authUser.user.id,
+            real_name: metadata.full_name || request.full_name || 'User',
+            display_name: null,
+            role: computed_role,
+            user_type: computed_user_type,
+            access_level: computed_access_level,
+            account_status: 'active',
+            registration_source: 'account_request',
+            phone_number: metadata.phone_number || request.phone_number
+          })
+        
+        if (profileError) {
+          console.error('❌ Failed to create profile:', profileError)
+          
+          // Log error to cron_job_logs for visibility
+          await supabaseClient.from('cron_job_logs').insert({
+            job_name: 'profile_creation_edge_function',
+            execution_time: new Date().toISOString(),
+            records_affected: 0,
+            status: 'error',
+            error_message: `Profile creation failed for user ${authUser.user.id}: ${profileError.message}`
+          })
+          
+          return new Response(
+            JSON.stringify({ 
+              error: `Auth account created but profile creation failed: ${profileError.message}`,
+              success: false,
+              userId: authUser.user?.id
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        console.log('✅ Profile created successfully')
+        
+        // Log success to cron_job_logs
+        await supabaseClient.from('cron_job_logs').insert({
+          job_name: 'profile_creation_edge_function',
+          execution_time: new Date().toISOString(),
+          records_affected: 1,
+          status: 'success',
+          error_message: `Profile created for ${request.email} - role: ${computed_role}, user_type: ${computed_user_type}, access_level: ${computed_access_level}`
+        })
+
         return new Response(
           JSON.stringify({ 
             success: true, 

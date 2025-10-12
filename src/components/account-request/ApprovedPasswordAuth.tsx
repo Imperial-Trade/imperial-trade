@@ -40,6 +40,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   const [isFirstTimeActivation, setIsFirstTimeActivation] = useState(false);
   const [authUserExists, setAuthUserExists] = useState(false);
   const [isAlreadyActivated, setIsAlreadyActivated] = useState(false);
+  const [isCurrentlyAuthenticated, setIsCurrentlyAuthenticated] = useState(false);
 
   // Check Auth user status on mount
   useEffect(() => {
@@ -47,7 +48,22 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       try {
         console.log('🔍 Checking Auth user status for:', accountRequest.email);
         
-        // ✅ Check if profile is already active
+        // ✅ LAYER 1: Check if user is currently authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const sessionEmail = session.user.email?.toLowerCase().trim();
+          const requestEmail = accountRequest.email.toLowerCase().trim();
+          
+          if (sessionEmail === requestEmail) {
+            console.log('✅ User is currently authenticated - no activation needed');
+            setIsCurrentlyAuthenticated(true);
+            setIsAlreadyActivated(true);
+            setCheckingAuthUser(false);
+            return; // Exit early
+          }
+        }
+        
+        // ✅ LAYER 2: Check if profile is already active
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('account_status')
@@ -340,7 +356,10 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
                 Account Already Activated!
               </CardTitle>
               <p className="text-green-400 text-lg font-semibold">
-                Welcome back, {accountRequest.full_name}! ✨
+                {isCurrentlyAuthenticated 
+                  ? `You're already signed in, ${accountRequest.full_name}! 🎉`
+                  : `Welcome back, ${accountRequest.full_name}! ✨`
+                }
               </p>
             </div>
           </CardHeader>
@@ -348,10 +367,16 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
           <CardContent className="space-y-6">
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 space-y-4 text-center">
               <p className="text-white text-lg">
-                Your account is already active and ready to use!
+                {isCurrentlyAuthenticated 
+                  ? 'Your account is active and you are currently signed in!'
+                  : 'Your account is already active and ready to use!'
+                }
               </p>
               <p className="text-gray-300 text-sm">
-                No further activation is needed. You can sign in to access your dashboard.
+                {isCurrentlyAuthenticated 
+                  ? 'You can access your dashboard right away.'
+                  : 'No further activation is needed. Please sign in to access your dashboard.'
+                }
               </p>
             </div>
 
@@ -364,25 +389,46 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
                 <span className="text-gray-400 text-sm">Status:</span>
                 <span className="text-green-400 font-medium">✓ Active</span>
               </div>
+              {isCurrentlyAuthenticated && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Session:</span>
+                  <span className="text-green-400 font-medium">✓ Authenticated</span>
+                </div>
+              )}
             </div>
 
-            <Button
-              onClick={() => navigate('/signin')}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              Sign In to Your Account
-            </Button>
-
-            <p className="text-center text-sm text-gray-400">
-              Already signed in?{' '}
-              <button
+            {isCurrentlyAuthenticated ? (
+              <Button
                 onClick={() => navigate('/dashboard/home')}
-                className="text-green-400 hover:text-green-300 underline"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
               >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
                 Go to Dashboard
-              </button>
-            </p>
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate('/signin')}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Sign In to Your Account
+              </Button>
+            )}
+
+            {isCurrentlyAuthenticated && (
+              <p className="text-center text-sm text-gray-400">
+                Not you?{' '}
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate('/signin');
+                  }}
+                  className="text-green-400 hover:text-green-300 underline"
+                >
+                  Sign out and sign in with different account
+                </button>
+              </p>
+            )}
           </CardContent>
         </Card>
       </>

@@ -30,8 +30,10 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     setIsAuthenticating(true);
 
     // Detect old base64 hash format (incompatible with current system)
+    // SHA-256 hex hashes only contain 0-9 and a-f characters (exactly 64 chars)
+    // Base64 hashes contain A-Z, a-z, 0-9, /, + characters
     if (accountRequest.password_hash && 
-        accountRequest.password_hash.length > 64) {
+        !accountRequest.password_hash.match(/^[0-9a-f]{64}$/)) {
       toast.error(
         "Your account was approved before a system update. Please use 'Send Password Reset Email' below to activate your account.",
         { duration: 8000 }

@@ -1,51 +1,200 @@
-import React, { useState } from "react";
-import { CheckCircle2, Loader2, Sparkles, Lock, Key, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import Confetti from "react-confetti";
-import { useWindowSize } from "@/hooks/useWindowSize";
-import { EmailRedirectFix } from "@/utils/emailRedirectFix";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { Lock, Loader2, CheckCircle } from 'lucide-react';
 
 interface ApprovedPasswordAuthProps {
-  accountRequest: any;
+  accountRequest: {
+    id: string;
+    email: string;
+    full_name: string;
+    password_hash: string | null;
+    status: string;
+  };
 }
 
 export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({ 
   accountRequest 
 }) => {
-  const { width, height } = useWindowSize();
-  const navigate = useNavigate();
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(true);
-  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
-  const [resetEmailCooldown, setResetEmailCooldown] = useState(0);
+  const [isFirstTimeActivation, setIsFirstTimeActivation] = useState(false);
+  const [authUserExists, setAuthUserExists] = useState(false);
+  const [checkingAuthUser, setCheckingAuthUser] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handlePasswordAuth = async (e: React.FormEvent) => {
+  // ============================================
+  // ✅ NEW: Check if this is first-time activation
+  // ============================================
+  useEffect(() => {
+    const checkAuthUserStatus = async () => {
+      try {
+        // Call edge function to check if Auth user exists
+        const { data } = await supabase.functions.invoke('check-user-existence', {
+          body: { email: accountRequest.email }
+        });
+
+        const exists = data?.userExists || false;
+        setAuthUserExists(exists);
+
+        // First-time activation IF:
+        // 1. password_hash is NULL OR incompatible format
+        // 2. NO Auth user exists
+        const hasIncompatibleHash = 
+          !accountRequest.password_hash || 
+          !accountRequest.password_hash.match(/^[0-9a-f]{64}$/);
+        
+        setIsFirstTimeActivation(hasIncompatibleHash && !exists);
+        
+        console.log('🔍 Activation status:', {
+          hasPasswordHash: !!accountRequest.password_hash,
+          isCompatibleFormat: accountRequest.password_hash?.match(/^[0-9a-f]{64}$/),
+          authUserExists: exists,
+          isFirstTimeActivation: hasIncompatibleHash && !exists
+        });
+
+      } catch (error) {
+        console.error('Failed to check Auth user:', error);
+        // Assume first-time activation if check fails
+        setIsFirstTimeActivation(!accountRequest.password_hash);
+      } finally {
+        setCheckingAuthUser(false);
+      }
+    };
+
+    checkAuthUserStatus();
+  }, [accountRequest]);
+
+  // ============================================
+  // ✅ NEW: First-Time Activation Handler
+  // ============================================
+  const handleFirstTimeActivation = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthenticating(true);
 
-    // Detect old base64 hash format (incompatible with current system)
-    // SHA-256 hex hashes only contain 0-9 and a-f characters (exactly 64 chars)
-    // Base64 hashes contain A-Z, a-z, 0-9, /, + characters
-    if (accountRequest.password_hash && 
-        !accountRequest.password_hash.match(/^[0-9a-f]{64}$/)) {
-      toast.error(
-        "Your account was approved before a system update. Please use 'Send Password Reset Email' below to activate your account.",
-        { duration: 8000 }
-      );
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical.",
+        variant: "destructive"
+      });
       setIsAuthenticating(false);
       return;
     }
 
-    console.log('🔐 Starting account activation with unified function');
+    // Validate password strength
+    if (password.length < 12) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 12 characters.",
+        variant: "destructive"
+      });
+      setIsAuthenticating(false);
+      return;
+    }
 
     try {
-      // Call unified function with activation password
+      console.log('🆕 Starting first-time activation for:', accountRequest.email);
+
+      // Call unified-account-approval with new password
+      const { data, error } = await supabase.functions.invoke('unified-account-approval', {
+        body: {
+          requestId: accountRequest.id,
+          status: 'approved',
+          activationPassword: password, // New password for Auth user creation
+          isFirstTimeActivation: true
+        }
+      });
+
+      if (error) {
+        console.error('❌ Activation failed:', error);
+        toast({
+          title: "Activation Failed",
+          description: error.message || "Failed to activate account. Please contact support.",
+          variant: "destructive"
+        });
+        setIsAuthenticating(false);
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ Activation unsuccessful:', data?.error);
+        toast({
+          title: "Activation Failed",
+          description: data?.error || "Failed to activate account.",
+          variant: "destructive"
+        });
+        setIsAuthenticating(false);
+        return;
+      }
+
+      console.log('✅ Auth user created via first-time activation');
+
+      // Auto-login
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: accountRequest.email.toLowerCase().trim(),
+        password: password,
+      });
+
+      if (signInError) {
+        console.error('❌ Auto-login failed:', signInError);
+        toast({
+          title: "Account Activated",
+          description: "Your account is ready! Please sign in on the login page.",
+          variant: "default"
+        });
+        setTimeout(() => navigate('/signin'), 2000);
+        return;
+      }
+
+      console.log('✅ Auto-login successful');
+      toast({
+        title: "Welcome!",
+        description: "Your account has been activated successfully.",
+        variant: "default"
+      });
+
+      setTimeout(() => navigate('/dashboard/home'), 1500);
+
+    } catch (error: any) {
+      console.error('💥 Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive"
+      });
+      setIsAuthenticating(false);
+    }
+  };
+
+  // ============================================
+  // ✅ EXISTING: Normal Password Activation Handler
+  // ============================================
+  const handlePasswordActivation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthenticating(true);
+
+    // Detect incompatible hash format
+    if (accountRequest.password_hash && 
+        !accountRequest.password_hash.match(/^[0-9a-f]{64}$/)) {
+      toast({
+        title: "Incompatible Account",
+        description: "Your account was created with an old system. Please contact support.",
+        variant: "destructive",
+        duration: 8000
+      });
+      setIsAuthenticating(false);
+      return;
+    }
+
+    try {
+      console.log('🔐 Starting password activation for:', accountRequest.email);
+
+      // Call unified-account-approval with signup password
       const { data, error } = await supabase.functions.invoke('unified-account-approval', {
         body: {
           requestId: accountRequest.id,
@@ -55,242 +204,230 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       });
 
       if (error) {
-        console.error('❌ Activation error:', error);
-        toast.error(`Failed to activate: ${error.message}`);
+        console.error('❌ Activation failed:', error);
+        toast({
+          title: "Activation Failed",
+          description: error.message,
+          variant: "destructive"
+        });
         setIsAuthenticating(false);
         return;
       }
 
       if (!data?.success) {
-        console.error('❌ Activation failed:', data?.error);
-        
         if (data?.error?.includes('Invalid password')) {
-          toast.error("Incorrect password. Please try again with your signup password.");
-        } else if (data?.error?.includes('already registered')) {
-          toast.success("Account already activated! Signing you in...");
+          toast({
+            title: "Incorrect Password",
+            description: "Please use the password you created during signup.",
+            variant: "destructive"
+          });
+        } else if (data?.alreadyExists) {
+          toast({
+            title: "Already Activated",
+            description: "Your account is already active. Redirecting to login...",
+            variant: "default"
+          });
+          setTimeout(() => navigate('/signin'), 2000);
+          return;
         } else {
-          toast.error(data?.error || "Failed to activate account. Please contact support.");
+          toast({
+            title: "Activation Failed",
+            description: data?.error || "Failed to activate account.",
+            variant: "destructive"
+          });
         }
-        
         setIsAuthenticating(false);
         return;
       }
 
-      console.log('✅ Auth account created successfully');
+      console.log('✅ Password verified, auth user created');
 
-      // Sign in with the password
+      // Auto-login
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: accountRequest.email.toLowerCase().trim(),
         password: password,
       });
 
       if (signInError) {
-        console.error('❌ Sign in error:', signInError);
-        toast.error("Account created but login failed. Please sign in manually.");
-        setIsAuthenticating(false);
-        navigate('/signin');
+        toast({
+          title: "Account Activated",
+          description: "Please sign in on the login page.",
+          variant: "default"
+        });
+        setTimeout(() => navigate('/signin'), 2000);
         return;
       }
 
-      console.log('✅ Authentication successful!');
-      toast.success("Welcome! Your account is now active.");
-      
-      setTimeout(() => {
-        navigate('/dashboard/home');
-      }, 1500);
-      
+      toast({
+        title: "Welcome!",
+        description: "Your account is now active.",
+        variant: "default"
+      });
+      setTimeout(() => navigate('/dashboard/home'), 1500);
+
     } catch (error: any) {
       console.error('💥 Unexpected error:', error);
-      toast.error("An unexpected error occurred. Please try again or contact support.");
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
       setIsAuthenticating(false);
     }
   };
 
-  const handleResetPassword = async () => {
-    // Check cooldown
-    if (resetEmailCooldown > 0) {
-      toast.error(`Please wait ${resetEmailCooldown} seconds before requesting another reset email.`);
-      return;
-    }
+  // ============================================
+  // RENDER
+  // ============================================
+  if (checkingAuthUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-3 text-gray-600">Checking account status...</span>
+      </div>
+    );
+  }
 
-    setIsSendingResetEmail(true);
-    try {
-      const result = await EmailRedirectFix.sendPasswordResetEmail(accountRequest.email);
-      
-      if (result.success) {
-        toast.success(
-          `Password reset email sent to ${accountRequest.email}! Please check your inbox.`,
-          { duration: 5000 }
-        );
-        // Set 60-second cooldown
-        setResetEmailCooldown(60);
-      } else {
-        toast.error(result.error || 'Failed to send reset email. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error sending reset email:', error);
-      toast.error('Failed to send reset email. Please try again.');
-    } finally {
-      setIsSendingResetEmail(false);
-    }
-  };
+  // ============================================
+  // ✅ NEW: First-Time Activation UI
+  // ============================================
+  if (isFirstTimeActivation) {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center mb-6">
+          <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Account Approved!
+          </h2>
+          <p className="text-gray-600">
+            Welcome, <span className="font-semibold">{accountRequest.full_name}</span>!
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Set your password to activate your account
+          </p>
+        </div>
 
-  // Hide confetti after 5 seconds
-  React.useEffect(() => {
-    const timer = setTimeout(() => setShowConfetti(false), 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Countdown timer for reset email cooldown
-  React.useEffect(() => {
-    if (resetEmailCooldown > 0) {
-      const timer = setTimeout(() => {
-        setResetEmailCooldown(prev => prev - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resetEmailCooldown]);
-
-  return (
-    <>
-      {showConfetti && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={500}
-          gravity={0.3}
-        />
-      )}
-
-      <Card className="glass-effect border-green-500/30 shadow-2xl">
-        <CardHeader className="text-center space-y-4 pb-6">
-          <div className="mx-auto w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center animate-pulse">
-            <CheckCircle2 className="w-12 h-12 text-green-400" />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <Sparkles className="w-5 h-5 text-yellow-400 animate-bounce" />
-              <CardTitle className="text-3xl font-bold text-white">
-                Congratulations!
-              </CardTitle>
-              <Sparkles className="w-5 h-5 text-yellow-400 animate-bounce" />
+        <form onSubmit={handleFirstTimeActivation} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Create Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                minLength={12}
+                className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isAuthenticating}
+              />
             </div>
-            <p className="text-green-400 text-lg font-semibold">
-              Your account has been approved! 🎉
+            <p className="text-xs text-gray-500 mt-1">
+              Minimum 12 characters, include uppercase, lowercase, number, and special character
             </p>
           </div>
-        </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Account Details */}
-          <div className="bg-surface/20 rounded-lg p-4 space-y-3 border border-white/10">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm">Name:</span>
-              <span className="text-white font-medium">{accountRequest.full_name}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm">Email:</span>
-              <span className="text-white font-medium">{accountRequest.email}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-sm">Account Type:</span>
-              <span className="text-white font-medium">
-                {accountRequest.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
-              </span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                required
+                className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isAuthenticating}
+              />
             </div>
           </div>
 
-          {/* Enter Password Section */}
-          <div className="space-y-4 pt-2">
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 space-y-4">
-              <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-                <Lock className="w-8 h-8 text-green-400" />
-              </div>
-              
-              <div className="space-y-2 text-center">
-                <h3 className="text-xl font-semibold text-white">
-                  Your Account is Ready!
-                </h3>
-                <p className="text-sm text-gray-300">
-                  Enter your password to activate and login
-                </p>
-              </div>
+          <button
+            type="submit"
+            disabled={isAuthenticating || !password || !confirmPassword}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          >
+            {isAuthenticating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Activating Account...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Set Password & Activate
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
-              <form onSubmit={handlePasswordAuth} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Password
-                  </label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="bg-white border-gray-300 text-gray-900"
-                    required
-                    disabled={isAuthenticating}
-                    autoFocus
-                  />
-                </div>
+  // ============================================
+  // ✅ EXISTING: Normal Password Activation UI
+  // ============================================
+  return (
+    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
+      <div className="text-center mb-6">
+        <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Account Approved!
+        </h2>
+        <p className="text-gray-600">
+          Welcome, <span className="font-semibold">{accountRequest.full_name}</span>!
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Enter your signup password to activate
+        </p>
+      </div>
 
-                <Button
-                  type="submit"
-                  disabled={isAuthenticating || !password.trim()}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  {isAuthenticating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Activating Account...
-                    </>
-                  ) : (
-                    <>
-                      <Key className="w-4 h-4 mr-2" />
-                      Activate Account & Login
-                    </>
-                  )}
-                </Button>
-              </form>
-
-              <div className="text-center text-sm text-gray-400">
-                <p>Use the password you created during signup</p>
-              </div>
-            </div>
-
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-400">
-                Forgot your password?
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleResetPassword}
-                disabled={isSendingResetEmail || resetEmailCooldown > 0}
-                className="w-full bg-transparent border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300"
-              >
-                {isSendingResetEmail ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending Reset Email...
-                  </>
-                ) : resetEmailCooldown > 0 ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Wait {resetEmailCooldown}s...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Send Password Reset Email
-                  </>
-                )}
-              </Button>
-            </div>
+      <form onSubmit={handlePasswordActivation} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Your Signup Password
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={isAuthenticating}
+            />
           </div>
-        </CardContent>
-      </Card>
-    </>
+          <p className="text-xs text-gray-500 mt-1">
+            Use the password you created during signup
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isAuthenticating || !password}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+        >
+          {isAuthenticating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Activating Account...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-5 h-5" />
+              Activate Account & Login
+            </>
+          )}
+        </button>
+      </form>
+    </div>
   );
 };

@@ -8,28 +8,13 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
-// Deno-native password hashing using Web Crypto API
+// Simple SHA-256 hash (matches unified-account-approval)
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const passwordData = encoder.encode(password);
-  
-  // Combine salt and password
-  const combined = new Uint8Array(salt.length + passwordData.length);
-  combined.set(salt);
-  combined.set(passwordData, salt.length);
-  
-  // Hash using SHA-256
-  const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
-  const hashArray = new Uint8Array(hashBuffer);
-  
-  // Combine salt and hash for storage
-  const result = new Uint8Array(salt.length + hashArray.length);
-  result.set(salt);
-  result.set(hashArray, salt.length);
-  
-  // Convert to base64 for storage
-  return btoa(String.fromCharCode(...result));
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {

@@ -112,20 +112,8 @@ export const DirectAccountRequestManagement: React.FC = () => {
       }
 
       console.log('✅ Account approved successfully');
-        // Send email notification (optional - non-blocking)
-        try {
-          await supabase.functions.invoke('account-request-notifications', {
-            body: {
-              type: 'request_approved',
-              userEmail: request.email,
-              userName: request.full_name
-            }
-          });
-        } catch (emailError) {
-          console.warn('⚠️ Email notification failed (non-blocking):', emailError);
-        }
-
-      // Send notification email
+      
+      // Send email notification (optional - non-blocking)
       try {
         await supabase.functions.invoke('account-request-notifications', {
           body: {

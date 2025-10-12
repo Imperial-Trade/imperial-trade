@@ -1,9 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Function to hash password (matches frontend SHA-256 hashing)
+async function hashPassword(password: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(password)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 serve(async (req) => {
@@ -19,15 +28,12 @@ serve(async (req) => {
 
     const { email, accountRequestId, password } = await req.json()
 
-    if (!email || !accountRequestId) {
+    if (!email || !accountRequestId || !password) {
       return new Response(
-        JSON.stringify({ error: 'Email and accountRequestId are required' }),
+        JSON.stringify({ error: 'Email, accountRequestId, and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Password is optional - if not provided, we'll generate one and send reset email
-    const shouldSendResetEmail = !password
 
     console.log('Creating account for approved user:', email, 'with provided password:', !!password)
 
@@ -48,16 +54,39 @@ serve(async (req) => {
       )
     }
 
-    // Check if password_hash exists (backwards compatibility - older requests may not have it)
-    if (!accountRequest.password_hash && !password) {
+    // Handle legacy users without password_hash (SECURITY FIX: Force password reset)
+    if (!accountRequest.password_hash) {
+      console.log('⚠️ Legacy user detected (no password_hash) - Requires password reset')
+      
+      // Log security event
+      console.log('Security: Legacy user activation blocked - Email:', email)
+      
       return new Response(
-        JSON.stringify({ error: 'No password found for this account request. Please contact support.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Your account requires a password reset before activation. Please click "Send Password Reset Email" to continue.',
+          requiresPasswordReset: true,
+          isLegacyUser: true
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Use provided password or generate temporary one
-    const accountPassword = password || (crypto.randomUUID() + crypto.randomUUID())
+    // Verify the provided password matches stored hash
+    const providedPasswordHash = await hashPassword(password)
+    if (providedPasswordHash !== accountRequest.password_hash) {
+      console.error('Password verification failed for:', email)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid password. Please use the password you created during signup.' 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('✅ Password verified successfully')
+
+    // Use provided password directly
+    const accountPassword = password
 
     // Create the user in Supabase Auth with actual password
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -80,20 +109,7 @@ serve(async (req) => {
 
     console.log('User created successfully:', authData.user.id)
 
-    // Only send password reset email if no password was provided
-    if (shouldSendResetEmail) {
-      const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: email.toLowerCase().trim(),
-      })
-
-      if (resetError) {
-        console.error('Error sending password reset:', resetError)
-      }
-    }
-
-    // Don't clear password_hash - user needs it to login
-    // Just update the timestamp
+    // Update the timestamp
     await supabaseAdmin
       .from('account_requests')
       .update({ 
@@ -104,9 +120,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: shouldSendResetEmail 
-          ? 'Account created successfully. Check your email for password setup instructions.'
-          : 'Account created successfully. You can now sign in with your password.',
+        message: 'Account created successfully. You can now sign in.',
         userId: authData.user.id
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { CheckCircle2, Mail, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, Lock, Key, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/hooks/useWindowSize";
+import { EmailRedirectFix } from "@/utils/emailRedirectFix";
 
 interface ApprovedPasswordAuthProps {
   accountRequest: any;
@@ -15,34 +18,102 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   accountRequest 
 }) => {
   const { width, height } = useWindowSize();
-  const [isResending, setIsResending] = useState(false);
+  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [resetEmailCooldown, setResetEmailCooldown] = useState(0);
 
-  const handleResendEmail = async () => {
-    setIsResending(true);
+  const handlePasswordAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthenticating(true);
 
     try {
-      // Call create-approved-account to resend password setup email
-      const { data, error } = await supabase.functions.invoke('create-approved-account', {
+      // Step 1: Create the auth user with their password
+      const { data, error: createError } = await supabase.functions.invoke('create-approved-account', {
         body: {
           email: accountRequest.email,
           accountRequestId: accountRequest.id,
-          password: null, // Trigger password reset email
+          password: password,
         }
       });
 
-      if (error) {
-        console.error("Error resending email:", error);
-        toast.error("Failed to resend email. Please try again or contact support.");
+      if (createError || !data?.success) {
+        console.error("Account creation error:", createError || data?.error);
+        
+        // Handle specific error cases
+        if (data?.error?.includes('Invalid password')) {
+          toast.error("Incorrect password. Please try again with your signup password.");
+        } else if (data?.error?.includes('not found') || data?.error?.includes('not approved')) {
+          toast.error("Account request not found or not approved. Please contact support.");
+        } else {
+          toast.error(data?.error || "Failed to activate account. Please contact support.");
+        }
+        
+        setIsAuthenticating(false);
         return;
       }
 
-      toast.success("Password setup email sent! Check your inbox.");
+      console.log('✅ Auth user created successfully');
+
+      // Step 2: Immediately sign in with the same password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: accountRequest.email.toLowerCase().trim(),
+        password: password,
+      });
+
+      if (signInError) {
+        console.error("Sign in error:", signInError);
+        toast.error("Account created but login failed. Please sign in manually.");
+        setIsAuthenticating(false);
+        navigate('/signin');
+        return;
+      }
+
+      console.log('✅ Authentication successful!');
+      
+      // Show success and redirect
+      toast.success("Welcome! Your account is now active.");
+      
+      // Redirect to dashboard after short delay
+      setTimeout(() => {
+        navigate('/dashboard/home');
+      }, 1500);
+      
     } catch (error: any) {
-      console.error("Resend email error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      console.error("Password authentication error:", error);
+      toast.error("An unexpected error occurred. Please try again or contact support.");
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    // Check cooldown
+    if (resetEmailCooldown > 0) {
+      toast.error(`Please wait ${resetEmailCooldown} seconds before requesting another reset email.`);
+      return;
+    }
+
+    setIsSendingResetEmail(true);
+    try {
+      const result = await EmailRedirectFix.sendPasswordResetEmail(accountRequest.email);
+      
+      if (result.success) {
+        toast.success(
+          `Password reset email sent to ${accountRequest.email}! Please check your inbox.`,
+          { duration: 5000 }
+        );
+        // Set 60-second cooldown
+        setResetEmailCooldown(60);
+      } else {
+        toast.error(result.error || 'Failed to send reset email. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending reset email:', error);
+      toast.error('Failed to send reset email. Please try again.');
     } finally {
-      setIsResending(false);
+      setIsSendingResetEmail(false);
     }
   };
 
@@ -51,6 +122,16 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     const timer = setTimeout(() => setShowConfetti(false), 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Countdown timer for reset email cooldown
+  React.useEffect(() => {
+    if (resetEmailCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResetEmailCooldown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetEmailCooldown]);
 
   return (
     <>
@@ -103,59 +184,91 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
             </div>
           </div>
 
-          {/* Check Your Email Section */}
+          {/* Enter Password Section */}
           <div className="space-y-4 pt-2">
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
-                <Mail className="w-8 h-8 text-blue-400" />
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 space-y-4">
+              <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-green-400" />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 text-center">
                 <h3 className="text-xl font-semibold text-white">
-                  Check Your Email
+                  Your Account is Ready!
                 </h3>
                 <p className="text-sm text-gray-300">
-                  We've sent a password setup link to:
-                </p>
-                <p className="text-base font-medium text-blue-400">
-                  {accountRequest.email}
+                  Enter your password to activate and login
                 </p>
               </div>
 
-              <div className="space-y-2 text-sm text-gray-400">
-                <p>📧 Click the link in your email to set your password</p>
-                <p>🔍 Check your spam folder if you don't see it</p>
-                <p>⏱️ The link expires in 24 hours</p>
-              </div>
+              <form onSubmit={handlePasswordAuth} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="bg-white border-gray-300 text-gray-900"
+                    required
+                    disabled={isAuthenticating}
+                    autoFocus
+                  />
+                </div>
 
+                <Button
+                  type="submit"
+                  disabled={isAuthenticating || !password.trim()}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Activating Account...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="w-4 h-4 mr-2" />
+                      Activate Account & Login
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="text-center text-sm text-gray-400">
+                <p>Use the password you created during signup</p>
+              </div>
+            </div>
+
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-400">
+                Forgot your password?
+              </p>
               <Button
-                onClick={handleResendEmail}
-                disabled={isResending}
+                type="button"
                 variant="outline"
-                className="w-full border-blue-500/30 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300"
+                onClick={handleResetPassword}
+                disabled={isSendingResetEmail || resetEmailCooldown > 0}
+                className="w-full bg-transparent border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300"
               >
-                {isResending ? (
+                {isSendingResetEmail ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
+                    Sending Reset Email...
+                  </>
+                ) : resetEmailCooldown > 0 ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Wait {resetEmailCooldown}s...
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Resend Password Setup Email
+                    <Mail className="w-4 h-4 mr-2" />
+                    Send Password Reset Email
                   </>
                 )}
               </Button>
-            </div>
-
-            <div className="text-center text-sm text-gray-400 space-y-1">
-              <p>Need help?</p>
-              <a 
-                href="/contact" 
-                className="text-green-400 hover:text-green-300 font-medium inline-flex items-center gap-1"
-              >
-                Contact Support
-              </a>
             </div>
           </div>
         </CardContent>

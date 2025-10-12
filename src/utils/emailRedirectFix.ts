@@ -4,21 +4,15 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { getPasswordResetUrl } from './environment';
 
 export class EmailRedirectFix {
   /**
    * Get the correct password reset URL for the current environment
+   * Always uses production URL for consistency across all environments
    */
   static getPasswordResetUrl(): string {
-    // Use environment-aware URL generation
-    if (typeof window !== 'undefined') {
-      // Browser environment - use current domain for consistency
-      const baseUrl = window.location.origin;
-      return `${baseUrl}/reset-password`;
-    }
-    
-    // Fallback for server-side rendering or other environments
-    return '/reset-password';
+    return getPasswordResetUrl();
   }
 
   /**

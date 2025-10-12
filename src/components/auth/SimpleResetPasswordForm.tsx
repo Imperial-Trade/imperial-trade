@@ -63,12 +63,20 @@ export const SimpleResetPasswordForm = () => {
       const result = await SimplePasswordReset.resetPassword(password);
 
       if (result.success) {
-        toast.success('Password updated successfully! Redirecting...');
+        toast.success('Password updated successfully!');
+        
+        // Add guidance for users with approved accounts
+        setTimeout(() => {
+          toast.info(
+            'If you have an approved account, return to the Account Status page to activate it with your new password.',
+            { duration: 6000 }
+          );
+        }, 1500);
         
         // Redirect to dashboard after success
         setTimeout(() => {
           navigate('/dashboard/home');
-        }, 2000);
+        }, 3000);
       } else {
         if (result.requiresAuth) {
           toast.error(result.error || 'Authentication required');
@@ -199,13 +207,23 @@ export const SimpleResetPasswordForm = () => {
             )}
           </Button>
 
-          <Link
-            to="/signin"
-            className="flex items-center justify-center text-sm text-white/70 hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Sign In
-          </Link>
+          <div className="flex flex-col gap-2 w-full">
+            <Link
+              to="/account-request-status"
+              className="flex items-center justify-center text-sm text-white/70 hover:text-primary transition-colors"
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Account Status Page
+            </Link>
+            
+            <Link
+              to="/signin"
+              className="flex items-center justify-center text-sm text-white/70 hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Sign In
+            </Link>
+          </div>
         </CardFooter>
       </form>
     </Card>

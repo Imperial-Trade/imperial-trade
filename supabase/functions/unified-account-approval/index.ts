@@ -21,7 +21,8 @@ async function hashIdentifier(identifier: string): Promise<string> {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma, expires',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 serve(async (req) => {
@@ -191,9 +192,15 @@ serve(async (req) => {
           email_confirm: true,
           user_metadata: {
             full_name: request.full_name,
-            account_type: request.account_type,
+            phone_number: request.phone_number,
+            registration_source: 'account_request',
+            account_status: 'active',
             approved_at: new Date().toISOString(),
-            approved_by: approvedBy
+            approved_by: approvedBy,
+            // Explicit role mappings to prevent enum confusion
+            account_type: 'member',  // user_type_enum: admin | educator | member
+            role: 'user',            // profiles.role string field
+            access_level: 'user'     // access_level_enum: admin | moderator | user
           }
         })
 

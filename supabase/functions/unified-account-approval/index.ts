@@ -350,6 +350,7 @@ serve(async (req) => {
           .from('profiles')
           .insert({
             id: newAuthUser.user.id,
+            email: request.email.toLowerCase().trim(),
             real_name: metadata.full_name || request.full_name || 'User',
             display_name: null,
             role: computed_role,

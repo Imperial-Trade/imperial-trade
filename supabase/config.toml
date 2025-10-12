@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.unified-account-approval]
 verify_jwt = false
+
+[functions.check-user-existence]
+verify_jwt = false

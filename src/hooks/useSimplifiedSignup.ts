@@ -155,57 +155,17 @@ export const useSimplifiedSignup = () => {
           name: edgeFunctionError.name,
         });
         
-        console.log('🔄 [FALLBACK] Attempting direct database insert...');
+        // Edge function failed - show error to user
+        let errorMessage = "Failed to submit account request. Please try again.";
         
-        // EMERGENCY FALLBACK: Direct database insert with client-side password hashing
-        try {
-          const password_hash = await hashPasswordClient(data.password);
-          console.log('🔐 [FALLBACK] Password hash created on client-side');
-          
-          const { data: insertData, error: insertError } = await supabase
-            .from('account_requests')
-            .insert({
-              full_name: data.full_name,
-              email: data.email.toLowerCase(),
-              phone_number: data.phone_number || null,
-              password_hash: password_hash,
-              terms_accepted: data.terms_accepted,
-              terms_accepted_at: new Date().toISOString(),
-              status: 'pending',
-              account_type: 'user',
-            })
-            .select()
-            .single();
-
-          if (insertError) {
-            console.error('❌ [FALLBACK] Database insert failed:', insertError);
-            throw new Error(insertError.message);
-          }
-
-          console.log('✅ [FALLBACK] Account request created via direct database insert!', {
-            request_id: insertData?.id,
-          });
-          
-          toast.success("Account request submitted successfully!");
-          return { success: true };
-
-        } catch (fallbackError: any) {
-          console.error("💥 [FALLBACK] Direct database insert failed:", {
-            message: fallbackError.message,
-            name: fallbackError.name,
-          });
-          
-          let errorMessage = "Failed to submit account request. Please try again.";
-          
-          if (fallbackError.message?.includes('duplicate') || fallbackError.message?.includes('unique')) {
-            errorMessage = "An account with this email already exists. Please use a different email or check your account status.";
-          } else if (fallbackError.message) {
-            errorMessage = fallbackError.message;
-          }
-          
-          toast.error(errorMessage);
-          return { success: false, error: errorMessage };
+        if (edgeFunctionError.message?.includes('duplicate') || edgeFunctionError.message?.includes('unique')) {
+          errorMessage = "An account with this email already exists. Please use a different email or check your account status.";
+        } else if (edgeFunctionError.message) {
+          errorMessage = edgeFunctionError.message;
         }
+        
+        toast.error(errorMessage);
+        return { success: false, error: errorMessage };
       }
 
     } catch (error: any) {

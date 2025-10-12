@@ -87,154 +87,31 @@ export const DirectAccountRequestManagement: React.FC = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  // FIXED: Now uses account-approval edge function instead of direct admin API
-  // Edge function chain: account-approval → create-approved-account → auth.admin.createUser()
-  // This ensures proper service role authentication and automated role/profile creation
   const handleApprove = async (request: AccountRequest) => {
     setActionLoading(request.id);
     
     try {
-      console.log(`🎯 [Account Approval] Starting approval for request ID: ${request.id}`);
-      console.log(`📧 Email: ${request.email}, Type: ${request.account_type}`);
+      console.log('🎯 Starting unified approval for:', request.email);
       
-      let approvalSuccess = false;
-      let errorMessage = '';
-      
-      // ============================================
-      // ATTEMPT 1: Use Edge Function (PREFERRED)
-      // ============================================
-      try {
-        console.log('🚀 [Account Approval] Attempting edge function approach...');
-        
-        const { data: approvalResult, error: approvalError } = await supabase.functions.invoke('account-approval', {
-          body: {
-            requestId: request.id,
-            status: 'approved',
-            rejectionReason: null
-          }
-        });
-
-        if (approvalError) {
-          console.warn('⚠️ [Account Approval] Edge function invocation error:', approvalError);
-          throw new Error(`Edge function failed: ${approvalError.message}`);
+      const { data, error } = await supabase.functions.invoke('unified-account-approval', {
+        body: {
+          requestId: request.id,
+          status: 'approved'
+          // No activationPassword - user activates manually
         }
+      });
 
-        if (!approvalResult?.success) {
-          console.warn('⚠️ [Account Approval] Edge function returned error:', approvalResult);
-          throw new Error(approvalResult?.error || 'Account approval failed');
-        }
-
-        console.log('✅ [Account Approval] Edge function succeeded');
-        approvalSuccess = true;
-        
-      } catch (edgeFunctionError) {
-        console.warn('⚠️ [Account Approval] Edge function approach failed, trying fallback...', edgeFunctionError);
-        errorMessage = edgeFunctionError instanceof Error ? edgeFunctionError.message : 'Unknown error';
-        
-        // ============================================
-        // ATTEMPT 2: Direct Supabase Fallback
-        // ============================================
-        try {
-          console.log('🔄 [Account Approval] Using complete direct Supabase fallback (no edge functions)...');
-          
-          // Step 1: Update account request status
-          const { error: updateError } = await supabase
-            .from('account_requests')
-            .update({ 
-              status: 'approved',
-              approved_by: (await supabase.auth.getUser()).data.user?.email || 'admin',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', request.id);
-
-          if (updateError) {
-            throw new Error(`Failed to update account request: ${updateError.message}`);
-          }
-          
-          console.log('✅ [Account Approval] Account request updated to approved');
-          
-          // Step 2: Generate temporary password
-          const tempPassword = crypto.randomUUID() + crypto.randomUUID();
-          console.log('🔑 [Account Approval] Generated temporary password');
-          
-          // Step 3: Create user in Supabase Auth using admin API
-          console.log('👤 [Account Approval] Creating Supabase Auth user...');
-          
-          // CRITICAL: Use admin endpoint directly with proper headers
-          const supabaseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co';
-          const createUserResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              email: request.email.toLowerCase().trim(),
-              password: tempPassword,
-              email_confirm: true,
-              user_metadata: {
-                full_name: request.full_name,
-                phone_number: request.phone_number,
-                account_type: request.account_type,
-                user_type: request.account_type === 'educator' ? 'educator' : 'member',
-                role: request.account_type === 'educator' ? 'educator' : 'member',
-                access_level: request.account_type === 'educator' ? 'moderator' : 'member',
-                account_status: 'active',
-                registration_source: 'account_request',
-                vt_market_account_number: request.vt_market_account_number || '',
-                referrer: request.referrer || '',
-                website: request.website || ''
-              }
-            })
-          });
-
-          if (!createUserResponse.ok) {
-            const errorData = await createUserResponse.json();
-            throw new Error(`Failed to create user: ${JSON.stringify(errorData)}`);
-          }
-
-          const userData = await createUserResponse.json();
-          const newUserId = userData.id;
-          console.log('✅ [Account Approval] User created successfully:', newUserId);
-          
-          // Step 4: Send password reset email
-          console.log('📧 [Account Approval] Sending password reset email...');
-          const resetResponse = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              type: 'recovery',
-              email: request.email.toLowerCase().trim()
-            })
-          });
-
-          if (resetResponse.ok) {
-            console.log('✅ [Account Approval] Password reset email sent');
-          } else {
-            console.warn('⚠️ [Account Approval] Failed to send password reset email (non-blocking)');
-          }
-          
-          console.log('✅ [Account Approval] Complete direct fallback succeeded - user account fully created');
-          approvalSuccess = true;
-          
-        } catch (fallbackError) {
-          console.error('❌ [Account Approval] Direct fallback failed:', fallbackError);
-          throw new Error(
-            `Both edge function and direct fallback failed. Edge function error: ${errorMessage}. ` +
-            `Direct fallback error: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown'}`
-          );
-        }
+      if (error) {
+        console.error('❌ Unified approval error:', error);
+        throw new Error(error.message);
       }
-      
-      // ============================================
-      // SUCCESS: Send Notification & Update UI
-      // ============================================
-      if (approvalSuccess) {
+
+      if (!data?.success) {
+        console.error('❌ Approval failed:', data?.error);
+        throw new Error(data?.error || 'Account approval failed');
+      }
+
+      console.log('✅ Account approved successfully');
         // Send email notification (optional - non-blocking)
         try {
           await supabase.functions.invoke('account-request-notifications', {
@@ -248,16 +125,26 @@ export const DirectAccountRequestManagement: React.FC = () => {
           console.warn('⚠️ Email notification failed (non-blocking):', emailError);
         }
 
-        // Show success message
-        toast({
-          title: "✅ Account Approved",
-          description: `${request.full_name}'s account has been created successfully. They will receive a password reset email.`,
-          variant: "default"
+      // Send notification email
+      try {
+        await supabase.functions.invoke('account-request-notifications', {
+          body: {
+            type: 'request_approved',
+            userEmail: request.email,
+            userName: request.full_name
+          }
         });
-
-        // Refresh the requests list
-        loadRequests();
+      } catch (emailError) {
+        console.warn('⚠️ Email notification failed (non-blocking):', emailError);
       }
+
+      toast({
+        title: "✅ Account Approved",
+        description: `${request.full_name}'s account has been approved. They can now activate it with their signup password.`,
+        variant: "default"
+      });
+
+      loadRequests();
 
     } catch (error) {
       console.error('❌ [Account Approval] Complete failure for', request.email, ':', error);

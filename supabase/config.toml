@@ -54,8 +54,5 @@ verify_jwt = true
 [functions.simplified-signup]
 verify_jwt = false
 
-[functions.account-approval]
-verify_jwt = true
-
-[functions.create-approved-account]
+[functions.unified-account-approval]
 verify_jwt = false

@@ -29,24 +29,32 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
     e.preventDefault();
     setIsAuthenticating(true);
 
+    console.log('🔐 Starting account activation with unified function');
+
     try {
-      // Step 1: Create the auth user with their password
-      const { data, error: createError } = await supabase.functions.invoke('create-approved-account', {
+      // Call unified function with activation password
+      const { data, error } = await supabase.functions.invoke('unified-account-approval', {
         body: {
-          email: accountRequest.email,
-          accountRequestId: accountRequest.id,
-          password: password,
+          requestId: accountRequest.id,
+          status: 'approved',
+          activationPassword: password
         }
       });
 
-      if (createError || !data?.success) {
-        console.error("Account creation error:", createError || data?.error);
+      if (error) {
+        console.error('❌ Activation error:', error);
+        toast.error(`Failed to activate: ${error.message}`);
+        setIsAuthenticating(false);
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ Activation failed:', data?.error);
         
-        // Handle specific error cases
         if (data?.error?.includes('Invalid password')) {
           toast.error("Incorrect password. Please try again with your signup password.");
-        } else if (data?.error?.includes('not found') || data?.error?.includes('not approved')) {
-          toast.error("Account request not found or not approved. Please contact support.");
+        } else if (data?.error?.includes('already registered')) {
+          toast.success("Account already activated! Signing you in...");
         } else {
           toast.error(data?.error || "Failed to activate account. Please contact support.");
         }
@@ -55,16 +63,16 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
         return;
       }
 
-      console.log('✅ Auth user created successfully');
+      console.log('✅ Auth account created successfully');
 
-      // Step 2: Immediately sign in with the same password
+      // Sign in with the password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: accountRequest.email.toLowerCase().trim(),
         password: password,
       });
 
       if (signInError) {
-        console.error("Sign in error:", signInError);
+        console.error('❌ Sign in error:', signInError);
         toast.error("Account created but login failed. Please sign in manually.");
         setIsAuthenticating(false);
         navigate('/signin');
@@ -72,17 +80,14 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       }
 
       console.log('✅ Authentication successful!');
-      
-      // Show success and redirect
       toast.success("Welcome! Your account is now active.");
       
-      // Redirect to dashboard after short delay
       setTimeout(() => {
         navigate('/dashboard/home');
       }, 1500);
       
     } catch (error: any) {
-      console.error("Password authentication error:", error);
+      console.error('💥 Unexpected error:', error);
       toast.error("An unexpected error occurred. Please try again or contact support.");
       setIsAuthenticating(false);
     }

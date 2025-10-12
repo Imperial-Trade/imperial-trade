@@ -59,10 +59,10 @@ serve(async (req) => {
           continue;
         }
 
-        // Call create-approved-account edge function
+        // Call unified-account-approval edge function
         console.log(`🔧 Creating auth account for: ${request.email}`);
         
-        const createAccountUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-approved-account`;
+        const createAccountUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/unified-account-approval`;
         const createResponse = await fetch(createAccountUrl, {
           method: 'POST',
           headers: {
@@ -70,9 +70,9 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: request.email,
-            accountRequestId: request.id,
-            password: null, // Trigger password reset email flow
+            requestId: request.id,
+            status: 'approved',
+            activationPassword: null  // No password = user activates manually
           }),
         });
 

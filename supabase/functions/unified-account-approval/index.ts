@@ -197,8 +197,8 @@ serve(async (req) => {
             account_status: 'active',
             approved_at: new Date().toISOString(),
             approved_by: approvedBy,
-            // Explicit role mappings to prevent enum confusion
-            account_type: 'member',  // user_type_enum: admin | educator | member
+            // FIXED: Explicit role mappings with correct enum values
+            account_type: 'user',    // user_type_enum: user | educator | admin (NOT 'member')
             role: 'user',            // profiles.role string field
             access_level: 'user'     // access_level_enum: admin | moderator | user
           }
@@ -240,8 +240,9 @@ serve(async (req) => {
           metadata.role === 'admin' ? 'admin' :
           metadata.role === 'educator' ? 'educator' : 'user'
         
+        // FIXED: Map to 'user' instead of 'member'
         const computed_user_type = 
-          metadata.account_type === 'educator' ? 'educator' : 'member'
+          metadata.account_type === 'educator' ? 'educator' : 'user'
         
         const computed_access_level = 
           metadata.role === 'admin' ? 'admin' :

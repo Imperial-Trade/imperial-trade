@@ -101,6 +101,73 @@ export default function SignalStream() {
     }
   }, [allAlerts.length, connectionStatus, lastUpdated]);
 
+  // ============================================
+  // FIX #6: Toast notifications for signal events
+  // ============================================
+  useEffect(() => {
+    const handleSignalClosed = (event: CustomEvent) => {
+      const { signalId, closeReason, assetName } = event.detail;
+      
+      console.log('🔔 Signal closed event received:', event.detail);
+      
+      // Show toast based on close reason
+      if (closeReason === 'stop_loss') {
+        toast({
+          title: '🔴 Stop Loss Hit',
+          description: `${assetName} signal closed at SL`,
+          variant: 'destructive'
+        });
+      } else if (closeReason === 'manual') {
+        toast({
+          title: '🔒 Signal Closed',
+          description: `${assetName} closed manually`
+        });
+      } else if (closeReason === 'all_tps_hit') {
+        toast({
+          title: '💰 All Targets Hit!',
+          description: `${assetName} - All take profits reached`,
+        });
+      } else if (closeReason?.startsWith('tp')) {
+        toast({
+          title: '🟢 Take Profit Hit',
+          description: `${assetName} closed at ${closeReason.toUpperCase()}`,
+        });
+      }
+    };
+    
+    const handleTPHit = (event: CustomEvent) => {
+      const { signalId, tpLevel, assetName } = event.detail;
+      
+      console.log('🎯 TP hit event received:', event.detail);
+      
+      toast({
+        title: `🎯 TP${tpLevel} Hit!`,
+        description: `${assetName} reached Take Profit ${tpLevel}`,
+      });
+    };
+    
+    const handleOrderActivation = (event: CustomEvent) => {
+      const { signalId, assetName } = event.detail;
+      
+      console.log('🚀 Order activation event received:', event.detail);
+      
+      toast({
+        title: '🚀 Order Activated!',
+        description: `${assetName} limit order is now active`,
+      });
+    };
+    
+    window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+    window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
+    window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+    
+    return () => {
+      window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+      window.removeEventListener('tp-hit-confirmed', handleTPHit as EventListener);
+      window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+    };
+  }, [toast]);
+
   // Local state for operations
   const isLoading = realtimeLoading;
   const error = realtimeError;
@@ -654,135 +721,105 @@ export default function SignalStream() {
       return;
     }
 
-    // Check if user can edit this signal (creator or admin only)
-    // CRITICAL FIX: Must match isCreator prop logic with fallback to alert.userId
-    const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
-    
-    // PHASE 1 - Task 1D: Enhanced auth debugging with RLS prediction
-    const authUser = await supabase.auth.getUser();
-    const authUid = authUser.data.user?.id;
-    const rlsWillPass = authUid === alert.userId || isAdmin;
-    
-    console.log('🔐 [Authorization Check - PHASE 1 Enhanced]', { 
-      alertId: alert.id, 
-      creatorId: alert.creator?.id, 
-      userId: alert.userId, 
-      profileId: profile?.id,
-      authUid: authUid,
-      isCreator: alertIsCreator,
-      isAdmin,
-      rlsWillPass,
-      rlsHint: rlsWillPass ? '✅ RLS should ALLOW' : '❌ RLS will BLOCK'
-    });
-    if (isDevToolsEnabled()) {
-      console.log('SignalStream - handleStatusUpdate authorization check:', {
-        alertId: alert.id,
-        alertCreatorId: alert.creator?.id,
-        currentUserId: profile?.id,
-        authUid: authUid,
-        isCreator: alertIsCreator,
-        isAdmin,
-        canUpdate: alertIsCreator || isAdmin,
-        rlsWillPass,
-        rlsPolicy: 'owners_can_update_their_own_trade_alerts'
-      });
-    }
-    if (!alertIsCreator && !isAdmin) {
-      if (isDevToolsEnabled()) {
-        console.warn('SignalStream - User not authorized to update this signal:', {
-          userId: user?.id,
-          creatorId: alert.creator?.id,
-          isAdmin,
-          isEducator,
-          isCreator: alertIsCreator
-        });
-      }
-      
+    // ✅ Verify alert object is valid
+    if (!alert || !alert.id) {
+      console.error('❌ Invalid alert object:', alert);
       toast({
-        title: 'Access Denied',
-        description: 'You can only close your own signals',
+        title: '❌ Invalid signal',
+        description: 'Signal data is missing or corrupted',
         variant: 'destructive'
       });
-      
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Access Denied',
-          message: 'You can only close your own signals'
-        });
-      }
       return;
     }
 
-    // ✅ BUG FIX #1 & #3: Remove buggy localClosed assignment (causes runtime error)
-    // updateInProgressRef already prevents duplicate processing
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
+    
+    if (!alertIsCreator && !isAdmin) {
+      console.error('❌ Authorization failed');
+      toast({
+        title: '🚫 Access Denied',
+        description: 'You can only close your own signals',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // ✅ Lock signal during update
     updateInProgressRef.current.set(alert.id, true);
     console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
+    
     try {
-      console.log(`🔄 [SignalStream] Updating alert ${alert.id} to status: ${newStatus}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
-      };
-      
-      console.log('📤 [SignalStream] Calling updateAlert with DTO:', updateDto);
-      const result = await updateAlert(alert.id, updateDto);
-      
-      console.log('📥 [SignalStream] Update result:', { 
-        success: !!result,
-        resultData: result
-      });
-      
-      if (!result) {
-        throw new Error('Update returned null - check console logs above for details');
-      }
-      
-      console.log('✅ [SignalStream] Update successful:', result);
-      
-      // ✅ BUG FIX #4: Enhanced notification with toast fallback
+      // ============================================
+      // FIX #2: Use RPC for closing signals
+      // ============================================
       if (newStatus === 'closed') {
-        const notificationData = {
-          type: 'trade_closed',
-          title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
-        };
+        console.log('🔒 Closing signal via RPC...', alert.id);
         
-        // Try custom notification system
-        if ((window as any).addNotification) {
-          (window as any).addNotification(notificationData);
-        }
-        
-        // Show toast notification
-        toast({
-          title: notificationData.title,
-          description: notificationData.message,
+        const { data, error } = await supabase.rpc('close_trade_alert', {
+          p_alert_id: alert.id,
+          p_user_id: profile?.id || user?.id,
+          p_close_reason: 'manual'
         });
         
-        console.log('✅ [Notification Sent] Signal closed notification dispatched');
+        if (error) {
+          console.error('❌ RPC close_trade_alert failed:', error);
+          throw new Error(error.message || 'Failed to close signal');
+        }
+        
+        console.log('✅ Signal closed via RPC:', data);
+        
+        // ✅ Dispatch event for instant UI update
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+          detail: {
+            signalId: alert.id,
+            assetName: alert.assetName,
+            closeReason: 'manual',
+            timestamp: new Date().toISOString()
+          }
+        }));
+        
+        // ✅ Force refresh
+        await refreshAlerts();
+        
+        toast({
+          title: '✅ Signal Closed',
+          description: `${alert.assetName} has been closed successfully`
+        });
+        
+      } else {
+        // For other status updates, use existing logic
+        const updateDto: UpdateTradeAlertDto = {
+          status: newStatus as 'pending' | 'active' | 'closed'
+        };
+        
+        const result = await updateAlert(alert.id, updateDto);
+        
+        if (!result) {
+          throw new Error('Update failed');
+        }
+        
+        toast({
+          title: '✅ Status Updated',
+          description: `Signal status changed to ${newStatus}`
+        });
       }
-    } catch (err) {
-      console.error('💥 [SignalStream] Update failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      
+    } catch (error: any) {
+      console.error('💥 [SignalStream] Status update failed:', error);
       
       toast({
-        title: 'Update Failed',
-        description: errorMessage,
+        title: '❌ Update Failed',
+        description: error.message || 'Please try again',
         variant: 'destructive'
       });
       
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Update Failed',
-          message: errorMessage
-        });
-      }
     } finally {
-      // ✅ Release lock
+      // ✅ Always unlock signal
       updateInProgressRef.current.delete(alert.id);
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateAlert, profile, isAdmin, isCreator, toast]);
+  }, [updateAlert, profile, user, isAdmin, isCreator, toast, refreshAlerts, supabase]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     // 🔍 PHASE 1 DIAGNOSTIC: Log what we receive
     console.log(`🔍 [PHASE 1 - handleTakeProfitHit] Called for ${alert.asset_name}:`, {

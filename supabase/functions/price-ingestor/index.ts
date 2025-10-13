@@ -457,30 +457,43 @@ serve(async (req) => {
           const stopLossAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type === 'stop_loss');
           const takeProfitAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type.startsWith('take_profit_'));
           
-          // Process Stop Loss alerts with HIGHEST priority
+          // ============================================
+          // FIX #1: Process Stop Loss with RPC (HIGHEST PRIORITY)
+          // ============================================
           for (const alert of stopLossAlerts) {
-            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${priceUpdate.bid}`);
+            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${bidPrice}`);
             
-            // Immediately close the signal
-            const { error: closeError } = await supabaseClient
-              .from('trade_alerts')
-              .update({
-                status: 'closed',
-                close_reason: 'stop_loss',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', alert.signal_id);
-
-            if (!closeError) {
+            try {
+              // ✅ Use RPC function with proper authorization
+              const { data: closeResult, error: closeError } = await supabaseClient
+                .rpc('close_trade_alert', {
+                  p_alert_id: alert.signal_id,
+                  p_user_id: alert.user_id,
+                  p_close_reason: 'stop_loss'
+                });
+              
+              if (closeError) {
+                console.error(`❌ Failed to close signal ${alert.signal_id}:`, closeError);
+                continue;
+              }
+              
+              console.log(`✅ Signal ${alert.signal_id} closed via RPC due to stop loss`);
+              
+              // ✅ Queue notification
               notificationTriggers.push({
                 signal_id: alert.signal_id,
                 alert_type: 'stop_loss_hit',
                 notification_type: 'stop_loss_hit',
-                triggered_price: priceUpdate.bid,
+                triggered_price: bidPrice,
                 symbol: priceUpdate.symbol,
                 timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                priority_level: 4 // HIGHEST priority for Stop Loss
+                priority_level: 4,
+                user_id: alert.user_id || '',
+                asset_name: alert.asset_name || priceUpdate.symbol
               });
+              
+            } catch (error) {
+              console.error(`💥 Exception closing signal ${alert.signal_id}:`, error);
             }
           }
           

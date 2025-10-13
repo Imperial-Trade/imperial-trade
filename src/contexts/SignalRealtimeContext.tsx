@@ -20,7 +20,7 @@ let educatorUserIdsCache: string[] = [];
 let educatorCacheExpiry = 0;
 const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
 const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
-const SIGNAL_REFRESH_THROTTLE = 30000; // 🔥 OPTIMIZED to 30 seconds for better responsiveness
+const SIGNAL_REFRESH_THROTTLE = 5000; // ✅ FIX #4: Reduced to 5 seconds for instant UI updates
 
 // PHASE 1: Profile cache with 5-minute TTL for instant signal rendering
 const profileCache = new Map<string, { profile: any; expiry: number }>();
@@ -398,6 +398,79 @@ console.log('🔍 DEBUG [SignalRealtimeContext] Setting signals in state:', {
 // FIX #4: RACE CONDITION GUARD (Phase 3)
 // Filter out older updates to prevent stale data overwrites
 // ============================================
+
+// ============================================
+// FIX #5: Add Supabase Real-Time subscription
+// ============================================
+useEffect(() => {
+  if (!signals.length) return;
+
+  console.log('🔌 Setting up Supabase real-time subscription...');
+
+  const subscription = supabase
+    .channel('trade_alerts_realtime')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'trade_alerts'
+    }, (payload) => {
+      console.log('🔄 Real-time UPDATE detected:', payload);
+      
+      const newRecord = payload.new as any;
+      const oldRecord = payload.old as any;
+      
+      // Update local state immediately
+      setSignals(prev => prev.map(signal => 
+        signal.id === newRecord.id 
+          ? { ...signal, ...newRecord, updatedAt: newRecord.updated_at }
+          : signal
+      ));
+      
+      // Detect status changes and dispatch events
+      if (oldRecord.status !== newRecord.status) {
+        if (newRecord.status === 'closed') {
+          window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+            detail: {
+              signalId: newRecord.id,
+              closeReason: newRecord.close_reason,
+              assetName: newRecord.asset_name
+            }
+          }));
+        } else if (oldRecord.status === 'pending' && newRecord.status === 'active') {
+          window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+            detail: {
+              signalId: newRecord.id,
+              assetName: newRecord.asset_name
+            }
+          }));
+        }
+      }
+      
+      // Detect TP hits
+      const oldTPs = oldRecord.tp_hits || [];
+      const newTPs = newRecord.tp_hits || [];
+      if (JSON.stringify(oldTPs) !== JSON.stringify(newTPs)) {
+        const hitTPs = newTPs.filter((tp: number) => !oldTPs.includes(tp));
+        hitTPs.forEach((tp: number) => {
+          window.dispatchEvent(new CustomEvent('tp-hit-confirmed', {
+            detail: {
+              signalId: newRecord.id,
+              tpLevel: tp,
+              assetName: newRecord.asset_name
+            }
+          }));
+        });
+      }
+    })
+    .subscribe((status) => {
+      console.log('🔌 Subscription status:', status);
+    });
+
+  return () => {
+    console.log('🔌 Cleaning up Supabase subscription...');
+    subscription.unsubscribe();
+  };
+}, [signals.length, supabase]);
 const filteredWithTimestamps = filteredAlerts.filter(newSignal => {
   const existingSignal = signals.find(s => s.id === newSignal.id);
   if (!existingSignal) return true; // New signal, keep it

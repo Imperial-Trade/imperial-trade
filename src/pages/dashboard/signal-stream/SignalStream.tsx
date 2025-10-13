@@ -929,14 +929,44 @@ export default function SignalStream() {
         expectedStatus: shouldAutoClose ? 'closed' : alert.status,
         originalUpdateDto: updateDto
       });
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
+      
+      if (result) {
+        // ✅ FIX #1: Dispatch event when signal closes
+        if (shouldAutoClose) {
+          window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+            detail: {
+              signalId: alert.id,
+              closeReason: typedCloseReason || 'all_tps_hit',
+              assetName: alert.assetName
+            }
+          }));
+          
+          // ✅ Force refresh to bypass all caches
+          await refreshAlerts(true);
+        } else {
+          // Dispatch TP hit event
+          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
+          if (highestTP !== null) {
+            window.dispatchEvent(new CustomEvent('tp-hit-confirmed', {
+              detail: {
+                signalId: alert.id,
+                tpLevel: highestTP,
+                assetName: alert.assetName
+              }
+            }));
+          }
+        }
+        
+        // Show notification
+        if ((window as any).addNotification) {
+          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
+          if (highestTP !== null) {
+            (window as any).addNotification({
+              type: 'tp_hit',
+              title: `🎯 TP${highestTP} Hit!`,
+              message: `${alert.assetName} reached Take Profit ${highestTP}`
+            });
+          }
         }
       }
     } catch (err) {
@@ -981,12 +1011,28 @@ export default function SignalStream() {
         closeReason: typedCloseReason
       };
       const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
+      
+      if (result) {
+        // ✅ FIX #1: Dispatch event for instant UI update
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+          detail: {
+            signalId: alert.id,
+            closeReason: typedCloseReason,
+            assetName: alert.assetName
+          }
+        }));
+        
+        // ✅ Force refresh to bypass all caches
+        await refreshAlerts(true);
+        
+        // Show notification
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'stop_loss',
+            title: `🚨 Stop Loss Hit!`,
+            message: `${alert.assetName} trade closed at stop loss`
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to update stop loss:", err);

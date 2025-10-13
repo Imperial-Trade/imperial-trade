@@ -8,11 +8,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ FIX #1: Reduced cache TTL from 30s to 5s
-const LOCAL_CACHE_TTL = 5 * 1000; // 5 seconds for near-instant updates
-
-// ✅ FIX #5: Reduced educator cache from 15min to 5min
-const EDUCATOR_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// ✅ FIX #5: Optimized cache TTL for real-time trading
+const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for near-instant updates
+const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
 
 // Module-level educator cache
 let educatorUserIdsCache: string[] = [];
@@ -427,6 +425,21 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       };
     }
   }, [subscribeToRealtime]);
+
+  // ✅ FIX #2: Add automatic polling every 30 seconds as safety net
+  useEffect(() => {
+    const pollingInterval = setInterval(async () => {
+      const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
+      
+      // Only poll if >30 seconds since last update
+      if (timeSinceLastUpdate > 30000) {
+        console.log('🔄 Auto-polling for signal freshness (30s since last update)...');
+        await refreshSignals(true); // Force cache bypass
+      }
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(pollingInterval);
+  }, [lastUpdated, refreshSignals]);
 
   const value: SignalRealtimeContextType = {
     signals,

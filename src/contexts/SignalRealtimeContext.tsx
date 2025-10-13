@@ -248,6 +248,15 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     try {
       // PHASE 3: Throttle refresh requests to reduce database load (unless bypassed)
       const now = Date.now();
+      
+      // ✅ FIX BUG #17: Force cache expiry when bypassing throttle
+      if (bypassThrottle) {
+        localCacheRef.current.expiry = 0; // Force cache miss
+        if (isDevToolsEnabled()) {
+          console.log('🚀 Cache bypass - forcing fresh fetch');
+        }
+      }
+      
       if (!bypassThrottle && now - lastRefreshRef.current < SIGNAL_REFRESH_THROTTLE) {
         if (isDevToolsEnabled()) {
           console.log('⏱️ Refresh throttled, using cached data');

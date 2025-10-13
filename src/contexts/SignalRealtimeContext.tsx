@@ -780,7 +780,7 @@ lastUpdateTimestampRef.current = new Date().toISOString();
         // ✅ BUG #18 FIX: Update cache unconditionally (even if empty)
         localCacheRef.current.data = [optimisticSignal, ...localCacheRef.current.data];
         
-        // ✅ BUG #24 FIX: Instant in-app notification for new signal creation
+        // ✅ BUG #24 & #26 FIX: Instant in-app notification with rich card metadata
         if ((window as any).addNotification) {
           (window as any).addNotification({
             type: 'signal_created',
@@ -789,12 +789,21 @@ lastUpdateTimestampRef.current = new Date().toISOString();
             signalId: newRecord.id,
             assetName: newRecord.asset_name,
             authorName: optimisticSignal.creator.display_name || 'Educator',
+            metadata: {
+              signal_id: newRecord.id,
+              provider_name: optimisticSignal.creator.display_name || 'Educator',
+              provider_avatar_url: optimisticSignal.creator.avatar_url,
+              provider_type: optimisticSignal.creator.user_type || 'educator',
+              asset_name: newRecord.asset_name,
+              tp_hits: [],
+              total_tps: [newRecord.tp1, newRecord.tp2, newRecord.tp3, newRecord.tp4, newRecord.tp5].filter(tp => tp != null).length
+            },
             priority: 'high',
             autoRemove: true,
             duration: 8000
           });
           
-          console.log(`🔔 [In-App] New signal notification dispatched - ${newRecord.asset_name}`);
+          console.log(`🔔 [Bug #26] Rich card notification dispatched - New Signal: ${newRecord.asset_name}`);
         }
         
         // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
@@ -864,22 +873,31 @@ lastUpdateTimestampRef.current = new Date().toISOString();
               }
             }));
             
-            // ✅ BUG #22 FIX: Instant in-app notification for limit order activation
+            // ✅ BUG #22 & #26 FIX: Instant in-app notification with rich card metadata
             if ((window as any).addNotification) {
               (window as any).addNotification({
-                type: 'order_activated',
+                type: 'limit_activated',
                 title: `🚀 Order Activated!`,
                 message: `${newRecord.asset_name} ${newRecord.trade_type.replace('_', ' ').toUpperCase()} is now ACTIVE`,
                 signalId: targetSignalId,
                 assetName: newRecord.asset_name,
                 authorName: 'System',
+                metadata: {
+                  signal_id: targetSignalId,
+                  provider_name: currentSignal.creator?.display_name || 'Educator',
+                  provider_avatar_url: currentSignal.creator?.avatar_url,
+                  provider_type: currentSignal.creator?.user_type || 'educator',
+                  asset_name: newRecord.asset_name,
+                  tp_hits: newRecord.tp_hits || [],
+                  total_tps: [newRecord.tp1, newRecord.tp2, newRecord.tp3, newRecord.tp4, newRecord.tp5].filter(tp => tp != null).length
+                },
                 priority: 'high',
                 autoRemove: true,
-                duration: 6000
+                duration: 8000
               });
-              console.log(`🔔 [Bug #22] Instant in-app activation notification dispatched - ${newRecord.asset_name}`);
+              console.log(`🔔 [Bug #26] Rich card notification dispatched - Order Activated: ${newRecord.asset_name}`);
             } else {
-              console.warn('⚠️ [Bug #22] In-app notification system not available, using toast only');
+              console.warn('⚠️ [Bug #26] In-app notification system not available, using toast only');
             }
             
             // ✅ BUG #22 FIX: Always show toast as reliable fallback
@@ -925,20 +943,32 @@ lastUpdateTimestampRef.current = new Date().toISOString();
               }
             }));
             
-            // ✅ BUG #25 FIX: Instant in-app notification for signal closure
+            // ✅ BUG #25 & #26 FIX: Instant in-app notification with rich card metadata and dynamic styling
             if ((window as any).addNotification) {
+              const closeReason = newRecord.close_reason || 'manual';
               (window as any).addNotification({
-                type: 'signal_closed',
-                title: `🔴 Signal Closed`,
-                message: `${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`,
+                type: closeReason === 'stop_loss' ? 'stop_loss' : 
+                      closeReason === 'all_tps_hit' ? 'trade_closed' : 'manual_close',
+                title: closeReason === 'stop_loss' ? `🔴 Stop Loss Hit` :
+                       closeReason === 'all_tps_hit' ? `🎉 All TPs Hit` : `🔴 Signal Closed`,
+                message: `${newRecord.asset_name} closed - ${closeReason}`,
                 signalId: targetSignalId,
                 assetName: newRecord.asset_name,
                 authorName: 'System',
+                metadata: {
+                  signal_id: targetSignalId,
+                  provider_name: currentSignal.creator?.display_name || 'Educator',
+                  provider_avatar_url: currentSignal.creator?.avatar_url,
+                  provider_type: currentSignal.creator?.user_type || 'educator',
+                  asset_name: newRecord.asset_name,
+                  tp_hits: newRecord.tp_hits || [],
+                  total_tps: [newRecord.tp1, newRecord.tp2, newRecord.tp3, newRecord.tp4, newRecord.tp5].filter(tp => tp != null).length
+                },
                 priority: 'high',
                 autoRemove: true,
-                duration: 5000
+                duration: 8000
               });
-              console.log(`🔔 [Bug #25] Instant closure notification dispatched - ${newRecord.asset_name}`);
+              console.log(`🔔 [Bug #26] Rich card notification dispatched - Signal Closed (${closeReason}): ${newRecord.asset_name}`);
             }
           }
           
@@ -987,17 +1017,32 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           
           if (newHitsDetected.length > 0) {
             newHitsDetected.forEach(tp => {
-              // ✅ HYBRID MODE: Instant toast notification for TP hits
+              // ✅ BUG #26 FIX: Instant notification with rich card metadata for TP hits
               if ((window as any).addNotification) {
+                const totalTPs = [newRecord.tp1, newRecord.tp2, newRecord.tp3, newRecord.tp4, newRecord.tp5].filter(t => t != null).length;
+                const progressPercentage = Math.round((newRecord.tp_hits?.length || 0) / totalTPs * 100);
+                
                 (window as any).addNotification({
                   type: 'tp_hit',
                   title: `🎯 TP${tp} Hit!`,
                   message: `${newRecord.asset_name} reached Take Profit ${tp}`,
                   signalId: targetSignalId,
+                  assetName: newRecord.asset_name,
+                  metadata: {
+                    signal_id: targetSignalId,
+                    provider_name: currentSignal.creator?.display_name || 'Educator',
+                    provider_avatar_url: currentSignal.creator?.avatar_url,
+                    provider_type: currentSignal.creator?.user_type || 'educator',
+                    asset_name: newRecord.asset_name,
+                    tp_hits: newRecord.tp_hits || [],
+                    total_tps: totalTPs,
+                    progress_percentage: progressPercentage
+                  },
                   priority: 'high',
                   autoRemove: true,
-                  duration: 6000
+                  duration: 8000
                 });
+                console.log(`🔔 [Bug #26] Rich card notification dispatched - TP${tp} Hit: ${newRecord.asset_name} (${progressPercentage}%)`);
               }
             });
           }

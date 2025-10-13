@@ -1029,7 +1029,7 @@ export default function SignalStream() {
                 <Button
                   onClick={() => {
                     console.log('🔄 [Manual] Force refresh triggered by user');
-                    refreshAlerts();
+                    refreshAlerts(true);
                   }}
                   size="sm"
                   variant="outline"
@@ -1058,7 +1058,7 @@ export default function SignalStream() {
                       <span className="text-xs text-red-500 font-medium">Connection Issue</span>
                     </div>
                     <Button
-                      onClick={refreshAlerts}
+                      onClick={() => refreshAlerts(true)}
                       size="sm"
                       variant="outline"
                       className="border-yellow-500/20 hover:bg-yellow-500/10"

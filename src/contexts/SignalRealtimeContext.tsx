@@ -40,6 +40,7 @@ if (typeof window !== 'undefined') {
 interface Signal {
   id: string;
   asset_name: string;
+  direction: 'BUY' | 'SELL';
   entry_price: number;
   stop_loss?: number;
   take_profit_1?: number;

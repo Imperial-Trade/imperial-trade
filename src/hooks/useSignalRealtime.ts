@@ -11,7 +11,7 @@ interface UseSignalRealtimeReturn {
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
   nextRetryAt: number | null;
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
-  refreshAlerts: () => Promise<void>;
+  refreshAlerts: (bypassThrottle?: boolean) => Promise<void>;
   lastUpdated: Date | null;
   getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
 }
@@ -103,11 +103,11 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     }
   }, [userId]);
 
-  const handleRefreshAlerts = useCallback(async () => {
+  const handleRefreshAlerts = useCallback(async (bypassThrottle?: boolean) => {
     try {
       setLocalLoading(true);
       setLocalError(null);
-      await contextRefreshSignals();
+      await contextRefreshSignals(bypassThrottle);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
       setLocalError(errorMessage);

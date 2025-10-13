@@ -172,9 +172,20 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       // Query signals
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
+      // ✅ FIX: Join with profiles to get creator information
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
-        .select('*')
+        .select(`
+          *,
+          creator:profiles!user_id(
+            id,
+            display_name,
+            role,
+            avatar_url,
+            user_type,
+            access_level
+          )
+        `)
         .in('user_id', educatorUserIds)
         .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
         .order('created_at', { ascending: false })

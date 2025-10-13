@@ -52,7 +52,16 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
       createdAt: signal.created_at,
       updatedAt: signal.updated_at,
       tpHits: signal.tp_hits || [],
-      closeReason: signal.close_reason
+      closeReason: signal.close_reason,
+      // ✅ FIX: Include creator profile data
+      creator: (signal as any).creator ? {
+        id: (signal as any).creator.id,
+        display_name: (signal as any).creator.display_name || 'Anonymous User',
+        role: (signal as any).creator.role || 'user',
+        avatar_url: (signal as any).creator.avatar_url,
+        user_type: (signal as any).creator.user_type,
+        access_level: (signal as any).creator.access_level
+      } : undefined
     })) as unknown as TradeAlertWithProfile[];
   }, [allSignals]);
 
@@ -139,7 +148,16 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
         createdAt: signal.created_at,
         updatedAt: signal.updated_at,
         tpHits: signal.tp_hits || [],
-        closeReason: signal.close_reason
+        closeReason: signal.close_reason,
+        // ✅ FIX: Include creator profile data
+        creator: (signal as any).creator ? {
+          id: (signal as any).creator.id,
+          display_name: (signal as any).creator.display_name || 'Anonymous User',
+          role: (signal as any).creator.role || 'user',
+          avatar_url: (signal as any).creator.avatar_url,
+          user_type: (signal as any).creator.user_type,
+          access_level: (signal as any).creator.access_level
+        } : undefined
       } as unknown as TradeAlertWithProfile;
     }
   };

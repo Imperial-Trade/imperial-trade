@@ -213,9 +213,32 @@ export default function SignalStream() {
       userId: user?.id
     });
   }
-  const isCreator = useCallback((alertCreatorId: string | undefined) => {
-    if (!alertCreatorId) return false;
-    return profile?.id === alertCreatorId;
+  // ✅ FIX: Check creator permission using userId (direct FK) as primary source
+  const isCreator = useCallback((alert: TradeAlertWithProfile) => {
+    if (!profile?.id) return false;
+    
+    // Primary check: alert.userId is the direct foreign key to user_id column
+    const isCreatorByUserId = alert.userId === profile.id;
+    
+    // Fallback: alert.creator?.id from joined profile data
+    const isCreatorByCreatorId = alert.creator?.id === profile.id;
+    
+    const result = isCreatorByUserId || isCreatorByCreatorId;
+    
+    if (isDevToolsEnabled()) {
+      console.log('🔍 [isCreator Check]:', {
+        alertId: alert.id,
+        assetName: alert.assetName,
+        'alert.userId': alert.userId,
+        'alert.creator?.id': alert.creator?.id,
+        'profile.id': profile.id,
+        isCreatorByUserId,
+        isCreatorByCreatorId,
+        finalResult: result
+      });
+    }
+    
+    return result;
   }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
@@ -1135,7 +1158,7 @@ export default function SignalStream() {
                             onStopLossHit={handleStopLossHit} 
                             onOrderActivation={handleOrderActivation} 
                             isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id) || alert.userId === profile?.id}
+                            isCreator={isCreator(alert)}
                             livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                             priceSource={priceSource} 
@@ -1195,7 +1218,7 @@ export default function SignalStream() {
                             onStopLossHit={handleStopLossHit} 
                             onOrderActivation={handleOrderActivation} 
                             isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id)} 
+                            isCreator={isCreator(alert)}
                             livePrice={undefined} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                             priceSource={priceSource} 

@@ -911,33 +911,35 @@ lastUpdateTimestampRef.current = new Date().toISOString();
             
             console.log(`🔴 ISOLATED CLOSURE: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
             
+            // ✅ BUG #25 FIX: INSTANT closure notifications (removed setTimeout delay)
             // Dispatch closure event with signal isolation
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
-                detail: {
-                  signalId: targetSignalId,
-                  assetName: newRecord.asset_name,
-                  status: 'closed',
-                  closeReason: newRecord.close_reason,
-                  timestamp: new Date().toISOString(),
-                  priority: 'high',
-                  isolation: 'enforced'
-                }
-              }));
-              
-              // ✅ HYBRID MODE: Instant toast notification for closure
-              if ((window as any).addNotification) {
-                (window as any).addNotification({
-                  type: 'signal_closed',
-                  title: `🔴 Signal Closed`,
-                  message: `${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`,
-                  signalId: targetSignalId,
-                  priority: 'high',
-                  autoRemove: true,
-                  duration: 5000
-                });
+            window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+              detail: {
+                signalId: targetSignalId,
+                assetName: newRecord.asset_name,
+                status: 'closed',
+                closeReason: newRecord.close_reason,
+                timestamp: new Date().toISOString(),
+                priority: 'high',
+                isolation: 'enforced'
               }
-            }, 0);
+            }));
+            
+            // ✅ BUG #25 FIX: Instant in-app notification for signal closure
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                type: 'signal_closed',
+                title: `🔴 Signal Closed`,
+                message: `${newRecord.asset_name} closed - ${newRecord.close_reason || 'manual'}`,
+                signalId: targetSignalId,
+                assetName: newRecord.asset_name,
+                authorName: 'System',
+                priority: 'high',
+                autoRemove: true,
+                duration: 5000
+              });
+              console.log(`🔔 [Bug #25] Instant closure notification dispatched - ${newRecord.asset_name}`);
+            }
           }
           
           const updatedSignals = prev.map(signal =>
@@ -1030,19 +1032,19 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           });
           
           // PHASE 3: ISOLATED FEEDBACK - Only dispatch event for the specific signal
+          // ✅ BUG #25 FIX: INSTANT secondary order activation event (removed setTimeout delay)
           if (isOrderActivation) {
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('order-activated', {
-                detail: {
-                  signalId: targetSignalId, // CRITICAL: Signal isolation
-                  assetName: newRecord.asset_name,
-                  status: newRecord.status,
-                  timestamp: new Date().toISOString(),
-                  priority: 'high',
-                  isolation: 'enforced'
-                }
-              }));
-            }, 0);
+            window.dispatchEvent(new CustomEvent('order-activated', {
+              detail: {
+                signalId: targetSignalId, // CRITICAL: Signal isolation
+                assetName: newRecord.asset_name,
+                status: newRecord.status,
+                timestamp: new Date().toISOString(),
+                priority: 'high',
+                isolation: 'enforced'
+              }
+            }));
+            console.log(`🔔 [Bug #25] Instant secondary order-activated event dispatched - ${targetSignalId}`);
           }
 
           // PHASE 4: NOTES UPDATE NOTIFICATIONS - Only for THIS signal

@@ -174,7 +174,17 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
 
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
-        .select('*')
+        .select(`
+          *,
+          creator:profiles!trade_alerts_user_id_fkey (
+            id,
+            display_name,
+            role,
+            avatar_url,
+            user_type,
+            access_level
+          )
+        `)
         .in('user_id', educatorUserIds)
         .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
         .order('created_at', { ascending: false })
@@ -241,7 +251,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   }, [fetchEducatorUserIds]);
 
   // Handle real-time updates with instant trigger
-  const handleRealtimeUpdate = useCallback((payload: any) => {
+  const handleRealtimeUpdate = useCallback(async (payload: any) => {
     const eventType = payload.eventType;
     const newData = payload.new;
     const signalId = newData?.id;
@@ -271,6 +281,21 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     if (eventType === 'INSERT') {
       console.log('✅ [INSERT] Adding new signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
+      // ✅ Fetch creator profile if not included in real-time payload
+      if (!newData.creator && newData.user_id) {
+        console.log('🔍 Fetching creator profile for new signal...');
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, display_name, role, avatar_url, user_type, access_level')
+          .eq('id', newData.user_id)
+          .single();
+        
+        if (profile) {
+          newData.creator = profile;
+          console.log('✅ Creator profile fetched:', profile.display_name);
+        }
+      }
+      
       setSignals(prev => {
         // Prevent duplicates
         if (prev.some(s => s.id === signalId)) {
@@ -299,9 +324,18 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       console.log('✅ [UPDATE] Updating signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
       setSignals(prev => {
-        const updated = prev.map(s => 
-          s.id === signalId ? { ...s, ...newData } : s
-        );
+        const updated = prev.map(s => {
+          if (s.id === signalId) {
+            // ✅ FIX: Preserve creator data during real-time updates
+            // Real-time UPDATE events only include trade_alerts columns, not joined data
+            return {
+              ...s,           // Keep existing data (including creator profile)
+              ...newData,     // Apply new changes (status, tp_hits, close_reason, etc.)
+              creator: s.creator  // Explicitly preserve creator to prevent overwrite
+            };
+          }
+          return s;
+        });
         
         // Update cache immediately
         localCacheRef.current.data = updated;

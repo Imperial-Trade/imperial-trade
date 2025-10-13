@@ -298,6 +298,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     if (eventType === 'UPDATE') {
       console.log('✅ [UPDATE] Updating signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
+      // Store old signal data before updating
+      const oldSignal = signals.find(s => s.id === signalId);
+      
       setSignals(prev => {
         const updated = prev.map(s => 
           s.id === signalId ? { ...s, ...newData } : s
@@ -308,6 +311,26 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         
         return updated;
       });
+
+      // ✅ OPTION A FIX: Detect backend-triggered signal closures
+      if (oldSignal && oldSignal.status !== 'closed' && newData.status === 'closed') {
+        console.log('📢 [Realtime] Detected signal closure, dispatching signal-closed-confirmed:', {
+          signalId: newData.id,
+          oldStatus: oldSignal.status,
+          newStatus: newData.status,
+          closeReason: newData.close_reason,
+          assetName: newData.asset_name
+        });
+        
+        // Dispatch event so UI moves signal to Closed Alerts tab instantly
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+          detail: {
+            signalId: newData.id,
+            closeReason: newData.close_reason,
+            assetName: newData.asset_name
+          }
+        }));
+      }
 
       // ✅ INSTANT: Emit update event
       if (typeof window !== 'undefined' && (window as any).signalEmitter) {

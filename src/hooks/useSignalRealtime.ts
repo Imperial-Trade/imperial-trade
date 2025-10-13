@@ -39,8 +39,21 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   const error = localError || contextError;
 
   // Filter signals - RLS policies handle educator/admin filtering
+  // Convert Signal type to TradeAlertWithProfile type
   const filteredAlerts = useMemo(() => {
-    return allSignals;
+    return allSignals.map(signal => ({
+      ...signal,
+      userId: signal.user_id,
+      assetName: signal.asset_name,
+      tradermadeSymbol: signal.tradermade_symbol,
+      tradeType: signal.trade_type,
+      entryPrice: signal.entry_price,
+      stopLoss: signal.stop_loss,
+      createdAt: signal.created_at,
+      updatedAt: signal.updated_at,
+      tpHits: signal.tp_hits || [],
+      closeReason: signal.close_reason
+    })) as unknown as TradeAlertWithProfile[];
   }, [allSignals]);
 
   // Stable subscribe/unsubscribe callbacks
@@ -112,6 +125,22 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     updateAlert,
     refreshAlerts: handleRefreshAlerts,
     lastUpdated,
-    getSignalById
+    getSignalById: (signalId: string) => {
+      const signal = getSignalById(signalId);
+      if (!signal) return undefined;
+      return {
+        ...signal,
+        userId: signal.user_id,
+        assetName: signal.asset_name,
+        tradermadeSymbol: signal.tradermade_symbol,
+        tradeType: signal.trade_type,
+        entryPrice: signal.entry_price,
+        stopLoss: signal.stop_loss,
+        createdAt: signal.created_at,
+        updatedAt: signal.updated_at,
+        tpHits: signal.tp_hits || [],
+        closeReason: signal.close_reason
+      } as unknown as TradeAlertWithProfile;
+    }
   };
 };

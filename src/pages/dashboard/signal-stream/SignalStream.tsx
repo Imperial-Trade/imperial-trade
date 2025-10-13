@@ -1025,6 +1025,20 @@ export default function SignalStream() {
               
               {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
               <div className="flex items-center gap-3">
+                {/* ✅ FIX #6: Force Refresh Button */}
+                <Button
+                  onClick={() => {
+                    console.log('🔄 [Manual] Force refresh triggered by user');
+                    refreshAlerts();
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span className="hidden sm:inline">Force Refresh</span>
+                </Button>
+                
                 {connectionStatus === 'connected' && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>

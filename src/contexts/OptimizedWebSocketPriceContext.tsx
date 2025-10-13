@@ -951,12 +951,6 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // ⚡ PHASE 5: Optimized Polling with Route Detection
   useEffect(() => {
-    // Skip polling if realtime is working
-    if (connectionStatus === 'connected') {
-      console.log('⏭️ [Database Poll] Skipped - realtime is active');
-      return;
-    }
-
     if (!isProviderReady) {
       console.log('⏸️  [Polling] Provider not ready');
       return;
@@ -1181,42 +1175,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isPriceSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
   }, [isPriceSubscriptionAllowed]);
 
-  // 🔄 Regular 500ms Database Polling for Active Subscriptions
-  useEffect(() => {
-    const symbolsArray = Array.from(subscriptionsRef.current.keys());
-    
-    // Skip if no subscriptions or not in polling mode
-    if (symbolsArray.length === 0 || connectionStatus !== 'polling') {
-      return;
-    }
-
-    console.log('🔄 [Database Polling] Starting 500ms polling for:', symbolsArray);
-    
-    // Poll every 500ms for price updates
-    const pollInterval = setInterval(async () => {
-      await fetchPricesFromDatabase(symbolsArray);
-    }, 500); // 500ms interval - optimal for live price updates
-
-    return () => {
-      console.log('🔄 [Database Polling] Stopped polling');
-      clearInterval(pollInterval);
-    };
-  }, [connectionStatus, fetchPricesFromDatabase]);
-
-  // 🚨 Emergency Database Polling (Fallback for broken connections)
+  // 🎯 PHASE 4: Smart Database Polling with Strict Conditions
   useEffect(() => {
     const symbolsArray = Array.from(subscriptionsRef.current.keys());
     if (symbolsArray.length === 0) return;
 
-    // Emergency trigger only after 120 seconds (2 minutes) of no updates
+    // 🎯 PHASE 2: STRICT CONDITIONS - Only poll if ALL these are met
     const now = Date.now();
     const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
+    // Emergency trigger only after 120 seconds (2 minutes) of no updates
     const isBroadcastStale = timeSinceLastUpdate > 120000;
     const isConnectionBroken = connectionStatus === 'error' || connectionStatus === 'disconnected';
     
-    // Only enable emergency polling when connection is completely dead
+    // Only enable polling in extreme emergency when broadcast is completely dead
     if (isConnectionBroken && isBroadcastStale && symbolsArray.length > 0) {
-      console.log('🚨 Emergency database polling activated (broadcast stale > 2 minutes)');
+      console.log('🚨 PHASE 2: Emergency database polling activated (broadcast stale > 2 minutes)');
       
       const pollInterval = setInterval(async () => {
         try {

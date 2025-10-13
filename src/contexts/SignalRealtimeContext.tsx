@@ -9,7 +9,7 @@ import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 // ✅ FIX #5: Optimized cache TTL for real-time trading
-const LOCAL_CACHE_TTL = 0; // Instant real-time updates, no cache delay
+const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for near-instant updates
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
 
 // Module-level educator cache
@@ -172,20 +172,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       // Query signals
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-      // ✅ FIX: Join with profiles to get creator information
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
-        .select(`
-          *,
-          creator:profiles!user_id(
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
-        `)
+        .select('*')
         .in('user_id', educatorUserIds)
         .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
         .order('created_at', { ascending: false })
@@ -298,10 +287,6 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         return newSignals;
       });
 
-      // ✅ INSTANT: Force UI refresh after real-time insert
-      setLastUpdated(new Date());
-      localCacheRef.current.expiry = 0; // Invalidate cache
-
       // ✅ INSTANT: Emit global event for notification + card opening
       if (typeof window !== 'undefined' && (window as any).signalEmitter) {
         console.log('📢 Emitting SIGNAL_CREATED event for instant notification');
@@ -313,9 +298,6 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     if (eventType === 'UPDATE') {
       console.log('✅ [UPDATE] Updating signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
-      // Store old signal data before updating
-      const oldSignal = signals.find(s => s.id === signalId);
-      
       setSignals(prev => {
         const updated = prev.map(s => 
           s.id === signalId ? { ...s, ...newData } : s
@@ -326,30 +308,6 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         
         return updated;
       });
-
-      // ✅ OPTION A FIX: Detect backend-triggered signal closures
-      if (oldSignal && oldSignal.status !== 'closed' && newData.status === 'closed') {
-        console.log('📢 [Realtime] Detected signal closure, dispatching signal-closed-confirmed:', {
-          signalId: newData.id,
-          oldStatus: oldSignal.status,
-          newStatus: newData.status,
-          closeReason: newData.close_reason,
-          assetName: newData.asset_name
-        });
-        
-        // Dispatch event so UI moves signal to Closed Alerts tab instantly
-        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
-          detail: {
-            signalId: newData.id,
-            closeReason: newData.close_reason,
-            assetName: newData.asset_name
-          }
-        }));
-      }
-
-      // ✅ INSTANT: Force UI refresh after real-time update
-      setLastUpdated(new Date());
-      localCacheRef.current.expiry = 0; // Invalidate cache
 
       // ✅ INSTANT: Emit update event
       if (typeof window !== 'undefined' && (window as any).signalEmitter) {
@@ -374,10 +332,6 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         
         return filtered;
       });
-
-      // ✅ INSTANT: Force UI refresh after real-time delete
-      setLastUpdated(new Date());
-      localCacheRef.current.expiry = 0; // Invalidate cache
     }
 
   }, []);
@@ -472,25 +426,20 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [subscribeToRealtime]);
 
-  // ✅ HEALTH CHECK: Monitor real-time connection health (fallback safety)
+  // ✅ FIX #2: Add automatic polling every 30 seconds as safety net
   useEffect(() => {
-    const connectionHealthRef = { lastEventTime: Date.now() };
-    
-    const healthCheck = setInterval(() => {
-      const timeSinceLastEvent = Date.now() - connectionHealthRef.lastEventTime;
+    const pollingInterval = setInterval(async () => {
+      const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
       
-      // If no events in 60 seconds, verify connection with single refresh
-      if (timeSinceLastEvent > 60000) {
-        console.warn('⚠️ [Health Check] No events in 60s, verifying connection...');
-        refreshSignals(true);
-        connectionHealthRef.lastEventTime = Date.now(); // Reset to prevent spam
+      // Only poll if >30 seconds since last update
+      if (timeSinceLastUpdate > 30000) {
+        console.log('🔄 Auto-polling for signal freshness (30s since last update)...');
+        await refreshSignals(true); // Force cache bypass
       }
-    }, 60000); // Check every 60 seconds
+    }, 30000); // Poll every 30 seconds
 
-    return () => {
-      clearInterval(healthCheck);
-    };
-  }, [refreshSignals]);
+    return () => clearInterval(pollingInterval);
+  }, [lastUpdated, refreshSignals]);
 
   const value: SignalRealtimeContextType = {
     signals,

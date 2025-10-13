@@ -160,17 +160,26 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
 
         const exists = data?.userExists || false;
         setAuthUserExists(exists);
-        
+
         console.log('🔐 Auth user exists:', exists);
 
-        // Determine if first-time activation needed
+        // 🔧 If auth user exists, account is already activated
+        if (exists) {
+          console.log('✅ Auth user exists - marking account as already activated');
+          setIsAlreadyActivated(true);
+          setCheckingAuthUser(false);
+          // No need to check for first-time activation
+          return;
+        }
+
+        // Determine if first-time activation needed (only if auth user doesn't exist)
         const hasIncompatibleHash = 
           !accountRequest.password_hash || 
           !accountRequest.password_hash.match(/^[0-9a-f]{64}$/);
-        
+
         const needsFirstTimeActivation = hasIncompatibleHash && !exists;
         setIsFirstTimeActivation(needsFirstTimeActivation);
-        
+
         console.log('✅ Auth check complete:', {
           authUserExists: exists,
           hasCompatibleHash: !hasIncompatibleHash,

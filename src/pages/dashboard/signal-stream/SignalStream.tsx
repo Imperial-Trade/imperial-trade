@@ -794,8 +794,8 @@ export default function SignalStream() {
           }
         }));
         
-        // ✅ Force refresh
-        await refreshAlerts();
+        // ✅ Force refresh with cache bypass
+        await refreshAlerts(true);
         
         toast({
           title: '✅ Signal Closed',

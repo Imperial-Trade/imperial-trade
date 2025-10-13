@@ -42,95 +42,108 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   const [isAlreadyActivated, setIsAlreadyActivated] = useState(false);
   const [isCurrentlyAuthenticated, setIsCurrentlyAuthenticated] = useState(false);
 
-  // Check Auth user status on mount with retry logic and auth listener
+  // Check Auth user status on mount with aggressive retry and multiple detection methods
   useEffect(() => {
     let mounted = true;
     let authSubscription: any = null;
+    let retryAttempts = 0;
+    const MAX_RETRIES = 3;
+    
+    // Set up auth listener FIRST (outside retry logic)
+    const { data: authData } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      console.log('🔔 [AUTH LISTENER] Auth state change:', event, 'Email:', session?.user?.email);
+      
+      if (session?.user) {
+        const sessionEmail = session.user.email?.toLowerCase().trim();
+        const requestEmail = accountRequest.email.toLowerCase().trim();
+        
+        console.log('📧 [AUTH LISTENER] Email comparison:', { sessionEmail, requestEmail });
+        
+        if (sessionEmail === requestEmail) {
+          console.log('✅ [AUTH LISTENER] Authenticated user detected - marking as already activated');
+          setIsCurrentlyAuthenticated(true);
+          setIsAlreadyActivated(true);
+          setCheckingAuthUser(false);
+        }
+      }
+    });
+    
+    authSubscription = authData.subscription;
     
     const checkAuthUserStatus = async (attempt = 1) => {
       try {
-        console.log('🔍 [ATTEMPT', attempt, '] Checking Auth user status for:', accountRequest.email);
+        retryAttempts = attempt;
+        console.log(`🔍 [ATTEMPT ${attempt}/${MAX_RETRIES}] Checking auth status for: ${accountRequest.email}`);
         
-        // ✅ LAYER 0: Subscribe to auth state changes for real-time updates
-        if (attempt === 1) {
-          const { data: authData } = supabase.auth.onAuthStateChange((event, session) => {
-            if (!mounted) return;
-            
-            console.log('🔔 Auth state change:', event, 'User:', session?.user?.email);
-            
-            if (session?.user) {
-              const sessionEmail = session.user.email?.toLowerCase().trim();
-              const requestEmail = accountRequest.email.toLowerCase().trim();
-              
-              console.log('📧 [AUTH LISTENER] Comparing emails:', { 
-                sessionEmail, 
-                requestEmail, 
-                match: sessionEmail === requestEmail 
-              });
-              
-              if (sessionEmail === requestEmail) {
-                console.log('✅ [AUTH LISTENER] User authenticated - marking as already activated');
-                setIsCurrentlyAuthenticated(true);
-                setIsAlreadyActivated(true);
-                setCheckingAuthUser(false);
-              }
-            }
-          });
-          
-          authSubscription = authData.subscription;
-        }
+        // Strategy 1: Check getSession()
+        const { data: { session: sessionData } } = await supabase.auth.getSession();
+        console.log(`📊 [ATTEMPT ${attempt}] getSession result:`, sessionData ? 'Found' : 'Not found', sessionData?.user?.email);
         
-        // ✅ LAYER 1: Check if user is currently authenticated
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        console.log('🔍 [SESSION CHECK] Session found:', !!session, 'User:', session?.user?.email);
-        
-        if (session?.user) {
-          const sessionEmail = session.user.email?.toLowerCase().trim();
+        if (sessionData?.user) {
+          const sessionEmail = sessionData.user.email?.toLowerCase().trim();
           const requestEmail = accountRequest.email.toLowerCase().trim();
           
-          console.log('📧 [SESSION CHECK] Comparing emails:', { 
-            sessionEmail, 
-            requestEmail, 
-            match: sessionEmail === requestEmail 
-          });
+          console.log(`📧 [ATTEMPT ${attempt}] Email comparison:`, { sessionEmail, requestEmail, match: sessionEmail === requestEmail });
           
           if (sessionEmail === requestEmail) {
-            console.log('✅ [SESSION CHECK] User is currently authenticated - no activation needed');
+            console.log(`✅ [ATTEMPT ${attempt}] Session found - user is authenticated!`);
             setIsCurrentlyAuthenticated(true);
             setIsAlreadyActivated(true);
             setCheckingAuthUser(false);
-            return; // Exit early
-          }
-        }
-        
-        // ✅ RETRY LOGIC: If no session and first attempt, retry after delay
-        if (!session && attempt === 1) {
-          console.log('⏳ No session detected on first check, retrying in 1 second...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          if (mounted) {
-            await checkAuthUserStatus(2); // Retry once
             return;
           }
         }
         
-        console.log('➡️ No active session, continuing with profile and auth checks...');
+        // Strategy 2: Check getUser() as fallback
+        const { data: { user: userData } } = await supabase.auth.getUser();
+        console.log(`👤 [ATTEMPT ${attempt}] getUser result:`, userData ? 'Found' : 'Not found', userData?.email);
         
-        // ✅ LAYER 2: Check if profile is already active
+        if (userData) {
+          const userEmail = userData.email?.toLowerCase().trim();
+          const requestEmail = accountRequest.email.toLowerCase().trim();
+          
+          console.log(`📧 [ATTEMPT ${attempt}] User email comparison:`, { userEmail, requestEmail, match: userEmail === requestEmail });
+          
+          if (userEmail === requestEmail) {
+            console.log(`✅ [ATTEMPT ${attempt}] User found - authenticated!`);
+            setIsCurrentlyAuthenticated(true);
+            setIsAlreadyActivated(true);
+            setCheckingAuthUser(false);
+            return;
+          }
+        }
+        
+        // Retry logic with exponential backoff
+        if (attempt < MAX_RETRIES) {
+          const delayMs = attempt * 1500; // 1.5s, 3s, 4.5s
+          console.log(`⏳ [ATTEMPT ${attempt}] No session found, retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          if (mounted) {
+            return await checkAuthUserStatus(attempt + 1);
+          }
+        }
+        
+        console.log(`➡️ [ATTEMPT ${attempt}] No active session after ${MAX_RETRIES} attempts, checking profile...`);
+        
+        // Check if profile is already active
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('account_status')
           .eq('email', accountRequest.email.toLowerCase().trim())
           .single();
         
+        console.log('📋 Profile check:', { status: profileData?.account_status, error: profileError?.message });
+        
         if (!profileError && profileData?.account_status === 'active') {
-          console.log('✅ Profile already active - no activation needed');
+          console.log('✅ Profile is active - showing already activated state');
           setIsAlreadyActivated(true);
           setCheckingAuthUser(false);
-          return; // Exit early - no need to check Auth user
+          return;
         }
         
-        // ✅ LAYER 3: Check if Auth user exists
+        // Check if Auth user exists
         const { data, error } = await supabase.functions.invoke('check-user-existence', {
           body: { email: accountRequest.email }
         });
@@ -141,6 +154,8 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
 
         const exists = data?.userExists || false;
         setAuthUserExists(exists);
+        
+        console.log('🔐 Auth user exists:', exists);
 
         // Determine if first-time activation needed
         const hasIncompatibleHash = 
@@ -150,14 +165,14 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
         const needsFirstTimeActivation = hasIncompatibleHash && !exists;
         setIsFirstTimeActivation(needsFirstTimeActivation);
         
-        console.log('✅ Auth user check complete:', {
+        console.log('✅ Auth check complete:', {
           authUserExists: exists,
           hasCompatibleHash: !hasIncompatibleHash,
           isFirstTimeActivation: needsFirstTimeActivation
         });
 
       } catch (error: any) {
-        console.error('❌ Failed to check Auth user:', error);
+        console.error('❌ Failed to check auth user:', error);
         
         setCheckError(error.message || 'Failed to verify account status');
         toast.error(

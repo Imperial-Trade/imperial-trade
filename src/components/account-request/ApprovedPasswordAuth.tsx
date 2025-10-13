@@ -127,16 +127,23 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
         // Check if profile is already active
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('account_status')
+          .select('account_status, email')
           .eq('email', accountRequest.email.toLowerCase().trim())
-          .single();
+          .maybeSingle();
         
-        console.log('📋 Profile check:', { status: profileData?.account_status, error: profileError?.message });
+        console.log('📋 [PROFILE CHECK] Email:', accountRequest.email);
+        console.log('📋 [PROFILE CHECK] Profile data:', profileData);
+        console.log('📋 [PROFILE CHECK] Profile error:', profileError);
+        console.log('📋 [PROFILE CHECK] Account status:', profileData?.account_status);
         
         if (!profileError && profileData?.account_status === 'active') {
-          console.log('✅ Profile is active - showing already activated state');
+          console.log('✅ [PROFILE CHECK] Profile is active - setting isAlreadyActivated = true');
           setIsAlreadyActivated(true);
           return;
+        } else {
+          console.log('⚠️ [PROFILE CHECK] Profile NOT active or error occurred');
+          console.log('⚠️ [PROFILE CHECK] Status:', profileData?.account_status);
+          console.log('⚠️ [PROFILE CHECK] Error:', profileError?.message);
         }
         
         // Check if Auth user exists

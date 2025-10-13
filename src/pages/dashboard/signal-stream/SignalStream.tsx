@@ -190,6 +190,8 @@ export default function SignalStream() {
     try {
       const result = await tradingApiService.createAlert(dto, user?.id || '');
       if (result.success) {
+        // ✅ BUG #20 FIX: Dispatch cache invalidation event to force fresh fetch
+        window.dispatchEvent(new Event('invalidate-signal-cache'));
         await refreshAlerts();
         return true;
       }

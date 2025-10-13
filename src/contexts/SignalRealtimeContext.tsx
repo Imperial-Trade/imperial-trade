@@ -172,36 +172,23 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       // Query signals
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
+      // ✅ TWO-QUERY APPROACH: Query 1 - Fetch alerts WITHOUT JOIN
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
-        .select(`
-          *,
-          creator:profiles(
-            id,
-            display_name,
-            role,
-            avatar_url,
-            user_type,
-            access_level
-          )
-        `)
+        .select('*')
         .in('user_id', educatorUserIds)
         .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // ✅ FIX #3: Log query results
-      console.log('🔍 [DEBUG] Query results:', {
+      console.log('🔍 [Step 1] Fetched alerts:', {
         success: !alertsError,
         count: alertsData?.length || 0,
-        error: alertsError?.message,
-        firstSignalId: alertsData?.[0]?.id?.substring(0, 8) + '...' || 'none',
-        firstSignalStatus: alertsData?.[0]?.status || 'n/a',
-        firstSignalAsset: alertsData?.[0]?.asset_name || 'n/a'
+        error: alertsError?.message
       });
 
       if (alertsError) {
-        console.error('❌ Error fetching signals:', {
+        console.error('❌ Error fetching alerts:', {
           message: alertsError.message,
           details: alertsError.details,
           hint: alertsError.hint,
@@ -211,20 +198,62 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         return;
       }
 
-      // ✅ FIX #2: NEVER cache empty results
       if (!alertsData || alertsData.length === 0) {
-        console.log('⚠️ No signals found - NOT caching empty result');
+        console.log('ℹ️ No signals found');
         unstable_batchedUpdates(() => {
           setSignals([]);
           setLastUpdated(new Date());
           setError(null);
         });
-        // ❌ DO NOT cache empty results to prevent cache poisoning
         return;
       }
 
-      // Process signals with any type to avoid strict type checking
-      const processedSignals = alertsData as any[];
+      // ✅ TWO-QUERY APPROACH: Query 2 - Fetch creator profiles separately
+      const uniqueUserIds = [...new Set(alertsData.map(a => a.user_id))];
+
+      console.log('🔍 [Step 2] Fetching profiles for user IDs:', uniqueUserIds);
+
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, role, avatar_url, user_type, access_level')
+        .in('id', uniqueUserIds);
+
+      if (profilesError) {
+        console.warn('⚠️ Error fetching profiles (continuing with default creators):', profilesError);
+      }
+
+      console.log('🔍 [Step 3] Fetched profiles:', {
+        count: profilesData?.length || 0,
+        profiles: profilesData?.map(p => ({ id: p.id, name: p.display_name }))
+      });
+
+      // ✅ TWO-QUERY APPROACH: Step 3 - Merge profiles into alerts
+      const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+      const enrichedAlerts = alertsData.map(alert => ({
+        ...alert,
+        creator: profileMap.get(alert.user_id) || {
+          id: alert.user_id,
+          display_name: 'Unknown Educator',
+          role: 'user',
+          avatar_url: null,
+          user_type: null,
+          access_level: null
+        }
+      }));
+
+      console.log('✅ [Step 4] Enriched alerts with creator data:', {
+        total: enrichedAlerts.length,
+        withCreators: enrichedAlerts.filter(a => a.creator.display_name !== 'Unknown Educator').length,
+        sample: enrichedAlerts[0] ? {
+          id: enrichedAlerts[0].id,
+          asset: enrichedAlerts[0].asset_name,
+          creator: enrichedAlerts[0].creator.display_name
+        } : null
+      });
+
+      // Process enriched signals
+      const processedSignals = enrichedAlerts as any[];
 
       console.log('✅ Successfully fetched signals:', {
         total: processedSignals.length,

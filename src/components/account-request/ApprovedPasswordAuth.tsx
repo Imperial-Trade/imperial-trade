@@ -65,7 +65,6 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
           console.log('✅ [AUTH LISTENER] Authenticated user detected - marking as already activated');
           setIsCurrentlyAuthenticated(true);
           setIsAlreadyActivated(true);
-          setCheckingAuthUser(false);
         }
       }
     });
@@ -91,7 +90,6 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
             console.log(`✅ [ATTEMPT ${attempt}] Session found - user is authenticated!`);
             setIsCurrentlyAuthenticated(true);
             setIsAlreadyActivated(true);
-            setCheckingAuthUser(false);
             return;
           }
         }
@@ -110,7 +108,6 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
             console.log(`✅ [ATTEMPT ${attempt}] User found - authenticated!`);
             setIsCurrentlyAuthenticated(true);
             setIsAlreadyActivated(true);
-            setCheckingAuthUser(false);
             return;
           }
         }
@@ -139,7 +136,6 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
         if (!profileError && profileData?.account_status === 'active') {
           console.log('✅ Profile is active - showing already activated state');
           setIsAlreadyActivated(true);
-          setCheckingAuthUser(false);
           return;
         }
         

@@ -438,7 +438,7 @@ useEffect(() => {
             return prev;
           }
           
-          console.log('✅ Adding new signal with profile to list:', signalWithProfile.asset_name);
+          console.log('✅ Adding new signal with profile to list:', newRecord.asset_name);
           return [signalWithProfile, ...prev];
         });
         
@@ -446,7 +446,7 @@ useEffect(() => {
         window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
           detail: {
             signalId: signalWithProfile.id,
-            assetName: signalWithProfile.asset_name,
+            assetName: newRecord.asset_name,
             status: signalWithProfile.status
           }
         }));

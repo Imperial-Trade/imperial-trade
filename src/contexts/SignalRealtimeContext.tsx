@@ -777,11 +777,8 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           return [optimisticSignal, ...prev];
         });
         
-        // Update local cache with optimistic signal
-        const cache = localCacheRef.current;
-        if (cache.data.length > 0) {
-          cache.data = [optimisticSignal, ...cache.data];
-        }
+        // ✅ BUG #18 FIX: Update cache unconditionally (even if empty)
+        localCacheRef.current.data = [optimisticSignal, ...localCacheRef.current.data];
         
         // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
         if (!profileFetchQueueRef.current) {
@@ -947,6 +944,23 @@ lastUpdateTimestampRef.current = new Date().toISOString();
               updatedAt: newRecord.updated_at
             } : signal
           );
+          
+          // ✅ BUG #19 FIX: Synchronize cache with UPDATE changes
+          const cache = localCacheRef.current;
+          if (cache.data.length > 0) {
+            cache.data = cache.data.map(signal =>
+              signal.id === newRecord.id
+                ? {
+                    ...signal,
+                    status: newRecord.status,
+                    tpHits: newRecord.tp_hits || signal.tpHits,
+                    closeReason: newRecord.close_reason,
+                    notes: newRecord.notes,
+                    updatedAt: newRecord.updated_at
+                  }
+                : signal
+            );
+          }
           
           // ✅ HYBRID MODE: Check for new TP hits and log instant notifications
           const oldTpHits = currentSignal.tpHits || [];

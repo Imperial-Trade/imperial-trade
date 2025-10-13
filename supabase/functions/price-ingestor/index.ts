@@ -10,6 +10,9 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
+// Global map to store calculated bid/ask/mid prices for database upsert
+let symbolsWithPrices: Map<string, { bid: number; ask: number; mid: number }> | undefined;
+
 // 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
 // These thresholds deliver maximum responsiveness matching top-tier trading platforms
 const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for non-gold assets (ULTRA-SENSITIVE)
@@ -376,11 +379,55 @@ serve(async (req) => {
         continue;
       }
 
-      // Skip alert processing for mid-only prices (they're UI-only)
-      if (!hasFullData) {
-        console.log(`📊 Mid-only price for ${priceUpdate.symbol}: ${priceUpdate.price} (alerts skipped)`);
+      // ✅ CRITICAL FIX: Calculate bid/ask from mid-only prices
+      let bidPrice: number;
+      let askPrice: number;
+      let currentPrice: number;
+
+      if (hasFullData) {
+        // Full bid/ask data available (most accurate)
+        bidPrice = priceUpdate.bid!;
+        askPrice = priceUpdate.ask!;
+        currentPrice = (bidPrice + askPrice) / 2;
+        console.log(`📊 Full price data for ${priceUpdate.symbol}: Bid=${bidPrice}, Ask=${askPrice}, Mid=${currentPrice}`);
+      } else if (typeof priceUpdate.price === 'number') {
+        // ✅ Mid-only price - ESTIMATE bid/ask from mid
+        currentPrice = priceUpdate.price;
+        
+        // Asset-specific spread estimation (based on institutional market data)
+        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
+        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        
+        let halfSpread: number;
+        if (isGold) {
+          halfSpread = 0.05;  // Gold: typical $0.10 total spread ($0.05 per side)
+        } else if (isBitcoin) {
+          halfSpread = 2.50;  // Bitcoin: typical ~$5 total spread
+        } else {
+          halfSpread = 0.00005;  // Forex: typical ~0.5-1 pip
+        }
+        
+        bidPrice = currentPrice - halfSpread;
+        askPrice = currentPrice + halfSpread;
+        
+        console.log(`⚠️ Mid-price fallback for ${priceUpdate.symbol}: ${currentPrice} (estimated bid=${bidPrice}, ask=${askPrice})`);
+      } else {
+        // No usable price data - skip THIS symbol only
+        console.log(`❌ No price data for ${priceUpdate.symbol} - skipping`);
         continue;
       }
+
+      // ✅ Store calculated prices for database upsert (used in CHANGE #4)
+      if (!symbolsWithPrices) {
+        symbolsWithPrices = new Map();
+      }
+      symbolsWithPrices.set(priceUpdate.symbol, {
+        bid: bidPrice,
+        ask: askPrice,
+        mid: currentPrice
+      });
+
+      // ✅ NOW PROCEED WITH ALERT PROCESSING (previously skipped by continue statement)
 
       // Enhanced NaN validation for full data
       if (!isFinite(priceUpdate.bid) || !isFinite(priceUpdate.ask) ||
@@ -395,8 +442,8 @@ serve(async (req) => {
         const { data: alertResults, error: alertError } = await supabaseClient
           .rpc('process_price_alerts_enhanced_v2', {
             p_symbol: priceUpdate.symbol,
-            p_current_bid: priceUpdate.bid,
-            p_current_ask: priceUpdate.ask
+            p_current_bid: bidPrice,
+            p_current_ask: askPrice
           });
 
         if (alertError) {
@@ -556,53 +603,32 @@ serve(async (req) => {
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
     const upsertPromises = prices.map(async (priceUpdate) => {
-      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
-      const hasMidOnly = typeof priceUpdate.price === 'number' && !hasFullData;
+      // ✅ Get calculated prices from Map (stored in CHANGE #2)
+      const priceData = symbolsWithPrices?.get(priceUpdate.symbol);
       
-      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
-        console.log(`📊 Upsert skipped for invalid price: ${priceUpdate.symbol}`);
-        return { skipped: true, reason: 'invalid_data', symbol: priceUpdate.symbol };
+      if (!priceData) {
+        console.log(`⚠️ No price data calculated for ${priceUpdate.symbol} - skipping upsert`);
+        return { skipped: true, reason: 'no_calculated_data', symbol: priceUpdate.symbol };
       }
-
+      
       try {
-        if (hasFullData) {
-          // Full bid/ask data available
-          const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
-          console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
-          
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
-            p_symbol: priceUpdate.symbol,
-            p_bid: priceUpdate.bid,
-            p_ask: priceUpdate.ask,
-            p_mid: mid,
-            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
-          });
-          
-          if (error) {
-            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
-            return { success: false, error: error.message, symbol: priceUpdate.symbol };
-          }
-          
-          return { success: true, symbol: priceUpdate.symbol, type: 'full_data' };
-        } else {
-          // Mid-only data from Digital Ocean WebSocket
-          console.log(`💾 Upserting mid-only ${priceUpdate.symbol}: mid=${priceUpdate.price}`);
-          
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
-            p_symbol: priceUpdate.symbol,
-            p_bid: null,
-            p_ask: null,
-            p_mid: priceUpdate.price,
-            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
-          });
-          
-          if (error) {
-            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
-            return { success: false, error: error.message, symbol: priceUpdate.symbol };
-          }
-          
-          return { success: true, symbol: priceUpdate.symbol, type: 'mid_only' };
+        // ✅ ALWAYS provide estimated bid/ask (NEVER NULL)
+        console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceData.bid}, ask=${priceData.ask}, mid=${priceData.mid}`);
+        
+        const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
+          p_symbol: priceUpdate.symbol,
+          p_bid: priceData.bid,      // ✅ Always defined (estimated if needed)
+          p_ask: priceData.ask,      // ✅ Always defined (estimated if needed)
+          p_mid: priceData.mid,      // ✅ Always defined
+          p_timestamp: priceUpdate.timestamp || new Date().toISOString()
+        });
+        
+        if (error) {
+          console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
+          return { success: false, error: error.message, symbol: priceUpdate.symbol };
         }
+        
+        return { success: true, symbol: priceUpdate.symbol };
       } catch (error) {
         console.error(`❌ Upsert exception for ${priceUpdate.symbol}:`, error);
         return { success: false, error: (error as Error).message, symbol: priceUpdate.symbol };

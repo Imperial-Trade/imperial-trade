@@ -464,11 +464,25 @@ serve(async (req) => {
             console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${bidPrice}`);
             
             try {
-              // ✅ Use RPC function with proper authorization
+              // ✅ FIX: Fetch user_id from trade_alerts table
+              const { data: signalData, error: fetchError } = await supabaseClient
+                .from('trade_alerts')
+                .select('user_id, asset_name')
+                .eq('id', alert.signal_id)
+                .single();
+              
+              if (fetchError || !signalData) {
+                console.error(`❌ Failed to fetch signal ${alert.signal_id}:`, fetchError);
+                continue;
+              }
+              
+              console.log(`🔍 Fetched user_id for signal ${alert.signal_id}: ${signalData.user_id}`);
+              
+              // ✅ Now call RPC with CORRECT user_id
               const { data: closeResult, error: closeError } = await supabaseClient
                 .rpc('close_trade_alert', {
                   p_alert_id: alert.signal_id,
-                  p_user_id: alert.user_id,
+                  p_user_id: signalData.user_id,
                   p_close_reason: 'stop_loss'
                 });
               
@@ -488,8 +502,8 @@ serve(async (req) => {
                 symbol: priceUpdate.symbol,
                 timestamp: priceUpdate.timestamp || new Date().toISOString(),
                 priority_level: 4,
-                user_id: alert.user_id || '',
-                asset_name: alert.asset_name || priceUpdate.symbol
+                user_id: signalData.user_id,
+                asset_name: signalData.asset_name || priceUpdate.symbol
               });
               
             } catch (error) {

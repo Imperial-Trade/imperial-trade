@@ -424,11 +424,11 @@ useEffect(() => {
           .eq('id', newRecord.user_id)
           .single();
         
-        // Merge profile data with signal
-        const signalWithProfile: TradeAlertWithProfile = {
+        // Merge profile data with signal (newRecord is already in DB format)
+        const signalWithProfile = {
           ...newRecord,
           profiles: profileData || null
-        };
+        } as TradeAlertWithProfile;
         
         // Add new signal to the top of the list
         setSignals(prev => {
@@ -442,12 +442,12 @@ useEffect(() => {
           return [signalWithProfile, ...prev];
         });
         
-        // Dispatch event for new signal
+        // Dispatch event for new signal (use DB field name)
         window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
           detail: {
             signalId: signalWithProfile.id,
-            assetName: newRecord.asset_name,
-            status: signalWithProfile.status
+            assetName: newRecord.asset_name, // DB field name
+            status: newRecord.status
           }
         }));
       } catch (error) {

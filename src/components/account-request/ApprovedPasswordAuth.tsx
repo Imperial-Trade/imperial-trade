@@ -39,12 +39,43 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   // Activation mode
   const [isFirstTimeActivation, setIsFirstTimeActivation] = useState(false);
   const [authUserExists, setAuthUserExists] = useState(false);
+  const [isAlreadyActivated, setIsAlreadyActivated] = useState(false);
+  const [isCurrentlyAuthenticated, setIsCurrentlyAuthenticated] = useState(false);
 
   // Check Auth user status on mount
   useEffect(() => {
     const checkAuthUserStatus = async () => {
       try {
         console.log('🔍 Checking Auth user status for:', accountRequest.email);
+        
+        // ✅ LAYER 1: Check if user is currently authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const sessionEmail = session.user.email?.toLowerCase().trim();
+          const requestEmail = accountRequest.email.toLowerCase().trim();
+          
+          if (sessionEmail === requestEmail) {
+            console.log('✅ User is currently authenticated - no activation needed');
+            setIsCurrentlyAuthenticated(true);
+            setIsAlreadyActivated(true);
+            setCheckingAuthUser(false);
+            return; // Exit early
+          }
+        }
+        
+        // ✅ LAYER 2: Check if profile is already active
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('account_status')
+          .eq('email', accountRequest.email.toLowerCase().trim())
+          .single();
+        
+        if (!profileError && profileData?.account_status === 'active') {
+          console.log('✅ Profile already active - no activation needed');
+          setIsAlreadyActivated(true);
+          setCheckingAuthUser(false);
+          return; // Exit early - no need to check Auth user
+        }
         
         // ✅ FIX #1 & #2: Correct function name and response field
         const { data, error } = await supabase.functions.invoke('check-user-existence', {
@@ -297,6 +328,110 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
           </Button>
         </CardContent>
       </Card>
+    );
+  }
+
+  // ALREADY ACTIVATED STATE
+  if (isAlreadyActivated) {
+    return (
+      <>
+        {showConfetti && (
+          <Confetti
+            width={width}
+            height={height}
+            recycle={false}
+            numberOfPieces={300}
+            gravity={0.2}
+          />
+        )}
+
+        <Card className="glass-effect border-green-500/30 shadow-2xl">
+          <CardHeader className="text-center space-y-4 pb-6">
+            <div className="mx-auto w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-12 h-12 text-green-400" />
+            </div>
+            
+            <div className="space-y-2">
+              <CardTitle className="text-3xl font-bold text-white">
+                Account Already Activated!
+              </CardTitle>
+              <p className="text-green-400 text-lg font-semibold">
+                {isCurrentlyAuthenticated 
+                  ? `You're already signed in, ${accountRequest.full_name}! 🎉`
+                  : `Welcome back, ${accountRequest.full_name}! ✨`
+                }
+              </p>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 space-y-4 text-center">
+              <p className="text-white text-lg">
+                {isCurrentlyAuthenticated 
+                  ? 'Your account is active and you are currently signed in!'
+                  : 'Your account is already active and ready to use!'
+                }
+              </p>
+              <p className="text-gray-300 text-sm">
+                {isCurrentlyAuthenticated 
+                  ? 'You can access your dashboard right away.'
+                  : 'No further activation is needed. Please sign in to access your dashboard.'
+                }
+              </p>
+            </div>
+
+            <div className="bg-surface/20 rounded-lg p-4 space-y-3 border border-white/10">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Email:</span>
+                <span className="text-white font-medium">{accountRequest.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Status:</span>
+                <span className="text-green-400 font-medium">✓ Active</span>
+              </div>
+              {isCurrentlyAuthenticated && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Session:</span>
+                  <span className="text-green-400 font-medium">✓ Authenticated</span>
+                </div>
+              )}
+            </div>
+
+            {isCurrentlyAuthenticated ? (
+              <Button
+                onClick={() => navigate('/dashboard/home')}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Go to Dashboard
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate('/signin')}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Sign In to Your Account
+              </Button>
+            )}
+
+            {isCurrentlyAuthenticated && (
+              <p className="text-center text-sm text-gray-400">
+                Not you?{' '}
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate('/signin');
+                  }}
+                  className="text-green-400 hover:text-green-300 underline"
+                >
+                  Sign out and sign in with different account
+                </button>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </>
     );
   }
 

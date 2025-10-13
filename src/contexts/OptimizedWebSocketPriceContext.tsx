@@ -365,83 +365,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // CORE WEBSOCKET CONNECTION: Establish realtime channel with price broadcasts
   const connectToRealtimeChannel = useCallback(() => {
-    console.log('🔌 [Realtime] Connecting to market_prices table for instant updates...');
+    // ⚠️  PHASE 5: NO REALTIME CONNECTION - Database polling only
+    console.log('ℹ️  [Connection] Using database polling for prices (no realtime)');
+    channelRef.current = null;
     
-    const channel = supabase
-      .channel('market-prices-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'market_prices'
-        },
-        (payload) => {
-          const newPrice = payload.new as any;
-          const now = Date.now();
-          
-          console.log(`📡 [Realtime Price] ${newPrice.symbol}: $${newPrice.mid || newPrice.ask || newPrice.bid}`);
-          
-          // Extract price with fallback
-          const price = newPrice.mid || newPrice.ask || newPrice.bid;
-          
-          if (price) {
-            // Calculate change if we have old price
-            const oldPrice = internalPrices[newPrice.symbol]?.price || price;
-            const change = price - oldPrice;
-            const changePercent = oldPrice ? (change / oldPrice) * 100 : 0;
-            
-            // Instant update
-            const priceData = {
-              symbol: newPrice.symbol,
-              price: price,
-              bid: newPrice.bid,
-              ask: newPrice.ask,
-              mid: newPrice.mid,
-              change: change,
-              changePercent: changePercent,
-              timestamp: newPrice.timestamp,
-              receivedAt: now
-            };
-            
-            setInternalPrices(prev => ({
-              ...prev,
-              [newPrice.symbol]: priceData
-            }));
-            
-            setPrices(prev => ({
-              ...prev,
-              [newPrice.symbol]: priceData
-            }));
-            
-            // Update timestamps
-            arrivalTimestamps.current.set(newPrice.symbol, now);
-            priceUpdateTimestamps.current.set(newPrice.symbol, now);
-            lastDatabaseTimestampRef.current[newPrice.symbol] = new Date(newPrice.timestamp).getTime();
-            
-            setLastUpdated(new Date());
-            setConnectionStatus('connected');
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log(`📡 [Realtime] Subscription status: ${status}`);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [Realtime] Connected to market_prices - instant price updates enabled');
-          setConnectionStatus('connected');
-        } else if (status === 'CLOSED') {
-          console.warn('⚠️ [Realtime] Connection closed - switching to polling fallback');
-          setConnectionStatus('polling');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [Realtime] Connection error - switching to polling fallback');
-          setConnectionStatus('error');
-        }
-      });
-    
-    channelRef.current = channel;
-    return channel;
-  }, [internalPrices]);
+    // Set status to 'polling' to reflect actual architecture
+    setConnectionStatus('polling');
+  }, []);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
   const enableFallbackMechanisms = useCallback(() => {
@@ -1251,21 +1181,42 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     isPriceSubscriptionAllowedRef.current = isPriceSubscriptionAllowed;
   }, [isPriceSubscriptionAllowed]);
 
-  // 🎯 PHASE 4: Smart Database Polling with Strict Conditions
+  // 🔄 Regular 500ms Database Polling for Active Subscriptions
+  useEffect(() => {
+    const symbolsArray = Array.from(subscriptionsRef.current.keys());
+    
+    // Skip if no subscriptions or not in polling mode
+    if (symbolsArray.length === 0 || connectionStatus !== 'polling') {
+      return;
+    }
+
+    console.log('🔄 [Database Polling] Starting 500ms polling for:', symbolsArray);
+    
+    // Poll every 500ms for price updates
+    const pollInterval = setInterval(async () => {
+      await fetchPricesFromDatabase(symbolsArray);
+    }, 500); // 500ms interval - optimal for live price updates
+
+    return () => {
+      console.log('🔄 [Database Polling] Stopped polling');
+      clearInterval(pollInterval);
+    };
+  }, [connectionStatus, fetchPricesFromDatabase]);
+
+  // 🚨 Emergency Database Polling (Fallback for broken connections)
   useEffect(() => {
     const symbolsArray = Array.from(subscriptionsRef.current.keys());
     if (symbolsArray.length === 0) return;
 
-    // 🎯 PHASE 2: STRICT CONDITIONS - Only poll if ALL these are met
+    // Emergency trigger only after 120 seconds (2 minutes) of no updates
     const now = Date.now();
     const timeSinceLastUpdate = lastUpdated ? now - lastUpdated.getTime() : Infinity;
-    // Emergency trigger only after 120 seconds (2 minutes) of no updates
     const isBroadcastStale = timeSinceLastUpdate > 120000;
     const isConnectionBroken = connectionStatus === 'error' || connectionStatus === 'disconnected';
     
-    // Only enable polling in extreme emergency when broadcast is completely dead
+    // Only enable emergency polling when connection is completely dead
     if (isConnectionBroken && isBroadcastStale && symbolsArray.length > 0) {
-      console.log('🚨 PHASE 2: Emergency database polling activated (broadcast stale > 2 minutes)');
+      console.log('🚨 Emergency database polling activated (broadcast stale > 2 minutes)');
       
       const pollInterval = setInterval(async () => {
         try {

@@ -3949,7 +3949,7 @@ export type Database = {
       }
       check_account_request_rate_limit: {
         Args: { p_email: string } | { p_email: string; p_ip_address?: string }
-        Returns: Json
+        Returns: boolean
       }
       check_alert_cooldown: {
         Args: {

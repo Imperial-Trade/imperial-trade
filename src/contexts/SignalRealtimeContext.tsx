@@ -780,6 +780,23 @@ lastUpdateTimestampRef.current = new Date().toISOString();
         // ✅ BUG #18 FIX: Update cache unconditionally (even if empty)
         localCacheRef.current.data = [optimisticSignal, ...localCacheRef.current.data];
         
+        // ✅ BUG #24 FIX: Instant in-app notification for new signal creation
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'signal_created',
+            title: `🚨 New ${newRecord.trade_type?.toUpperCase()} Signal`,
+            message: `${newRecord.asset_name} at $${newRecord.entry_price}`,
+            signalId: newRecord.id,
+            assetName: newRecord.asset_name,
+            authorName: optimisticSignal.creator.display_name || 'Educator',
+            priority: 'high',
+            autoRemove: true,
+            duration: 8000
+          });
+          
+          console.log(`🔔 [In-App] New signal notification dispatched - ${newRecord.asset_name}`);
+        }
+        
         // ✅ BUG FIX #15: Add to profile fetch queue instead of individual fetch
         if (!profileFetchQueueRef.current) {
           profileFetchQueueRef.current = [];

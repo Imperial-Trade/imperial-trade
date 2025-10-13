@@ -78,15 +78,20 @@ serve(async (req) => {
 
           // Handle the triggered alert
           if (alert.alert_type === 'stop_loss') {
-            // Close the signal due to stop loss
-            await supabase
-              .from('trade_alerts')
-              .update({ 
-                status: 'closed', 
-                close_reason: 'stop_loss',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', alert.signal_id);
+            // Close the signal via RPC (proper security)
+            console.log(`🔒 Closing signal ${alert.signal_id} via RPC for user ${(alert.trade_alerts as any).user_id}`);
+            
+            const { data: closeResult, error: closeError } = await supabase.rpc('close_trade_alert', {
+              p_alert_id: alert.signal_id,
+              p_user_id: (alert.trade_alerts as any).user_id,
+              p_close_reason: 'stop_loss'
+            });
+
+            if (closeError) {
+              console.error('❌ Failed to close signal via RPC:', closeError);
+            } else {
+              console.log('✅ Signal closed via RPC:', closeResult);
+            }
           } else if (alert.alert_type.startsWith('take_profit_')) {
             // Add TP hit to the signal
             const tpLevel = parseInt(alert.alert_type.replace('take_profit_', ''));
@@ -108,6 +113,19 @@ serve(async (req) => {
             }
           }
 
+          // Fetch profile data for rich notifications
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url, user_type')
+            .eq('id', (alert.trade_alerts as any).user_id)
+            .single();
+
+          console.log(`📬 Preparing notification for user ${(alert.trade_alerts as any).user_id}:`, {
+            provider: profile?.display_name,
+            alertType: alert.alert_type,
+            asset: (alert.trade_alerts as any).asset_name
+          });
+
           // Send notification about the triggered alert
           const notificationPayload = {
             notifications: [{
@@ -121,7 +139,10 @@ serve(async (req) => {
               target_price: alert.target_price,
               triggered_price: currentPrice,
               status: (alert.trade_alerts as any).status,
-              author_name: 'Price Monitor',
+              author_name: profile?.display_name || 'Price Monitor',
+              provider_name: profile?.display_name || 'Unknown Educator',
+              provider_avatar_url: profile?.avatar_url,
+              provider_type: profile?.user_type || 'educator',
               delivery_channels: ['in_app', 'push'],
               include_creator: true
             }]

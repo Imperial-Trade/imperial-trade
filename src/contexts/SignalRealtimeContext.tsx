@@ -411,31 +411,56 @@ useEffect(() => {
       event: 'INSERT',
       schema: 'public',
       table: 'trade_alerts'
-    }, (payload) => {
+    }, async (payload) => {
       console.log('🆕 Real-time INSERT detected:', payload);
       
       const newRecord = payload.new as any;
       
-      // Add new signal to the top of the list
-      setSignals(prev => {
-        // Check if signal already exists (prevent duplicates)
-        if (prev.some(s => s.id === newRecord.id)) {
-          console.log('⚠️ Signal already exists, skipping INSERT');
-          return prev;
-        }
+      // BUG #8 FIX: Fetch creator profile data for the new signal
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url, role, user_type, access_level')
+          .eq('id', newRecord.user_id)
+          .single();
         
-        console.log('✅ Adding new signal to list:', newRecord.asset_name);
-        return [newRecord, ...prev];
-      });
-      
-      // Dispatch event for new signal
-      window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
-        detail: {
-          signalId: newRecord.id,
-          assetName: newRecord.asset_name,
-          status: newRecord.status
-        }
-      }));
+        // Merge profile data with signal
+        const signalWithProfile: TradeAlertWithProfile = {
+          ...newRecord,
+          profiles: profileData || null
+        };
+        
+        // Add new signal to the top of the list
+        setSignals(prev => {
+          // Check if signal already exists (prevent duplicates)
+          if (prev.some(s => s.id === signalWithProfile.id)) {
+            console.log('⚠️ Signal already exists, skipping INSERT');
+            return prev;
+          }
+          
+          console.log('✅ Adding new signal with profile to list:', signalWithProfile.asset_name);
+          return [signalWithProfile, ...prev];
+        });
+        
+        // Dispatch event for new signal
+        window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
+          detail: {
+            signalId: signalWithProfile.id,
+            assetName: signalWithProfile.asset_name,
+            status: signalWithProfile.status
+          }
+        }));
+      } catch (error) {
+        console.error('❌ Failed to fetch profile for new signal:', error);
+        
+        // Fallback: Add signal without profile
+        setSignals(prev => {
+          if (prev.some(s => s.id === newRecord.id)) {
+            return prev;
+          }
+          return [newRecord, ...prev];
+        });
+      }
     })
     .on('postgres_changes', {
       event: 'UPDATE',

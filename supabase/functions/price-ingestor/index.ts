@@ -479,6 +479,20 @@ serve(async (req) => {
               
               console.log(`✅ Signal ${alert.signal_id} closed via RPC due to stop loss`);
               
+              // BUG #6 FIX: Broadcast signal closure immediately to UI
+              try {
+                window.dispatchEvent(new CustomEvent('signal-closed', {
+                  detail: {
+                    signalId: alert.signal_id,
+                    closeReason: 'stop_loss',
+                    closedAt: new Date().toISOString()
+                  }
+                }));
+                console.log(`📡 Broadcasted signal closure event for ${alert.signal_id}`);
+              } catch (broadcastError) {
+                console.warn('⚠️ Failed to broadcast signal closure:', broadcastError);
+              }
+              
               // ✅ Queue notification
               notificationTriggers.push({
                 signal_id: alert.signal_id,

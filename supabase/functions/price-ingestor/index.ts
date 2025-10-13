@@ -429,11 +429,11 @@ serve(async (req) => {
 
       // ✅ NOW PROCEED WITH ALERT PROCESSING (previously skipped by continue statement)
 
-      // Enhanced NaN validation for full data
-      if (!isFinite(priceUpdate.bid) || !isFinite(priceUpdate.ask) ||
-          priceUpdate.bid <= 0 || priceUpdate.ask <= 0 ||
-          isNaN(priceUpdate.bid) || isNaN(priceUpdate.ask)) {
-        console.warn(`⚠️ Skipping invalid bid/ask data: ${JSON.stringify(priceUpdate)}`);
+      // ✅ FIXED: Validate CALCULATED bid/ask values (not undefined priceUpdate)
+      if (!isFinite(bidPrice) || !isFinite(askPrice) ||
+          bidPrice <= 0 || askPrice <= 0 ||
+          isNaN(bidPrice) || isNaN(askPrice)) {
+        console.warn(`⚠️ Skipping invalid calculated bid/ask: symbol=${priceUpdate.symbol}, bid=${bidPrice}, ask=${askPrice}`);
         continue;
       }
 

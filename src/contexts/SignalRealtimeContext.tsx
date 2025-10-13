@@ -176,7 +176,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         .from('trade_alerts')
         .select(`
           *,
-          creator:profiles!trade_alerts_user_id_fkey (
+          creator:profiles(
             id,
             display_name,
             role,
@@ -201,7 +201,12 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       });
 
       if (alertsError) {
-        console.error('❌ Error fetching signals:', alertsError);
+        console.error('❌ Error fetching signals:', {
+          message: alertsError.message,
+          details: alertsError.details,
+          hint: alertsError.hint,
+          code: alertsError.code
+        });
         setError(alertsError.message);
         return;
       }

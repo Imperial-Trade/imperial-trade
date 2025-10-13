@@ -851,44 +851,43 @@ lastUpdateTimestampRef.current = new Date().toISOString();
           if (isOrderActivation) {
             console.log(`🎯 ISOLATED ACTIVATION: Processing ONLY signal ${targetSignalId} - ${newRecord.asset_name}`);
             
+            // ✅ BUG #22 FIX: INSTANT activation notifications (removed setTimeout delay)
             // Dispatch activation event with signal isolation
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
-                detail: {
-                  signalId: targetSignalId,
-                  assetName: newRecord.asset_name,
-                  status: 'active',
-                  timestamp: new Date().toISOString(),
-                  priority: 'high',
-                  isolation: 'enforced'
-                }
-              }));
-              
-              // ✅ BUG FIX #4: Enhanced activation notification with logging
-              const activationNotification = {
+            window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+              detail: {
+                signalId: targetSignalId,
+                assetName: newRecord.asset_name,
+                status: 'active',
+                timestamp: new Date().toISOString(),
+                priority: 'high',
+                isolation: 'enforced'
+              }
+            }));
+            
+            // ✅ BUG #22 FIX: Instant in-app notification for limit order activation
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
                 type: 'order_activated',
                 title: `🚀 Order Activated!`,
-                message: `${newRecord.asset_name} ${newRecord.trade_type} is now ACTIVE`,
+                message: `${newRecord.asset_name} ${newRecord.trade_type.replace('_', ' ').toUpperCase()} is now ACTIVE`,
                 signalId: targetSignalId,
+                assetName: newRecord.asset_name,
+                authorName: 'System',
                 priority: 'high',
                 autoRemove: true,
-                duration: 5000
-              };
-              
-              if ((window as any).addNotification) {
-                (window as any).addNotification(activationNotification);
-                console.log('✅ [BUG FIX #4] Custom activation notification dispatched:', targetSignalId);
-              } else {
-                console.warn('⚠️ [BUG FIX #4] Custom notification system not available, using toast fallback');
-              }
-              
-              // ✅ BUG FIX #8: Always show toast as fallback
-              toast({
-                title: '📈 Order Activated',
-                description: `${newRecord.asset_name} order is now active at market price`,
+                duration: 6000
               });
-              console.log('✅ [BUG FIX #4] Toast activation notification shown:', targetSignalId);
-            }, 0);
+              console.log(`🔔 [Bug #22] Instant in-app activation notification dispatched - ${newRecord.asset_name}`);
+            } else {
+              console.warn('⚠️ [Bug #22] In-app notification system not available, using toast only');
+            }
+            
+            // ✅ BUG #22 FIX: Always show toast as reliable fallback
+            toast({
+              title: '🚀 Order Activated!',
+              description: `${newRecord.asset_name} ${newRecord.trade_type.replace('_', ' ')} is now active at market price`,
+            });
+            console.log(`✅ [Bug #22] Toast activation notification shown - ${targetSignalId}`);
           }
 
           // PHASE 7: CRITICAL - Signal isolation during closure

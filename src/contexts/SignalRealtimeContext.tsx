@@ -241,14 +241,14 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     educatorExpiry: number 
   }>({ data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 });
 
-  const refreshSignals = useCallback(async () => {
+  const refreshSignals = useCallback(async (bypassThrottle = false) => {
     // PHASE 2: Performance monitoring start
     const perfStart = performance.now();
     
     try {
-      // PHASE 3: Throttle refresh requests to reduce database load
+      // PHASE 3: Throttle refresh requests to reduce database load (unless bypassed)
       const now = Date.now();
-      if (now - lastRefreshRef.current < SIGNAL_REFRESH_THROTTLE) {
+      if (!bypassThrottle && now - lastRefreshRef.current < SIGNAL_REFRESH_THROTTLE) {
         if (isDevToolsEnabled()) {
           console.log('⏱️ Refresh throttled, using cached data');
         }
@@ -304,11 +304,20 @@ return;
       console.log('SignalRealtimeContext - Fetched educator alerts:', alertsData?.length || 0);
 
 if (!alertsData || alertsData.length === 0) {
-  console.log('SignalRealtimeContext - No educator alerts found');
+  console.log('SignalRealtimeContext - No educator alerts found, setting empty array');
+  // 🔥 CRITICAL FIX: Always initialize signals array, even when empty
   unstable_batchedUpdates(() => {
+    setSignals([]); // Initialize with empty array
     setLastUpdated(new Date());
     setError(null);
   });
+  // Update cache with empty array
+  localCacheRef.current = {
+    data: [],
+    expiry: now + LOCAL_CACHE_TTL,
+    educatorIds: educatorUserIds,
+    educatorExpiry: cache.educatorExpiry
+  };
   return;
 }
 
@@ -422,13 +431,37 @@ useEffect(() => {
           .from('profiles')
           .select('id, display_name, avatar_url, role, user_type, access_level')
           .eq('id', newRecord.user_id)
-          .single();
+          .maybeSingle(); // Use maybeSingle to avoid errors if profile not found
         
-        // Merge profile data with signal (newRecord is already in DB format)
-        const signalWithProfile = {
-          ...newRecord,
-          profiles: profileData || null
-        } as TradeAlertWithProfile;
+        // CRITICAL FIX: Transform database fields (snake_case) to TypeScript interface (camelCase)
+        const signalWithProfile: TradeAlertWithProfile = {
+          id: newRecord.id,
+          userId: newRecord.user_id,
+          assetName: newRecord.asset_name, // snake_case → camelCase
+          tradermadeSymbol: newRecord.tradermade_symbol,
+          tradeType: newRecord.trade_type,
+          entryPrice: Number(newRecord.entry_price),
+          stopLoss: Number(newRecord.stop_loss),
+          status: newRecord.status,
+          tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+          tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+          tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+          tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+          tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
+          tpHits: newRecord.tp_hits || [],
+          notes: newRecord.notes,
+          closeReason: newRecord.close_reason,
+          createdAt: newRecord.created_at,
+          updatedAt: newRecord.updated_at,
+          creator: profileData ? {
+            id: profileData.id,
+            display_name: profileData.display_name,
+            role: profileData.role,
+            avatar_url: profileData.avatar_url,
+            user_type: profileData.user_type,
+            access_level: profileData.access_level
+          } : undefined
+        };
         
         // Add new signal to the top of the list
         setSignals(prev => {
@@ -438,28 +471,20 @@ useEffect(() => {
             return prev;
           }
           
-          console.log('✅ Adding new signal with profile to list:', newRecord.asset_name);
+          console.log('✅ Adding new signal with profile to list:', signalWithProfile.assetName);
           return [signalWithProfile, ...prev];
         });
         
-        // Dispatch event for new signal (use DB field name)
+        // Dispatch event for new signal
         window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
           detail: {
             signalId: signalWithProfile.id,
-            assetName: newRecord.asset_name, // DB field name
-            status: newRecord.status
+            assetName: signalWithProfile.assetName,
+            status: signalWithProfile.status
           }
         }));
       } catch (error) {
-        console.error('❌ Failed to fetch profile for new signal:', error);
-        
-        // Fallback: Add signal without profile
-        setSignals(prev => {
-          if (prev.some(s => s.id === newRecord.id)) {
-            return prev;
-          }
-          return [newRecord, ...prev];
-        });
+        console.error('❌ Failed to process new signal INSERT:', error);
       }
     })
     .on('postgres_changes', {
@@ -530,11 +555,11 @@ useEffect(() => {
 // ============================================
 useEffect(() => {
   const handleCacheInvalidation = () => {
-    console.log('🗑️ Cache invalidation triggered - clearing local cache');
+    console.log('🗑️ Cache invalidation triggered - clearing local cache and forcing refresh');
     localCacheRef.current = { data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 };
     
-    // Force immediate refresh
-    refreshSignals();
+    // Force immediate refresh, bypassing throttle
+    refreshSignals(true);
   };
   
   window.addEventListener('invalidate-signal-cache', handleCacheInvalidation);

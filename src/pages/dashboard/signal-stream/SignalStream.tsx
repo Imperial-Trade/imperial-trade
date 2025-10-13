@@ -157,14 +157,27 @@ export default function SignalStream() {
       });
     };
     
+    const handleSignalCreated = (event: CustomEvent) => {
+      const { signalId, assetName, status } = event.detail;
+      
+      console.log('🆕 New signal created event received:', event.detail);
+      
+      toast({
+        title: '✅ Signal Created!',
+        description: `${assetName} signal is now ${status}`,
+      });
+    };
+    
     window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+    window.addEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
     
     return () => {
       window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
       window.removeEventListener('tp-hit-confirmed', handleTPHit as EventListener);
       window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+      window.removeEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
     };
   }, [toast]);
 

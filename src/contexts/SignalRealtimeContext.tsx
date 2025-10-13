@@ -19,7 +19,7 @@ import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 let educatorUserIdsCache: string[] = [];
 let educatorCacheExpiry = 0;
 const EDUCATOR_CACHE_TTL = 15 * 60 * 1000; // Extended to 15 minutes
-const LOCAL_CACHE_TTL = 5 * 60 * 1000; // 🔥 OPTIMIZED to 5 minute cache for closed signals
+const LOCAL_CACHE_TTL = 30 * 1000; // ✅ FIX: Reduced to 30 seconds for fresh data on refresh
 const SIGNAL_REFRESH_THROTTLE = 5000; // ✅ FIX #4: Reduced to 5 seconds for instant UI updates
 
 // PHASE 1: Profile cache with 5-minute TTL for instant signal rendering
@@ -400,15 +400,43 @@ console.log('🔍 DEBUG [SignalRealtimeContext] Setting signals in state:', {
 // ============================================
 
 // ============================================
-// FIX #5: Add Supabase Real-Time subscription
+// FIX #5: Add Supabase Real-Time subscription for INSERT + UPDATE
 // ============================================
 useEffect(() => {
-  if (!signals.length) return;
-
   console.log('🔌 Setting up Supabase real-time subscription...');
 
   const subscription = supabase
     .channel('trade_alerts_realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'trade_alerts'
+    }, (payload) => {
+      console.log('🆕 Real-time INSERT detected:', payload);
+      
+      const newRecord = payload.new as any;
+      
+      // Add new signal to the top of the list
+      setSignals(prev => {
+        // Check if signal already exists (prevent duplicates)
+        if (prev.some(s => s.id === newRecord.id)) {
+          console.log('⚠️ Signal already exists, skipping INSERT');
+          return prev;
+        }
+        
+        console.log('✅ Adding new signal to list:', newRecord.asset_name);
+        return [newRecord, ...prev];
+      });
+      
+      // Dispatch event for new signal
+      window.dispatchEvent(new CustomEvent('signal-created-confirmed', {
+        detail: {
+          signalId: newRecord.id,
+          assetName: newRecord.asset_name,
+          status: newRecord.status
+        }
+      }));
+    })
     .on('postgres_changes', {
       event: 'UPDATE',
       schema: 'public',
@@ -419,7 +447,7 @@ useEffect(() => {
       const newRecord = payload.new as any;
       const oldRecord = payload.old as any;
       
-      // Update local state immediately
+      // Update existing signal in place
       setSignals(prev => prev.map(signal => 
         signal.id === newRecord.id 
           ? { ...signal, ...newRecord, updatedAt: newRecord.updated_at }
@@ -470,7 +498,26 @@ useEffect(() => {
     console.log('🔌 Cleaning up Supabase subscription...');
     subscription.unsubscribe();
   };
-}, [signals.length, supabase]);
+}, []); // ✅ FIX: Empty dependency array - subscribe once on mount
+
+// ============================================
+// FIX #6: Cache Invalidation Listener
+// ============================================
+useEffect(() => {
+  const handleCacheInvalidation = () => {
+    console.log('🗑️ Cache invalidation triggered - clearing local cache');
+    localCacheRef.current = { data: [], expiry: 0, educatorIds: [], educatorExpiry: 0 };
+    
+    // Force immediate refresh
+    refreshSignals();
+  };
+  
+  window.addEventListener('invalidate-signal-cache', handleCacheInvalidation);
+  
+  return () => {
+    window.removeEventListener('invalidate-signal-cache', handleCacheInvalidation);
+  };
+}, [refreshSignals]);
 const filteredWithTimestamps = filteredAlerts.filter(newSignal => {
   const existingSignal = signals.find(s => s.id === newSignal.id);
   if (!existingSignal) return true; // New signal, keep it

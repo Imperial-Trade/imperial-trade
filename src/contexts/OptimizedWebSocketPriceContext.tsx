@@ -365,13 +365,83 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // CORE WEBSOCKET CONNECTION: Establish realtime channel with price broadcasts
   const connectToRealtimeChannel = useCallback(() => {
-    // ⚠️  PHASE 5: NO REALTIME CONNECTION - Database polling only
-    console.log('ℹ️  [Connection] Using database polling for prices (no realtime)');
-    channelRef.current = null;
+    console.log('🔌 [Realtime] Connecting to market_prices table for instant updates...');
     
-    // Set status to 'polling' to reflect actual architecture
-    setConnectionStatus('polling');
-  }, []);
+    const channel = supabase
+      .channel('market-prices-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'market_prices'
+        },
+        (payload) => {
+          const newPrice = payload.new as any;
+          const now = Date.now();
+          
+          console.log(`📡 [Realtime Price] ${newPrice.symbol}: $${newPrice.mid || newPrice.ask || newPrice.bid}`);
+          
+          // Extract price with fallback
+          const price = newPrice.mid || newPrice.ask || newPrice.bid;
+          
+          if (price) {
+            // Calculate change if we have old price
+            const oldPrice = internalPrices[newPrice.symbol]?.price || price;
+            const change = price - oldPrice;
+            const changePercent = oldPrice ? (change / oldPrice) * 100 : 0;
+            
+            // Instant update
+            const priceData = {
+              symbol: newPrice.symbol,
+              price: price,
+              bid: newPrice.bid,
+              ask: newPrice.ask,
+              mid: newPrice.mid,
+              change: change,
+              changePercent: changePercent,
+              timestamp: newPrice.timestamp,
+              receivedAt: now
+            };
+            
+            setInternalPrices(prev => ({
+              ...prev,
+              [newPrice.symbol]: priceData
+            }));
+            
+            setPrices(prev => ({
+              ...prev,
+              [newPrice.symbol]: priceData
+            }));
+            
+            // Update timestamps
+            arrivalTimestamps.current.set(newPrice.symbol, now);
+            priceUpdateTimestamps.current.set(newPrice.symbol, now);
+            lastDatabaseTimestampRef.current[newPrice.symbol] = new Date(newPrice.timestamp).getTime();
+            
+            setLastUpdated(new Date());
+            setConnectionStatus('connected');
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 [Realtime] Subscription status: ${status}`);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [Realtime] Connected to market_prices - instant price updates enabled');
+          setConnectionStatus('connected');
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ [Realtime] Connection closed - switching to polling fallback');
+          setConnectionStatus('polling');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [Realtime] Connection error - switching to polling fallback');
+          setConnectionStatus('error');
+        }
+      });
+    
+    channelRef.current = channel;
+    return channel;
+  }, [internalPrices]);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
   const enableFallbackMechanisms = useCallback(() => {
@@ -951,6 +1021,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
   // ⚡ PHASE 5: Optimized Polling with Route Detection
   useEffect(() => {
+    // Skip polling if realtime is working
+    if (connectionStatus === 'connected') {
+      console.log('⏭️ [Database Poll] Skipped - realtime is active');
+      return;
+    }
+
     if (!isProviderReady) {
       console.log('⏸️  [Polling] Provider not ready');
       return;

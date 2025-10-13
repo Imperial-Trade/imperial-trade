@@ -42,26 +42,79 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
   const [isAlreadyActivated, setIsAlreadyActivated] = useState(false);
   const [isCurrentlyAuthenticated, setIsCurrentlyAuthenticated] = useState(false);
 
-  // Check Auth user status on mount
+  // Check Auth user status on mount with retry logic and auth listener
   useEffect(() => {
-    const checkAuthUserStatus = async () => {
+    let mounted = true;
+    let authSubscription: any = null;
+    
+    const checkAuthUserStatus = async (attempt = 1) => {
       try {
-        console.log('🔍 Checking Auth user status for:', accountRequest.email);
+        console.log('🔍 [ATTEMPT', attempt, '] Checking Auth user status for:', accountRequest.email);
+        
+        // ✅ LAYER 0: Subscribe to auth state changes for real-time updates
+        if (attempt === 1) {
+          const { data: authData } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!mounted) return;
+            
+            console.log('🔔 Auth state change:', event, 'User:', session?.user?.email);
+            
+            if (session?.user) {
+              const sessionEmail = session.user.email?.toLowerCase().trim();
+              const requestEmail = accountRequest.email.toLowerCase().trim();
+              
+              console.log('📧 [AUTH LISTENER] Comparing emails:', { 
+                sessionEmail, 
+                requestEmail, 
+                match: sessionEmail === requestEmail 
+              });
+              
+              if (sessionEmail === requestEmail) {
+                console.log('✅ [AUTH LISTENER] User authenticated - marking as already activated');
+                setIsCurrentlyAuthenticated(true);
+                setIsAlreadyActivated(true);
+                setCheckingAuthUser(false);
+              }
+            }
+          });
+          
+          authSubscription = authData.subscription;
+        }
         
         // ✅ LAYER 1: Check if user is currently authenticated
         const { data: { session } } = await supabase.auth.getSession();
+        
+        console.log('🔍 [SESSION CHECK] Session found:', !!session, 'User:', session?.user?.email);
+        
         if (session?.user) {
           const sessionEmail = session.user.email?.toLowerCase().trim();
           const requestEmail = accountRequest.email.toLowerCase().trim();
           
+          console.log('📧 [SESSION CHECK] Comparing emails:', { 
+            sessionEmail, 
+            requestEmail, 
+            match: sessionEmail === requestEmail 
+          });
+          
           if (sessionEmail === requestEmail) {
-            console.log('✅ User is currently authenticated - no activation needed');
+            console.log('✅ [SESSION CHECK] User is currently authenticated - no activation needed');
             setIsCurrentlyAuthenticated(true);
             setIsAlreadyActivated(true);
             setCheckingAuthUser(false);
             return; // Exit early
           }
         }
+        
+        // ✅ RETRY LOGIC: If no session and first attempt, retry after delay
+        if (!session && attempt === 1) {
+          console.log('⏳ No session detected on first check, retrying in 1 second...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          if (mounted) {
+            await checkAuthUserStatus(2); // Retry once
+            return;
+          }
+        }
+        
+        console.log('➡️ No active session, continuing with profile and auth checks...');
         
         // ✅ LAYER 2: Check if profile is already active
         const { data: profileData, error: profileError } = await supabase
@@ -77,7 +130,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
           return; // Exit early - no need to check Auth user
         }
         
-        // ✅ FIX #1 & #2: Correct function name and response field
+        // ✅ LAYER 3: Check if Auth user exists
         const { data, error } = await supabase.functions.invoke('check-user-existence', {
           body: { email: accountRequest.email }
         });
@@ -106,18 +159,26 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       } catch (error: any) {
         console.error('❌ Failed to check Auth user:', error);
         
-        // ✅ FIX #3: Better error handling
         setCheckError(error.message || 'Failed to verify account status');
         toast.error(
           "Unable to verify account status. Please refresh the page or contact support.",
           { duration: 8000 }
         );
       } finally {
-        setCheckingAuthUser(false);
+        if (mounted) {
+          setCheckingAuthUser(false);
+        }
       }
     };
 
     checkAuthUserStatus();
+    
+    return () => {
+      mounted = false;
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, [accountRequest]);
 
   // ✅ FIX #4: Complete password validation matching signup schema

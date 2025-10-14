@@ -445,284 +445,57 @@ export default function SignalStream() {
     };
   }, []);
 
-  // 🔧 PHASE 3B FIX: Move handleSignalClosed outside useEffect and wrap with useCallback
-  // This prevents stale closures by ensuring the handler has fresh access to state
-  const handleSignalClosed = useCallback(async (event: Event) => {
-    const customEvent = event as CustomEvent;
-    const { signalId, closeReason } = customEvent.detail;
+  // ✅ SIMPLIFIED: React to state changes directly (no events, no tiers, no DB fetches)
+  useEffect(() => {
+    const alreadyClosedIds = new Set(staticClosedAlerts.map(a => a.id));
     
-    // ✅ Enhanced entry logging with timestamp and validation
-    console.log('🔔 [Real-time Closed Update] Signal closed event received:', {
-      signalId: signalId?.substring(0, 8),
-      closeReason,
-      timestamp: new Date().toISOString(),
-      eventDetail: customEvent.detail
-    });
+    const newlyClosedSignals = allAlerts.filter(signal => 
+      signal.status === 'closed' && 
+      !alreadyClosedIds.has(signal.id) &&
+      !excludedSignalIds.has(signal.id)
+    );
 
-    if (!signalId) {
-      console.error('❌ [Real-time Closed Update] Invalid signalId received:', customEvent.detail);
-      return;
-    }
+    if (newlyClosedSignals.length > 0) {
+      console.log(`✅ [State Change] ${newlyClosedSignals.length} signal(s) closed - moving to closed alerts`);
 
-    // ✅ TIER 0 FIX: Check the most recent real-time UPDATE payload (INSTANT - before state update)
-    // 🔧 PHASE 3D: Access ref DIRECTLY from context, not through prop
-    let closedSignal = null;
-    
-    // Get fresh ref value directly from context
-    const latestPayload = (window as any).__signalRealtimeContext?.lastUpdatePayloadRef?.current;
-
-    console.log('🔍 [Phase 3D] Checking Tier 0 with direct ref access:', {
-      signalId: signalId?.substring(0, 8),
-      latestPayloadId: latestPayload?.id?.substring(0, 8),
-      latestPayloadStatus: latestPayload?.status,
-      latestPayloadCloseReason: latestPayload?.close_reason,
-      match: latestPayload?.id === signalId
-    });
-
-    if (latestPayload && latestPayload.id === signalId) {
-      console.log('⚡ [Closed Alert] Found signal in latest real-time payload (Tier 0 - INSTANT via direct ref)');
-      closedSignal = {
-        id: latestPayload.id,
-        userId: latestPayload.user_id,
-        assetName: latestPayload.asset_name,
-        tradermadeSymbol: latestPayload.tradermade_symbol,
-        tradeType: latestPayload.trade_type,
-        entryPrice: latestPayload.entry_price,
-        stopLoss: latestPayload.stop_loss,
-        tp1: latestPayload.tp1,
-        tp2: latestPayload.tp2,
-        tp3: latestPayload.tp3,
-        tp4: latestPayload.tp4,
-        tp5: latestPayload.tp5,
-        status: latestPayload.status,
-        tpHits: latestPayload.tp_hits || [],
-        notes: latestPayload.notes,
-        closeReason: latestPayload.close_reason,
-        createdAt: latestPayload.created_at,
-        updatedAt: latestPayload.updated_at,
-        creator: allAlertsRef.current.find(a => a.id === signalId)?.creator || {
-          id: latestPayload.user_id,
-          display_name: 'Unknown Educator',
-          role: 'user',
-          avatar_url: null,
-          user_type: null,
-          access_level: null
-        }
-      } as any;
-    }
-
-    // ✅ TIER 1: Try allAlertsRef (works 95% of time for manual close)
-    if (!closedSignal) {
-      closedSignal = allAlertsRef.current.find(a => a.id === signalId);
-      if (closedSignal) {
-        console.log('✅ [Closed Alert] Found signal in allAlerts (Tier 1)');
-      }
-    }
-    
-    // ✅ TIER 2: Fallback to context signals (might have fresher state)
-    if (!closedSignal) {
-      console.log('⚠️ [Closed Alert] Signal not in allAlerts, checking context signals (Tier 2)...');
+      // Add to closed alerts
+      setStaticClosedAlerts(prev => [...newlyClosedSignals, ...prev].slice(0, 12));
       
-      // Access context directly via window (exposed in Phase 3)
-      const contextSignal = (window as any).__signalRealtimeContext?.getSignalById?.(signalId);
+      // Update total count
+      setTotalClosedCount(prev => prev + newlyClosedSignals.length);
       
-      if (contextSignal) {
-        console.log('✅ [Closed Alert] Found signal in context (Tier 2)');
-        closedSignal = contextSignal as any;
-      }
-    }
-    
-    // ✅ TIER 3: Last resort - fetch from database (guaranteed to find signal)
-    if (!closedSignal) {
-      console.log('⚠️ [Closed Alert] Signal not in context, fetching from database (Tier 3)...');
-      
-      try {
-        const { data, error } = await supabase
-          .from('trade_alerts')
-          .select(`
-            *,
-            creator:profiles!trade_alerts_user_id_fkey (
-              id, display_name, role, avatar_url, user_type, access_level
-            )
-          `)
-          .eq('id', signalId)
-          .single();
-        
-        if (error) {
-          console.error('❌ [Closed Alert] Database fetch error:', error);
-          throw error;
-        }
-        
-        if (data) {
-          console.log('✅ [Closed Alert] Found signal in database:', signalId.substring(0, 8));
-          
-          // Transform database result to TradeAlertWithProfile format
-          closedSignal = {
-            id: data.id,
-            userId: data.user_id,
-            assetName: data.asset_name,
-            tradermadeSymbol: data.tradermade_symbol,
-            tradeType: data.trade_type,
-            entryPrice: data.entry_price,
-            stopLoss: data.stop_loss,
-            tp1: data.tp1,
-            tp2: data.tp2,
-            tp3: data.tp3,
-            tp4: data.tp4,
-            tp5: data.tp5,
-            status: data.status,
-            tpHits: data.tp_hits || [],
-            notes: data.notes,
-            closeReason: data.close_reason,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            creator: data.creator
-          } as any;
-        }
-      } catch (error) {
-        console.error('❌ [Closed Alert] Database fetch failed:', error);
-      }
-    }
-    
-    // Step 4: If STILL not found after all 3 tiers, log error and exit gracefully
-    if (!closedSignal) {
-      console.error('❌ [Closed Alert] Signal not found anywhere (allAlerts, context, database):', signalId);
-      
-      toast({
-        title: '⚠️ Signal Not Found',
-        description: 'Unable to locate closed signal. Try using Force Sync.',
-        variant: 'destructive',
-        duration: 5000
-      });
-      
-      return;
-    }
-
-    // ✅ STEP 2 COMPLETE: Show toast notification after signal is found
-    console.log('📢 [Consolidated] Showing toast for close reason:', closeReason);
-    
-    if (closeReason === 'stop_loss') {
-      toast({
-        title: '🔴 Stop Loss Hit',
-        description: `${closedSignal.assetName} signal closed at SL`,
-        variant: 'destructive'
-      });
-    } else if (closeReason === 'manual') {
-      toast({
-        title: '🔒 Signal Closed',
-        description: `${closedSignal.assetName} closed manually`
-      });
-    } else if (closeReason === 'all_tps_hit') {
-      toast({
-        title: '💰 All Targets Hit!',
-        description: `${closedSignal.assetName} - All take profits reached`,
-      });
-    } else if (closeReason?.startsWith('tp')) {
-      const tpNum = closeReason.replace('tp', '').replace('_hit', '');
-      toast({
-        title: '🟢 Take Profit Hit',
-        description: `${closedSignal.assetName} closed at TP${tpNum}`,
-      });
-    }
-
-    // ✅ BUG FIX #5: Use functional setState to always get fresh staticClosedAlerts
-    // This prevents stale closure issues with the dependency array
-
-    // Fetch the profile if not already available
-    let creatorProfile = closedSignal.creator;
-    if (!creatorProfile || !creatorProfile.display_name) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', closedSignal.userId)
-        .single();
-      
-      if (profileData) {
-        creatorProfile = {
-          id: profileData.id,
-          display_name: profileData.display_name || 'Anonymous User',
-          role: profileData.role || 'user',
-          avatar_url: profileData.avatar_url,
-          user_type: profileData.user_type,
-          access_level: profileData.access_level
-        };
-      }
-    }
-
-    // Map to TradeAlertWithProfile format with closed status
-    const closedAlertWithProfile: TradeAlertWithProfile = {
-      ...closedSignal,
-      status: 'closed',
-      closeReason: closeReason || closedSignal.closeReason,
-      creator: creatorProfile || {
-        id: closedSignal.userId,
-        display_name: 'Unknown User',
-        role: 'user',
-        avatar_url: null,
-        user_type: null,
-        access_level: null
-      }
-    };
-
-    // ✅ FIX #3: Use Set-based deduplication on fresh 'prev' state (not stale ref)
-    setStaticClosedAlerts(prev => {
-      // Create Set from fresh prev state for O(1) duplicate checking
-      const existingIds = new Set(prev.map(a => a.id));
-      
-      if (existingIds.has(signalId)) {
-        console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts (Set check):', {
-          signalId: signalId.substring(0, 8),
-          currentCount: prev.length
-        });
-        return prev; // Return unchanged if duplicate
-      }
-      
-      console.log('✅ [Real-time Closed Update] Adding signal to closed alerts:', {
-        signalId: signalId.substring(0, 8),
-        assetName: closedSignal.assetName,
-        closeReason,
-        currentClosedCount: prev.length,
-        newClosedCount: prev.length + 1
-      });
-      
-      // Add to front and keep max 12
-      const updated = [closedAlertWithProfile, ...prev].slice(0, 12);
-      console.log(`📊 [Closed Alerts] Updated count: ${updated.length}`);
-      
-      return updated;
-    });
-    
-    setTotalClosedCount(prev => prev + 1);
-
-    // ✅ STEP 3 CORRECTED: Exclude from active alerts immediately
-    setExcludedSignalIds(prev => new Set(prev).add(signalId));
-    console.log('✅ [Consolidated] Excluded signal from active alerts:', {
-      signalId: signalId?.substring(0, 8),
-      assetName: closedAlertWithProfile.assetName
-    });
-
-    // Clean up exclusion after 5 seconds (context will have updated by then)
-    setTimeout(() => {
+      // Exclude from active alerts
       setExcludedSignalIds(prev => {
         const next = new Set(prev);
-        next.delete(signalId);
-        console.log('🧹 [Consolidated] Cleaned up exclusion for signal:', signalId?.substring(0, 8));
+        newlyClosedSignals.forEach(s => next.add(s.id));
         return next;
       });
-    }, 5000);
-  }, [toast, supabase]); // ✅ Minimal stable dependencies
 
-  // 🔧 PHASE 3B FIX: Register event listener with memoized callback
-  useEffect(() => {
-    console.log('🎧 [Event Listener] Registering signal-closed-confirmed listener');
-    
-    window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+      // Show toast for each closed signal
+      newlyClosedSignals.forEach(signal => {
+        let toastTitle = '🔒 Signal Closed';
+        let toastDescription = `${signal.assetName} closed: ${signal.closeReason || 'Manual'}`;
+        let toastVariant: 'default' | 'destructive' = 'default';
 
-    return () => {
-      console.log('🎧 [Event Listener] Unregistering signal-closed-confirmed listener');
-      window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
-    };
-  }, [handleSignalClosed]); // ✅ Depend on memoized callback
+        if (signal.closeReason === 'stop_loss') {
+          toastTitle = '🔴 Stop Loss Hit';
+          toastDescription = `${signal.assetName} signal closed at SL`;
+          toastVariant = 'destructive';
+        } else if (signal.closeReason === 'all_tps_hit') {
+          toastTitle = '💰 All Targets Hit!';
+          toastDescription = `${signal.assetName} - All take profits reached`;
+        } else if (signal.closeReason?.startsWith('tp')) {
+          toastTitle = '🟢 Take Profit Hit';
+          const tpNum = signal.closeReason.replace('tp', '').replace('_hit', '');
+          toastDescription = `${signal.assetName} closed at TP${tpNum}`;
+        } else if (signal.closeReason === 'manual') {
+          toastDescription = `${signal.assetName} closed manually`;
+        }
+        
+        toast({ title: toastTitle, description: toastDescription, variant: toastVariant });
+      });
+    }
+  }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {

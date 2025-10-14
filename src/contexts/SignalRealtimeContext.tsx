@@ -475,31 +475,13 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         console.log('📢 Emitting SIGNAL_UPDATED event');
         (window as any).signalEmitter.emit('SIGNAL_UPDATED', newData);
         
-        // Check if signal was closed
+        // Check if signal was closed - state update is enough, no event needed
         if (newData.status === 'closed') {
-          console.log('🚨 Signal closed via realtime - dispatching signal-closed-confirmed event:', {
-            signalId: newData.id,
+          console.log('✅ [Realtime] Signal closed - state updated:', {
+            signalId: newData.id?.substring(0, 8),
             closeReason: newData.close_reason,
             assetName: newData.asset_name
           });
-          
-          // ✅ PHASE 3C FIX: Ensure lastUpdatePayloadRef is set BEFORE event dispatch
-          // This guarantees handleSignalClosed can access it via Tier 0 lookup
-          lastUpdatePayloadRef.current = newData;
-          console.log('📦 [Phase 3C] Set lastUpdatePayloadRef before event dispatch for Tier 0 access');
-          
-          // ✅ FIX: Dispatch standard CustomEvent that SignalStream listens for
-          window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
-            detail: {
-              signalId: newData.id,
-              closeReason: newData.close_reason || 'manual',
-              assetName: newData.asset_name,
-              timestamp: new Date().toISOString()
-            }
-          }));
-          
-          // Keep the signalEmitter for backward compatibility (other listeners might exist)
-          (window as any).signalEmitter.emit('SIGNAL_CLOSED', newData);
         }
 
         // ✅ PHASE 1 FIX: Detect TP hits using cache (eliminates stale closure bug)

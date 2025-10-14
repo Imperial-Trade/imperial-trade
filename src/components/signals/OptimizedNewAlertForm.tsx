@@ -266,7 +266,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         return newErrors;
       });
     }
-  }, [errors, selectedAsset, formData.trade_type, formData.entry_price, pipInputs, takeProfits, recalcTargetsFromPips]);
+  }, [errors, selectedAsset, formData.trade_type, formData.entry_price, recalcTargetsFromPips]);
 
   // 🚀 ANTI-CHURN: Stable callbacks with useCallback to prevent EnhancedLivePriceDisplay re-renders
   const handlePriceUpdate = useCallback((price: number) => {

@@ -79,7 +79,8 @@ export default function SignalStream() {
     lastUpdated,
     nextRetryAt,
     updateAlert,
-    refreshAlerts
+    refreshAlerts,
+    lastUpdatePayload  // ✅ TIER 0 FIX: Get latest UPDATE payload for instant closed signal handling
   } = useSignalRealtime(user?.id || '', true);
 
   // Manual sync handler
@@ -451,26 +452,65 @@ export default function SignalStream() {
       
       console.log('🔔 [Real-time Closed Update] Signal closed event received:', { signalId, closeReason });
 
-      // ✅ PHASE 2 FIX: 3-tier fallback system to handle race conditions
-      // Step 1: Try allAlerts (current render - works 95% of time)
-      let closedSignal = allAlertsRef.current.find(a => a.id === signalId);
+      // ✅ TIER 0 FIX: Check the most recent real-time UPDATE payload (INSTANT - before state update)
+      let closedSignal = null;
       
-      // Step 2: Fallback to context signals (might have fresher state)
+      if (lastUpdatePayload && lastUpdatePayload.id === signalId) {
+        console.log('⚡ [Closed Alert] Found signal in latest real-time payload (Tier 0 - INSTANT)');
+        closedSignal = {
+          id: lastUpdatePayload.id,
+          userId: lastUpdatePayload.user_id,
+          assetName: lastUpdatePayload.asset_name,
+          tradermadeSymbol: lastUpdatePayload.tradermade_symbol,
+          tradeType: lastUpdatePayload.trade_type,
+          entryPrice: lastUpdatePayload.entry_price,
+          stopLoss: lastUpdatePayload.stop_loss,
+          tp1: lastUpdatePayload.tp1,
+          tp2: lastUpdatePayload.tp2,
+          tp3: lastUpdatePayload.tp3,
+          tp4: lastUpdatePayload.tp4,
+          tp5: lastUpdatePayload.tp5,
+          status: lastUpdatePayload.status,
+          tpHits: lastUpdatePayload.tp_hits || [],
+          notes: lastUpdatePayload.notes,
+          closeReason: lastUpdatePayload.close_reason,
+          createdAt: lastUpdatePayload.created_at,
+          updatedAt: lastUpdatePayload.updated_at,
+          creator: allAlertsRef.current.find(a => a.id === signalId)?.creator || {
+            id: lastUpdatePayload.user_id,
+            display_name: 'Unknown Educator',
+            role: 'user',
+            avatar_url: null,
+            user_type: null,
+            access_level: null
+          }
+        } as any;
+      }
+
+      // ✅ TIER 1: Try allAlertsRef (works 95% of time for manual close)
       if (!closedSignal) {
-        console.log('⚠️ [Closed Alert] Signal not in allAlerts, checking context signals...');
+        closedSignal = allAlertsRef.current.find(a => a.id === signalId);
+        if (closedSignal) {
+          console.log('✅ [Closed Alert] Found signal in allAlerts (Tier 1)');
+        }
+      }
+      
+      // ✅ TIER 2: Fallback to context signals (might have fresher state)
+      if (!closedSignal) {
+        console.log('⚠️ [Closed Alert] Signal not in allAlerts, checking context signals (Tier 2)...');
         
         // Access context directly via window (exposed in Phase 3)
         const contextSignal = (window as any).__signalRealtimeContext?.getSignalById?.(signalId);
         
         if (contextSignal) {
-          console.log('✅ [Closed Alert] Found signal in context:', signalId.substring(0, 8));
+          console.log('✅ [Closed Alert] Found signal in context (Tier 2)');
           closedSignal = contextSignal as any;
         }
       }
       
-      // Step 3: Last resort - fetch from database (guaranteed to find signal)
+      // ✅ TIER 3: Last resort - fetch from database (guaranteed to find signal)
       if (!closedSignal) {
-        console.log('⚠️ [Closed Alert] Signal not in context, fetching from database...');
+        console.log('⚠️ [Closed Alert] Signal not in context, fetching from database (Tier 3)...');
         
         try {
           const { data, error } = await supabase

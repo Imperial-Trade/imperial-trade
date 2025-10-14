@@ -59,6 +59,7 @@ interface SignalRealtimeContextType {
   subscribe: () => void;
   unsubscribe: () => void;
   getSignalById: (signalId: string) => Signal | undefined;
+  lastUpdatePayload: any | null;  // ✅ TIER 0 FIX: Expose latest UPDATE payload for instant event listeners
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | undefined>(undefined);
@@ -82,6 +83,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   const mountOnlyRef = useRef(true);
   const seenIdsRef = useRef(new Set<string>());
   const channelRef = useRef<any>(null);
+
+  // ✅ TIER 0 FIX: Store last UPDATE payload for instant event listener access
+  const lastUpdatePayloadRef = useRef<any>(null);
 
   // ✅ PHASE 3: Expose context to window for emergency fallbacks
   useEffect(() => {
@@ -427,6 +431,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     if (eventType === 'UPDATE') {
       console.log('✅ [UPDATE] Updating signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
+      // ✅ TIER 0 FIX: Store payload for event listeners to access immediately (before state update)
+      lastUpdatePayloadRef.current = newData;
+      
       setSignals(prev => {
         const updated = prev.map(s => {
           if (s.id === signalId) {
@@ -653,7 +660,8 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     nextRetryAt: null,
     subscribe,
     unsubscribe,
-    getSignalById
+    getSignalById,
+    lastUpdatePayload: lastUpdatePayloadRef.current  // ✅ TIER 0 FIX: Expose latest UPDATE payload
   };
 
   return (

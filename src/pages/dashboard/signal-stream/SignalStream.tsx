@@ -50,6 +50,7 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
 
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
@@ -409,6 +410,24 @@ export default function SignalStream() {
     };
     fetchStaticClosedAlerts();
   }, []); // Only fetch once on mount
+
+  // ============================================
+  // SMART TIMESTAMP REFRESH: Update "time ago" every 60s without refetching
+  // ============================================
+  useEffect(() => {
+    console.log('⏱️ [Timestamp Refresh] Starting 60-second interval for closed alerts');
+    
+    const timestampInterval = setInterval(() => {
+      const now = Date.now();
+      setLastTimestampUpdate(now);
+      console.log('⏱️ [Timestamp Refresh] Triggered - UI will recalculate "time ago" displays');
+    }, 60000); // 60 seconds
+
+    return () => {
+      console.log('⏱️ [Timestamp Refresh] Clearing interval on component unmount');
+      clearInterval(timestampInterval);
+    };
+  }, []);
 
   // 🔧 BUG FIX #22: Listen for signal-closed-confirmed events and update staticClosedAlerts in real-time
   useEffect(() => {
@@ -1246,7 +1265,7 @@ export default function SignalStream() {
                       </div>
                     ) : sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <TradeAlertCard
-                            key={alert.id}
+                            key={`${alert.id}-${lastTimestampUpdate}`}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,

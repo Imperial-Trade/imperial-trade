@@ -176,65 +176,107 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   }, []);
 
   const handleInputChange = useCallback((field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
     // If entry price changes and we have existing pip values, recalculate prices
     if (field === 'entry_price' && value && selectedAsset) {
       const newEntryPrice = parseFloat(value.toString());
       if (!isNaN(newEntryPrice)) {
-        const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
-          newEntryPrice, 
-          formData.trade_type, 
-          selectedAsset.symbol, 
-          pipInputs, 
-          takeProfits
-        );
+        // Calculate targets first to access newTPs outside setFormData
+        let calculatedStopLoss: string | null = null;
+        let calculatedTPs: string[] = [];
         
-        if (stopLoss) {
-          setFormData(prev => ({ ...prev, stop_loss: stopLoss }));
-        }
-        
-        if (newTPs.some(tp => tp !== '')) {
-          setTakeProfits(newTPs);
+        setFormData(prev => {
+          const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
+            newEntryPrice, 
+            prev.trade_type, // ✅ Use prev.trade_type to get latest value
+            selectedAsset.symbol, 
+            pipInputs, 
+            takeProfits
+          );
+          
+          // Store for use outside
+          calculatedStopLoss = stopLoss;
+          calculatedTPs = newTPs;
+          
+          const updates: Record<string, string> = { [field]: value.toString() };
+          
+          if (stopLoss) {
+            updates.stop_loss = stopLoss;
+          }
+          
+          // Add TP updates
           const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
-          const updates: Record<string, string> = {};
           newTPs.forEach((tp, index) => {
             if (tp && index < tpKeys.length) {
               updates[tpKeys[index]] = tp;
             }
           });
-          setFormData(prev => ({ ...prev, ...updates }));
+          
+          return { ...prev, ...updates };
+        });
+        
+        // Update takeProfits state separately
+        if (calculatedTPs.some(tp => tp !== '')) {
+          setTakeProfits(calculatedTPs);
         }
+        
+        // Clear field-specific errors
+        if (errors[field]) {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[field];
+            return newErrors;
+          });
+        }
+        
+        return; // Exit early since we've handled all updates
       }
     }
+    
+    // Default behavior for other fields
+    setFormData(prev => ({ ...prev, [field]: value }));
 
     // If trade type changes, recalculate all targets from pips
-    if (field === 'trade_type' && formData.entry_price && selectedAsset) {
-      const entryPrice = parseFloat(formData.entry_price);
-      if (!isNaN(entryPrice)) {
-        const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
-          entryPrice, 
-          value as 'buy' | 'sell' | 'buy_limit' | 'sell_limit', 
-          selectedAsset.symbol, 
-          pipInputs, 
-          takeProfits
-        );
-        
-        if (stopLoss) {
-          setFormData(prev => ({ ...prev, stop_loss: stopLoss }));
-        }
-        
-        if (newTPs.some(tp => tp !== '')) {
-          setTakeProfits(newTPs);
-          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+    if (field === 'trade_type' && selectedAsset) {
+      let calculatedTPs: string[] = [];
+      
+      setFormData(prev => {
+        const entryPrice = parseFloat(prev.entry_price);
+        if (!isNaN(entryPrice)) {
+          const { stopLoss, takeProfits: newTPs } = recalcTargetsFromPips(
+            entryPrice, 
+            value as 'buy' | 'sell' | 'buy_limit' | 'sell_limit', 
+            selectedAsset.symbol, 
+            pipInputs, 
+            takeProfits
+          );
+          
+          // Store for use outside
+          calculatedTPs = newTPs;
+          
           const updates: Record<string, string> = {};
+          
+          if (stopLoss) {
+            updates.stop_loss = stopLoss;
+          }
+          
+          // Add TP updates
+          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
           newTPs.forEach((tp, index) => {
             if (tp && index < tpKeys.length) {
               updates[tpKeys[index]] = tp;
             }
           });
-          setFormData(prev => ({ ...prev, ...updates }));
+          
+          if (Object.keys(updates).length > 0) {
+            return { ...prev, ...updates };
+          }
         }
+        return prev;
+      });
+      
+      // Update takeProfits state separately
+      if (calculatedTPs.some(tp => tp !== '')) {
+        setTakeProfits(calculatedTPs);
       }
     }
     
@@ -246,7 +288,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         return newErrors;
       });
     }
-  }, [errors, selectedAsset, formData.trade_type, formData.entry_price, pipInputs, takeProfits, recalcTargetsFromPips]);
+  }, [errors, selectedAsset, pipInputs, takeProfits, recalcTargetsFromPips]);
 
   // 🚀 ANTI-CHURN: Stable callbacks with useCallback to prevent EnhancedLivePriceDisplay re-renders
   const handlePriceUpdate = useCallback((price: number) => {

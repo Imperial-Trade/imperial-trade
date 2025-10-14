@@ -444,6 +444,11 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       
       // ✅ TIER 0 FIX: Store payload for event listeners to access immediately (before state update)
       lastUpdatePayloadRef.current = newData;
+      console.log('📦 [Realtime] Set lastUpdatePayloadRef for signal:', {
+        id: newData.id?.substring(0, 8),
+        status: newData.status,
+        closeReason: newData.close_reason
+      });
       
       setSignals(prev => {
         const updated = prev.map(s => {
@@ -477,6 +482,11 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
             closeReason: newData.close_reason,
             assetName: newData.asset_name
           });
+          
+          // ✅ PHASE 3C FIX: Ensure lastUpdatePayloadRef is set BEFORE event dispatch
+          // This guarantees handleSignalClosed can access it via Tier 0 lookup
+          lastUpdatePayloadRef.current = newData;
+          console.log('📦 [Phase 3C] Set lastUpdatePayloadRef before event dispatch for Tier 0 access');
           
           // ✅ FIX: Dispatch standard CustomEvent that SignalStream listens for
           window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {

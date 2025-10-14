@@ -640,22 +640,32 @@ export default function SignalStream() {
         }
       };
 
-      // ✅ BUG FIX #5: Use functional setState with duplicate check inside
+      // ✅ FIX #3: Use Set-based deduplication on fresh 'prev' state (not stale ref)
       setStaticClosedAlerts(prev => {
-        // Check if already exists using fresh prev value
-        if (staticClosedAlertsRef.current.some(a => a.id === signalId)) {
-          console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
+        // Create Set from fresh prev state for O(1) duplicate checking
+        const existingIds = new Set(prev.map(a => a.id));
+        
+        if (existingIds.has(signalId)) {
+          console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts (Set check):', {
+            signalId: signalId.substring(0, 8),
+            currentCount: prev.length
+          });
           return prev; // Return unchanged if duplicate
         }
         
         console.log('✅ [Real-time Closed Update] Adding signal to closed alerts:', {
-          signalId,
+          signalId: signalId.substring(0, 8),
           assetName: closedSignal.assetName,
           closeReason,
+          currentClosedCount: prev.length,
           newClosedCount: prev.length + 1
         });
         
-        return [closedAlertWithProfile, ...prev.slice(0, 11)]; // Keep max 12
+        // Add to front and keep max 12
+        const updated = [closedAlertWithProfile, ...prev].slice(0, 12);
+        console.log(`📊 [Closed Alerts] Updated count: ${updated.length}`);
+        
+        return updated;
       });
       
       setTotalClosedCount(prev => prev + 1);

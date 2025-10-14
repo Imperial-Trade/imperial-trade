@@ -132,39 +132,11 @@ export default function SignalStream() {
   }, [allAlerts.length, connectionStatus, lastUpdated]);
 
   // ============================================
-  // FIX #6: Toast notifications for signal events
+  // STEP 1 COMPLETE: Duplicate toast listener removed and consolidated
+  // Toast logic for TP hits, order activation, and signal creation
+  // (Signal closed toast is now in Phase 2 listener below)
   // ============================================
   useEffect(() => {
-    const handleSignalClosed = (event: CustomEvent) => {
-      const { signalId, closeReason, assetName } = event.detail;
-      
-      console.log('🔔 Signal closed event received:', event.detail);
-      
-      // Show toast based on close reason
-      if (closeReason === 'stop_loss') {
-        toast({
-          title: '🔴 Stop Loss Hit',
-          description: `${assetName} signal closed at SL`,
-          variant: 'destructive'
-        });
-      } else if (closeReason === 'manual') {
-        toast({
-          title: '🔒 Signal Closed',
-          description: `${assetName} closed manually`
-        });
-      } else if (closeReason === 'all_tps_hit') {
-        toast({
-          title: '💰 All Targets Hit!',
-          description: `${assetName} - All take profits reached`,
-        });
-      } else if (closeReason?.startsWith('tp')) {
-        toast({
-          title: '🟢 Take Profit Hit',
-          description: `${assetName} closed at ${closeReason.toUpperCase()}`,
-        });
-      }
-    };
-    
     const handleTPHit = (event: CustomEvent) => {
       const { signalId, tpLevel, assetName } = event.detail;
       
@@ -198,13 +170,11 @@ export default function SignalStream() {
       });
     };
     
-    window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
     window.addEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
     
     return () => {
-      window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
       window.removeEventListener('tp-hit-confirmed', handleTPHit as EventListener);
       window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
       window.removeEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
@@ -548,6 +518,33 @@ export default function SignalStream() {
         return;
       }
 
+      // ✅ STEP 2 COMPLETE: Show toast notification after signal is found
+      console.log('📢 [Consolidated] Showing toast for close reason:', closeReason);
+      
+      if (closeReason === 'stop_loss') {
+        toast({
+          title: '🔴 Stop Loss Hit',
+          description: `${closedSignal.assetName} signal closed at SL`,
+          variant: 'destructive'
+        });
+      } else if (closeReason === 'manual') {
+        toast({
+          title: '🔒 Signal Closed',
+          description: `${closedSignal.assetName} closed manually`
+        });
+      } else if (closeReason === 'all_tps_hit') {
+        toast({
+          title: '💰 All Targets Hit!',
+          description: `${closedSignal.assetName} - All take profits reached`,
+        });
+      } else if (closeReason?.startsWith('tp')) {
+        const tpNum = closeReason.replace('tp', '').replace('_hit', '');
+        toast({
+          title: '🟢 Take Profit Hit',
+          description: `${closedSignal.assetName} closed at TP${tpNum}`,
+        });
+      }
+
       // ✅ BUG FIX #5: Use functional setState to always get fresh staticClosedAlerts
       // This prevents stale closure issues with the dependency array
 
@@ -606,6 +603,15 @@ export default function SignalStream() {
       });
       
       setTotalClosedCount(prev => prev + 1);
+
+      // ✅ STEP 3 COMPLETE: Force immediate UI update by triggering context refresh
+      // This ensures closed signal is filtered out of active alerts instantly
+      console.log('✅ [Consolidated] Signal added to closed alerts, triggering refresh for instant UI update');
+      setTimeout(() => {
+        refreshAlerts(false).catch(err => {
+          console.error('❌ [Consolidated] Error refreshing alerts after close:', err);
+        });
+      }, 100); // Small delay to ensure database write completes
     };
 
     window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
@@ -613,7 +619,7 @@ export default function SignalStream() {
     return () => {
       window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     };
-  }, []); // ✅ Subscribe once, use functional setState for fresh state
+  }, [toast, supabase]); // ✅ STEP 4 COMPLETE: Include toast and supabase to prevent stale closures
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {

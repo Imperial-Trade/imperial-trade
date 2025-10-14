@@ -51,6 +51,7 @@ export default function SignalStream() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
@@ -76,6 +77,35 @@ export default function SignalStream() {
     updateAlert,
     refreshAlerts
   } = useSignalRealtime(user?.id || '', true);
+
+  // Manual sync handler
+  const handleManualSync = useCallback(async () => {
+    setIsSyncing(true);
+    console.log('🔄 [Manual Sync] Triggered - refreshing all signals');
+    
+    try {
+      await refreshAlerts(true); // bypassThrottle = true
+      
+      console.log('✅ [Manual Sync] Complete - all signals refreshed');
+      
+      toast({
+        title: '✅ Synced Successfully',
+        description: 'All signals refreshed from database',
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('❌ [Manual Sync] Error:', error);
+      
+      toast({
+        title: '❌ Sync Failed',
+        description: 'Failed to refresh signals. Please try again.',
+        variant: 'destructive',
+        duration: 5000
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refreshAlerts, toast]);
 
   console.log('🔍 DEBUG [SignalStream] Received allAlerts from hook:', {
     totalAlerts: allAlerts.length,
@@ -509,7 +539,7 @@ export default function SignalStream() {
     return () => {
       window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
     };
-  }, [allAlerts]); // ✅ BUG FIX #5: Remove staticClosedAlerts from deps to prevent stale closure
+  }, []); // ✅ Subscribe once, use functional setState for fresh state
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {
@@ -1180,6 +1210,26 @@ export default function SignalStream() {
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
                 <PriceRefreshButton symbols={symbols} className="shrink-0" />
+                <Button
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 shrink-0"
+                  title="Force refresh all signals from database"
+                >
+                  {isSyncing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Syncing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Force Sync</span>
+                    </>
+                  )}
+                </Button>
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">

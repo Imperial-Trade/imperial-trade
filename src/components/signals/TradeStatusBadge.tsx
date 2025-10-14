@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
+import { Check, X, Target, TrendingUp, Hourglass, XCircle } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
@@ -71,6 +71,28 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     }
 
     if (isClosed) {
+        // ✅ PRIORITY 1: Manual close takes highest priority
+        if (closeReason === 'manual') {
+            return (
+                <Badge className="bg-gray-600/30 text-gray-300 border-gray-500 shadow-lg shadow-gray-500/30 border-2 text-xs px-1.5 py-0.5">
+                    <XCircle className="w-2.5 h-2.5 mr-0.5" />
+                    MANUALLY CLOSED
+                </Badge>
+            );
+        }
+        
+        // ✅ PRIORITY 2: If ANY TPs hit, show highest TP (even if SL triggered after)
+        if (hitTPs.length > 0) {
+            const highestTP = Math.max(...hitTPs);
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2 text-xs px-1.5 py-0.5">
+                    <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
+                    TP{highestTP} HIT
+                </Badge>
+            );
+        }
+        
+        // ✅ PRIORITY 3: Stop loss ONLY if NO TPs were hit
         if (closeReason === 'stop_loss') {
             return (
                 <Badge className="bg-red-500/30 text-red-200 border-red-400 shadow-lg shadow-red-500/50 border-2 text-xs px-1.5 py-0.5">
@@ -78,31 +100,22 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
                 </Badge>
             );
         }
-
+        
+        // ✅ PRIORITY 4: All TPs hit (final take profit)
         if (closeReason && closeReason.startsWith('tp')) {
-            const tpNumber = closeReason.replace('tp', '');
+            const tpNumber = closeReason.replace('tp', '').replace('_hit', '');
             return (
                 <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2 text-xs px-1.5 py-0.5">
                     <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
-                    TP{tpNumber} REACHED
+                    TP{tpNumber} HIT
                 </Badge>
             );
         }
-
-        if (hitTPs.length > 0) {
-            const highestTP = Math.max(...hitTPs);
-            return (
-                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2 text-xs px-1.5 py-0.5">
-                    <Check className="w-2.5 h-2.5 mr-0.5" />
-                    TP{highestTP} HIT
-                </Badge>
-            );
-        }
-
+        
+        // ✅ FALLBACK: Generic "CLOSED" badge
         return (
-            <Badge className="bg-gray-600/30 text-gray-300 border-gray-500 shadow-lg shadow-gray-500/30 border-2 text-xs px-1.5 py-0.5">
-                <X className="w-2.5 h-2.5 mr-0.5" />
-                MANUALLY CLOSED
+            <Badge className="bg-gray-500/30 text-gray-200 border-gray-400 shadow-lg shadow-gray-500/50 border-2 text-xs px-1.5 py-0.5">
+                CLOSED
             </Badge>
         );
     }

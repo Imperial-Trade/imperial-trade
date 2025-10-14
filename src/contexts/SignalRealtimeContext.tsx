@@ -290,11 +290,39 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     const newData = payload.new;
     const signalId = newData?.id;
 
-    console.log('🔄 Real-time event received:', {
+    console.log('🔄 [Realtime] Event received:', {
       type: eventType,
-      signalId: signalId?.substring(0, 8) + '...' || 'unknown',
-      asset: newData?.asset_name || 'unknown'
+      table: payload.table,
+      signalId: signalId?.substring(0, 8) + '...',
+      asset: newData?.asset_name || 'unknown',
+      status: newData?.status,
+      tpHits: newData?.tp_hits,
+      closeReason: newData?.close_reason,
+      tradeType: newData?.trade_type,
+      timestamp: new Date().toISOString()
     });
+
+    // Additional logging for specific event types
+    if (eventType === 'INSERT') {
+      console.log('✨ [Realtime] NEW SIGNAL CREATED:', {
+        id: signalId?.substring(0, 8),
+        asset: newData?.asset_name,
+        type: newData?.trade_type,
+        status: newData?.status
+      });
+    } else if (eventType === 'UPDATE') {
+      console.log('🔄 [Realtime] SIGNAL UPDATED:', {
+        id: signalId?.substring(0, 8),
+        asset: newData?.asset_name,
+        status: newData?.status,
+        tpHits: newData?.tp_hits,
+        closeReason: newData?.close_reason
+      });
+    } else if (eventType === 'DELETE') {
+      console.log('🗑️ [Realtime] SIGNAL DELETED:', {
+        id: signalId?.substring(0, 8)
+      });
+    }
 
     if (!signalId) {
       console.warn('⚠️ Real-time event missing signal ID');
@@ -402,6 +430,44 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
           
           // Keep the signalEmitter for backward compatibility (other listeners might exist)
           (window as any).signalEmitter.emit('SIGNAL_CLOSED', newData);
+        }
+
+        // ✅ NEW: Detect TP hits and dispatch tp-hit-confirmed events
+        if (newData.tp_hits && Array.isArray(newData.tp_hits) && newData.tp_hits.length > 0) {
+          const existingSignal = signals.find(s => s.id === signalId);
+          const previousHits = existingSignal?.tp_hits || [];
+          
+          // Find NEW TP hits (not in previous state)
+          const newHits = newData.tp_hits.filter((tp: number) => !previousHits.includes(tp));
+          
+          if (newHits.length > 0) {
+            console.log('🎯 [Realtime] New TP hits detected:', {
+              signalId: newData.id?.substring(0, 8),
+              asset: newData.asset_name,
+              previousHits,
+              newHits,
+              allHits: newData.tp_hits
+            });
+            
+            // Dispatch tp-hit-confirmed event for EACH new TP hit
+            newHits.forEach((tpLevel: number) => {
+              console.log(`🎯 [Realtime] Dispatching tp-hit-confirmed for TP${tpLevel}`);
+              
+              window.dispatchEvent(new CustomEvent('tp-hit-confirmed', {
+                detail: {
+                  signalId: newData.id,
+                  tpLevel,
+                  assetName: newData.asset_name,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            });
+          } else {
+            console.log('ℹ️ [Realtime] TP hits unchanged:', {
+              signalId: newData.id?.substring(0, 8),
+              hits: newData.tp_hits
+            });
+          }
         }
       }
     }

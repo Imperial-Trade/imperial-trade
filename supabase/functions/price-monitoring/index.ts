@@ -13,6 +13,25 @@ serve(async (req) => {
 
   console.log('💰 Price Monitoring Service started');
   
+  // ============================================
+  // CRON AUTHORIZATION: Verify cron secret for security
+  // ============================================
+  const cronSecret = req.headers.get('x-supabase-cron-secret');
+  const expectedSecret = Deno.env.get('CRON_SECRET');
+  
+  if (req.method === 'POST' && cronSecret && cronSecret !== expectedSecret) {
+    console.error('❌ [Cron] Unauthorized request - invalid secret');
+    return new Response(JSON.stringify({
+      error: 'Unauthorized',
+      message: 'Invalid cron secret'
+    }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+  
+  console.log('✅ [Cron] Authorization verified');
+  
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',

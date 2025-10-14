@@ -53,6 +53,10 @@ export default function SignalStream() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
 
+  // ✅ FIX: Refs to prevent stale closures in event listeners
+  const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
+  const staticClosedAlertsRef = useRef<TradeAlertWithProfile[]>([]);
+
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
   
@@ -318,6 +322,13 @@ export default function SignalStream() {
       signalCounts: counts
     };
   }, [alerts, allAlerts, staticClosedAlerts.length, excludedSignalIds]);
+
+  // ✅ FIX: Keep refs in sync with state to prevent stale closures
+  useEffect(() => {
+    allAlertsRef.current = allAlerts;
+    staticClosedAlertsRef.current = staticClosedAlerts;
+  }, [allAlerts, staticClosedAlerts]);
+
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
@@ -442,7 +453,7 @@ export default function SignalStream() {
 
       // ✅ PHASE 2 FIX: 3-tier fallback system to handle race conditions
       // Step 1: Try allAlerts (current render - works 95% of time)
-      let closedSignal = allAlerts.find(a => a.id === signalId);
+      let closedSignal = allAlertsRef.current.find(a => a.id === signalId);
       
       // Step 2: Fallback to context signals (might have fresher state)
       if (!closedSignal) {
@@ -592,7 +603,7 @@ export default function SignalStream() {
       // ✅ BUG FIX #5: Use functional setState with duplicate check inside
       setStaticClosedAlerts(prev => {
         // Check if already exists using fresh prev value
-        if (prev.some(a => a.id === signalId)) {
+        if (staticClosedAlertsRef.current.some(a => a.id === signalId)) {
           console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
           return prev; // Return unchanged if duplicate
         }

@@ -389,6 +389,10 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     if (eventType === 'INSERT') {
       console.log('✅ [INSERT] Adding new signal INSTANTLY:', signalId.substring(0, 8) + '...');
       
+      // ✅ FIX #2A: Invalidate local cache to force fresh data on next fetch
+      localCacheRef.current.expiry = 0;
+      console.log('🔄 [Cache] Invalidated local cache after INSERT event');
+      
       // ✅ Fetch creator profile if not included in real-time payload
       if (!newData.creator && newData.user_id) {
         console.log('🔍 Fetching creator profile for new signal...');
@@ -426,10 +430,17 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         (window as any).signalEmitter.emit('SIGNAL_CREATED', newData);
         (window as any).signalEmitter.emit('REFRESH_SIGNALS');
       }
+      
+      // ✅ FIX #2A: Also dispatch cache invalidation event for other components
+      window.dispatchEvent(new CustomEvent('invalidate-signal-cache'));
     }
 
     if (eventType === 'UPDATE') {
       console.log('✅ [UPDATE] Updating signal INSTANTLY:', signalId.substring(0, 8) + '...');
+      
+      // ✅ FIX #2B: Invalidate local cache on UPDATE too
+      localCacheRef.current.expiry = 0;
+      console.log('🔄 [Cache] Invalidated local cache after UPDATE event');
       
       // ✅ TIER 0 FIX: Store payload for event listeners to access immediately (before state update)
       lastUpdatePayloadRef.current = newData;

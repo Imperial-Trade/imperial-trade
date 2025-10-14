@@ -369,8 +369,8 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     console.log('ℹ️  [Connection] Using database polling for prices (no realtime)');
     channelRef.current = null;
     
-    // Set status to 'polling' to reflect actual architecture
-    setConnectionStatus('polling');
+    // ✅ FIX #1A: Set initial status to 'connecting', will transition to 'connected' when data arrives
+    setConnectionStatus('connecting');
   }, []);
 
   // 🚀 PHASE 2: Fallback mechanisms - postgres_changes + DB polling
@@ -750,6 +750,13 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           
           // 🔥 CRITICAL: Always update lastUpdated to force component re-renders
           setLastUpdated(new Date());
+          
+          // ✅ FIX #1C: Set connection status to 'connected' when database polling returns data
+          if (connectionStatus !== 'connected' && Object.keys(hydratedPrices).length > 0) {
+            console.log('✅ [Database Polling] Fresh data received - setting status to "connected"');
+            setConnectionStatus('connected');
+          }
+          
           console.log(`♻️ [Reactive Update] Triggered component re-renders at ${new Date().toISOString()}`);
 
         }
@@ -977,12 +984,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return isFresh;
     });
     
-    // 🚀 Smart polling strategy:
-    // - Signal stream with fresh data: 5s (slow backup polling)
-    // - Signal stream without fresh data: 500ms (fast initial hydration)
-    // - Other pages: 30s
+    // 🚀 UPDATED: Constant 500ms polling for fast live prices
+    // - Signal stream: 500ms (always - no transitions)
+    // - Other pages: 30s (minimal background polling)
     const pollingInterval = isSignalStreamPage 
-      ? (hasRecentData ? 5000 : 500)  // ✅ Dynamic: 5s if fresh, 500ms during hydration
+      ? 500  // ✅ FIX #1D: Always 500ms (no hydration/backup modes)
       : 30000;
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';

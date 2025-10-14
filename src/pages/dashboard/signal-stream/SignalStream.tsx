@@ -465,31 +465,43 @@ export default function SignalStream() {
     }
 
     // ✅ TIER 0 FIX: Check the most recent real-time UPDATE payload (INSTANT - before state update)
+    // 🔧 PHASE 3D: Access ref DIRECTLY from context, not through prop
     let closedSignal = null;
     
-    if (lastUpdatePayload && lastUpdatePayload.id === signalId) {
-      console.log('⚡ [Closed Alert] Found signal in latest real-time payload (Tier 0 - INSTANT)');
+    // Get fresh ref value directly from context
+    const latestPayload = (window as any).__signalRealtimeContext?.lastUpdatePayloadRef?.current;
+
+    console.log('🔍 [Phase 3D] Checking Tier 0 with direct ref access:', {
+      signalId: signalId?.substring(0, 8),
+      latestPayloadId: latestPayload?.id?.substring(0, 8),
+      latestPayloadStatus: latestPayload?.status,
+      latestPayloadCloseReason: latestPayload?.close_reason,
+      match: latestPayload?.id === signalId
+    });
+
+    if (latestPayload && latestPayload.id === signalId) {
+      console.log('⚡ [Closed Alert] Found signal in latest real-time payload (Tier 0 - INSTANT via direct ref)');
       closedSignal = {
-        id: lastUpdatePayload.id,
-        userId: lastUpdatePayload.user_id,
-        assetName: lastUpdatePayload.asset_name,
-        tradermadeSymbol: lastUpdatePayload.tradermade_symbol,
-        tradeType: lastUpdatePayload.trade_type,
-        entryPrice: lastUpdatePayload.entry_price,
-        stopLoss: lastUpdatePayload.stop_loss,
-        tp1: lastUpdatePayload.tp1,
-        tp2: lastUpdatePayload.tp2,
-        tp3: lastUpdatePayload.tp3,
-        tp4: lastUpdatePayload.tp4,
-        tp5: lastUpdatePayload.tp5,
-        status: lastUpdatePayload.status,
-        tpHits: lastUpdatePayload.tp_hits || [],
-        notes: lastUpdatePayload.notes,
-        closeReason: lastUpdatePayload.close_reason,
-        createdAt: lastUpdatePayload.created_at,
-        updatedAt: lastUpdatePayload.updated_at,
+        id: latestPayload.id,
+        userId: latestPayload.user_id,
+        assetName: latestPayload.asset_name,
+        tradermadeSymbol: latestPayload.tradermade_symbol,
+        tradeType: latestPayload.trade_type,
+        entryPrice: latestPayload.entry_price,
+        stopLoss: latestPayload.stop_loss,
+        tp1: latestPayload.tp1,
+        tp2: latestPayload.tp2,
+        tp3: latestPayload.tp3,
+        tp4: latestPayload.tp4,
+        tp5: latestPayload.tp5,
+        status: latestPayload.status,
+        tpHits: latestPayload.tp_hits || [],
+        notes: latestPayload.notes,
+        closeReason: latestPayload.close_reason,
+        createdAt: latestPayload.created_at,
+        updatedAt: latestPayload.updated_at,
         creator: allAlertsRef.current.find(a => a.id === signalId)?.creator || {
-          id: lastUpdatePayload.user_id,
+          id: latestPayload.user_id,
           display_name: 'Unknown Educator',
           role: 'user',
           avatar_url: null,

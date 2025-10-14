@@ -561,8 +561,8 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
           console.log('✅ Real-time subscription ACTIVE - all updates will be instant');
           setConnectionStatus('connected');
           
-          // ✅ Fetch initial data AFTER subscription is active (prevents race condition)
-          refreshSignals(true);
+          // ✅ Initial data already fetched on mount (parallel with subscription)
+          // No need to fetch again here - prevents duplicate fetch and delay
         }
         
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -613,7 +613,11 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       educatorUserIdsCache = [];
       seenIdsRef.current.clear();
       
-      // Subscribe and fetch
+      // ✅ FIX #1: Fetch initial data IMMEDIATELY (parallel with subscription)
+      console.log('🔄 [Mount] Fetching initial signals immediately (parallel with subscription setup)');
+      refreshSignals(true);
+      
+      // Subscribe to realtime updates (runs in parallel with fetch)
       const cleanup = subscribeToRealtime();
       
       mountOnlyRef.current = false;
@@ -622,7 +626,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         cleanup.then(fn => fn?.());
       };
     }
-  }, [subscribeToRealtime]);
+  }, [subscribeToRealtime, refreshSignals]);
 
   // ✅ FIX #2: Add automatic polling every 30 seconds as safety net
   useEffect(() => {

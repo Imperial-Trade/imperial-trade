@@ -384,6 +384,23 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         
         // Check if signal was closed
         if (newData.status === 'closed') {
+          console.log('🚨 Signal closed via realtime - dispatching signal-closed-confirmed event:', {
+            signalId: newData.id,
+            closeReason: newData.close_reason,
+            assetName: newData.asset_name
+          });
+          
+          // ✅ FIX: Dispatch standard CustomEvent that SignalStream listens for
+          window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+            detail: {
+              signalId: newData.id,
+              closeReason: newData.close_reason || 'manual',
+              assetName: newData.asset_name,
+              timestamp: new Date().toISOString()
+            }
+          }));
+          
+          // Keep the signalEmitter for backward compatibility (other listeners might exist)
           (window as any).signalEmitter.emit('SIGNAL_CLOSED', newData);
         }
       }

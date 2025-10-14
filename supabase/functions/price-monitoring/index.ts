@@ -100,6 +100,13 @@ serve(async (req) => {
             // Close the signal via RPC (proper security)
             console.log(`🔒 Closing signal ${alert.signal_id} via RPC for user ${(alert.trade_alerts as any).user_id}`);
             
+            console.log('🎯 Closing signal via RPC:', {
+              signalId: alert.signal_id,
+              userId: (alert.trade_alerts as any).user_id,
+              closeReason: 'stop_loss',
+              assetName: (alert.trade_alerts as any).asset_name
+            });
+
             const { data: closeResult, error: closeError } = await supabase.rpc('close_trade_alert', {
               p_alert_id: alert.signal_id,
               p_user_id: (alert.trade_alerts as any).user_id,
@@ -107,9 +114,17 @@ serve(async (req) => {
             });
 
             if (closeError) {
-              console.error('❌ Failed to close signal via RPC:', closeError);
+              console.error('❌ Failed to close signal via RPC:', {
+                error: closeError,
+                signalId: alert.signal_id,
+                assetName: (alert.trade_alerts as any).asset_name
+              });
             } else {
-              console.log('✅ Signal closed via RPC:', closeResult);
+              console.log('✅ Signal closed via RPC - Supabase realtime will trigger UPDATE event:', {
+                signalId: alert.signal_id,
+                assetName: (alert.trade_alerts as any).asset_name,
+                result: closeResult
+              });
             }
           } else if (alert.alert_type.startsWith('take_profit_')) {
             // Add TP hit to the signal

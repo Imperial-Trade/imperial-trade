@@ -51,6 +51,7 @@ export default function SignalStream() {
   const [connectionIssue, setConnectionIssue] = useState(false);
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
+  const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
 
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
@@ -284,7 +285,11 @@ export default function SignalStream() {
     educatorOptions,
     signalCounts
   } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
+    const active = alerts
+      .filter(a => 
+        (a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited')
+        && !excludedSignalIds.has(a.id)
+      );
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
@@ -312,7 +317,7 @@ export default function SignalStream() {
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts, staticClosedAlerts.length]);
+  }, [alerts, allAlerts, staticClosedAlerts.length, excludedSignalIds]);
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
@@ -604,14 +609,22 @@ export default function SignalStream() {
       
       setTotalClosedCount(prev => prev + 1);
 
-      // ✅ STEP 3 COMPLETE: Force immediate UI update by triggering context refresh
-      // This ensures closed signal is filtered out of active alerts instantly
-      console.log('✅ [Consolidated] Signal added to closed alerts, triggering refresh for instant UI update');
+      // ✅ STEP 3 CORRECTED: Exclude from active alerts immediately
+      setExcludedSignalIds(prev => new Set(prev).add(signalId));
+      console.log('✅ [Consolidated] Excluded signal from active alerts:', {
+        signalId: signalId?.substring(0, 8),
+        assetName: closedAlertWithProfile.assetName
+      });
+
+      // Clean up exclusion after 5 seconds (context will have updated by then)
       setTimeout(() => {
-        refreshAlerts(false).catch(err => {
-          console.error('❌ [Consolidated] Error refreshing alerts after close:', err);
+        setExcludedSignalIds(prev => {
+          const next = new Set(prev);
+          next.delete(signalId);
+          console.log('🧹 [Consolidated] Cleaned up exclusion for signal:', signalId?.substring(0, 8));
+          return next;
         });
-      }, 100); // Small delay to ensure database write completes
+      }, 5000);
     };
 
     window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);

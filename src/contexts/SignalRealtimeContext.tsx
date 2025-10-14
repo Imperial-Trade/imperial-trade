@@ -69,6 +69,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback'>('connecting');
   
+  // ✅ PHASE 1: Add TP hits cache to eliminate stale closure bug
+  const tpHitsCache = useRef<Map<string, number[]>>(new Map());
+  
   const localCacheRef = useRef<{
     data: Signal[];
     expiry: number;
@@ -79,6 +82,45 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   const mountOnlyRef = useRef(true);
   const seenIdsRef = useRef(new Set<string>());
   const channelRef = useRef<any>(null);
+
+  // ✅ PHASE 3: Expose context to window for emergency fallbacks
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__signalRealtimeContext = {
+        getSignalById: (id: string) => {
+          const signal = signals.find(s => s.id === id);
+          console.log('🔍 [Window Context] getSignalById called:', {
+            signalId: id?.substring(0, 8),
+            found: !!signal,
+            totalSignals: signals.length
+          });
+          return signal;
+        },
+        getAllSignals: () => {
+          console.log('🔍 [Window Context] getAllSignals called:', {
+            totalSignals: signals.length
+          });
+          return signals;
+        },
+        getTpHits: (id: string) => {
+          const hits = tpHitsCache.current.get(id) || [];
+          console.log('🔍 [Window Context] getTpHits called:', {
+            signalId: id?.substring(0, 8),
+            hits,
+            cacheSize: tpHitsCache.current.size
+          });
+          return hits;
+        }
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        console.log('🧹 [Window Context] Cleaning up window.__signalRealtimeContext');
+        delete (window as any).__signalRealtimeContext;
+      }
+    };
+  }, [signals]);
 
   // Fetch educator user IDs with caching
   const fetchEducatorUserIds = useCallback(async (): Promise<string[]> => {
@@ -432,26 +474,30 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
           (window as any).signalEmitter.emit('SIGNAL_CLOSED', newData);
         }
 
-        // ✅ NEW: Detect TP hits and dispatch tp-hit-confirmed events
+        // ✅ PHASE 1 FIX: Detect TP hits using cache (eliminates stale closure bug)
         if (newData.tp_hits && Array.isArray(newData.tp_hits) && newData.tp_hits.length > 0) {
-          const existingSignal = signals.find(s => s.id === signalId);
-          const previousHits = existingSignal?.tp_hits || [];
+          // Get previous TP hits from cache (NOT from stale signals state)
+          const previousHits = tpHitsCache.current.get(signalId) || [];
           
-          // Find NEW TP hits (not in previous state)
+          // Find NEW TP hits (not previously cached)
           const newHits = newData.tp_hits.filter((tp: number) => !previousHits.includes(tp));
           
+          // Update cache immediately (synchronous, no React batching)
+          tpHitsCache.current.set(signalId, newData.tp_hits);
+          
           if (newHits.length > 0) {
-            console.log('🎯 [Realtime] New TP hits detected:', {
+            console.log('🎯 [Realtime] New TP hits detected (cache-based):', {
               signalId: newData.id?.substring(0, 8),
               asset: newData.asset_name,
-              previousHits,
-              newHits,
-              allHits: newData.tp_hits
+              previousHits, // From cache (accurate)
+              newHits, // Newly detected
+              allHits: newData.tp_hits, // Current database state
+              cacheSize: tpHitsCache.current.size
             });
             
             // Dispatch tp-hit-confirmed event for EACH new TP hit
             newHits.forEach((tpLevel: number) => {
-              console.log(`🎯 [Realtime] Dispatching tp-hit-confirmed for TP${tpLevel}`);
+              console.log(`🎯 [Realtime] Dispatching tp-hit-confirmed for TP${tpLevel} (cache-based detection)`);
               
               window.dispatchEvent(new CustomEvent('tp-hit-confirmed', {
                 detail: {
@@ -463,9 +509,10 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
               }));
             });
           } else {
-            console.log('ℹ️ [Realtime] TP hits unchanged:', {
+            console.log('ℹ️ [Realtime] TP hits unchanged (cache verified):', {
               signalId: newData.id?.substring(0, 8),
-              hits: newData.tp_hits
+              hits: newData.tp_hits,
+              cached: previousHits
             });
           }
         }

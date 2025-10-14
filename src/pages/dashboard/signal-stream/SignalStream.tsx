@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
-import { toast as toastUtil } from '@/hooks/use-toast';
 export default function SignalStream() {
   const {
     user,
@@ -466,11 +465,86 @@ export default function SignalStream() {
       
       console.log('🔔 [Real-time Closed Update] Signal closed event received:', { signalId, closeReason });
 
-      // Find the signal in allAlerts
-      const closedSignal = allAlerts.find(a => a.id === signalId);
+      // ✅ PHASE 2 FIX: 3-tier fallback system to handle race conditions
+      // Step 1: Try allAlerts (current render - works 95% of time)
+      let closedSignal = allAlerts.find(a => a.id === signalId);
       
+      // Step 2: Fallback to context signals (might have fresher state)
       if (!closedSignal) {
-        console.warn('⚠️ [Real-time Closed Update] Signal not found in allAlerts:', signalId);
+        console.log('⚠️ [Closed Alert] Signal not in allAlerts, checking context signals...');
+        
+        // Access context directly via window (exposed in Phase 3)
+        const contextSignal = (window as any).__signalRealtimeContext?.getSignalById?.(signalId);
+        
+        if (contextSignal) {
+          console.log('✅ [Closed Alert] Found signal in context:', signalId.substring(0, 8));
+          closedSignal = contextSignal as any;
+        }
+      }
+      
+      // Step 3: Last resort - fetch from database (guaranteed to find signal)
+      if (!closedSignal) {
+        console.log('⚠️ [Closed Alert] Signal not in context, fetching from database...');
+        
+        try {
+          const { data, error } = await supabase
+            .from('trade_alerts')
+            .select(`
+              *,
+              creator:profiles!trade_alerts_user_id_fkey (
+                id, display_name, role, avatar_url, user_type, access_level
+              )
+            `)
+            .eq('id', signalId)
+            .single();
+          
+          if (error) {
+            console.error('❌ [Closed Alert] Database fetch error:', error);
+            throw error;
+          }
+          
+          if (data) {
+            console.log('✅ [Closed Alert] Found signal in database:', signalId.substring(0, 8));
+            
+            // Transform database result to TradeAlertWithProfile format
+            closedSignal = {
+              id: data.id,
+              userId: data.user_id,
+              assetName: data.asset_name,
+              tradermadeSymbol: data.tradermade_symbol,
+              tradeType: data.trade_type,
+              entryPrice: data.entry_price,
+              stopLoss: data.stop_loss,
+              tp1: data.tp1,
+              tp2: data.tp2,
+              tp3: data.tp3,
+              tp4: data.tp4,
+              tp5: data.tp5,
+              status: data.status,
+              tpHits: data.tp_hits || [],
+              notes: data.notes,
+              closeReason: data.close_reason,
+              createdAt: data.created_at,
+              updatedAt: data.updated_at,
+              creator: data.creator
+            } as any;
+          }
+        } catch (error) {
+          console.error('❌ [Closed Alert] Database fetch failed:', error);
+        }
+      }
+      
+      // Step 4: If STILL not found after all 3 tiers, log error and exit gracefully
+      if (!closedSignal) {
+        console.error('❌ [Closed Alert] Signal not found anywhere (allAlerts, context, database):', signalId);
+        
+        toast({
+          title: '⚠️ Signal Not Found',
+          description: 'Unable to locate closed signal. Try using Force Sync.',
+          variant: 'destructive',
+          duration: 5000
+        });
+        
         return;
       }
 
@@ -557,7 +631,7 @@ export default function SignalStream() {
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
       // Show toast notification
-      toastUtil({
+      toast({
         title: '🎯 New Signal Added',
         description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
       });

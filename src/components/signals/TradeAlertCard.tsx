@@ -321,17 +321,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     };
   };
 
-  const getGradientOverlay = () => {
-    if (!isClosed) return null;
-    
-    if (alert.close_reason === 'stop_loss') {
-      return 'linear-gradient(180deg, rgba(255, 69, 58, 0.40) 0%, rgba(255, 69, 58, 0.08) 100%)';
-    } else if (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
-      return 'linear-gradient(180deg, rgba(0, 200, 5, 0.40) 0%, rgba(0, 200, 5, 0.08) 100%)';
-    } else {
-      return 'linear-gradient(180deg, rgba(160, 160, 160, 0.35) 0%, rgba(160, 160, 160, 0.06) 100%)';
-    }
-  };
 
   return (
     <div 
@@ -350,16 +339,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       }}
       data-testid={testId}
     >
-      {/* Gradient overlay layer (behind dark glass content) */}
-      {isClosed && getGradientOverlay() && (
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: getGradientOverlay() || undefined,
-            zIndex: 0,
-          }}
-        />
-      )}
 
       {/* Prominent top color band for closed alerts */}
       {isClosed && (

@@ -313,40 +313,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Determine contextual styling based on close reason
   const getCardBackgroundStyle = () => {
-    // Active/Pending alerts: Clean glassmorphic
-    if (!isClosed) {
-      return {
-        background: colors.bg.glass,
-        backdropFilter: 'blur(20px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-      };
-    }
+    // All cards: Consistent dark glass background
+    return {
+      background: colors.bg.glass,
+      backdropFilter: 'blur(20px) saturate(120%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+    };
+  };
+
+  const getGradientOverlay = () => {
+    if (!isClosed) return null;
     
-    // Closed alerts: Gradient behind glass based on close reason
     if (alert.close_reason === 'stop_loss') {
-      // Red gradient (danger)
-      return {
-        background: `linear-gradient(180deg, rgba(255, 69, 58, 0.25) 0%, transparent 100%), ${colors.bg.glass}`,
-        backdropFilter: 'blur(20px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(255, 69, 58, 0.15)',
-      };
+      return 'linear-gradient(180deg, rgba(255, 69, 58, 0.15) 0%, transparent 100%)';
     } else if (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
-      // Green gradient (success)
-      return {
-        background: `linear-gradient(180deg, rgba(0, 200, 5, 0.25) 0%, transparent 100%), ${colors.bg.glass}`,
-        backdropFilter: 'blur(20px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(0, 200, 5, 0.15)',
-      };
+      return 'linear-gradient(180deg, rgba(0, 200, 5, 0.15) 0%, transparent 100%)';
     } else {
-      // Manual close or other - Grey gradient
-      return {
-        background: `linear-gradient(180deg, rgba(160, 160, 160, 0.20) 0%, transparent 100%), ${colors.bg.glass}`,
-        backdropFilter: 'blur(20px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(160, 160, 160, 0.08)',
-      };
+      return 'linear-gradient(180deg, rgba(160, 160, 160, 0.12) 0%, transparent 100%)';
     }
   };
 
@@ -363,13 +346,25 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 : colors.border.default)
           : colors.border.default,
         borderWidth: '1px',
+        position: 'relative',
       }}
       data-testid={testId}
     >
+      {/* Gradient overlay layer (behind dark glass content) */}
+      {isClosed && getGradientOverlay() && (
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: getGradientOverlay() || undefined,
+            zIndex: 0,
+          }}
+        />
+      )}
+
       {/* Subtle top indicator line for closed alerts */}
       {isClosed && (
         <div 
-          className="h-0.5 w-full"
+          className="h-0.5 w-full relative z-10"
           style={{
             background: alert.close_reason === 'stop_loss'
               ? 'rgba(255, 69, 58, 0.5)'
@@ -380,7 +375,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         />
       )}
 
-      <div className="p-5">
+      <div className="p-5 relative z-10">
         {/* Creator Name (standalone, prominent) */}
         {creator && (
           <div className="mb-3">

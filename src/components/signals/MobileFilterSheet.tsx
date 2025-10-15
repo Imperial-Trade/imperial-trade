@@ -151,12 +151,13 @@ export function MobileFilterSheet({
   return (
     <Drawer open={isOpen} onOpenChange={onClose}>
       <DrawerContent 
-        className="max-h-[70vh]"
+        className="max-h-[70vh] rounded-t-3xl"
         style={{
           background: colors.bg.glass,
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderTop: `1px solid ${colors.border.default}`,
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          borderTop: `2px solid ${colors.border.default}`,
+          boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.3)`,
         }}
       >
         <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">

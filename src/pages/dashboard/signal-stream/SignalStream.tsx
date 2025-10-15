@@ -28,7 +28,10 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
+
 export default function SignalStream() {
+  const { colors, isDark } = useSignalTheme();
   const {
     user,
     profile
@@ -1704,8 +1707,26 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      <div className="min-h-screen w-full" style={{ background: '#000000' }}>
-        <GlobalLeadershipBanner />
+      {/* Animated Gradient Background + Mesh Overlay */}
+      <div 
+        className="min-h-screen relative overflow-hidden"
+        style={{ 
+          background: colors.bg.gradient,
+          animation: 'gradientShift 15s ease infinite',
+        }}
+      >
+        {/* Optional: Animated mesh overlay */}
+        <div 
+          className="fixed inset-0 pointer-events-none opacity-30"
+          style={{
+            background: colors.bg.meshGradient,
+            animation: 'meshFloat 20s ease-in-out infinite alternate',
+          }}
+        />
+        
+        {/* Content wrapper with z-index */}
+        <div className="relative z-10">
+          <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -1781,10 +1802,10 @@ export default function SignalStream() {
         </div>
 
 
-        {/* Main Content - Mobile Optimized grid layout with granular protection */}
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
-          <div className="max-w-none w-full">
-            <div className="w-full">
+          {/* Main Content - Mobile Optimized grid layout with granular protection */}
+          <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
+            <div className="max-w-none w-full">
+              <div className="w-full">
               
               {/* System Status - Removed for clean UI */}
               
@@ -1833,10 +1854,28 @@ export default function SignalStream() {
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 className="text-sm font-medium mb-3 pb-1.5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}>
-                      <span style={{ color: '#EBEBF5' }}>Active </span>
-                      <span style={{ color: '#FFD700' }}>Alerts</span>
-                      <span style={{ color: '#EBEBF5' }}> ({filteredSignals.active.length})</span>
+                    <h2 
+                      className="text-base font-bold pb-2 mb-4 flex items-center gap-2"
+                      style={{
+                        borderBottom: `2px solid ${colors.border.default}`,
+                        color: colors.text.primary,
+                        background: `linear-gradient(90deg, ${colors.border.active}, transparent)`,
+                        backgroundSize: '50% 2px',
+                        backgroundPosition: 'left bottom',
+                        backgroundRepeat: 'no-repeat',
+                      }}
+                    >
+                      <span>Active Alerts</span>
+                      <span 
+                        className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto"
+                        style={{
+                          background: colors.state.active,
+                          color: colors.text.gold,
+                          border: `1px solid ${colors.border.active}`,
+                        }}
+                      >
+                        {filteredSignals.active.length}
+                      </span>
                      </h2>
                      {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.active.map(alert => <TradeAlertCard
@@ -1931,10 +1970,10 @@ export default function SignalStream() {
               <EconomicSidebar />
             </div>
           </div>
-        </div>
-        
-        {/* Create Signal Modal */}
-         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          </div>
+          
+          {/* Create Signal Modal */}
+          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'rgba(28, 28, 30, 0.7)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <DialogHeader>
                 <DialogTitle style={{ color: '#FFFFFF' }}>Create Alert</DialogTitle>
@@ -1942,9 +1981,10 @@ export default function SignalStream() {
                   Create a new educational trading pattern for learning and analysis purposes.
                 </p>
               </DialogHeader>
-             <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
-           </DialogContent>
-         </Dialog>
+              <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     </StreamErrorBoundary>
   </SignalStreamErrorBoundary>;

@@ -21,16 +21,17 @@ export function MobileFilterButton({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "h-10 w-10 rounded-lg flex items-center justify-center",
-        "transition-all duration-200 ease-out",
-        "hover:scale-105 active:scale-95"
+        "h-9 w-9 rounded-xl flex items-center justify-center",
+        "transition-all duration-300 ease-out",
+        "hover:scale-110 active:scale-95"
       )}
       style={{
         background: isActive ? colors.state.active : colors.bg.surface,
-        backdropFilter: 'blur(12px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-        border: `1px solid ${isActive ? colors.border.active : colors.border.default}`,
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        border: `1.5px solid ${isActive ? colors.border.active : colors.border.default}`,
         color: isActive ? colors.text.gold : colors.text.tertiary,
+        boxShadow: isActive ? `0 0 15px ${colors.accent.gold}20` : 'none',
       }}
     >
       {icon}

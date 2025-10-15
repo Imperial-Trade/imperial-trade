@@ -147,7 +147,7 @@ export function SignalStreamFilters({
     return (
       <>
         <div 
-          className="mb-4 p-4 space-y-3 rounded-2xl border"
+          className="mb-4 p-3 rounded-2xl border"
           style={{
             background: colors.bg.glass,
             backdropFilter: 'blur(30px) saturate(180%)',
@@ -158,10 +158,10 @@ export function SignalStreamFilters({
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
         >
-          {/* Row 1: Search + Create Alert */}
+          {/* SINGLE ROW: Search + Filter Icons + Create */}
           <div className="flex items-center gap-2">
-              {/* Search Bar */}
-              <div className="flex-1 relative">
+            {/* Search (flex-1) */}
+            <div className="flex-1 relative min-w-0">
                 <Search 
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" 
                   style={{ color: colors.text.tertiary }}
@@ -188,95 +188,78 @@ export function SignalStreamFilters({
                   </div>
                 )}
                 
-              <Input
-                value={filters.search}
-                onChange={(e) => updateFilter('search', e.target.value)}
-                className="h-11 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
+            <Input
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              placeholder="Search..."
+              className="h-9 pl-9 pr-9 text-sm rounded-xl border transition-all duration-200"
+              style={{
+                background: colors.bg.surface,
+                borderColor: colors.border.default,
+                color: colors.text.primary,
+              }}
+            />
+            {filters.search && (
+              <button
+                onClick={(e) => handleClearFilterClick(e, 'search')}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full flex items-center justify-center"
                 style={{
-                  background: colors.bg.surface,
-                  borderColor: colors.border.default,
-                  color: colors.text.primary,
+                  background: colors.state.danger,
+                  color: colors.accent.danger,
                 }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = colors.border.active;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = colors.border.default;
-                }}
-              />
-                
-                {filters.search && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleClearFilterClick(e, 'search')}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-                    style={{
-                      background: colors.state.danger,
-                      border: `1px solid ${colors.border.danger}`,
-                      color: colors.accent.danger,
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Glassmorphism Create Alert Button */}
-              {canCreateSignals && (
-                <GlassmorphismCreateButton onClick={handleCreateSignalClick} />
-              )}
-            </div>
-
-            {/* Row 2: Icon Filter Buttons */}
-            <div className="flex items-center gap-2">
-              {/* Status Filter Icon */}
-              <MobileFilterButton
-                icon={<Filter className="w-4 h-4" />}
-                label="Filter by status"
-                isActive={filters.status !== 'all' && filters.status !== ''}
-                onClick={() => setMobileSheetOpen('status')}
-              />
-              
-              {/* Trade Type Filter Icon */}
-              <MobileFilterButton
-                icon={<TrendingUp className="w-4 h-4" />}
-                label="Filter by type"
-                isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
-                onClick={() => setMobileSheetOpen('tradeType')}
-              />
-              
-              {/* Educator Filter Icon */}
-              {educatorOptions.length > 1 && (
-                <MobileFilterButton
-                  icon={<Users className="w-4 h-4" />}
-                  label="Filter by educator"
-                  isActive={filters.educator !== 'all' && filters.educator !== ''}
-                  onClick={() => setMobileSheetOpen('educator')}
-                />
-              )}
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Clear All Button */}
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearAllClick}
-                  className="h-10 px-3 text-xs rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                  style={{
-                    background: 'transparent',
-                    border: `1px solid ${colors.border.danger}`,
-                    color: colors.text.danger,
-                  }}
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Clear
-                </Button>
-              )}
-            </div>
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          
+          {/* Status Filter Icon */}
+          <MobileFilterButton
+            icon={<Filter className="w-4 h-4" />}
+            label="Status"
+            isActive={filters.status !== 'all' && filters.status !== ''}
+            onClick={() => setMobileSheetOpen('status')}
+          />
+          
+          {/* Trade Type Filter Icon */}
+          <MobileFilterButton
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Type"
+            isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
+            onClick={() => setMobileSheetOpen('tradeType')}
+          />
+          
+          {/* Educator Filter Icon */}
+          {educatorOptions.length > 1 && (
+            <MobileFilterButton
+              icon={<Users className="w-4 h-4" />}
+              label="Educator"
+              isActive={filters.educator !== 'all' && filters.educator !== ''}
+              onClick={() => setMobileSheetOpen('educator')}
+            />
+          )}
+          
+          {/* Create Signal Button */}
+          {canCreateSignals && (
+            <GlassmorphismCreateButton onClick={handleCreateSignalClick} />
+          )}
+          
+          {/* Clear All (icon only if active) */}
+          {hasActiveFilters && (
+            <button
+              onClick={handleClearAllClick}
+              className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200"
+              style={{
+                background: colors.state.danger,
+                border: `1px solid ${colors.border.danger}`,
+                color: colors.accent.danger,
+              }}
+              aria-label="Clear all filters"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
         </div>
 
         {/* Filter Sheets */}

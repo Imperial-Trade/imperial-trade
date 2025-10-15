@@ -12,6 +12,10 @@ export const signalColors = {
     bg: {
       /** Pure black background for the entire app view. */
       primary: '#000000',
+      /** Dynamic gradient background for glassmorphism */
+      gradient: 'radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(0, 200, 5, 0.06) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(94, 159, 242, 0.05) 0%, transparent 50%), #000000',
+      /** Animated mesh gradient overlay */
+      meshGradient: 'radial-gradient(at 0% 0%, rgba(255, 215, 0, 0.1) 0px, transparent 50%), radial-gradient(at 50% 50%, rgba(0, 200, 5, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(94, 159, 242, 0.06) 0px, transparent 50%), #000000',
       /** Solid dark grey for opaque elements like input fields. (Apple System Dark Grey) */
       surface: '#1C1C1E',
       /** The core of our design: a semi-transparent, blurred surface for all panels. */
@@ -86,6 +90,10 @@ export const signalColors = {
     bg: {
       /** Pure white background for the entire app view. */
       primary: '#FFFFFF',
+      /** Dynamic gradient background for glassmorphism */
+      gradient: 'radial-gradient(circle at 20% 50%, rgba(199, 156, 0, 0.06) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(0, 168, 4, 0.04) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(94, 159, 242, 0.03) 0%, transparent 50%), #FFFFFF',
+      /** Animated mesh gradient overlay */
+      meshGradient: 'radial-gradient(at 0% 0%, rgba(199, 156, 0, 0.08) 0px, transparent 50%), radial-gradient(at 50% 50%, rgba(0, 168, 4, 0.06) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(94, 159, 242, 0.04) 0px, transparent 50%), #FFFFFF',
       /** Light grey for opaque elements like input fields. (Apple System Light Grey) */
       surface: '#F5F5F7',
       /** Light glassmorphism with subtle tint. */

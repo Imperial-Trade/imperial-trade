@@ -313,12 +313,20 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`rounded-lg border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50' : ''} ${className || ''}`}
+      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-75' : ''} ${className || ''}`}
       style={{
         background: colors.bg.glass,
-        backdropFilter: 'blur(25px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(25px) saturate(180%)',
-        borderColor: colors.border.default,
+        backdropFilter: 'blur(40px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        borderColor: isPending 
+          ? colors.border.active 
+          : isClosed 
+            ? colors.border.danger 
+            : colors.border.default,
+        borderWidth: '1.5px',
+        boxShadow: justAdded 
+          ? `0 0 20px ${colors.accent.green}40` 
+          : 'none',
       }}
       data-testid={testId}
     >
@@ -333,74 +341,106 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         }`} />
       )}
 
-      <div className="p-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          {/* Use the new AnimatedStatusHeader component with primitive props */}
-          <div className="flex-1">
-            <AnimatedStatusHeader 
-              creator={creator} 
-              assetName={alert.asset_name}
-              status={alert.status}
-              tradeType={alert.trade_type}
-              closeReason={alert.close_reason}
-              highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
-              hasTPHits={Boolean(hitTPs.length)}
-              isRecentClosure={isRecentClosure} 
-              justAdded={justAdded}
-              createdDate={alert.created_date}
-              updatedDate={alert.updated_date}
-            />
+      <div className="p-4">
+        {/* NEW: Single-row header with asset name, badges, and horizontal action icons */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          {/* Left: Creator badge + Asset name + Status badge */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Creator Info (compact) */}
+            {creator && (
+              <div 
+                className="text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap"
+                style={{
+                  background: colors.state.active,
+                  color: colors.text.gold,
+                  border: `1px solid ${colors.border.active}`,
+                }}
+              >
+                {creator.display_name}
+              </div>
+            )}
+            
+            {/* Asset Name */}
+            <h3 
+              className="text-lg font-bold truncate"
+              style={{ color: colors.text.primary }}
+            >
+              {alert.asset_name}
+            </h3>
+            
+            {/* Status Badge */}
+            <div
+              className="text-xs px-2 py-1 rounded-lg font-semibold whitespace-nowrap"
+              style={{
+                background: isPending 
+                  ? colors.semantic.success 
+                  : isClosed 
+                    ? colors.semantic.danger 
+                    : colors.semantic.success,
+                color: isPending 
+                  ? colors.accent.green 
+                  : isClosed 
+                    ? colors.accent.red 
+                    : colors.accent.green,
+                border: `1px solid ${isPending ? colors.border.active : isClosed ? colors.border.danger : colors.border.active}`,
+              }}
+            >
+              {alert.status === 'active' && 'ACTIVE ' + (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}
+              {alert.status === 'pending' && 'PENDING'}
+              {alert.status === 'closed' && 'CLOSED'}
+            </div>
           </div>
-        </div>
-
-        {/* Actions - moved to the right */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">
-          {/* Copy Button */}
-          <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                onClick={handleCopyPanelToggle}
-              >
-                <Copy className="w-4 h-4 mr-1" />
-                {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
           
-          {/* Share Button */}
-          <SignalSharingModal 
-            signal={tradeSignal}
-            trigger={
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-              >
-                <Share2 className="w-4 h-4 mr-1" />
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            }
-          />
-          
-          {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
-          {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-            <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                  onClick={handleCalculatorToggle}
+          {/* Right: Horizontal action icons (like reference image) */}
+          <div className="flex items-center gap-1" data-prevent-widget-open="true">
+            {/* Copy Button - Icon only */}
+            <button
+              onClick={handleCopyPanelToggle}
+              className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+              style={{
+                background: showCopyPanel ? colors.state.active : 'transparent',
+                border: `1px solid ${showCopyPanel ? colors.border.active : colors.border.default}`,
+                color: showCopyPanel ? colors.text.gold : colors.text.secondary,
+              }}
+              aria-label="Copy signal"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            
+            {/* Share Button - Icon only */}
+            <SignalSharingModal 
+              signal={tradeSignal}
+              trigger={
+                <button
+                  className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${colors.border.default}`,
+                    color: colors.text.secondary,
+                  }}
+                  aria-label="Share signal"
                 >
-                  <Calculator className="w-4 h-4 mr-1" />
-                  {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </Button>
-              </CollapsibleTrigger>
-            </Collapsible>
-          )}
+                  <Share2 className="w-4 h-4" />
+                </button>
+              }
+            />
+            
+            {/* Calculator Button - Icon only (active signals only) */}
+            {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
+              <button
+                onClick={handleCalculatorToggle}
+                className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{
+                  background: showCalculator ? colors.semantic.success : 'transparent',
+                  border: `1px solid ${showCalculator ? colors.border.active : colors.border.default}`,
+                  color: showCalculator ? colors.accent.green : colors.text.secondary,
+                }}
+                aria-label="Calculator"
+              >
+                <Calculator className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

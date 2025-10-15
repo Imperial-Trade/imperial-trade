@@ -115,10 +115,12 @@ export function SignalStreamFilters({
     updateFilter('tradeType', tradeTypeValue);
   };
 
-  const handleCreateSignalClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    stopImmediate(e);
+  const handleCreateSignalClick = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      stopImmediate(e);
+    }
     if (onCreateSignal) {
       onCreateSignal();
     }
@@ -185,7 +187,7 @@ export function SignalStreamFilters({
 
               {/* Glassmorphism Create Alert Button */}
               {canCreateSignals && (
-                <GlassmorphismCreateButton onClick={() => handleCreateSignalClick({} as React.MouseEvent)} />
+                <GlassmorphismCreateButton onClick={handleCreateSignalClick} />
               )}
             </div>
 

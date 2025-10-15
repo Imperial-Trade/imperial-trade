@@ -587,8 +587,7 @@ export default function SignalStream() {
           .select('*')
           .eq('status', 'closed')
           .in('user_id', educatorIds)
-          .order('updated_at', { ascending: false })
-          .limit(12);
+          .order('updated_at', { ascending: false });
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
           setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19
@@ -664,7 +663,7 @@ export default function SignalStream() {
         });
         setStaticClosedAlerts(mappedAlerts);
         setTotalClosedCount(count || 0);
-        console.log(`📊 PHASE 6 + BUG #19: Loaded ${mappedAlerts.length} static closed alerts, total: ${count}`);
+        console.log(`📊 Loaded ALL ${mappedAlerts.length} closed alerts from ${educatorIds.length} educators (Total in DB: ${count})`);
       } catch (error) {
         console.error('Error fetching static closed alerts:', error);
       } finally {

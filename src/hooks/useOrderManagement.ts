@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { tradingApiService } from '@/api/services/TradingApiService';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useOrderManagement = () => {
   const { toast } = useToast();
@@ -22,23 +23,50 @@ export const useOrderManagement = () => {
   };
 
   const cancelOrder = useCallback(async (orderId: string): Promise<void> => {
+    console.log('🚫 Cancelling order:', orderId);
+    
     const currentUserId = ensureAuthAndOwnershipContext();
 
-    // Update order to closed status with cancellation reason
-    const response = await tradingApiService.updateAlert(
-      orderId,
-      {
-        status: 'closed',
-        closeReason: 'manual',
-      },
-      currentUserId
-    );
+    try {
+      // ============================================
+      // FIX #3: Use RPC function instead of direct update
+      // ============================================
+      const { data, error } = await supabase.rpc('close_trade_alert', {
+        p_alert_id: orderId,
+        p_user_id: currentUserId,
+        p_close_reason: 'manual'
+      });
 
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to cancel order');
+      if (error) {
+        console.error('❌ RPC close_trade_alert failed:', error);
+        throw new Error(error.message || 'Failed to cancel order');
+      }
+
+      console.log('✅ Order cancelled via RPC:', data);
+
+      // ✅ Dispatch event for instant UI update
+      window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+        detail: {
+          signalId: orderId,
+          closeReason: 'manual',
+          timestamp: new Date().toISOString()
+        }
+      }));
+
+      toast({
+        title: '✅ Order Cancelled',
+        description: 'Limit order cancelled successfully'
+      });
+
+    } catch (error: any) {
+      console.error('💥 Cancel order failed:', error);
+      toast({
+        title: '❌ Cancellation Failed',
+        description: error.message || 'Failed to cancel order',
+        variant: 'destructive'
+      });
+      throw error;
     }
-
-    console.log('✅ Order cancelled successfully:', orderId);
   }, [toast, userId]);
 
   const modifyOrderPrice = useCallback(async (orderId: string, newPrice: number): Promise<void> => {

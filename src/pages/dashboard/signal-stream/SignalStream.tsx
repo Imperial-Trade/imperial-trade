@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
-import { toast as toastUtil } from '@/hooks/use-toast';
 export default function SignalStream() {
   const {
     user,
@@ -50,9 +49,32 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
+
+  // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
+  const { prices } = useOptimizedWebSocketPrices();
+
+  // ✅ FIX: Refs to prevent stale closures in event listeners
+  const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
+  const staticClosedAlertsRef = useRef<TradeAlertWithProfile[]>([]);
 
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
+  
+  // 🔒 DEDUPLICATION: Prevent duplicate TP/SL processing
+  const processingSignalsRef = useRef<Set<string>>(new Set());
+  const processedHitsRef = useRef<Map<string, { timestamp: number, type: 'sl' | 'tp', level?: number }>>(new Map());
+  
+  // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
+  const instantToastHandledRef = useRef<Set<string>>(new Set());
+  
+  // 🔒 TIER 1: Backend Detection Tracking - Prevent frontend from re-processing backend-handled events
+  const backendProcessedRef = useRef<Set<string>>(new Set());
+  
+  // 🚀 TIER 2: Performance - Cache creator checks to prevent redundant computations
+  const creatorCheckCache = useRef(new Map<string, boolean>());
   
   // Check notification system initialization
   useEffect(() => {
@@ -62,6 +84,24 @@ export default function SignalStream() {
     } else {
       console.log('✅ [SignalStream] Custom notification system initialized');
     }
+  }, []);
+  
+  // Clean up old processed hits every 30 seconds
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      const entries = Array.from(processedHitsRef.current.entries());
+      
+      entries.forEach(([key, value]) => {
+        // Remove processed hits older than 60 seconds
+        if (now - value.timestamp > 60000) {
+          processedHitsRef.current.delete(key);
+          console.log(`🧹 [Cleanup] Removed old processed hit: ${key}`);
+        }
+      });
+    }, 30000);
+    
+    return () => clearInterval(cleanup);
   }, []);
 
   // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
@@ -73,8 +113,38 @@ export default function SignalStream() {
     lastUpdated,
     nextRetryAt,
     updateAlert,
-    refreshAlerts
+    refreshAlerts,
+    lastUpdatePayload  // ✅ TIER 0 FIX: Get latest UPDATE payload for instant closed signal handling
   } = useSignalRealtime(user?.id || '', true);
+
+  // Manual sync handler
+  const handleManualSync = useCallback(async () => {
+    setIsSyncing(true);
+    console.log('🔄 [Manual Sync] Triggered - refreshing all signals');
+    
+    try {
+      await refreshAlerts(true); // bypassThrottle = true
+      
+      console.log('✅ [Manual Sync] Complete - all signals refreshed');
+      
+      toast({
+        title: '✅ Synced Successfully',
+        description: 'All signals refreshed from database',
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('❌ [Manual Sync] Error:', error);
+      
+      toast({
+        title: '❌ Sync Failed',
+        description: 'Failed to refresh signals. Please try again.',
+        variant: 'destructive',
+        duration: 5000
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refreshAlerts, toast]);
 
   console.log('🔍 DEBUG [SignalStream] Received allAlerts from hook:', {
     totalAlerts: allAlerts.length,
@@ -101,6 +171,65 @@ export default function SignalStream() {
     }
   }, [allAlerts.length, connectionStatus, lastUpdated]);
 
+  // ============================================
+  // STEP 1 COMPLETE: Duplicate toast listener removed and consolidated
+  // Toast logic for TP hits, order activation, and signal creation
+  // (Signal closed toast is now in Phase 2 listener below)
+  // ============================================
+  useEffect(() => {
+    const handleTPHit = (event: CustomEvent) => {
+      const { signalId, tpLevel, assetName } = event.detail;
+      
+      console.log('🎯 TP hit event received:', event.detail);
+      
+      // 🔒 TIER 1: Mark as backend-processed
+      const tpKey = `${signalId}-tp${tpLevel}`;
+      backendProcessedRef.current.add(tpKey);
+      
+      // Clear after 10 seconds
+      setTimeout(() => {
+        backendProcessedRef.current.delete(tpKey);
+      }, 10000);
+      
+      toast({
+        title: `🎯 TP${tpLevel} Hit!`,
+        description: `${assetName} reached Take Profit ${tpLevel}`,
+      });
+    };
+    
+    const handleOrderActivation = (event: CustomEvent) => {
+      const { signalId, assetName } = event.detail;
+      
+      console.log('🚀 Order activation event received:', event.detail);
+      
+      toast({
+        title: '🚀 Order Activated!',
+        description: `${assetName} limit order is now active`,
+      });
+    };
+    
+    const handleSignalCreated = (event: CustomEvent) => {
+      const { signalId, assetName, status } = event.detail;
+      
+      console.log('🆕 New signal created event received:', event.detail);
+      
+      toast({
+        title: '✅ Signal Created!',
+        description: `${assetName} signal is now ${status}`,
+      });
+    };
+    
+    window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
+    window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+    window.addEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
+    
+    return () => {
+      window.removeEventListener('tp-hit-confirmed', handleTPHit as EventListener);
+      window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
+      window.removeEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
+    };
+  }, [toast]);
+
   // Local state for operations
   const isLoading = realtimeLoading;
   const error = realtimeError;
@@ -110,6 +239,8 @@ export default function SignalStream() {
     try {
       const result = await tradingApiService.createAlert(dto, user?.id || '');
       if (result.success) {
+        // ✅ BUG #20 FIX: Dispatch cache invalidation event to force fresh fetch
+        window.dispatchEvent(new Event('invalidate-signal-cache'));
         await refreshAlerts();
         return true;
       }
@@ -131,9 +262,47 @@ export default function SignalStream() {
       userId: user?.id
     });
   }
-  const isCreator = useCallback((alertCreatorId: string | undefined) => {
-    if (!alertCreatorId) return false;
-    return profile?.id === alertCreatorId;
+  // ✅ FIX: Check creator permission using userId (direct FK) as primary source
+  // 🚀 TIER 2: Memoized with cache to prevent redundant computations
+  const isCreator = useCallback((alert: TradeAlertWithProfile) => {
+    if (!profile?.id) return false;
+    
+    // 🚀 TIER 2: Check cache first
+    const cacheKey = `${alert.id}-${profile.id}`;
+    if (creatorCheckCache.current.has(cacheKey)) {
+      return creatorCheckCache.current.get(cacheKey)!;
+    }
+    
+    // Primary check: alert.userId is the direct foreign key to user_id column
+    const isCreatorByUserId = alert.userId === profile.id;
+    
+    // Fallback: alert.creator?.id from joined profile data
+    const isCreatorByCreatorId = alert.creator?.id === profile.id;
+    
+    const result = isCreatorByUserId || isCreatorByCreatorId;
+    
+    // 🚀 TIER 2: Cache the result
+    creatorCheckCache.current.set(cacheKey, result);
+    
+    if (isDevToolsEnabled()) {
+      console.log('🔍 [isCreator Check]:', {
+        alertId: alert.id,
+        assetName: alert.assetName,
+        'alert.userId': alert.userId,
+        'alert.creator?.id': alert.creator?.id,
+        'profile.id': profile.id,
+        isCreatorByUserId,
+        isCreatorByCreatorId,
+        finalResult: result
+      });
+    }
+    
+    return result;
+  }, [profile?.id]);
+  
+  // 🚀 TIER 2: Clear creator check cache when profile changes
+  useEffect(() => {
+    creatorCheckCache.current.clear();
   }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
@@ -179,7 +348,11 @@ export default function SignalStream() {
     educatorOptions,
     signalCounts
   } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
+    const active = alerts
+      .filter(a => 
+        (a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited')
+        && !excludedSignalIds.has(a.id)
+      );
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
@@ -207,7 +380,14 @@ export default function SignalStream() {
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts, staticClosedAlerts.length]);
+  }, [alerts, allAlerts, staticClosedAlerts.length, excludedSignalIds]);
+
+  // ✅ FIX: Keep refs in sync with state to prevent stale closures
+  useEffect(() => {
+    allAlertsRef.current = allAlerts;
+    staticClosedAlertsRef.current = staticClosedAlerts;
+  }, [allAlerts, staticClosedAlerts]);
+
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
@@ -305,87 +485,291 @@ export default function SignalStream() {
     fetchStaticClosedAlerts();
   }, []); // Only fetch once on mount
 
-  // 🔧 BUG FIX #22: Listen for signal-closed-confirmed events and update staticClosedAlerts in real-time
+  // ============================================
+  // SMART TIMESTAMP REFRESH: Update "time ago" every 60s without refetching
+  // ============================================
   useEffect(() => {
-    const handleSignalClosed = async (event: CustomEvent) => {
-      const { signalId, closeReason } = event.detail;
-      
-      console.log('🔔 [Real-time Closed Update] Signal closed event received:', { signalId, closeReason });
-
-      // Find the signal in allAlerts
-      const closedSignal = allAlerts.find(a => a.id === signalId);
-      
-      if (!closedSignal) {
-        console.warn('⚠️ [Real-time Closed Update] Signal not found in allAlerts:', signalId);
-        return;
-      }
-
-      // ✅ BUG FIX #5: Use functional setState to always get fresh staticClosedAlerts
-      // This prevents stale closure issues with the dependency array
-
-      // Fetch the profile if not already available
-      let creatorProfile = closedSignal.creator;
-      if (!creatorProfile || !creatorProfile.display_name) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', closedSignal.userId)
-          .single();
-        
-        if (profileData) {
-          creatorProfile = {
-            id: profileData.id,
-            display_name: profileData.display_name || 'Anonymous User',
-            role: profileData.role || 'user',
-            avatar_url: profileData.avatar_url,
-            user_type: profileData.user_type,
-            access_level: profileData.access_level
-          };
-        }
-      }
-
-      // Map to TradeAlertWithProfile format with closed status
-      const closedAlertWithProfile: TradeAlertWithProfile = {
-        ...closedSignal,
-        status: 'closed',
-        closeReason: closeReason || closedSignal.closeReason,
-        creator: creatorProfile || {
-          id: closedSignal.userId,
-          display_name: 'Unknown User',
-          role: 'user',
-          avatar_url: null,
-          user_type: null,
-          access_level: null
-        }
-      };
-
-      // ✅ BUG FIX #5: Use functional setState with duplicate check inside
-      setStaticClosedAlerts(prev => {
-        // Check if already exists using fresh prev value
-        if (prev.some(a => a.id === signalId)) {
-          console.log('⏭️ [Real-time Closed Update] Signal already in closed alerts, skipping:', signalId);
-          return prev; // Return unchanged if duplicate
-        }
-        
-        console.log('✅ [Real-time Closed Update] Adding signal to closed alerts:', {
-          signalId,
-          assetName: closedSignal.assetName,
-          closeReason,
-          newClosedCount: prev.length + 1
-        });
-        
-        return [closedAlertWithProfile, ...prev.slice(0, 11)]; // Keep max 12
-      });
-      
-      setTotalClosedCount(prev => prev + 1);
-    };
-
-    window.addEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+    console.log('⏱️ [Timestamp Refresh] Starting 60-second interval for closed alerts');
+    
+    const timestampInterval = setInterval(() => {
+      const now = Date.now();
+      setLastTimestampUpdate(now);
+      console.log('⏱️ [Timestamp Refresh] Triggered - UI will recalculate "time ago" displays');
+    }, 60000); // 60 seconds
 
     return () => {
-      window.removeEventListener('signal-closed-confirmed', handleSignalClosed as EventListener);
+      console.log('⏱️ [Timestamp Refresh] Clearing interval on component unmount');
+      clearInterval(timestampInterval);
     };
-  }, [allAlerts]); // ✅ BUG FIX #5: Remove staticClosedAlerts from deps to prevent stale closure
+  }, []);
+
+  // ✅ SIMPLIFIED: React to state changes directly (no events, no tiers, no DB fetches)
+  useEffect(() => {
+    const alreadyClosedIds = new Set(staticClosedAlerts.map(a => a.id));
+    
+    const newlyClosedSignals = allAlerts.filter(signal => 
+      signal.status === 'closed' && 
+      !alreadyClosedIds.has(signal.id) &&
+      !excludedSignalIds.has(signal.id)
+    );
+
+    if (newlyClosedSignals.length > 0) {
+      console.log(`✅ [State Change] ${newlyClosedSignals.length} signal(s) closed - moving to closed alerts`);
+
+      // Add to closed alerts
+    setStaticClosedAlerts(prev => {
+      // Sort newly closed signals by timestamp (newest first)
+      const sorted = [...newlyClosedSignals].sort((a, b) => {
+        const timeA = new Date(a.updatedAt).getTime();
+        const timeB = new Date(b.updatedAt).getTime();
+        return timeB - timeA; // Descending: newest first
+      });
+      
+      return [...sorted, ...prev].slice(0, 12);
+    });
+      
+      // Update total count
+      setTotalClosedCount(prev => prev + newlyClosedSignals.length);
+      
+      // Exclude from active alerts
+      setExcludedSignalIds(prev => {
+        const next = new Set(prev);
+        newlyClosedSignals.forEach(s => next.add(s.id));
+        return next;
+      });
+
+      // Show toast for each closed signal (with deduplication)
+      newlyClosedSignals.forEach(signal => {
+        // ✅ GUARD: Check if the instant path already showed a toast for this signal (SL or TP)
+        const wasHandledByInstant = 
+          instantToastHandledRef.current.has(signal.id) || // For SL hits
+          Array.from(instantToastHandledRef.current).some(key => key.startsWith(`${signal.id}-tp`)); // For TP hits
+        
+        if (wasHandledByInstant) {
+          console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection`);
+          // 🔒 TIER 1: Immediate cleanup (no 5-second delay)
+          instantToastHandledRef.current.delete(signal.id);
+          Array.from(instantToastHandledRef.current).forEach(key => {
+            if (key.startsWith(`${signal.id}-tp`)) {
+              instantToastHandledRef.current.delete(key);
+            }
+          });
+          return; // Do not show a second toast
+        }
+        
+        // If we are here, the closure was detected by the backend/realtime first
+        let toastTitle = '🔒 Signal Closed';
+        let toastDescription = `${signal.assetName} closed: ${signal.closeReason || 'Manual'}`;
+        let toastVariant: 'default' | 'destructive' = 'default';
+
+        if (signal.closeReason === 'stop_loss') {
+          toastTitle = '🔴 Stop Loss Hit';
+          toastDescription = `${signal.assetName} signal closed at SL`;
+          toastVariant = 'destructive';
+        } else if (signal.closeReason === 'all_tps_hit') {
+          toastTitle = '💰 All Targets Hit!';
+          toastDescription = `${signal.assetName} - All take profits reached`;
+        } else if (signal.closeReason?.startsWith('tp')) {
+          toastTitle = '🟢 Take Profit Hit';
+          const tpNum = signal.closeReason.replace('tp', '').replace('_hit', '');
+          toastDescription = `${signal.assetName} closed at TP${tpNum}`;
+        } else if (signal.closeReason === 'manual') {
+          toastDescription = `${signal.assetName} closed manually`;
+        }
+        
+        toast({ title: toastTitle, description: toastDescription, variant: toastVariant });
+      });
+    }
+  }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
+
+  // ============================================
+  // 🎯 FORTIFIED INSTANT TP & SL DETECTION (Phase 2)
+  // 🚀 TIER 2: Debounced to reduce detection frequency
+  // ============================================
+  const detectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // 🚀 TIER 2: Clear previous timeout
+    if (detectionTimeoutRef.current) {
+      clearTimeout(detectionTimeoutRef.current);
+    }
+    
+    // 🚀 TIER 2: Debounce detection by 100ms
+    detectionTimeoutRef.current = setTimeout(() => {
+      const activeSignals = allAlerts.filter(s => s.status === 'active');
+      if (activeSignals.length === 0) return;
+
+      activeSignals.forEach(signal => {
+        const priceData = prices[signal.tradermadeSymbol];
+        if (!priceData) return;
+
+        const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
+
+        // --- TP DETECTION ---
+        const tpLevels = [
+          { level: 1, price: signal.tp1 },
+          { level: 2, price: signal.tp2 },
+          { level: 3, price: signal.tp3 },
+          { level: 4, price: signal.tp4 },
+          { level: 5, price: signal.tp5 }
+        ];
+
+        tpLevels.forEach(({ level, price }) => {
+          if (!price || price <= 0) return;
+
+          const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
+          const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
+
+          if (tpHit) {
+            // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+            const tpKey = `${signal.id}-tp${level}`;
+            
+            // GUARD 1: Already hit in state
+            if (signal.tpHits?.includes(level)) {
+              return;
+            }
+            
+            // GUARD 2: Already being processed
+            if (processingSignalsRef.current.has(tpKey)) {
+              return;
+            }
+            
+            // GUARD 3: Backend already processed this
+            if (backendProcessedRef.current.has(tpKey)) {
+              console.log(`⏭️ [INSTANT] Backend already processed ${tpKey}`);
+              return;
+            }
+
+            // All checks passed, proceed with immediate lock
+            console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
+            
+            // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
+            processingSignalsRef.current.add(tpKey);
+            instantToastHandledRef.current.add(tpKey);
+
+            // Optimistic UI Update
+            const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
+            
+            // 🆕 COUNT TOTAL DEFINED TPs
+            const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+              .filter(tp => tp && tp > 0).length;
+            
+            // 🆕 CHECK IF ALL TPs ARE NOW HIT
+            const allTPsHit = updatedTPHits.length === totalTPs && totalTPs > 0;
+            
+            // 🆕 PREPARE UPDATE DATA
+            const updateData = allTPsHit
+              ? {
+                  tpHits: updatedTPHits,
+                  status: 'closed' as const,
+                  closeReason: 'all_tps_hit' as const
+                }
+              : { tpHits: updatedTPHits };
+            
+            // Apply optimistic update
+            updateAlert(signal.id, updateData);
+            
+            // 🆕 SHOW APPROPRIATE TOAST
+            if (allTPsHit) {
+              toast({
+                title: `🟢 Signal Closed at TP${level}`,
+                description: `${signal.assetName} - All TPs hit! Signal closed successfully`,
+              });
+            } else {
+              toast({
+                title: `🎯 TP${level} Hit!`,
+                description: `${signal.assetName} reached TP${level} - ${totalTPs - updatedTPHits.length} TPs remaining`,
+              });
+            }
+
+            // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
+            supabase
+              .from('trade_alerts')
+              .update(allTPsHit 
+                ? { 
+                    tp_hits: updatedTPHits, 
+                    status: 'closed', 
+                    close_reason: 'all_tps_hit' 
+                  }
+                : { tp_hits: updatedTPHits }
+              )
+              .eq('id', signal.id)
+              .then(() => {
+                // 🔓 UNLOCK: Always remove from processing
+                processingSignalsRef.current.delete(tpKey);
+              });
+          }
+        });
+
+        // --- SL DETECTION ---
+        const slPrice = signal.stopLoss;
+        if (slPrice && slPrice > 0) {
+          const slCheckPrice = isBuy 
+            ? priceData.bid || priceData.price
+            : priceData.ask || priceData.price;
+          
+          const slHit = isBuy 
+            ? slCheckPrice <= slPrice
+            : slCheckPrice >= slPrice;
+
+          if (slHit) {
+            // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+            const slKey = `${signal.id}-sl`;
+            
+            // GUARD 1: Already closed in state
+            if (signal.status === 'closed') {
+              return;
+            }
+            
+            // GUARD 2: Already being processed
+            if (processingSignalsRef.current.has(slKey)) {
+              return;
+            }
+            
+            // GUARD 3: Backend already processed this
+            if (backendProcessedRef.current.has(slKey)) {
+              console.log(`⏭️ [INSTANT] Backend already processed ${slKey}`);
+              return;
+            }
+            
+            // All checks passed, proceed with immediate lock
+            console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
+            
+            // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
+            processingSignalsRef.current.add(slKey);
+            instantToastHandledRef.current.add(signal.id);
+
+            // Optimistic UI Update
+            updateAlert(signal.id, { status: 'closed', closeReason: 'stop_loss' });
+
+            // Show Toast
+            toast({ 
+              title: '🛑 Stop Loss Hit!', 
+              description: `${signal.assetName} hit Stop Loss.`, 
+              variant: 'destructive' 
+            });
+
+            // Backend Confirmation
+            supabase.rpc('close_trade_alert', {
+              p_alert_id: signal.id,
+              p_user_id: user?.id,
+              p_close_reason: 'stop_loss'
+            }).then(() => {
+              // 🔓 UNLOCK: Always remove from processing
+              processingSignalsRef.current.delete(slKey);
+            });
+          }
+        }
+      });
+    }, 100); // 🚀 TIER 2: 100ms debounce
+    
+    return () => {
+      // 🚀 TIER 2: Cleanup timeout on unmount
+      if (detectionTimeoutRef.current) {
+        clearTimeout(detectionTimeoutRef.current);
+      }
+    };
+  }, [prices, allAlerts, user?.id, toast, updateAlert]);
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {
@@ -403,7 +787,7 @@ export default function SignalStream() {
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
       // Show toast notification
-      toastUtil({
+      toast({
         title: '🎯 New Signal Added',
         description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
       });
@@ -654,135 +1038,105 @@ export default function SignalStream() {
       return;
     }
 
-    // Check if user can edit this signal (creator or admin only)
-    // CRITICAL FIX: Must match isCreator prop logic with fallback to alert.userId
-    const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
-    
-    // PHASE 1 - Task 1D: Enhanced auth debugging with RLS prediction
-    const authUser = await supabase.auth.getUser();
-    const authUid = authUser.data.user?.id;
-    const rlsWillPass = authUid === alert.userId || isAdmin;
-    
-    console.log('🔐 [Authorization Check - PHASE 1 Enhanced]', { 
-      alertId: alert.id, 
-      creatorId: alert.creator?.id, 
-      userId: alert.userId, 
-      profileId: profile?.id,
-      authUid: authUid,
-      isCreator: alertIsCreator,
-      isAdmin,
-      rlsWillPass,
-      rlsHint: rlsWillPass ? '✅ RLS should ALLOW' : '❌ RLS will BLOCK'
-    });
-    if (isDevToolsEnabled()) {
-      console.log('SignalStream - handleStatusUpdate authorization check:', {
-        alertId: alert.id,
-        alertCreatorId: alert.creator?.id,
-        currentUserId: profile?.id,
-        authUid: authUid,
-        isCreator: alertIsCreator,
-        isAdmin,
-        canUpdate: alertIsCreator || isAdmin,
-        rlsWillPass,
-        rlsPolicy: 'owners_can_update_their_own_trade_alerts'
-      });
-    }
-    if (!alertIsCreator && !isAdmin) {
-      if (isDevToolsEnabled()) {
-        console.warn('SignalStream - User not authorized to update this signal:', {
-          userId: user?.id,
-          creatorId: alert.creator?.id,
-          isAdmin,
-          isEducator,
-          isCreator: alertIsCreator
-        });
-      }
-      
+    // ✅ Verify alert object is valid
+    if (!alert || !alert.id) {
+      console.error('❌ Invalid alert object:', alert);
       toast({
-        title: 'Access Denied',
-        description: 'You can only close your own signals',
+        title: '❌ Invalid signal',
+        description: 'Signal data is missing or corrupted',
         variant: 'destructive'
       });
-      
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Access Denied',
-          message: 'You can only close your own signals'
-        });
-      }
       return;
     }
 
-    // ✅ BUG FIX #1 & #3: Remove buggy localClosed assignment (causes runtime error)
-    // updateInProgressRef already prevents duplicate processing
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
+    
+    if (!alertIsCreator && !isAdmin) {
+      console.error('❌ Authorization failed');
+      toast({
+        title: '🚫 Access Denied',
+        description: 'You can only close your own signals',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // ✅ Lock signal during update
     updateInProgressRef.current.set(alert.id, true);
     console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
+    
     try {
-      console.log(`🔄 [SignalStream] Updating alert ${alert.id} to status: ${newStatus}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
-      };
-      
-      console.log('📤 [SignalStream] Calling updateAlert with DTO:', updateDto);
-      const result = await updateAlert(alert.id, updateDto);
-      
-      console.log('📥 [SignalStream] Update result:', { 
-        success: !!result,
-        resultData: result
-      });
-      
-      if (!result) {
-        throw new Error('Update returned null - check console logs above for details');
-      }
-      
-      console.log('✅ [SignalStream] Update successful:', result);
-      
-      // ✅ BUG FIX #4: Enhanced notification with toast fallback
+      // ============================================
+      // FIX #2: Use RPC for closing signals
+      // ============================================
       if (newStatus === 'closed') {
-        const notificationData = {
-          type: 'trade_closed',
-          title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
-        };
+        console.log('🔒 Closing signal via RPC...', alert.id);
         
-        // Try custom notification system
-        if ((window as any).addNotification) {
-          (window as any).addNotification(notificationData);
-        }
-        
-        // Show toast notification
-        toast({
-          title: notificationData.title,
-          description: notificationData.message,
+        const { data, error } = await supabase.rpc('close_trade_alert', {
+          p_alert_id: alert.id,
+          p_user_id: profile?.id || user?.id,
+          p_close_reason: 'manual'
         });
         
-        console.log('✅ [Notification Sent] Signal closed notification dispatched');
+        if (error) {
+          console.error('❌ RPC close_trade_alert failed:', error);
+          throw new Error(error.message || 'Failed to close signal');
+        }
+        
+        console.log('✅ Signal closed via RPC:', data);
+        
+        // ✅ Dispatch event for instant UI update
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+          detail: {
+            signalId: alert.id,
+            assetName: alert.assetName,
+            closeReason: 'manual',
+            timestamp: new Date().toISOString()
+          }
+        }));
+        
+        // ✅ Force refresh with cache bypass
+        await refreshAlerts(true);
+        
+        toast({
+          title: '✅ Signal Closed',
+          description: `${alert.assetName} has been closed successfully`
+        });
+        
+      } else {
+        // For other status updates, use existing logic
+        const updateDto: UpdateTradeAlertDto = {
+          status: newStatus as 'pending' | 'active' | 'closed'
+        };
+        
+        const result = await updateAlert(alert.id, updateDto);
+        
+        if (!result) {
+          throw new Error('Update failed');
+        }
+        
+        toast({
+          title: '✅ Status Updated',
+          description: `Signal status changed to ${newStatus}`
+        });
       }
-    } catch (err) {
-      console.error('💥 [SignalStream] Update failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      
+    } catch (error: any) {
+      console.error('💥 [SignalStream] Status update failed:', error);
       
       toast({
-        title: 'Update Failed',
-        description: errorMessage,
+        title: '❌ Update Failed',
+        description: error.message || 'Please try again',
         variant: 'destructive'
       });
       
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Update Failed',
-          message: errorMessage
-        });
-      }
     } finally {
-      // ✅ Release lock
+      // ✅ Always unlock signal
       updateInProgressRef.current.delete(alert.id);
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateAlert, profile, isAdmin, isCreator, toast]);
+  }, [updateAlert, profile, user, isAdmin, isCreator, toast, refreshAlerts, supabase]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     // 🔍 PHASE 1 DIAGNOSTIC: Log what we receive
     console.log(`🔍 [PHASE 1 - handleTakeProfitHit] Called for ${alert.asset_name}:`, {
@@ -854,14 +1208,44 @@ export default function SignalStream() {
         expectedStatus: shouldAutoClose ? 'closed' : alert.status,
         originalUpdateDto: updateDto
       });
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
+      
+      if (result) {
+        // ✅ FIX #1: Dispatch event when signal closes
+        if (shouldAutoClose) {
+          window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+            detail: {
+              signalId: alert.id,
+              closeReason: typedCloseReason || 'all_tps_hit',
+              assetName: alert.assetName
+            }
+          }));
+          
+          // ✅ Force refresh to bypass all caches
+          await refreshAlerts(true);
+        } else {
+          // Dispatch TP hit event
+          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
+          if (highestTP !== null) {
+            window.dispatchEvent(new CustomEvent('tp-hit-confirmed', {
+              detail: {
+                signalId: alert.id,
+                tpLevel: highestTP,
+                assetName: alert.assetName
+              }
+            }));
+          }
+        }
+        
+        // Show notification
+        if ((window as any).addNotification) {
+          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
+          if (highestTP !== null) {
+            (window as any).addNotification({
+              type: 'tp_hit',
+              title: `🎯 TP${highestTP} Hit!`,
+              message: `${alert.assetName} reached Take Profit ${highestTP}`
+            });
+          }
         }
       }
     } catch (err) {
@@ -878,7 +1262,7 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
@@ -906,12 +1290,28 @@ export default function SignalStream() {
         closeReason: typedCloseReason
       };
       const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
+      
+      if (result) {
+        // ✅ FIX #1: Dispatch event for instant UI update
+        window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+          detail: {
+            signalId: alert.id,
+            closeReason: typedCloseReason,
+            assetName: alert.assetName
+          }
+        }));
+        
+        // ✅ Force refresh to bypass all caches
+        await refreshAlerts(true);
+        
+        // Show notification
+        if ((window as any).addNotification) {
+          (window as any).addNotification({
+            type: 'stop_loss',
+            title: `🚨 Stop Loss Hit!`,
+            message: `${alert.assetName} trade closed at stop loss`
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to update stop loss:", err);
@@ -973,6 +1373,20 @@ export default function SignalStream() {
               
               {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
               <div className="flex items-center gap-3">
+                {/* ✅ FIX #6: Force Refresh Button */}
+                <Button
+                  onClick={() => {
+                    console.log('🔄 [Manual] Force refresh triggered by user');
+                    refreshAlerts(true);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span className="hidden sm:inline">Force Refresh</span>
+                </Button>
+                
                 {connectionStatus === 'connected' && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -992,7 +1406,7 @@ export default function SignalStream() {
                       <span className="text-xs text-red-500 font-medium">Connection Issue</span>
                     </div>
                     <Button
-                      onClick={refreshAlerts}
+                      onClick={() => refreshAlerts(true)}
                       size="sm"
                       variant="outline"
                       className="border-yellow-500/20 hover:bg-yellow-500/10"
@@ -1026,6 +1440,26 @@ export default function SignalStream() {
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
                 <PriceRefreshButton symbols={symbols} className="shrink-0" />
+                <Button
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 shrink-0"
+                  title="Force refresh all signals from database"
+                >
+                  {isSyncing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Syncing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Force Sync</span>
+                    </>
+                  )}
+                </Button>
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -1069,7 +1503,7 @@ export default function SignalStream() {
                             onStopLossHit={handleStopLossHit} 
                             onOrderActivation={handleOrderActivation} 
                             isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id) || alert.userId === profile?.id}
+                            isCreator={isCreator(alert)}
                             livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                             priceSource={priceSource} 
@@ -1111,7 +1545,7 @@ export default function SignalStream() {
                       </div>
                     ) : sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => <TradeAlertCard
-                            key={alert.id}
+                            key={`${alert.id}-${lastTimestampUpdate}`}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,
@@ -1129,7 +1563,7 @@ export default function SignalStream() {
                             onStopLossHit={handleStopLossHit} 
                             onOrderActivation={handleOrderActivation} 
                             isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id)} 
+                            isCreator={isCreator(alert)}
                             livePrice={undefined} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                             priceSource={priceSource} 

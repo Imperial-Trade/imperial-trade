@@ -10,6 +10,9 @@ const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS'
 // Global connection reuse to prevent cold start issues
 let supabaseClient: any = null;
 
+// Global map to store calculated bid/ask/mid prices for database upsert
+let symbolsWithPrices: Map<string, { bid: number; ask: number; mid: number }> | undefined;
+
 // 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
 // These thresholds deliver maximum responsiveness matching top-tier trading platforms
 const MIN_PRICE_CHANGE_PERCENT = 0.01; // 0.01% for non-gold assets (ULTRA-SENSITIVE)
@@ -376,17 +379,61 @@ serve(async (req) => {
         continue;
       }
 
-      // Skip alert processing for mid-only prices (they're UI-only)
-      if (!hasFullData) {
-        console.log(`📊 Mid-only price for ${priceUpdate.symbol}: ${priceUpdate.price} (alerts skipped)`);
+      // ✅ CRITICAL FIX: Calculate bid/ask from mid-only prices
+      let bidPrice: number;
+      let askPrice: number;
+      let currentPrice: number;
+
+      if (hasFullData) {
+        // Full bid/ask data available (most accurate)
+        bidPrice = priceUpdate.bid!;
+        askPrice = priceUpdate.ask!;
+        currentPrice = (bidPrice + askPrice) / 2;
+        console.log(`📊 Full price data for ${priceUpdate.symbol}: Bid=${bidPrice}, Ask=${askPrice}, Mid=${currentPrice}`);
+      } else if (typeof priceUpdate.price === 'number') {
+        // ✅ Mid-only price - ESTIMATE bid/ask from mid
+        currentPrice = priceUpdate.price;
+        
+        // Asset-specific spread estimation (based on institutional market data)
+        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
+        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        
+        let halfSpread: number;
+        if (isGold) {
+          halfSpread = 0.05;  // Gold: typical $0.10 total spread ($0.05 per side)
+        } else if (isBitcoin) {
+          halfSpread = 2.50;  // Bitcoin: typical ~$5 total spread
+        } else {
+          halfSpread = 0.00005;  // Forex: typical ~0.5-1 pip
+        }
+        
+        bidPrice = currentPrice - halfSpread;
+        askPrice = currentPrice + halfSpread;
+        
+        console.log(`⚠️ Mid-price fallback for ${priceUpdate.symbol}: ${currentPrice} (estimated bid=${bidPrice}, ask=${askPrice})`);
+      } else {
+        // No usable price data - skip THIS symbol only
+        console.log(`❌ No price data for ${priceUpdate.symbol} - skipping`);
         continue;
       }
 
-      // Enhanced NaN validation for full data
-      if (!isFinite(priceUpdate.bid) || !isFinite(priceUpdate.ask) ||
-          priceUpdate.bid <= 0 || priceUpdate.ask <= 0 ||
-          isNaN(priceUpdate.bid) || isNaN(priceUpdate.ask)) {
-        console.warn(`⚠️ Skipping invalid bid/ask data: ${JSON.stringify(priceUpdate)}`);
+      // ✅ Store calculated prices for database upsert (used in CHANGE #4)
+      if (!symbolsWithPrices) {
+        symbolsWithPrices = new Map();
+      }
+      symbolsWithPrices.set(priceUpdate.symbol, {
+        bid: bidPrice,
+        ask: askPrice,
+        mid: currentPrice
+      });
+
+      // ✅ NOW PROCEED WITH ALERT PROCESSING (previously skipped by continue statement)
+
+      // ✅ FIXED: Validate CALCULATED bid/ask values (not undefined priceUpdate)
+      if (!isFinite(bidPrice) || !isFinite(askPrice) ||
+          bidPrice <= 0 || askPrice <= 0 ||
+          isNaN(bidPrice) || isNaN(askPrice)) {
+        console.warn(`⚠️ Skipping invalid calculated bid/ask: symbol=${priceUpdate.symbol}, bid=${bidPrice}, ask=${askPrice}`);
         continue;
       }
 
@@ -395,8 +442,8 @@ serve(async (req) => {
         const { data: alertResults, error: alertError } = await supabaseClient
           .rpc('process_price_alerts_enhanced_v2', {
             p_symbol: priceUpdate.symbol,
-            p_current_bid: priceUpdate.bid,
-            p_current_ask: priceUpdate.ask
+            p_current_bid: bidPrice,
+            p_current_ask: askPrice
           });
 
         if (alertError) {
@@ -410,94 +457,168 @@ serve(async (req) => {
           const stopLossAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type === 'stop_loss');
           const takeProfitAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type.startsWith('take_profit_'));
           
-          // Process Stop Loss alerts with HIGHEST priority
+          // ============================================
+          // FIX #1: Process Stop Loss with RPC (HIGHEST PRIORITY)
+          // ============================================
           for (const alert of stopLossAlerts) {
-            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${priceUpdate.bid}`);
+            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${bidPrice}`);
             
-            // Immediately close the signal
-            const { error: closeError } = await supabaseClient
-              .from('trade_alerts')
-              .update({
-                status: 'closed',
-                close_reason: 'stop_loss',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', alert.signal_id);
-
-            if (!closeError) {
+            try {
+              // ✅ FIX: Fetch user_id from trade_alerts table
+              const { data: signalData, error: fetchError } = await supabaseClient
+                .from('trade_alerts')
+                .select('user_id, asset_name')
+                .eq('id', alert.signal_id)
+                .single();
+              
+              if (fetchError || !signalData) {
+                console.error(`❌ Failed to fetch signal ${alert.signal_id}:`, fetchError);
+                continue;
+              }
+              
+              console.log(`🔍 Fetched user_id for signal ${alert.signal_id}: ${signalData.user_id}`);
+              
+              // ✅ Now call RPC with CORRECT user_id
+              const { data: closeResult, error: closeError } = await supabaseClient
+                .rpc('close_trade_alert', {
+                  p_alert_id: alert.signal_id,
+                  p_user_id: signalData.user_id,
+                  p_close_reason: 'stop_loss'
+                });
+              
+              if (closeError) {
+                console.error(`❌ Failed to close signal ${alert.signal_id}:`, closeError);
+                continue;
+              }
+              
+              console.log(`✅ Signal ${alert.signal_id} closed via RPC due to stop loss`);
+              
+              // ✅ Queue notification
               notificationTriggers.push({
                 signal_id: alert.signal_id,
                 alert_type: 'stop_loss_hit',
                 notification_type: 'stop_loss_hit',
-                triggered_price: priceUpdate.bid,
+                triggered_price: bidPrice,
                 symbol: priceUpdate.symbol,
                 timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                priority_level: 4 // HIGHEST priority for Stop Loss
+                priority_level: 4,
+                user_id: signalData.user_id,
+                asset_name: signalData.asset_name || priceUpdate.symbol
               });
+              
+            } catch (error) {
+              console.error(`💥 Exception closing signal ${alert.signal_id}:`, error);
             }
           }
           
-          // PHASE 2: Use sequential TP processing for Take Profit alerts
-          for (const alert of takeProfitAlerts) {
+          // ============================================
+          // 🚀 PARALLEL TP PROCESSING: Process all TP hits simultaneously
+          // ============================================
+          console.log(`🔄 [TP Processing] Checking ${takeProfitAlerts.length} signals in PARALLEL`);
+
+          const tpPromises = takeProfitAlerts.map(async (alert) => {
             try {
-              const isBuy = await supabaseClient
+              // Fetch trade type and other data
+              const { data: signalData, error: fetchError } = await supabaseClient
                 .from('trade_alerts')
-                .select('trade_type')
+                .select('trade_type, asset_name, user_id')
                 .eq('id', alert.signal_id)
                 .single();
 
-              if (isBuy.data) {
-                const isBuyTrade = isBuy.data.trade_type.includes('buy');
-                const currentPrice = isBuyTrade ? priceUpdate.ask : priceUpdate.bid;
-                
-                // PHASE 2: Use sequential TP processing
-                const { data: tpResult, error: tpError } = await supabaseClient
-                  .rpc('process_tp_hits_sequential', {
-                    p_trade_id: alert.signal_id,
-                    p_current_price: currentPrice,
-                    p_is_buy: isBuyTrade
-                  });
-
-                if (!tpError && tpResult) {
-                  // ============================================
-                  // BUG #24 FIX - PHASE 2: Check if all TPs are hit
-                  // ============================================
-                  if (tpResult.all_tps_hit && tpResult.signal_auto_closed) {
-                    console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
-                    
-                    // Send "All Targets Hit" notification with HIGHEST priority
-                    notificationTriggers.push({
-                      signal_id: alert.signal_id,
-                      alert_type: 'all_targets_hit',
-                      notification_type: 'all_tps_hit',
-                      triggered_price: currentPrice,
-                      symbol: priceUpdate.symbol,
-                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                      priority_level: 4, // HIGHEST priority for completion
-                      close_reason: 'all_targets_hit',
-                      tp_hits_completed: tpResult.total_tps_hit
-                    });
-                  }
-                  // Regular TP hit notification (if a new TP was hit but not all)
-                  else if (tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                    console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
-                    
-                    notificationTriggers.push({
-                      signal_id: alert.signal_id,
-                      alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                      notification_type: 'take_profit_hit',
-                      triggered_price: currentPrice,
-                      symbol: priceUpdate.symbol,
-                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                      priority_level: 3, // High priority for TP hits
-                      tp_level: tpResult.tp_hit_this_cycle[0]
-                    });
-                  }
-                }
+              if (fetchError || !signalData) {
+                throw new Error(`Failed to fetch signal data: ${fetchError?.message}`);
               }
-            } catch (tpError) {
-              console.error(`❌ Sequential TP processing error for signal ${alert.signal_id}:`, tpError);
+
+              const isBuy = signalData.trade_type.includes('buy');
+              const currentPrice = isBuy ? priceUpdate.ask : priceUpdate.bid;
+              
+              // Call sequential TP processor RPC
+              const { data: tpResult, error: tpError } = await supabaseClient.rpc('process_tp_hits_sequential', {
+                p_trade_id: alert.signal_id,
+                p_current_price: currentPrice,
+                p_is_buy: isBuy
+              });
+
+              if (tpError) throw tpError;
+
+              // Check for all TPs hit (auto-close)
+              if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
+                console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
+                
+                return {
+                  success: true,
+                  alertId: alert.signal_id,
+                  tpHit: true,
+                  allTPsHit: true,
+                  notification: {
+                    signal_id: alert.signal_id,
+                    alert_type: 'all_targets_hit',
+                    notification_type: 'all_tps_hit',
+                    triggered_price: currentPrice,
+                    symbol: priceUpdate.symbol,
+                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                    priority_level: 4,
+                    close_reason: 'all_targets_hit',
+                    tp_hits_completed: tpResult.total_tps_hit
+                  }
+                };
+              }
+              // Check for individual TP hit
+              else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)} at ${currentPrice}`);
+                
+                return {
+                  success: true,
+                  alertId: alert.signal_id,
+                  tpHit: true,
+                  allTPsHit: false,
+                  notification: {
+                    signal_id: alert.signal_id,
+                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                    notification_type: 'take_profit_hit',
+                    triggered_price: currentPrice,
+                    symbol: priceUpdate.symbol,
+                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                    priority_level: 3,
+                    tp_level: tpResult.tp_hit_this_cycle[0]
+                  }
+                };
+              }
+
+              return { success: true, alertId: alert.signal_id, tpHit: false };
+
+            } catch (err) {
+              console.error(`❌ TP processing error for signal ${alert.signal_id?.substring(0,8)}:`, err);
+              return { success: false, alertId: alert.signal_id, error: err };
             }
+          });
+
+          // Wait for all TP checks to complete (parallel execution)
+          const results = await Promise.all(tpPromises);
+
+          // Add notifications for successful TP hits
+          results.forEach(result => {
+            if (result.success && result.notification) {
+              notificationTriggers.push(result.notification);
+            }
+          });
+
+          // Count successes and failures
+          const successCount = results.filter(r => r.success && r.tpHit).length;
+          const failureCount = results.filter(r => !r.success).length;
+
+          console.log(
+            `✅ [TP Processing Complete] ${successCount} TPs hit, ${failureCount} errors, ` +
+            `${takeProfitAlerts.length} total signals processed in PARALLEL`
+          );
+
+          // Log failures for monitoring
+          if (failureCount > 0) {
+            const failures = results.filter(r => !r.success);
+            console.error(`⚠️ [TP Failures]`, failures.map(f => ({
+              alertId: f.alertId?.substring(0, 8),
+              error: f.error
+            })));
           }
           
           console.log(`🚨 ${triggeredAlerts.length} alerts triggered for ${priceUpdate.symbol} (${stopLossAlerts.length} SL, ${takeProfitAlerts.length} TP)`);
@@ -556,53 +677,32 @@ serve(async (req) => {
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
     const upsertPromises = prices.map(async (priceUpdate) => {
-      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
-      const hasMidOnly = typeof priceUpdate.price === 'number' && !hasFullData;
+      // ✅ Get calculated prices from Map (stored in CHANGE #2)
+      const priceData = symbolsWithPrices?.get(priceUpdate.symbol);
       
-      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
-        console.log(`📊 Upsert skipped for invalid price: ${priceUpdate.symbol}`);
-        return { skipped: true, reason: 'invalid_data', symbol: priceUpdate.symbol };
+      if (!priceData) {
+        console.log(`⚠️ No price data calculated for ${priceUpdate.symbol} - skipping upsert`);
+        return { skipped: true, reason: 'no_calculated_data', symbol: priceUpdate.symbol };
       }
-
+      
       try {
-        if (hasFullData) {
-          // Full bid/ask data available
-          const mid = (priceUpdate.bid + priceUpdate.ask) / 2;
-          console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceUpdate.bid}, ask=${priceUpdate.ask}, mid=${mid}`);
-          
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
-            p_symbol: priceUpdate.symbol,
-            p_bid: priceUpdate.bid,
-            p_ask: priceUpdate.ask,
-            p_mid: mid,
-            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
-          });
-          
-          if (error) {
-            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
-            return { success: false, error: error.message, symbol: priceUpdate.symbol };
-          }
-          
-          return { success: true, symbol: priceUpdate.symbol, type: 'full_data' };
-        } else {
-          // Mid-only data from Digital Ocean WebSocket
-          console.log(`💾 Upserting mid-only ${priceUpdate.symbol}: mid=${priceUpdate.price}`);
-          
-          const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
-            p_symbol: priceUpdate.symbol,
-            p_bid: null,
-            p_ask: null,
-            p_mid: priceUpdate.price,
-            p_timestamp: priceUpdate.timestamp || new Date().toISOString()
-          });
-          
-          if (error) {
-            console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
-            return { success: false, error: error.message, symbol: priceUpdate.symbol };
-          }
-          
-          return { success: true, symbol: priceUpdate.symbol, type: 'mid_only' };
+        // ✅ ALWAYS provide estimated bid/ask (NEVER NULL)
+        console.log(`💾 Upserting ${priceUpdate.symbol}: bid=${priceData.bid}, ask=${priceData.ask}, mid=${priceData.mid}`);
+        
+        const { data, error } = await supabaseClient.rpc('upsert_market_price_enhanced', {
+          p_symbol: priceUpdate.symbol,
+          p_bid: priceData.bid,      // ✅ Always defined (estimated if needed)
+          p_ask: priceData.ask,      // ✅ Always defined (estimated if needed)
+          p_mid: priceData.mid,      // ✅ Always defined
+          p_timestamp: priceUpdate.timestamp || new Date().toISOString()
+        });
+        
+        if (error) {
+          console.error(`❌ Database upsert failed for ${priceUpdate.symbol}:`, error);
+          return { success: false, error: error.message, symbol: priceUpdate.symbol };
         }
+        
+        return { success: true, symbol: priceUpdate.symbol };
       } catch (error) {
         console.error(`❌ Upsert exception for ${priceUpdate.symbol}:`, error);
         return { success: false, error: (error as Error).message, symbol: priceUpdate.symbol };

@@ -68,7 +68,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         if (latestSignal && onStatusUpdate) {
           console.log(`🔄 FORCING STATUS UPDATE: ${alert.status} → ${status} for ${alert.asset_name}`);
           // ✅ FIX: Pass full signal object instead of just signalId
-          onStatusUpdate(latestSignal, latestSignal.status);
+          onStatusUpdate(latestSignal as any, latestSignal.status);
         }
       }
     };

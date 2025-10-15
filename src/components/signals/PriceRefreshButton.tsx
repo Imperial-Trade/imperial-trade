@@ -55,15 +55,15 @@ export const PriceRefreshButton: React.FC<PriceRefreshButtonProps> = ({
   };
   return (
     <Button
-      onClick={handleForceRefresh}
-      disabled={isRefreshing || symbols.length === 0}
       variant="outline"
       size="sm"
+      onClick={handleForceRefresh}
+      disabled={isRefreshing || symbols.length === 0}
       className={className}
     >
-      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+      <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
       {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
-      {lastRefresh && <span className="ml-2 text-xs opacity-70">{formatLastRefresh()}</span>}
+      {lastRefresh && <span className="ml-2 text-xs text-muted-foreground">{formatLastRefresh()}</span>}
     </Button>
   );
 };

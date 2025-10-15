@@ -14,7 +14,8 @@ interface UseSignalRealtimeReturn {
   refreshAlerts: (bypassThrottle?: boolean) => Promise<void>;
   lastUpdated: Date | null;
   getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
-  lastUpdatePayload: any | null;  // ✅ TIER 0 FIX: Expose latest UPDATE payload
+  lastUpdatePayload: any | null;
+  optimisticallyUpdateSignal: (signalId: string, updates: any) => void;
 }
 
 export const useSignalRealtime = (userId: string, showAllSignals: boolean = false): UseSignalRealtimeReturn => {
@@ -127,7 +128,8 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     updateAlert,
     refreshAlerts: handleRefreshAlerts,
     lastUpdated,
-    lastUpdatePayload,  // ✅ TIER 0 FIX: Expose latest UPDATE payload
+    lastUpdatePayload,
+    optimisticallyUpdateSignal: context.optimisticallyUpdateSignal,
     getSignalById: (signalId: string) => {
       const signal = getSignalById(signalId);
       if (!signal) return undefined;

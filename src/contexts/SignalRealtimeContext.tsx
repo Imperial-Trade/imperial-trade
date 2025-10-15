@@ -59,7 +59,8 @@ interface SignalRealtimeContextType {
   subscribe: () => void;
   unsubscribe: () => void;
   getSignalById: (signalId: string) => Signal | undefined;
-  lastUpdatePayload: any | null;  // ✅ TIER 0 FIX: Expose latest UPDATE payload for instant event listeners
+  lastUpdatePayload: any | null;
+  optimisticallyUpdateSignal: (signalId: string, updates: Partial<Signal>) => void;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | undefined>(undefined);
@@ -612,6 +613,24 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     return signals.find(s => s.id === signalId);
   }, [signals]);
 
+  // ✅ Optimistic update function for instant local state updates
+  const optimisticallyUpdateSignal = useCallback((signalId: string, updates: Partial<Signal>) => {
+    console.log(`⚡ [Optimistic Update] Updating signal ${signalId.substring(0, 8)} locally`, updates);
+    
+    setSignals(prev => 
+      prev.map(signal => 
+        signal.id === signalId 
+          ? { ...signal, ...updates }
+          : signal
+      )
+    );
+    
+    // Also update cache to maintain consistency
+    localCacheRef.current.data = localCacheRef.current.data.map(signal =>
+      signal.id === signalId ? { ...signal, ...updates } : signal
+    );
+  }, []);
+
   // ✅ FIX #4: Clear cache on mount + setup subscription
   useEffect(() => {
     if (mountOnlyRef.current) {
@@ -664,7 +683,8 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     subscribe,
     unsubscribe,
     getSignalById,
-    lastUpdatePayload: lastUpdatePayloadRef.current  // ✅ TIER 0 FIX: Expose latest UPDATE payload
+    lastUpdatePayload: lastUpdatePayloadRef.current,
+    optimisticallyUpdateSignal
   };
 
   return (

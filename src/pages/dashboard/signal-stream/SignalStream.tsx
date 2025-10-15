@@ -114,7 +114,8 @@ export default function SignalStream() {
     nextRetryAt,
     updateAlert,
     refreshAlerts,
-    lastUpdatePayload  // ✅ TIER 0 FIX: Get latest UPDATE payload for instant closed signal handling
+    lastUpdatePayload,
+    optimisticallyUpdateSignal
   } = useSignalRealtime(user?.id || '', true);
 
   // Manual sync handler
@@ -755,8 +756,11 @@ export default function SignalStream() {
             processingSignalsRef.current.add(slKey);
             instantToastHandledRef.current.add(signal.id);
 
-            // Optimistic UI Update
-            updateAlert(signal.id, { status: 'closed', closeReason: 'stop_loss' });
+            // ✅ CRITICAL FIX: Optimistically update local state DIRECTLY for instant card closure
+            optimisticallyUpdateSignal(signal.id, { 
+              status: 'closed', 
+              closeReason: 'stop_loss' 
+            });
 
             // Show Toast
             toast({ 
@@ -765,12 +769,28 @@ export default function SignalStream() {
               variant: 'destructive' 
             });
 
-            // Backend Confirmation
+            // Backend Confirmation (non-blocking)
             supabase.rpc('close_trade_alert', {
               p_alert_id: signal.id,
               p_user_id: user?.id,
               p_close_reason: 'stop_loss'
-            }).then(() => {
+            }).then(({ error }) => {
+              if (error) {
+                console.error(`❌ Backend SL closure failed:`, error);
+                
+                // ROLLBACK: Revert optimistic update on failure
+                optimisticallyUpdateSignal(signal.id, { 
+                  status: 'active', 
+                  closeReason: null 
+                });
+                
+                toast({
+                  title: '❌ SL Closure Failed',
+                  description: 'Could not confirm stop loss. Signal reverted to active.',
+                  variant: 'destructive',
+                });
+              }
+              
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(slKey);
             });

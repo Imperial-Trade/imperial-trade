@@ -45,8 +45,8 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
         const activeText = `ACTIVE ${typeLabel.toUpperCase()}`;
-        const tpBadgeColors = 'bg-transparent border-2 text-emerald-400 border-emerald-400';
-        const activeBadgeColors = isSellType ? 'bg-transparent border-2 text-red-400 border-red-400' : 'bg-transparent border-2 text-emerald-400 border-emerald-400';
+        const tpBadgeColors = 'bg-transparent border text-emerald-600 border-emerald-600';
+        const activeBadgeColors = isSellType ? 'bg-transparent border text-red-600 border-red-600' : 'bg-transparent border text-emerald-600 border-emerald-600';
         return (
             <div className="flex items-center gap-1.5">
                 <Badge className={`${tpBadgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
@@ -63,7 +63,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         const activeText = isLimitType ? 
             `ACTIVE ${friendlyType?.toUpperCase() || typeLabel.toUpperCase()}` : 
             `ACTIVE ${typeLabel.toUpperCase()}`;
-        const badgeColors = isSellType ? 'bg-transparent border-2 text-red-400 border-red-400' : 'bg-transparent border-2 text-emerald-400 border-emerald-400';
+        const badgeColors = isSellType ? 'bg-transparent border text-red-600 border-red-600' : 'bg-transparent border text-emerald-600 border-emerald-600';
         return (
             <Badge className={`${badgeColors} text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                 {activeText}
@@ -75,7 +75,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         // ✅ PRIORITY 1: Manual close takes highest priority
         if (closeReason === 'manual') {
             return (
-                <Badge className="bg-transparent border-2 text-gray-400 border-gray-400 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-gray-500 border-gray-500 text-xs px-1.5 py-0.5">
                     <XCircle className="w-2.5 h-2.5 mr-0.5" />
                     MANUALLY CLOSED
                 </Badge>
@@ -86,7 +86,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         if (hitTPs.length > 0) {
             const highestTP = Math.max(...hitTPs);
             return (
-                <Badge className="bg-transparent border-2 text-emerald-400 border-emerald-400 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-emerald-600 border-emerald-600 text-xs px-1.5 py-0.5">
                     <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
                     TP{highestTP} HIT
                 </Badge>
@@ -96,7 +96,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         // ✅ PRIORITY 3: Stop loss ONLY if NO TPs were hit
         if (closeReason === 'stop_loss') {
             return (
-                <Badge className="bg-transparent border-2 text-red-400 border-red-400 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-red-600 border-red-600 text-xs px-1.5 py-0.5">
                     <X className="w-2.5 h-2.5 mr-0.5" /> STOP LOSS HIT
                 </Badge>
             );
@@ -106,7 +106,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         if (closeReason && closeReason.startsWith('tp')) {
             const tpNumber = closeReason.replace('tp', '').replace('_hit', '');
             return (
-                <Badge className="bg-transparent border-2 text-emerald-400 border-emerald-400 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-emerald-600 border-emerald-600 text-xs px-1.5 py-0.5">
                     <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
                     TP{tpNumber} HIT
                 </Badge>
@@ -115,7 +115,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         
         // ✅ FALLBACK: Generic "CLOSED" badge
         return (
-            <Badge className="bg-transparent border-2 text-gray-400 border-gray-400 text-xs px-1.5 py-0.5">
+            <Badge className="bg-transparent border text-gray-500 border-gray-500 text-xs px-1.5 py-0.5">
                 CLOSED
             </Badge>
         );

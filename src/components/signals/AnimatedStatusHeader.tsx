@@ -65,10 +65,10 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       {status === 'closed' && (
         <div className={`h-1 w-full mb-2 ${
           closeReason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
+            ? 'bg-gradient-to-r from-red-600/40 via-red-600/60 to-red-600/40 shadow-lg shadow-red-600/20' 
             : (hasTPHits || closeReason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
+              ? 'bg-gradient-to-r from-emerald-600/40 via-emerald-600/60 to-emerald-600/40 shadow-lg shadow-emerald-600/20'
+              : 'bg-gradient-to-r from-gray-500/40 via-gray-500/60 to-gray-500/40 shadow-lg shadow-gray-500/20'
         }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
       )}
 

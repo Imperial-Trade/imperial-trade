@@ -2,7 +2,7 @@ import React from 'react';
 
 export const TrendlineEmptyState: React.FC = () => {
   return (
-    <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
       <svg className="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Y-axis */}
         <path 

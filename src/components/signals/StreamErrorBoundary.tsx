@@ -29,15 +29,15 @@ export class StreamErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#000000' }}>
           <div className="max-w-md w-full">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
+            <Alert style={{ background: 'rgba(255, 69, 58, 0.12)', border: '1px solid rgba(255, 69, 58, 0.3)' }}>
+              <AlertTriangle className="h-4 w-4" style={{ color: '#FF453A' }} />
               <AlertDescription>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold">Something went wrong with the Signal Stream</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h3 className="font-semibold" style={{ color: '#FFFFFF' }}>Something went wrong with the Signal Stream</h3>
+                    <p className="text-sm mt-1" style={{ color: '#EBEBF5' }}>
                       We're working to fix this issue. Please try refreshing the page.
                     </p>
                   </div>

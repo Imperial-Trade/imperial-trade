@@ -18,10 +18,10 @@ export function GlassmorphismCreateButton({ onClick }: GlassmorphismCreateButton
         "relative overflow-hidden group"
       )}
       style={{
-        background: `linear-gradient(135deg, ${signalColors.accent.gold}25 0%, ${signalColors.accent.gold}15 100%)`,
+        background: signalColors.state.ctaGradient,
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: `1px solid ${signalColors.accent.gold}60`,
+        border: `1px solid ${signalColors.border.cta}`,
       }}
     >
       <Plus 

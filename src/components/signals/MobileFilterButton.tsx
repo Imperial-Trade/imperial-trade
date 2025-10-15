@@ -24,7 +24,7 @@ export function MobileFilterButton({
         "hover:scale-105 active:scale-95"
       )}
       style={{
-        background: isActive ? signalColors.state.active : signalColors.bg.secondary,
+        background: isActive ? signalColors.state.active : signalColors.bg.surface,
         backdropFilter: 'blur(12px) saturate(180%)',
         WebkitBackdropFilter: 'blur(12px) saturate(180%)',
         border: `1px solid ${isActive ? signalColors.border.active : signalColors.border.default}`,

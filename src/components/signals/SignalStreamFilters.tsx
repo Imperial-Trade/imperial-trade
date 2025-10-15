@@ -187,22 +187,22 @@ export function SignalStreamFilters({
                   </div>
                 )}
                 
-                <Input
-                  value={filters.search}
-                  onChange={(e) => updateFilter('search', e.target.value)}
-                  className="h-11 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
-                  style={{
-                    background: signalColors.bg.secondary,
-                    borderColor: signalColors.border.default,
-                    color: signalColors.text.primary,
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = signalColors.border.active;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = signalColors.border.default;
-                  }}
-                />
+              <Input
+                value={filters.search}
+                onChange={(e) => updateFilter('search', e.target.value)}
+                className="h-11 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
+                style={{
+                  background: signalColors.bg.surface,
+                  borderColor: signalColors.border.default,
+                  color: signalColors.text.primary,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = signalColors.border.active;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = signalColors.border.default;
+                }}
+              />
                 
                 {filters.search && (
                   <Button
@@ -211,10 +211,9 @@ export function SignalStreamFilters({
                     onClick={(e) => handleClearFilterClick(e, 'search')}
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
                     style={{
-                      background: signalColors.semantic.danger,
-                      borderColor: `${signalColors.accent.red}30`,
-                      border: '1px solid',
-                      color: signalColors.accent.red,
+                      background: signalColors.state.danger,
+                      border: `1px solid ${signalColors.border.danger}`,
+                      color: signalColors.accent.danger,
                     }}
                   >
                     <X className="w-4 h-4" />
@@ -267,10 +266,9 @@ export function SignalStreamFilters({
                   onClick={handleClearAllClick}
                   className="h-10 px-3 text-xs rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
                   style={{
-                    background: signalColors.semantic.danger,
-                    borderColor: `${signalColors.accent.red}30`,
-                    border: '1px solid',
-                    color: signalColors.accent.red,
+                    background: 'transparent',
+                    border: `1px solid ${signalColors.border.danger}`,
+                    color: signalColors.text.danger,
                   }}
                 >
                   <X className="w-3 h-3 mr-1" />

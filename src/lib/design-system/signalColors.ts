@@ -1,60 +1,79 @@
 /**
- * Signal Stream Mobile Color System
- * Inspired by Robinhood, Apple, and Twitter design systems
- * 
- * Design Philosophy:
- * - Pure black backgrounds (Twitter/Apple style)
- * - Minimal color palette (5 core colors)
- * - High contrast for accessibility
- * - Glassmorphism with subtle depth
+ * The Final Professional Color System for Signal Stream Mobile.
+ * Implements a "Clarity in the Glass House" design philosophy.
+ * - Glassmorphism for depth.
+ * - No glow effects.
+ * - High-contrast, minimalist palette.
  */
-
 export const signalColors = {
-  // ========== BACKGROUNDS ==========
-  // Pure black base (Twitter style)
+  // ========== BACKGROUNDS & SURFACES ==========
   bg: {
-    primary: '#000000',           // Main background
-    secondary: '#1C1C1E',         // Card/surface background (Apple system)
-    tertiary: '#2C2C2E',          // Elevated surface (Apple system)
-    glass: 'rgba(28, 28, 30, 0.7)', // Glassmorphism overlay
+    /** Pure black background for the entire app view. */
+    primary: '#000000',
+    /** Solid dark grey for opaque elements like input fields. (Apple System Dark Grey) */
+    surface: '#1C1C1E',
+    /** The core of our design: a semi-transparent, blurred surface for all panels. */
+    glass: 'rgba(28, 28, 30, 0.7)',
   },
 
-  // ========== ACCENT COLORS ==========
+  // ========== ACCENTS (Used with purpose) ==========
   accent: {
-    gold: '#FFD700',              // Premium features, active states (Imperial brand)
-    green: '#00C805',             // Success, buy signals (Robinhood)
-    red: '#FF453A',               // Danger, sell signals (Apple system red)
-    blue: '#0A84FF',              // Info, links (Apple system blue)
+    /** For primary CTAs, active filters, and important highlights. */
+    gold: '#FFD700',
+    /** The gradient start/end for the "Xeon alerts" text. */
+    gradientGold: '#FFD700',
+    /** The gradient middle for the "Xeon alerts" text. (Robinhood Green) */
+    gradientGreen: '#00C805',
+    /** Success and buy signals (Robinhood Green) */
+    green: '#00C805',
+    /** Exclusively for destructive actions (Clear, Delete). (Apple System Red) */
+    danger: '#FF453A',
+    /** Alias for danger red */
+    red: '#FF453A',
   },
 
-  // ========== TEXT COLORS ==========
+  // ========== TEXT ==========
   text: {
-    primary: '#FFFFFF',           // Headings, main content
-    secondary: '#EBEBF5',         // Body text (Apple secondary)
-    tertiary: '#8E8E93',          // Muted text, placeholders (Apple tertiary)
-    gold: '#FFD700',              // Emphasized text (active states)
+    /** For all primary text and user-input content. Pure white for max contrast. */
+    primary: '#FFFFFF',
+    /** For subtitles and less important labels. (Apple System Light Grey) */
+    secondary: '#EBEBF5',
+    /** For placeholder text and inactive icons. (Apple System Muted Grey) */
+    tertiary: '#8E8E93',
+    /** Gold text for active states. */
+    gold: '#FFD700',
+    /** Red text for clear/delete buttons. */
+    danger: '#FF453A',
   },
 
   // ========== BORDERS ==========
   border: {
-    default: 'rgba(255, 255, 255, 0.1)',   // Standard borders
-    active: 'rgba(255, 215, 0, 0.5)',      // Active/focused borders (gold)
-    hover: 'rgba(255, 255, 255, 0.2)',     // Hover state borders
+    /** The default, subtle border for all glass panels and inactive buttons. */
+    default: 'rgba(255, 255, 255, 0.1)',
+    /** A strong gold border to indicate a focused input or an active filter. */
+    active: 'rgba(255, 215, 0, 0.5)',
+    /** A stronger gold border for the primary "Create Alert" button. */
+    cta: 'rgba(255, 215, 0, 0.6)',
+    /** A red border for destructive action buttons. */
+    danger: 'rgba(255, 69, 58, 0.3)',
   },
 
-  // ========== INTERACTIVE STATES ==========
+  // ========== STATES & SEMANTICS ==========
   state: {
-    inactive: 'rgba(255, 255, 255, 0.05)',  // Inactive buttons
-    active: 'rgba(255, 215, 0, 0.12)',      // Active buttons (gold tint)
-    hover: 'rgba(255, 255, 255, 0.08)',     // Hover overlay
-    pressed: 'rgba(255, 255, 255, 0.03)',   // Active press state
+    /** The background for an active filter button (gold tint). */
+    active: 'rgba(255, 215, 0, 0.12)',
+    /** The background for a destructive button (red tint). */
+    danger: 'rgba(255, 69, 58, 0.12)',
+    /** The background gradient for the "Create Alert" button. */
+    ctaGradient: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.08) 100%)',
   },
 
   // ========== SEMANTIC COLORS ==========
   semantic: {
-    success: 'rgba(0, 200, 5, 0.12)',       // Success backgrounds
-    danger: 'rgba(255, 69, 58, 0.12)',      // Danger backgrounds
-    info: 'rgba(10, 132, 255, 0.12)',       // Info backgrounds
+    /** Success backgrounds (green tint). */
+    success: 'rgba(0, 200, 5, 0.12)',
+    /** Danger backgrounds (red tint). */
+    danger: 'rgba(255, 69, 58, 0.12)',
   },
 } as const;
 

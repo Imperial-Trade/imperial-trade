@@ -167,7 +167,7 @@ export function MobileFilterSheet({
               <button
                 className="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
-                  background: signalColors.state.hover,
+                  background: signalColors.bg.surface,
                   color: signalColors.text.secondary,
                 }}
                 aria-label="Close"

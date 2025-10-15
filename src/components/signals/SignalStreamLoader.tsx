@@ -32,12 +32,12 @@ export const SignalStreamLoader: React.FC<SignalStreamLoaderProps> = ({
   if (connectionStatus === 'error' && error) {
     return (
       <div className="min-h-[400px] flex items-center justify-center p-4">
-        <Card className="border-destructive/50 bg-destructive/5 max-w-md">
+        <Card className="max-w-md rounded-lg" style={{ background: 'rgba(255, 69, 58, 0.12)', border: '1px solid rgba(255, 69, 58, 0.3)' }}>
           <CardContent className="flex items-center gap-3 p-6">
-            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+            <AlertCircle className="h-5 w-5 shrink-0" style={{ color: '#FF453A' }} />
             <div>
-              <h3 className="font-medium text-destructive mb-1">Connection Error</h3>
-              <p className="text-sm text-muted-foreground">{error}</p>
+              <h3 className="font-medium mb-1" style={{ color: '#FF453A' }}>Connection Error</h3>
+              <p className="text-sm" style={{ color: '#EBEBF5' }}>{error}</p>
             </div>
           </CardContent>
         </Card>

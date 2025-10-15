@@ -1704,7 +1704,7 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      <div className="min-h-screen bg-background w-full">
+      <div className="min-h-screen w-full" style={{ background: '#000000' }}>
         <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
@@ -1739,28 +1739,28 @@ export default function SignalStream() {
                 {isDevToolsEnabled() && (
                   <>
                     {connectionStatus === 'connected' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-green-500 font-medium">Live</span>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0, 200, 5, 0.12)', border: '1px solid rgba(0, 200, 5, 0.3)' }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00C805' }}></div>
+                        <span className="text-xs font-medium" style={{ color: '#00C805' }}>Live</span>
                       </div>
                     )}
                     {connectionStatus === 'connecting' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-yellow-500 font-medium">Connecting...</span>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255, 215, 0, 0.12)', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#FFD700' }}></div>
+                        <span className="text-xs font-medium" style={{ color: '#FFD700' }}>Connecting...</span>
                       </div>
                     )}
                     {connectionStatus === 'polling-fallback' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-blue-500 font-medium">Live (Polling)</span>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0, 200, 5, 0.12)', border: '1px solid rgba(0, 200, 5, 0.3)' }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00C805' }}></div>
+                        <span className="text-xs font-medium" style={{ color: '#00C805' }}>Live (Polling)</span>
                       </div>
                     )}
                     {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && (
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          <span className="text-xs text-red-500 font-medium">Connection Issue</span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255, 69, 58, 0.12)', border: '1px solid rgba(255, 69, 58, 0.3)' }}>
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#FF453A' }}></div>
+                          <span className="text-xs font-medium" style={{ color: '#FF453A' }}>Connection Issue</span>
                         </div>
                         <Button
                           onClick={() => refreshAlerts(true)}
@@ -1833,14 +1833,12 @@ export default function SignalStream() {
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 className="text-sm font-medium mb-3 border-b border-accent-green/20 pb-1.5">
-                      <span className="text-muted-foreground">Active </span>
-                      <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
-                        Alerts
-                      </span>
-                      <span className="text-muted-foreground"> ({filteredSignals.active.length})</span>
+                    <h2 className="text-sm font-medium mb-3 pb-1.5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}>
+                      <span style={{ color: '#EBEBF5' }}>Active </span>
+                      <span style={{ color: '#FFD700' }}>Alerts</span>
+                      <span style={{ color: '#EBEBF5' }}> ({filteredSignals.active.length})</span>
                      </h2>
-                     {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                     {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.active.map(alert => <TradeAlertCard
                             key={alert.id}
                             alert={{
@@ -1876,25 +1874,23 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-sm font-medium mb-3 border-b border-border pb-1.5">
-                      <span className="text-muted-foreground">Closed </span>
-                      <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
-                        Alerts
-                      </span>
-                      <span className="text-muted-foreground"> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
+                    <h2 className="text-sm font-medium mb-3 pb-1.5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}>
+                      <span style={{ color: '#EBEBF5' }}>Closed </span>
+                      <span style={{ color: '#FFD700' }}>Alerts</span>
+                      <span style={{ color: '#EBEBF5' }}> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
                     </h2>
                     {isLoadingClosedAlerts ? (
                       // ✅ BUG FIX #19: Skeleton UI for closed alerts loading
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
-                            <div className="h-4 w-1/3 bg-muted rounded mb-3" />
-                            <div className="h-6 w-2/3 bg-muted rounded mb-4" />
-                            <div className="h-24 w-full bg-muted rounded" />
+                          <div key={i} className="rounded-lg p-4 animate-pulse" style={{ background: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                            <div className="h-4 w-1/3 rounded mb-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
+                            <div className="h-6 w-2/3 rounded mb-4" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
+                            <div className="h-24 w-full rounded" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
                           </div>
                         ))}
                       </div>
-                    ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.closed.map(alert => <TradeAlertCard
                             key={`${alert.id}-${lastTimestampUpdate}`}
                             alert={{
@@ -1939,10 +1935,10 @@ export default function SignalStream() {
         
         {/* Create Signal Modal */}
          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-lg border border-violet-500/20 shadow-2xl shadow-violet-500/10">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'rgba(28, 28, 30, 0.7)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <DialogHeader>
-                <DialogTitle className="text-white text-xl font-semibold">Create Alert</DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <DialogTitle style={{ color: '#FFFFFF' }}>Create Alert</DialogTitle>
+                <p className="text-sm" style={{ color: '#EBEBF5' }}>
                   Create a new educational trading pattern for learning and analysis purposes.
                 </p>
               </DialogHeader>

@@ -71,7 +71,7 @@ export function SignalStreamFilters({
     (filters.educator !== '' && filters.educator !== 'all');
 
   const statusOptions = [
-    { value: 'all', label: 'All Status', count: signalCounts.total, icon: Filter },
+    { value: 'all', label: 'All Status', icon: Filter },
     { value: 'active', label: 'Active', count: signalCounts.active, icon: Clock },
     { value: 'closed', label: 'Closed', count: signalCounts.closed, icon: CheckCircle }
   ];
@@ -80,7 +80,6 @@ export function SignalStreamFilters({
     { 
       value: 'all', 
       label: 'All Types', 
-      count: signalCounts.buy + signalCounts.sell, 
       icon: Filter 
     },
     { value: 'buy', label: 'Buy Orders', count: signalCounts.buy, icon: TrendingUp },
@@ -201,7 +200,7 @@ export function SignalStreamFilters({
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
-                            <span>{option.label} ({option.count})</span>
+                            <span>{option.label}{option.count !== undefined && ` (${option.count})`}</span>
                           </div>
                         </SelectItem>
                       );
@@ -227,7 +226,7 @@ export function SignalStreamFilters({
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
-                            <span>{option.label} ({option.count})</span>
+                            <span>{option.label}{option.count !== undefined && ` (${option.count})`}</span>
                           </div>
                         </SelectItem>
                       );
@@ -241,13 +240,13 @@ export function SignalStreamFilters({
                 <div className="min-w-0 sm:min-w-[140px]">
                   <Select value={filters.educator} onValueChange={(value) => updateFilter('educator', value)}>
                     <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
-                      <SelectValue placeholder={`All Educators (${educatorOptions.length})`} />
+                      <SelectValue placeholder="All Educators" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-border shadow-xl z-[100]">
                       <SelectItem value="all" className="cursor-pointer hover:bg-accent focus:bg-accent">
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4" />
-                          <span>All Educators ({educatorOptions.length})</span>
+                          <span>All Educators</span>
                         </div>
                       </SelectItem>
                       {educatorOptions.map(educator => (

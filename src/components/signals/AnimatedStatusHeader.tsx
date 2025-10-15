@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
 import { Crown } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
-import { Badge } from '@/components/ui/badge';
 
 interface Creator {
   id: string;
@@ -86,26 +85,13 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       {/* Currency Pair and Status - Decoupled from price updates */}
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5">
             <h3 className="text-base font-bold">{assetName}</h3>
             <TradeStatusBadge 
               alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
               updatedDate={updatedDate} 
               isRecentClosure={isRecentClosure} 
             />
-            {/* Trade Type Badge with Robinhood Green */}
-            {tradeType && (
-              <Badge 
-                variant="outline"
-                className={`text-xs font-semibold ${
-                  tradeType.includes('buy') 
-                    ? 'bg-[#00C805]/10 text-[#00C805] border-[#00C805]/30' 
-                    : 'bg-red-500/10 text-red-500 border-red-500/30'
-                }`}
-              >
-                {status.toUpperCase()} {tradeType.includes('buy') ? 'BUY' : 'SELL'}
-              </Badge>
-            )}
           </div>
         </div>
       </div>

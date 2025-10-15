@@ -315,7 +315,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const getCardBackgroundStyle = () => {
     // All cards: Consistent dark glass background (always dark, regardless of theme)
     return {
-      background: 'rgba(18, 18, 20, 0.80)',
+      background: 'rgba(18, 18, 20, 0.95)',
       backdropFilter: 'blur(20px) saturate(120%)',
       WebkitBackdropFilter: 'blur(20px) saturate(120%)',
     };
@@ -355,29 +355,28 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <div className="p-5 relative z-10">
-        {/* Signal Header with Creator, Asset, Status and Action Icons */}
-        <div className="flex items-start justify-between gap-2 mb-4">
-          <div className="flex-1 min-w-0">
-            <AnimatedStatusHeader
-              creator={creator}
-              assetName={alert.asset_name}
-              status={alert.status}
-              tradeType={alert.trade_type}
-              closeReason={alert.close_reason}
-              highestTP={hitTPs.length > 0 ? Math.max(...hitTPs) : null}
-              hasTPHits={hitTPs.length > 0}
-              isRecentClosure={isRecentClosure}
-              justAdded={justAdded}
-              createdDate={alert.created_date}
-              updatedDate={alert.updated_date}
-            />
-          </div>
-          
-          {/* Action Icons - Smaller & Inline */}
-          <div className="flex items-center gap-1.5 flex-shrink-0" data-prevent-widget-open="true">
+        {/* Signal Header with Creator, Asset, Status */}
+        <AnimatedStatusHeader
+          creator={creator}
+          assetName={alert.asset_name}
+          status={alert.status}
+          tradeType={alert.trade_type}
+          closeReason={alert.close_reason}
+          highestTP={hitTPs.length > 0 ? Math.max(...hitTPs) : null}
+          hasTPHits={hitTPs.length > 0}
+          isRecentClosure={isRecentClosure}
+          justAdded={justAdded}
+          createdDate={alert.created_date}
+          updatedDate={alert.updated_date}
+        />
+        
+        {/* Action Icons */}
+        <div className="flex items-center justify-end gap-2 mb-4">
+          {/* Action icons - Clean, minimal */}
+          <div className="flex items-center gap-1.5" data-prevent-widget-open="true">
             <button
               onClick={handleCopyPanelToggle}
-              className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+              className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
               style={{
                 background: showCopyPanel ? colors.state.active : colors.bg.surface,
                 border: `1px solid ${colors.border.default}`,
@@ -385,14 +384,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               }}
               aria-label="Copy signal"
             >
-              <Copy className="w-3.5 h-3.5" />
+              <Copy className="w-4 h-4" />
             </button>
             
             <SignalSharingModal 
               signal={tradeSignal}
               trigger={
                 <button
-                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                   style={{
                     background: colors.bg.surface,
                     border: `1px solid ${colors.border.default}`,
@@ -400,7 +399,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   }}
                   aria-label="Share signal"
                 >
-                  <Share2 className="w-3.5 h-3.5" />
+                  <Share2 className="w-4 h-4" />
                 </button>
               }
             />
@@ -408,7 +407,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             {(alert.status === 'active' || alert.status === 'pending') && (
               <button
                 onClick={handleCalculatorToggle}
-                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
                   background: showCalculator ? colors.semantic.success : colors.bg.surface,
                   border: `1px solid ${colors.border.default}`,
@@ -416,7 +415,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 }}
                 aria-label="Calculator"
               >
-                <Calculator className="w-3.5 h-3.5" />
+                <Calculator className="w-4 h-4" />
               </button>
             )}
           </div>

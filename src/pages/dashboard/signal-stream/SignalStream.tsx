@@ -1833,16 +1833,12 @@ export default function SignalStream() {
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 className="text-lg font-semibold mb-3 border-b border-accent-green/20 pb-1.5">
-                      <span className="text-imperial-platinum">Active </span>
-                      <span className="bg-clip-text text-transparent font-medium" style={{
-                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
+                    <h2 className="text-sm font-medium mb-3 border-b border-accent-green/20 pb-1.5">
+                      <span className="text-muted-foreground">Active </span>
+                      <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({filteredSignals.active.length})</span>
+                      <span className="text-muted-foreground"> ({filteredSignals.active.length})</span>
                      </h2>
                      {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {filteredSignals.active.map(alert => <TradeAlertCard
@@ -1880,16 +1876,12 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-lg font-semibold mb-3 border-b border-border pb-1.5">
-                      <span className="text-imperial-platinum">Closed </span>
-                      <span className="bg-clip-text text-transparent font-medium" style={{
-                    background: 'linear-gradient(135deg, hsl(45, 70%, 70%), hsl(45, 80%, 50%), hsl(45, 90%, 30%))',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
+                    <h2 className="text-sm font-medium mb-3 border-b border-border pb-1.5">
+                      <span className="text-muted-foreground">Closed </span>
+                      <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
+                      <span className="text-muted-foreground"> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
                     </h2>
                     {isLoadingClosedAlerts ? (
                       // ✅ BUG FIX #19: Skeleton UI for closed alerts loading

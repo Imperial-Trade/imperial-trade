@@ -572,8 +572,76 @@ export default function SignalStream() {
             });
         }
       });
+
+      // ============================================
+      // 🛑 INSTANT STOP LOSS DETECTION
+      // ============================================
+      const slPrice = signal.stopLoss;
+      
+      if (slPrice && slPrice > 0 && signal.status === 'active') {
+        // CRITICAL: Use OPPOSITE price for SL checks
+        // BUY signals close by SELLING → use BID price
+        // SELL signals close by BUYING → use ASK price
+        const slCheckPrice = isBuy 
+          ? priceData.bid || priceData.price   // BUY → check BID (selling price)
+          : priceData.ask || priceData.price;  // SELL → check ASK (buying price)
+        
+        // Check if SL was hit
+        // BUY: SL hit when price FALLS to/below SL
+        // SELL: SL hit when price RISES to/above SL
+        const slHit = isBuy 
+          ? slCheckPrice <= slPrice  // BUY → price drops to SL
+          : slCheckPrice >= slPrice; // SELL → price rises to SL
+        
+        if (slHit) {
+          console.log(
+            `🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)} ` +
+            `SL hit at ${slCheckPrice.toFixed(2)} (SL: ${slPrice.toFixed(2)}, Type: ${signal.tradeType})`
+          );
+          
+          // ✅ INSTANT: Optimistically close the signal via updateAlert
+          updateAlert(signal.id, { 
+            status: 'closed',
+            closeReason: 'stop_loss'
+          });
+          
+          // Show instant toast notification
+          toast({
+            title: '🛑 Stop Loss Hit!',
+            description: `${signal.assetName} closed at SL: ${slCheckPrice.toFixed(2)}`,
+            variant: 'destructive',
+            duration: 5000
+          });
+          
+          // ✅ BACKGROUND: Backend confirmation via RPC (non-blocking)
+          supabase.rpc('close_trade_alert', {
+            p_alert_id: signal.id,
+            p_user_id: user?.id,
+            p_close_reason: 'stop_loss'
+          }).then(({ error }) => {
+            if (error) {
+              console.error(`❌ Backend SL closure failed:`, error);
+              
+              // Revert optimistic update on failure
+              updateAlert(signal.id, { 
+                status: 'active',
+                closeReason: undefined
+              });
+              
+              toast({
+                title: '❌ SL Closure Failed',
+                description: 'Could not confirm stop loss. Signal reverted to active.',
+                variant: 'destructive',
+                duration: 5000
+              });
+            } else {
+              console.log(`✅ Backend confirmed SL closure for ${signal.id.substring(0, 8)}`);
+            }
+          });
+        }
+      }
     });
-  }, [prices, allAlerts, toast, updateAlert]); // Dependencies: prices, allAlerts, toast, updateAlert
+  }, [prices, allAlerts, toast, updateAlert, user?.id]); // Dependencies: prices, allAlerts, toast, updateAlert, user?.id
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {

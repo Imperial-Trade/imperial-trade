@@ -511,67 +511,114 @@ serve(async (req) => {
             }
           }
           
-          // PHASE 2: Use sequential TP processing for Take Profit alerts
-          for (const alert of takeProfitAlerts) {
+          // ============================================
+          // 🚀 PARALLEL TP PROCESSING: Process all TP hits simultaneously
+          // ============================================
+          console.log(`🔄 [TP Processing] Checking ${takeProfitAlerts.length} signals in PARALLEL`);
+
+          const tpPromises = takeProfitAlerts.map(async (alert) => {
             try {
-              const isBuy = await supabaseClient
+              // Fetch trade type and other data
+              const { data: signalData, error: fetchError } = await supabaseClient
                 .from('trade_alerts')
-                .select('trade_type')
+                .select('trade_type, asset_name, user_id')
                 .eq('id', alert.signal_id)
                 .single();
 
-              if (isBuy.data) {
-                const isBuyTrade = isBuy.data.trade_type.includes('buy');
-                const currentPrice = isBuyTrade ? priceUpdate.ask : priceUpdate.bid;
-                
-                // PHASE 2: Use sequential TP processing
-                const { data: tpResult, error: tpError } = await supabaseClient
-                  .rpc('process_tp_hits_sequential', {
-                    p_trade_id: alert.signal_id,
-                    p_current_price: currentPrice,
-                    p_is_buy: isBuyTrade
-                  });
-
-                if (!tpError && tpResult) {
-                  // ============================================
-                  // BUG #24 FIX - PHASE 2: Check if all TPs are hit
-                  // ============================================
-                  if (tpResult.all_tps_hit && tpResult.signal_auto_closed) {
-                    console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
-                    
-                    // Send "All Targets Hit" notification with HIGHEST priority
-                    notificationTriggers.push({
-                      signal_id: alert.signal_id,
-                      alert_type: 'all_targets_hit',
-                      notification_type: 'all_tps_hit',
-                      triggered_price: currentPrice,
-                      symbol: priceUpdate.symbol,
-                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                      priority_level: 4, // HIGHEST priority for completion
-                      close_reason: 'all_targets_hit',
-                      tp_hits_completed: tpResult.total_tps_hit
-                    });
-                  }
-                  // Regular TP hit notification (if a new TP was hit but not all)
-                  else if (tpResult.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                    console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id} at ${currentPrice}`);
-                    
-                    notificationTriggers.push({
-                      signal_id: alert.signal_id,
-                      alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                      notification_type: 'take_profit_hit',
-                      triggered_price: currentPrice,
-                      symbol: priceUpdate.symbol,
-                      timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                      priority_level: 3, // High priority for TP hits
-                      tp_level: tpResult.tp_hit_this_cycle[0]
-                    });
-                  }
-                }
+              if (fetchError || !signalData) {
+                throw new Error(`Failed to fetch signal data: ${fetchError?.message}`);
               }
-            } catch (tpError) {
-              console.error(`❌ Sequential TP processing error for signal ${alert.signal_id}:`, tpError);
+
+              const isBuy = signalData.trade_type.includes('buy');
+              const currentPrice = isBuy ? priceUpdate.ask : priceUpdate.bid;
+              
+              // Call sequential TP processor RPC
+              const { data: tpResult, error: tpError } = await supabaseClient.rpc('process_tp_hits_sequential', {
+                p_trade_id: alert.signal_id,
+                p_current_price: currentPrice,
+                p_is_buy: isBuy
+              });
+
+              if (tpError) throw tpError;
+
+              // Check for all TPs hit (auto-close)
+              if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
+                console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
+                
+                return {
+                  success: true,
+                  alertId: alert.signal_id,
+                  tpHit: true,
+                  allTPsHit: true,
+                  notification: {
+                    signal_id: alert.signal_id,
+                    alert_type: 'all_targets_hit',
+                    notification_type: 'all_tps_hit',
+                    triggered_price: currentPrice,
+                    symbol: priceUpdate.symbol,
+                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                    priority_level: 4,
+                    close_reason: 'all_targets_hit',
+                    tp_hits_completed: tpResult.total_tps_hit
+                  }
+                };
+              }
+              // Check for individual TP hit
+              else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)} at ${currentPrice}`);
+                
+                return {
+                  success: true,
+                  alertId: alert.signal_id,
+                  tpHit: true,
+                  allTPsHit: false,
+                  notification: {
+                    signal_id: alert.signal_id,
+                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                    notification_type: 'take_profit_hit',
+                    triggered_price: currentPrice,
+                    symbol: priceUpdate.symbol,
+                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
+                    priority_level: 3,
+                    tp_level: tpResult.tp_hit_this_cycle[0]
+                  }
+                };
+              }
+
+              return { success: true, alertId: alert.signal_id, tpHit: false };
+
+            } catch (err) {
+              console.error(`❌ TP processing error for signal ${alert.signal_id?.substring(0,8)}:`, err);
+              return { success: false, alertId: alert.signal_id, error: err };
             }
+          });
+
+          // Wait for all TP checks to complete (parallel execution)
+          const results = await Promise.all(tpPromises);
+
+          // Add notifications for successful TP hits
+          results.forEach(result => {
+            if (result.success && result.notification) {
+              notificationTriggers.push(result.notification);
+            }
+          });
+
+          // Count successes and failures
+          const successCount = results.filter(r => r.success && r.tpHit).length;
+          const failureCount = results.filter(r => !r.success).length;
+
+          console.log(
+            `✅ [TP Processing Complete] ${successCount} TPs hit, ${failureCount} errors, ` +
+            `${takeProfitAlerts.length} total signals processed in PARALLEL`
+          );
+
+          // Log failures for monitoring
+          if (failureCount > 0) {
+            const failures = results.filter(r => !r.success);
+            console.error(`⚠️ [TP Failures]`, failures.map(f => ({
+              alertId: f.alertId?.substring(0, 8),
+              error: f.error
+            })));
           }
           
           console.log(`🚨 ${triggeredAlerts.length} alerts triggered for ${priceUpdate.symbol} (${stopLossAlerts.length} SL, ${takeProfitAlerts.length} TP)`);

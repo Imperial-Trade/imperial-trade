@@ -53,6 +53,9 @@ export default function SignalStream() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
 
+  // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
+  const { prices } = useOptimizedWebSocketPrices();
+
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
   const staticClosedAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -505,6 +508,72 @@ export default function SignalStream() {
       });
     }
   }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
+
+  // ============================================
+  // 🎯 INSTANT TP DETECTION: Monitor live prices and detect TP hits in real-time
+  // ============================================
+  useEffect(() => {
+    const activeSignals = allAlerts.filter(s => s.status === 'active');
+    if (activeSignals.length === 0) return;
+
+    activeSignals.forEach(signal => {
+      const priceData = prices[signal.tradermadeSymbol];
+      if (!priceData) return; // No price data yet for this symbol
+
+      const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
+      const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
+
+      const tpLevels = [
+        { level: 1, price: signal.tp1 },
+        { level: 2, price: signal.tp2 },
+        { level: 3, price: signal.tp3 },
+        { level: 4, price: signal.tp4 },
+        { level: 5, price: signal.tp5 }
+      ];
+
+      tpLevels.forEach(({ level, price }) => {
+        if (!price || price <= 0 || signal.tpHits?.includes(level)) return;
+
+        const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
+
+        if (tpHit) {
+          console.log(
+            `🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level} hit at ${currentPrice.toFixed(2)}`
+          );
+          
+          // ✅ INSTANT: Optimistic UI update via updateAlert
+          const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
+          updateAlert(signal.id, { tpHits: updatedTPHits });
+
+          // Show instant toast notification
+          toast({
+            title: `🎯 TP${level} Hit!`,
+            description: `${signal.assetName} reached TP${level} at ${currentPrice.toFixed(2)}`
+          });
+
+          // ✅ BACKGROUND: Backend confirmation (non-blocking)
+          supabase
+            .from('trade_alerts')
+            .update({ tp_hits: updatedTPHits })
+            .eq('id', signal.id)
+            .then(({ error }) => {
+              if (error) {
+                console.error(`❌ Backend TP update failed for TP${level}:`, error);
+                // Revert optimistic update on failure
+                updateAlert(signal.id, { tpHits: signal.tpHits });
+                toast({
+                  title: '❌ TP Update Failed',
+                  description: `Could not confirm TP${level} hit.`,
+                  variant: 'destructive'
+                });
+              } else {
+                console.log(`✅ Backend confirmed TP${level} for signal ${signal.id.substring(0, 8)}`);
+              }
+            });
+        }
+      });
+    });
+  }, [prices, allAlerts, toast, updateAlert]); // Dependencies: prices, allAlerts, toast, updateAlert
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {

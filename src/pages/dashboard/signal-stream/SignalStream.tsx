@@ -510,12 +510,21 @@ export default function SignalStream() {
 
       // Show toast for each closed signal (with deduplication)
       newlyClosedSignals.forEach(signal => {
-        // ✅ GUARD: Check if the instant path already showed a toast for this signal
-        if (instantToastHandledRef.current.has(signal.id)) {
+        // ✅ GUARD: Check if the instant path already showed a toast for this signal (SL or TP)
+        const wasHandledByInstant = 
+          instantToastHandledRef.current.has(signal.id) || // For SL hits
+          Array.from(instantToastHandledRef.current).some(key => key.startsWith(`${signal.id}-tp`)); // For TP hits
+        
+        if (wasHandledByInstant) {
           console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection`);
-          // Clean up the ref after a few seconds
+          // Clean up ALL related keys (signal.id and all TP keys)
           setTimeout(() => {
             instantToastHandledRef.current.delete(signal.id);
+            Array.from(instantToastHandledRef.current).forEach(key => {
+              if (key.startsWith(`${signal.id}-tp`)) {
+                instantToastHandledRef.current.delete(key);
+              }
+            });
           }, 5000);
           return; // Do not show a second toast
         }

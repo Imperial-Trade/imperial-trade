@@ -41,25 +41,43 @@ const InAppNotificationSystem = () => {
   
   // 🔒 MOUNT TIME TRACKING: Filter out stale/replayed events
   const componentMountTimeRef = useRef<number>(Date.now());
+  
+  // 🔒 UNMOUNT GUARD: Prevent processing broadcasts after unmount
+  const isMountedRef = useRef<boolean>(true);
 
   // Setup and cleanup on mount/unmount
   useEffect(() => {
+    isMountedRef.current = true; // ✅ Mark as mounted
     const mountTime = Date.now();
     componentMountTimeRef.current = mountTime;
     console.log(`🎬 [InAppNotificationSystem] Mounted at ${new Date(mountTime).toISOString()}`);
 
-    // Clear any stale deduplication data from previous sessions
+    // ✅ CORRECTED: Only clear OLD entries (>5 minutes), keep recent ones
     if ((window as any).lastInAppNotifications) {
-      const oldSize = (window as any).lastInAppNotifications.size;
-      (window as any).lastInAppNotifications.clear();
-      console.log(`🧹 [InAppNotificationSystem] Cleared ${oldSize} stale deduplication entries on mount`);
+      const now = Date.now();
+      const fiveMinutesAgo = now - (5 * 60 * 1000);
+      let clearedCount = 0;
+      let keptCount = 0;
+      
+      (window as any).lastInAppNotifications.forEach((timestamp: number, key: string) => {
+        if (timestamp < fiveMinutesAgo) {
+          (window as any).lastInAppNotifications.delete(key);
+          clearedCount++;
+        } else {
+          keptCount++;
+        }
+      });
+      
+      console.log(
+        `🧹 [InAppNotificationSystem] Cleaned ${clearedCount} old entries, ` +
+        `kept ${keptCount} recent entries`
+      );
     }
 
     return () => {
-      if ((window as any).lastInAppNotifications) {
-        (window as any).lastInAppNotifications.clear();
-        console.log('🧹 [InAppNotificationSystem] Cleared deduplication map on unmount');
-      }
+      isMountedRef.current = false; // ✅ Mark as unmounted
+      // ✅ CORRECTED: Don't clear on unmount, let data persist for navigation
+      console.log('🎬 [InAppNotificationSystem] Component unmounting (keeping deduplication data)');
     };
   }, []);
 
@@ -208,26 +226,58 @@ const InAppNotificationSystem = () => {
     const channel = supabase
       .channel('instant-alerts')
       .on('broadcast', { event: 'signal_notification' }, (payload) => {
+        // ✅ GUARD 0: Ignore if component is unmounted
+        if (!isMountedRef.current) {
+          console.log('⏭️ [UNMOUNTED] Ignoring broadcast received after unmount');
+          return;
+        }
+
         console.log('🚨 Received signal notification:', payload);
         
         const data = payload.payload;
         if (!data) return;
 
         // ============================================
-        // ✅ GUARD 1: TIMESTAMP FILTERING (Prevents Replays)
+        // ✅ GUARD 1: TIMESTAMP FILTERING (Enhanced)
         // ============================================
         const eventTimestamp = data.timestamp || data.created_at;
-        if (eventTimestamp) {
-          const eventTime = new Date(eventTimestamp).getTime();
-          if (eventTime < componentMountTimeRef.current) {
-            console.log(
-              `⏭️ [REPLAY PREVENTION] Ignoring stale broadcast: ` +
-              `${data.notification_type} for ${data.asset_name} ` +
-              `(event: ${new Date(eventTime).toISOString()}, ` +
-              `mount: ${new Date(componentMountTimeRef.current).toISOString()})`
-            );
-            return;
-          }
+
+        // Require valid timestamp
+        if (!eventTimestamp) {
+          console.warn('⚠️ [MISSING TIMESTAMP] Ignoring broadcast without timestamp:', {
+            notification_type: data.notification_type,
+            asset_name: data.asset_name
+          });
+          return;
+        }
+
+        const eventTime = new Date(eventTimestamp).getTime();
+
+        // Validate timestamp is valid
+        if (isNaN(eventTime)) {
+          console.warn('⚠️ [INVALID TIMESTAMP] Ignoring broadcast with invalid timestamp:', eventTimestamp);
+          return;
+        }
+
+        // Filter events older than component mount
+        if (eventTime < componentMountTimeRef.current) {
+          const ageSeconds = Math.round((componentMountTimeRef.current - eventTime) / 1000);
+          console.log(
+            `⏭️ [REPLAY PREVENTION] Ignoring pre-mount broadcast: ` +
+            `${data.notification_type} for ${data.asset_name} (${ageSeconds}s before mount)`
+          );
+          return;
+        }
+
+        // ✅ CRITICAL: Filter events older than 30 seconds (even if after mount)
+        const now = Date.now();
+        const ageMs = now - eventTime;
+        if (ageMs > 30000) {
+          console.log(
+            `⏭️ [TOO OLD] Ignoring broadcast older than 30s: ` +
+            `${data.notification_type} for ${data.asset_name} (${Math.round(ageMs / 1000)}s old)`
+          );
+          return;
         }
         
         // ============================================

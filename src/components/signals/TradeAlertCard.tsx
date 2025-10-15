@@ -372,44 +372,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         
         {/* Action Icons */}
         <div className="flex items-center justify-end gap-2 mb-4">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            
-            {/* Status Badge - Contextual design */}
-            <div
-              className="text-xs px-2.5 py-1 rounded-md font-semibold uppercase tracking-wide whitespace-nowrap"
-              style={{
-                background: isClosed 
-                  ? (alert.close_reason === 'stop_loss'
-                      ? colors.semantic.danger
-                      : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-                        ? colors.semantic.success
-                        : 'rgba(160, 160, 160, 0.1)')
-                  : colors.semantic.success,
-                color: isClosed
-                  ? (alert.close_reason === 'stop_loss'
-                      ? colors.text.danger
-                      : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-                        ? colors.text.success
-                        : colors.text.secondary)
-                  : colors.text.success,
-                border: `1px solid ${
-                  isClosed
-                    ? (alert.close_reason === 'stop_loss'
-                        ? colors.border.danger
-                        : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-                          ? colors.border.success
-                          : colors.border.default)
-                    : colors.border.success
-                }`,
-              }}
-            >
-              {alert.status === 'active' && (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}
-              {alert.status === 'pending' && 'PENDING'}
-              {alert.status === 'closed' && 'CLOSED'}
-            </div>
-          </div>
-          
-          {/* Right: Action icons - Clean, minimal */}
+          {/* Action icons - Clean, minimal */}
           <div className="flex items-center gap-1.5" data-prevent-widget-open="true">
             <button
               onClick={handleCopyPanelToggle}

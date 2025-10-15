@@ -508,8 +508,19 @@ export default function SignalStream() {
         return next;
       });
 
-      // Show toast for each closed signal
+      // Show toast for each closed signal (with deduplication)
       newlyClosedSignals.forEach(signal => {
+        // ✅ GUARD: Check if the instant path already showed a toast for this signal
+        if (instantToastHandledRef.current.has(signal.id)) {
+          console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection`);
+          // Clean up the ref after a few seconds
+          setTimeout(() => {
+            instantToastHandledRef.current.delete(signal.id);
+          }, 5000);
+          return; // Do not show a second toast
+        }
+        
+        // If we are here, the closure was detected by the backend/realtime first
         let toastTitle = '🔒 Signal Closed';
         let toastDescription = `${signal.assetName} closed: ${signal.closeReason || 'Manual'}`;
         let toastVariant: 'default' | 'destructive' = 'default';

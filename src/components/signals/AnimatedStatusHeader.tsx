@@ -99,7 +99,10 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <div className="text-xs text-muted-foreground">
-              {formatTimeAgo(createdDate)}
+              {status === 'closed' && updatedDate 
+                ? formatTimeAgo(updatedDate) 
+                : formatTimeAgo(createdDate)
+              }
             </div>
           </div>
         </div>

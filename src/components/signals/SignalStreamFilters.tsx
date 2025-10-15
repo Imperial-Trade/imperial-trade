@@ -144,15 +144,14 @@ export function SignalStreamFilters({
   if (isMobile) {
     return (
       <>
-        <Card 
-          className="mb-4 backdrop-blur-sm border-border/40"
+        <div 
+          className="mb-4 p-3 space-y-3 backdrop-blur-sm border border-border/40 rounded-lg"
           data-prevent-widget-open="true"
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
         >
-          <CardContent className="p-3 space-y-3">
-            {/* Row 1: Search + Create Alert */}
-            <div className="flex items-center gap-2">
+          {/* Row 1: Search + Create Alert */}
+          <div className="flex items-center gap-2">
               {/* Search Bar */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
@@ -235,8 +234,7 @@ export function SignalStreamFilters({
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Filter Sheets */}
         <MobileFilterSheet

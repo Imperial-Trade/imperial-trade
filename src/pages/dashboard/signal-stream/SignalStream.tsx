@@ -43,9 +43,9 @@ export default function SignalStream() {
   // State for filtering and modal
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
-    tradeType: '',
-    educator: ''
+    status: 'all',
+    tradeType: 'all',
+    educator: 'all'
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
@@ -342,13 +342,13 @@ export default function SignalStream() {
       const searchLower = filters.search.toLowerCase();
       filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
     }
-    if (filters.status) {
+    if (filters.status && filters.status !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
     }
-    if (filters.tradeType) {
+    if (filters.tradeType && filters.tradeType !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
-    if (filters.educator) {
+    if (filters.educator && filters.educator !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
     return filteredAlerts;
@@ -725,17 +725,17 @@ export default function SignalStream() {
     }
     
     // Apply status filter
-    if (filters.status) {
+    if (filters.status && filters.status !== 'all') {
       filtered = filtered.filter(alert => alert.status === filters.status);
     }
     
     // Apply trade type filter (uses .includes() for combined filtering)
-    if (filters.tradeType) {
+    if (filters.tradeType && filters.tradeType !== 'all') {
       filtered = filtered.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
     
     // Apply educator filter
-    if (filters.educator) {
+    if (filters.educator && filters.educator !== 'all') {
       filtered = filtered.filter(alert => 
         (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
       );

@@ -62,20 +62,23 @@ export function SignalStreamFilters({
   };
 
   const clearAllFilters = () => {
-    onFiltersChange({ search: '', status: '', tradeType: '', educator: '' });
+    onFiltersChange({ search: '', status: 'all', tradeType: 'all', educator: 'all' });
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== '');
+  const hasActiveFilters = filters.search !== '' || 
+    (filters.status !== '' && filters.status !== 'all') ||
+    (filters.tradeType !== '' && filters.tradeType !== 'all') ||
+    (filters.educator !== '' && filters.educator !== 'all');
 
   const statusOptions = [
-    { value: '', label: 'All Status', count: signalCounts.total, icon: Filter },
+    { value: 'all', label: 'All Status', count: signalCounts.total, icon: Filter },
     { value: 'active', label: 'Active', count: signalCounts.active, icon: Clock },
     { value: 'closed', label: 'Closed', count: signalCounts.closed, icon: CheckCircle }
   ];
 
   const tradeTypeOptions = [
     { 
-      value: '', 
+      value: 'all', 
       label: 'All Types', 
       count: signalCounts.buy + signalCounts.sell, 
       icon: Filter 
@@ -241,7 +244,7 @@ export function SignalStreamFilters({
                       <SelectValue placeholder={`All Educators (${educatorOptions.length})`} />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-border shadow-xl z-[100]">
-                      <SelectItem value="" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                      <SelectItem value="all" className="cursor-pointer hover:bg-accent focus:bg-accent">
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4" />
                           <span>All Educators ({educatorOptions.length})</span>

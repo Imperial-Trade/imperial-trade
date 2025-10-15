@@ -2,6 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { ArrowUp, ArrowDown, Target, XOctagon, Check } from 'lucide-react';
 import LivePriceWidget from './LivePriceWidget';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { signalColors } from '@/lib/design-system/signalColors';
 
 interface PriceRowProps {
   label: string;
@@ -64,7 +65,12 @@ const StaticLevelsBlock = memo<{
   const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (
-    <div className="bg-muted/50 rounded-md p-2.5 mt-2">
+    <div 
+      className="rounded-md p-2.5 mt-2"
+      style={{
+        background: signalColors.bg.surface,
+      }}
+    >
       <PriceRow 
         label="Entry Price" 
         value={entryPrice} 

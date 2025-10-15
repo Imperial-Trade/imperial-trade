@@ -309,7 +309,7 @@ export function SignalStreamFilters({
               <Input
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+                className="h-10 pl-10 pr-10 text-sm bg-transparent backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
               />
               
               {filters.search && (
@@ -334,7 +334,7 @@ export function SignalStreamFilters({
               {/* Status Filter */}
               <div className="min-w-0 sm:min-w-[140px]">
                 <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
-                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border-border shadow-xl z-[100]">
@@ -360,7 +360,7 @@ export function SignalStreamFilters({
               {/* Trade Type Filter */}
               <div className="min-w-0 sm:min-w-[140px]">
                 <Select value={filters.tradeType} onValueChange={(value) => updateFilter('tradeType', value)}>
-                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border-border shadow-xl z-[100]">
@@ -387,7 +387,7 @@ export function SignalStreamFilters({
               {educatorOptions.length > 1 && (
                 <div className="min-w-0 sm:min-w-[140px]">
                   <Select value={filters.educator} onValueChange={(value) => updateFilter('educator', value)}>
-                    <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                    <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                       <SelectValue placeholder="All Educators" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border-border shadow-xl z-[100]">

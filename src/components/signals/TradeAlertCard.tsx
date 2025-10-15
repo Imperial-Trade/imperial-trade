@@ -313,9 +313,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   // Determine contextual styling based on close reason
   const getCardBackgroundStyle = () => {
-    // All cards: Consistent dark glass background
+    // All cards: Consistent dark glass background (always dark, regardless of theme)
     return {
-      background: colors.bg.glass,
+      background: 'rgba(18, 18, 20, 0.95)',
       backdropFilter: 'blur(20px) saturate(120%)',
       WebkitBackdropFilter: 'blur(20px) saturate(120%)',
     };

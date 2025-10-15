@@ -145,7 +145,7 @@ export function SignalStreamFilters({
     return (
       <>
         <Card 
-          className="mb-4 bg-card/60 backdrop-blur-sm border-border/40"
+          className="mb-4 backdrop-blur-sm border-border/40"
           data-prevent-widget-open="true"
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}

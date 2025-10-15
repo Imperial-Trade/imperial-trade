@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Crown } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
+import { Badge } from '@/components/ui/badge';
 
 interface Creator {
   id: string;
@@ -85,13 +86,25 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       {/* Currency Pair and Status - Decoupled from price updates */}
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <h3 className="text-base font-bold">{assetName}</h3>
             <TradeStatusBadge 
               alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
               updatedDate={updatedDate} 
               isRecentClosure={isRecentClosure} 
             />
+            {tradeType && (
+              <Badge 
+                variant="outline"
+                className={`text-[10px] px-2 py-0.5 font-semibold ${
+                  tradeType.toLowerCase().includes('buy') 
+                    ? 'bg-green-500/10 text-green-600 border-green-500/30' 
+                    : 'bg-red-500/10 text-red-600 border-red-500/30'
+                }`}
+              >
+                {status.toUpperCase()} {tradeType.toLowerCase().includes('buy') ? 'BUY' : 'SELL'}
+              </Badge>
+            )}
           </div>
         </div>
       </div>

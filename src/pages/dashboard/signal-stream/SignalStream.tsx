@@ -382,6 +382,54 @@ export default function SignalStream() {
     signalCount: number;
   }>>([]);
   
+  // ============================================
+  // EDUCATOR-SPECIFIC COUNTS: Dynamically calculated based on selected educator
+  // ============================================
+  const educatorSpecificCounts = useMemo(() => {
+    // If no educator is selected, return global database counts
+    if (!filters.educator) {
+      return {
+        total: databaseCounts.total,
+        active: databaseCounts.active,
+        closed: databaseCounts.closed,
+        buy: databaseCounts.buy,
+        sell: databaseCounts.sell
+      };
+    }
+    
+    // Calculate counts for the selected educator only
+    const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert => 
+      (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
+    );
+    
+    // Count by status
+    const activeCount = educatorAlerts.filter(a => 
+      ['active', 'pending', 'partially_profited'].includes(a.status)
+    ).length;
+    
+    const closedCount = educatorAlerts.filter(a => a.status === 'closed').length;
+    
+    // Count by trade type (combined)
+    const buyCount = educatorAlerts.filter(a => a.tradeType.includes('buy')).length;
+    const sellCount = educatorAlerts.filter(a => a.tradeType.includes('sell')).length;
+    
+    console.log(`📊 Educator-specific counts for ${filters.educator}:`, {
+      total: educatorAlerts.length,
+      active: activeCount,
+      closed: closedCount,
+      buy: buyCount,
+      sell: sellCount
+    });
+    
+    return {
+      total: educatorAlerts.length,
+      active: activeCount,
+      closed: closedCount,
+      buy: buyCount,
+      sell: sellCount
+    };
+  }, [filters.educator, allAlerts, staticClosedAlerts, databaseCounts]);
+  
   const {
     activeAlerts,
     educatorOptions,
@@ -393,18 +441,13 @@ export default function SignalStream() {
         && !excludedSignalIds.has(a.id)
       );
 
+    // ✅ CRITICAL: Use educator-specific counts instead of global database counts
     return {
       activeAlerts: active,
       educatorOptions: allEducatorsWithSignals,
-      signalCounts: {
-        total: databaseCounts.total,
-        active: databaseCounts.active,
-        closed: databaseCounts.closed,
-        buy: databaseCounts.buy,    // Combined buy + buy_limit
-        sell: databaseCounts.sell   // Combined sell + sell_limit
-      }
+      signalCounts: educatorSpecificCounts  // ✅ Changed from databaseCounts
     };
-  }, [alerts, allEducatorsWithSignals, databaseCounts, excludedSignalIds]);
+  }, [alerts, allEducatorsWithSignals, educatorSpecificCounts, excludedSignalIds]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {
@@ -656,7 +699,8 @@ export default function SignalStream() {
     if (!allAlerts.length && !staticClosedAlerts.length) {
       return {
         active: [],
-        closed: []
+        closed: [],
+        closedTotal: 0
       };
     }
 
@@ -711,16 +755,24 @@ export default function SignalStream() {
     );
     const closedFiltered = sortedFiltered.filter(a => a.status === 'closed');
     
+    // ✅ Store total count before applying UI limit
+    const totalClosedFiltered = closedFiltered.length;
+    
+    // ✅ Apply UI limit of 12 for closed alerts display only
+    const closedFilteredLimited = closedFiltered.slice(0, 12);
+    
     console.log('🔍 Filter results:', {
       total: filtered.length,
       active: activeFiltered.length,
-      closed: closedFiltered.length,
+      closed: totalClosedFiltered,
+      closedDisplayed: closedFilteredLimited.length,
       filters
     });
     
     return {
       active: activeFiltered,
-      closed: closedFiltered
+      closed: closedFilteredLimited,
+      closedTotal: totalClosedFiltered
     };
   }, [allAlerts, staticClosedAlerts, allEducatorsWithSignals, filters, excludedSignalIds]);
 
@@ -1838,7 +1890,7 @@ export default function SignalStream() {
                   }}>
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({totalClosedCount})</span>
+                      <span className="text-imperial-platinum"> ({filteredSignals.closedTotal || filteredSignals.closed.length})</span>
                     </h2>
                     {isLoadingClosedAlerts ? (
                       // ✅ BUG FIX #19: Skeleton UI for closed alerts loading

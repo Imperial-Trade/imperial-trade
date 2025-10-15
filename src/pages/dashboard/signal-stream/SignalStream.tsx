@@ -63,6 +63,10 @@ export default function SignalStream() {
   // 🔒 Anti-flicker: hydrate once, then never show skeleton again
   const hasHydratedRef = useRef(false);
   
+  // 🔒 DEDUPLICATION: Prevent duplicate TP/SL processing
+  const processingSignalsRef = useRef<Set<string>>(new Set());
+  const processedHitsRef = useRef<Map<string, { timestamp: number, type: 'sl' | 'tp', level?: number }>>(new Map());
+  
   // Check notification system initialization
   useEffect(() => {
     if (!(window as any).addNotification) {
@@ -71,6 +75,24 @@ export default function SignalStream() {
     } else {
       console.log('✅ [SignalStream] Custom notification system initialized');
     }
+  }, []);
+  
+  // Clean up old processed hits every 30 seconds
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      const entries = Array.from(processedHitsRef.current.entries());
+      
+      entries.forEach(([key, value]) => {
+        // Remove processed hits older than 60 seconds
+        if (now - value.timestamp > 60000) {
+          processedHitsRef.current.delete(key);
+          console.log(`🧹 [Cleanup] Removed old processed hit: ${key}`);
+        }
+      });
+    }, 30000);
+    
+    return () => clearInterval(cleanup);
   }, []);
 
   // 🚀 DIRECT REALTIME: Use useSignalRealtime directly to eliminate subscription chain storm
@@ -537,6 +559,23 @@ export default function SignalStream() {
         const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
 
         if (tpHit) {
+          const tpKey = `${signal.id}-tp${level}`;
+          
+          // 🔒 CHECK: Skip if already processed or currently processing
+          if (processedHitsRef.current.has(tpKey)) {
+            console.log(`⏭️ [SKIP] TP${level} already processed for ${signal.id.substring(0, 8)}`);
+            return;
+          }
+          
+          if (processingSignalsRef.current.has(tpKey)) {
+            console.log(`⏭️ [SKIP] TP${level} currently being processed for ${signal.id.substring(0, 8)}`);
+            return;
+          }
+          
+          // 🔒 LOCK: Mark as processing
+          processingSignalsRef.current.add(tpKey);
+          processedHitsRef.current.set(tpKey, { timestamp: Date.now(), type: 'tp', level });
+          
           console.log(
             `🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level} hit at ${currentPrice.toFixed(2)}`
           );
@@ -557,8 +596,14 @@ export default function SignalStream() {
             .update({ tp_hits: updatedTPHits })
             .eq('id', signal.id)
             .then(({ error }) => {
+              // 🔓 UNLOCK: Always remove from processing (even on error)
+              processingSignalsRef.current.delete(tpKey);
+              
               if (error) {
                 console.error(`❌ Backend TP update failed for TP${level}:`, error);
+                // Remove from processed cache to allow retry
+                processedHitsRef.current.delete(tpKey);
+                
                 // Revert optimistic update on failure
                 updateAlert(signal.id, { tpHits: signal.tpHits });
                 toast({
@@ -594,6 +639,23 @@ export default function SignalStream() {
           : slCheckPrice >= slPrice; // SELL → price rises to SL
         
         if (slHit) {
+          const slKey = `${signal.id}-sl`;
+          
+          // 🔒 CHECK: Skip if already processed or currently processing
+          if (processedHitsRef.current.has(slKey)) {
+            console.log(`⏭️ [SKIP] SL already processed for ${signal.id.substring(0, 8)}`);
+            return;
+          }
+          
+          if (processingSignalsRef.current.has(slKey)) {
+            console.log(`⏭️ [SKIP] SL currently being processed for ${signal.id.substring(0, 8)}`);
+            return;
+          }
+          
+          // 🔒 LOCK: Mark as processing
+          processingSignalsRef.current.add(slKey);
+          processedHitsRef.current.set(slKey, { timestamp: Date.now(), type: 'sl' });
+          
           console.log(
             `🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)} ` +
             `SL hit at ${slCheckPrice.toFixed(2)} (SL: ${slPrice.toFixed(2)}, Type: ${signal.tradeType})`
@@ -619,8 +681,13 @@ export default function SignalStream() {
             p_user_id: user?.id,
             p_close_reason: 'stop_loss'
           }).then(({ error }) => {
+            // 🔓 UNLOCK: Always remove from processing (even on error)
+            processingSignalsRef.current.delete(slKey);
+            
             if (error) {
               console.error(`❌ Backend SL closure failed:`, error);
+              // Remove from processed cache to allow retry
+              processedHitsRef.current.delete(slKey);
               
               // Revert optimistic update on failure
               updateAlert(signal.id, { 

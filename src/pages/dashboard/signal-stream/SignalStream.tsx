@@ -67,6 +67,9 @@ export default function SignalStream() {
   const processingSignalsRef = useRef<Set<string>>(new Set());
   const processedHitsRef = useRef<Map<string, { timestamp: number, type: 'sl' | 'tp', level?: number }>>(new Map());
   
+  // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
+  const instantToastHandledRef = useRef<Set<string>>(new Set());
+  
   // Check notification system initialization
   useEffect(() => {
     if (!(window as any).addNotification) {

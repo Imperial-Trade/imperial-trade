@@ -98,7 +98,7 @@ const StaticLevelsBlock = memo<{
             label={`Take Profit ${tpLevel}`} 
             value={tp} 
             icon={Target} 
-            colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
+            colorClass={isHit ? "text-accent-green" : "text-muted-foreground"}
             isHit={isHit}
           />
         );

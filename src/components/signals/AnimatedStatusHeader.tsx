@@ -61,17 +61,6 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
 
   return (
     <div className="mb-2">
-      {/* Glowing top indicator for closed trades - computed from primitives only */}
-      {status === 'closed' && (
-        <div className={`h-1 w-full mb-2 ${
-          closeReason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-red-600/40 via-red-600/60 to-red-600/40 shadow-lg shadow-red-600/20' 
-            : (hasTPHits || closeReason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-emerald-600/40 via-emerald-600/60 to-emerald-600/40 shadow-lg shadow-emerald-600/20'
-              : 'bg-gradient-to-r from-gray-500/40 via-gray-500/60 to-gray-500/40 shadow-lg shadow-gray-500/20'
-        }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
-      )}
-
       {/* Signal Creator Attribution */}
       {creator && (
         <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">

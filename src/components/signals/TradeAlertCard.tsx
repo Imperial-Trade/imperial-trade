@@ -346,10 +346,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           className="h-1.5 w-full relative z-10"
           style={{
             background: alert.close_reason === 'stop_loss'
-              ? 'linear-gradient(180deg, rgba(255, 69, 58, 0.85) 0%, rgba(255, 69, 58, 0.5) 100%)'
+              ? 'linear-gradient(180deg, rgba(80, 0, 0, 0.95) 0%, rgba(50, 0, 0, 0.80) 100%)'
               : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-              ? 'linear-gradient(180deg, rgba(0, 200, 5, 0.85) 0%, rgba(0, 200, 5, 0.5) 100%)'
-              : 'linear-gradient(180deg, rgba(160, 160, 160, 0.75) 0%, rgba(160, 160, 160, 0.4) 100%)',
+              ? 'linear-gradient(180deg, rgba(0, 50, 0, 0.95) 0%, rgba(0, 35, 0, 0.80) 100%)'
+              : 'linear-gradient(180deg, rgba(40, 40, 40, 0.95) 0%, rgba(25, 25, 25, 0.80) 100%)',
           }}
         />
       )}

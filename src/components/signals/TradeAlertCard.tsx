@@ -355,32 +355,24 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <div className="p-5 relative z-10">
-        {/* Creator Name (standalone, prominent) */}
-        {creator && (
-          <div className="mb-3">
-            <div 
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm"
-              style={{
-                background: colors.bg.surface,
-                border: `1px solid ${colors.border.default}`,
-                color: colors.text.primary,
-              }}
-            >
-              <span>{creator.display_name}</span>
-            </div>
-          </div>
-        )}
+        {/* Signal Header with Creator, Asset, Status */}
+        <AnimatedStatusHeader
+          creator={creator}
+          assetName={alert.asset_name}
+          status={alert.status}
+          tradeType={alert.trade_type}
+          closeReason={alert.close_reason}
+          highestTP={hitTPs.length > 0 ? Math.max(...hitTPs) : null}
+          hasTPHits={hitTPs.length > 0}
+          isRecentClosure={isRecentClosure}
+          justAdded={justAdded}
+          createdDate={alert.created_date}
+          updatedDate={alert.updated_date}
+        />
         
-        {/* Asset Name + Status + Actions */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          {/* Left: Asset name + Status */}
+        {/* Action Icons */}
+        <div className="flex items-center justify-end gap-2 mb-4">
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <h3 
-              className="text-xl font-bold truncate"
-              style={{ color: colors.text.primary }}
-            >
-              {alert.asset_name}
-            </h3>
             
             {/* Status Badge - Contextual design */}
             <div

@@ -1890,7 +1890,7 @@ export default function SignalStream() {
                   }}>
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({filteredSignals.closedTotal || filteredSignals.closed.length})</span>
+                      <span className="text-imperial-platinum"> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
                     </h2>
                     {isLoadingClosedAlerts ? (
                       // ✅ BUG FIX #19: Skeleton UI for closed alerts loading

@@ -1859,10 +1859,6 @@ export default function SignalStream() {
                       style={{
                         borderBottom: `2px solid ${colors.border.default}`,
                         color: colors.text.primary,
-                        background: `linear-gradient(90deg, ${colors.border.active}, transparent)`,
-                        backgroundSize: '50% 2px',
-                        backgroundPosition: 'left bottom',
-                        backgroundRepeat: 'no-repeat',
                       }}
                     >
                       <span>Active Alerts</span>
@@ -1870,7 +1866,7 @@ export default function SignalStream() {
                         className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto"
                         style={{
                           background: colors.state.active,
-                          color: colors.text.gold,
+                          color: colors.text.accent,
                           border: `1px solid ${colors.border.active}`,
                         }}
                       >
@@ -1918,10 +1914,6 @@ export default function SignalStream() {
                       style={{
                         borderBottom: `2px solid ${colors.border.default}`,
                         color: colors.text.primary,
-                        background: `linear-gradient(90deg, ${colors.border.active}, transparent)`,
-                        backgroundSize: '50% 2px',
-                        backgroundPosition: 'left bottom',
-                        backgroundRepeat: 'no-repeat',
                       }}
                     >
                       <span>Closed Alerts</span>

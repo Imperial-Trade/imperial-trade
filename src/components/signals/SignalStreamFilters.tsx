@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,10 @@ import {
   Users,
   Plus
 } from 'lucide-react';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
+import { MobileFilterButton } from './MobileFilterButton';
+import { MobileFilterSheet } from './MobileFilterSheet';
+import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
 
 interface FilterState {
   search: string;
@@ -53,6 +57,9 @@ export function SignalStreamFilters({
   canCreateSignals,
   onCreateSignal
 }: SignalStreamFiltersProps) {
+  const { isMobile } = useDeviceDetection();
+  const [mobileSheetOpen, setMobileSheetOpen] = useState<'status' | 'tradeType' | 'educator' | null>(null);
+
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -131,6 +138,147 @@ export function SignalStreamFilters({
     clearAllFilters();
   };
 
+  // Mobile Layout (< 768px)
+  if (isMobile) {
+    return (
+      <>
+        <Card 
+          className="mb-4 bg-card/60 backdrop-blur-sm border-border/40"
+          data-prevent-widget-open="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+        >
+          <CardContent className="p-3 space-y-3">
+            {/* Row 1: Search + Create Alert */}
+            <div className="flex items-center gap-2">
+              {/* Search Bar */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
+                
+                {!filters.search && (
+                  <div className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
+                    Search{' '}
+                    <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
+                      Xeon alerts
+                    </span>
+                    <span>...</span>
+                  </div>
+                )}
+                
+                <Input
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
+                  className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60"
+                />
+                
+                {filters.search && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleClearFilterClick(e, 'search')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Glassmorphism Create Alert Button */}
+              {canCreateSignals && (
+                <GlassmorphismCreateButton onClick={() => handleCreateSignalClick({} as React.MouseEvent)} />
+              )}
+            </div>
+
+            {/* Row 2: Icon Filter Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Status Filter Icon */}
+              <MobileFilterButton
+                icon={<Filter className="w-4 h-4" />}
+                label="Filter by status"
+                isActive={filters.status !== 'all' && filters.status !== ''}
+                onClick={() => setMobileSheetOpen('status')}
+              />
+              
+              {/* Trade Type Filter Icon */}
+              <MobileFilterButton
+                icon={<TrendingUp className="w-4 h-4" />}
+                label="Filter by type"
+                isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
+                onClick={() => setMobileSheetOpen('tradeType')}
+              />
+              
+              {/* Educator Filter Icon */}
+              {educatorOptions.length > 1 && (
+                <MobileFilterButton
+                  icon={<Users className="w-4 h-4" />}
+                  label="Filter by educator"
+                  isActive={filters.educator !== 'all' && filters.educator !== ''}
+                  onClick={() => setMobileSheetOpen('educator')}
+                />
+              )}
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Clear All Button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearAllClick}
+                  className="h-10 px-3 text-xs text-muted-foreground"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Filter Sheets */}
+        <MobileFilterSheet
+          type="status"
+          isOpen={mobileSheetOpen === 'status'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.status}
+          onValueChange={(value) => {
+            updateFilter('status', value);
+            setMobileSheetOpen(null);
+          }}
+          options={statusOptions}
+        />
+
+        <MobileFilterSheet
+          type="tradeType"
+          isOpen={mobileSheetOpen === 'tradeType'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.tradeType}
+          onValueChange={(value) => {
+            updateFilter('tradeType', value);
+            setMobileSheetOpen(null);
+          }}
+          options={tradeTypeOptions}
+        />
+
+        {educatorOptions.length > 1 && (
+          <MobileFilterSheet
+            type="educator"
+            isOpen={mobileSheetOpen === 'educator'}
+            onClose={() => setMobileSheetOpen(null)}
+            currentValue={filters.educator}
+            onValueChange={(value) => {
+              updateFilter('educator', value);
+              setMobileSheetOpen(null);
+            }}
+            educatorOptions={educatorOptions}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Desktop Layout (>= 768px)
   return (
     <Card 
       className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"

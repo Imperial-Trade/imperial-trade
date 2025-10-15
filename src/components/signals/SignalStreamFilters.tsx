@@ -145,7 +145,7 @@ export function SignalStreamFilters({
     return (
       <>
         <div 
-          className="mb-4 p-3 space-y-3 backdrop-blur-sm border border-border/40 rounded-lg"
+          className="mb-4 p-3 space-y-3 bg-transparent backdrop-blur-sm border border-border/40 rounded-lg"
           data-prevent-widget-open="true"
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
@@ -337,7 +337,7 @@ export function SignalStreamFilters({
                   <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                  <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
                     {statusOptions.map(option => {
                       const Icon = option.icon;
                       return (
@@ -363,7 +363,7 @@ export function SignalStreamFilters({
                   <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                  <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
                     {tradeTypeOptions.map(option => {
                       const Icon = option.icon;
                       return (
@@ -390,7 +390,7 @@ export function SignalStreamFilters({
                     <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
                       <SelectValue placeholder="All Educators" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                    <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
                       <SelectItem value="all" className="cursor-pointer hover:bg-accent focus:bg-accent">
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4" />

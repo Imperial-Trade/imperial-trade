@@ -545,16 +545,31 @@ export default function SignalStream() {
           instantToastHandledRef.current.has(signal.id) || // For SL hits
           Array.from(instantToastHandledRef.current).some(key => key.startsWith(`${signal.id}-tp`)); // For TP hits
         
-        if (wasHandledByInstant) {
-          console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection`);
-          // 🔒 TIER 1: Immediate cleanup (no 5-second delay)
+        // ✅ SPECIAL CASE: Always allow "All Targets Hit!" toast through
+        if (signal.closeReason === 'all_tps_hit') {
+          console.log(`💰 [ALLOW] Showing "All Targets Hit" toast for ${signal.id.substring(0, 8)} (backend confirmed)`);
+          
+          // Clear all instant detection flags since this is the final confirmation toast
           instantToastHandledRef.current.delete(signal.id);
           Array.from(instantToastHandledRef.current).forEach(key => {
             if (key.startsWith(`${signal.id}-tp`)) {
               instantToastHandledRef.current.delete(key);
             }
           });
-          return; // Do not show a second toast
+          
+          // Continue to show the toast (don't return early)
+        } else if (wasHandledByInstant) {
+          // For other close reasons (stop_loss, manual), skip if instant detection already handled it
+          console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection (reason: ${signal.closeReason})`);
+          
+          // Clean up
+          instantToastHandledRef.current.delete(signal.id);
+          Array.from(instantToastHandledRef.current).forEach(key => {
+            if (key.startsWith(`${signal.id}-tp`)) {
+              instantToastHandledRef.current.delete(key);
+            }
+          });
+          return; // Skip toast for non-"all_tps_hit" reasons
         }
         
         // If we are here, the closure was detected by the backend/realtime first
@@ -567,8 +582,12 @@ export default function SignalStream() {
           toastDescription = `${signal.assetName} signal closed at SL`;
           toastVariant = 'destructive';
         } else if (signal.closeReason === 'all_tps_hit') {
+          // Count total TPs for better context
+          const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+            .filter(tp => tp && tp > 0).length;
+          
           toastTitle = '💰 All Targets Hit!';
-          toastDescription = `${signal.assetName} - All take profits reached`;
+          toastDescription = `${signal.assetName} - All ${totalTPs} take profit${totalTPs > 1 ? 's' : ''} reached`;
         } else if (signal.closeReason?.startsWith('tp')) {
           toastTitle = '🟢 Take Profit Hit';
           const tpNum = signal.closeReason.replace('tp', '').replace('_hit', '');
@@ -669,18 +688,15 @@ export default function SignalStream() {
             // Apply optimistic update
             updateAlert(signal.id, updateData);
             
-            // 🆕 SHOW APPROPRIATE TOAST
-            if (allTPsHit) {
-              toast({
-                title: `🟢 Signal Closed at TP${level}`,
-                description: `${signal.assetName} - All TPs hit! Signal closed successfully`,
-              });
-            } else {
-              toast({
-                title: `🎯 TP${level} Hit!`,
-                description: `${signal.assetName} reached TP${level} - ${totalTPs - updatedTPHits.length} TPs remaining`,
-              });
-            }
+            // ✅ ALWAYS show individual TP notification only
+            // The "All Targets Hit!" toast will come from the state watcher
+            const remainingTPs = totalTPs - updatedTPHits.length;
+            toast({
+              title: `🎯 TP${level} Hit!`,
+              description: allTPsHit 
+                ? `${signal.assetName} reached final TP${level} - Signal closing`
+                : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`,
+            });
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
             supabase

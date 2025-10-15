@@ -73,6 +73,9 @@ export default function SignalStream() {
   // 🔒 TIER 1: Backend Detection Tracking - Prevent frontend from re-processing backend-handled events
   const backendProcessedRef = useRef<Set<string>>(new Set());
   
+  // 🚀 TIER 2: Performance - Cache creator checks to prevent redundant computations
+  const creatorCheckCache = useRef(new Map<string, boolean>());
+  
   // Check notification system initialization
   useEffect(() => {
     if (!(window as any).addNotification) {
@@ -260,8 +263,15 @@ export default function SignalStream() {
     });
   }
   // ✅ FIX: Check creator permission using userId (direct FK) as primary source
+  // 🚀 TIER 2: Memoized with cache to prevent redundant computations
   const isCreator = useCallback((alert: TradeAlertWithProfile) => {
     if (!profile?.id) return false;
+    
+    // 🚀 TIER 2: Check cache first
+    const cacheKey = `${alert.id}-${profile.id}`;
+    if (creatorCheckCache.current.has(cacheKey)) {
+      return creatorCheckCache.current.get(cacheKey)!;
+    }
     
     // Primary check: alert.userId is the direct foreign key to user_id column
     const isCreatorByUserId = alert.userId === profile.id;
@@ -270,6 +280,9 @@ export default function SignalStream() {
     const isCreatorByCreatorId = alert.creator?.id === profile.id;
     
     const result = isCreatorByUserId || isCreatorByCreatorId;
+    
+    // 🚀 TIER 2: Cache the result
+    creatorCheckCache.current.set(cacheKey, result);
     
     if (isDevToolsEnabled()) {
       console.log('🔍 [isCreator Check]:', {
@@ -285,6 +298,11 @@ export default function SignalStream() {
     }
     
     return result;
+  }, [profile?.id]);
+  
+  // 🚀 TIER 2: Clear creator check cache when profile changes
+  useEffect(() => {
+    creatorCheckCache.current.clear();
   }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
@@ -566,141 +584,159 @@ export default function SignalStream() {
 
   // ============================================
   // 🎯 FORTIFIED INSTANT TP & SL DETECTION (Phase 2)
+  // 🚀 TIER 2: Debounced to reduce detection frequency
   // ============================================
+  const detectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    const activeSignals = allAlerts.filter(s => s.status === 'active');
-    if (activeSignals.length === 0) return;
+    // 🚀 TIER 2: Clear previous timeout
+    if (detectionTimeoutRef.current) {
+      clearTimeout(detectionTimeoutRef.current);
+    }
+    
+    // 🚀 TIER 2: Debounce detection by 100ms
+    detectionTimeoutRef.current = setTimeout(() => {
+      const activeSignals = allAlerts.filter(s => s.status === 'active');
+      if (activeSignals.length === 0) return;
 
-    activeSignals.forEach(signal => {
-      const priceData = prices[signal.tradermadeSymbol];
-      if (!priceData) return;
+      activeSignals.forEach(signal => {
+        const priceData = prices[signal.tradermadeSymbol];
+        if (!priceData) return;
 
-      const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
+        const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
 
-      // --- TP DETECTION ---
-      const tpLevels = [
-        { level: 1, price: signal.tp1 },
-        { level: 2, price: signal.tp2 },
-        { level: 3, price: signal.tp3 },
-        { level: 4, price: signal.tp4 },
-        { level: 5, price: signal.tp5 }
-      ];
+        // --- TP DETECTION ---
+        const tpLevels = [
+          { level: 1, price: signal.tp1 },
+          { level: 2, price: signal.tp2 },
+          { level: 3, price: signal.tp3 },
+          { level: 4, price: signal.tp4 },
+          { level: 5, price: signal.tp5 }
+        ];
 
-      tpLevels.forEach(({ level, price }) => {
-        if (!price || price <= 0) return;
+        tpLevels.forEach(({ level, price }) => {
+          if (!price || price <= 0) return;
 
-        const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
-        const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
+          const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
+          const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
 
-        if (tpHit) {
-          // 🔒 TIER 1: Atomic guard - combine all checks in one operation
-          const tpKey = `${signal.id}-tp${level}`;
-          
-          // GUARD 1: Already hit in state
-          if (signal.tpHits?.includes(level)) {
-            return;
-          }
-          
-          // GUARD 2: Already being processed
-          if (processingSignalsRef.current.has(tpKey)) {
-            return;
-          }
-          
-          // GUARD 3: Backend already processed this
-          if (backendProcessedRef.current.has(tpKey)) {
-            console.log(`⏭️ [INSTANT] Backend already processed ${tpKey}`);
-            return;
-          }
+          if (tpHit) {
+            // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+            const tpKey = `${signal.id}-tp${level}`;
+            
+            // GUARD 1: Already hit in state
+            if (signal.tpHits?.includes(level)) {
+              return;
+            }
+            
+            // GUARD 2: Already being processed
+            if (processingSignalsRef.current.has(tpKey)) {
+              return;
+            }
+            
+            // GUARD 3: Backend already processed this
+            if (backendProcessedRef.current.has(tpKey)) {
+              console.log(`⏭️ [INSTANT] Backend already processed ${tpKey}`);
+              return;
+            }
 
-          // All checks passed, proceed with immediate lock
-          console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
-          
-          // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
-          processingSignalsRef.current.add(tpKey);
-          instantToastHandledRef.current.add(tpKey);
+            // All checks passed, proceed with immediate lock
+            console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
+            
+            // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
+            processingSignalsRef.current.add(tpKey);
+            instantToastHandledRef.current.add(tpKey);
 
-          // Optimistic UI Update
-          const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
-          updateAlert(signal.id, { tpHits: updatedTPHits });
-          
-          // Show Toast
-          toast({ 
-            title: `🎯 TP${level} Hit!`, 
-            description: `${signal.assetName} reached TP${level}` 
-          });
-
-          // Backend Confirmation
-          supabase
-            .from('trade_alerts')
-            .update({ tp_hits: updatedTPHits })
-            .eq('id', signal.id)
-            .then(() => {
-              // 🔓 UNLOCK: Always remove from processing
-              processingSignalsRef.current.delete(tpKey);
+            // Optimistic UI Update
+            const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
+            updateAlert(signal.id, { tpHits: updatedTPHits });
+            
+            // Show Toast
+            toast({ 
+              title: `🎯 TP${level} Hit!`, 
+              description: `${signal.assetName} reached TP${level}` 
             });
+
+            // Backend Confirmation
+            supabase
+              .from('trade_alerts')
+              .update({ tp_hits: updatedTPHits })
+              .eq('id', signal.id)
+              .then(() => {
+                // 🔓 UNLOCK: Always remove from processing
+                processingSignalsRef.current.delete(tpKey);
+              });
+          }
+        });
+
+        // --- SL DETECTION ---
+        const slPrice = signal.stopLoss;
+        if (slPrice && slPrice > 0) {
+          const slCheckPrice = isBuy 
+            ? priceData.bid || priceData.price
+            : priceData.ask || priceData.price;
+          
+          const slHit = isBuy 
+            ? slCheckPrice <= slPrice
+            : slCheckPrice >= slPrice;
+
+          if (slHit) {
+            // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+            const slKey = `${signal.id}-sl`;
+            
+            // GUARD 1: Already closed in state
+            if (signal.status === 'closed') {
+              return;
+            }
+            
+            // GUARD 2: Already being processed
+            if (processingSignalsRef.current.has(slKey)) {
+              return;
+            }
+            
+            // GUARD 3: Backend already processed this
+            if (backendProcessedRef.current.has(slKey)) {
+              console.log(`⏭️ [INSTANT] Backend already processed ${slKey}`);
+              return;
+            }
+            
+            // All checks passed, proceed with immediate lock
+            console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
+            
+            // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
+            processingSignalsRef.current.add(slKey);
+            instantToastHandledRef.current.add(signal.id);
+
+            // Optimistic UI Update
+            updateAlert(signal.id, { status: 'closed', closeReason: 'stop_loss' });
+
+            // Show Toast
+            toast({ 
+              title: '🛑 Stop Loss Hit!', 
+              description: `${signal.assetName} hit Stop Loss.`, 
+              variant: 'destructive' 
+            });
+
+            // Backend Confirmation
+            supabase.rpc('close_trade_alert', {
+              p_alert_id: signal.id,
+              p_user_id: user?.id,
+              p_close_reason: 'stop_loss'
+            }).then(() => {
+              // 🔓 UNLOCK: Always remove from processing
+              processingSignalsRef.current.delete(slKey);
+            });
+          }
         }
       });
-
-      // --- SL DETECTION ---
-      const slPrice = signal.stopLoss;
-      if (slPrice && slPrice > 0) {
-        const slCheckPrice = isBuy 
-          ? priceData.bid || priceData.price
-          : priceData.ask || priceData.price;
-        
-        const slHit = isBuy 
-          ? slCheckPrice <= slPrice
-          : slCheckPrice >= slPrice;
-
-        if (slHit) {
-          // 🔒 TIER 1: Atomic guard - combine all checks in one operation
-          const slKey = `${signal.id}-sl`;
-          
-          // GUARD 1: Already closed in state
-          if (signal.status === 'closed') {
-            return;
-          }
-          
-          // GUARD 2: Already being processed
-          if (processingSignalsRef.current.has(slKey)) {
-            return;
-          }
-          
-          // GUARD 3: Backend already processed this
-          if (backendProcessedRef.current.has(slKey)) {
-            console.log(`⏭️ [INSTANT] Backend already processed ${slKey}`);
-            return;
-          }
-          
-          // All checks passed, proceed with immediate lock
-          console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
-          
-          // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
-          processingSignalsRef.current.add(slKey);
-          instantToastHandledRef.current.add(signal.id);
-
-          // Optimistic UI Update
-          updateAlert(signal.id, { status: 'closed', closeReason: 'stop_loss' });
-
-          // Show Toast
-          toast({ 
-            title: '🛑 Stop Loss Hit!', 
-            description: `${signal.assetName} hit Stop Loss.`, 
-            variant: 'destructive' 
-          });
-
-          // Backend Confirmation
-          supabase.rpc('close_trade_alert', {
-            p_alert_id: signal.id,
-            p_user_id: user?.id,
-            p_close_reason: 'stop_loss'
-          }).then(() => {
-            // 🔓 UNLOCK: Always remove from processing
-            processingSignalsRef.current.delete(slKey);
-          });
-        }
+    }, 100); // 🚀 TIER 2: 100ms debounce
+    
+    return () => {
+      // 🚀 TIER 2: Cleanup timeout on unmount
+      if (detectionTimeoutRef.current) {
+        clearTimeout(detectionTimeoutRef.current);
       }
-    });
+    };
   }, [prices, allAlerts, user?.id, toast, updateAlert]);
 
   // Listen for new signal creation and scroll to top

@@ -117,24 +117,53 @@ const InAppNotificationSystem = () => {
 
   const addNotification = useCallback(
     (notification: Partial<SignalNotification>) => {
+      // ============================================
+      // ✅ FIX #3: Comprehensive Debug Logging
+      // ============================================
+      const notificationTimestamp = notification.timestamp?.getTime() || Date.now();
       const now = Date.now();
-      const cooldown = 3000; // 3 seconds cooldown to prevent spam
+      const ageSeconds = Math.round((now - notificationTimestamp) / 1000);
+      
+      console.log('🔔 [ADD NOTIFICATION CALLED]', {
+        type: notification.type,
+        title: notification.title,
+        signalId: notification.signalId,
+        assetName: notification.assetName,
+        timestamp: new Date(notificationTimestamp).toISOString(),
+        age_seconds: ageSeconds,
+        caller: new Error().stack?.split('\n')[2]?.trim() // Shows where it was called from
+      });
 
+      // ============================================
+      // ✅ FIX #2: Timestamp Age Guard (30-second limit)
+      // ============================================
+      if (ageSeconds > 30) {
+        console.log(
+          `⏭️ [NOTIFICATION BLOCKED] Rejecting stale event (${ageSeconds}s old): ` +
+          `"${notification.title}" - Signal: ${notification.assetName}`
+        );
+        return; // Block the notification completely
+      }
+
+      // ============================================
+      // ✅ EXISTING: Cooldown check (prevent rapid spam)
+      // ============================================
+      const cooldown = 3000; // 3 seconds cooldown to prevent spam
       if (now - lastNotificationTime < cooldown) {
-        console.warn("In-app notification suppressed due to cooldown.");
+        console.warn("⏭️ [COOLDOWN] In-app notification suppressed due to cooldown.");
         return;
       }
 
       // ============================================
-      // ✅ IMPROVED: More robust deduplication key
+      // ✅ EXISTING: More robust deduplication key
       // ============================================
       const notificationKey = notification.eventKey || 
-        `${notification.signalId}:${notification.type}:${notification.assetName}:${notification.timestamp?.getTime()}`;
+        `${notification.signalId}:${notification.type}:${notification.assetName}:${notificationTimestamp}`;
 
       const lastShownTime = (window as any).lastInAppNotifications?.get(notificationKey) || 0;
 
       // ============================================
-      // ✅ IMPROVED: Dynamic deduplication window
+      // ✅ EXISTING: Dynamic deduplication window
       // ============================================
       const deduplicationWindow = notification.type === 'all_tps_hit' 
         ? 5000   // 5 seconds for "All TPs Hit" (catches rapid backend duplicates)
@@ -165,17 +194,21 @@ const InAppNotificationSystem = () => {
         type: notification.type || 'signal_updated',
         title: notification.title || 'Trading Alert',
         message: notification.message || '',
-        timestamp: new Date(),
+        timestamp: new Date(notificationTimestamp),
         signalId: notification.signalId || '',
         assetName: notification.assetName || '',
-        authorName: notification.authorName || 'Unknown Trader', // Changed from 'Imperial Trading'
+        authorName: notification.authorName || 'Unknown Trader',
         eventKey: notification.eventKey,
         deliveryChannel: 'in_app',
         priority: notification.priority || 'medium',
-        autoRemove: notification.autoRemove !== false, // Default to auto-remove
+        autoRemove: notification.autoRemove !== false,
       };
       
-      setNotifications((prev) => [enhancedNotification, ...prev.slice(0, 4)]); // Keep only 5 notifications max
+      setNotifications((prev) => {
+        const updated = [enhancedNotification, ...prev.slice(0, 4)];
+        console.log(`✅ [NOTIFICATION ADDED] Now showing ${updated.length} notification(s)`);
+        return updated;
+      });
       
       // Auto-remove based on priority
       const autoRemoveDelay = {

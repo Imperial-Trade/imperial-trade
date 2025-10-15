@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { User, Crown, GraduationCap } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
 
 interface Creator {
@@ -39,26 +38,12 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   createdDate,
   updatedDate
 }) => {
-  const getRoleIcon = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return <Crown className="w-4 h-4 text-accent-gold" />;
-      case 'educator':
-        return <GraduationCap className="w-4 h-4 text-accent-blue" />;
-      default:
-        return <User className="w-4 h-4 text-muted-foreground" />;
+  const getRoleDisplay = (role: string) => {
+    const roleLower = role.toLowerCase();
+    if (roleLower.includes('educator') && (roleLower.includes('plus') || roleLower.includes('+'))) {
+      return 'Educator+';
     }
-  };
-
-  const getRoleBadgeClass = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
-      case 'educator':
-        return 'bg-accent-blue/20 text-accent-blue border-accent-blue/30';
-      default:
-        return 'bg-muted/20 text-muted-foreground border-border/30';
-    }
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -91,11 +76,11 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       {creator && (
         <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">
           <div className="flex items-center gap-1.5">
-            {getRoleIcon(creator.role)}
+            <Crown className="w-4 h-4 text-accent-gold" />
             <span className="text-sm font-semibold text-foreground">{creator.display_name}</span>
-            <Badge className={`text-xs ${getRoleBadgeClass(creator.role)}`}>
-              {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
-            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {getRoleDisplay(creator.role)}
+            </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <div className="text-xs text-muted-foreground">

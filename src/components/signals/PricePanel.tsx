@@ -25,10 +25,10 @@ const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClas
     >
       <div className="flex items-center space-x-3">
         <Icon className={`w-5 h-5 ${colorClass}`} />
-        <span className="font-medium" style={{ color: colors.text.primary }}>{label}</span>
+        <span className="font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{label}</span>
         {isHit && <Check className="w-4 h-4 text-accent-green" />}
       </div>
-      <span className={`font-mono font-semibold ${isHit ? 'text-accent-green' : ''}`} style={{ color: isHit ? undefined : colors.text.primary }}>
+      <span className={`font-mono font-semibold ${isHit ? 'text-accent-green' : ''}`} style={{ color: isHit ? undefined : 'rgba(255, 255, 255, 0.95)' }}>
         {value ? `$${value.toFixed(2)}` : '-'}
       </span>
     </div>

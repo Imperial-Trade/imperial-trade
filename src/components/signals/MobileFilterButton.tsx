@@ -29,9 +29,6 @@ export function MobileFilterButton({
         WebkitBackdropFilter: 'blur(12px) saturate(180%)',
         border: `1px solid ${isActive ? signalColors.border.active : signalColors.border.default}`,
         color: isActive ? signalColors.text.gold : signalColors.text.tertiary,
-        boxShadow: isActive 
-          ? `0 0 15px ${signalColors.accent.gold}30, inset 0 1px 0 rgba(255, 255, 255, 0.1)` 
-          : 'none',
       }}
     >
       {icon}

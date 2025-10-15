@@ -198,11 +198,9 @@ export function SignalStreamFilters({
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = signalColors.border.active;
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${signalColors.accent.gold}20`;
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = signalColors.border.default;
-                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 />
                 

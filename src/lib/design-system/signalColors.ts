@@ -19,7 +19,7 @@ export const signalColors = {
       /** Solid dark grey for opaque elements like input fields. (Apple System Dark Grey) */
       surface: '#1C1C1E',
       /** The core of our design: a semi-transparent, blurred surface for all panels. */
-      glass: 'rgba(28, 28, 30, 0.8)',
+      glass: 'rgba(18, 18, 20, 0.95)',
     },
 
     // ========== ACCENTS (Used with purpose) ==========

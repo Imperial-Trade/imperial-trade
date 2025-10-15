@@ -26,6 +26,7 @@ import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { MobileFilterButton } from './MobileFilterButton';
 import { MobileFilterSheet } from './MobileFilterSheet';
 import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
+import { signalColors } from '@/lib/design-system/signalColors';
 
 interface FilterState {
   search: string;
@@ -145,7 +146,13 @@ export function SignalStreamFilters({
     return (
       <>
         <div 
-          className="mb-4 p-3 space-y-3 bg-transparent backdrop-blur-sm border border-border/40 rounded-lg"
+          className="mb-4 p-3 space-y-3 rounded-2xl border"
+          style={{
+            background: signalColors.bg.glass,
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            borderColor: signalColors.border.default,
+          }}
           data-prevent-widget-open="true"
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
@@ -154,12 +161,26 @@ export function SignalStreamFilters({
           <div className="flex items-center gap-2">
               {/* Search Bar */}
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
+                <Search 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" 
+                  style={{ color: signalColors.text.tertiary }}
+                />
                 
                 {!filters.search && (
-                  <div className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
+                  <div 
+                    className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm z-10"
+                    style={{ color: signalColors.text.tertiary }}
+                  >
                     Search{' '}
-                    <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
+                    <span 
+                      className="font-semibold"
+                      style={{
+                        background: `linear-gradient(90deg, ${signalColors.accent.gold} 0%, ${signalColors.accent.green} 50%, ${signalColors.accent.gold} 100%)`,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text'
+                      }}
+                    >
                       Xeon alerts
                     </span>
                     <span>...</span>
@@ -169,7 +190,20 @@ export function SignalStreamFilters({
                 <Input
                   value={filters.search}
                   onChange={(e) => updateFilter('search', e.target.value)}
-                  className="h-10 pl-10 pr-10 text-sm bg-transparent backdrop-blur-sm border-border/60"
+                  className="h-11 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
+                  style={{
+                    background: signalColors.bg.secondary,
+                    borderColor: signalColors.border.default,
+                    color: signalColors.text.primary,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = signalColors.border.active;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${signalColors.accent.gold}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = signalColors.border.default;
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
                 
                 {filters.search && (
@@ -177,7 +211,13 @@ export function SignalStreamFilters({
                     variant="ghost"
                     size="sm"
                     onClick={(e) => handleClearFilterClick(e, 'search')}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+                    style={{
+                      background: signalColors.semantic.danger,
+                      borderColor: `${signalColors.accent.red}30`,
+                      border: '1px solid',
+                      color: signalColors.accent.red,
+                    }}
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -227,7 +267,13 @@ export function SignalStreamFilters({
                   variant="ghost"
                   size="sm"
                   onClick={handleClearAllClick}
-                  className="h-10 px-3 text-xs text-muted-foreground"
+                  className="h-10 px-3 text-xs rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                  style={{
+                    background: signalColors.semantic.danger,
+                    borderColor: `${signalColors.accent.red}30`,
+                    border: '1px solid',
+                    color: signalColors.accent.red,
+                  }}
                 >
                   <X className="w-3 h-3 mr-1" />
                   Clear

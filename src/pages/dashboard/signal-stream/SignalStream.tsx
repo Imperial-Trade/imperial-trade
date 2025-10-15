@@ -535,7 +535,7 @@ export default function SignalStream() {
   }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
 
   // ============================================
-  // 🎯 INSTANT TP DETECTION: Monitor live prices and detect TP hits in real-time
+  // 🎯 FORTIFIED INSTANT TP & SL DETECTION (Phase 2)
   // ============================================
   useEffect(() => {
     const activeSignals = allAlerts.filter(s => s.status === 'active');
@@ -543,11 +543,11 @@ export default function SignalStream() {
 
     activeSignals.forEach(signal => {
       const priceData = prices[signal.tradermadeSymbol];
-      if (!priceData) return; // No price data yet for this symbol
+      if (!priceData) return;
 
       const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
-      const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
 
+      // --- TP DETECTION ---
       const tpLevels = [
         { level: 1, price: signal.tp1 },
         { level: 2, price: signal.tp2 },
@@ -557,161 +557,109 @@ export default function SignalStream() {
       ];
 
       tpLevels.forEach(({ level, price }) => {
-        if (!price || price <= 0 || signal.tpHits?.includes(level)) return;
+        if (!price || price <= 0) return;
 
+        const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
         const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
 
         if (tpHit) {
+          // ✅ GUARD 1: Check if this TP is already hit in our current state (STATE-FIRST)
+          if (signal.tpHits?.includes(level)) {
+            return;
+          }
+
+          // ✅ GUARD 2: Check if this TP is already being processed
           const tpKey = `${signal.id}-tp${level}`;
-          
-          // 🔒 CHECK: Skip if already processed or currently processing
-          if (processedHitsRef.current.has(tpKey)) {
-            console.log(`⏭️ [SKIP] TP${level} already processed for ${signal.id.substring(0, 8)}`);
-            return;
-          }
-          
           if (processingSignalsRef.current.has(tpKey)) {
-            console.log(`⏭️ [SKIP] TP${level} currently being processed for ${signal.id.substring(0, 8)}`);
             return;
           }
+
+          // All checks passed, proceed
+          console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
           
           // 🔒 LOCK: Mark as processing
           processingSignalsRef.current.add(tpKey);
-          processedHitsRef.current.set(tpKey, { timestamp: Date.now(), type: 'tp', level });
           
-          console.log(
-            `🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level} hit at ${currentPrice.toFixed(2)}`
-          );
-          
-          // ✅ INSTANT: Optimistic UI update via updateAlert
+          // 🔒 TOAST TRACKING: Mark for deduplication
+          instantToastHandledRef.current.add(`${signal.id}-tp${level}`);
+
+          // Optimistic UI Update
           const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
           updateAlert(signal.id, { tpHits: updatedTPHits });
-
-          // Show instant toast notification
-          toast({
-            title: `🎯 TP${level} Hit!`,
-            description: `${signal.assetName} reached TP${level} at ${currentPrice.toFixed(2)}`
+          
+          // Show Toast
+          toast({ 
+            title: `🎯 TP${level} Hit!`, 
+            description: `${signal.assetName} reached TP${level}` 
           });
 
-          // ✅ BACKGROUND: Backend confirmation (non-blocking)
+          // Backend Confirmation
           supabase
             .from('trade_alerts')
             .update({ tp_hits: updatedTPHits })
             .eq('id', signal.id)
-            .then(({ error }) => {
-              // 🔓 UNLOCK: Always remove from processing (even on error)
+            .then(() => {
+              // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(tpKey);
-              
-              if (error) {
-                console.error(`❌ Backend TP update failed for TP${level}:`, error);
-                // Remove from processed cache to allow retry
-                processedHitsRef.current.delete(tpKey);
-                
-                // Revert optimistic update on failure
-                updateAlert(signal.id, { tpHits: signal.tpHits });
-                toast({
-                  title: '❌ TP Update Failed',
-                  description: `Could not confirm TP${level} hit.`,
-                  variant: 'destructive'
-                });
-              } else {
-                console.log(`✅ Backend confirmed TP${level} for signal ${signal.id.substring(0, 8)}`);
-              }
             });
         }
       });
 
-      // ============================================
-      // 🛑 INSTANT STOP LOSS DETECTION
-      // ============================================
+      // --- SL DETECTION ---
       const slPrice = signal.stopLoss;
-      
-      if (slPrice && slPrice > 0 && signal.status === 'active') {
-        // CRITICAL: Use OPPOSITE price for SL checks
-        // BUY signals close by SELLING → use BID price
-        // SELL signals close by BUYING → use ASK price
+      if (slPrice && slPrice > 0) {
         const slCheckPrice = isBuy 
-          ? priceData.bid || priceData.price   // BUY → check BID (selling price)
-          : priceData.ask || priceData.price;  // SELL → check ASK (buying price)
+          ? priceData.bid || priceData.price
+          : priceData.ask || priceData.price;
         
-        // Check if SL was hit
-        // BUY: SL hit when price FALLS to/below SL
-        // SELL: SL hit when price RISES to/above SL
         const slHit = isBuy 
-          ? slCheckPrice <= slPrice  // BUY → price drops to SL
-          : slCheckPrice >= slPrice; // SELL → price rises to SL
-        
+          ? slCheckPrice <= slPrice
+          : slCheckPrice >= slPrice;
+
         if (slHit) {
+          // ✅ GUARD 1: Check if signal is already closed in our current state (STATE-FIRST)
+          if (signal.status === 'closed') {
+            return;
+          }
+
+          // ✅ GUARD 2: Check if this SL is already being processed
           const slKey = `${signal.id}-sl`;
-          
-          // 🔒 CHECK: Skip if already processed or currently processing
-          if (processedHitsRef.current.has(slKey)) {
-            console.log(`⏭️ [SKIP] SL already processed for ${signal.id.substring(0, 8)}`);
-            return;
-          }
-          
           if (processingSignalsRef.current.has(slKey)) {
-            console.log(`⏭️ [SKIP] SL currently being processed for ${signal.id.substring(0, 8)}`);
             return;
           }
+          
+          // All checks passed, proceed
+          console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
           
           // 🔒 LOCK: Mark as processing
           processingSignalsRef.current.add(slKey);
-          processedHitsRef.current.set(slKey, { timestamp: Date.now(), type: 'sl' });
           
-          console.log(
-            `🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)} ` +
-            `SL hit at ${slCheckPrice.toFixed(2)} (SL: ${slPrice.toFixed(2)}, Type: ${signal.tradeType})`
-          );
-          
-          // ✅ INSTANT: Optimistically close the signal via updateAlert
-          updateAlert(signal.id, { 
-            status: 'closed',
-            closeReason: 'stop_loss'
+          // 🔒 TOAST TRACKING: Mark for deduplication
+          instantToastHandledRef.current.add(signal.id);
+
+          // Optimistic UI Update
+          updateAlert(signal.id, { status: 'closed', closeReason: 'stop_loss' });
+
+          // Show Toast
+          toast({ 
+            title: '🛑 Stop Loss Hit!', 
+            description: `${signal.assetName} hit Stop Loss.`, 
+            variant: 'destructive' 
           });
-          
-          // Show instant toast notification
-          toast({
-            title: '🛑 Stop Loss Hit!',
-            description: `${signal.assetName} closed at SL: ${slCheckPrice.toFixed(2)}`,
-            variant: 'destructive',
-            duration: 5000
-          });
-          
-          // ✅ BACKGROUND: Backend confirmation via RPC (non-blocking)
+
+          // Backend Confirmation
           supabase.rpc('close_trade_alert', {
             p_alert_id: signal.id,
             p_user_id: user?.id,
             p_close_reason: 'stop_loss'
-          }).then(({ error }) => {
-            // 🔓 UNLOCK: Always remove from processing (even on error)
+          }).then(() => {
+            // 🔓 UNLOCK: Always remove from processing
             processingSignalsRef.current.delete(slKey);
-            
-            if (error) {
-              console.error(`❌ Backend SL closure failed:`, error);
-              // Remove from processed cache to allow retry
-              processedHitsRef.current.delete(slKey);
-              
-              // Revert optimistic update on failure
-              updateAlert(signal.id, { 
-                status: 'active',
-                closeReason: undefined
-              });
-              
-              toast({
-                title: '❌ SL Closure Failed',
-                description: 'Could not confirm stop loss. Signal reverted to active.',
-                variant: 'destructive',
-                duration: 5000
-              });
-            } else {
-              console.log(`✅ Backend confirmed SL closure for ${signal.id.substring(0, 8)}`);
-            }
           });
         }
       }
     });
-  }, [prices, allAlerts, toast, updateAlert, user?.id]); // Dependencies: prices, allAlerts, toast, updateAlert, user?.id
+  }, [prices, allAlerts, user?.id, toast, updateAlert]);
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {

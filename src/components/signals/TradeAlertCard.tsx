@@ -311,18 +311,74 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   // Get button text (only creator can close in stream)
   const getCloseButtonText = () => 'Close My Signal';
 
+  // Determine contextual styling based on close reason
+  const getCardBackgroundStyle = () => {
+    // Active/Pending alerts: Clean glassmorphic
+    if (!isClosed) {
+      return {
+        background: colors.bg.glass,
+        backdropFilter: 'blur(20px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+      };
+    }
+    
+    // Closed alerts: Gradient behind glass based on close reason
+    if (alert.close_reason === 'stop_loss') {
+      // Red gradient (danger)
+      return {
+        background: `linear-gradient(180deg, rgba(255, 69, 58, 0.15) 0%, transparent 100%), ${colors.bg.glass}`,
+        backdropFilter: 'blur(20px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        boxShadow: '0 0 40px rgba(255, 69, 58, 0.1)',
+      };
+    } else if (alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
+      // Green gradient (success)
+      return {
+        background: `linear-gradient(180deg, rgba(0, 200, 5, 0.15) 0%, transparent 100%), ${colors.bg.glass}`,
+        backdropFilter: 'blur(20px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        boxShadow: '0 0 40px rgba(0, 200, 5, 0.1)',
+      };
+    } else {
+      // Manual close or other - Grey gradient
+      return {
+        background: `linear-gradient(180deg, rgba(160, 160, 160, 0.12) 0%, transparent 100%), ${colors.bg.glass}`,
+        backdropFilter: 'blur(20px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        boxShadow: '0 0 40px rgba(160, 160, 160, 0.05)',
+      };
+    }
+  };
+
   return (
     <div 
       className={`rounded-2xl border overflow-hidden transition-all duration-300 ${className || ''}`}
       style={{
-        background: colors.bg.glass,
-        backdropFilter: 'blur(20px) saturate(120%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        borderColor: colors.border.default,
+        ...getCardBackgroundStyle(),
+        borderColor: isClosed 
+          ? (alert.close_reason === 'stop_loss' 
+              ? 'rgba(255, 69, 58, 0.3)' 
+              : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                ? 'rgba(0, 200, 5, 0.3)'
+                : colors.border.default)
+          : colors.border.default,
         borderWidth: '1px',
       }}
       data-testid={testId}
     >
+      {/* Subtle top indicator line for closed alerts */}
+      {isClosed && (
+        <div 
+          className="h-0.5 w-full"
+          style={{
+            background: alert.close_reason === 'stop_loss'
+              ? 'rgba(255, 69, 58, 0.5)'
+              : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                ? 'rgba(0, 200, 5, 0.5)'
+                : 'rgba(160, 160, 160, 0.3)',
+          }}
+        />
+      )}
 
       <div className="p-5">
         {/* Creator Name (standalone, prominent) */}
@@ -352,13 +408,33 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               {alert.asset_name}
             </h3>
             
-            {/* Status Badge - Clean design */}
+            {/* Status Badge - Contextual design */}
             <div
               className="text-xs px-2.5 py-1 rounded-md font-semibold uppercase tracking-wide whitespace-nowrap"
               style={{
-                background: colors.semantic.success,
-                color: colors.text.success,
-                border: `1px solid ${colors.border.success}`,
+                background: isClosed 
+                  ? (alert.close_reason === 'stop_loss'
+                      ? colors.semantic.danger
+                      : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                        ? colors.semantic.success
+                        : 'rgba(160, 160, 160, 0.1)')
+                  : colors.semantic.success,
+                color: isClosed
+                  ? (alert.close_reason === 'stop_loss'
+                      ? colors.text.danger
+                      : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                        ? colors.text.success
+                        : colors.text.secondary)
+                  : colors.text.success,
+                border: `1px solid ${
+                  isClosed
+                    ? (alert.close_reason === 'stop_loss'
+                        ? colors.border.danger
+                        : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                          ? colors.border.success
+                          : colors.border.default)
+                    : colors.border.success
+                }`,
               }}
             >
               {alert.status === 'active' && (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}

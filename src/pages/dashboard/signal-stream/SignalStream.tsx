@@ -1913,10 +1913,30 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-sm font-medium mb-3 pb-1.5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}>
-                      <span style={{ color: '#EBEBF5' }}>Closed </span>
-                      <span style={{ color: '#FFD700' }}>Alerts</span>
-                      <span style={{ color: '#EBEBF5' }}> ({filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed})</span>
+                    <h2 
+                      className="text-base font-bold pb-2 mb-4 flex items-center gap-2"
+                      style={{
+                        borderBottom: `2px solid ${colors.border.default}`,
+                        color: colors.text.primary,
+                        background: `linear-gradient(90deg, ${colors.border.active}, transparent)`,
+                        backgroundSize: '50% 2px',
+                        backgroundPosition: 'left bottom',
+                        backgroundRepeat: 'no-repeat',
+                      }}
+                    >
+                      <span>Closed Alerts</span>
+                      <span 
+                        className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto"
+                        style={{
+                          background: colors.state.active,
+                          color: colors.text.accent,
+                          border: `1px solid ${colors.border.active}`,
+                        }}
+                      >
+                        {filters.educator || filters.status || filters.tradeType || filters.search 
+                          ? filteredSignals.closedTotal 
+                          : educatorSpecificCounts.closed}
+                      </span>
                     </h2>
                     {isLoadingClosedAlerts ? (
                       // ✅ BUG FIX #19: Skeleton UI for closed alerts loading

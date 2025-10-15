@@ -72,8 +72,8 @@ export function SignalStreamFilters({
 
   const statusOptions = [
     { value: 'all', label: 'All Status', icon: Filter },
-    { value: 'active', label: 'Active', count: signalCounts.active, icon: Clock },
-    { value: 'closed', label: 'Closed', count: signalCounts.closed, icon: CheckCircle }
+    { value: 'active', label: 'Active', icon: Clock },
+    { value: 'closed', label: 'Closed', icon: CheckCircle }
   ];
 
   const tradeTypeOptions = [
@@ -82,8 +82,8 @@ export function SignalStreamFilters({
       label: 'All Types', 
       icon: Filter 
     },
-    { value: 'buy', label: 'Buy Orders', count: signalCounts.buy, icon: TrendingUp },
-    { value: 'sell', label: 'Sell Orders', count: signalCounts.sell, icon: TrendingDown }
+    { value: 'buy', label: 'Buy Orders', icon: TrendingUp },
+    { value: 'sell', label: 'Sell Orders', icon: TrendingDown }
   ];
 
   // Safely call native stopImmediatePropagation if available (TS-safe)
@@ -200,7 +200,7 @@ export function SignalStreamFilters({
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
-                            <span>{option.label}{option.count !== undefined && ` (${option.count})`}</span>
+                            <span>{option.label}</span>
                           </div>
                         </SelectItem>
                       );
@@ -226,7 +226,7 @@ export function SignalStreamFilters({
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
-                            <span>{option.label}{option.count !== undefined && ` (${option.count})`}</span>
+                            <span>{option.label}</span>
                           </div>
                         </SelectItem>
                       );

@@ -30,7 +30,7 @@ export const MagnifyingSearchEmptyState: React.FC = () => {
             y="12" 
             width="20" 
             height="28" 
-            fill="#0ea5e9" 
+            fill="#64748b" 
             opacity="0.15"
             style={{
               animation: 'sweep-highlight 4s ease-in-out infinite'
@@ -40,8 +40,8 @@ export const MagnifyingSearchEmptyState: React.FC = () => {
 
         {/* Magnifying glass */}
         <g style={{ animation: 'sweep-search 4s ease-in-out infinite' }}>
-          <circle cx="24" cy="24" r="9" stroke="currentColor" strokeWidth="2.5" className="text-sky-400"/>
-          <path d="M31 31L36 36" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-sky-400"/>
+          <circle cx="24" cy="24" r="9" stroke="currentColor" strokeWidth="2.5" className="text-slate-400"/>
+          <path d="M31 31L36 36" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-slate-400"/>
         </g>
 
         {/* Clip path definition */}

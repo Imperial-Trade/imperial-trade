@@ -25,7 +25,7 @@ export const TrendlineEmptyState: React.FC = () => {
         {/* Animated trendline */}
         <path 
           d="M8 36L16 28L24 30L32 20L40 18" 
-          stroke="#0ea5e9" 
+          stroke="#64748b" 
           strokeWidth="2.5" 
           strokeLinecap="round" 
           strokeLinejoin="round"
@@ -42,8 +42,8 @@ export const TrendlineEmptyState: React.FC = () => {
           animation: 'trace-path 4s ease-in-out infinite',
           opacity: 0
         }}>
-          <circle r="5" fill="#38bdf8" fillOpacity="0.5"/>
-          <circle r="3" fill="white"/>
+          <circle r="5" fill="#94a3b8" fillOpacity="0.5"/>
+          <circle r="3" fill="#cbd5e1"/>
         </g>
       </svg>
 

@@ -1088,6 +1088,11 @@ export default function SignalStream() {
           }} />
             Connecting...
           </Badge>;
+      case 'polling-fallback':
+        return <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+            <Wifi className="w-3 h-3 mr-1" />
+            Live (Polling)
+          </Badge>;
       case 'error':
       case 'disconnected':
         return <Badge className="bg-red-500/20 text-red-300 border-red-500/30">

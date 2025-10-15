@@ -550,6 +550,12 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     console.log('🔌 Setting up real-time subscription...');
     setConnectionStatus('connecting');
 
+    // 🔧 DIAGNOSTIC: Add 10-second timeout fallback
+    const connectionTimeout = setTimeout(() => {
+      console.warn('⚠️ WebSocket connection timeout after 10s - falling back to polling mode');
+      setConnectionStatus('polling-fallback');
+    }, 10000);
+
     // Subscribe FIRST to catch all events
     const channel = supabase
       .channel('trade_alerts_instant_updates')
@@ -566,9 +572,15 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         }
       )
       .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
+        // 🔧 DIAGNOSTIC: Log all subscription statuses
+        console.log('📡 Subscription status:', status, {
+          timestamp: new Date().toISOString(),
+          channelName: 'trade_alerts_instant_updates',
+          isOnline: navigator.onLine
+        });
         
         if (status === 'SUBSCRIBED') {
+          clearTimeout(connectionTimeout);
           console.log('✅ Real-time subscription ACTIVE - all updates will be instant');
           setConnectionStatus('connected');
           
@@ -577,14 +589,25 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         }
         
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time subscription failed:', status);
+          clearTimeout(connectionTimeout);
+          console.error('❌ Real-time subscription failed:', status, {
+            reason: 'Possible causes: RLS policies, Supabase Realtime not enabled, network issue',
+            fallback: 'Switching to polling mode'
+          });
           setConnectionStatus('error');
+        }
+        
+        if (status === 'TIMED_OUT') {
+          clearTimeout(connectionTimeout);
+          console.warn('⏱️ Subscription timed out - falling back to polling');
+          setConnectionStatus('polling-fallback');
         }
       });
 
     channelRef.current = channel;
 
     return () => {
+      clearTimeout(connectionTimeout);
       console.log('🔌 Cleaning up real-time subscription...');
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);

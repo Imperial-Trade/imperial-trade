@@ -3,7 +3,9 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw } from 'lucide-react';
+import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
+import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
@@ -1871,9 +1873,7 @@ export default function SignalStream() {
                             justAdded={justAddedIds.has(alert.id)} 
                           />)}
                       </div> : <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Shield className="w-8 h-8 text-muted-foreground/50" />
-                        </div>
+                        <TrendlineEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
                         <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
                       </div>}
@@ -1930,9 +1930,7 @@ export default function SignalStream() {
                             creator={alert.creator} 
                           />)}
                       </div> : <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
-                        </div>
+                        <MagnifyingSearchEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
                         <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                       </div>}

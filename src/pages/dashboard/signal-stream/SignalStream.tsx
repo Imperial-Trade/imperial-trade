@@ -70,6 +70,26 @@ export default function SignalStream() {
   // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
   const instantToastHandledRef = useRef<Set<string>>(new Set());
   
+  // 🔒 PERSISTENT TOAST TRACKING: Track "All Targets Hit" toasts shown across component remounts
+  const SHOWN_ALL_TP_KEY = 'imperial-shown-all-tp-toasts';
+  const getShownAllTPToasts = (): Set<string> => {
+    try {
+      const stored = sessionStorage.getItem(SHOWN_ALL_TP_KEY);
+      return new Set(stored ? JSON.parse(stored) : []);
+    } catch {
+      return new Set();
+    }
+  };
+  const markAllTPToastShown = (signalId: string) => {
+    try {
+      const shown = getShownAllTPToasts();
+      shown.add(signalId);
+      sessionStorage.setItem(SHOWN_ALL_TP_KEY, JSON.stringify([...shown]));
+    } catch (err) {
+      console.error('Failed to persist toast state:', err);
+    }
+  };
+  
   // 🔒 TIER 1: Backend Detection Tracking - Prevent frontend from re-processing backend-handled events
   const backendProcessedRef = useRef<Set<string>>(new Set());
   
@@ -562,7 +582,17 @@ export default function SignalStream() {
         
         // ✅ SPECIAL CASE: Always allow "All Targets Hit!" toast through
         if (signal.closeReason === 'all_tps_hit') {
+          // 🔒 Check if we've already shown this toast (persistent across navigation)
+          const shownToasts = getShownAllTPToasts();
+          if (shownToasts.has(signal.id)) {
+            console.log(`⏭️ [TOAST ALREADY SHOWN] Skipping "All Targets Hit" for ${signal.id.substring(0, 8)} (previously shown this session)`);
+            return; // Skip toast - already shown
+          }
+          
           console.log(`💰 [ALLOW] Showing "All Targets Hit" toast for ${signal.id.substring(0, 8)} (backend confirmed)`);
+          
+          // Mark as shown persistently
+          markAllTPToastShown(signal.id);
           
           // Clear all instant detection flags since this is the final confirmation toast
           instantToastHandledRef.current.delete(signal.id);

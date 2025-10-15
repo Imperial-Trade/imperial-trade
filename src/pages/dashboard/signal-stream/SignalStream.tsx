@@ -459,7 +459,16 @@ export default function SignalStream() {
       console.log(`✅ [State Change] ${newlyClosedSignals.length} signal(s) closed - moving to closed alerts`);
 
       // Add to closed alerts
-      setStaticClosedAlerts(prev => [...newlyClosedSignals, ...prev].slice(0, 12));
+    setStaticClosedAlerts(prev => {
+      // Sort newly closed signals by timestamp (newest first)
+      const sorted = [...newlyClosedSignals].sort((a, b) => {
+        const timeA = new Date(a.updatedAt).getTime();
+        const timeB = new Date(b.updatedAt).getTime();
+        return timeB - timeA; // Descending: newest first
+      });
+      
+      return [...sorted, ...prev].slice(0, 12);
+    });
       
       // Update total count
       setTotalClosedCount(prev => prev + newlyClosedSignals.length);

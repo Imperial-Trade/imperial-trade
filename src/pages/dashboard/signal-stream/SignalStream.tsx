@@ -649,18 +649,50 @@ export default function SignalStream() {
 
             // Optimistic UI Update
             const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
-            updateAlert(signal.id, { tpHits: updatedTPHits });
             
-            // Show Toast
-            toast({ 
-              title: `🎯 TP${level} Hit!`, 
-              description: `${signal.assetName} reached TP${level}` 
-            });
+            // 🆕 COUNT TOTAL DEFINED TPs
+            const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+              .filter(tp => tp && tp > 0).length;
+            
+            // 🆕 CHECK IF ALL TPs ARE NOW HIT
+            const allTPsHit = updatedTPHits.length === totalTPs && totalTPs > 0;
+            
+            // 🆕 PREPARE UPDATE DATA
+            const updateData = allTPsHit
+              ? {
+                  tpHits: updatedTPHits,
+                  status: 'closed' as const,
+                  closeReason: 'all_tps_hit' as const
+                }
+              : { tpHits: updatedTPHits };
+            
+            // Apply optimistic update
+            updateAlert(signal.id, updateData);
+            
+            // 🆕 SHOW APPROPRIATE TOAST
+            if (allTPsHit) {
+              toast({
+                title: `🟢 Signal Closed at TP${level}`,
+                description: `${signal.assetName} - All TPs hit! Signal closed successfully`,
+              });
+            } else {
+              toast({
+                title: `🎯 TP${level} Hit!`,
+                description: `${signal.assetName} reached TP${level} - ${totalTPs - updatedTPHits.length} TPs remaining`,
+              });
+            }
 
-            // Backend Confirmation
+            // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
             supabase
               .from('trade_alerts')
-              .update({ tp_hits: updatedTPHits })
+              .update(allTPsHit 
+                ? { 
+                    tp_hits: updatedTPHits, 
+                    status: 'closed', 
+                    close_reason: 'all_tps_hit' 
+                  }
+                : { tp_hits: updatedTPHits }
+              )
               .eq('id', signal.id)
               .then(() => {
                 // 🔓 UNLOCK: Always remove from processing

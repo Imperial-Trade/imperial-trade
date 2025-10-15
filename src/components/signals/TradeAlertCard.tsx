@@ -325,11 +325,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     if (!isClosed) return null;
     
     if (alert.close_reason === 'stop_loss') {
-      return 'linear-gradient(180deg, rgba(255, 69, 58, 0.15) 0%, transparent 100%)';
+      return 'linear-gradient(180deg, rgba(255, 69, 58, 0.40) 0%, rgba(255, 69, 58, 0.08) 100%)';
     } else if (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
-      return 'linear-gradient(180deg, rgba(0, 200, 5, 0.15) 0%, transparent 100%)';
+      return 'linear-gradient(180deg, rgba(0, 200, 5, 0.40) 0%, rgba(0, 200, 5, 0.08) 100%)';
     } else {
-      return 'linear-gradient(180deg, rgba(160, 160, 160, 0.12) 0%, transparent 100%)';
+      return 'linear-gradient(180deg, rgba(160, 160, 160, 0.35) 0%, rgba(160, 160, 160, 0.06) 100%)';
     }
   };
 
@@ -340,10 +340,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         ...getCardBackgroundStyle(),
         borderColor: isClosed 
           ? (alert.close_reason === 'stop_loss' 
-              ? 'rgba(255, 69, 58, 0.3)' 
+              ? 'rgba(255, 69, 58, 0.5)' 
               : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-                ? 'rgba(0, 200, 5, 0.3)'
-                : colors.border.default)
+                ? 'rgba(0, 200, 5, 0.5)'
+                : 'rgba(160, 160, 160, 0.45)')
           : colors.border.default,
         borderWidth: '1px',
         position: 'relative',
@@ -361,16 +361,16 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         />
       )}
 
-      {/* Subtle top indicator line for closed alerts */}
+      {/* Prominent top color band for closed alerts */}
       {isClosed && (
         <div 
-          className="h-0.5 w-full relative z-10"
+          className="h-1.5 w-full relative z-10"
           style={{
             background: alert.close_reason === 'stop_loss'
-              ? 'rgba(255, 69, 58, 0.5)'
+              ? 'linear-gradient(180deg, rgba(255, 69, 58, 0.85) 0%, rgba(255, 69, 58, 0.5) 100%)'
               : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
-                ? 'rgba(0, 200, 5, 0.5)'
-                : 'rgba(160, 160, 160, 0.3)',
+              ? 'linear-gradient(180deg, rgba(0, 200, 5, 0.85) 0%, rgba(0, 200, 5, 0.5) 100%)'
+              : 'linear-gradient(180deg, rgba(160, 160, 160, 0.75) 0%, rgba(160, 160, 160, 0.4) 100%)',
           }}
         />
       )}

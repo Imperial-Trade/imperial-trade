@@ -20,6 +20,7 @@ import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceC
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 import { perfMonitor } from '@/utils/performanceMonitor';
+import { signalColors } from '@/lib/design-system/signalColors';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -311,7 +312,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      className={`rounded-lg border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50' : ''} ${className || ''}`}
+      style={{
+        background: signalColors.bg.glass,
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderColor: signalColors.border.default,
+      }}
       data-testid={testId}
     >
       {/* Glowing top indicator for closed trades */}

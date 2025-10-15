@@ -359,6 +359,29 @@ export default function SignalStream() {
   
   // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
   const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
+  
+  // ============================================
+  // SINGLE SOURCE OF TRUTH: Database counts with real-time updates
+  // ============================================
+  const [databaseCounts, setDatabaseCounts] = useState({
+    total: 0,
+    active: 0,
+    closed: 0,
+    buy: 0,        // buy + buy_limit combined
+    sell: 0,       // sell + sell_limit combined
+    buy_only: 0,   // for internal tracking
+    sell_only: 0,  // for internal tracking
+    buy_limit: 0,  // for internal tracking
+    sell_limit: 0  // for internal tracking
+  });
+
+  // All current educators with signals
+  const [allEducatorsWithSignals, setAllEducatorsWithSignals] = useState<Array<{ 
+    id: string; 
+    name: string;
+    signalCount: number;
+  }>>([]);
+  
   const {
     activeAlerts,
     educatorOptions,
@@ -370,33 +393,18 @@ export default function SignalStream() {
         && !excludedSignalIds.has(a.id)
       );
 
-    // Get unique educators for filter dropdown
-    const educatorsMap = new Map();
-    allAlerts.forEach(alert => {
-      if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
-        educatorsMap.set(alert.creator.id, {
-          id: alert.creator.id,
-          name: alert.creator.display_name || 'Unknown Educator'
-        });
-      }
-    });
-    const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    // Calculate signal counts for filter badges
-    const counts = {
-      total: alerts.length,
-      active: active.length,
-      closed: staticClosedAlerts.length,
-      // 🎯 PHASE 2: Use static closed alerts count
-      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
-      sell: alerts.filter(a => a.tradeType.includes('sell')).length
-    };
     return {
       activeAlerts: active,
-      educatorOptions: educatorsList,
-      signalCounts: counts
+      educatorOptions: allEducatorsWithSignals,
+      signalCounts: {
+        total: databaseCounts.total,
+        active: databaseCounts.active,
+        closed: databaseCounts.closed,
+        buy: databaseCounts.buy,    // Combined buy + buy_limit
+        sell: databaseCounts.sell   // Combined sell + sell_limit
+      }
     };
-  }, [alerts, allAlerts, staticClosedAlerts.length, excludedSignalIds]);
+  }, [alerts, allEducatorsWithSignals, databaseCounts, excludedSignalIds]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {
@@ -405,17 +413,139 @@ export default function SignalStream() {
   }, [allAlerts, staticClosedAlerts]);
 
   const [totalClosedCount, setTotalClosedCount] = useState(0);
+  
+  // ============================================
+  // FETCH ACCURATE COUNTS FROM DATABASE (Updates on signal changes)
+  // ============================================
+  useEffect(() => {
+    const fetchDatabaseCounts = async () => {
+      try {
+        console.log('📊 Fetching database counts and educators...');
+        
+        // Step 1: Get ALL users who are currently educators/admins
+        const { data: educators } = await supabase
+          .from('profiles')
+          .select('id, display_name, user_type, access_level, role')
+          .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
+        
+        if (!educators || educators.length === 0) {
+          console.warn('No educators found');
+          return;
+        }
+        
+        const educatorIds = educators.map(e => e.id);
+        console.log('✅ Found educators:', educatorIds.length);
+        
+        // Step 2: Get ALL signals from these educators only
+        const { data: allSignals } = await supabase
+          .from('trade_alerts')
+          .select('id, status, trade_type, user_id')
+          .in('user_id', educatorIds);
+        
+        if (!allSignals) {
+          console.error('Failed to fetch signals');
+          return;
+        }
+        
+        // Step 3: Calculate counts based on ALL educator signals
+        const buyOnly = allSignals.filter(s => s.trade_type === 'buy').length;
+        const buyLimit = allSignals.filter(s => s.trade_type === 'buy_limit').length;
+        const sellOnly = allSignals.filter(s => s.trade_type === 'sell').length;
+        const sellLimit = allSignals.filter(s => s.trade_type === 'sell_limit').length;
+        
+        const counts = {
+          total: allSignals.length,
+          active: allSignals.filter(s => 
+            ['active', 'pending', 'partially_profited'].includes(s.status)
+          ).length,
+          closed: allSignals.filter(s => s.status === 'closed').length,
+          buy: buyOnly + buyLimit,      // Combined count
+          sell: sellOnly + sellLimit,    // Combined count
+          buy_only: buyOnly,
+          sell_only: sellOnly,
+          buy_limit: buyLimit,
+          sell_limit: sellLimit
+        };
+        
+        setDatabaseCounts(counts);
+        
+        // Step 4: Build educator list with signal counts
+        const educatorsList = educators.map(edu => {
+          const signalCount = allSignals.filter(s => s.user_id === edu.id).length;
+          return {
+            id: edu.id,
+            name: edu.display_name || 'Unknown Educator',
+            signalCount
+          };
+        })
+        .filter(e => e.signalCount > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
+        
+        setAllEducatorsWithSignals(educatorsList);
+        
+        console.log('✅ Database counts:', counts);
+        console.log('✅ Educators with signals:', educatorsList.length);
+        
+      } catch (error) {
+        console.error('❌ Failed to fetch database counts:', error);
+      }
+    };
+    
+    // Initial fetch
+    fetchDatabaseCounts();
+    
+    // Set up real-time subscription to refresh counts when signals change
+    const channel = supabase
+      .channel('signal_count_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'trade_alerts'
+        },
+        (payload) => {
+          console.log('🔄 Signal changed, refreshing counts...', payload.eventType);
+          fetchDatabaseCounts();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
-      setIsLoadingClosedAlerts(true); // ✅ BUG FIX #19: Set loading state
+      setIsLoadingClosedAlerts(true);
       try {
         console.log('📊 PHASE 6 + BUG #19: Fetching static closed alerts with loading state');
+        
+        // Get current educator IDs
+        const { data: educators } = await supabase
+          .from('profiles')
+          .select('id')
+          .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
+
+        const educatorIds = educators?.map(e => e.id) || [];
+
+        if (educatorIds.length === 0) {
+          console.warn('No educators found, skipping closed alerts fetch');
+          setIsLoadingClosedAlerts(false);
+          return;
+        }
+
         const {
           data: closedAlertsData,
           error
-        } = await supabase.from('trade_alerts').select('*').eq('status', 'closed').order('updated_at', {
-          ascending: false
-        }).limit(12);
+        } = await supabase
+          .from('trade_alerts')
+          .select('*')
+          .eq('status', 'closed')
+          .in('user_id', educatorIds)
+          .order('updated_at', { ascending: false })
+          .limit(12);
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
           setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19
@@ -518,6 +648,81 @@ export default function SignalStream() {
       clearInterval(timestampInterval);
     };
   }, []);
+
+  // ============================================
+  // FILTERED SIGNALS: Combines active and closed, applies all filters, sorts by newest
+  // ============================================
+  const filteredSignals = useMemo(() => {
+    if (!allAlerts.length && !staticClosedAlerts.length) {
+      return {
+        active: [],
+        closed: []
+      };
+    }
+
+    // Get current educator IDs (only show signals from current educators)
+    const educatorIds = new Set(allEducatorsWithSignals.map(e => e.id));
+    
+    // Combine active and closed alerts
+    const allDisplayAlerts = [...allAlerts, ...staticClosedAlerts];
+    
+    // Filter by educator status (only current educators)
+    let filtered = allDisplayAlerts.filter(alert => 
+      educatorIds.has(alert.userId || alert.creator?.id || '')
+    );
+    
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(alert => 
+        alert.assetName.toLowerCase().includes(searchLower) ||
+        alert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
+        alert.creator?.display_name?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Apply status filter
+    if (filters.status) {
+      filtered = filtered.filter(alert => alert.status === filters.status);
+    }
+    
+    // Apply trade type filter (uses .includes() for combined filtering)
+    if (filters.tradeType) {
+      filtered = filtered.filter(alert => alert.tradeType.includes(filters.tradeType));
+    }
+    
+    // Apply educator filter
+    if (filters.educator) {
+      filtered = filtered.filter(alert => 
+        (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
+      );
+    }
+    
+    // Sort by newest first (updatedAt for closed, createdAt for active)
+    const sortedFiltered = filtered.sort((a, b) => {
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate; // Descending order (newest first)
+    });
+    
+    // Split into active and closed
+    const activeFiltered = sortedFiltered.filter(a => 
+      ['active', 'pending', 'partially_profited'].includes(a.status)
+    );
+    const closedFiltered = sortedFiltered.filter(a => a.status === 'closed');
+    
+    console.log('🔍 Filter results:', {
+      total: filtered.length,
+      active: activeFiltered.length,
+      closed: closedFiltered.length,
+      filters
+    });
+    
+    return {
+      active: activeFiltered,
+      closed: closedFiltered
+    };
+  }, [allAlerts, staticClosedAlerts, allEducatorsWithSignals, filters, excludedSignalIds]);
 
   // ✅ SIMPLIFIED: React to state changes directly (no events, no tiers, no DB fetches)
   useEffect(() => {
@@ -1584,10 +1789,10 @@ export default function SignalStream() {
                   }}>
                         Alerts
                       </span>
-                      <span className="text-imperial-platinum"> ({activeAlerts.length})</span>
+                      <span className="text-imperial-platinum"> ({filteredSignals.active.length})</span>
                      </h2>
-                     {activeAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {activeAlerts.map(alert => <TradeAlertCard
+                     {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {filteredSignals.active.map(alert => <TradeAlertCard
                             key={alert.id}
                             alert={{
                       ...alert,
@@ -1646,8 +1851,8 @@ export default function SignalStream() {
                           </div>
                         ))}
                       </div>
-                    ) : sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {sortedClosedAlerts.map(alert => <TradeAlertCard
+                    ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {filteredSignals.closed.map(alert => <TradeAlertCard
                             key={`${alert.id}-${lastTimestampUpdate}`}
                             alert={{
                       ...alert,

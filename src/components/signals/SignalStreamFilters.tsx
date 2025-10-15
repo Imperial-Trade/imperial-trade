@@ -31,8 +31,8 @@ interface SignalStreamFiltersProps {
     total: number;
     active: number;
     closed: number;
-    buy: number;
-    sell: number;
+    buy: number;   // Combined buy + buy_limit
+    sell: number;  // Combined sell + sell_limit
   };
   canCreateSignals?: boolean;
   onCreateSignal?: () => void;
@@ -67,7 +67,12 @@ export function SignalStreamFilters({
   ];
 
   const tradeTypeOptions = [
-    { value: '', label: 'All Types', count: signalCounts.total, icon: Filter },
+    { 
+      value: '', 
+      label: 'All Types', 
+      count: signalCounts.buy + signalCounts.sell, 
+      icon: Filter 
+    },
     { value: 'buy', label: 'Buy Orders', count: signalCounts.buy, icon: TrendingUp },
     { value: 'sell', label: 'Sell Orders', count: signalCounts.sell, icon: TrendingDown }
   ];

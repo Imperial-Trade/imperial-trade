@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Filter, 
@@ -176,81 +183,81 @@ export function SignalStreamFilters({
             <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
               {/* Status Filter */}
               <div className="min-w-0 sm:min-w-[140px]">
-                <select
-                  value={filters.status}
-                  onChange={(e) => updateFilter('status', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                  style={{ 
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'none',
-                    appearance: 'none'
-                  }}
-                >
-                  {statusOptions.map(option => (
-                    <option 
-                      key={option.value} 
-                      value={option.value} 
-                      className="text-foreground bg-background"
-                    >
-                      {option.label} ({option.count})
-                    </option>
-                  ))}
-                </select>
+                <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
+                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                    {statusOptions.map(option => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value}
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            <span>{option.label} ({option.count})</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Trade Type Filter */}
               <div className="min-w-0 sm:min-w-[140px]">
-                <select
-                  value={filters.tradeType}
-                  onChange={(e) => updateFilter('tradeType', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                  style={{ 
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'none',
-                    appearance: 'none'
-                  }}
-                >
-                  {tradeTypeOptions.map(option => (
-                    <option 
-                      key={option.value} 
-                      value={option.value} 
-                      className="text-foreground bg-background"
-                    >
-                      {option.label} ({option.count})
-                    </option>
-                  ))}
-                </select>
+                <Select value={filters.tradeType} onValueChange={(value) => updateFilter('tradeType', value)}>
+                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                    {tradeTypeOptions.map(option => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value}
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            <span>{option.label} ({option.count})</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Educator Filter */}
               {educatorOptions.length > 1 && (
                 <div className="min-w-0 sm:min-w-[140px]">
-                  <select
-                    value={filters.educator}
-                    onChange={(e) => updateFilter('educator', e.target.value)}
-                    className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                    style={{ 
-                      WebkitAppearance: 'none',
-                      MozAppearance: 'none',
-                      appearance: 'none'
-                    }}
-                  >
-                    <option 
-                      value="" 
-                      className="text-foreground bg-background"
-                    >
-                      All Educators ({educatorOptions.length})
-                    </option>
-                    {educatorOptions.map(educator => (
-                      <option 
-                        key={educator.id} 
-                        value={educator.id} 
-                        className="text-foreground bg-background"
-                      >
-                        {educator.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={filters.educator} onValueChange={(value) => updateFilter('educator', value)}>
+                    <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
+                      <SelectValue placeholder={`All Educators (${educatorOptions.length})`} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-border shadow-xl z-[100]">
+                      <SelectItem value="" className="cursor-pointer hover:bg-accent focus:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          <span>All Educators ({educatorOptions.length})</span>
+                        </div>
+                      </SelectItem>
+                      {educatorOptions.map(educator => (
+                        <SelectItem 
+                          key={educator.id} 
+                          value={educator.id}
+                          className="cursor-pointer hover:bg-accent focus:bg-accent"
+                        >
+                          {educator.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>

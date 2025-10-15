@@ -1,4 +1,4 @@
-import { signalColors } from "@/lib/design-system/signalColors";
+import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { cn } from "@/lib/utils";
 
 interface MobileFilterButtonProps {
@@ -14,6 +14,8 @@ export function MobileFilterButton({
   isActive,
   onClick
 }: MobileFilterButtonProps) {
+  const { colors } = useSignalTheme();
+  
   return (
     <button
       onClick={onClick}
@@ -24,11 +26,11 @@ export function MobileFilterButton({
         "hover:scale-105 active:scale-95"
       )}
       style={{
-        background: isActive ? signalColors.state.active : signalColors.bg.surface,
+        background: isActive ? colors.state.active : colors.bg.surface,
         backdropFilter: 'blur(12px) saturate(180%)',
         WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-        border: `1px solid ${isActive ? signalColors.border.active : signalColors.border.default}`,
-        color: isActive ? signalColors.text.gold : signalColors.text.tertiary,
+        border: `1px solid ${isActive ? colors.border.active : colors.border.default}`,
+        color: isActive ? colors.text.gold : colors.text.tertiary,
       }}
     >
       {icon}

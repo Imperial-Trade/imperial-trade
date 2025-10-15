@@ -1,8 +1,17 @@
 import React from 'react';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 export const MagnifyingSearchEmptyState: React.FC = () => {
+  const { colors } = useSignalTheme();
+  
   return (
-    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+    <div 
+      className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" 
+      style={{ 
+        background: colors.bg.surface, 
+        border: `1px solid ${colors.border.default}` 
+      }}
+    >
       <svg className="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Document background */}
         <path 

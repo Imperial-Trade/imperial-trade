@@ -26,7 +26,7 @@ import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { MobileFilterButton } from './MobileFilterButton';
 import { MobileFilterSheet } from './MobileFilterSheet';
 import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
-import { signalColors } from '@/lib/design-system/signalColors';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface FilterState {
   search: string;
@@ -59,6 +59,7 @@ export function SignalStreamFilters({
   onCreateSignal
 }: SignalStreamFiltersProps) {
   const { isMobile } = useDeviceDetection();
+  const { colors } = useSignalTheme();
   const [mobileSheetOpen, setMobileSheetOpen] = useState<'status' | 'tradeType' | 'educator' | null>(null);
 
   const updateFilter = (key: keyof FilterState, value: string) => {
@@ -146,12 +147,12 @@ export function SignalStreamFilters({
     return (
       <>
         <div 
-          className="mb-4 p-3 space-y-3 rounded-2xl border"
+          className="mb-4 p-4 space-y-3 rounded-2xl border"
           style={{
-            background: signalColors.bg.glass,
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            borderColor: signalColors.border.default,
+            background: colors.bg.glass,
+            backdropFilter: 'blur(30px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+            borderColor: colors.border.default,
           }}
           data-prevent-widget-open="true"
           onPointerDown={(e) => e.stopPropagation()}
@@ -163,19 +164,19 @@ export function SignalStreamFilters({
               <div className="flex-1 relative">
                 <Search 
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" 
-                  style={{ color: signalColors.text.tertiary }}
+                  style={{ color: colors.text.tertiary }}
                 />
                 
                 {!filters.search && (
                   <div 
                     className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm z-10"
-                    style={{ color: signalColors.text.tertiary }}
+                    style={{ color: colors.text.tertiary }}
                   >
                     Search{' '}
                     <span 
                       className="font-semibold"
                       style={{
-                        background: `linear-gradient(90deg, ${signalColors.accent.gold} 0%, ${signalColors.accent.green} 50%, ${signalColors.accent.gold} 100%)`,
+                        background: `linear-gradient(90deg, ${colors.accent.gold} 0%, ${colors.accent.green} 50%, ${colors.accent.gold} 100%)`,
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text'
@@ -192,15 +193,15 @@ export function SignalStreamFilters({
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className="h-11 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
                 style={{
-                  background: signalColors.bg.surface,
-                  borderColor: signalColors.border.default,
-                  color: signalColors.text.primary,
+                  background: colors.bg.surface,
+                  borderColor: colors.border.default,
+                  color: colors.text.primary,
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = signalColors.border.active;
+                  e.currentTarget.style.borderColor = colors.border.active;
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = signalColors.border.default;
+                  e.currentTarget.style.borderColor = colors.border.default;
                 }}
               />
                 
@@ -211,9 +212,9 @@ export function SignalStreamFilters({
                     onClick={(e) => handleClearFilterClick(e, 'search')}
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
                     style={{
-                      background: signalColors.state.danger,
-                      border: `1px solid ${signalColors.border.danger}`,
-                      color: signalColors.accent.danger,
+                      background: colors.state.danger,
+                      border: `1px solid ${colors.border.danger}`,
+                      color: colors.accent.danger,
                     }}
                   >
                     <X className="w-4 h-4" />
@@ -267,8 +268,8 @@ export function SignalStreamFilters({
                   className="h-10 px-3 text-xs rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
                   style={{
                     background: 'transparent',
-                    border: `1px solid ${signalColors.border.danger}`,
-                    color: signalColors.text.danger,
+                    border: `1px solid ${colors.border.danger}`,
+                    color: colors.text.danger,
                   }}
                 >
                   <X className="w-3 h-3 mr-1" />

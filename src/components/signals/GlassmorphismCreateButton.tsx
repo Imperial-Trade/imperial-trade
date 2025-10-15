@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { signalColors } from "@/lib/design-system/signalColors";
+import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { cn } from "@/lib/utils";
 
 interface GlassmorphismCreateButtonProps {
@@ -7,6 +7,8 @@ interface GlassmorphismCreateButtonProps {
 }
 
 export function GlassmorphismCreateButton({ onClick }: GlassmorphismCreateButtonProps) {
+  const { colors } = useSignalTheme();
+  
   return (
     <button
       onClick={onClick}
@@ -18,16 +20,16 @@ export function GlassmorphismCreateButton({ onClick }: GlassmorphismCreateButton
         "relative overflow-hidden group"
       )}
       style={{
-        background: signalColors.state.ctaGradient,
+        background: colors.state.ctaGradient,
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: `1px solid ${signalColors.border.cta}`,
+        border: `1px solid ${colors.border.cta}`,
       }}
     >
       <Plus 
         className="w-5 h-5 transition-transform duration-300 group-hover:rotate-90"
         style={{
-          color: signalColors.accent.gold,
+          color: colors.accent.gold,
         }}
       />
     </button>

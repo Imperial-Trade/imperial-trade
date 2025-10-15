@@ -20,7 +20,7 @@ import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceC
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 import { perfMonitor } from '@/utils/performanceMonitor';
-import { signalColors } from '@/lib/design-system/signalColors';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -40,6 +40,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   creator,
   justAdded = false
 }) => {
+  const { colors } = useSignalTheme();
   // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
   const perfStartRef = useRef<number>(performance.now());
   const [showCopyPanel, setShowCopyPanel] = useState(false);
@@ -314,10 +315,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     <div 
       className={`rounded-lg border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50' : ''} ${className || ''}`}
       style={{
-        background: signalColors.bg.glass,
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        borderColor: signalColors.border.default,
+        background: colors.bg.glass,
+        backdropFilter: 'blur(25px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(25px) saturate(180%)',
+        borderColor: colors.border.default,
       }}
       data-testid={testId}
     >

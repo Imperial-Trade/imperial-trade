@@ -2,7 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { ArrowUp, ArrowDown, Target, XOctagon, Check } from 'lucide-react';
 import LivePriceWidget from './LivePriceWidget';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
-import { signalColors } from '@/lib/design-system/signalColors';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface PriceRowProps {
   label: string;
@@ -12,18 +12,28 @@ interface PriceRowProps {
   isHit?: boolean;
 }
 
-const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
-  <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
-    <div className="flex items-center space-x-2 text-muted-foreground">
-      <Icon className={`w-4 h-4 ${colorClass}`} />
-      <span>{label}</span>
-      {isHit && <Check className="w-4 h-4 text-accent-green" />}
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => {
+  const { colors, isDark } = useSignalTheme();
+  
+  return (
+    <div 
+      className="flex justify-between items-center text-sm py-4 last:border-b-0"
+      style={{
+        borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+        background: isHit ? colors.semantic.success : 'transparent',
+      }}
+    >
+      <div className="flex items-center space-x-3">
+        <Icon className={`w-5 h-5 ${colorClass}`} />
+        <span className="font-medium" style={{ color: colors.text.primary }}>{label}</span>
+        {isHit && <Check className="w-4 h-4 text-accent-green" />}
+      </div>
+      <span className={`font-mono font-semibold ${isHit ? 'text-accent-green' : ''}`} style={{ color: isHit ? undefined : colors.text.primary }}>
+        {value ? `$${value.toFixed(2)}` : '-'}
+      </span>
     </div>
-    <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
-      {value ? `$${value.toFixed(2)}` : '-'}
-    </span>
-  </div>
-);
+  );
+};
 
 // PHASE C: Minimal, stable primitive props for price panel
 interface PricePanelProps {
@@ -65,12 +75,7 @@ const StaticLevelsBlock = memo<{
   const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (
-    <div 
-      className="rounded-md p-2.5 mt-2"
-      style={{
-        background: signalColors.bg.surface,
-      }}
-    >
+    <div className="mt-2">
       <PriceRow 
         label="Entry Price" 
         value={entryPrice} 

@@ -7,7 +7,7 @@ import {
   DrawerClose
 } from "@/components/ui/drawer";
 import { Filter, TrendingUp, Users, Check, X } from "lucide-react";
-import { signalColors } from "@/lib/design-system/signalColors";
+import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { cn } from "@/lib/utils";
 
 interface MobileFilterSheetProps {
@@ -29,6 +29,8 @@ export function MobileFilterSheet({
   options = [],
   educatorOptions = []
 }: MobileFilterSheetProps) {
+  const { colors } = useSignalTheme();
+  
   const getTitle = () => {
     switch (type) {
       case 'status':
@@ -65,17 +67,17 @@ export function MobileFilterSheet({
               currentValue !== 'all' && "hover:bg-white/5"
             )}
             style={currentValue === 'all' ? {
-              background: signalColors.state.active,
-              borderLeft: `4px solid ${signalColors.accent.gold}`,
+              background: colors.state.active,
+              borderLeft: `4px solid ${colors.accent.gold}`,
             } : {
               background: 'transparent',
             }}
           >
-            <Users className="w-5 h-5" style={{ color: currentValue === 'all' ? signalColors.accent.gold : signalColors.text.tertiary }} />
-            <span className="flex-1 text-left font-medium" style={{ color: currentValue === 'all' ? signalColors.text.gold : signalColors.text.primary }}>
+            <Users className="w-5 h-5" style={{ color: currentValue === 'all' ? colors.accent.gold : colors.text.tertiary }} />
+            <span className="flex-1 text-left font-medium" style={{ color: currentValue === 'all' ? colors.text.gold : colors.text.primary }}>
               All Educators
             </span>
-            {currentValue === 'all' && <Check className="w-5 h-5" style={{ color: signalColors.accent.gold }} />}
+            {currentValue === 'all' && <Check className="w-5 h-5" style={{ color: colors.accent.gold }} />}
           </button>
           {educatorOptions.map((educator) => (
             <button
@@ -89,17 +91,17 @@ export function MobileFilterSheet({
                 currentValue !== educator.id && "hover:bg-white/5"
               )}
               style={currentValue === educator.id ? {
-                background: signalColors.state.active,
-                borderLeft: `4px solid ${signalColors.accent.gold}`,
+                background: colors.state.active,
+                borderLeft: `4px solid ${colors.accent.gold}`,
               } : {
                 background: 'transparent',
               }}
             >
-              <Users className="w-5 h-5" style={{ color: currentValue === educator.id ? signalColors.accent.gold : signalColors.text.tertiary }} />
-              <span className="flex-1 text-left font-medium" style={{ color: currentValue === educator.id ? signalColors.text.gold : signalColors.text.primary }}>
+              <Users className="w-5 h-5" style={{ color: currentValue === educator.id ? colors.accent.gold : colors.text.tertiary }} />
+              <span className="flex-1 text-left font-medium" style={{ color: currentValue === educator.id ? colors.text.gold : colors.text.primary }}>
                 {educator.name}
               </span>
-              {currentValue === educator.id && <Check className="w-5 h-5" style={{ color: signalColors.accent.gold }} />}
+              {currentValue === educator.id && <Check className="w-5 h-5" style={{ color: colors.accent.gold }} />}
             </button>
           ))}
         </>
@@ -109,7 +111,7 @@ export function MobileFilterSheet({
     return options.map((option) => {
       const isActive = currentValue === option.value;
       // Use green for trade type active state, gold for others
-      const activeColor = type === 'tradeType' ? signalColors.accent.green : signalColors.accent.gold;
+      const activeColor = type === 'tradeType' ? colors.accent.green : colors.accent.gold;
       
       return (
         <button
@@ -123,7 +125,7 @@ export function MobileFilterSheet({
             !isActive && "hover:bg-white/5"
           )}
           style={isActive ? {
-            background: type === 'tradeType' ? signalColors.semantic.success : signalColors.state.active,
+            background: type === 'tradeType' ? colors.semantic.success : colors.state.active,
             borderLeft: `4px solid ${activeColor}`,
           } : {
             background: 'transparent',
@@ -133,11 +135,11 @@ export function MobileFilterSheet({
             <span className="w-5 h-5 flex items-center justify-center">
               {React.createElement(option.icon, { 
                 className: "w-5 h-5",
-                style: { color: isActive ? activeColor : signalColors.text.tertiary }
+                style: { color: isActive ? activeColor : colors.text.tertiary }
               })}
             </span>
           )}
-          <span className="flex-1 text-left font-medium" style={{ color: isActive ? activeColor : signalColors.text.primary }}>
+          <span className="flex-1 text-left font-medium" style={{ color: isActive ? activeColor : colors.text.primary }}>
             {option.label}
           </span>
           {isActive && <Check className="w-5 h-5" style={{ color: activeColor }} />}
@@ -151,24 +153,24 @@ export function MobileFilterSheet({
       <DrawerContent 
         className="max-h-[70vh]"
         style={{
-          background: signalColors.bg.glass,
+          background: colors.bg.glass,
           backdropFilter: 'blur(30px) saturate(180%)',
           WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderTop: `1px solid ${signalColors.border.default}`,
+          borderTop: `1px solid ${colors.border.default}`,
         }}
       >
-        <DrawerHeader style={{ borderBottom: `1px solid ${signalColors.border.default}` }} className="pb-4">
+        <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span style={{ color: signalColors.text.gold }}>{getIcon()}</span>
-              <DrawerTitle style={{ color: signalColors.text.primary }}>{getTitle()}</DrawerTitle>
+              <span style={{ color: colors.text.gold }}>{getIcon()}</span>
+              <DrawerTitle style={{ color: colors.text.primary }}>{getTitle()}</DrawerTitle>
             </div>
             <DrawerClose asChild>
               <button
                 className="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
-                  background: signalColors.bg.surface,
-                  color: signalColors.text.secondary,
+                  background: colors.bg.surface,
+                  color: colors.text.secondary,
                 }}
                 aria-label="Close"
               >

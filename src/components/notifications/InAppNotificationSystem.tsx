@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,30 @@ const InAppNotificationSystem = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  
+  // 🔒 MOUNT TIME TRACKING: Filter out stale/replayed events
+  const componentMountTimeRef = useRef<number>(Date.now());
+
+  // Setup and cleanup on mount/unmount
+  useEffect(() => {
+    const mountTime = Date.now();
+    componentMountTimeRef.current = mountTime;
+    console.log(`🎬 [InAppNotificationSystem] Mounted at ${new Date(mountTime).toISOString()}`);
+
+    // Clear any stale deduplication data from previous sessions
+    if ((window as any).lastInAppNotifications) {
+      const oldSize = (window as any).lastInAppNotifications.size;
+      (window as any).lastInAppNotifications.clear();
+      console.log(`🧹 [InAppNotificationSystem] Cleared ${oldSize} stale deduplication entries on mount`);
+    }
+
+    return () => {
+      if ((window as any).lastInAppNotifications) {
+        (window as any).lastInAppNotifications.clear();
+        console.log('🧹 [InAppNotificationSystem] Cleared deduplication map on unmount');
+      }
+    };
+  }, []);
 
   const playNotificationSound = useCallback((priority: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -83,11 +107,26 @@ const InAppNotificationSystem = () => {
         return;
       }
 
-      // Enhanced notification deduplication
-      const notificationKey = notification.eventKey || `${notification.signalId}:${notification.type}:${notification.title}`;
+      // ============================================
+      // ✅ IMPROVED: More robust deduplication key
+      // ============================================
+      const notificationKey = notification.eventKey || 
+        `${notification.signalId}:${notification.type}:${notification.assetName}:${notification.timestamp?.getTime()}`;
+
       const lastShownTime = (window as any).lastInAppNotifications?.get(notificationKey) || 0;
-      if (now - lastShownTime < 60000) { // 1 minute deduplication
-        console.warn("In-app notification suppressed due to deduplication:", notificationKey);
+
+      // ============================================
+      // ✅ IMPROVED: Dynamic deduplication window
+      // ============================================
+      const deduplicationWindow = notification.type === 'all_tps_hit' 
+        ? 5000   // 5 seconds for "All TPs Hit" (catches rapid backend duplicates)
+        : 60000; // 60 seconds for other notifications
+
+      if (now - lastShownTime < deduplicationWindow) {
+        console.warn(
+          `⏭️ [DEDUP] In-app notification suppressed (duplicate within ${deduplicationWindow}ms):`,
+          notificationKey
+        );
         return;
       }
       
@@ -173,6 +212,39 @@ const InAppNotificationSystem = () => {
         
         const data = payload.payload;
         if (!data) return;
+
+        // ============================================
+        // ✅ GUARD 1: TIMESTAMP FILTERING (Prevents Replays)
+        // ============================================
+        const eventTimestamp = data.timestamp || data.created_at;
+        if (eventTimestamp) {
+          const eventTime = new Date(eventTimestamp).getTime();
+          if (eventTime < componentMountTimeRef.current) {
+            console.log(
+              `⏭️ [REPLAY PREVENTION] Ignoring stale broadcast: ` +
+              `${data.notification_type} for ${data.asset_name} ` +
+              `(event: ${new Date(eventTime).toISOString()}, ` +
+              `mount: ${new Date(componentMountTimeRef.current).toISOString()})`
+            );
+            return;
+          }
+        }
+        
+        // ============================================
+        // ✅ GUARD 2: PAYLOAD VALIDATION (Prevents "undefined" glitches)
+        // ============================================
+        if (!data.asset_name || !data.notification_type) {
+          console.warn(
+            '⚠️ [INVALID BROADCAST] Ignoring event with missing required fields:',
+            {
+              asset_name: data.asset_name,
+              notification_type: data.notification_type,
+              has_signal_id: !!data.signal_id,
+              raw_data: data
+            }
+          );
+          return;
+        }
 
         // Map notification types to our enhanced system
         let type: SignalNotification['type'] = 'signal_updated';

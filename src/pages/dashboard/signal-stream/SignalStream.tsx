@@ -553,7 +553,7 @@ export default function SignalStream() {
           // Clear all instant detection flags since this is the final confirmation toast
           instantToastHandledRef.current.delete(signal.id);
           Array.from(instantToastHandledRef.current).forEach(key => {
-            if (key.startsWith(`${signal.id}-tp`)) {
+            if (key.startsWith(`${signal.id}-tp`) || key.startsWith(`${signal.id}-sl`)) {
               instantToastHandledRef.current.delete(key);
             }
           });
@@ -566,7 +566,7 @@ export default function SignalStream() {
           // Clean up
           instantToastHandledRef.current.delete(signal.id);
           Array.from(instantToastHandledRef.current).forEach(key => {
-            if (key.startsWith(`${signal.id}-tp`)) {
+            if (key.startsWith(`${signal.id}-tp`) || key.startsWith(`${signal.id}-sl`)) {
               instantToastHandledRef.current.delete(key);
             }
           });

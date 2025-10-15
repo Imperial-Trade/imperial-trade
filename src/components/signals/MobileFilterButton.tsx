@@ -27,11 +27,10 @@ export function MobileFilterButton({
       )}
       style={{
         background: isActive ? colors.state.active : colors.bg.surface,
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: `1.5px solid ${isActive ? colors.border.active : colors.border.default}`,
-        color: isActive ? colors.text.gold : colors.text.tertiary,
-        boxShadow: isActive ? `0 0 15px ${colors.accent.gold}20` : 'none',
+        backdropFilter: 'blur(20px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+        border: `1px solid ${isActive ? colors.border.active : colors.border.default}`,
+        color: isActive ? colors.text.accent : colors.text.secondary,
       }}
     >
       {icon}

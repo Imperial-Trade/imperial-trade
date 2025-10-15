@@ -31,7 +31,7 @@ import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 export default function SignalStream() {
-  const { colors, isDark } = useSignalTheme();
+  const { colors } = useSignalTheme();
   const {
     user,
     profile

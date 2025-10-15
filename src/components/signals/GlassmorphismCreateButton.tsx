@@ -21,15 +21,15 @@ export function GlassmorphismCreateButton({ onClick }: GlassmorphismCreateButton
       )}
       style={{
         background: colors.state.ctaGradient,
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: `1px solid ${colors.border.cta}`,
+        backdropFilter: 'blur(20px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+        border: `1px solid ${colors.border.active}`,
       }}
     >
       <Plus 
         className="w-5 h-5 transition-transform duration-300 group-hover:rotate-90"
         style={{
-          color: colors.accent.gold,
+          color: colors.text.accent,
         }}
       />
     </button>

@@ -167,31 +167,10 @@ export function SignalStreamFilters({
                   style={{ color: colors.text.tertiary }}
                 />
                 
-                {!filters.search && (
-                  <div 
-                    className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm z-10"
-                    style={{ color: colors.text.tertiary }}
-                  >
-                    Search{' '}
-                    <span 
-                      className="font-semibold"
-                      style={{
-                        background: `linear-gradient(90deg, ${colors.accent.gold} 0%, ${colors.accent.green} 50%, ${colors.accent.gold} 100%)`,
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                      }}
-                    >
-                      Xeon alerts
-                    </span>
-                    <span>...</span>
-                  </div>
-                )}
-                
             <Input
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              placeholder="Search..."
+              placeholder="Search"
               className="h-9 pl-9 pr-9 text-sm rounded-xl border transition-all duration-200"
               style={{
                 background: colors.bg.surface,
@@ -319,23 +298,24 @@ export function SignalStreamFilters({
           {/* Search Section - Consistent sizing */}
           <div className="flex-1 min-w-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
-              
-              {/* Enhanced Gradient Placeholder */}
-              {!filters.search && (
-                <div className="absolute left-10 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
-                  Search{' '}
-                  <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
-                    Xeon alerts
-                  </span>
-                  <span>...</span>
-                </div>
-              )}
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: colors.text.tertiary }} />
               
               <Input
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className="h-10 pl-10 pr-10 text-sm bg-transparent backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+                placeholder="Search"
+                className="h-10 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
+                style={{
+                  background: colors.bg.surface,
+                  borderColor: colors.border.default,
+                  color: colors.text.primary,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = colors.border.active;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = colors.border.default;
+                }}
               />
               
               {filters.search && (

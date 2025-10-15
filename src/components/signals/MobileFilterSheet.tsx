@@ -68,16 +68,17 @@ export function MobileFilterSheet({
             )}
             style={currentValue === 'all' ? {
               background: colors.state.active,
-              borderLeft: `4px solid ${colors.accent.gold}`,
+              borderLeft: `3px solid ${colors.accent.primary}`,
+              paddingLeft: 'calc(1rem - 3px)',
             } : {
               background: 'transparent',
             }}
           >
-            <Users className="w-5 h-5" style={{ color: currentValue === 'all' ? colors.accent.gold : colors.text.tertiary }} />
-            <span className="flex-1 text-left font-medium" style={{ color: currentValue === 'all' ? colors.text.gold : colors.text.primary }}>
+            <Users className="w-5 h-5" style={{ color: currentValue === 'all' ? colors.accent.primary : colors.text.tertiary }} />
+            <span className="flex-1 text-left font-medium" style={{ color: currentValue === 'all' ? colors.text.accent : colors.text.primary }}>
               All Educators
             </span>
-            {currentValue === 'all' && <Check className="w-5 h-5" style={{ color: colors.accent.gold }} />}
+            {currentValue === 'all' && <Check className="w-5 h-5" style={{ color: colors.accent.primary }} />}
           </button>
           {educatorOptions.map((educator) => (
             <button
@@ -92,16 +93,17 @@ export function MobileFilterSheet({
               )}
               style={currentValue === educator.id ? {
                 background: colors.state.active,
-                borderLeft: `4px solid ${colors.accent.gold}`,
+                borderLeft: `3px solid ${colors.accent.primary}`,
+                paddingLeft: 'calc(1rem - 3px)',
               } : {
                 background: 'transparent',
               }}
             >
-              <Users className="w-5 h-5" style={{ color: currentValue === educator.id ? colors.accent.gold : colors.text.tertiary }} />
-              <span className="flex-1 text-left font-medium" style={{ color: currentValue === educator.id ? colors.text.gold : colors.text.primary }}>
+              <Users className="w-5 h-5" style={{ color: currentValue === educator.id ? colors.accent.primary : colors.text.tertiary }} />
+              <span className="flex-1 text-left font-medium" style={{ color: currentValue === educator.id ? colors.text.accent : colors.text.primary }}>
                 {educator.name}
               </span>
-              {currentValue === educator.id && <Check className="w-5 h-5" style={{ color: colors.accent.gold }} />}
+              {currentValue === educator.id && <Check className="w-5 h-5" style={{ color: colors.accent.primary }} />}
             </button>
           ))}
         </>
@@ -110,8 +112,7 @@ export function MobileFilterSheet({
 
     return options.map((option) => {
       const isActive = currentValue === option.value;
-      // Use green for trade type active state, gold for others
-      const activeColor = type === 'tradeType' ? colors.accent.green : colors.accent.gold;
+      const activeColor = type === 'tradeType' ? colors.accent.green : colors.accent.primary;
       
       return (
         <button
@@ -126,7 +127,8 @@ export function MobileFilterSheet({
           )}
           style={isActive ? {
             background: type === 'tradeType' ? colors.semantic.success : colors.state.active,
-            borderLeft: `4px solid ${activeColor}`,
+            borderLeft: `3px solid ${activeColor}`,
+            paddingLeft: 'calc(1rem - 3px)',
           } : {
             background: 'transparent',
           }}
@@ -163,7 +165,7 @@ export function MobileFilterSheet({
         <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span style={{ color: colors.text.gold }}>{getIcon()}</span>
+              <span style={{ color: colors.text.accent }}>{getIcon()}</span>
               <DrawerTitle style={{ color: colors.text.primary }}>{getTitle()}</DrawerTitle>
             </div>
             <DrawerClose asChild>

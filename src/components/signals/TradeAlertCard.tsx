@@ -1,7 +1,7 @@
 import React, { useState, memo, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2 } from 'lucide-react';
+import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2, Crown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -316,17 +316,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       className={`rounded-2xl border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-75' : ''} ${className || ''}`}
       style={{
         background: colors.bg.glass,
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        borderColor: isPending 
-          ? colors.border.active 
-          : isClosed 
-            ? colors.border.danger 
-            : colors.border.default,
-        borderWidth: '1.5px',
-        boxShadow: justAdded 
-          ? `0 0 20px ${colors.accent.green}40` 
-          : 'none',
+        backdropFilter: 'blur(20px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        borderColor: colors.border.default,
+        borderWidth: '1px',
       }}
       data-testid={testId}
     >
@@ -341,36 +334,37 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         }`} />
       )}
 
-      <div className="p-4">
-        {/* NEW: Single-row header with asset name, badges, and horizontal action icons */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          {/* Left: Creator badge + Asset name + Status badge */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Creator Info (compact) */}
-            {creator && (
-              <div 
-                className="text-xs px-2 py-0.5 rounded-md font-medium whitespace-nowrap"
-                style={{
-                  background: colors.state.active,
-                  color: colors.text.gold,
-                  border: `1px solid ${colors.border.active}`,
-                }}
-              >
-                {creator.display_name}
-              </div>
-            )}
-            
-            {/* Asset Name */}
+      <div className="p-5">
+        {/* Creator Name (standalone, prominent) */}
+        {creator && (
+          <div className="mb-3">
+            <div 
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-sm"
+              style={{
+                background: colors.bg.surface,
+                border: `1px solid ${colors.border.default}`,
+                color: colors.text.primary,
+              }}
+            >
+              <span>{creator.display_name}</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Asset Name + Status + Actions */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* Left: Asset name + Status */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <h3 
-              className="text-lg font-bold truncate"
+              className="text-xl font-bold truncate"
               style={{ color: colors.text.primary }}
             >
               {alert.asset_name}
             </h3>
             
-            {/* Status Badge */}
+            {/* Status Badge - Clean design */}
             <div
-              className="text-xs px-2 py-1 rounded-lg font-semibold whitespace-nowrap"
+              className="text-xs px-2.5 py-1 rounded-md font-semibold uppercase tracking-wide whitespace-nowrap"
               style={{
                 background: isPending 
                   ? colors.semantic.success 
@@ -378,43 +372,41 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                     ? colors.semantic.danger 
                     : colors.semantic.success,
                 color: isPending 
-                  ? colors.accent.green 
+                  ? colors.text.success
                   : isClosed 
-                    ? colors.accent.red 
-                    : colors.accent.green,
-                border: `1px solid ${isPending ? colors.border.active : isClosed ? colors.border.danger : colors.border.active}`,
+                    ? colors.text.danger
+                    : colors.text.success,
+                border: `1px solid ${isPending ? colors.border.success : isClosed ? colors.border.danger : colors.border.success}`,
               }}
             >
-              {alert.status === 'active' && 'ACTIVE ' + (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}
+              {alert.status === 'active' && (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}
               {alert.status === 'pending' && 'PENDING'}
               {alert.status === 'closed' && 'CLOSED'}
             </div>
           </div>
           
-          {/* Right: Horizontal action icons (like reference image) */}
-          <div className="flex items-center gap-1" data-prevent-widget-open="true">
-            {/* Copy Button - Icon only */}
+          {/* Right: Action icons - Clean, minimal */}
+          <div className="flex items-center gap-1.5" data-prevent-widget-open="true">
             <button
               onClick={handleCopyPanelToggle}
-              className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+              className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
               style={{
-                background: showCopyPanel ? colors.state.active : 'transparent',
-                border: `1px solid ${showCopyPanel ? colors.border.active : colors.border.default}`,
-                color: showCopyPanel ? colors.text.gold : colors.text.secondary,
+                background: showCopyPanel ? colors.state.active : colors.bg.surface,
+                border: `1px solid ${colors.border.default}`,
+                color: showCopyPanel ? colors.text.accent : colors.text.secondary,
               }}
               aria-label="Copy signal"
             >
               <Copy className="w-4 h-4" />
             </button>
             
-            {/* Share Button - Icon only */}
             <SignalSharingModal 
               signal={tradeSignal}
               trigger={
                 <button
-                  className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                   style={{
-                    background: 'transparent',
+                    background: colors.bg.surface,
                     border: `1px solid ${colors.border.default}`,
                     color: colors.text.secondary,
                   }}
@@ -425,15 +417,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               }
             />
             
-            {/* Calculator Button - Icon only (active signals only) */}
-            {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
+            {(alert.status === 'active' || alert.status === 'pending') && (
               <button
                 onClick={handleCalculatorToggle}
-                className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
-                  background: showCalculator ? colors.semantic.success : 'transparent',
-                  border: `1px solid ${showCalculator ? colors.border.active : colors.border.default}`,
-                  color: showCalculator ? colors.accent.green : colors.text.secondary,
+                  background: showCalculator ? colors.semantic.success : colors.bg.surface,
+                  border: `1px solid ${colors.border.default}`,
+                  color: showCalculator ? colors.text.success : colors.text.secondary,
                 }}
                 aria-label="Calculator"
               >

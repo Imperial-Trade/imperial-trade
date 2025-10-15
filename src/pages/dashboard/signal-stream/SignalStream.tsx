@@ -70,6 +70,9 @@ export default function SignalStream() {
   // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
   const instantToastHandledRef = useRef<Set<string>>(new Set());
   
+  // 🔒 TIER 1: Backend Detection Tracking - Prevent frontend from re-processing backend-handled events
+  const backendProcessedRef = useRef<Set<string>>(new Set());
+  
   // Check notification system initialization
   useEffect(() => {
     if (!(window as any).addNotification) {
@@ -175,6 +178,15 @@ export default function SignalStream() {
       const { signalId, tpLevel, assetName } = event.detail;
       
       console.log('🎯 TP hit event received:', event.detail);
+      
+      // 🔒 TIER 1: Mark as backend-processed
+      const tpKey = `${signalId}-tp${tpLevel}`;
+      backendProcessedRef.current.add(tpKey);
+      
+      // Clear after 10 seconds
+      setTimeout(() => {
+        backendProcessedRef.current.delete(tpKey);
+      }, 10000);
       
       toast({
         title: `🎯 TP${tpLevel} Hit!`,
@@ -517,15 +529,13 @@ export default function SignalStream() {
         
         if (wasHandledByInstant) {
           console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection`);
-          // Clean up ALL related keys (signal.id and all TP keys)
-          setTimeout(() => {
-            instantToastHandledRef.current.delete(signal.id);
-            Array.from(instantToastHandledRef.current).forEach(key => {
-              if (key.startsWith(`${signal.id}-tp`)) {
-                instantToastHandledRef.current.delete(key);
-              }
-            });
-          }, 5000);
+          // 🔒 TIER 1: Immediate cleanup (no 5-second delay)
+          instantToastHandledRef.current.delete(signal.id);
+          Array.from(instantToastHandledRef.current).forEach(key => {
+            if (key.startsWith(`${signal.id}-tp`)) {
+              instantToastHandledRef.current.delete(key);
+            }
+          });
           return; // Do not show a second toast
         }
         
@@ -583,25 +593,31 @@ export default function SignalStream() {
         const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
 
         if (tpHit) {
-          // ✅ GUARD 1: Check if this TP is already hit in our current state (STATE-FIRST)
+          // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+          const tpKey = `${signal.id}-tp${level}`;
+          
+          // GUARD 1: Already hit in state
           if (signal.tpHits?.includes(level)) {
             return;
           }
-
-          // ✅ GUARD 2: Check if this TP is already being processed
-          const tpKey = `${signal.id}-tp${level}`;
+          
+          // GUARD 2: Already being processed
           if (processingSignalsRef.current.has(tpKey)) {
             return;
           }
+          
+          // GUARD 3: Backend already processed this
+          if (backendProcessedRef.current.has(tpKey)) {
+            console.log(`⏭️ [INSTANT] Backend already processed ${tpKey}`);
+            return;
+          }
 
-          // All checks passed, proceed
+          // All checks passed, proceed with immediate lock
           console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
           
-          // 🔒 LOCK: Mark as processing
+          // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
           processingSignalsRef.current.add(tpKey);
-          
-          // 🔒 TOAST TRACKING: Mark for deduplication
-          instantToastHandledRef.current.add(`${signal.id}-tp${level}`);
+          instantToastHandledRef.current.add(tpKey);
 
           // Optimistic UI Update
           const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
@@ -637,24 +653,30 @@ export default function SignalStream() {
           : slCheckPrice >= slPrice;
 
         if (slHit) {
-          // ✅ GUARD 1: Check if signal is already closed in our current state (STATE-FIRST)
+          // 🔒 TIER 1: Atomic guard - combine all checks in one operation
+          const slKey = `${signal.id}-sl`;
+          
+          // GUARD 1: Already closed in state
           if (signal.status === 'closed') {
             return;
           }
-
-          // ✅ GUARD 2: Check if this SL is already being processed
-          const slKey = `${signal.id}-sl`;
+          
+          // GUARD 2: Already being processed
           if (processingSignalsRef.current.has(slKey)) {
             return;
           }
           
-          // All checks passed, proceed
+          // GUARD 3: Backend already processed this
+          if (backendProcessedRef.current.has(slKey)) {
+            console.log(`⏭️ [INSTANT] Backend already processed ${slKey}`);
+            return;
+          }
+          
+          // All checks passed, proceed with immediate lock
           console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
           
-          // 🔒 LOCK: Mark as processing
+          // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
           processingSignalsRef.current.add(slKey);
-          
-          // 🔒 TOAST TRACKING: Mark for deduplication
           instantToastHandledRef.current.add(signal.id);
 
           // Optimistic UI Update

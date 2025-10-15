@@ -326,26 +326,26 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     if (alert.close_reason === 'stop_loss') {
       // Red gradient (danger)
       return {
-        background: `linear-gradient(180deg, rgba(255, 69, 58, 0.15) 0%, transparent 100%), ${colors.bg.glass}`,
+        background: `linear-gradient(180deg, rgba(255, 69, 58, 0.25) 0%, transparent 100%), ${colors.bg.glass}`,
         backdropFilter: 'blur(20px) saturate(120%)',
         WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(255, 69, 58, 0.1)',
+        boxShadow: '0 0 40px rgba(255, 69, 58, 0.15)',
       };
-    } else if (alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
+    } else if (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0) {
       // Green gradient (success)
       return {
-        background: `linear-gradient(180deg, rgba(0, 200, 5, 0.15) 0%, transparent 100%), ${colors.bg.glass}`,
+        background: `linear-gradient(180deg, rgba(0, 200, 5, 0.25) 0%, transparent 100%), ${colors.bg.glass}`,
         backdropFilter: 'blur(20px) saturate(120%)',
         WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(0, 200, 5, 0.1)',
+        boxShadow: '0 0 40px rgba(0, 200, 5, 0.15)',
       };
     } else {
       // Manual close or other - Grey gradient
       return {
-        background: `linear-gradient(180deg, rgba(160, 160, 160, 0.12) 0%, transparent 100%), ${colors.bg.glass}`,
+        background: `linear-gradient(180deg, rgba(160, 160, 160, 0.20) 0%, transparent 100%), ${colors.bg.glass}`,
         backdropFilter: 'blur(20px) saturate(120%)',
         WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-        boxShadow: '0 0 40px rgba(160, 160, 160, 0.05)',
+        boxShadow: '0 0 40px rgba(160, 160, 160, 0.08)',
       };
     }
   };
@@ -358,7 +358,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         borderColor: isClosed 
           ? (alert.close_reason === 'stop_loss' 
               ? 'rgba(255, 69, 58, 0.3)' 
-              : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+              : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
                 ? 'rgba(0, 200, 5, 0.3)'
                 : colors.border.default)
           : colors.border.default,
@@ -373,7 +373,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           style={{
             background: alert.close_reason === 'stop_loss'
               ? 'rgba(255, 69, 58, 0.5)'
-              : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+              : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
                 ? 'rgba(0, 200, 5, 0.5)'
                 : 'rgba(160, 160, 160, 0.3)',
           }}
@@ -415,14 +415,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 background: isClosed 
                   ? (alert.close_reason === 'stop_loss'
                       ? colors.semantic.danger
-                      : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                      : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
                         ? colors.semantic.success
                         : 'rgba(160, 160, 160, 0.1)')
                   : colors.semantic.success,
                 color: isClosed
                   ? (alert.close_reason === 'stop_loss'
                       ? colors.text.danger
-                      : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                      : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
                         ? colors.text.success
                         : colors.text.secondary)
                   : colors.text.success,
@@ -430,7 +430,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   isClosed
                     ? (alert.close_reason === 'stop_loss'
                         ? colors.border.danger
-                        : (alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                        : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
                           ? colors.border.success
                           : colors.border.default)
                     : colors.border.success

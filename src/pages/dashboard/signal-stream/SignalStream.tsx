@@ -60,8 +60,8 @@ export default function SignalStream() {
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
   const staticClosedAlertsRef = useRef<TradeAlertWithProfile[]>([]);
 
-  // 🔒 Anti-flicker: hydrate once, then never show skeleton again
-  const hasHydratedRef = useRef(false);
+  // 🔒 Anti-flicker: Always render immediately, no hydration blocking
+  const hasHydratedRef = useRef(true);
   
   // 🔒 DEDUPLICATION: Prevent duplicate TP/SL processing
   const processingSignalsRef = useRef<Set<string>>(new Set());
@@ -186,11 +186,6 @@ export default function SignalStream() {
     }, 1000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
-  useEffect(() => {
-    if (!hasHydratedRef.current && (allAlerts.length > 0 || connectionStatus === 'connected' || lastUpdated)) {
-      hasHydratedRef.current = true;
-    }
-  }, [allAlerts.length, connectionStatus, lastUpdated]);
 
   // ============================================
   // STEP 1 COMPLETE: Duplicate toast listener removed and consolidated

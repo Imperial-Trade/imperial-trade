@@ -400,6 +400,7 @@ const InAppNotificationSystem = () => {
           authorName: data.author_name,
           eventKey: data.event_key,
           priority,
+          timestamp: new Date(eventTime),
         });
       })
       .subscribe();
@@ -414,6 +415,7 @@ const InAppNotificationSystem = () => {
         assetName: '',
         authorName: 'Educator',
         priority: 'high',
+        timestamp: new Date(),
       });
     };
 

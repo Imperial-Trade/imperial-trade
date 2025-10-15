@@ -1279,7 +1279,10 @@ export default function SignalStream() {
             (window as any).addNotification({
               type: 'tp_hit',
               title: `🎯 TP${highestTP} Hit!`,
-              message: `${alert.assetName} reached Take Profit ${highestTP}`
+              message: `${alert.assetName} reached Take Profit ${highestTP}`,
+              signalId: alert.id,
+              assetName: alert.assetName,
+              timestamp: new Date(),
             });
           }
         }
@@ -1345,7 +1348,10 @@ export default function SignalStream() {
           (window as any).addNotification({
             type: 'stop_loss',
             title: `🚨 Stop Loss Hit!`,
-            message: `${alert.assetName} trade closed at stop loss`
+            message: `${alert.assetName} trade closed at stop loss`,
+            signalId: alert.id,
+            assetName: alert.assetName,
+            timestamp: new Date(),
           });
         }
       }
@@ -1379,7 +1385,10 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'trade_activated',
           title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
+          message: `${alert.assetName} ${alert.tradeType} is now active`,
+          signalId: alert.id,
+          assetName: alert.assetName,
+          timestamp: new Date(),
         });
       }
     } catch (err) {

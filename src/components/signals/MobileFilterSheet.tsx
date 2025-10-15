@@ -1,3 +1,4 @@
+import React from "react";
 import { 
   Drawer,
   DrawerContent,
@@ -103,7 +104,11 @@ export function MobileFilterSheet({
           currentValue === option.value && "bg-primary/10 border-l-4 border-primary"
         )}
       >
-        {option.icon && <span className="w-5 h-5 flex items-center justify-center">{option.icon}</span>}
+        {option.icon && (
+          <span className="w-5 h-5 flex items-center justify-center">
+            {React.createElement(option.icon, { className: "w-5 h-5" })}
+          </span>
+        )}
         <span className="flex-1 text-left font-medium">{option.label}</span>
         {currentValue === option.value && <Check className="w-5 h-5 text-primary" />}
       </button>

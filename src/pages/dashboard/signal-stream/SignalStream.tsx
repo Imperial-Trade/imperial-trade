@@ -508,11 +508,25 @@ export default function SignalStream() {
   useEffect(() => {
     const alreadyClosedIds = new Set(staticClosedAlerts.map(a => a.id));
     
-    const newlyClosedSignals = allAlerts.filter(signal => 
-      signal.status === 'closed' && 
-      !alreadyClosedIds.has(signal.id) &&
-      !excludedSignalIds.has(signal.id)
-    );
+    const now = Date.now();
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+    const newlyClosedSignals = allAlerts.filter(signal => {
+      if (signal.status !== 'closed') return false;
+      if (alreadyClosedIds.has(signal.id)) return false;
+      if (excludedSignalIds.has(signal.id)) return false;
+      
+      // ✅ NEW: Only treat as "new" if closed within last 5 minutes
+      const closedTime = new Date(signal.updatedAt).getTime();
+      const ageMs = now - closedTime;
+      
+      if (ageMs > FIVE_MINUTES_MS) {
+        console.log(`⏭️ [OLD CLOSURE] Skipping toast for ${signal.assetName} (closed ${Math.round(ageMs / 60000)}m ago)`);
+        return false;
+      }
+      
+      return true;
+    });
 
     if (newlyClosedSignals.length > 0) {
       console.log(`✅ [State Change] ${newlyClosedSignals.length} signal(s) closed - moving to closed alerts`);

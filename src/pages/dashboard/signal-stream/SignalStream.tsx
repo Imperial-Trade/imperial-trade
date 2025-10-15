@@ -1463,47 +1463,59 @@ export default function SignalStream() {
               {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
               <div className="flex items-center gap-3">
                 {/* ✅ FIX #6: Force Refresh Button */}
-                <Button
-                  onClick={() => {
-                    console.log('🔄 [Manual] Force refresh triggered by user');
-                    refreshAlerts(true);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span className="hidden sm:inline">Force Refresh</span>
-                </Button>
+                {isDevToolsEnabled() && (
+                  <Button
+                    onClick={() => {
+                      console.log('🔄 [Manual] Force refresh triggered by user');
+                      refreshAlerts(true);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span className="hidden sm:inline">Force Refresh</span>
+                  </Button>
+                )}
                 
-                {connectionStatus === 'connected' && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-green-500 font-medium">Live</span>
-                  </div>
-                )}
-                {connectionStatus === 'connecting' && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-yellow-500 font-medium">Connecting...</span>
-                  </div>
-                )}
-                {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="text-xs text-red-500 font-medium">Connection Issue</span>
-                    </div>
-                    <Button
-                      onClick={() => refreshAlerts(true)}
-                      size="sm"
-                      variant="outline"
-                      className="border-yellow-500/20 hover:bg-yellow-500/10"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh Now
-                    </Button>
-                  </div>
+                {isDevToolsEnabled() && (
+                  <>
+                    {connectionStatus === 'connected' && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-green-500 font-medium">Live</span>
+                      </div>
+                    )}
+                    {connectionStatus === 'connecting' && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-yellow-500 font-medium">Connecting...</span>
+                      </div>
+                    )}
+                    {connectionStatus === 'polling-fallback' && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-blue-500 font-medium">Live (Polling)</span>
+                      </div>
+                    )}
+                    {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-xs text-red-500 font-medium">Connection Issue</span>
+                        </div>
+                        <Button
+                          onClick={() => refreshAlerts(true)}
+                          size="sm"
+                          variant="outline"
+                          className="border-yellow-500/20 hover:bg-yellow-500/10"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Refresh Now
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1528,27 +1540,29 @@ export default function SignalStream() {
                 <div className="flex-1">
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
-                <PriceRefreshButton symbols={symbols} className="shrink-0" />
-                <Button
-                  onClick={handleManualSync}
-                  disabled={isSyncing}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 shrink-0"
-                  title="Force refresh all signals from database"
-                >
-                  {isSyncing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Syncing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      <span>Force Sync</span>
-                    </>
-                  )}
-                </Button>
+                {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
+                {isDevToolsEnabled() && (
+                  <Button
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 shrink-0"
+                    title="Force refresh all signals from database"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Syncing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Force Sync</span>
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">

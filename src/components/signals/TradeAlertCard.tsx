@@ -313,7 +313,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${isClosed ? 'opacity-75' : ''} ${className || ''}`}
+      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${className || ''}`}
       style={{
         background: colors.bg.glass,
         backdropFilter: 'blur(20px) saturate(120%)',
@@ -323,16 +323,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       }}
       data-testid={testId}
     >
-      {/* Glowing top indicator for closed trades */}
-      {isClosed && (
-        <div className={`h-1 w-full ${
-          alert.close_reason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        }`} />
-      )}
 
       <div className="p-5">
         {/* Creator Name (standalone, prominent) */}
@@ -366,17 +356,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <div
               className="text-xs px-2.5 py-1 rounded-md font-semibold uppercase tracking-wide whitespace-nowrap"
               style={{
-                background: isPending 
-                  ? colors.semantic.success 
-                  : isClosed 
-                    ? colors.semantic.danger 
-                    : colors.semantic.success,
-                color: isPending 
-                  ? colors.text.success
-                  : isClosed 
-                    ? colors.text.danger
-                    : colors.text.success,
-                border: `1px solid ${isPending ? colors.border.success : isClosed ? colors.border.danger : colors.border.success}`,
+                background: colors.semantic.success,
+                color: colors.text.success,
+                border: `1px solid ${colors.border.success}`,
               }}
             >
               {alert.status === 'active' && (alert.trade_type.includes('buy') ? 'BUY' : 'SELL')}

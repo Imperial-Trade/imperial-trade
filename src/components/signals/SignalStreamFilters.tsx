@@ -171,25 +171,13 @@ export function SignalStreamFilters({
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
               placeholder="Search"
-              className="h-9 pl-9 pr-9 text-sm rounded-xl border transition-all duration-200"
+              className="h-9 pl-9 pr-3 text-sm rounded-xl border transition-all duration-200"
               style={{
                 background: colors.bg.surface,
                 borderColor: colors.border.default,
                 color: colors.text.primary,
               }}
             />
-            {filters.search && (
-              <button
-                onClick={(e) => handleClearFilterClick(e, 'search')}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full flex items-center justify-center"
-                style={{
-                  background: colors.state.danger,
-                  color: colors.accent.danger,
-                }}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
           </div>
           
           {/* Status Filter Icon */}
@@ -304,7 +292,7 @@ export function SignalStreamFilters({
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
                 placeholder="Search"
-                className="h-10 pl-10 pr-10 text-sm rounded-xl border transition-all duration-200"
+                className="h-10 pl-10 pr-3 text-sm rounded-xl border transition-all duration-200"
                 style={{
                   background: colors.bg.surface,
                   borderColor: colors.border.default,
@@ -317,18 +305,6 @@ export function SignalStreamFilters({
                   e.currentTarget.style.borderColor = colors.border.default;
                 }}
               />
-              
-              {filters.search && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'search')}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
             </div>
           </div>
 

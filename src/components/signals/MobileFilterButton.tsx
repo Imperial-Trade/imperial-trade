@@ -21,8 +21,8 @@ export function MobileFilterButton({
         "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200",
         "border backdrop-blur-sm",
         isActive
-          ? "bg-primary/10 border-primary/50 text-primary shadow-sm"
-          : "bg-background/60 border-border/40 text-muted-foreground hover:bg-accent/50 hover:border-border/60"
+          ? "bg-primary/5 border-primary/50 text-primary shadow-sm"
+          : "bg-transparent border-border/40 text-muted-foreground hover:bg-accent/20 hover:border-border/60"
       )}
     >
       {icon}

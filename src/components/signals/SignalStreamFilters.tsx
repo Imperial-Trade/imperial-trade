@@ -169,7 +169,7 @@ export function SignalStreamFilters({
                 <Input
                   value={filters.search}
                   onChange={(e) => updateFilter('search', e.target.value)}
-                  className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60"
+                  className="h-10 pl-10 pr-10 text-sm bg-transparent backdrop-blur-sm border-border/60"
                 />
                 
                 {filters.search && (

@@ -16,6 +16,7 @@ interface UseSignalRealtimeReturn {
   getSignalById: (signalId: string) => TradeAlertWithProfile | undefined;
   lastUpdatePayload: any | null;
   optimisticallyUpdateSignal: (signalId: string, updates: any) => void;
+  optimisticallyAddSignal: (newSignal: TradeAlertWithProfile) => void;
 }
 
 export const useSignalRealtime = (userId: string, showAllSignals: boolean = false): UseSignalRealtimeReturn => {
@@ -130,6 +131,30 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     lastUpdated,
     lastUpdatePayload,
     optimisticallyUpdateSignal: context.optimisticallyUpdateSignal,
+    optimisticallyAddSignal: (newSignal: TradeAlertWithProfile) => {
+      // Transform TradeAlertWithProfile to Signal format for context
+      const signal: any = {
+        id: newSignal.id,
+        asset_name: newSignal.assetName,
+        tradermade_symbol: newSignal.tradermadeSymbol,
+        direction: newSignal.tradeType === 'buy' || newSignal.tradeType === 'buy_limit' ? 'BUY' : 'SELL',
+        entry_price: newSignal.entryPrice,
+        stop_loss: newSignal.stopLoss,
+        take_profit_1: newSignal.tp1,
+        take_profit_2: newSignal.tp2,
+        take_profit_3: newSignal.tp3,
+        take_profit_4: newSignal.tp4,
+        take_profit_5: newSignal.tp5,
+        tp_hits: newSignal.tpHits || [],
+        status: newSignal.status,
+        notes: newSignal.notes,
+        user_id: newSignal.userId,
+        created_at: newSignal.createdAt,
+        updated_at: newSignal.updatedAt,
+        creator: newSignal.creator
+      };
+      context.optimisticallyAddSignal(signal);
+    },
     getSignalById: (signalId: string) => {
       const signal = getSignalById(signalId);
       if (!signal) return undefined;

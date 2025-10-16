@@ -140,7 +140,8 @@ export default function SignalStream() {
     updateAlert,
     refreshAlerts,
     lastUpdatePayload,
-    optimisticallyUpdateSignal
+    optimisticallyUpdateSignal,
+    optimisticallyAddSignal
   } = useSignalRealtime(user?.id || '', true);
 
   // Manual sync handler
@@ -1277,7 +1278,7 @@ export default function SignalStream() {
   }, []); // Only run cleanup on unmount
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
-    if (!user?.id) {
+    if (!user?.id || !profile) {
       toast({
         title: "Authentication Error",
         description: "You must be logged in to create educational patterns.",
@@ -1300,14 +1301,56 @@ export default function SignalStream() {
         tp5: data.tp5,
         notes: data.notes
       };
-      const result = await createAlert(createDto);
-      if (result) {
+
+      const result = await tradingApiService.createAlert(createDto, user.id);
+      
+      if (result.success && result.data) {
+        // ✅ OPTIMISTIC UPDATE: Transform response to Signal format
+        const newSignal: any = {
+          id: result.data.id,
+          asset_name: result.data.assetName,
+          tradermade_symbol: result.data.tradermadeSymbol,
+          direction: result.data.tradeType === 'buy' || result.data.tradeType === 'buy_limit' ? 'BUY' : 'SELL',
+          entry_price: result.data.entryPrice,
+          stop_loss: result.data.stopLoss,
+          take_profit_1: result.data.tp1,
+          take_profit_2: result.data.tp2,
+          take_profit_3: result.data.tp3,
+          take_profit_4: result.data.tp4,
+          take_profit_5: result.data.tp5,
+          tp_hits: result.data.tpHits || [],
+          status: result.data.status,
+          notes: result.data.notes,
+          user_id: result.data.userId,
+          created_at: result.data.createdAt,
+          updated_at: result.data.updatedAt,
+          creator: {
+            id: profile.id,
+            display_name: profile.display_name ?? 'You',
+            role: profile.role ?? 'user',
+            user_type: profile.user_type,
+            access_level: profile.access_level
+          }
+        };
+
+        // ✅ Add signal optimistically via Context (pass as TradeAlertWithProfile)
+        optimisticallyAddSignal({
+          ...result.data,
+          creator: {
+            id: profile.id,
+            display_name: profile.display_name ?? 'You',
+            role: profile.role ?? 'user',
+            user_type: profile.user_type,
+            access_level: profile.access_level
+          }
+        } as TradeAlertWithProfile);
+
         toast({
-          title: "🚀 Educational Pattern Created!",
+          title: "⚡ Signal Created Instantly!",
           description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`
         });
+        
         setShowCreateModal(false);
-        // Refresh alerts will happen automatically via the query
       } else {
         throw new Error('Failed to create educational pattern');
       }

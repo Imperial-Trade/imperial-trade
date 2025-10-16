@@ -9,7 +9,7 @@ import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 // ✅ FIX #5: Optimized cache TTL for real-time trading
-const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for near-instant updates
+const LOCAL_CACHE_TTL = 1 * 1000; // 1 second for near-instant updates
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
 
 // Module-level educator cache
@@ -61,6 +61,7 @@ interface SignalRealtimeContextType {
   getSignalById: (signalId: string) => Signal | undefined;
   lastUpdatePayload: any | null;
   optimisticallyUpdateSignal: (signalId: string, updates: Partial<Signal>) => void;
+  optimisticallyAddSignal: (newSignal: Signal) => void;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | undefined>(undefined);
@@ -660,6 +661,35 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     );
   }, []);
 
+  // ✅ FIX: Optimistically add new signals to state instantly (for CREATE operations)
+  const optimisticallyAddSignal = useCallback((newSignal: Signal) => {
+    console.log(`⚡ [Optimistic Add] Adding signal instantly: ${newSignal.id.substring(0, 8)}`, {
+      asset: newSignal.asset_name,
+      status: newSignal.status,
+      tradeType: newSignal.direction
+    });
+    
+    setSignals(prevSignals => {
+      // Prevent duplicates (if real-time INSERT already arrived)
+      if (prevSignals.some(s => s.id === newSignal.id)) {
+        console.log('⚠️ [Optimistic Add] Signal already exists in state (real-time beat optimistic update)');
+        return prevSignals;
+      }
+      
+      // Add to top of list (newest first)
+      const newSignals = [newSignal, ...prevSignals];
+      console.log(`✅ [Optimistic Add] Signal added - Total signals: ${newSignals.length}`);
+      
+      // Invalidate cache to ensure next fetch is fresh
+      localCacheRef.current.expiry = 0;
+      
+      // Also update cache data
+      localCacheRef.current.data = newSignals;
+      
+      return newSignals;
+    });
+  }, []);
+
   // ✅ FIX #4: Clear cache on mount + setup subscription
   useEffect(() => {
     if (mountOnlyRef.current) {
@@ -713,7 +743,8 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     unsubscribe,
     getSignalById,
     lastUpdatePayload: lastUpdatePayloadRef.current,
-    optimisticallyUpdateSignal
+    optimisticallyUpdateSignal,
+    optimisticallyAddSignal
   };
 
   return (

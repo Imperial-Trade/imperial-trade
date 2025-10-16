@@ -374,8 +374,8 @@ export function SignalStreamFilters({
                     border: `1px solid ${colors.border.active}`,
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-2 text-yellow-400" />
-                  <span className="text-sm font-bold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">Create Alert</span>
+                  <Plus className="w-4 h-4 mr-2 text-blue-500" />
+                  <span className="text-sm font-bold text-white">Create Alert</span>
                 </button>
               )}
             </div>

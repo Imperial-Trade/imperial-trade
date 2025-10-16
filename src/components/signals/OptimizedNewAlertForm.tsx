@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 import { useToast } from '@/hooks/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
@@ -39,6 +40,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { refreshPrice } = useOptimizedWebSocketPrices(); // 🔥 For manual cache-busting
+  const { colors } = useSignalTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<typeof ALLOWED_ASSETS[0] | null>(null);
   const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
@@ -732,20 +734,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           >
             Cancel
           </Button>
-          <Button
+          <button
             type="submit"
             disabled={isSubmitting}
-            className="px-3 h-8 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg hover:scale-[1.02] shadow-sm hover:shadow-md disabled:opacity-50"
+            className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 disabled:opacity-50"
+            style={{
+              background: colors.state.ctaGradient,
+              backdropFilter: 'blur(20px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+              border: `1px solid ${colors.border.active}`,
+            }}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-3 h-3 mr-2 animate-spin bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent" />
-                <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Creating...</span>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
+                <span className="text-sm font-bold text-white">Creating...</span>
               </>
             ) : (
-              <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Post Signal</span>
+              <span className="text-sm font-bold text-white">Post Signal</span>
             )}
-          </Button>
+          </button>
         </div>
       </form>
     </div>

@@ -489,7 +489,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+          <p className="text-xs text-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
         )}
       </div>
 

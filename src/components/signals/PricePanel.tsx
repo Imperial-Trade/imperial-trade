@@ -68,8 +68,9 @@ const StaticLevelsBlock = memo<{
   tp4?: number;
   tp5?: number;
   tpHitsKey: string;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
-}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, closeReason }) => {
+}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason }) => {
   const isBuy = tradeType.includes('buy');
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
   const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
@@ -91,7 +92,8 @@ const StaticLevelsBlock = memo<{
       />
       {takeProfits.map((tp, index) => {
         const tpLevel = index + 1;
-        const isHit = hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`;
+        // Don't show TPs as hit for pending orders - they haven't been activated yet
+        const isHit = status !== 'pending' && (hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`);
         return (
           <PriceRow 
             key={index} 
@@ -152,6 +154,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
           tp4={tp4}
           tp5={tp5}
           tpHitsKey={tpHitsKey}
+          status={status}
           closeReason={closeReason}
         />
       </div>
@@ -171,6 +174,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
         tp4={tp4}
         tp5={tp5}
         tpHitsKey={tpHitsKey}
+        status={status}
         closeReason={closeReason}
       />
     </div>

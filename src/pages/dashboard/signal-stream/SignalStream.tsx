@@ -526,7 +526,6 @@ export default function SignalStream() {
             signalCount
           };
         })
-        .filter(e => e.signalCount > 0)
         .sort((a, b) => a.name.localeCompare(b.name));
         
         setAllEducatorsWithSignals(educatorsList);
@@ -708,16 +707,12 @@ export default function SignalStream() {
       };
     }
 
-    // Get current educator IDs (only show signals from current educators)
-    const educatorIds = new Set(allEducatorsWithSignals.map(e => e.id));
-    
     // Combine active and closed alerts
     const allDisplayAlerts = [...allAlerts, ...staticClosedAlerts];
     
-    // Filter by educator status (only current educators)
-    let filtered = allDisplayAlerts.filter(alert => 
-      educatorIds.has(alert.userId || alert.creator?.id || '')
-    );
+    // SignalRealtimeContext already filters signals by educators via RLS
+    // No need to filter again here (was causing race condition)
+    let filtered = allDisplayAlerts;
     
     // Apply search filter
     if (filters.search) {
@@ -788,7 +783,7 @@ export default function SignalStream() {
       closed: closedFilteredLimited,
       closedTotal: totalClosedFiltered
     };
-  }, [allAlerts, staticClosedAlerts, allEducatorsWithSignals, filters, excludedSignalIds]);
+  }, [allAlerts, staticClosedAlerts, filters, excludedSignalIds]);
 
   // ✅ Track rendered IDs to prevent mid-render duplicates (rrweb race condition fix)
   const renderedIdsRef = useRef<Set<string>>(new Set());

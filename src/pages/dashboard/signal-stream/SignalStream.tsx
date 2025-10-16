@@ -746,35 +746,42 @@ export default function SignalStream() {
       );
     }
     
-    // Sort by newest first (updatedAt for closed, createdAt for active)
-    const sortedFiltered = filtered.sort((a, b) => {
-      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
-      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
-      return bDate - aDate; // Descending order (newest first)
-    });
-    
-    // Split into active and closed
-    const activeFiltered = sortedFiltered.filter(a => 
+    // ✅ FIX: Split FIRST, then sort separately
+    const activeFiltered = filtered.filter(a => 
       ['active', 'pending', 'partially_profited'].includes(a.status)
     );
-    const closedFiltered = sortedFiltered.filter(a => a.status === 'closed');
+    const closedFiltered = filtered.filter(a => a.status === 'closed');
+    
+    // Sort active alerts by creation time (newest first) - prevents jumping
+    const sortedActive = activeFiltered.sort((a, b) => {
+      const aDate = new Date(a.createdAt).getTime();
+      const bDate = new Date(b.createdAt).getTime();
+      return bDate - aDate; // Descending: newest created first
+    });
+    
+    // Sort closed alerts by update time (newest closed first)
+    const sortedClosed = closedFiltered.sort((a, b) => {
+      const aDate = new Date(a.updatedAt).getTime();
+      const bDate = new Date(b.updatedAt).getTime();
+      return bDate - aDate; // Descending: newest closed first
+    });
     
     // ✅ Store total count before applying UI limit
-    const totalClosedFiltered = closedFiltered.length;
+    const totalClosedFiltered = sortedClosed.length;
     
     // ✅ Apply UI limit of 12 for closed alerts display only
-    const closedFilteredLimited = closedFiltered.slice(0, 12);
+    const closedFilteredLimited = sortedClosed.slice(0, 12);
     
     console.log('🔍 Filter results:', {
       total: filtered.length,
-      active: activeFiltered.length,
+      active: sortedActive.length,
       closed: totalClosedFiltered,
       closedDisplayed: closedFilteredLimited.length,
       filters
     });
     
     return {
-      active: activeFiltered,
+      active: sortedActive,
       closed: closedFilteredLimited,
       closedTotal: totalClosedFiltered
     };
@@ -986,7 +993,10 @@ export default function SignalStream() {
                 }
               : { tpHits: updatedTPHits };
             
-            // Apply optimistic update
+            // ✅ INSTANT: Optimistically update UI before API call
+            optimisticallyUpdateSignal(signal.id, updateData);
+            
+            // Then update backend (non-blocking)
             updateAlert(signal.id, updateData);
             
             // ✅ ALWAYS show individual TP notification only

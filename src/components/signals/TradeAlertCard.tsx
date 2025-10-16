@@ -372,7 +372,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <>
               <button
                 onClick={handleCopyPanelToggle}
-                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
                   background: showCopyPanel ? colors.state.active : colors.bg.surface,
                   border: `1px solid ${colors.border.default}`,
@@ -381,14 +381,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 aria-label="Copy signal"
                 data-prevent-widget-open="true"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3 h-3" />
               </button>
               
               <SignalSharingModal 
                 signal={tradeSignal}
                 trigger={
                   <button
-                    className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                    className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                     style={{
                       background: colors.bg.surface,
                       border: `1px solid ${colors.border.default}`,
@@ -396,7 +396,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                     }}
                     aria-label="Share signal"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
+                    <Share2 className="w-3 h-3" />
                   </button>
                 }
               />
@@ -404,7 +404,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               {(alert.status === 'active' || alert.status === 'pending') && (
                 <button
                   onClick={handleCalculatorToggle}
-                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                  className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                   style={{
                     background: showCalculator ? colors.semantic.success : colors.bg.surface,
                     border: `1px solid ${colors.border.default}`,
@@ -412,7 +412,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   }}
                   aria-label="Calculator"
                 >
-                  <Calculator className="w-3.5 h-3.5" />
+                  <Calculator className="w-3 h-3" />
                 </button>
               )}
             </>

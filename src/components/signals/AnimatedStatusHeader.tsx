@@ -98,7 +98,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
           </div>
         </div>
         {actionIcons && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {actionIcons}
           </div>
         )}

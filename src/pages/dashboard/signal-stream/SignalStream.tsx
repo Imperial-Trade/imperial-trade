@@ -746,11 +746,24 @@ export default function SignalStream() {
       );
     }
     
-    // ✅ FIX: Split FIRST, then sort separately
-    const activeFiltered = filtered.filter(a => 
-      ['active', 'pending', 'partially_profited'].includes(a.status)
-    );
+    // ✅ FIX: Split FIRST with deduplication to prevent duplicate keys during transitions
     const closedFiltered = filtered.filter(a => a.status === 'closed');
+    const closedIds = new Set(closedFiltered.map(a => a.id));
+    
+    // Only include in active if NOT in closed (prevents duplicates during realtime transitions)
+    const activeFiltered = filtered.filter(a => 
+      ['active', 'pending', 'partially_profited'].includes(a.status) && !closedIds.has(a.id)
+    );
+    
+    // Debug logging to verify deduplication
+    if (closedIds.size > 0) {
+      console.log('🔍 Deduplication check:', {
+        closedCount: closedFiltered.length,
+        activeBeforeDedup: filtered.filter(a => ['active', 'pending', 'partially_profited'].includes(a.status)).length,
+        activeAfterDedup: activeFiltered.length,
+        dedupedIds: Array.from(closedIds).slice(0, 3)
+      });
+    }
     
     // Sort active alerts by creation time (newest first) - prevents jumping
     const sortedActive = activeFiltered.sort((a, b) => {
@@ -1084,15 +1097,9 @@ export default function SignalStream() {
               if (error) {
                 console.error(`❌ Backend SL closure failed:`, error);
                 
-                // ROLLBACK: Revert optimistic update on failure
-                optimisticallyUpdateSignal(signal.id, { 
-                  status: 'active', 
-                  closeReason: null 
-                });
-                
                 toast({
                   title: '❌ SL Closure Failed',
-                  description: 'Could not confirm stop loss. Signal reverted to active.',
+                  description: 'Could not confirm stop loss. Please try closing manually.',
                   variant: 'destructive',
                 });
               }

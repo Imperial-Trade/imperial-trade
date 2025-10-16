@@ -71,9 +71,9 @@ const StaticLevelsBlock = memo<{
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
 }>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason }) => {
-  const isBuy = tradeType.includes('buy');
+  const isBuy = tradeType?.includes('buy') ?? false;
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
+  const hitTPs = (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (
     <div className="mt-2">
@@ -125,7 +125,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
     entry_price: entryPrice,
     stop_loss: stopLoss,
     tp1, tp2, tp3, tp4, tp5,
-    tp_hits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
+    tp_hits: (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
     status,
     close_reason: closeReason,
     created_date: new Date().toISOString(),

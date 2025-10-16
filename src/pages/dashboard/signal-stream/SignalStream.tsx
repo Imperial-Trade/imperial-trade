@@ -1333,17 +1333,35 @@ export default function SignalStream() {
           }
         };
 
-        // ✅ Add signal optimistically via Context (pass as TradeAlertWithProfile)
+        // ✅ Add signal optimistically via Context (transform camelCase to TradeAlertWithProfile format)
         optimisticallyAddSignal({
-          ...result.data,
+          id: result.data.id,
+          userId: result.data.userId,
+          assetName: result.data.assetName,
+          tradermadeSymbol: result.data.tradermadeSymbol,
+          tradeType: result.data.tradeType,
+          entryPrice: result.data.entryPrice,
+          stopLoss: result.data.stopLoss,
+          status: result.data.status,
+          tp1: result.data.tp1,
+          tp2: result.data.tp2,
+          tp3: result.data.tp3,
+          tp4: result.data.tp4,
+          tp5: result.data.tp5,
+          tpHits: result.data.tpHits || [],
+          notes: result.data.notes,
+          closeReason: result.data.closeReason,
+          createdAt: result.data.createdAt,
+          updatedAt: result.data.updatedAt,
           creator: {
             id: profile.id,
             display_name: profile.display_name ?? 'You',
             role: profile.role ?? 'user',
+            avatar_url: (profile as any).avatar_url,
             user_type: profile.user_type,
             access_level: profile.access_level
           }
-        } as TradeAlertWithProfile);
+        });
 
         toast({
           title: "⚡ Signal Created Instantly!",

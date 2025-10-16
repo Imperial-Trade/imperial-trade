@@ -755,16 +755,6 @@ export default function SignalStream() {
       ['active', 'pending', 'partially_profited'].includes(a.status) && !closedIds.has(a.id)
     );
     
-    // Debug logging to verify deduplication
-    if (closedIds.size > 0) {
-      console.log('🔍 Deduplication check:', {
-        closedCount: closedFiltered.length,
-        activeBeforeDedup: filtered.filter(a => ['active', 'pending', 'partially_profited'].includes(a.status)).length,
-        activeAfterDedup: activeFiltered.length,
-        dedupedIds: Array.from(closedIds).slice(0, 3)
-      });
-    }
-    
     // Sort active alerts by creation time (newest first) - prevents jumping
     const sortedActive = activeFiltered.sort((a, b) => {
       const aDate = new Date(a.createdAt).getTime();
@@ -799,6 +789,35 @@ export default function SignalStream() {
       closedTotal: totalClosedFiltered
     };
   }, [allAlerts, staticClosedAlerts, allEducatorsWithSignals, filters, excludedSignalIds]);
+
+  // ✅ Track rendered IDs to prevent mid-render duplicates (rrweb race condition fix)
+  const renderedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Update ref after each render completes (not during)
+    renderedIdsRef.current = new Set([
+      ...filteredSignals.active.map(a => a.id),
+      ...filteredSignals.closed.map(a => a.id)
+    ]);
+  });
+
+  // ✅ Render-safe filter: prevents duplicate keys even during React reconciliation
+  const getSafeRenderList = useCallback((
+    alerts: TradeAlertWithProfile[], 
+    listType: 'active' | 'closed'
+  ) => {
+    const seenIds = new Set<string>();
+    
+    return alerts.filter(alert => {
+      // If we've already rendered this ID in THIS render cycle, skip it
+      if (seenIds.has(alert.id)) {
+        console.warn(`🚫 Prevented duplicate render of ${alert.id} in ${listType} list`);
+        return false;
+      }
+      seenIds.add(alert.id);
+      return true;
+    });
+  }, []);
 
   // ✅ SIMPLIFIED: React to state changes directly (no events, no tiers, no DB fetches)
   useEffect(() => {
@@ -1897,10 +1916,10 @@ export default function SignalStream() {
                       >
                         {filteredSignals.active.length}
                       </span>
-                     </h2>
-                      {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
-                        {filteredSignals.active.map(alert => <TradeAlertCard
-                            key={alert.id}
+                      </h2>
+                       {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
+                         {getSafeRenderList(filteredSignals.active, 'active').map(alert => <TradeAlertCard
+                             key={alert.id}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,
@@ -1965,10 +1984,10 @@ export default function SignalStream() {
                             <div className="h-24 w-full rounded" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
                           </div>
                         ))}
-                      </div>
-                    ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
-                        {filteredSignals.closed.map(alert => <TradeAlertCard
-                            key={alert.id}
+                       </div>
+                     ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
+                         {getSafeRenderList(filteredSignals.closed, 'closed').map(alert => <TradeAlertCard
+                             key={alert.id}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,

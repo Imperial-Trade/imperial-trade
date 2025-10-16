@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationPromptContextType {
   hasSeenNotificationPrompt: boolean;
-  markNotificationPromptAsSeen: () => void;
+  markNotificationPromptAsSeen: () => Promise<void>;
   resetNotificationPromptForNewSession: () => void;
   shouldShowNotificationPrompt: boolean;
   setShouldShowNotificationPrompt: (show: boolean) => void;
@@ -27,37 +28,59 @@ export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }>
   const [isSubscribedToPush, setIsSubscribedToPush] = useState(false);
 
   useEffect(() => {
-    if (user?.id) {
-      const promptKey = `imperial_notification_prompt_${user.id}`;
-      const subscriptionKey = `imperial_push_subscribed_${user.id}`;
-      const storedPromptValue = localStorage.getItem(promptKey);
-      const storedSubscriptionValue = localStorage.getItem(subscriptionKey);
+    if (!user?.id) {
+      setHasSeenNotificationPrompt(true);
+      setIsSubscribedToPush(false);
+      return;
+    }
+
+    // Check database first (source of truth)
+    const checkDatabaseSubscription = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('push_subscription_active, onesignal_player_id')
+        .eq('id', user.id)
+        .single();
       
-      // Check if user has subscribed to push notifications
-      const isSubscribed = storedSubscriptionValue === 'true';
-      setIsSubscribedToPush(isSubscribed);
-      
-      // Only mark as seen if user has actually subscribed
-      if (isSubscribed) {
+      if (error) {
+        console.error('Error checking push subscription:', error);
+        return;
+      }
+
+      if (data?.push_subscription_active) {
+        // User is subscribed in database - sync localStorage
+        const promptKey = `imperial_notification_prompt_${user.id}`;
+        const subscriptionKey = `imperial_push_subscribed_${user.id}`;
+        localStorage.setItem(subscriptionKey, 'true');
+        localStorage.setItem(promptKey, 'true');
+        setIsSubscribedToPush(true);
         setHasSeenNotificationPrompt(true);
       } else {
+        // Not subscribed in database, don't show prompt yet
+        setIsSubscribedToPush(false);
         setHasSeenNotificationPrompt(false);
       }
-    } else {
-      setHasSeenNotificationPrompt(true); // No user, don't show prompt
-      setIsSubscribedToPush(false);
-    }
+    };
+
+    checkDatabaseSubscription();
   }, [user?.id]);
 
-  const markNotificationPromptAsSeen = () => {
-    if (user?.id) {
+  const markNotificationPromptAsSeen = async () => {
+    if (!user?.id) return;
+    
+    // Verify database reflects subscription
+    const { data } = await supabase
+      .from('profiles')
+      .select('push_subscription_active')
+      .eq('id', user.id)
+      .single();
+    
+    // Only mark as seen if actually subscribed in database
+    if (data?.push_subscription_active) {
       const promptKey = `imperial_notification_prompt_${user.id}`;
       const subscriptionKey = `imperial_push_subscribed_${user.id}`;
-      
-      // Mark both prompt as seen and subscription as active
       localStorage.setItem(promptKey, 'true');
       localStorage.setItem(subscriptionKey, 'true');
-      
       setHasSeenNotificationPrompt(true);
       setIsSubscribedToPush(true);
       setShouldShowNotificationPrompt(false);

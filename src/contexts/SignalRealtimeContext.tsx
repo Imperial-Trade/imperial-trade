@@ -8,8 +8,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ FIX #5: Optimized cache TTL for real-time trading
-const LOCAL_CACHE_TTL = 1 * 1000; // 1 second for near-instant updates
+// ✅ FIX #5: Stable cache TTL to prevent race conditions
+const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for stable caching
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
 
 // Module-level educator cache
@@ -128,7 +128,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     };
   }, [signals]);
 
-  // Fetch educator user IDs with caching
+  // Fetch educator user IDs with caching (FIXED: No foreign key join)
   const fetchEducatorUserIds = useCallback(async (): Promise<string[]> => {
     const now = Date.now();
 
@@ -141,28 +141,23 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     console.log('🔄 Fetching fresh educator IDs from database...');
 
     try {
-      const { data, error } = await supabase
+      // ✅ CRITICAL FIX: Use separate queries instead of problematic join
+      const { data: educators, error } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          display_name,
-          user_type,
-          access_level,
-          user_roles!inner(role)
-        `)
-        .in('user_roles.role', ['educator', 'educator+', 'admin', 'moderator']);
+        .select('id, display_name, user_type, access_level, role')
+        .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
 
       if (error) {
         console.error('❌ Error fetching educator IDs:', error);
         return educatorUserIdsCache; // Return old cache on error
       }
 
-      const ids = data?.map(p => p.id) || [];
+      const ids = educators?.map(p => p.id) || [];
       
       // ✅ FIX #3: Detailed logging
       console.log('✅ Fetched educator profiles:', {
-        total: data?.length || 0,
-        educators: data?.map(p => ({
+        total: educators?.length || 0,
+        educators: educators?.map(p => ({
           id: p.id.substring(0, 8) + '...',
           name: p.display_name,
           type: p.user_type,

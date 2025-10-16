@@ -436,24 +436,13 @@ export default function SignalStream() {
     };
   }, [filters.educator, allAlerts, staticClosedAlerts, databaseCounts]);
   
-  const {
-    activeAlerts,
-    educatorOptions,
-    signalCounts
-  } = useMemo(() => {
-    const active = alerts
-      .filter(a => 
-        (a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited')
-        && !excludedSignalIds.has(a.id)
-      );
-
-    // ✅ CRITICAL: Use educator-specific counts instead of global database counts
+  // ✅ CRITICAL FIX: Separate educator metadata from active alerts data flow
+  const educatorMetadata = useMemo(() => {
     return {
-      activeAlerts: active,
       educatorOptions: allEducatorsWithSignals,
-      signalCounts: educatorSpecificCounts  // ✅ Changed from databaseCounts
+      signalCounts: educatorSpecificCounts
     };
-  }, [alerts, allEducatorsWithSignals, educatorSpecificCounts, excludedSignalIds]);
+  }, [allEducatorsWithSignals, educatorSpecificCounts]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {
@@ -785,6 +774,20 @@ export default function SignalStream() {
       closedTotal: totalClosedFiltered
     };
   }, [allAlerts, staticClosedAlerts, filters, excludedSignalIds]);
+
+  // ✅ DEBUG: Track signal flow through filter pipeline
+  useEffect(() => {
+    console.log('🔍 [Signal Flow Debug]', {
+      allAlerts: allAlerts.length,
+      staticClosed: staticClosedAlerts.length,
+      activeFiltered: filteredSignals.active.length,
+      closedFiltered: filteredSignals.closed.length,
+      excludedCount: excludedSignalIds.size,
+      filters: filters,
+      firstActiveId: filteredSignals.active[0]?.id?.substring(0, 8) || 'none',
+      activeStatuses: filteredSignals.active.slice(0, 3).map(a => `${a.assetName}:${a.status}`)
+    });
+  }, [allAlerts, staticClosedAlerts, filteredSignals, excludedSignalIds, filters]);
 
   // ✅ Track rendered IDs to prevent mid-render duplicates (rrweb race condition fix)
   const renderedIdsRef = useRef<Set<string>>(new Set());
@@ -1171,8 +1174,8 @@ export default function SignalStream() {
 
   // Check if we have pending limit orders for the monitor
   const hasPendingLimitOrders = useMemo(() => {
-    return activeAlerts.some(alert => alert.status === 'pending' && (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit'));
-  }, [activeAlerts]);
+    return filteredSignals.active.some(alert => alert.status === 'pending' && (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit'));
+  }, [filteredSignals.active]);
 
   // Throttled Order Monitor - only run for admin/educator users with pending limits
   const {
@@ -1192,7 +1195,7 @@ export default function SignalStream() {
     const symbolSet = new Set<string>();
 
     // Subscribe to symbols from both active AND pending alerts (normalized)
-    [...activeAlerts, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
+    [...filteredSignals.active, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
         symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
       }
@@ -1227,7 +1230,7 @@ export default function SignalStream() {
     }
     prevSymbolsRef.current = symbolList;
     return symbolList;
-  }, [activeAlerts, alerts]);
+  }, [filteredSignals.active, alerts]);
 
   // 🎯 CRITICAL: Register UI activity to enable price ingestor processing
   const {
@@ -1917,7 +1920,7 @@ export default function SignalStream() {
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
                 <div className="flex-1">
-                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
+                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && (

@@ -275,7 +275,12 @@ export function SignalStreamFilters({
   return (
     <>
       <Card 
-        className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
+        className="mb-6 rounded-2xl border border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
+        style={{
+          background: 'rgba(18, 18, 20, 0.95)',
+          backdropFilter: 'blur(20px) saturate(120%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        }}
         data-prevent-widget-open="true"
         onPointerDown={(e) => e.stopPropagation()}
         onPointerMove={(e) => e.stopPropagation()}

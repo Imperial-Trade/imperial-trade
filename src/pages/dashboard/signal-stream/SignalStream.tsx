@@ -993,10 +993,12 @@ export default function SignalStream() {
                 }
               : { tpHits: updatedTPHits };
             
-            // ✅ INSTANT: Optimistically update UI before API call
-            optimisticallyUpdateSignal(signal.id, updateData);
+            // ✅ Only optimistically update tpHits (visual feedback without list movement)
+            if (!allTPsHit) {
+              optimisticallyUpdateSignal(signal.id, { tpHits: updatedTPHits });
+            }
             
-            // Then update backend (non-blocking)
+            // Backend handles status change, realtime updates UI smoothly
             updateAlert(signal.id, updateData);
             
             // ✅ ALWAYS show individual TP notification only
@@ -1065,12 +1067,6 @@ export default function SignalStream() {
             // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
             processingSignalsRef.current.add(slKey);
             instantToastHandledRef.current.add(signal.id);
-
-            // ✅ CRITICAL FIX: Optimistically update local state DIRECTLY for instant card closure
-            optimisticallyUpdateSignal(signal.id, { 
-              status: 'closed', 
-              closeReason: 'stop_loss' 
-            });
 
             // Show Toast
             toast({ 
@@ -1897,7 +1893,7 @@ export default function SignalStream() {
                      </h2>
                       {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.active.map(alert => <TradeAlertCard
-                            key={`active-${alert.id}`}
+                            key={alert.id}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,
@@ -1965,7 +1961,7 @@ export default function SignalStream() {
                       </div>
                     ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.closed.map(alert => <TradeAlertCard
-                            key={`closed-${alert.id}`}
+                            key={alert.id}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,

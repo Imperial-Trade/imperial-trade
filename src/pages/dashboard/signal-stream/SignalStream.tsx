@@ -1686,6 +1686,18 @@ export default function SignalStream() {
         status: 'active'
       };
       const result = await updateAlert(alert.id, updateDto);
+      
+      // Dispatch event for toast notification
+      window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
+        detail: {
+          signalId: alert.id,
+          assetName: alert.assetName,
+          entryPrice: alert.entryPrice,
+          tradeType: alert.tradeType,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      
       if (result && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_activated',

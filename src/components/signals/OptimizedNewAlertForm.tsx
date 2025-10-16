@@ -500,7 +500,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
   return (
     <div className="bg-card rounded-lg border border-border">
-      <form onSubmit={handleSubmit} className="p-3 space-y-2">
+      <form onSubmit={handleSubmit} className="p-2 sm:p-3 space-y-2">
         {/* Asset Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Asset</label>
@@ -551,7 +551,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         )}
 
         {/* Trade Type and Entry Price - Side by Side */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Trade Type */}
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -620,7 +620,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             {/* Stop Loss */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-destructive">Stop Loss *</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input
                   type="number"
                   step="0.00001"
@@ -681,7 +681,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                       </Button>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input
                       type="number"
                       step="0.00001"

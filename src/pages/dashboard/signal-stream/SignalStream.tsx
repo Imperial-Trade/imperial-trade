@@ -2025,7 +2025,7 @@ export default function SignalStream() {
           
           {/* Create Signal Modal */}
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'rgba(28, 28, 30, 0.7)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <DialogContent className="max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-3 sm:p-6" style={{ background: 'rgba(28, 28, 30, 0.7)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <DialogHeader>
                 <DialogTitle style={{ color: '#FFFFFF' }}>Create Alert</DialogTitle>
                 <p className="text-sm" style={{ color: '#EBEBF5' }}>

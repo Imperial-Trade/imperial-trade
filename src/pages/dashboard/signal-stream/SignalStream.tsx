@@ -1943,7 +1943,7 @@ export default function SignalStream() {
                       </div>
                     ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.closed.map(alert => <TradeAlertCard
-                            key={`${alert.id}-${lastTimestampUpdate}`}
+                            key={alert.id}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,

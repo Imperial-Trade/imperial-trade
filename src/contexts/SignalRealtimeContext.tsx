@@ -142,8 +142,14 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, user_type, access_level')
-        .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator');
+        .select(`
+          id,
+          display_name,
+          user_type,
+          access_level,
+          user_roles!inner(role)
+        `)
+        .in('user_roles.role', ['educator', 'educator+', 'admin', 'moderator']);
 
       if (error) {
         console.error('❌ Error fetching educator IDs:', error);

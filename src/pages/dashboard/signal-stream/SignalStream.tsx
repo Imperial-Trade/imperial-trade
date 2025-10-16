@@ -50,7 +50,8 @@ export default function SignalStream() {
     search: '',
     status: 'all',
     tradeType: 'all',
-    educator: 'all'
+    educator: 'all',
+    selectedEducators: [] as string[]
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
@@ -354,7 +355,12 @@ export default function SignalStream() {
     if (filters.tradeType && filters.tradeType !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
-    if (filters.educator && filters.educator !== 'all') {
+    if (filters.selectedEducators && filters.selectedEducators.length > 0) {
+      filteredAlerts = filteredAlerts.filter(alert =>
+        filters.selectedEducators.includes(alert.userId || '') || 
+        filters.selectedEducators.includes(alert.creator?.id || '')
+      );
+    } else if (filters.educator && filters.educator !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
     return filteredAlerts;
@@ -392,6 +398,30 @@ export default function SignalStream() {
   // EDUCATOR-SPECIFIC COUNTS: Dynamically calculated based on selected educator
   // ============================================
   const educatorSpecificCounts = useMemo(() => {
+    // If multiple educators selected, calculate counts for all of them
+    if (filters.selectedEducators && filters.selectedEducators.length > 0) {
+      const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert =>
+        filters.selectedEducators.includes(alert.userId || '') ||
+        filters.selectedEducators.includes(alert.creator?.id || '')
+      );
+      
+      const activeCount = educatorAlerts.filter(a => 
+        ['active', 'pending', 'partially_profited'].includes(a.status)
+      ).length;
+      
+      const closedCount = educatorAlerts.filter(a => a.status === 'closed').length;
+      const buyCount = educatorAlerts.filter(a => a.tradeType.includes('buy')).length;
+      const sellCount = educatorAlerts.filter(a => a.tradeType.includes('sell')).length;
+      
+      return {
+        total: educatorAlerts.length,
+        active: activeCount,
+        closed: closedCount,
+        buy: buyCount,
+        sell: sellCount
+      };
+    }
+    
     // If no educator is selected, return global database counts
     if (!filters.educator) {
       return {
@@ -434,7 +464,7 @@ export default function SignalStream() {
       buy: buyCount,
       sell: sellCount
     };
-  }, [filters.educator, allAlerts, staticClosedAlerts, databaseCounts]);
+  }, [filters.educator, filters.selectedEducators, allAlerts, staticClosedAlerts, databaseCounts]);
   
   // ✅ CRITICAL FIX: Separate educator metadata from active alerts data flow
   const educatorMetadata = useMemo(() => {
@@ -724,8 +754,13 @@ export default function SignalStream() {
       filtered = filtered.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
     
-    // Apply educator filter
-    if (filters.educator && filters.educator !== 'all') {
+    // Apply educator filter - support multiple selected educators
+    if (filters.selectedEducators && filters.selectedEducators.length > 0) {
+      filtered = filtered.filter(alert => 
+        filters.selectedEducators.includes(alert.userId || '') || 
+        filters.selectedEducators.includes(alert.creator?.id || '')
+      );
+    } else if (filters.educator && filters.educator !== 'all') {
       filtered = filtered.filter(alert => 
         (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
       );

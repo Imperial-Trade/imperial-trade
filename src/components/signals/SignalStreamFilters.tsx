@@ -33,6 +33,7 @@ interface FilterState {
   status: string;
   tradeType: string;
   educator: string;
+  selectedEducators: string[]; // Array of selected educator IDs
 }
 
 interface SignalStreamFiltersProps {
@@ -71,7 +72,7 @@ export function SignalStreamFilters({
   };
 
   const clearAllFilters = () => {
-    onFiltersChange({ search: '', status: 'all', tradeType: 'all', educator: 'all' });
+    onFiltersChange({ search: '', status: 'all', tradeType: 'all', educator: 'all', selectedEducators: [] });
   };
 
   const hasActiveFilters = filters.search !== '' || 
@@ -265,6 +266,17 @@ export function SignalStreamFilters({
               setMobileSheetOpen(null);
             }}
             educatorOptions={educatorOptions}
+            selectedEducators={filters.selectedEducators || []}
+            onEducatorsChange={(educators) => {
+              onFiltersChange({ ...filters, selectedEducators: educators });
+              if (educators.length === 0) {
+                updateFilter('educator', 'all');
+              } else if (educators.length === educatorOptions.length) {
+                updateFilter('educator', 'all');
+              } else {
+                updateFilter('educator', educators[0] || 'all');
+              }
+            }}
           />
         )}
       </>
@@ -421,6 +433,17 @@ export function SignalStreamFilters({
             setMobileSheetOpen(null);
           }}
           educatorOptions={educatorOptions}
+          selectedEducators={filters.selectedEducators || []}
+          onEducatorsChange={(educators) => {
+            onFiltersChange({ ...filters, selectedEducators: educators });
+            if (educators.length === 0) {
+              updateFilter('educator', 'all');
+            } else if (educators.length === educatorOptions.length) {
+              updateFilter('educator', 'all');
+            } else {
+              updateFilter('educator', educators[0] || 'all');
+            }
+          }}
         />
       )}
     </>

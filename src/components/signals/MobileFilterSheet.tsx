@@ -18,6 +18,8 @@ interface MobileFilterSheetProps {
   onValueChange: (value: string) => void;
   options?: Array<{ value: string; label: string; icon?: any }>;
   educatorOptions?: Array<{ id: string; name: string }>;
+  selectedEducators?: string[];
+  onEducatorsChange?: (educators: string[]) => void;
 }
 
 export function MobileFilterSheet({
@@ -27,7 +29,9 @@ export function MobileFilterSheet({
   currentValue,
   onValueChange,
   options = [],
-  educatorOptions = []
+  educatorOptions = [],
+  selectedEducators = [],
+  onEducatorsChange
 }: MobileFilterSheetProps) {
   const { colors } = useSignalTheme();
   
@@ -54,19 +58,37 @@ export function MobileFilterSheet({
   };
 
   const renderOptions = () => {
-    if (type === 'educator' && educatorOptions.length > 0) {
+    if (type === 'educator' && educatorOptions.length > 0 && onEducatorsChange) {
+      const allEducatorIds = educatorOptions.map(e => e.id);
+      const isAllSelected = selectedEducators.length === allEducatorIds.length;
+      
+      const toggleAllEducators = () => {
+        if (isAllSelected) {
+          onEducatorsChange([]);
+        } else {
+          onEducatorsChange(allEducatorIds);
+        }
+      };
+      
+      const toggleEducator = (educatorId: string) => {
+        const isSelected = selectedEducators.includes(educatorId);
+        if (isSelected) {
+          onEducatorsChange(selectedEducators.filter(id => id !== educatorId));
+        } else {
+          onEducatorsChange([...selectedEducators, educatorId]);
+        }
+      };
+      
       return (
         <>
+          {/* All Educators Checkbox */}
           <button
-            onClick={() => {
-              onValueChange('all');
-              onClose();
-            }}
+            onClick={toggleAllEducators}
             className={cn(
               "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200",
-              currentValue !== 'all' && "hover:bg-white/5"
+              !isAllSelected && "hover:bg-white/5"
             )}
-            style={currentValue === 'all' ? {
+            style={isAllSelected ? {
               background: colors.state.active,
               borderLeft: `3px solid ${colors.accent.primary}`,
               paddingLeft: 'calc(1rem - 3px)',
@@ -74,38 +96,56 @@ export function MobileFilterSheet({
               background: 'transparent',
             }}
           >
-            <Users className="w-5 h-5" style={{ color: currentValue === 'all' ? colors.accent.primary : colors.text.tertiary }} />
-            <span className="flex-1 text-left font-medium" style={{ color: currentValue === 'all' ? colors.text.accent : colors.text.primary }}>
-              All Educators
-            </span>
-            {currentValue === 'all' && <Check className="w-5 h-5" style={{ color: colors.accent.primary }} />}
-          </button>
-          {educatorOptions.map((educator) => (
-            <button
-              key={educator.id}
-              onClick={() => {
-                onValueChange(educator.id);
-                onClose();
-              }}
-              className={cn(
-                "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200",
-                currentValue !== educator.id && "hover:bg-white/5"
-              )}
-              style={currentValue === educator.id ? {
-                background: colors.state.active,
-                borderLeft: `3px solid ${colors.accent.primary}`,
-                paddingLeft: 'calc(1rem - 3px)',
-              } : {
-                background: 'transparent',
+            <div 
+              className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all"
+              style={{
+                borderColor: isAllSelected ? colors.accent.primary : colors.border.default,
+                background: isAllSelected ? colors.accent.primary : 'transparent',
               }}
             >
-              <Users className="w-5 h-5" style={{ color: currentValue === educator.id ? colors.accent.primary : colors.text.tertiary }} />
-              <span className="flex-1 text-left font-medium" style={{ color: currentValue === educator.id ? colors.text.accent : colors.text.primary }}>
-                {educator.name}
-              </span>
-              {currentValue === educator.id && <Check className="w-5 h-5" style={{ color: colors.accent.primary }} />}
-            </button>
-          ))}
+              {isAllSelected && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <Users className="w-5 h-5" style={{ color: isAllSelected ? colors.accent.primary : colors.text.tertiary }} />
+            <span className="flex-1 text-left font-medium" style={{ color: isAllSelected ? colors.text.accent : colors.text.primary }}>
+              All Educators
+            </span>
+          </button>
+          
+          {/* Individual Educator Checkboxes */}
+          {educatorOptions.map((educator) => {
+            const isSelected = selectedEducators.includes(educator.id);
+            return (
+              <button
+                key={educator.id}
+                onClick={() => toggleEducator(educator.id)}
+                className={cn(
+                  "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200",
+                  !isSelected && "hover:bg-white/5"
+                )}
+                style={isSelected ? {
+                  background: colors.state.active,
+                  borderLeft: `3px solid ${colors.accent.primary}`,
+                  paddingLeft: 'calc(1rem - 3px)',
+                } : {
+                  background: 'transparent',
+                }}
+              >
+                <div 
+                  className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all"
+                  style={{
+                    borderColor: isSelected ? colors.accent.primary : colors.border.default,
+                    background: isSelected ? colors.accent.primary : 'transparent',
+                  }}
+                >
+                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                </div>
+                <Users className="w-5 h-5" style={{ color: isSelected ? colors.accent.primary : colors.text.tertiary }} />
+                <span className="flex-1 text-left font-medium" style={{ color: isSelected ? colors.text.accent : colors.text.primary }}>
+                  {educator.name}
+                </span>
+              </button>
+            );
+          })}
         </>
       );
     }

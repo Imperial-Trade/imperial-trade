@@ -368,58 +368,56 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           justAdded={justAdded}
           createdDate={alert.created_date}
           updatedDate={alert.updated_date}
-        />
-        
-        {/* Action Icons */}
-        <div className="flex items-center justify-end gap-2 mb-4">
-          {/* Action icons - Clean, minimal */}
-          <div className="flex items-center gap-1.5" data-prevent-widget-open="true">
-            <button
-              onClick={handleCopyPanelToggle}
-              className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
-              style={{
-                background: showCopyPanel ? colors.state.active : colors.bg.surface,
-                border: `1px solid ${colors.border.default}`,
-                color: showCopyPanel ? colors.text.accent : colors.text.secondary,
-              }}
-              aria-label="Copy signal"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-            
-            <SignalSharingModal 
-              signal={tradeSignal}
-              trigger={
-                <button
-                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
-                  style={{
-                    background: colors.bg.surface,
-                    border: `1px solid ${colors.border.default}`,
-                    color: colors.text.secondary,
-                  }}
-                  aria-label="Share signal"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-              }
-            />
-            
-            {(alert.status === 'active' || alert.status === 'pending') && (
+          actionIcons={
+            <>
               <button
-                onClick={handleCalculatorToggle}
-                className="h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                onClick={handleCopyPanelToggle}
+                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
                 style={{
-                  background: showCalculator ? colors.semantic.success : colors.bg.surface,
+                  background: showCopyPanel ? colors.state.active : colors.bg.surface,
                   border: `1px solid ${colors.border.default}`,
-                  color: showCalculator ? colors.text.success : colors.text.secondary,
+                  color: showCopyPanel ? colors.text.accent : colors.text.secondary,
                 }}
-                aria-label="Calculator"
+                aria-label="Copy signal"
+                data-prevent-widget-open="true"
               >
-                <Calculator className="w-4 h-4" />
+                <Copy className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
-        </div>
+              
+              <SignalSharingModal 
+                signal={tradeSignal}
+                trigger={
+                  <button
+                    className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                    style={{
+                      background: colors.bg.surface,
+                      border: `1px solid ${colors.border.default}`,
+                      color: colors.text.secondary,
+                    }}
+                    aria-label="Share signal"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                  </button>
+                }
+              />
+              
+              {(alert.status === 'active' || alert.status === 'pending') && (
+                <button
+                  onClick={handleCalculatorToggle}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                  style={{
+                    background: showCalculator ? colors.semantic.success : colors.bg.surface,
+                    border: `1px solid ${colors.border.default}`,
+                    color: showCalculator ? colors.text.success : colors.text.secondary,
+                  }}
+                  aria-label="Calculator"
+                >
+                  <Calculator className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
+          }
+        />
       </div>
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>

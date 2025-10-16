@@ -23,6 +23,8 @@ interface AnimatedStatusHeaderProps {
   justAdded?: boolean;
   createdDate: string;
   updatedDate?: string;
+  // Action icons
+  actionIcons?: React.ReactNode;
 }
 
 const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
@@ -36,7 +38,8 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   isRecentClosure,
   justAdded = false,
   createdDate,
-  updatedDate
+  updatedDate,
+  actionIcons
 }) => {
   const getRoleDisplay = (role: string) => {
     const roleLower = role.toLowerCase();
@@ -83,7 +86,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
       )}
 
       {/* Currency Pair and Status - Decoupled from price updates */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
             <h3 className="text-base font-bold">{assetName}</h3>
@@ -94,6 +97,11 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
             />
           </div>
         </div>
+        {actionIcons && (
+          <div className="flex items-center gap-1.5">
+            {actionIcons}
+          </div>
+        )}
       </div>
     </div>
   );

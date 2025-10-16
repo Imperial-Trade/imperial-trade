@@ -273,12 +273,13 @@ export function SignalStreamFilters({
 
   // Desktop Layout (>= 768px)
   return (
-    <Card 
-      className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
-      data-prevent-widget-open="true"
-      onPointerDown={(e) => e.stopPropagation()}
-      onPointerMove={(e) => e.stopPropagation()}
-    >
+    <>
+      <Card 
+        className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
+        data-prevent-widget-open="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerMove={(e) => e.stopPropagation()}
+      >
       <CardContent className="p-4 space-y-4">
         {/* Enhanced Uniform Layout */}
         <div className="flex flex-col lg:flex-row gap-4">
@@ -291,7 +292,7 @@ export function SignalStreamFilters({
               <Input
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                placeholder="Search"
+                placeholder="Search xeon alerts"
                 className="h-10 pl-10 pr-3 text-sm rounded-xl border transition-all duration-200"
                 style={{
                   background: colors.bg.surface,
@@ -308,94 +309,36 @@ export function SignalStreamFilters({
             </div>
           </div>
 
-          {/* Filters Section - Uniform grid layout */}
-          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch gap-3 lg:min-w-fit">
+          {/* Filters Section - Icon buttons matching mobile */}
+          <div className="flex items-center gap-3">
+            {/* Status Filter Icon */}
+            <MobileFilterButton
+              icon={<Filter className="w-4 h-4" />}
+              label="Status"
+              isActive={filters.status !== 'all' && filters.status !== ''}
+              onClick={() => setMobileSheetOpen('status')}
+            />
             
-            {/* Filter Controls - All same height */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
-              {/* Status Filter */}
-              <div className="min-w-0 sm:min-w-[140px]">
-                <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
-                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
-                    {statusOptions.map(option => {
-                      const Icon = option.icon;
-                      return (
-                        <SelectItem 
-                          key={option.value} 
-                          value={option.value}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" />
-                            <span>{option.label}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Trade Type Filter */}
-              <div className="min-w-0 sm:min-w-[140px]">
-                <Select value={filters.tradeType} onValueChange={(value) => updateFilter('tradeType', value)}>
-                  <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
-                    {tradeTypeOptions.map(option => {
-                      const Icon = option.icon;
-                      return (
-                        <SelectItem 
-                          key={option.value} 
-                          value={option.value}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" />
-                            <span>{option.label}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Educator Filter */}
-              {educatorOptions.length > 1 && (
-                <div className="min-w-0 sm:min-w-[140px]">
-                  <Select value={filters.educator} onValueChange={(value) => updateFilter('educator', value)}>
-                    <SelectTrigger className="w-full h-10 px-3 text-sm font-medium bg-transparent backdrop-blur-sm border border-border/60 rounded-lg hover:border-border transition-all duration-200 shadow-sm">
-                      <SelectValue placeholder="All Educators" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-transparent backdrop-blur-md border-border shadow-xl z-[100]">
-                      <SelectItem value="all" className="cursor-pointer hover:bg-accent focus:bg-accent">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          <span>All Educators</span>
-                        </div>
-                      </SelectItem>
-                      {educatorOptions.map(educator => (
-                        <SelectItem 
-                          key={educator.id} 
-                          value={educator.id}
-                          className="cursor-pointer hover:bg-accent focus:bg-accent"
-                        >
-                          {educator.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+            {/* Trade Type Filter Icon */}
+            <MobileFilterButton
+              icon={<TrendingUp className="w-4 h-4" />}
+              label="Type"
+              isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
+              onClick={() => setMobileSheetOpen('tradeType')}
+            />
             
-            {/* Action Buttons - Same height as filters */}
-            <div className="flex items-center gap-3 justify-end sm:justify-start">
+            {/* Educator Filter Icon */}
+            {educatorOptions.length > 1 && (
+              <MobileFilterButton
+                icon={<Users className="w-4 h-4" />}
+                label="Educator"
+                isActive={filters.educator !== 'all' && filters.educator !== ''}
+                onClick={() => setMobileSheetOpen('educator')}
+              />
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 ml-auto">
               {hasActiveFilters && (
                 <Button
                   type="button"
@@ -424,6 +367,46 @@ export function SignalStreamFilters({
         </div>
 
       </CardContent>
-    </Card>
+      </Card>
+      
+      {/* Desktop Filter Sheets */}
+      <MobileFilterSheet
+        type="status"
+        isOpen={mobileSheetOpen === 'status'}
+        onClose={() => setMobileSheetOpen(null)}
+        currentValue={filters.status}
+        onValueChange={(value) => {
+          updateFilter('status', value);
+          setMobileSheetOpen(null);
+        }}
+        options={statusOptions}
+      />
+
+      <MobileFilterSheet
+        type="tradeType"
+        isOpen={mobileSheetOpen === 'tradeType'}
+        onClose={() => setMobileSheetOpen(null)}
+        currentValue={filters.tradeType}
+        onValueChange={(value) => {
+          updateFilter('tradeType', value);
+          setMobileSheetOpen(null);
+        }}
+        options={tradeTypeOptions}
+      />
+
+      {educatorOptions.length > 1 && (
+        <MobileFilterSheet
+          type="educator"
+          isOpen={mobileSheetOpen === 'educator'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.educator}
+          onValueChange={(value) => {
+            updateFilter('educator', value);
+            setMobileSheetOpen(null);
+          }}
+          educatorOptions={educatorOptions}
+        />
+      )}
+    </>
   );
 }

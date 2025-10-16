@@ -1895,9 +1895,9 @@ export default function SignalStream() {
                         {filteredSignals.active.length}
                       </span>
                      </h2>
-                     {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
+                      {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.active.map(alert => <TradeAlertCard
-                            key={alert.id}
+                            key={`active-${alert.id}`}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,
@@ -1965,7 +1965,7 @@ export default function SignalStream() {
                       </div>
                     ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
                         {filteredSignals.closed.map(alert => <TradeAlertCard
-                            key={alert.id}
+                            key={`closed-${alert.id}`}
                             alert={{
                       ...alert,
                       asset_name: alert.assetName,

@@ -218,10 +218,14 @@ function App() {
                             path="signal-stream"
                             element={<SignalStreamOptimized />}
                           />
-                          <Route
-                            path="new-signal"
-                            element={<NewSignalPage />}
-                          />
+                  <Route
+                    path="new-signal"
+                    element={
+                      <ProtectedRoute requiredRoles={['admin', 'educator', 'educator+']}>
+                        <NewSignalPage />
+                      </ProtectedRoute>
+                    }
+                  />
             <Route
               path="advanced-tools"
               element={<AdvancedTools />}

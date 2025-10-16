@@ -345,27 +345,38 @@ export function SignalStreamFilters({
             {/* Action Buttons */}
             <div className="flex items-center gap-3 ml-auto">
               {hasActiveFilters && (
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={handleClearAllClick}
-                  className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm min-w-[100px]"
+                  className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 min-w-[100px]"
+                  style={{
+                    background: colors.bg.surface,
+                    backdropFilter: 'blur(20px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                    border: `1px solid ${colors.border.default}`,
+                    color: colors.text.secondary,
+                  }}
                 >
                   <X className="w-4 h-4 mr-2" />
-                  Clear All
-                </Button>
+                  <span className="text-sm font-medium">Clear All</span>
+                </button>
               )}
               
                {canCreateSignals && (
-                <Button 
+                <button
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
+                  className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 min-w-[120px]"
+                  style={{
+                    background: colors.state.ctaGradient,
+                    backdropFilter: 'blur(20px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                    border: `1px solid ${colors.border.active}`,
+                  }}
                 >
                   <Plus className="w-4 h-4 mr-2 text-yellow-400" />
-                  <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Create Alert</span>
-                </Button>
+                  <span className="text-sm font-bold bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">Create Alert</span>
+                </button>
               )}
             </div>
           </div>

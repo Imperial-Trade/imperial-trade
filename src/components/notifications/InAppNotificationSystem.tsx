@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,48 @@ const InAppNotificationSystem = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  
+  // 🔒 MOUNT TIME TRACKING: Filter out stale/replayed events
+  const componentMountTimeRef = useRef<number>(Date.now());
+  
+  // 🔒 UNMOUNT GUARD: Prevent processing broadcasts after unmount
+  const isMountedRef = useRef<boolean>(true);
+
+  // Setup and cleanup on mount/unmount
+  useEffect(() => {
+    isMountedRef.current = true; // ✅ Mark as mounted
+    const mountTime = Date.now();
+    componentMountTimeRef.current = mountTime;
+    console.log(`🎬 [InAppNotificationSystem] Mounted at ${new Date(mountTime).toISOString()}`);
+
+    // ✅ CORRECTED: Only clear OLD entries (>5 minutes), keep recent ones
+    if ((window as any).lastInAppNotifications) {
+      const now = Date.now();
+      const fiveMinutesAgo = now - (5 * 60 * 1000);
+      let clearedCount = 0;
+      let keptCount = 0;
+      
+      (window as any).lastInAppNotifications.forEach((timestamp: number, key: string) => {
+        if (timestamp < fiveMinutesAgo) {
+          (window as any).lastInAppNotifications.delete(key);
+          clearedCount++;
+        } else {
+          keptCount++;
+        }
+      });
+      
+      console.log(
+        `🧹 [InAppNotificationSystem] Cleaned ${clearedCount} old entries, ` +
+        `kept ${keptCount} recent entries`
+      );
+    }
+
+    return () => {
+      isMountedRef.current = false; // ✅ Mark as unmounted
+      // ✅ CORRECTED: Don't clear on unmount, let data persist for navigation
+      console.log('🎬 [InAppNotificationSystem] Component unmounting (keeping deduplication data)');
+    };
+  }, []);
 
   const playNotificationSound = useCallback((priority: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -75,19 +117,63 @@ const InAppNotificationSystem = () => {
 
   const addNotification = useCallback(
     (notification: Partial<SignalNotification>) => {
+      // ============================================
+      // ✅ FIX #3: Comprehensive Debug Logging
+      // ============================================
+      const notificationTimestamp = notification.timestamp?.getTime() || Date.now();
       const now = Date.now();
-      const cooldown = 3000; // 3 seconds cooldown to prevent spam
+      const ageSeconds = Math.round((now - notificationTimestamp) / 1000);
+      
+      console.log('🔔 [ADD NOTIFICATION CALLED]', {
+        type: notification.type,
+        title: notification.title,
+        signalId: notification.signalId,
+        assetName: notification.assetName,
+        timestamp: new Date(notificationTimestamp).toISOString(),
+        age_seconds: ageSeconds,
+        caller: new Error().stack?.split('\n')[2]?.trim() // Shows where it was called from
+      });
 
+      // ============================================
+      // ✅ FIX #2: Timestamp Age Guard (30-second limit)
+      // ============================================
+      if (ageSeconds > 30) {
+        console.log(
+          `⏭️ [NOTIFICATION BLOCKED] Rejecting stale event (${ageSeconds}s old): ` +
+          `"${notification.title}" - Signal: ${notification.assetName}`
+        );
+        return; // Block the notification completely
+      }
+
+      // ============================================
+      // ✅ EXISTING: Cooldown check (prevent rapid spam)
+      // ============================================
+      const cooldown = 3000; // 3 seconds cooldown to prevent spam
       if (now - lastNotificationTime < cooldown) {
-        console.warn("In-app notification suppressed due to cooldown.");
+        console.warn("⏭️ [COOLDOWN] In-app notification suppressed due to cooldown.");
         return;
       }
 
-      // Enhanced notification deduplication
-      const notificationKey = notification.eventKey || `${notification.signalId}:${notification.type}:${notification.title}`;
+      // ============================================
+      // ✅ EXISTING: More robust deduplication key
+      // ============================================
+      const notificationKey = notification.eventKey || 
+        `${notification.signalId}:${notification.type}:${notification.assetName}:${notificationTimestamp}`;
+
       const lastShownTime = (window as any).lastInAppNotifications?.get(notificationKey) || 0;
-      if (now - lastShownTime < 60000) { // 1 minute deduplication
-        console.warn("In-app notification suppressed due to deduplication:", notificationKey);
+
+      // ============================================
+      // ✅ EXISTING: Dynamic deduplication window
+      // ============================================
+      const deduplicationWindow = notification.type === 'all_tps_hit' 
+        ? 5000   // 5 seconds for "All TPs Hit" (catches rapid backend duplicates)
+        : 60000; // 60 seconds for other notifications
+
+      if (now - lastShownTime < deduplicationWindow) {
+        console.warn(
+          `⏭️ [DEDUP] In-app notification suppressed (duplicate within ${deduplicationWindow}ms):`,
+          notificationKey
+        );
         return;
       }
       
@@ -108,17 +194,21 @@ const InAppNotificationSystem = () => {
         type: notification.type || 'signal_updated',
         title: notification.title || 'Trading Alert',
         message: notification.message || '',
-        timestamp: new Date(),
+        timestamp: new Date(notificationTimestamp),
         signalId: notification.signalId || '',
         assetName: notification.assetName || '',
-        authorName: notification.authorName || 'Unknown Trader', // Changed from 'Imperial Trading'
+        authorName: notification.authorName || 'Unknown Trader',
         eventKey: notification.eventKey,
         deliveryChannel: 'in_app',
         priority: notification.priority || 'medium',
-        autoRemove: notification.autoRemove !== false, // Default to auto-remove
+        autoRemove: notification.autoRemove !== false,
       };
       
-      setNotifications((prev) => [enhancedNotification, ...prev.slice(0, 4)]); // Keep only 5 notifications max
+      setNotifications((prev) => {
+        const updated = [enhancedNotification, ...prev.slice(0, 4)];
+        console.log(`✅ [NOTIFICATION ADDED] Now showing ${updated.length} notification(s)`);
+        return updated;
+      });
       
       // Auto-remove based on priority
       const autoRemoveDelay = {
@@ -169,10 +259,75 @@ const InAppNotificationSystem = () => {
     const channel = supabase
       .channel('instant-alerts')
       .on('broadcast', { event: 'signal_notification' }, (payload) => {
+        // ✅ GUARD 0: Ignore if component is unmounted
+        if (!isMountedRef.current) {
+          console.log('⏭️ [UNMOUNTED] Ignoring broadcast received after unmount');
+          return;
+        }
+
         console.log('🚨 Received signal notification:', payload);
         
         const data = payload.payload;
         if (!data) return;
+
+        // ============================================
+        // ✅ GUARD 1: TIMESTAMP FILTERING (Enhanced)
+        // ============================================
+        const eventTimestamp = data.timestamp || data.created_at;
+
+        // Require valid timestamp
+        if (!eventTimestamp) {
+          console.warn('⚠️ [MISSING TIMESTAMP] Ignoring broadcast without timestamp:', {
+            notification_type: data.notification_type,
+            asset_name: data.asset_name
+          });
+          return;
+        }
+
+        const eventTime = new Date(eventTimestamp).getTime();
+
+        // Validate timestamp is valid
+        if (isNaN(eventTime)) {
+          console.warn('⚠️ [INVALID TIMESTAMP] Ignoring broadcast with invalid timestamp:', eventTimestamp);
+          return;
+        }
+
+        // Filter events older than component mount
+        if (eventTime < componentMountTimeRef.current) {
+          const ageSeconds = Math.round((componentMountTimeRef.current - eventTime) / 1000);
+          console.log(
+            `⏭️ [REPLAY PREVENTION] Ignoring pre-mount broadcast: ` +
+            `${data.notification_type} for ${data.asset_name} (${ageSeconds}s before mount)`
+          );
+          return;
+        }
+
+        // ✅ CRITICAL: Filter events older than 30 seconds (even if after mount)
+        const now = Date.now();
+        const ageMs = now - eventTime;
+        if (ageMs > 30000) {
+          console.log(
+            `⏭️ [TOO OLD] Ignoring broadcast older than 30s: ` +
+            `${data.notification_type} for ${data.asset_name} (${Math.round(ageMs / 1000)}s old)`
+          );
+          return;
+        }
+        
+        // ============================================
+        // ✅ GUARD 2: PAYLOAD VALIDATION (Prevents "undefined" glitches)
+        // ============================================
+        if (!data.asset_name || !data.notification_type) {
+          console.warn(
+            '⚠️ [INVALID BROADCAST] Ignoring event with missing required fields:',
+            {
+              asset_name: data.asset_name,
+              notification_type: data.notification_type,
+              has_signal_id: !!data.signal_id,
+              raw_data: data
+            }
+          );
+          return;
+        }
 
         // Map notification types to our enhanced system
         let type: SignalNotification['type'] = 'signal_updated';
@@ -245,6 +400,7 @@ const InAppNotificationSystem = () => {
           authorName: data.author_name,
           eventKey: data.event_key,
           priority,
+          timestamp: new Date(eventTime),
         });
       })
       .subscribe();
@@ -259,6 +415,7 @@ const InAppNotificationSystem = () => {
         assetName: '',
         authorName: 'Educator',
         priority: 'high',
+        timestamp: new Date(),
       });
     };
 

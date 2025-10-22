@@ -48,6 +48,9 @@ verify_jwt = false
 [functions.order-trigger-monitor]
 verify_jwt = false
 
+[functions.price-ingestor]
+verify_jwt = false
+
 [functions.admin-user-management]
 verify_jwt = true
 

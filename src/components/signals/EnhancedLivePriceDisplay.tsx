@@ -273,7 +273,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
 
 
   return (
-    <div className={`bg-card/50 border rounded-lg p-4 backdrop-blur-sm ${
+    <div className={`bg-card/50 border rounded-lg p-3 sm:p-4 backdrop-blur-sm ${
       debouncedConnectionStatus === 'connected' ? 'border-green-500/20 shadow-sm' : 
       debouncedConnectionStatus === 'error' ? 'border-red-500/20 shadow-sm' : 
       'border-border'
@@ -377,37 +377,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
             <Clock className="w-3 h-3" />
             <span>{dataAge}</span>
           </div>
-          
-          {/* 🚀 PHASE 3: Enhanced data source indicator with streaming badge */}
-          <div className={cn(
-            'flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded',
-            arrivalAgeSeconds < 3 ? 'text-green-400 bg-green-400/10' : 
-            arrivalAgeSeconds < 10 ? 'text-blue-400 bg-blue-400/10' : 
-            'text-orange-400 bg-orange-400/10'
-          )}>
-            <connectionStatusInfo.icon className="w-3 h-3" />
-            <span>
-              {arrivalAgeSeconds < 3 ? '🟢 Streaming' : arrivalAgeSeconds < 10 ? '🟡 Live' : '🔴 Stale'}
-              {arrivalAgeSeconds < 60 && arrivalAgeSeconds > 0 && ` (${arrivalAgeSeconds}s)`}
-            </span>
-          </div>
-          
-          {/* 🚀 ALWAYS ACTIVE: Visual confirmation of persistent connection */}
-          {connectionStatus === 'connected' && arrivalAgeSeconds < 10 && (
-            <div className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
-              <div 
-                key={heartbeatPulse} 
-                className="w-2 h-2 bg-green-400 rounded-full animate-pulse" 
-              />
-              <span>🟢 LIVE POLLING (500ms)</span>
-            </div>
-          )}
-          {connectionStatus === 'connected' && arrivalAgeSeconds >= 10 && (
-            <div className="flex items-center gap-1 text-[10px] text-yellow-400">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-              <span>🟡 POLLING (Delayed)</span>
-            </div>
-          )}
         </div>
         
         <div className="flex items-center gap-1">

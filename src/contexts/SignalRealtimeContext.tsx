@@ -8,8 +8,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ FIX #5: Optimized cache TTL for real-time trading
-const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for near-instant updates
+// ✅ FIX #5: Stable cache TTL to prevent race conditions
+const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for stable caching
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
 
 // Module-level educator cache
@@ -59,7 +59,9 @@ interface SignalRealtimeContextType {
   subscribe: () => void;
   unsubscribe: () => void;
   getSignalById: (signalId: string) => Signal | undefined;
-  lastUpdatePayload: any | null;  // ✅ TIER 0 FIX: Expose latest UPDATE payload for instant event listeners
+  lastUpdatePayload: any | null;
+  optimisticallyUpdateSignal: (signalId: string, updates: Partial<Signal>) => void;
+  optimisticallyAddSignal: (newSignal: Signal) => void;
 }
 
 const SignalRealtimeContext = createContext<SignalRealtimeContextType | undefined>(undefined);
@@ -126,7 +128,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     };
   }, [signals]);
 
-  // Fetch educator user IDs with caching
+  // Fetch educator user IDs with caching (FIXED: No foreign key join)
   const fetchEducatorUserIds = useCallback(async (): Promise<string[]> => {
     const now = Date.now();
 
@@ -139,22 +141,23 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     console.log('🔄 Fetching fresh educator IDs from database...');
 
     try {
-      const { data, error } = await supabase
+      // ✅ CRITICAL FIX: Use separate queries instead of problematic join
+      const { data: educators, error } = await supabase
         .from('profiles')
-        .select('id, display_name, user_type, access_level')
-        .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator');
+        .select('id, display_name, user_type, access_level, role')
+        .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
 
       if (error) {
         console.error('❌ Error fetching educator IDs:', error);
         return educatorUserIdsCache; // Return old cache on error
       }
 
-      const ids = data?.map(p => p.id) || [];
+      const ids = educators?.map(p => p.id) || [];
       
       // ✅ FIX #3: Detailed logging
       console.log('✅ Fetched educator profiles:', {
-        total: data?.length || 0,
-        educators: data?.map(p => ({
+        total: educators?.length || 0,
+        educators: educators?.map(p => ({
           id: p.id.substring(0, 8) + '...',
           name: p.display_name,
           type: p.user_type,
@@ -549,6 +552,12 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     console.log('🔌 Setting up real-time subscription...');
     setConnectionStatus('connecting');
 
+    // 🔧 DIAGNOSTIC: Add 10-second timeout fallback
+    const connectionTimeout = setTimeout(() => {
+      console.warn('⚠️ WebSocket connection timeout after 10s - falling back to polling mode');
+      setConnectionStatus('polling-fallback');
+    }, 10000);
+
     // Subscribe FIRST to catch all events
     const channel = supabase
       .channel('trade_alerts_instant_updates')
@@ -565,9 +574,15 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         }
       )
       .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
+        // 🔧 DIAGNOSTIC: Log all subscription statuses
+        console.log('📡 Subscription status:', status, {
+          timestamp: new Date().toISOString(),
+          channelName: 'trade_alerts_instant_updates',
+          isOnline: navigator.onLine
+        });
         
         if (status === 'SUBSCRIBED') {
+          clearTimeout(connectionTimeout);
           console.log('✅ Real-time subscription ACTIVE - all updates will be instant');
           setConnectionStatus('connected');
           
@@ -576,14 +591,25 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         }
         
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time subscription failed:', status);
+          clearTimeout(connectionTimeout);
+          console.error('❌ Real-time subscription failed:', status, {
+            reason: 'Possible causes: RLS policies, Supabase Realtime not enabled, network issue',
+            fallback: 'Switching to polling mode'
+          });
           setConnectionStatus('error');
+        }
+        
+        if (status === 'TIMED_OUT') {
+          clearTimeout(connectionTimeout);
+          console.warn('⏱️ Subscription timed out - falling back to polling');
+          setConnectionStatus('polling-fallback');
         }
       });
 
     channelRef.current = channel;
 
     return () => {
+      clearTimeout(connectionTimeout);
       console.log('🔌 Cleaning up real-time subscription...');
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
@@ -611,6 +637,53 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   const getSignalById = useCallback((signalId: string): Signal | undefined => {
     return signals.find(s => s.id === signalId);
   }, [signals]);
+
+  // ✅ Optimistic update function for instant local state updates
+  const optimisticallyUpdateSignal = useCallback((signalId: string, updates: Partial<Signal>) => {
+    console.log(`⚡ [Optimistic Update] Updating signal ${signalId.substring(0, 8)} locally`, updates);
+    
+    setSignals(prev => 
+      prev.map(signal => 
+        signal.id === signalId 
+          ? { ...signal, ...updates }
+          : signal
+      )
+    );
+    
+    // Also update cache to maintain consistency
+    localCacheRef.current.data = localCacheRef.current.data.map(signal =>
+      signal.id === signalId ? { ...signal, ...updates } : signal
+    );
+  }, []);
+
+  // ✅ FIX: Optimistically add new signals to state instantly (for CREATE operations)
+  const optimisticallyAddSignal = useCallback((newSignal: Signal) => {
+    console.log(`⚡ [Optimistic Add] Adding signal instantly: ${newSignal.id.substring(0, 8)}`, {
+      asset: newSignal.asset_name,
+      status: newSignal.status,
+      tradeType: newSignal.direction
+    });
+    
+    setSignals(prevSignals => {
+      // Prevent duplicates (if real-time INSERT already arrived)
+      if (prevSignals.some(s => s.id === newSignal.id)) {
+        console.log('⚠️ [Optimistic Add] Signal already exists in state (real-time beat optimistic update)');
+        return prevSignals;
+      }
+      
+      // Add to top of list (newest first)
+      const newSignals = [newSignal, ...prevSignals];
+      console.log(`✅ [Optimistic Add] Signal added - Total signals: ${newSignals.length}`);
+      
+      // Invalidate cache to ensure next fetch is fresh
+      localCacheRef.current.expiry = 0;
+      
+      // Also update cache data
+      localCacheRef.current.data = newSignals;
+      
+      return newSignals;
+    });
+  }, []);
 
   // ✅ FIX #4: Clear cache on mount + setup subscription
   useEffect(() => {
@@ -664,7 +737,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     subscribe,
     unsubscribe,
     getSignalById,
-    lastUpdatePayload: lastUpdatePayloadRef.current  // ✅ TIER 0 FIX: Expose latest UPDATE payload
+    lastUpdatePayload: lastUpdatePayloadRef.current,
+    optimisticallyUpdateSignal,
+    optimisticallyAddSignal
   };
 
   return (

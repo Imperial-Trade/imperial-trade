@@ -108,7 +108,7 @@
     --feature-red: 0 84% 60%;
     
     /* Light mode accent colors */
-    --accent-green: 142 76% 36%; /* Trading green for light mode */
+    --accent-green: 142 76% 28%; /* Darker trading green for light mode */
     --accent-blue: 210 100% 46%; /* Trading blue for light mode */
     --accent-gold: 43 84% 38%; /* Trading gold for light mode */
     --accent-red: 0 84% 60%; /* Trading red */
@@ -457,6 +457,15 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes meshFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(20px, 20px) scale(1.05);
   }
 }
 

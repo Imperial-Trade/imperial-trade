@@ -45,13 +45,14 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
         const activeText = `ACTIVE ${typeLabel.toUpperCase()}`;
-        const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
+        const tpBadgeColors = 'bg-transparent border text-[#00C805] border-[#00C805]';
+        const activeBadgeColors = isSellType ? 'bg-transparent border text-[#FF5252] border-[#FF5252]' : 'bg-transparent border text-[#00C805] border-[#00C805]';
         return (
             <div className="flex items-center gap-1.5">
-                <Badge variant="outline" className={`${badgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+                <Badge className={`${tpBadgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                     <Target className="w-2.5 h-2.5 mr-0.5" /> TP{highestTP} HIT
                 </Badge>
-                <Badge variant="outline" className={`${badgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+                <Badge className={`${activeBadgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                     {activeText}
                 </Badge>
             </div>
@@ -62,9 +63,9 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         const activeText = isLimitType ? 
             `ACTIVE ${friendlyType?.toUpperCase() || typeLabel.toUpperCase()}` : 
             `ACTIVE ${typeLabel.toUpperCase()}`;
-        const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
+        const badgeColors = isSellType ? 'bg-transparent border text-[#FF5252] border-[#FF5252]' : 'bg-transparent border text-[#00C805] border-[#00C805]';
         return (
-            <Badge variant="outline" className={`${badgeColors} text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+            <Badge className={`${badgeColors} text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
                 {activeText}
             </Badge>
         );
@@ -74,7 +75,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         // ✅ PRIORITY 1: Manual close takes highest priority
         if (closeReason === 'manual') {
             return (
-                <Badge className="bg-gray-600/30 text-gray-300 border-gray-500 shadow-lg shadow-gray-500/30 border-2 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-gray-500 border-gray-500 text-xs px-1.5 py-0.5">
                     <XCircle className="w-2.5 h-2.5 mr-0.5" />
                     MANUALLY CLOSED
                 </Badge>
@@ -84,18 +85,26 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         // ✅ PRIORITY 2: If ANY TPs hit, show highest TP (even if SL triggered after)
         if (hitTPs.length > 0) {
             const highestTP = Math.max(...hitTPs);
+            const tpBadgeColors = 'bg-transparent border text-[#00C805] border-[#00C805]';
+            const typeBadgeColors = isSellType ? 'bg-transparent border text-[#FF5252] border-[#FF5252]' : 'bg-transparent border text-[#00C805] border-[#00C805]';
+            
             return (
-                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2 text-xs px-1.5 py-0.5">
-                    <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
-                    TP{highestTP} HIT
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                    <Badge className={`${tpBadgeColors} whitespace-nowrap uppercase text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+                        <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
+                        TP{highestTP} HIT
+                    </Badge>
+                    <Badge className={`${typeBadgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`} style={{ willChange: 'transform', transform: 'translateZ(0)' }}>
+                        {typeLabel.toUpperCase()}
+                    </Badge>
+                </div>
             );
         }
         
         // ✅ PRIORITY 3: Stop loss ONLY if NO TPs were hit
         if (closeReason === 'stop_loss') {
             return (
-                <Badge className="bg-red-500/30 text-red-200 border-red-400 shadow-lg shadow-red-500/50 border-2 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-[#FF5252] border-[#FF5252] text-xs px-1.5 py-0.5">
                     <X className="w-2.5 h-2.5 mr-0.5" /> STOP LOSS HIT
                 </Badge>
             );
@@ -105,7 +114,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         if (closeReason && closeReason.startsWith('tp')) {
             const tpNumber = closeReason.replace('tp', '').replace('_hit', '');
             return (
-                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2 text-xs px-1.5 py-0.5">
+                <Badge className="bg-transparent border text-[#00C805] border-[#00C805] text-xs px-1.5 py-0.5">
                     <TrendingUp className="w-2.5 h-2.5 mr-0.5" />
                     TP{tpNumber} HIT
                 </Badge>
@@ -114,7 +123,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         
         // ✅ FALLBACK: Generic "CLOSED" badge
         return (
-            <Badge className="bg-gray-500/30 text-gray-200 border-gray-400 shadow-lg shadow-gray-500/50 border-2 text-xs px-1.5 py-0.5">
+            <Badge className="bg-transparent border text-gray-500 border-gray-500 text-xs px-1.5 py-0.5">
                 CLOSED
             </Badge>
         );

@@ -1,7 +1,7 @@
 import React, { useState, memo, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2 } from 'lucide-react';
+import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2, Crown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -20,6 +20,7 @@ import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceC
 import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 import { perfMonitor } from '@/utils/performanceMonitor';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -39,6 +40,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   creator,
   justAdded = false
 }) => {
+  const { colors } = useSignalTheme();
   // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
   const perfStartRef = useRef<number>(performance.now());
   const [showCopyPanel, setShowCopyPanel] = useState(false);
@@ -309,91 +311,113 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   // Get button text (only creator can close in stream)
   const getCloseButtonText = () => 'Close My Signal';
 
+  // Determine contextual styling based on close reason
+  const getCardBackgroundStyle = () => {
+    // All cards: Consistent dark glass background (always dark, regardless of theme)
+    return {
+      background: 'rgba(18, 18, 20, 0.95)',
+      backdropFilter: 'blur(20px) saturate(120%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+    };
+  };
+
+
   return (
     <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${className || ''}`}
+      style={{
+        ...getCardBackgroundStyle(),
+        borderColor: isClosed 
+          ? (alert.close_reason === 'stop_loss' 
+              ? 'rgba(255, 69, 58, 0.5)' 
+              : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+                ? 'rgba(0, 200, 5, 0.5)'
+                : 'rgba(160, 160, 160, 0.45)')
+          : colors.border.default,
+        borderWidth: '1px',
+        position: 'relative',
+      }}
       data-testid={testId}
     >
-      {/* Glowing top indicator for closed trades */}
+
+      {/* Prominent top color band for closed alerts */}
       {isClosed && (
-        <div className={`h-1 w-full ${
-          alert.close_reason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        }`} />
+        <div 
+          className="h-1.5 w-full relative z-10"
+          style={{
+            background: alert.close_reason === 'stop_loss'
+              ? 'linear-gradient(180deg, rgba(80, 0, 0, 0.95) 0%, rgba(50, 0, 0, 0.80) 100%)'
+              : (alert.close_reason === 'all_tps_hit' || alert.close_reason?.startsWith('tp') || hitTPs.length > 0)
+              ? 'linear-gradient(180deg, rgba(0, 50, 0, 0.95) 0%, rgba(0, 35, 0, 0.80) 100%)'
+              : 'linear-gradient(180deg, rgba(40, 40, 40, 0.95) 0%, rgba(25, 25, 25, 0.80) 100%)',
+          }}
+        />
       )}
 
-      <div className="p-3">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          {/* Use the new AnimatedStatusHeader component with primitive props */}
-          <div className="flex-1">
-            <AnimatedStatusHeader 
-              creator={creator} 
-              assetName={alert.asset_name}
-              status={alert.status}
-              tradeType={alert.trade_type}
-              closeReason={alert.close_reason}
-              highestTP={hitTPs.length ? Math.max(...hitTPs) : null}
-              hasTPHits={Boolean(hitTPs.length)}
-              isRecentClosure={isRecentClosure} 
-              justAdded={justAdded}
-              createdDate={alert.created_date}
-              updatedDate={alert.updated_date}
-            />
-          </div>
-        </div>
-
-        {/* Actions - moved to the right */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end mb-2" data-prevent-widget-open="true">
-          {/* Copy Button */}
-          <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+      <div className="p-5 relative z-10">
+        {/* Signal Header with Creator, Asset, Status */}
+        <AnimatedStatusHeader
+          creator={creator}
+          assetName={alert.asset_name}
+          status={alert.status}
+          tradeType={alert.trade_type}
+          closeReason={alert.close_reason}
+          highestTP={hitTPs.length > 0 ? Math.max(...hitTPs) : null}
+          hasTPHits={hitTPs.length > 0}
+          isRecentClosure={isRecentClosure}
+          justAdded={justAdded}
+          createdDate={alert.created_date}
+          updatedDate={alert.updated_date}
+          actionIcons={
+            <>
+              <button
                 onClick={handleCopyPanelToggle}
+                className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                style={{
+                  background: showCopyPanel ? colors.state.active : colors.bg.surface,
+                  border: `1px solid ${colors.border.default}`,
+                  color: showCopyPanel ? colors.text.accent : colors.text.secondary,
+                }}
+                aria-label="Copy signal"
+                data-prevent-widget-open="true"
               >
-                <Copy className="w-4 h-4 mr-1" />
-                {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-          
-          {/* Share Button */}
-          <SignalSharingModal 
-            signal={tradeSignal}
-            trigger={
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-              >
-                <Share2 className="w-4 h-4 mr-1" />
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            }
-          />
-          
-          {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
-          {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-            <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                <Copy className="w-3 h-3" />
+              </button>
+              
+              <SignalSharingModal 
+                signal={tradeSignal}
+                trigger={
+                  <button
+                    className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                    style={{
+                      background: colors.bg.surface,
+                      border: `1px solid ${colors.border.default}`,
+                      color: colors.text.secondary,
+                    }}
+                    aria-label="Share signal"
+                  >
+                    <Share2 className="w-3 h-3" />
+                  </button>
+                }
+              />
+              
+              {(alert.status === 'active' || alert.status === 'pending') && (
+                <button
                   onClick={handleCalculatorToggle}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                  style={{
+                    background: showCalculator ? colors.semantic.success : colors.bg.surface,
+                    border: `1px solid ${colors.border.default}`,
+                    color: showCalculator ? colors.text.success : colors.text.secondary,
+                  }}
+                  aria-label="Calculator"
                 >
-                  <Calculator className="w-4 h-4 mr-1" />
-                  {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </Button>
-              </CollapsibleTrigger>
-            </Collapsible>
-          )}
-        </div>
+                  <Calculator className="w-3 h-3" />
+                </button>
+              )}
+            </>
+          }
+        />
       </div>
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
@@ -465,7 +489,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+          <p className="text-xs text-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
         )}
       </div>
 

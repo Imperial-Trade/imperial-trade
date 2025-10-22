@@ -2,6 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { ArrowUp, ArrowDown, Target, XOctagon, Check } from 'lucide-react';
 import LivePriceWidget from './LivePriceWidget';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface PriceRowProps {
   label: string;
@@ -11,18 +12,28 @@ interface PriceRowProps {
   isHit?: boolean;
 }
 
-const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
-  <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
-    <div className="flex items-center space-x-2 text-muted-foreground">
-      <Icon className={`w-4 h-4 ${colorClass}`} />
-      <span>{label}</span>
-      {isHit && <Check className="w-4 h-4 text-accent-green" />}
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => {
+  const { colors, isDark } = useSignalTheme();
+  
+  return (
+    <div 
+      className="flex justify-between items-center text-sm py-4 last:border-b-0"
+      style={{
+        borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+        background: isHit ? colors.semantic.success : 'transparent',
+      }}
+    >
+      <div className="flex items-center space-x-3">
+        <Icon className={`w-5 h-5 ${colorClass}`} />
+        <span className="font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{label}</span>
+        {isHit && <Check className="w-4 h-4 text-accent-green" />}
+      </div>
+      <span className={`font-mono font-semibold ${isHit ? 'text-accent-green' : ''}`} style={{ color: isHit ? undefined : 'rgba(255, 255, 255, 0.95)' }}>
+        {value ? `$${value.toFixed(2)}` : '-'}
+      </span>
     </div>
-    <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
-      {value ? `$${value.toFixed(2)}` : '-'}
-    </span>
-  </div>
-);
+  );
+};
 
 // PHASE C: Minimal, stable primitive props for price panel
 interface PricePanelProps {
@@ -57,14 +68,15 @@ const StaticLevelsBlock = memo<{
   tp4?: number;
   tp5?: number;
   tpHitsKey: string;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
-}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, closeReason }) => {
-  const isBuy = tradeType.includes('buy');
+}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason }) => {
+  const isBuy = tradeType?.includes('buy') ?? false;
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
+  const hitTPs = (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
 
   return (
-    <div className="bg-muted/50 rounded-md p-2.5 mt-2">
+    <div className="mt-2">
       <PriceRow 
         label="Entry Price" 
         value={entryPrice} 
@@ -80,14 +92,15 @@ const StaticLevelsBlock = memo<{
       />
       {takeProfits.map((tp, index) => {
         const tpLevel = index + 1;
-        const isHit = hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`;
+        // Don't show TPs as hit for pending orders - they haven't been activated yet
+        const isHit = status !== 'pending' && (hitTPs.includes(tpLevel) || closeReason === `tp${tpLevel}`);
         return (
           <PriceRow 
             key={index} 
             label={`Take Profit ${tpLevel}`} 
             value={tp} 
             icon={Target} 
-            colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
+            colorClass={isHit ? "text-accent-green" : "text-muted-foreground"}
             isHit={isHit}
           />
         );
@@ -112,7 +125,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
     entry_price: entryPrice,
     stop_loss: stopLoss,
     tp1, tp2, tp3, tp4, tp5,
-    tp_hits: tpHitsKey ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
+    tp_hits: (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
     status,
     close_reason: closeReason,
     created_date: new Date().toISOString(),
@@ -141,6 +154,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
           tp4={tp4}
           tp5={tp5}
           tpHitsKey={tpHitsKey}
+          status={status}
           closeReason={closeReason}
         />
       </div>
@@ -160,6 +174,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
         tp4={tp4}
         tp5={tp5}
         tpHitsKey={tpHitsKey}
+        status={status}
         closeReason={closeReason}
       />
     </div>

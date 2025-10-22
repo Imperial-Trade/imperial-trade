@@ -1,9 +1,16 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Filter, 
@@ -15,12 +22,18 @@ import {
   Users,
   Plus
 } from 'lucide-react';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
+import { MobileFilterButton } from './MobileFilterButton';
+import { MobileFilterSheet } from './MobileFilterSheet';
+import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface FilterState {
   search: string;
   status: string;
   tradeType: string;
   educator: string;
+  selectedEducators: string[]; // Array of selected educator IDs
 }
 
 interface SignalStreamFiltersProps {
@@ -31,8 +44,8 @@ interface SignalStreamFiltersProps {
     total: number;
     active: number;
     closed: number;
-    buy: number;
-    sell: number;
+    buy: number;   // Combined buy + buy_limit
+    sell: number;  // Combined sell + sell_limit
   };
   canCreateSignals?: boolean;
   onCreateSignal?: () => void;
@@ -46,6 +59,10 @@ export function SignalStreamFilters({
   canCreateSignals,
   onCreateSignal
 }: SignalStreamFiltersProps) {
+  const { isMobile } = useDeviceDetection();
+  const { colors } = useSignalTheme();
+  const [mobileSheetOpen, setMobileSheetOpen] = useState<'status' | 'tradeType' | 'educator' | null>(null);
+
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -55,21 +72,28 @@ export function SignalStreamFilters({
   };
 
   const clearAllFilters = () => {
-    onFiltersChange({ search: '', status: '', tradeType: '', educator: '' });
+    onFiltersChange({ search: '', status: 'all', tradeType: 'all', educator: 'all', selectedEducators: [] });
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== '');
+  const hasActiveFilters = filters.search !== '' || 
+    (filters.status !== '' && filters.status !== 'all') ||
+    (filters.tradeType !== '' && filters.tradeType !== 'all') ||
+    (filters.educator !== '' && filters.educator !== 'all');
 
   const statusOptions = [
-    { value: '', label: 'All Status', count: signalCounts.total, icon: Filter },
-    { value: 'active', label: 'Active', count: signalCounts.active, icon: Clock },
-    { value: 'closed', label: 'Closed', count: signalCounts.closed, icon: CheckCircle }
+    { value: 'all', label: 'All Status', icon: Filter },
+    { value: 'active', label: 'Active', icon: Clock },
+    { value: 'closed', label: 'Closed', icon: CheckCircle }
   ];
 
   const tradeTypeOptions = [
-    { value: '', label: 'All Types', count: signalCounts.total, icon: Filter },
-    { value: 'buy', label: 'Buy Orders', count: signalCounts.buy, icon: TrendingUp },
-    { value: 'sell', label: 'Sell Orders', count: signalCounts.sell, icon: TrendingDown }
+    { 
+      value: 'all', 
+      label: 'All Types', 
+      icon: Filter 
+    },
+    { value: 'buy', label: 'Buy Orders', icon: TrendingUp },
+    { value: 'sell', label: 'Sell Orders', icon: TrendingDown }
   ];
 
   // Safely call native stopImmediatePropagation if available (TS-safe)
@@ -94,10 +118,12 @@ export function SignalStreamFilters({
     updateFilter('tradeType', tradeTypeValue);
   };
 
-  const handleCreateSignalClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    stopImmediate(e);
+  const handleCreateSignalClick = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      stopImmediate(e);
+    }
     if (onCreateSignal) {
       onCreateSignal();
     }
@@ -117,13 +143,160 @@ export function SignalStreamFilters({
     clearAllFilters();
   };
 
+  // Mobile Layout (< 768px)
+  if (isMobile) {
+    return (
+      <>
+        <div 
+          className="mb-4 p-3 rounded-2xl border"
+          style={{
+            background: colors.bg.glass,
+            backdropFilter: 'blur(30px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+            borderColor: colors.border.default,
+          }}
+          data-prevent-widget-open="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+        >
+          {/* SINGLE ROW: Search + Filter Icons + Create */}
+          <div className="flex items-center gap-2">
+            {/* Search (flex-1) */}
+            <div className="flex-1 relative min-w-0">
+                <Search 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" 
+                  style={{ color: colors.text.tertiary }}
+                />
+                
+            <Input
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              placeholder="Search"
+              className="h-9 pl-9 pr-3 text-sm rounded-xl border transition-all duration-200"
+              style={{
+                background: colors.bg.surface,
+                borderColor: colors.border.default,
+                color: colors.text.primary,
+              }}
+            />
+          </div>
+          
+          {/* Status Filter Icon */}
+          <MobileFilterButton
+            icon={<Filter className="w-4 h-4" />}
+            label="Status"
+            isActive={filters.status !== 'all' && filters.status !== ''}
+            onClick={() => setMobileSheetOpen('status')}
+          />
+          
+          {/* Trade Type Filter Icon */}
+          <MobileFilterButton
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Type"
+            isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
+            onClick={() => setMobileSheetOpen('tradeType')}
+          />
+          
+          {/* Educator Filter Icon */}
+          {educatorOptions.length > 1 && (
+            <MobileFilterButton
+              icon={<Users className="w-4 h-4" />}
+              label="Educator"
+              isActive={filters.educator !== 'all' && filters.educator !== ''}
+              onClick={() => setMobileSheetOpen('educator')}
+            />
+          )}
+          
+          {/* Create Signal Button */}
+          {canCreateSignals && (
+            <GlassmorphismCreateButton onClick={handleCreateSignalClick} />
+          )}
+          
+          {/* Clear All (icon only if active) */}
+          {hasActiveFilters && (
+            <button
+              onClick={handleClearAllClick}
+              className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200"
+              style={{
+                background: colors.state.danger,
+                border: `1px solid ${colors.border.danger}`,
+                color: colors.accent.danger,
+              }}
+              aria-label="Clear all filters"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        </div>
+
+        {/* Filter Sheets */}
+        <MobileFilterSheet
+          type="status"
+          isOpen={mobileSheetOpen === 'status'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.status}
+          onValueChange={(value) => {
+            updateFilter('status', value);
+            setMobileSheetOpen(null);
+          }}
+          options={statusOptions}
+        />
+
+        <MobileFilterSheet
+          type="tradeType"
+          isOpen={mobileSheetOpen === 'tradeType'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.tradeType}
+          onValueChange={(value) => {
+            updateFilter('tradeType', value);
+            setMobileSheetOpen(null);
+          }}
+          options={tradeTypeOptions}
+        />
+
+        {educatorOptions.length > 1 && (
+          <MobileFilterSheet
+            type="educator"
+            isOpen={mobileSheetOpen === 'educator'}
+            onClose={() => setMobileSheetOpen(null)}
+            currentValue={filters.educator}
+            onValueChange={(value) => {
+              updateFilter('educator', value);
+              setMobileSheetOpen(null);
+            }}
+            educatorOptions={educatorOptions}
+            selectedEducators={filters.selectedEducators || []}
+            onEducatorsChange={(educators) => {
+              onFiltersChange({ ...filters, selectedEducators: educators });
+              if (educators.length === 0) {
+                updateFilter('educator', 'all');
+              } else if (educators.length === educatorOptions.length) {
+                updateFilter('educator', 'all');
+              } else {
+                updateFilter('educator', educators[0] || 'all');
+              }
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Desktop Layout (>= 768px)
   return (
-    <Card 
-      className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
-      data-prevent-widget-open="true"
-      onPointerDown={(e) => e.stopPropagation()}
-      onPointerMove={(e) => e.stopPropagation()}
-    >
+    <>
+      <Card 
+        className="mb-6 rounded-2xl border border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
+        style={{
+          background: 'rgba(18, 18, 20, 0.95)',
+          backdropFilter: 'blur(20px) saturate(120%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+        }}
+        data-prevent-widget-open="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerMove={(e) => e.stopPropagation()}
+      >
       <CardContent className="p-4 space-y-4">
         {/* Enhanced Uniform Layout */}
         <div className="flex flex-col lg:flex-row gap-4">
@@ -131,155 +304,148 @@ export function SignalStreamFilters({
           {/* Search Section - Consistent sizing */}
           <div className="flex-1 min-w-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 pointer-events-none" />
-              
-              {/* Enhanced Gradient Placeholder */}
-              {!filters.search && (
-                <div className="absolute left-10 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm text-muted-foreground z-10">
-                  Search{' '}
-                  <span className="bg-gradient-to-r from-primary/80 via-accent to-primary bg-clip-text text-transparent font-medium">
-                    Xeon alerts
-                  </span>
-                  <span>...</span>
-                </div>
-              )}
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: colors.text.tertiary }} />
               
               <Input
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className="h-10 pl-10 pr-10 text-sm bg-background/60 backdrop-blur-sm border-border/60 focus:border-primary/70 hover:border-border transition-all duration-200 rounded-lg shadow-sm"
+                placeholder="Search xeon alerts"
+                className="h-10 pl-10 pr-3 text-sm rounded-xl border transition-all duration-200"
+                style={{
+                  background: colors.bg.surface,
+                  borderColor: colors.border.default,
+                  color: colors.text.primary,
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = colors.border.active;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = colors.border.default;
+                }}
               />
-              
-              {filters.search && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleClearFilterClick(e, 'search')}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors z-10 rounded-full"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Filters Section - Uniform grid layout */}
-          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch gap-3 lg:min-w-fit">
+          {/* Filters Section - Icon buttons matching mobile */}
+          <div className="flex items-center gap-3">
+            {/* Status Filter Icon */}
+            <MobileFilterButton
+              icon={<Filter className="w-4 h-4" />}
+              label="Status"
+              isActive={filters.status !== 'all' && filters.status !== ''}
+              onClick={() => setMobileSheetOpen('status')}
+            />
             
-            {/* Filter Controls - All same height */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-1 sm:flex-none">
-              {/* Status Filter */}
-              <div className="min-w-0 sm:min-w-[140px]">
-                <select
-                  value={filters.status}
-                  onChange={(e) => updateFilter('status', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                  style={{ 
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'none',
-                    appearance: 'none'
-                  }}
-                >
-                  {statusOptions.map(option => (
-                    <option 
-                      key={option.value} 
-                      value={option.value} 
-                      className="text-foreground bg-background"
-                    >
-                      {option.label} ({option.count})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Trade Type Filter */}
-              <div className="min-w-0 sm:min-w-[140px]">
-                <select
-                  value={filters.tradeType}
-                  onChange={(e) => updateFilter('tradeType', e.target.value)}
-                  className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                  style={{ 
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'none',
-                    appearance: 'none'
-                  }}
-                >
-                  {tradeTypeOptions.map(option => (
-                    <option 
-                      key={option.value} 
-                      value={option.value} 
-                      className="text-foreground bg-background"
-                    >
-                      {option.label} ({option.count})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Educator Filter */}
-              {educatorOptions.length > 1 && (
-                <div className="min-w-0 sm:min-w-[140px]">
-                  <select
-                    value={filters.educator}
-                    onChange={(e) => updateFilter('educator', e.target.value)}
-                    className="w-full h-10 px-3 text-sm font-medium text-foreground bg-background/80 backdrop-blur-sm border border-border/60 rounded-lg focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 hover:border-border transition-all duration-200 shadow-sm z-50"
-                    style={{ 
-                      WebkitAppearance: 'none',
-                      MozAppearance: 'none',
-                      appearance: 'none'
-                    }}
-                  >
-                    <option 
-                      value="" 
-                      className="text-foreground bg-background"
-                    >
-                      All Educators ({educatorOptions.length})
-                    </option>
-                    {educatorOptions.map(educator => (
-                      <option 
-                        key={educator.id} 
-                        value={educator.id} 
-                        className="text-foreground bg-background"
-                      >
-                        {educator.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            {/* Trade Type Filter Icon */}
+            <MobileFilterButton
+              icon={<TrendingUp className="w-4 h-4" />}
+              label="Type"
+              isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
+              onClick={() => setMobileSheetOpen('tradeType')}
+            />
             
-            {/* Action Buttons - Same height as filters */}
-            <div className="flex items-center gap-3 justify-end sm:justify-start">
+            {/* Educator Filter Icon */}
+            {educatorOptions.length > 1 && (
+              <MobileFilterButton
+                icon={<Users className="w-4 h-4" />}
+                label="Educator"
+                isActive={filters.educator !== 'all' && filters.educator !== ''}
+                onClick={() => setMobileSheetOpen('educator')}
+              />
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 ml-auto">
               {hasActiveFilters && (
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={handleClearAllClick}
-                  className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/5 transition-all duration-200 rounded-lg backdrop-blur-sm min-w-[100px]"
+                  className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 min-w-[100px]"
+                  style={{
+                    background: colors.bg.surface,
+                    backdropFilter: 'blur(20px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                    border: `1px solid ${colors.border.default}`,
+                    color: colors.text.secondary,
+                  }}
                 >
                   <X className="w-4 h-4 mr-2" />
-                  Clear All
-                </Button>
+                  <span className="text-sm font-medium">Clear All</span>
+                </button>
               )}
               
                {canCreateSignals && (
-                <Button 
+                <button
                   type="button"
                   onClick={handleCreateSignalClick}
-                  className="h-10 px-4 text-sm font-bold bg-black hover:bg-black/90 border border-yellow-400/30 hover:border-yellow-400/50 transition-all duration-300 rounded-lg min-w-[120px] hover:scale-[1.02] shadow-sm hover:shadow-md"
+                  className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 min-w-[120px]"
+                  style={{
+                    background: colors.state.ctaGradient,
+                    backdropFilter: 'blur(20px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                    border: `1px solid ${colors.border.active}`,
+                  }}
                 >
-                  <Plus className="w-4 h-4 mr-2 text-yellow-400" />
-                  <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent font-bold">Create Alert</span>
-                </Button>
+                  <Plus className="w-4 h-4 mr-2 text-blue-500" />
+                  <span className="text-sm font-bold text-white">Create Alert</span>
+                </button>
               )}
             </div>
           </div>
         </div>
 
       </CardContent>
-    </Card>
+      </Card>
+      
+      {/* Desktop Filter Sheets */}
+      <MobileFilterSheet
+        type="status"
+        isOpen={mobileSheetOpen === 'status'}
+        onClose={() => setMobileSheetOpen(null)}
+        currentValue={filters.status}
+        onValueChange={(value) => {
+          updateFilter('status', value);
+          setMobileSheetOpen(null);
+        }}
+        options={statusOptions}
+      />
+
+      <MobileFilterSheet
+        type="tradeType"
+        isOpen={mobileSheetOpen === 'tradeType'}
+        onClose={() => setMobileSheetOpen(null)}
+        currentValue={filters.tradeType}
+        onValueChange={(value) => {
+          updateFilter('tradeType', value);
+          setMobileSheetOpen(null);
+        }}
+        options={tradeTypeOptions}
+      />
+
+      {educatorOptions.length > 1 && (
+        <MobileFilterSheet
+          type="educator"
+          isOpen={mobileSheetOpen === 'educator'}
+          onClose={() => setMobileSheetOpen(null)}
+          currentValue={filters.educator}
+          onValueChange={(value) => {
+            updateFilter('educator', value);
+            setMobileSheetOpen(null);
+          }}
+          educatorOptions={educatorOptions}
+          selectedEducators={filters.selectedEducators || []}
+          onEducatorsChange={(educators) => {
+            onFiltersChange({ ...filters, selectedEducators: educators });
+            if (educators.length === 0) {
+              updateFilter('educator', 'all');
+            } else if (educators.length === educatorOptions.length) {
+              updateFilter('educator', 'all');
+            } else {
+              updateFilter('educator', educators[0] || 'all');
+            }
+          }}
+        />
+      )}
+    </>
   );
 }

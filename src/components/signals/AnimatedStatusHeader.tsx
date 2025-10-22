@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { User, Crown, GraduationCap } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
 
 interface Creator {
@@ -24,6 +23,8 @@ interface AnimatedStatusHeaderProps {
   justAdded?: boolean;
   createdDate: string;
   updatedDate?: string;
+  // Action icons
+  actionIcons?: React.ReactNode;
 }
 
 const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
@@ -37,28 +38,15 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   isRecentClosure,
   justAdded = false,
   createdDate,
-  updatedDate
+  updatedDate,
+  actionIcons
 }) => {
-  const getRoleIcon = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return <Crown className="w-4 h-4 text-accent-gold" />;
-      case 'educator':
-        return <GraduationCap className="w-4 h-4 text-accent-blue" />;
-      default:
-        return <User className="w-4 h-4 text-muted-foreground" />;
+  const getRoleDisplay = (role: string) => {
+    const roleLower = role.toLowerCase();
+    if (roleLower.includes('educator') && (roleLower.includes('plus') || roleLower.includes('+'))) {
+      return 'Educator+';
     }
-  };
-
-  const getRoleBadgeClass = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
-      case 'educator':
-        return 'bg-accent-blue/20 text-accent-blue border-accent-blue/30';
-      default:
-        return 'bg-muted/20 text-muted-foreground border-border/30';
-    }
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -76,37 +64,29 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
 
   return (
     <div className="mb-2">
-      {/* Glowing top indicator for closed trades - computed from primitives only */}
-      {status === 'closed' && (
-        <div className={`h-1 w-full mb-2 ${
-          closeReason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hasTPHits || closeReason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        }`} style={{ willChange: 'transform', transform: 'translateZ(0)' }} />
-      )}
-
       {/* Signal Creator Attribution */}
       {creator && (
         <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">
           <div className="flex items-center gap-1.5">
-            {getRoleIcon(creator.role)}
+            <Crown className="w-4 h-4 text-accent-gold" />
             <span className="text-sm font-semibold text-foreground">{creator.display_name}</span>
-            <Badge className={`text-xs ${getRoleBadgeClass(creator.role)}`}>
-              {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
-            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {getRoleDisplay(creator.role)}
+            </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <div className="text-xs text-muted-foreground">
-              {formatTimeAgo(createdDate)}
+              {status === 'closed' && updatedDate 
+                ? formatTimeAgo(updatedDate) 
+                : formatTimeAgo(createdDate)
+              }
             </div>
           </div>
         </div>
       )}
 
       {/* Currency Pair and Status - Decoupled from price updates */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
             <h3 className="text-base font-bold">{assetName}</h3>
@@ -117,6 +97,11 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
             />
           </div>
         </div>
+        {actionIcons && (
+          <div className="flex items-center gap-1">
+            {actionIcons}
+          </div>
+        )}
       </div>
     </div>
   );

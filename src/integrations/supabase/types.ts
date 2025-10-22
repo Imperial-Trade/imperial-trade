@@ -346,6 +346,13 @@ export type Database = {
             referencedRelation: "trade_alerts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "alert_monitoring_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_signals_with_tp_hits"
+            referencedColumns: ["id"]
+          },
         ]
       }
       alert_notifications: {
@@ -395,6 +402,13 @@ export type Database = {
             columns: ["signal_id"]
             isOneToOne: false
             referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_notifications_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_signals_with_tp_hits"
             referencedColumns: ["id"]
           },
         ]
@@ -1413,6 +1427,13 @@ export type Database = {
             columns: ["signal_id"]
             isOneToOne: false
             referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_audit_trail_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_signals_with_tp_hits"
             referencedColumns: ["id"]
           },
         ]
@@ -3881,6 +3902,13 @@ export type Database = {
             referencedRelation: "trade_alerts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "xeon_notification_log_trade_alert_id_fkey"
+            columns: ["trade_alert_id"]
+            isOneToOne: false
+            referencedRelation: "v_pending_signals_with_tp_hits"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -3899,6 +3927,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_pending_signals_with_tp_hits: {
+        Row: {
+          age: unknown | null
+          alert_message: string | null
+          asset_name: string | null
+          created_at: string | null
+          id: string | null
+          status: Database["public"]["Enums"]["trade_alert_status"] | null
+          tp_hit_count: number | null
+          tp_hits: number[] | null
+          trade_type: Database["public"]["Enums"]["trade_alert_type"] | null
+          tradermade_symbol: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          age?: never
+          alert_message?: never
+          asset_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          status?: Database["public"]["Enums"]["trade_alert_status"] | null
+          tp_hit_count?: never
+          tp_hits?: number[] | null
+          trade_type?: Database["public"]["Enums"]["trade_alert_type"] | null
+          tradermade_symbol?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          age?: never
+          alert_message?: never
+          asset_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          status?: Database["public"]["Enums"]["trade_alert_status"] | null
+          tp_hit_count?: never
+          tp_hits?: number[] | null
+          trade_type?: Database["public"]["Enums"]["trade_alert_type"] | null
+          tradermade_symbol?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       xeon_subscribers_public: {
         Row: {

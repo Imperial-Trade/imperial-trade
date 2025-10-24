@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface Alert {
   asset_name: string;
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-  entry_price: number;
-  stop_loss: number;
-  tp1?: number;
-  tp2?: number;
-  tp3?: number;
-  tp4?: number;
-  tp5?: number;
+  entry_price: number | null | undefined;
+  stop_loss: number | null | undefined;
+  tp1?: number | null;
+  tp2?: number | null;
+  tp3?: number | null;
+  tp4?: number | null;
+  tp5?: number | null;
 }
 
 interface QuickCopyPanelProps {
@@ -41,24 +41,36 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     { label: 'TP3', value: alert.tp3 },
     { label: 'TP4', value: alert.tp4 },
     { label: 'TP5', value: alert.tp5 }
-  ].filter(tp => tp.value !== undefined) as { label: string; value: number }[];
+  ].filter(tp => tp.value !== undefined && tp.value !== null && !isNaN(tp.value)) as { label: string; value: number }[];
 
-  const CopyButton = ({ value, label, variant = "outline" }: { value: number; label: string; variant?: "outline" | "default" | "destructive" | "secondary" | "ghost" }) => (
-    <Button
-      variant={variant}
-      size="sm"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(value.toString(), label); }}
-      className="flex items-center gap-2 h-8 text-xs"
-    >
-      {copiedItem === label ? (
-        <Check className="w-3 h-3 text-green-400" />
-      ) : (
-        <Copy className="w-3 h-3" />
-      )}
-      {value.toFixed(2)}
-      {copiedItem === label && <span className="text-green-400">Copied!</span>}
-    </Button>
-  );
+  const CopyButton = ({ value, label, variant = "outline" }: { value: number | null | undefined; label: string; variant?: "outline" | "default" | "destructive" | "secondary" | "ghost" }) => {
+    const isValidValue = value !== null && value !== undefined && !isNaN(value);
+    const displayValue = isValidValue ? value.toFixed(2) : 'N/A';
+    
+    return (
+      <Button
+        variant={variant}
+        size="sm"
+        onClick={(e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          if (isValidValue) {
+            copyToClipboard(value!.toString(), label);
+          }
+        }}
+        className="flex items-center gap-2 h-8 text-xs"
+        disabled={!isValidValue}
+      >
+        {copiedItem === label ? (
+          <Check className="w-3 h-3 text-green-400" />
+        ) : (
+          <Copy className="w-3 h-3" />
+        )}
+        {displayValue}
+        {copiedItem === label && <span className="text-green-400">Copied!</span>}
+      </Button>
+    );
+  };
 
   return (
     <Card data-prevent-widget-open="true" className="bg-gray-800/30 border-gray-700">
@@ -99,13 +111,19 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation();
-              copyToClipboard(
-                `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
-                'All Prices'
-              );
+            onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation();
+              if (alert.entry_price !== null && alert.entry_price !== undefined && alert.stop_loss !== null && alert.stop_loss !== undefined) {
+                const tpString = takeProfits.map((tp) => `\n${tp.label}: ${tp.value}`).join('');
+                copyToClipboard(
+                  `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${tpString}`,
+                  'All Prices'
+                );
+              }
             }}
             className="w-full h-8 text-xs"
+            disabled={!alert.entry_price || !alert.stop_loss}
           >
             {copiedItem === 'All Prices' ? (
               <>

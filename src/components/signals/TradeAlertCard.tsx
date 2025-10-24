@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Lock, Copy, ChevronDown, ChevronUp, Calculator, Share2, Pencil, Loader2, Crown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
+import { QuickCopyPanelErrorBoundary } from './QuickCopyPanelErrorBoundary';
 import LivePriceWidget from './LivePriceWidget';
 import { LivePriceWidgetPriority } from '@/components/ui/LivePriceWidgetPriority';
 import AnimatedStatusHeader from './AnimatedStatusHeader';
@@ -422,7 +423,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
         <CollapsibleContent className="px-3 pb-3" data-prevent-widget-open="true">
+          <QuickCopyPanelErrorBoundary>
             <QuickCopyPanel alert={alert} />
+          </QuickCopyPanelErrorBoundary>
         </CollapsibleContent>
       </Collapsible>
 

@@ -29,9 +29,10 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
-
 export default function SignalStream() {
-  const { colors } = useSignalTheme();
+  const {
+    colors
+  } = useSignalTheme();
   const {
     user,
     profile
@@ -60,7 +61,9 @@ export default function SignalStream() {
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
-  const { prices } = useOptimizedWebSocketPrices();
+  const {
+    prices
+  } = useOptimizedWebSocketPrices();
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -68,14 +71,18 @@ export default function SignalStream() {
 
   // 🔒 Anti-flicker: Always render immediately, no hydration blocking
   const hasHydratedRef = useRef(true);
-  
+
   // 🔒 DEDUPLICATION: Prevent duplicate TP/SL processing
   const processingSignalsRef = useRef<Set<string>>(new Set());
-  const processedHitsRef = useRef<Map<string, { timestamp: number, type: 'sl' | 'tp', level?: number }>>(new Map());
-  
+  const processedHitsRef = useRef<Map<string, {
+    timestamp: number;
+    type: 'sl' | 'tp';
+    level?: number;
+  }>>(new Map());
+
   // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
   const instantToastHandledRef = useRef<Set<string>>(new Set());
-  
+
   // 🔒 PERSISTENT TOAST TRACKING: Track "All Targets Hit" toasts shown across component remounts
   const SHOWN_ALL_TP_KEY = 'imperial-shown-all-tp-toasts';
   const getShownAllTPToasts = (): Set<string> => {
@@ -95,13 +102,13 @@ export default function SignalStream() {
       console.error('Failed to persist toast state:', err);
     }
   };
-  
+
   // 🔒 TIER 1: Backend Detection Tracking - Prevent frontend from re-processing backend-handled events
   const backendProcessedRef = useRef<Set<string>>(new Set());
-  
+
   // 🚀 TIER 2: Performance - Cache creator checks to prevent redundant computations
   const creatorCheckCache = useRef(new Map<string, boolean>());
-  
+
   // Check notification system initialization
   useEffect(() => {
     if (!(window as any).addNotification) {
@@ -111,13 +118,12 @@ export default function SignalStream() {
       console.log('✅ [SignalStream] Custom notification system initialized');
     }
   }, []);
-  
+
   // Clean up old processed hits every 30 seconds
   useEffect(() => {
     const cleanup = setInterval(() => {
       const now = Date.now();
       const entries = Array.from(processedHitsRef.current.entries());
-      
       entries.forEach(([key, value]) => {
         // Remove processed hits older than 60 seconds
         if (now - value.timestamp > 60000) {
@@ -126,7 +132,6 @@ export default function SignalStream() {
         }
       });
     }, 30000);
-    
     return () => clearInterval(cleanup);
   }, []);
 
@@ -149,12 +154,10 @@ export default function SignalStream() {
   const handleManualSync = useCallback(async () => {
     setIsSyncing(true);
     console.log('🔄 [Manual Sync] Triggered - refreshing all signals');
-    
     try {
       await refreshAlerts(true); // bypassThrottle = true
-      
+
       console.log('✅ [Manual Sync] Complete - all signals refreshed');
-      
       toast({
         title: '✅ Synced Successfully',
         description: 'All signals refreshed from database',
@@ -162,7 +165,6 @@ export default function SignalStream() {
       });
     } catch (error) {
       console.error('❌ [Manual Sync] Error:', error);
-      
       toast({
         title: '❌ Sync Failed',
         description: 'Failed to refresh signals. Please try again.',
@@ -173,7 +175,6 @@ export default function SignalStream() {
       setIsSyncing(false);
     }
   }, [refreshAlerts, toast]);
-
   console.log('🔍 DEBUG [SignalStream] Received allAlerts from hook:', {
     totalAlerts: allAlerts.length,
     realtimeLoading,
@@ -201,51 +202,52 @@ export default function SignalStream() {
   // ============================================
   useEffect(() => {
     const handleTPHit = (event: CustomEvent) => {
-      const { signalId, tpLevel, assetName } = event.detail;
-      
+      const {
+        signalId,
+        tpLevel,
+        assetName
+      } = event.detail;
       console.log('🎯 TP hit event received:', event.detail);
-      
+
       // 🔒 TIER 1: Mark as backend-processed
       const tpKey = `${signalId}-tp${tpLevel}`;
       backendProcessedRef.current.add(tpKey);
-      
+
       // Clear after 10 seconds
       setTimeout(() => {
         backendProcessedRef.current.delete(tpKey);
       }, 10000);
-      
       toast({
         title: `🎯 TP${tpLevel} Hit!`,
-        description: `${assetName} reached Take Profit ${tpLevel}`,
+        description: `${assetName} reached Take Profit ${tpLevel}`
       });
     };
-    
     const handleOrderActivation = (event: CustomEvent) => {
-      const { signalId, assetName } = event.detail;
-      
+      const {
+        signalId,
+        assetName
+      } = event.detail;
       console.log('🚀 Order activation event received:', event.detail);
-      
       toast({
         title: '🚀 Order Activated!',
-        description: `${assetName} limit order is now active`,
+        description: `${assetName} limit order is now active`
       });
     };
-    
     const handleSignalCreated = (event: CustomEvent) => {
-      const { signalId, assetName, status } = event.detail;
-      
+      const {
+        signalId,
+        assetName,
+        status
+      } = event.detail;
       console.log('🆕 New signal created event received:', event.detail);
-      
       toast({
         title: '✅ Signal Created!',
-        description: `${assetName} signal is now ${status}`,
+        description: `${assetName} signal is now ${status}`
       });
     };
-    
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
     window.addEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
-    
     return () => {
       window.removeEventListener('tp-hit-confirmed', handleTPHit as EventListener);
       window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
@@ -275,8 +277,11 @@ export default function SignalStream() {
   }, [refreshAlerts, user?.id]);
 
   // ✅ SECURITY FIX (ERROR #14): Use secure RPC-based authorization
-  const { isAdmin, isEducator, canCreateSignals } = useAuthorizationAware();
-  
+  const {
+    isAdmin,
+    isEducator,
+    canCreateSignals
+  } = useAuthorizationAware();
   if (isDevToolsEnabled()) {
     console.log('SignalStream - Secure authorization check:', {
       isAdmin,
@@ -289,24 +294,22 @@ export default function SignalStream() {
   // 🚀 TIER 2: Memoized with cache to prevent redundant computations
   const isCreator = useCallback((alert: TradeAlertWithProfile) => {
     if (!profile?.id) return false;
-    
+
     // 🚀 TIER 2: Check cache first
     const cacheKey = `${alert.id}-${profile.id}`;
     if (creatorCheckCache.current.has(cacheKey)) {
       return creatorCheckCache.current.get(cacheKey)!;
     }
-    
+
     // Primary check: alert.userId is the direct foreign key to user_id column
     const isCreatorByUserId = alert.userId === profile.id;
-    
+
     // Fallback: alert.creator?.id from joined profile data
     const isCreatorByCreatorId = alert.creator?.id === profile.id;
-    
     const result = isCreatorByUserId || isCreatorByCreatorId;
-    
+
     // 🚀 TIER 2: Cache the result
     creatorCheckCache.current.set(cacheKey, result);
-    
     if (isDevToolsEnabled()) {
       console.log('🔍 [isCreator Check]:', {
         alertId: alert.id,
@@ -319,10 +322,9 @@ export default function SignalStream() {
         finalResult: result
       });
     }
-    
     return result;
   }, [profile?.id]);
-  
+
   // 🚀 TIER 2: Clear creator check cache when profile changes
   useEffect(() => {
     creatorCheckCache.current.clear();
@@ -356,10 +358,7 @@ export default function SignalStream() {
       filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
     if (filters.selectedEducators && filters.selectedEducators.length > 0) {
-      filteredAlerts = filteredAlerts.filter(alert =>
-        filters.selectedEducators.includes(alert.userId || '') || 
-        filters.selectedEducators.includes(alert.creator?.id || '')
-      );
+      filteredAlerts = filteredAlerts.filter(alert => filters.selectedEducators.includes(alert.userId || '') || filters.selectedEducators.includes(alert.creator?.id || ''));
     } else if (filters.educator && filters.educator !== 'all') {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
@@ -368,10 +367,10 @@ export default function SignalStream() {
 
   // ✅ BUG FIX #19: Add loading state for closed alerts
   const [isLoadingClosedAlerts, setIsLoadingClosedAlerts] = useState(true);
-  
+
   // PHASE 6: Static Closed Alerts - Single fetch on component mount (MOVED UP)
   const [staticClosedAlerts, setStaticClosedAlerts] = useState<TradeAlertWithProfile[]>([]);
-  
+
   // ============================================
   // SINGLE SOURCE OF TRUTH: Database counts with real-time updates
   // ============================================
@@ -379,40 +378,37 @@ export default function SignalStream() {
     total: 0,
     active: 0,
     closed: 0,
-    buy: 0,        // buy + buy_limit combined
-    sell: 0,       // sell + sell_limit combined
-    buy_only: 0,   // for internal tracking
-    sell_only: 0,  // for internal tracking
-    buy_limit: 0,  // for internal tracking
-    sell_limit: 0  // for internal tracking
+    buy: 0,
+    // buy + buy_limit combined
+    sell: 0,
+    // sell + sell_limit combined
+    buy_only: 0,
+    // for internal tracking
+    sell_only: 0,
+    // for internal tracking
+    buy_limit: 0,
+    // for internal tracking
+    sell_limit: 0 // for internal tracking
   });
 
   // All current educators with signals
-  const [allEducatorsWithSignals, setAllEducatorsWithSignals] = useState<Array<{ 
-    id: string; 
+  const [allEducatorsWithSignals, setAllEducatorsWithSignals] = useState<Array<{
+    id: string;
     name: string;
     signalCount: number;
   }>>([]);
-  
+
   // ============================================
   // EDUCATOR-SPECIFIC COUNTS: Dynamically calculated based on selected educator
   // ============================================
   const educatorSpecificCounts = useMemo(() => {
     // If multiple educators selected, calculate counts for all of them
     if (filters.selectedEducators && filters.selectedEducators.length > 0) {
-      const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert =>
-        filters.selectedEducators.includes(alert.userId || '') ||
-        filters.selectedEducators.includes(alert.creator?.id || '')
-      );
-      
-      const activeCount = educatorAlerts.filter(a => 
-        ['active', 'pending', 'partially_profited'].includes(a.status)
-      ).length;
-      
+      const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert => filters.selectedEducators.includes(alert.userId || '') || filters.selectedEducators.includes(alert.creator?.id || ''));
+      const activeCount = educatorAlerts.filter(a => ['active', 'pending', 'partially_profited'].includes(a.status)).length;
       const closedCount = educatorAlerts.filter(a => a.status === 'closed').length;
       const buyCount = educatorAlerts.filter(a => a.tradeType.includes('buy')).length;
       const sellCount = educatorAlerts.filter(a => a.tradeType.includes('sell')).length;
-      
       return {
         total: educatorAlerts.length,
         active: activeCount,
@@ -421,7 +417,7 @@ export default function SignalStream() {
         sell: sellCount
       };
     }
-    
+
     // If no educator is selected, return global database counts
     if (!filters.educator) {
       return {
@@ -432,23 +428,17 @@ export default function SignalStream() {
         sell: databaseCounts.sell
       };
     }
-    
+
     // Calculate counts for the selected educator only
-    const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert => 
-      (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
-    );
-    
+    const educatorAlerts = [...allAlerts, ...staticClosedAlerts].filter(alert => alert.userId === filters.educator || alert.creator?.id === filters.educator);
+
     // Count by status
-    const activeCount = educatorAlerts.filter(a => 
-      ['active', 'pending', 'partially_profited'].includes(a.status)
-    ).length;
-    
+    const activeCount = educatorAlerts.filter(a => ['active', 'pending', 'partially_profited'].includes(a.status)).length;
     const closedCount = educatorAlerts.filter(a => a.status === 'closed').length;
-    
+
     // Count by trade type (combined)
     const buyCount = educatorAlerts.filter(a => a.tradeType.includes('buy')).length;
     const sellCount = educatorAlerts.filter(a => a.tradeType.includes('sell')).length;
-    
     console.log(`📊 Educator-specific counts for ${filters.educator}:`, {
       total: educatorAlerts.length,
       active: activeCount,
@@ -456,7 +446,6 @@ export default function SignalStream() {
       buy: buyCount,
       sell: sellCount
     });
-    
     return {
       total: educatorAlerts.length,
       active: activeCount,
@@ -465,7 +454,7 @@ export default function SignalStream() {
       sell: sellCount
     };
   }, [filters.educator, filters.selectedEducators, allAlerts, staticClosedAlerts, databaseCounts]);
-  
+
   // ✅ CRITICAL FIX: Separate educator metadata from active alerts data flow
   const educatorMetadata = useMemo(() => {
     return {
@@ -479,9 +468,8 @@ export default function SignalStream() {
     allAlertsRef.current = allAlerts;
     staticClosedAlertsRef.current = staticClosedAlerts;
   }, [allAlerts, staticClosedAlerts]);
-
   const [totalClosedCount, setTotalClosedCount] = useState(0);
-  
+
   // ============================================
   // FETCH ACCURATE COUNTS FROM DATABASE (Updates on signal changes)
   // ============================================
@@ -489,54 +477,47 @@ export default function SignalStream() {
     const fetchDatabaseCounts = async () => {
       try {
         console.log('📊 Fetching database counts and educators...');
-        
+
         // Step 1: Get ALL users who are currently educators/admins
-        const { data: educators } = await supabase
-          .from('profiles')
-          .select('id, display_name, user_type, access_level, role')
-          .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
-        
+        const {
+          data: educators
+        } = await supabase.from('profiles').select('id, display_name, user_type, access_level, role').or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
         if (!educators || educators.length === 0) {
           console.warn('No educators found');
           return;
         }
-        
         const educatorIds = educators.map(e => e.id);
         console.log('✅ Found educators:', educatorIds.length);
-        
+
         // Step 2: Get ALL signals from these educators only
-        const { data: allSignals } = await supabase
-          .from('trade_alerts')
-          .select('id, status, trade_type, user_id')
-          .in('user_id', educatorIds);
-        
+        const {
+          data: allSignals
+        } = await supabase.from('trade_alerts').select('id, status, trade_type, user_id').in('user_id', educatorIds);
         if (!allSignals) {
           console.error('Failed to fetch signals');
           return;
         }
-        
+
         // Step 3: Calculate counts based on ALL educator signals
         const buyOnly = allSignals.filter(s => s.trade_type === 'buy').length;
         const buyLimit = allSignals.filter(s => s.trade_type === 'buy_limit').length;
         const sellOnly = allSignals.filter(s => s.trade_type === 'sell').length;
         const sellLimit = allSignals.filter(s => s.trade_type === 'sell_limit').length;
-        
         const counts = {
           total: allSignals.length,
-          active: allSignals.filter(s => 
-            ['active', 'pending', 'partially_profited'].includes(s.status)
-          ).length,
+          active: allSignals.filter(s => ['active', 'pending', 'partially_profited'].includes(s.status)).length,
           closed: allSignals.filter(s => s.status === 'closed').length,
-          buy: buyOnly + buyLimit,      // Combined count
-          sell: sellOnly + sellLimit,    // Combined count
+          buy: buyOnly + buyLimit,
+          // Combined count
+          sell: sellOnly + sellLimit,
+          // Combined count
           buy_only: buyOnly,
           sell_only: sellOnly,
           buy_limit: buyLimit,
           sell_limit: sellLimit
         };
-        
         setDatabaseCounts(counts);
-        
+
         // Step 4: Build educator list with signal counts
         const educatorsList = educators.map(edu => {
           const signalCount = allSignals.filter(s => s.user_id === edu.id).length;
@@ -545,73 +526,53 @@ export default function SignalStream() {
             name: edu.display_name || 'Unknown Educator',
             signalCount
           };
-        })
-        .sort((a, b) => a.name.localeCompare(b.name));
-        
+        }).sort((a, b) => a.name.localeCompare(b.name));
         setAllEducatorsWithSignals(educatorsList);
-        
         console.log('✅ Database counts:', counts);
         console.log('✅ Educators with signals:', educatorsList.length);
-        
       } catch (error) {
         console.error('❌ Failed to fetch database counts:', error);
       }
     };
-    
+
     // Initial fetch
     fetchDatabaseCounts();
-    
+
     // Set up real-time subscription to refresh counts when signals change
-    const channel = supabase
-      .channel('signal_count_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'trade_alerts'
-        },
-        (payload) => {
-          console.log('🔄 Signal changed, refreshing counts...', payload.eventType);
-          fetchDatabaseCounts();
-        }
-      )
-      .subscribe();
-    
+    const channel = supabase.channel('signal_count_updates').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'trade_alerts'
+    }, payload => {
+      console.log('🔄 Signal changed, refreshing counts...', payload.eventType);
+      fetchDatabaseCounts();
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
-  
   useEffect(() => {
     const fetchStaticClosedAlerts = async () => {
       setIsLoadingClosedAlerts(true);
       try {
         console.log('📊 PHASE 6 + BUG #19: Fetching static closed alerts with loading state');
-        
+
         // Get current educator IDs
-        const { data: educators } = await supabase
-          .from('profiles')
-          .select('id')
-          .or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
-
+        const {
+          data: educators
+        } = await supabase.from('profiles').select('id').or('user_type.eq.educator,access_level.eq.admin,access_level.eq.moderator,role.eq.admin');
         const educatorIds = educators?.map(e => e.id) || [];
-
         if (educatorIds.length === 0) {
           console.warn('No educators found, skipping closed alerts fetch');
           setIsLoadingClosedAlerts(false);
           return;
         }
-
         const {
           data: closedAlertsData,
           error
-        } = await supabase
-          .from('trade_alerts')
-          .select('*')
-          .eq('status', 'closed')
-          .in('user_id', educatorIds)
-          .order('updated_at', { ascending: false });
+        } = await supabase.from('trade_alerts').select('*').eq('status', 'closed').in('user_id', educatorIds).order('updated_at', {
+          ascending: false
+        });
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
           setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19
@@ -702,7 +663,6 @@ export default function SignalStream() {
   // ============================================
   useEffect(() => {
     console.log('⏱️ [Timestamp Refresh] Starting 60-second interval for closed alerts');
-    
     const timestampInterval = setInterval(() => {
       const now = Date.now();
       setLastTimestampUpdate(now);
@@ -729,72 +689,60 @@ export default function SignalStream() {
 
     // Combine active and closed alerts
     const allDisplayAlerts = [...allAlerts, ...staticClosedAlerts];
-    
+
     // SignalRealtimeContext already filters signals by educators via RLS
     // No need to filter again here (was causing race condition)
     let filtered = allDisplayAlerts;
-    
+
     // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(alert => 
-        alert.assetName.toLowerCase().includes(searchLower) ||
-        alert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
-        alert.creator?.display_name?.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
     }
-    
+
     // Apply status filter
     if (filters.status && filters.status !== 'all') {
       filtered = filtered.filter(alert => alert.status === filters.status);
     }
-    
+
     // Apply trade type filter (uses .includes() for combined filtering)
     if (filters.tradeType && filters.tradeType !== 'all') {
       filtered = filtered.filter(alert => alert.tradeType.includes(filters.tradeType));
     }
-    
+
     // Apply educator filter - support multiple selected educators
     if (filters.selectedEducators && filters.selectedEducators.length > 0) {
-      filtered = filtered.filter(alert => 
-        filters.selectedEducators.includes(alert.userId || '') || 
-        filters.selectedEducators.includes(alert.creator?.id || '')
-      );
+      filtered = filtered.filter(alert => filters.selectedEducators.includes(alert.userId || '') || filters.selectedEducators.includes(alert.creator?.id || ''));
     } else if (filters.educator && filters.educator !== 'all') {
-      filtered = filtered.filter(alert => 
-        (alert.userId === filters.educator) || (alert.creator?.id === filters.educator)
-      );
+      filtered = filtered.filter(alert => alert.userId === filters.educator || alert.creator?.id === filters.educator);
     }
-    
+
     // ✅ FIX: Split FIRST with deduplication to prevent duplicate keys during transitions
     const closedFiltered = filtered.filter(a => a.status === 'closed');
     const closedIds = new Set(closedFiltered.map(a => a.id));
-    
+
     // Only include in active if NOT in closed (prevents duplicates during realtime transitions)
-    const activeFiltered = filtered.filter(a => 
-      ['active', 'pending', 'partially_profited'].includes(a.status) && !closedIds.has(a.id)
-    );
-    
+    const activeFiltered = filtered.filter(a => ['active', 'pending', 'partially_profited'].includes(a.status) && !closedIds.has(a.id));
+
     // Sort active alerts by creation time (newest first) - prevents jumping
     const sortedActive = activeFiltered.sort((a, b) => {
       const aDate = new Date(a.createdAt).getTime();
       const bDate = new Date(b.createdAt).getTime();
       return bDate - aDate; // Descending: newest created first
     });
-    
+
     // Sort closed alerts by update time (newest closed first)
     const sortedClosed = closedFiltered.sort((a, b) => {
       const aDate = new Date(a.updatedAt).getTime();
       const bDate = new Date(b.updatedAt).getTime();
       return bDate - aDate; // Descending: newest closed first
     });
-    
+
     // ✅ Store total count before applying UI limit
     const totalClosedFiltered = sortedClosed.length;
-    
+
     // ✅ Apply UI limit of 12 for closed alerts display only
     const closedFilteredLimited = sortedClosed.slice(0, 12);
-    
     console.log('🔍 Filter results:', {
       total: filtered.length,
       active: sortedActive.length,
@@ -802,7 +750,6 @@ export default function SignalStream() {
       closedDisplayed: closedFilteredLimited.length,
       filters
     });
-    
     return {
       active: sortedActive,
       closed: closedFilteredLimited,
@@ -826,22 +773,14 @@ export default function SignalStream() {
 
   // ✅ Track rendered IDs to prevent mid-render duplicates (rrweb race condition fix)
   const renderedIdsRef = useRef<Set<string>>(new Set());
-
   useEffect(() => {
     // Update ref after each render completes (not during)
-    renderedIdsRef.current = new Set([
-      ...filteredSignals.active.map(a => a.id),
-      ...filteredSignals.closed.map(a => a.id)
-    ]);
+    renderedIdsRef.current = new Set([...filteredSignals.active.map(a => a.id), ...filteredSignals.closed.map(a => a.id)]);
   });
 
   // ✅ Render-safe filter: prevents duplicate keys even during React reconciliation
-  const getSafeRenderList = useCallback((
-    alerts: TradeAlertWithProfile[], 
-    listType: 'active' | 'closed'
-  ) => {
+  const getSafeRenderList = useCallback((alerts: TradeAlertWithProfile[], listType: 'active' | 'closed') => {
     const seenIds = new Set<string>();
-    
     return alerts.filter(alert => {
       // If we've already rendered this ID in THIS render cycle, skip it
       if (seenIds.has(alert.id)) {
@@ -856,45 +795,39 @@ export default function SignalStream() {
   // ✅ SIMPLIFIED: React to state changes directly (no events, no tiers, no DB fetches)
   useEffect(() => {
     const alreadyClosedIds = new Set(staticClosedAlerts.map(a => a.id));
-    
     const now = Date.now();
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
-
     const newlyClosedSignals = allAlerts.filter(signal => {
       if (signal.status !== 'closed') return false;
       if (alreadyClosedIds.has(signal.id)) return false;
       if (excludedSignalIds.has(signal.id)) return false;
-      
+
       // ✅ NEW: Only treat as "new" if closed within last 5 minutes
       const closedTime = new Date(signal.updatedAt).getTime();
       const ageMs = now - closedTime;
-      
       if (ageMs > FIVE_MINUTES_MS) {
         console.log(`⏭️ [OLD CLOSURE] Skipping toast for ${signal.assetName} (closed ${Math.round(ageMs / 60000)}m ago)`);
         return false;
       }
-      
       return true;
     });
-
     if (newlyClosedSignals.length > 0) {
       console.log(`✅ [State Change] ${newlyClosedSignals.length} signal(s) closed - moving to closed alerts`);
 
       // Add to closed alerts
-    setStaticClosedAlerts(prev => {
-      // Sort newly closed signals by timestamp (newest first)
-      const sorted = [...newlyClosedSignals].sort((a, b) => {
-        const timeA = new Date(a.updatedAt).getTime();
-        const timeB = new Date(b.updatedAt).getTime();
-        return timeB - timeA; // Descending: newest first
+      setStaticClosedAlerts(prev => {
+        // Sort newly closed signals by timestamp (newest first)
+        const sorted = [...newlyClosedSignals].sort((a, b) => {
+          const timeA = new Date(a.updatedAt).getTime();
+          const timeB = new Date(b.updatedAt).getTime();
+          return timeB - timeA; // Descending: newest first
+        });
+        return [...sorted, ...prev].slice(0, 12);
       });
-      
-      return [...sorted, ...prev].slice(0, 12);
-    });
-      
+
       // Update total count
       setTotalClosedCount(prev => prev + newlyClosedSignals.length);
-      
+
       // Exclude from active alerts
       setExcludedSignalIds(prev => {
         const next = new Set(prev);
@@ -905,10 +838,10 @@ export default function SignalStream() {
       // Show toast for each closed signal (with deduplication)
       newlyClosedSignals.forEach(signal => {
         // ✅ GUARD: Check if the instant path already showed a toast for this signal (SL or TP)
-        const wasHandledByInstant = 
-          instantToastHandledRef.current.has(signal.id) || // For SL hits
-          Array.from(instantToastHandledRef.current).some(key => key.startsWith(`${signal.id}-tp`)); // For TP hits
-        
+        const wasHandledByInstant = instantToastHandledRef.current.has(signal.id) ||
+        // For SL hits
+        Array.from(instantToastHandledRef.current).some(key => key.startsWith(`${signal.id}-tp`)); // For TP hits
+
         // ✅ SPECIAL CASE: Always allow "All Targets Hit!" toast through
         if (signal.closeReason === 'all_tps_hit') {
           // 🔒 Check if we've already shown this toast (persistent across navigation)
@@ -917,12 +850,11 @@ export default function SignalStream() {
             console.log(`⏭️ [TOAST ALREADY SHOWN] Skipping "All Targets Hit" for ${signal.id.substring(0, 8)} (previously shown this session)`);
             return; // Skip toast - already shown
           }
-          
           console.log(`💰 [ALLOW] Showing "All Targets Hit" toast for ${signal.id.substring(0, 8)} (backend confirmed)`);
-          
+
           // Mark as shown persistently
           markAllTPToastShown(signal.id);
-          
+
           // Clear all instant detection flags since this is the final confirmation toast
           instantToastHandledRef.current.delete(signal.id);
           Array.from(instantToastHandledRef.current).forEach(key => {
@@ -930,12 +862,12 @@ export default function SignalStream() {
               instantToastHandledRef.current.delete(key);
             }
           });
-          
+
           // Continue to show the toast (don't return early)
         } else if (wasHandledByInstant) {
           // For other close reasons (stop_loss, manual), skip if instant detection already handled it
           console.log(`⏭️ [SKIP TOAST] Signal ${signal.id.substring(0, 8)} already handled by instant detection (reason: ${signal.closeReason})`);
-          
+
           // Clean up
           instantToastHandledRef.current.delete(signal.id);
           Array.from(instantToastHandledRef.current).forEach(key => {
@@ -945,21 +877,18 @@ export default function SignalStream() {
           });
           return; // Skip toast for non-"all_tps_hit" reasons
         }
-        
+
         // If we are here, the closure was detected by the backend/realtime first
         let toastTitle = '🔒 Signal Closed';
         let toastDescription = `${signal.assetName} closed: ${signal.closeReason || 'Manual'}`;
         let toastVariant: 'default' | 'destructive' = 'default';
-
         if (signal.closeReason === 'stop_loss') {
           toastTitle = '🔴 Stop Loss Hit';
           toastDescription = `${signal.assetName} signal closed at SL`;
           toastVariant = 'destructive';
         } else if (signal.closeReason === 'all_tps_hit') {
           // Count total TPs for better context
-          const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
-            .filter(tp => tp && tp > 0).length;
-          
+          const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5].filter(tp => tp && tp > 0).length;
           toastTitle = '💰 All Targets Hit!';
           toastDescription = `${signal.assetName} - All ${totalTPs} take profit${totalTPs > 1 ? 's' : ''} reached`;
         } else if (signal.closeReason?.startsWith('tp')) {
@@ -969,8 +898,11 @@ export default function SignalStream() {
         } else if (signal.closeReason === 'manual') {
           toastDescription = `${signal.assetName} closed manually`;
         }
-        
-        toast({ title: toastTitle, description: toastDescription, variant: toastVariant });
+        toast({
+          title: toastTitle,
+          description: toastDescription,
+          variant: toastVariant
+        });
       });
     }
   }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
@@ -980,53 +912,59 @@ export default function SignalStream() {
   // 🚀 TIER 2: Debounced to reduce detection frequency
   // ============================================
   const detectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   useEffect(() => {
     // 🚀 TIER 2: Clear previous timeout
     if (detectionTimeoutRef.current) {
       clearTimeout(detectionTimeoutRef.current);
     }
-    
+
     // 🚀 TIER 2: Debounce detection by 100ms
     detectionTimeoutRef.current = setTimeout(() => {
       const activeSignals = allAlerts.filter(s => s.status === 'active');
       if (activeSignals.length === 0) return;
-
       activeSignals.forEach(signal => {
         const priceData = prices[signal.tradermadeSymbol];
         if (!priceData) return;
-
         const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
 
         // --- TP DETECTION ---
-        const tpLevels = [
-          { level: 1, price: signal.tp1 },
-          { level: 2, price: signal.tp2 },
-          { level: 3, price: signal.tp3 },
-          { level: 4, price: signal.tp4 },
-          { level: 5, price: signal.tp5 }
-        ];
-
-        tpLevels.forEach(({ level, price }) => {
+        const tpLevels = [{
+          level: 1,
+          price: signal.tp1
+        }, {
+          level: 2,
+          price: signal.tp2
+        }, {
+          level: 3,
+          price: signal.tp3
+        }, {
+          level: 4,
+          price: signal.tp4
+        }, {
+          level: 5,
+          price: signal.tp5
+        }];
+        tpLevels.forEach(({
+          level,
+          price
+        }) => {
           if (!price || price <= 0) return;
-
           const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
           const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
-
           if (tpHit) {
             // 🔒 TIER 1: Atomic guard - combine all checks in one operation
             const tpKey = `${signal.id}-tp${level}`;
-            
+
             // GUARD 1: Already hit in state
             if (signal.tpHits?.includes(level)) {
               return;
             }
-            
+
             // GUARD 2: Already being processed
             if (processingSignalsRef.current.has(tpKey)) {
               return;
             }
-            
+
             // GUARD 3: Backend already processed this
             if (backendProcessedRef.current.has(tpKey)) {
               console.log(`⏭️ [INSTANT] Backend already processed ${tpKey}`);
@@ -1035,110 +973,98 @@ export default function SignalStream() {
 
             // All checks passed, proceed with immediate lock
             console.log(`🎯 [INSTANT TP HIT] Signal ${signal.id.substring(0, 8)} TP${level}`);
-            
+
             // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
             processingSignalsRef.current.add(tpKey);
             instantToastHandledRef.current.add(tpKey);
 
             // Optimistic UI Update
             const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
-            
+
             // 🆕 COUNT TOTAL DEFINED TPs
-            const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
-              .filter(tp => tp && tp > 0).length;
-            
+            const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5].filter(tp => tp && tp > 0).length;
+
             // 🆕 CHECK IF ALL TPs ARE NOW HIT
             const allTPsHit = updatedTPHits.length === totalTPs && totalTPs > 0;
-            
+
             // 🆕 PREPARE UPDATE DATA
-            const updateData = allTPsHit
-              ? {
-                  tpHits: updatedTPHits,
-                  status: 'closed' as const,
-                  closeReason: 'all_tps_hit' as const
-                }
-              : { tpHits: updatedTPHits };
-            
+            const updateData = allTPsHit ? {
+              tpHits: updatedTPHits,
+              status: 'closed' as const,
+              closeReason: 'all_tps_hit' as const
+            } : {
+              tpHits: updatedTPHits
+            };
+
             // ✅ Only optimistically update tpHits (visual feedback without list movement)
             if (!allTPsHit) {
-              optimisticallyUpdateSignal(signal.id, { tpHits: updatedTPHits });
+              optimisticallyUpdateSignal(signal.id, {
+                tpHits: updatedTPHits
+              });
             }
-            
+
             // Backend handles status change, realtime updates UI smoothly
             updateAlert(signal.id, updateData);
-            
+
             // ✅ ALWAYS show individual TP notification only
             // The "All Targets Hit!" toast will come from the state watcher
             const remainingTPs = totalTPs - updatedTPHits.length;
             toast({
               title: `🎯 TP${level} Hit!`,
-              description: allTPsHit 
-                ? `${signal.assetName} reached final TP${level} - Signal closing`
-                : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`,
+              description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
             });
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
-            supabase
-              .from('trade_alerts')
-              .update(allTPsHit 
-                ? { 
-                    tp_hits: updatedTPHits, 
-                    status: 'closed', 
-                    close_reason: 'all_tps_hit' 
-                  }
-                : { tp_hits: updatedTPHits }
-              )
-              .eq('id', signal.id)
-              .then(() => {
-                // 🔓 UNLOCK: Always remove from processing
-                processingSignalsRef.current.delete(tpKey);
-              });
+            supabase.from('trade_alerts').update(allTPsHit ? {
+              tp_hits: updatedTPHits,
+              status: 'closed',
+              close_reason: 'all_tps_hit'
+            } : {
+              tp_hits: updatedTPHits
+            }).eq('id', signal.id).then(() => {
+              // 🔓 UNLOCK: Always remove from processing
+              processingSignalsRef.current.delete(tpKey);
+            });
           }
         });
 
         // --- SL DETECTION ---
         const slPrice = signal.stopLoss;
         if (slPrice && slPrice > 0) {
-          const slCheckPrice = isBuy 
-            ? priceData.bid || priceData.price
-            : priceData.ask || priceData.price;
-          
-          const slHit = isBuy 
-            ? slCheckPrice <= slPrice
-            : slCheckPrice >= slPrice;
-
+          const slCheckPrice = isBuy ? priceData.bid || priceData.price : priceData.ask || priceData.price;
+          const slHit = isBuy ? slCheckPrice <= slPrice : slCheckPrice >= slPrice;
           if (slHit) {
             // 🔒 TIER 1: Atomic guard - combine all checks in one operation
             const slKey = `${signal.id}-sl`;
-            
+
             // GUARD 1: Already closed in state
             if (signal.status === 'closed') {
               return;
             }
-            
+
             // GUARD 2: Already being processed
             if (processingSignalsRef.current.has(slKey)) {
               return;
             }
-            
+
             // GUARD 3: Backend already processed this
             if (backendProcessedRef.current.has(slKey)) {
               console.log(`⏭️ [INSTANT] Backend already processed ${slKey}`);
               return;
             }
-            
+
             // All checks passed, proceed with immediate lock
             console.log(`🛑 [INSTANT SL HIT] Signal ${signal.id.substring(0, 8)}`);
-            
+
             // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
             processingSignalsRef.current.add(slKey);
             instantToastHandledRef.current.add(signal.id);
 
             // Show Toast
-            toast({ 
-              title: '🛑 Stop Loss Hit!', 
-              description: `${signal.assetName} hit Stop Loss.`, 
-              variant: 'destructive' 
+            toast({
+              title: '🛑 Stop Loss Hit!',
+              description: `${signal.assetName} hit Stop Loss.`,
+              variant: 'destructive'
             });
 
             // Backend Confirmation (non-blocking)
@@ -1146,17 +1072,18 @@ export default function SignalStream() {
               p_alert_id: signal.id,
               p_user_id: user?.id,
               p_close_reason: 'stop_loss'
-            }).then(({ error }) => {
+            }).then(({
+              error
+            }) => {
               if (error) {
                 console.error(`❌ Backend SL closure failed:`, error);
-                
                 toast({
                   title: '❌ SL Closure Failed',
                   description: 'Could not confirm stop loss. Please try closing manually.',
-                  variant: 'destructive',
+                  variant: 'destructive'
                 });
               }
-              
+
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(slKey);
             });
@@ -1164,7 +1091,7 @@ export default function SignalStream() {
         }
       });
     }, 100); // 🚀 TIER 2: 100ms debounce
-    
+
     return () => {
       // 🚀 TIER 2: Cleanup timeout on unmount
       if (detectionTimeoutRef.current) {
@@ -1178,30 +1105,29 @@ export default function SignalStream() {
     const handleNewSignalCreated = (event: CustomEvent) => {
       const newSignal = event.detail;
       console.log('🆕 [SignalStream] Received signal-created-confirmed event:', newSignal);
-      
       if (!newSignal?.id) {
         console.warn('⚠️ [SignalStream] Invalid new signal data received');
         return;
       }
 
       // Scroll to top to show new signal
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
       // Show toast notification
       toast({
         title: '🎯 New Signal Added',
-        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`,
+        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`
       });
     };
-
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
-    
     return () => {
       window.removeEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     };
   }, []);
-
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
     return staticClosedAlerts;
@@ -1225,7 +1151,6 @@ export default function SignalStream() {
   // ✅ BUG FIX #18: Optimize symbols with deep equality check to prevent WebSocket churn
   const prevSymbolsRef = useRef<string[]>([]);
   const prevSymbolsHashRef = useRef<string>('');
-  
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
 
@@ -1339,9 +1264,7 @@ export default function SignalStream() {
         tp5: data.tp5,
         notes: data.notes
       };
-
       const result = await tradingApiService.createAlert(createDto, user.id);
-      
       if (result.success && result.data) {
         // ✅ OPTIMISTIC UPDATE: Transform response to Signal format
         const newSignal: any = {
@@ -1400,12 +1323,10 @@ export default function SignalStream() {
             access_level: profile.access_level
           }
         });
-
         toast({
           title: "⚡ Signal Created Instantly!",
           description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`
         });
-        
         setShowCreateModal(false);
       } else {
         throw new Error('Failed to create educational pattern');
@@ -1498,7 +1419,7 @@ export default function SignalStream() {
       currentStatus: alert.status,
       timestamp: new Date().toISOString()
     });
-    
+
     // ✅ Check if already processing THIS specific signal
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
@@ -1518,7 +1439,6 @@ export default function SignalStream() {
 
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
-    
     if (!alertIsCreator && !isAdmin) {
       console.error('❌ Authorization failed');
       toast({
@@ -1532,27 +1452,26 @@ export default function SignalStream() {
     // ✅ Lock signal during update
     updateInProgressRef.current.set(alert.id, true);
     console.log(`🔒 [Update Started] Signal ${alert.id} locked`);
-    
     try {
       // ============================================
       // FIX #2: Use RPC for closing signals
       // ============================================
       if (newStatus === 'closed') {
         console.log('🔒 Closing signal via RPC...', alert.id);
-        
-        const { data, error } = await supabase.rpc('close_trade_alert', {
+        const {
+          data,
+          error
+        } = await supabase.rpc('close_trade_alert', {
           p_alert_id: alert.id,
           p_user_id: profile?.id || user?.id,
           p_close_reason: 'manual'
         });
-        
         if (error) {
           console.error('❌ RPC close_trade_alert failed:', error);
           throw new Error(error.message || 'Failed to close signal');
         }
-        
         console.log('✅ Signal closed via RPC:', data);
-        
+
         // ✅ Dispatch event for instant UI update
         window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
           detail: {
@@ -1562,42 +1481,34 @@ export default function SignalStream() {
             timestamp: new Date().toISOString()
           }
         }));
-        
+
         // ✅ Force refresh with cache bypass
         await refreshAlerts(true);
-        
         toast({
           title: '✅ Signal Closed',
           description: `${alert.assetName} has been closed successfully`
         });
-        
       } else {
         // For other status updates, use existing logic
         const updateDto: UpdateTradeAlertDto = {
           status: newStatus as 'pending' | 'active' | 'closed'
         };
-        
         const result = await updateAlert(alert.id, updateDto);
-        
         if (!result) {
           throw new Error('Update failed');
         }
-        
         toast({
           title: '✅ Status Updated',
           description: `Signal status changed to ${newStatus}`
         });
       }
-      
     } catch (error: any) {
       console.error('💥 [SignalStream] Status update failed:', error);
-      
       toast({
         title: '❌ Update Failed',
         description: error.message || 'Please try again',
         variant: 'destructive'
       });
-      
     } finally {
       // ✅ Always unlock signal
       updateInProgressRef.current.delete(alert.id);
@@ -1614,9 +1525,14 @@ export default function SignalStream() {
       currentStatus: alert.status,
       currentTPHits: alert.tp_hits,
       hasTP5: alert.tp5 != null && alert.tp5 > 0,
-      allTPs: { tp1: alert.tp1, tp2: alert.tp2, tp3: alert.tp3, tp4: alert.tp4, tp5: alert.tp5 }
+      allTPs: {
+        tp1: alert.tp1,
+        tp2: alert.tp2,
+        tp3: alert.tp3,
+        tp4: alert.tp4,
+        tp5: alert.tp5
+      }
     });
-    
     if (updateInProgressRef.current.get(alert.id)) {
       console.log(`⏸️  [Update Blocked] Signal ${alert.id} already processing`);
       return;
@@ -1655,7 +1571,7 @@ export default function SignalStream() {
           closeReason: typedCloseReason
         })
       };
-      
+
       // 🔍 PHASE 2 DIAGNOSTIC: Verify DTO structure
       console.log(`🔍 [PHASE 2 - updateDto] Built for ${alert.id}:`, {
         updateDto,
@@ -1663,9 +1579,8 @@ export default function SignalStream() {
         typedCloseReason,
         willCloseSignal: shouldAutoClose && updateDto.status === 'closed'
       });
-      
       const result = await updateAlert(alert.id, updateDto);
-      
+
       // 🔍 PHASE 3 DIAGNOSTIC: Verify update result
       console.log(`🔍 [PHASE 3 - updateAlert Result] For ${alert.id}:`, {
         success: !!result,
@@ -1675,7 +1590,6 @@ export default function SignalStream() {
         expectedStatus: shouldAutoClose ? 'closed' : alert.status,
         originalUpdateDto: updateDto
       });
-      
       if (result) {
         // ✅ FIX #1: Dispatch event when signal closes
         if (shouldAutoClose) {
@@ -1686,7 +1600,7 @@ export default function SignalStream() {
               assetName: alert.assetName
             }
           }));
-          
+
           // ✅ Force refresh to bypass all caches
           await refreshAlerts(true);
         } else {
@@ -1702,7 +1616,7 @@ export default function SignalStream() {
             }));
           }
         }
-        
+
         // Show notification
         if ((window as any).addNotification) {
           const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
@@ -1713,7 +1627,7 @@ export default function SignalStream() {
               message: `${alert.assetName} reached Take Profit ${highestTP}`,
               signalId: alert.id,
               assetName: alert.assetName,
-              timestamp: new Date(),
+              timestamp: new Date()
             });
           }
         }
@@ -1760,7 +1674,6 @@ export default function SignalStream() {
         closeReason: typedCloseReason
       };
       const result = await updateAlert(alert.id, updateDto);
-      
       if (result) {
         // ✅ FIX #1: Dispatch event for instant UI update
         window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
@@ -1770,10 +1683,10 @@ export default function SignalStream() {
             assetName: alert.assetName
           }
         }));
-        
+
         // ✅ Force refresh to bypass all caches
         await refreshAlerts(true);
-        
+
         // Show notification
         if ((window as any).addNotification) {
           (window as any).addNotification({
@@ -1782,7 +1695,7 @@ export default function SignalStream() {
             message: `${alert.assetName} trade closed at stop loss`,
             signalId: alert.id,
             assetName: alert.assetName,
-            timestamp: new Date(),
+            timestamp: new Date()
           });
         }
       }
@@ -1812,7 +1725,7 @@ export default function SignalStream() {
         status: 'active'
       };
       const result = await updateAlert(alert.id, updateDto);
-      
+
       // Dispatch event for toast notification
       window.dispatchEvent(new CustomEvent('order-activation-confirmed', {
         detail: {
@@ -1823,7 +1736,6 @@ export default function SignalStream() {
           timestamp: new Date().toISOString()
         }
       }));
-      
       if (result && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_activated',
@@ -1831,7 +1743,7 @@ export default function SignalStream() {
           message: `${alert.assetName} ${alert.tradeType} is now active`,
           signalId: alert.id,
           assetName: alert.assetName,
-          timestamp: new Date(),
+          timestamp: new Date()
         });
       }
     } catch (err) {
@@ -1841,26 +1753,20 @@ export default function SignalStream() {
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
   }, [updateAlert, profile, isAdmin, isCreator]);
-  
+
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
       {/* Animated Gradient Background + Mesh Overlay */}
-      <div 
-        className="min-h-screen relative overflow-hidden"
-        style={{ 
-          background: colors.bg.gradient,
-          animation: 'gradientShift 15s ease infinite',
-        }}
-      >
+      <div className="min-h-screen relative overflow-hidden" style={{
+        background: colors.bg.gradient,
+        animation: 'gradientShift 15s ease infinite'
+      }}>
         {/* Optional: Animated mesh overlay */}
-        <div 
-          className="fixed inset-0 pointer-events-none opacity-30"
-          style={{
-            background: colors.bg.meshGradient,
-            animation: 'meshFloat 20s ease-in-out infinite alternate',
-          }}
-        />
+        <div className="fixed inset-0 pointer-events-none opacity-30" style={{
+          background: colors.bg.meshGradient,
+          animation: 'meshFloat 20s ease-in-out infinite alternate'
+        }} />
         
         {/* Content wrapper with z-index */}
         <div className="relative z-10">
@@ -1880,60 +1786,66 @@ export default function SignalStream() {
               {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
               <div className="flex items-center gap-3">
                 {/* ✅ FIX #6: Force Refresh Button */}
-                {isDevToolsEnabled() && (
-                  <Button
-                    onClick={() => {
-                      console.log('🔄 [Manual] Force refresh triggered by user');
-                      refreshAlerts(true);
-                    }}
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500"
-                  >
+                {isDevToolsEnabled() && <Button onClick={() => {
+                    console.log('🔄 [Manual] Force refresh triggered by user');
+                    refreshAlerts(true);
+                  }} size="sm" variant="outline" className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500">
                     <RefreshCw className="w-3 h-3" />
                     <span className="hidden sm:inline">Force Refresh</span>
-                  </Button>
-                )}
+                  </Button>}
                 
-                {isDevToolsEnabled() && (
-                  <>
-                    {connectionStatus === 'connected' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0, 200, 5, 0.12)', border: '1px solid rgba(0, 200, 5, 0.3)' }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00C805' }}></div>
-                        <span className="text-xs font-medium" style={{ color: '#00C805' }}>Live</span>
-                      </div>
-                    )}
-                    {connectionStatus === 'connecting' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255, 215, 0, 0.12)', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#FFD700' }}></div>
-                        <span className="text-xs font-medium" style={{ color: '#FFD700' }}>Connecting...</span>
-                      </div>
-                    )}
-                    {connectionStatus === 'polling-fallback' && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0, 200, 5, 0.12)', border: '1px solid rgba(0, 200, 5, 0.3)' }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00C805' }}></div>
-                        <span className="text-xs font-medium" style={{ color: '#00C805' }}>Live (Polling)</span>
-                      </div>
-                    )}
-                    {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && (
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255, 69, 58, 0.12)', border: '1px solid rgba(255, 69, 58, 0.3)' }}>
-                          <div className="w-2 h-2 rounded-full" style={{ background: '#FF453A' }}></div>
-                          <span className="text-xs font-medium" style={{ color: '#FF453A' }}>Connection Issue</span>
+                {isDevToolsEnabled() && <>
+                    {connectionStatus === 'connected' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                      background: 'rgba(0, 200, 5, 0.12)',
+                      border: '1px solid rgba(0, 200, 5, 0.3)'
+                    }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
+                        background: '#00C805'
+                      }}></div>
+                        <span className="text-xs font-medium" style={{
+                        color: '#00C805'
+                      }}>Live</span>
+                      </div>}
+                    {connectionStatus === 'connecting' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                      background: 'rgba(255, 215, 0, 0.12)',
+                      border: '1px solid rgba(255, 215, 0, 0.3)'
+                    }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
+                        background: '#FFD700'
+                      }}></div>
+                        <span className="text-xs font-medium" style={{
+                        color: '#FFD700'
+                      }}>Connecting...</span>
+                      </div>}
+                    {connectionStatus === 'polling-fallback' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                      background: 'rgba(0, 200, 5, 0.12)',
+                      border: '1px solid rgba(0, 200, 5, 0.3)'
+                    }}>
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
+                        background: '#00C805'
+                      }}></div>
+                        <span className="text-xs font-medium" style={{
+                        color: '#00C805'
+                      }}>Live (Polling)</span>
+                      </div>}
+                    {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                        background: 'rgba(255, 69, 58, 0.12)',
+                        border: '1px solid rgba(255, 69, 58, 0.3)'
+                      }}>
+                          <div className="w-2 h-2 rounded-full" style={{
+                          background: '#FF453A'
+                        }}></div>
+                          <span className="text-xs font-medium" style={{
+                          color: '#FF453A'
+                        }}>Connection Issue</span>
                         </div>
-                        <Button
-                          onClick={() => refreshAlerts(true)}
-                          size="sm"
-                          variant="outline"
-                          className="border-yellow-500/20 hover:bg-yellow-500/10"
-                        >
+                        <Button onClick={() => refreshAlerts(true)} size="sm" variant="outline" className="border-yellow-500/20 hover:bg-yellow-500/10">
                           <RefreshCw className="w-4 h-4 mr-2" />
                           Refresh Now
                         </Button>
-                      </div>
-                    )}
-                  </>
-                )}
+                      </div>}
+                  </>}
               </div>
             </div>
           </div>
@@ -1958,87 +1870,55 @@ export default function SignalStream() {
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
-                {isDevToolsEnabled() && (
-                  <Button
-                    onClick={handleManualSync}
-                    disabled={isSyncing}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 shrink-0"
-                    title="Force refresh all signals from database"
-                  >
-                    {isSyncing ? (
-                      <>
+                {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
+                    {isSyncing ? <>
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span>Syncing...</span>
-                      </>
-                    ) : (
-                      <>
+                      </> : <>
                         <RefreshCw className="w-4 h-4" />
                         <span>Force Sync</span>
-                      </>
-                    )}
-                  </Button>
-                )}
+                      </>}
+                  </Button>}
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({
-                length: 6
-              }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+                    length: 6
+                  }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
                       <div className="h-4 w-1/3 bg-muted rounded mb-3" />
                       <div className="h-6 w-2/3 bg-muted rounded mb-4" />
                       <div className="h-24 w-full bg-muted rounded" />
                     </div>)}
                 </div> : <div className="space-y-5">
                   <div>
-                    <h2 
-                      className="text-base font-bold pb-2 mb-4 flex items-center gap-2"
-                      style={{
-                        borderBottom: `2px solid ${colors.border.default}`,
-                        color: colors.text.primary,
-                      }}
-                    >
+                    <h2 className="text-base font-bold pb-2 mb-4 flex items-center gap-2" style={{
+                      borderBottom: `2px solid ${colors.border.default}`,
+                      color: colors.text.primary
+                    }}>
                       <span>Active Alerts</span>
-                      <span 
-                        className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto"
-                        style={{
-                          background: colors.state.active,
-                          color: colors.text.accent,
-                          border: `1px solid ${colors.border.active}`,
-                        }}
-                      >
+                      <span className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto" style={{
+                        background: colors.state.active,
+                        color: colors.text.accent,
+                        border: `1px solid ${colors.border.active}`
+                      }}>
                         {filteredSignals.active.length}
                       </span>
                       </h2>
-                       {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
-                         {getSafeRenderList(filteredSignals.active, 'active').map(alert => <TradeAlertCard
-                             key={alert.id}
-                            alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} 
-                            onStatusUpdate={handleStatusUpdate} 
-                            onTakeProfitHit={handleTakeProfitHit} 
-                            onStopLossHit={handleStopLossHit} 
-                            onOrderActivation={handleOrderActivation} 
-                            isAdmin={isAdmin} 
-                            isCreator={isCreator(alert)}
-                            livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource={priceSource} 
-                            isRecentClosure={false} 
-                            creator={alert.creator} 
-                            justAdded={justAddedIds.has(alert.id)} 
-                          />)}
+                       {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{
+                      background: 'transparent'
+                    }}>
+                         {getSafeRenderList(filteredSignals.active, 'active').map(alert => <TradeAlertCard key={alert.id} alert={{
+                        ...alert,
+                        asset_name: alert.assetName,
+                        tradermade_symbol: alert.tradermadeSymbol,
+                        trade_type: alert.tradeType,
+                        entry_price: alert.entryPrice,
+                        stop_loss: alert.stopLoss,
+                        tp_hits: alert.tpHits,
+                        close_reason: alert.closeReason,
+                        created_date: alert.createdAt,
+                        updated_date: alert.updatedAt
+                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />)}
                       </div> : <div className="text-center py-8">
                         <TrendlineEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
@@ -2047,65 +1927,53 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 
-                      className="text-base font-bold pb-2 mb-4 flex items-center gap-2"
-                      style={{
-                        borderBottom: `2px solid ${colors.border.default}`,
-                        color: colors.text.primary,
-                      }}
-                    >
+                    <h2 className="text-base font-bold pb-2 mb-4 flex items-center gap-2" style={{
+                      borderBottom: `2px solid ${colors.border.default}`,
+                      color: colors.text.primary
+                    }}>
                       <span>Closed Alerts</span>
-                      <span 
-                        className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto"
-                        style={{
-                          background: colors.state.active,
-                          color: colors.text.accent,
-                          border: `1px solid ${colors.border.active}`,
-                        }}
-                      >
-                        {filters.educator || filters.status || filters.tradeType || filters.search 
-                          ? filteredSignals.closedTotal 
-                          : educatorSpecificCounts.closed}
+                      <span className="text-xs px-2 py-0.5 rounded-lg font-semibold ml-auto" style={{
+                        background: colors.state.active,
+                        color: colors.text.accent,
+                        border: `1px solid ${colors.border.active}`
+                      }}>
+                        {filters.educator || filters.status || filters.tradeType || filters.search ? filteredSignals.closedTotal : educatorSpecificCounts.closed}
                       </span>
                     </h2>
-                    {isLoadingClosedAlerts ? (
-                      // ✅ BUG FIX #19: Skeleton UI for closed alerts loading
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="rounded-lg p-4 animate-pulse" style={{ background: '#1C1C1E', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                            <div className="h-4 w-1/3 rounded mb-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
-                            <div className="h-6 w-2/3 rounded mb-4" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
-                            <div className="h-24 w-full rounded" style={{ background: 'rgba(255, 255, 255, 0.08)' }} />
-                          </div>
-                        ))}
-                       </div>
-                     ) : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ background: 'transparent' }}>
-                         {getSafeRenderList(filteredSignals.closed, 'closed').map(alert => <TradeAlertCard
-                             key={alert.id}
-                            alert={{
-                      ...alert,
-                      asset_name: alert.assetName,
-                      tradermade_symbol: alert.tradermadeSymbol,
-                      trade_type: alert.tradeType,
-                      entry_price: alert.entryPrice,
-                      stop_loss: alert.stopLoss,
-                      tp_hits: alert.tpHits,
-                      close_reason: alert.closeReason,
-                      created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
-                    }} 
-                            onStatusUpdate={handleStatusUpdate} 
-                            onTakeProfitHit={handleTakeProfitHit} 
-                            onStopLossHit={handleStopLossHit} 
-                            onOrderActivation={handleOrderActivation} 
-                            isAdmin={isAdmin} 
-                            isCreator={isCreator(alert)}
-                            livePrice={undefined} 
-                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource={priceSource} 
-                            isRecentClosure={true} 
-                            creator={alert.creator} 
-                          />)}
+                    {isLoadingClosedAlerts ?
+                    // ✅ BUG FIX #19: Skeleton UI for closed alerts loading
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {Array.from({
+                        length: 6
+                      }).map((_, i) => <div key={i} className="rounded-lg p-4 animate-pulse" style={{
+                        background: '#1C1C1E',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}>
+                            <div className="h-4 w-1/3 rounded mb-3" style={{
+                          background: 'rgba(255, 255, 255, 0.08)'
+                        }} />
+                            <div className="h-6 w-2/3 rounded mb-4" style={{
+                          background: 'rgba(255, 255, 255, 0.08)'
+                        }} />
+                            <div className="h-24 w-full rounded" style={{
+                          background: 'rgba(255, 255, 255, 0.08)'
+                        }} />
+                          </div>)}
+                       </div> : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{
+                      background: 'transparent'
+                    }}>
+                         {getSafeRenderList(filteredSignals.closed, 'closed').map(alert => <TradeAlertCard key={alert.id} alert={{
+                        ...alert,
+                        asset_name: alert.assetName,
+                        tradermade_symbol: alert.tradermadeSymbol,
+                        trade_type: alert.tradeType,
+                        entry_price: alert.entryPrice,
+                        stop_loss: alert.stopLoss,
+                        tp_hits: alert.tpHits,
+                        close_reason: alert.closeReason,
+                        created_date: alert.createdAt,
+                        updated_date: alert.updatedAt
+                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />)}
                       </div> : <div className="text-center py-8">
                         <MagnifyingSearchEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
@@ -2124,13 +1992,13 @@ export default function SignalStream() {
           
           {/* Create Signal Modal */}
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogContent className="max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-3 sm:p-6" style={{ background: 'rgba(28, 28, 30, 0.7)', backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <DialogHeader>
-                <DialogTitle style={{ color: '#FFFFFF' }}>Create Alert</DialogTitle>
-                <p className="text-sm" style={{ color: '#EBEBF5' }}>
-                  Create a new educational trading pattern for learning and analysis purposes.
-                </p>
-              </DialogHeader>
+            <DialogContent className="max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-3 sm:p-6" style={{
+              background: 'rgba(28, 28, 30, 0.7)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              
               <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
             </DialogContent>
           </Dialog>

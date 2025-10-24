@@ -620,24 +620,28 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             {/* Stop Loss */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-destructive">Stop Loss *</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Input
-                  type="number"
-                  step="0.00001"
-                  value={formData.stop_loss}
-                  onChange={(e) => handleStopLossChange(e.target.value)}
-                  placeholder="Price"
-                  className="h-7 font-mono text-right bg-input border-border"
-                />
-                <InputWithSuffix
-                  type="number"
-                  step="0.1"
-                  value={pipInputs.stop_loss_pips}
-                  onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
-                  placeholder="0.0"
-                  suffix="Pips"
-                  className="h-7 font-mono text-right bg-input border-border"
-                />
+              <div className="flex gap-3 sm:gap-2">
+                <div className="flex-1 min-w-0">
+                  <Input
+                    type="number"
+                    step="0.00001"
+                    value={formData.stop_loss}
+                    onChange={(e) => handleStopLossChange(e.target.value)}
+                    placeholder="Price"
+                    className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <InputWithSuffix
+                    type="number"
+                    step="0.1"
+                    value={pipInputs.stop_loss_pips}
+                    onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
+                    placeholder="0.0"
+                    suffix="Pips"
+                    className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
+                  />
+                </div>
               </div>
               {errors.stop_loss && (
                 <p className="text-sm text-destructive flex items-center gap-1">
@@ -681,24 +685,28 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                       </Button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input
-                      type="number"
-                      step="0.00001"
-                      value={tp}
-                      onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                      placeholder="Price"
-                      className="h-7 font-mono text-right bg-input border-border"
-                    />
-                    <InputWithSuffix
-                      type="number"
-                      step="0.1"
-                      value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
-                      onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
-                      placeholder="0.0"
-                      suffix="Pips"
-                      className="h-7 font-mono text-right bg-input border-border"
-                    />
+                  <div className="flex gap-3 sm:gap-2">
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        type="number"
+                        step="0.00001"
+                        value={tp}
+                        onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                        placeholder="Price"
+                        className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <InputWithSuffix
+                        type="number"
+                        step="0.1"
+                        value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs] || ''}
+                        onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
+                        placeholder="0.0"
+                        suffix="Pips"
+                        className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
+                      />
+                    </div>
                   </div>
                   {index === 0 && errors.tp1 && (
                     <p className="text-sm text-destructive flex items-center gap-1">

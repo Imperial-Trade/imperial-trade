@@ -81,13 +81,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   // Centered combo positioning (logo on left, text on right)
   const centeredComboPosition = {
     logo: {
-      x: isMobile ? -70 : -90,
-      y: 0,
       scale: isMobile ? 0.35 : 0.4
-    },
-    text: {
-      x: isMobile ? 60 : 80,
-      y: 0
     }
   };
 
@@ -103,7 +97,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
       transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] as const }
     },
     centerHold: {
-      scale: 1.0,
+      scale: isMobile ? 1.5 : 1.8,
       opacity: 1,
       x: 0,
       y: 0,
@@ -115,7 +109,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
       }
     },
     centerFadeOut: {
-      scale: 1.0,
+      scale: isMobile ? 1.5 : 1.8,
       opacity: 0,
       x: 0,
       y: 0,
@@ -128,28 +122,32 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     },
     spinReveal: {
       scale: centeredComboPosition.logo.scale,
-      x: centeredComboPosition.logo.x,
-      y: centeredComboPosition.logo.y,
+      x: 0,
+      y: 0,
       rotateY: 360,
       opacity: 1,
       filter: 'drop-shadow(0 0 30px rgba(255, 215, 0, 0.4))',
       transition: { 
-        duration: 0.3, 
-        ease: [0.4, 0, 0.6, 1] as const
+        duration: 0.3,
+        ease: [0.4, 0, 0.6, 1] as const,
+        rotateY: { 
+          duration: 0.3,
+          ease: "linear"
+        }
       }
     },
     textReveal: {
       scale: centeredComboPosition.logo.scale,
-      x: centeredComboPosition.logo.x,
-      y: centeredComboPosition.logo.y,
+      x: 0,
+      y: 0,
       rotateY: 360,
       opacity: 1,
       filter: 'drop-shadow(0 0 30px rgba(255, 215, 0, 0.4))'
     },
     settle: {
       scale: centeredComboPosition.logo.scale,
-      x: centeredComboPosition.logo.x,
-      y: centeredComboPosition.logo.y,
+      x: 0,
+      y: 0,
       rotateY: 360,
       opacity: 1,
       filter: 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.3))',
@@ -160,8 +158,8 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     },
     fadeOverlay: {
       scale: centeredComboPosition.logo.scale,
-      x: centeredComboPosition.logo.x,
-      y: centeredComboPosition.logo.y,
+      x: 0,
+      y: 0,
       rotateY: 360,
       opacity: 1,
       filter: 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.3))'
@@ -170,14 +168,12 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
 
   // Text animation variants
   const textContainerVariants = {
-    centerAppear: { opacity: 0, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y },
-    centerHold: { opacity: 0, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y },
-    centerFadeOut: { opacity: 0, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y },
-    spinReveal: { opacity: 0, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y },
+    centerAppear: { opacity: 0 },
+    centerHold: { opacity: 0 },
+    centerFadeOut: { opacity: 0 },
+    spinReveal: { opacity: 0 },
     textReveal: {
       opacity: 1,
-      x: centeredComboPosition.text.x,
-      y: centeredComboPosition.text.y,
       transition: {
         duration: 0.3,
         ease: [0.42, 0, 1, 1] as const,
@@ -185,8 +181,8 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
         delayChildren: 0
       }
     },
-    settle: { opacity: 1, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y },
-    fadeOverlay: { opacity: 1, x: centeredComboPosition.text.x, y: centeredComboPosition.text.y }
+    settle: { opacity: 1 },
+    fadeOverlay: { opacity: 1 }
   };
 
   const letterVariants = {
@@ -236,41 +232,42 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
         Loading Imperial Trading Platform
       </div>
 
-      {/* Animated Logo */}
-      <motion.img
-        src={imperialLogo}
-        alt="Imperial Trading Logo"
-        className="w-32 h-32 md:w-40 md:h-40"
-        variants={logoVariants}
-        initial="centerAppear"
-        animate={phase}
-        style={{
-          willChange: 'transform, opacity, filter',
-          backfaceVisibility: 'hidden',
-          transformStyle: 'preserve-3d'
-        }}
-      />
+      {/* Centered Logo + Text Combo */}
+      <div className="flex items-center gap-3 md:gap-4 justify-center">
+        <motion.img
+          src={imperialLogo}
+          alt="Imperial Trading Logo"
+          className="w-32 h-32 md:w-40 md:h-40"
+          variants={logoVariants}
+          initial="centerAppear"
+          animate={phase}
+          style={{
+            willChange: 'transform, opacity, filter',
+            backfaceVisibility: 'hidden',
+            transformStyle: 'preserve-3d'
+          }}
+        />
 
-      {/* "TRADE IMPERIAL" Text - Appears after spin */}
-      <motion.div
-        className="absolute flex imperial-tech-font text-xl md:text-2xl"
-        variants={textContainerVariants}
-        initial="centerAppear"
-        animate={phase}
-        style={{
-          willChange: 'transform, opacity'
-        }}
-      >
-        {"TRADE IMPERIAL".split('').map((char, i) => (
-          <motion.span
-            key={i}
-            variants={letterVariants}
-            className="inline-block"
-          >
-            {char === ' ' ? '\u00A0' : char}
-          </motion.span>
-        ))}
-      </motion.div>
+        <motion.div
+          className="flex imperial-tech-font text-xl md:text-2xl"
+          variants={textContainerVariants}
+          initial="centerAppear"
+          animate={phase}
+          style={{
+            willChange: 'transform, opacity'
+          }}
+        >
+          {"TRADE IMPERIAL".split('').map((char, i) => (
+            <motion.span
+              key={i}
+              variants={letterVariants}
+              className="inline-block"
+            >
+              {char === ' ' ? '\u00A0' : char}
+            </motion.span>
+          ))}
+        </motion.div>
+      </div>
 
       {/* Golden glow effect background */}
       <motion.div

@@ -352,27 +352,31 @@ class CapacitorNotificationService {
   private async registerDeviceToken(token: string) {
     try {
       if (!this.currentUserId) {
-        console.warn('No user ID available for device token registration');
+        console.warn('⚠️ No user ID available for device token registration');
         return;
       }
 
-      // Update profile with device token
-      // Type assertion needed until Supabase types regenerate after migration
-      const updateData = {
-        device_token: token,
-        device_platform: this.platform,
-        device_token_updated_at: new Date().toISOString(),
-      };
-      
-      const { error } = await (supabase
-        .from('profiles')
-        .update(updateData as any)
-        .eq('id', this.currentUserId) as any);
+      console.log(`📱 Registering device token for user ${this.currentUserId} on ${this.platform}...`);
 
-      if (error) throw error;
-      console.log('✅ Device token registered successfully');
+      // Call the register-device-token edge function
+      const { data, error } = await supabase.functions.invoke('register-device-token', {
+        body: {
+          userId: this.currentUserId,
+          token: token,
+          platform: this.platform,
+        }
+      });
+
+      if (error) {
+        console.error('❌ Device token registration failed:', error);
+        throw error;
+      }
+
+      console.log('✅ Device token registered successfully via edge function:', data);
     } catch (error) {
-      console.error('Failed to register device token:', error);
+      console.error('❌ Failed to register device token:', error);
+      // Don't throw - allow app to continue even if token registration fails
+      // User can still use the app, just won't get push notifications
     }
   }
 

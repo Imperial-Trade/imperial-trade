@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.check-user-existence]
 verify_jwt = false
+
+[functions.register-device-token]
+verify_jwt = false

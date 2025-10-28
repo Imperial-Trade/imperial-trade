@@ -1,14 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Crown } from 'lucide-react';
+import imperialLogo from '@/assets/imperial-logo.png';
 
 interface ModernImperialWelcomeProps {
   onComplete?: () => void;
 }
 
+type AnimationPhase = 
+  | 'centerAppear'    // 0.0-0.2s
+  | 'centerHold'      // 0.2-0.5s
+  | 'slideToHeader'   // 0.5-1.0s
+  | 'spinReveal'      // 1.0-1.3s
+  | 'settle'          // 1.3-2.0s
+  | 'fadeOverlay';    // 2.0-2.5s
+
 export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ onComplete }) => {
-  const [phase, setPhase] = useState<'entry' | 'pulse' | 'settle' | 'exit'>('entry');
+  const [phase, setPhase] = useState<AnimationPhase>('centerAppear');
   const prefersReducedMotion = useReducedMotion();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    // Update mobile state on resize
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     // Skip animation if user prefers reduced motion
@@ -22,13 +38,15 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     document.body.style.overflow = 'hidden';
 
     // Animation timeline
-    const entryTimer = setTimeout(() => setPhase('pulse'), 200);
-    const pulseTimer = setTimeout(() => setPhase('settle'), 400);
-    const settleTimer = setTimeout(() => setPhase('exit'), 700);
-    const exitTimer = setTimeout(() => {
+    const centerHoldTimer = setTimeout(() => setPhase('centerHold'), 200);
+    const slideTimer = setTimeout(() => setPhase('slideToHeader'), 500);
+    const spinTimer = setTimeout(() => setPhase('spinReveal'), 1000);
+    const settleTimer = setTimeout(() => setPhase('settle'), 1300);
+    const fadeTimer = setTimeout(() => setPhase('fadeOverlay'), 2000);
+    const completeTimer = setTimeout(() => {
       document.body.style.overflow = originalOverflow;
       onComplete?.();
-    }, 1500);
+    }, 2000); // Trigger dashboard load at 2.0s
 
     // ESC key to skip animation
     const handleEscape = (e: KeyboardEvent) => {
@@ -41,10 +59,12 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
 
     // Cleanup
     return () => {
-      clearTimeout(entryTimer);
-      clearTimeout(pulseTimer);
+      clearTimeout(centerHoldTimer);
+      clearTimeout(slideTimer);
+      clearTimeout(spinTimer);
       clearTimeout(settleTimer);
-      clearTimeout(exitTimer);
+      clearTimeout(fadeTimer);
+      clearTimeout(completeTimer);
       window.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = originalOverflow;
     };
@@ -55,60 +75,126 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     return null;
   }
 
-  // Animation variants for container
-  const containerVariants = {
-    entry: { opacity: 1 },
-    exit: { 
-      opacity: 0,
-      transition: { 
-        duration: 0.5,
-        ease: [0.4, 0, 1, 1] as const
-      }
-    }
+  // Responsive positioning for header
+  const headerPosition = {
+    x: isMobile ? '-40vw' : '-42vw',
+    y: isMobile ? '-45vh' : '-44vh',
+    scale: isMobile ? 0.25 : 0.3
   };
 
-  // Animation variants for logo
+  // Logo animation variants
   const logoVariants = {
-    entry: {
-      scale: 0.8,
+    centerAppear: {
+      scale: 0,
       opacity: 0,
-      filter: 'drop-shadow(0 0 40px rgba(255, 215, 0, 0.3))',
-      transition: {
-        type: 'spring' as const,
-        stiffness: 200,
-        damping: 20,
-        duration: 0.2
+      x: 0,
+      y: 0,
+      rotateY: 0,
+      filter: 'drop-shadow(0 0 0px rgba(255, 215, 0, 0))',
+      transition: { duration: 0.2, ease: [0.42, 0, 0.58, 1] as const }
+    },
+    centerHold: {
+      scale: 1.0,
+      opacity: 1,
+      x: 0,
+      y: 0,
+      rotateY: 0,
+      filter: 'drop-shadow(0 0 40px rgba(255, 215, 0, 0.5))',
+      transition: { 
+        duration: 0.3,
+        ease: [0.42, 0, 0.58, 1] as const
       }
     },
-    pulse: {
-      scale: 1.05,
+    slideToHeader: {
+      scale: headerPosition.scale,
+      x: headerPosition.x,
+      y: headerPosition.y,
+      rotateY: 0,
       opacity: 1,
-      filter: 'drop-shadow(0 0 60px rgba(255, 215, 0, 0.6))',
-      transition: {
-        type: 'spring' as const,
-        stiffness: 300,
-        damping: 15,
-        duration: 0.2
+      filter: 'drop-shadow(0 0 30px rgba(255, 215, 0, 0.4))',
+      transition: { 
+        duration: 0.5, 
+        ease: [0.4, 0, 0.2, 1] as const
+      }
+    },
+    spinReveal: {
+      scale: headerPosition.scale,
+      x: headerPosition.x,
+      y: headerPosition.y,
+      rotateY: 360,
+      opacity: 1,
+      filter: 'drop-shadow(0 0 30px rgba(255, 215, 0, 0.4))',
+      transition: { 
+        duration: 0.3, 
+        ease: [0.4, 0, 0.6, 1] as const
       }
     },
     settle: {
-      scale: 1.0,
+      scale: headerPosition.scale,
+      x: headerPosition.x,
+      y: headerPosition.y,
+      rotateY: 360,
       opacity: 1,
-      filter: 'drop-shadow(0 0 50px rgba(255, 215, 0, 0.4))',
-      transition: {
-        type: 'spring' as const,
-        stiffness: 200,
-        damping: 20,
-        duration: 0.3
+      filter: 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.3))',
+      transition: { 
+        duration: 0.7,
+        ease: [0.42, 0, 0.58, 1] as const
       }
     },
-    exit: {
-      scale: 1.1,
-      opacity: 0,
-      filter: 'drop-shadow(0 0 40px rgba(255, 215, 0, 0.2))',
+    fadeOverlay: {
+      scale: headerPosition.scale,
+      x: headerPosition.x,
+      y: headerPosition.y,
+      rotateY: 360,
+      opacity: 1,
+      filter: 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.3))'
+    }
+  };
+
+  // Text animation variants
+  const textContainerVariants = {
+    centerAppear: { opacity: 0, x: -20 },
+    centerHold: { opacity: 0, x: -20 },
+    slideToHeader: { opacity: 0, x: -20 },
+    spinReveal: {
+      opacity: 1,
+      x: 0,
       transition: {
+        duration: 0.3,
+        ease: [0.42, 0, 1, 1] as const,
+        staggerChildren: 0.03,
+        delayChildren: 0
+      }
+    },
+    settle: { opacity: 1, x: 0 },
+    fadeOverlay: { opacity: 1, x: 0 }
+  };
+
+  const letterVariants = {
+    centerAppear: { opacity: 0, y: 10 },
+    centerHold: { opacity: 0, y: 10 },
+    slideToHeader: { opacity: 0, y: 10 },
+    spinReveal: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.2, ease: [0.4, 0, 0.6, 1] as const }
+    },
+    settle: { opacity: 1, y: 0 },
+    fadeOverlay: { opacity: 1, y: 0 }
+  };
+
+  // Container fade animation
+  const containerVariants = {
+    centerAppear: { opacity: 1 },
+    centerHold: { opacity: 1 },
+    slideToHeader: { opacity: 1 },
+    spinReveal: { opacity: 1 },
+    settle: { opacity: 1 },
+    fadeOverlay: { 
+      opacity: 0,
+      transition: { 
         duration: 0.5,
-        ease: [0.4, 0, 1, 1] as const
+        ease: [0.4, 0, 0.6, 1] as const
       }
     }
   };
@@ -117,11 +203,11 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     <motion.div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
       variants={containerVariants}
-      initial="entry"
-      animate={phase === 'exit' ? 'exit' : 'entry'}
+      initial="centerAppear"
+      animate={phase}
       style={{
         willChange: 'opacity',
-        pointerEvents: 'none'
+        pointerEvents: phase === 'fadeOverlay' ? 'none' : 'auto'
       }}
     >
       {/* Screen reader announcement */}
@@ -130,26 +216,48 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
       </div>
 
       {/* Animated Logo */}
-      <motion.div
+      <motion.img
+        src={imperialLogo}
+        alt="Imperial Trading Logo"
+        className="w-32 h-32 md:w-40 md:h-40"
         variants={logoVariants}
-        initial="entry"
+        initial="centerAppear"
         animate={phase}
-        className="flex items-center justify-center"
         style={{
-          willChange: 'transform, opacity, filter'
+          willChange: 'transform, opacity, filter',
+          backfaceVisibility: 'hidden',
+          transformStyle: 'preserve-3d'
+        }}
+      />
+
+      {/* "TRADE IMPERIAL" Text - Appears during spin */}
+      <motion.div
+        className="absolute flex imperial-tech-font text-xl md:text-2xl"
+        variants={textContainerVariants}
+        initial="centerAppear"
+        animate={phase}
+        style={{
+          left: isMobile ? '22%' : '20%',
+          top: isMobile ? '9%' : '10%',
+          willChange: 'transform, opacity'
         }}
       >
-        <Crown 
-          className="w-24 h-24 md:w-32 md:h-32 text-accent-gold"
-          strokeWidth={1.5}
-        />
+        {"TRADE IMPERIAL".split('').map((char, i) => (
+          <motion.span
+            key={i}
+            variants={letterVariants}
+            className="inline-block"
+          >
+            {char === ' ' ? '\u00A0' : char}
+          </motion.span>
+        ))}
       </motion.div>
 
       {/* Golden glow effect background */}
       <motion.div
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
         animate={{
-          opacity: phase === 'pulse' ? 0.3 : phase === 'settle' ? 0.2 : 0.1
+          opacity: phase === 'centerHold' ? 0.3 : phase === 'centerAppear' ? 0.2 : 0.15
         }}
         transition={{ duration: 0.3 }}
       >

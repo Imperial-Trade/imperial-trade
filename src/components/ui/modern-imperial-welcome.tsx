@@ -8,7 +8,7 @@ interface ModernImperialWelcomeProps {
 
 type AnimationPhase = 
   | 'logoAppear'    // 0.0-0.3s: Logo appears
-  | 'logoRotate'    // 0.3-1.5s: Logo rotates 2x counterclockwise
+  | 'logoRotate'    // 0.3-1.1s: Logo rotates 2x clockwise (1.5x speed)
   | 'textReveal'    // 0.8-1.5s: Text reveals L→R
   | 'wipeRight'     // 2.0-2.5s: Logo slides to end of "L" with fade
   | 'fadeOut';      // 2.5s: Complete
@@ -68,20 +68,20 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     },
     logoRotate: {
       x: 0,
-      rotateZ: -720,
+      rotateZ: 720,
       opacity: 1,
       transition: {
-        rotateZ: { duration: 1.2, ease: [0, 0, 0, 0] as const }
+        rotateZ: { duration: 0.8, ease: [0, 0, 0, 0] as const }
       }
     },
     textReveal: {
       x: 0,
-      rotateZ: -720,
+      rotateZ: 720,
       opacity: 1
     },
     wipeRight: {
       x: textWidth,
-      rotateZ: -720,
+      rotateZ: 720,
       opacity: 0,
       transition: {
         duration: 0.5,

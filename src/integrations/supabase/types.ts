@@ -1292,6 +1292,13 @@ export type Database = {
             foreignKeyName: "module_videos_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
+            referencedRelation: "video_stats"
+            referencedColumns: ["video_id"]
+          },
+          {
+            foreignKeyName: "module_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
             referencedRelation: "videos"
             referencedColumns: ["id"]
           },
@@ -1886,6 +1893,52 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      playlist_videos: {
+        Row: {
+          created_at: string
+          id: string
+          playlist_id: string
+          position: number
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          playlist_id: string
+          position?: number
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          playlist_id?: string
+          position?: number
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_videos_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "user_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_stats"
+            referencedColumns: ["video_id"]
+          },
+          {
+            foreignKeyName: "playlist_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portfolio_items: {
         Row: {
@@ -2929,7 +2982,7 @@ export type Database = {
         Row: {
           created_at: string
           direction: string
-          duration: unknown | null
+          duration: unknown
           entry_date: string
           entry_price: number
           exit_date: string | null
@@ -2946,7 +2999,7 @@ export type Database = {
         Insert: {
           created_at?: string
           direction: string
-          duration?: unknown | null
+          duration?: unknown
           entry_date: string
           entry_price: number
           exit_date?: string | null
@@ -2963,7 +3016,7 @@ export type Database = {
         Update: {
           created_at?: string
           direction?: string
-          duration?: unknown | null
+          duration?: unknown
           entry_date?: string
           entry_price?: number
           exit_date?: string | null
@@ -3469,6 +3522,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_playlists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           created_at: string
@@ -3710,6 +3793,134 @@ export type Database = {
         }
         Relationships: []
       }
+      video_analytics: {
+        Row: {
+          completion_rate: number | null
+          created_at: string
+          id: string
+          updated_at: string
+          video_id: string
+          view_count: number
+        }
+        Insert: {
+          completion_rate?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          video_id: string
+          view_count?: number
+        }
+        Update: {
+          completion_rate?: number | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          video_id?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_analytics_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "video_stats"
+            referencedColumns: ["video_id"]
+          },
+          {
+            foreignKeyName: "video_analytics_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          parent_comment_id: string | null
+          updated_at: string | null
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_comment_id?: string | null
+          updated_at?: string | null
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          parent_comment_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "video_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_engagement: {
+        Row: {
+          created_at: string
+          favorited: boolean
+          id: string
+          liked: boolean
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          favorited?: boolean
+          id?: string
+          liked?: boolean
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          favorited?: boolean
+          id?: string
+          liked?: boolean
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_engagement_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_stats"
+            referencedColumns: ["video_id"]
+          },
+          {
+            foreignKeyName: "video_engagement_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           access_settings: Json | null
@@ -3930,7 +4141,7 @@ export type Database = {
       }
       v_pending_signals_with_tp_hits: {
         Row: {
-          age: unknown | null
+          age: unknown
           alert_message: string | null
           asset_name: string | null
           created_at: string | null
@@ -3970,6 +4181,16 @@ export type Database = {
         }
         Relationships: []
       }
+      video_stats: {
+        Row: {
+          comment_count: number | null
+          created_at: string | null
+          like_count: number | null
+          video_id: string | null
+          view_count: number | null
+        }
+        Relationships: []
+      }
       xeon_subscribers_public: {
         Row: {
           display_name: string | null
@@ -4004,10 +4225,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      auto_cleanup_stale_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      auto_cleanup_stale_sessions: { Args: never; Returns: undefined }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number
@@ -4017,10 +4235,9 @@ export type Database = {
         }
         Returns: Json
       }
-      check_account_request_rate_limit: {
-        Args: { p_email: string } | { p_email: string; p_ip_address?: string }
-        Returns: boolean
-      }
+      check_account_request_rate_limit:
+        | { Args: { p_email: string }; Returns: boolean }
+        | { Args: { p_email: string; p_ip_address?: string }; Returns: Json }
       check_alert_cooldown: {
         Args: {
           p_alert_type: string
@@ -4053,66 +4270,21 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: boolean
       }
-      cleanup_duplicate_ui_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_expired_coach_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_inactive_symbol_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_notification_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_old_cron_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_cron_logs_optimized: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_economic_events: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_notification_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_rate_limits: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_rate_limits_optimized: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_ui_listeners: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_phantom_notifications: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_stale_market_prices: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_trigger_execution_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_webhook_debounce: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_duplicate_ui_sessions: { Args: never; Returns: number }
+      cleanup_expired_coach_cache: { Args: never; Returns: number }
+      cleanup_inactive_symbol_cache: { Args: never; Returns: number }
+      cleanup_notification_cache: { Args: never; Returns: number }
+      cleanup_old_cron_logs: { Args: never; Returns: undefined }
+      cleanup_old_cron_logs_optimized: { Args: never; Returns: undefined }
+      cleanup_old_economic_events: { Args: never; Returns: undefined }
+      cleanup_old_notification_logs: { Args: never; Returns: undefined }
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      cleanup_old_rate_limits_optimized: { Args: never; Returns: undefined }
+      cleanup_old_ui_listeners: { Args: never; Returns: number }
+      cleanup_phantom_notifications: { Args: never; Returns: number }
+      cleanup_stale_market_prices: { Args: never; Returns: undefined }
+      cleanup_trigger_execution_logs: { Args: never; Returns: undefined }
+      cleanup_webhook_debounce: { Args: never; Returns: undefined }
       close_trade_alert: {
         Args: { p_alert_id: string; p_close_reason?: string; p_user_id: string }
         Returns: Json
@@ -4135,38 +4307,20 @@ export type Database = {
         Args: { p_comment_id: string }
         Returns: number
       }
-      delete_comment_single: {
-        Args: { p_comment_id: string }
-        Returns: number
-      }
-      delete_post_cascade: {
-        Args: { p_post_id: string }
-        Returns: number
-      }
-      disable_course_module_webhook: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      disable_economic_events_processing: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      enable_course_module_webhook: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      expire_limit_orders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      delete_comment_single: { Args: { p_comment_id: string }; Returns: number }
+      delete_post_cascade: { Args: { p_post_id: string }; Returns: number }
+      disable_course_module_webhook: { Args: never; Returns: string }
+      disable_economic_events_processing: { Args: never; Returns: undefined }
+      enable_course_module_webhook: { Args: never; Returns: string }
+      expire_limit_orders: { Args: never; Returns: undefined }
       get_active_alert_symbols: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           symbol: string
         }[]
       }
       get_active_notification_triggers: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           function_name: string
           table_name: string
@@ -4174,7 +4328,7 @@ export type Database = {
         }[]
       }
       get_active_users_for_broadcasting: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           display_name: string
           onesignal_player_id: string
@@ -4182,7 +4336,7 @@ export type Database = {
         }[]
       }
       get_anonymized_rate_limits: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           attempt_count: number
           blocked_until: string
@@ -4195,12 +4349,9 @@ export type Database = {
           window_start: string
         }[]
       }
-      get_community_tier_info: {
-        Args: { tier_level: number }
-        Returns: Json
-      }
+      get_community_tier_info: { Args: { tier_level: number }; Returns: Json }
       get_cron_job_status: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           error_message: string
           job_name: string
@@ -4221,7 +4372,7 @@ export type Database = {
         }[]
       }
       get_market_data_freshness: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           hours_old: number
           is_stale: boolean
@@ -4229,26 +4380,14 @@ export type Database = {
           symbol: string
         }[]
       }
-      get_market_session: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_market_session: { Args: never; Returns: string }
       get_notification_health_metrics: {
         Args: { p_hours?: number }
         Returns: Json
       }
-      get_realtime_system_status: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_trader_stats: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
-      get_unread_notification_count: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      get_realtime_system_status: { Args: never; Returns: Json }
+      get_trader_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_unread_notification_count: { Args: never; Returns: number }
       get_user_access_level: {
         Args: { user_id_param?: string }
         Returns: string
@@ -4278,26 +4417,29 @@ export type Database = {
           unread: boolean
         }[]
       }
-      get_user_role: {
-        Args: { user_id_param?: string }
-        Returns: string
-      }
+      get_user_role: { Args: { user_id_param?: string }; Returns: string }
       get_user_roles: {
         Args: { p_user_id?: string }
         Returns: {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
-      get_user_roles_array: {
-        Args: { _user_id: string }
-        Returns: string[]
-      }
-      get_user_type: {
-        Args: { user_id_param?: string }
-        Returns: string
+      get_user_roles_array: { Args: { _user_id: string }; Returns: string[] }
+      get_user_type: { Args: { user_id_param?: string }; Returns: string }
+      get_video_like_count: { Args: { p_video_id: string }; Returns: number }
+      get_video_stats: {
+        Args: { p_video_id: string }
+        Returns: {
+          comment_count: number
+          completion_rate: number
+          last_updated: string
+          like_count: number
+          video_id: string
+          view_count: number
+        }[]
       }
       get_xeon_stream_subscribers: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           display_name: string
           notification_preferences: Json
@@ -4341,10 +4483,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { user_id_param?: string }
-        Returns: boolean
-      }
+      increment_video_view: { Args: { p_video_id: string }; Returns: undefined }
+      is_admin: { Args: { user_id_param?: string }; Returns: boolean }
       is_educator_or_admin: {
         Args: { user_id_param?: string }
         Returns: boolean
@@ -4353,30 +4493,25 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: boolean
       }
-      is_system_operation: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      log_deprecated_function_usage: {
-        Args:
-          | Record<PropertyKey, never>
-          | { p_function_name: string; p_metadata?: Json; p_user_id?: string }
-        Returns: undefined
-      }
-      mark_notifications_cleared: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      is_system_operation: { Args: never; Returns: boolean }
+      log_deprecated_function_usage:
+        | { Args: never; Returns: undefined }
+        | {
+            Args: {
+              p_function_name: string
+              p_metadata?: Json
+              p_user_id?: string
+            }
+            Returns: undefined
+          }
+      mark_notifications_cleared: { Args: never; Returns: string }
       mark_notifications_read: {
         Args: { p_event_ids: string[]; p_event_type: string }
         Returns: number
       }
-      observe_deprecated_function_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      observe_deprecated_function_usage: { Args: never; Returns: undefined }
       populate_alert_monitoring_for_existing_signals: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: undefined
       }
       process_price_alerts: {
@@ -4421,10 +4556,7 @@ export type Database = {
         Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
         Returns: Json
       }
-      reconcile_signal_consistency: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      reconcile_signal_consistency: { Args: never; Returns: Json }
       register_ui_activity: {
         Args: { p_session_id: string; p_symbols?: string[]; p_user_id?: string }
         Returns: undefined
@@ -4453,21 +4585,18 @@ export type Database = {
         }
         Returns: boolean
       }
-      system_update_trade_alert: {
-        Args:
-          | {
+      system_update_trade_alert:
+        | { Args: { p_signal_id: string; p_updates: Json }; Returns: undefined }
+        | {
+            Args: {
               p_close_reason?: string
               p_signal_id: string
               p_status?: string
               p_tp_hits?: number[]
             }
-          | { p_signal_id: string; p_updates: Json }
-        Returns: undefined
-      }
-      update_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+            Returns: boolean
+          }
+      update_expired_sessions: { Args: never; Returns: undefined }
       update_trade_alert_safe: {
         Args: {
           p_close_reason?: Database["public"]["Enums"]["close_reason"]
@@ -4504,6 +4633,12 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "trade_alerts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
@@ -4552,7 +4687,7 @@ export type Database = {
         Returns: undefined
       }
       verify_signal_triggers: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           enabled: boolean
           table_name: string

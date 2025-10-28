@@ -51,20 +51,23 @@ export const useOrderManagement = () => {
         throw new Error(errorMessage);
       }
 
+      // ✅ Type-safe response handling
+      const response = data as any;
+
       // ✅ Check RPC response success flag
-      if (data && !data.success) {
-        console.error('❌ RPC returned error:', data);
-        throw new Error(data.error || 'Failed to cancel order');
+      if (response && response.success === false) {
+        console.error('❌ RPC returned error:', response);
+        throw new Error(response.error || 'Failed to cancel order');
       }
 
-      console.log('✅ Order cancelled via RPC:', data);
+      console.log('✅ Order cancelled via RPC:', response);
 
       // ✅ Dispatch event for instant UI update
       window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
         detail: {
           signalId: orderId,
           closeReason: 'manual',
-          wasPending: data?.was_pending || false,
+          wasPending: response?.was_pending || false,
           timestamp: new Date().toISOString()
         }
       }));

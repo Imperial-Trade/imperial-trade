@@ -7,13 +7,14 @@ interface ModernImperialWelcomeProps {
 }
 
 type AnimationPhase = 
-  | 'logoSpin'      // 0.0-1.2s: Logo spins 360°
-  | 'textReveal'    // 0.5-1.2s: Text reveals L→R
-  | 'wipeRight'     // 1.7-2.5s: Logo slides right
+  | 'logoAppear'    // 0.0-0.5s: Logo appears
+  | 'logoRotate'    // 0.5-1.5s: Logo rotates top-down
+  | 'textReveal'    // 0.9-2.0s: Text reveals L→R
+  | 'wipeRight'     // 2.0-2.5s: Logo slides right to end of text
   | 'fadeOut';      // 2.5s: Complete
 
 export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ onComplete }) => {
-  const [phase, setPhase] = useState<AnimationPhase>('logoSpin');
+  const [phase, setPhase] = useState<AnimationPhase>('logoAppear');
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -27,8 +28,9 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
 
     const timers: NodeJS.Timeout[] = [];
     
-    timers.push(setTimeout(() => setPhase('textReveal'), 500));
-    timers.push(setTimeout(() => setPhase('wipeRight'), 1700));
+    timers.push(setTimeout(() => setPhase('logoRotate'), 500));
+    timers.push(setTimeout(() => setPhase('textReveal'), 900));
+    timers.push(setTimeout(() => setPhase('wipeRight'), 2000));
     timers.push(setTimeout(() => {
       setPhase('fadeOut');
       document.body.style.overflow = originalOverflow;
@@ -46,29 +48,33 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   }
 
   const logoVariants = {
-    logoSpin: {
+    logoAppear: {
       x: 0,
-      rotateY: 0,
+      rotateX: 0,
       opacity: 1,
       transition: {
-        opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const },
-        rotateY: { duration: 1.2, ease: [1, 0, 0, 1] as const }
+        opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }
+      }
+    },
+    logoRotate: {
+      x: 0,
+      rotateX: 360,
+      opacity: 1,
+      transition: {
+        rotateX: { duration: 1.0, ease: [0, 0, 1, 1] as const }
       }
     },
     textReveal: {
       x: 0,
-      rotateY: 360,
-      opacity: 1,
-      transition: {
-        rotateY: { duration: 0.7, ease: [1, 0, 0, 1] as const }
-      }
+      rotateX: 360,
+      opacity: 1
     },
     wipeRight: {
-      x: '100vw',
-      rotateY: 360,
+      x: 'calc(50vw + 200px)',
+      rotateX: 360,
       opacity: 1,
       transition: {
-        duration: 0.8,
+        duration: 0.5,
         ease: [0.4, 0, 0.2, 1] as const
       }
     },
@@ -76,11 +82,12 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   };
 
   const textContainerVariants = {
-    logoSpin: { opacity: 0 },
+    logoAppear: { opacity: 0 },
+    logoRotate: { opacity: 0 },
     textReveal: {
       opacity: 1,
       transition: {
-        duration: 0.4,
+        duration: 0.5,
         ease: [0.4, 0, 0.2, 1] as const,
         staggerChildren: 0.03,
         delayChildren: 0
@@ -94,7 +101,8 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   };
 
   const letterVariants = {
-    logoSpin: { opacity: 0, x: -10 },
+    logoAppear: { opacity: 0, x: -10 },
+    logoRotate: { opacity: 0, x: -10 },
     textReveal: {
       opacity: 1,
       x: 0,
@@ -105,7 +113,8 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   };
 
   const containerVariants = {
-    logoSpin: { opacity: 1 },
+    logoAppear: { opacity: 1 },
+    logoRotate: { opacity: 1 },
     textReveal: { opacity: 1 },
     wipeRight: { opacity: 1 },
     fadeOut: { 
@@ -118,7 +127,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     <motion.div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
       variants={containerVariants}
-      initial="logoSpin"
+      initial="logoAppear"
       animate={phase}
       style={{
         willChange: 'opacity',
@@ -133,9 +142,9 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
         <motion.img
           src={imperialLogo}
           alt="Imperial Trading Logo"
-          className="w-32 h-32 md:w-40 md:h-40"
+          className="w-10 h-10 md:w-12 md:h-12"
           variants={logoVariants}
-          initial="logoSpin"
+          initial="logoAppear"
           animate={phase}
           style={{
             willChange: 'transform, opacity',
@@ -147,7 +156,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
         <motion.div
           className="flex imperial-tech-font text-xl md:text-2xl tracking-wider text-white"
           variants={textContainerVariants}
-          initial="logoSpin"
+          initial="logoAppear"
           animate={phase}
           style={{ willChange: 'opacity' }}
         >

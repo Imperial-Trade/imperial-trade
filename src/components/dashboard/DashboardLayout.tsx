@@ -20,14 +20,14 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Top Navigation - Hidden during welcome animation */}
       {hasSeenWelcome && (
-        <div className="animate-dashboard-fade-in">
+        <div className="animate-nav-cross-blur-in opacity-0">
           <DashboardNav />
         </div>
       )}
       
       {/* Main Content with Dynamic Top Padding */}
       <main 
-        className={`relative ${hasSeenWelcome ? 'animate-dashboard-slide-up' : 'opacity-0'}`}
+        className={`relative ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'}`}
         style={{ paddingTop: 'var(--header-height, 4rem)' }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/5 to-transparent pointer-events-none"></div>

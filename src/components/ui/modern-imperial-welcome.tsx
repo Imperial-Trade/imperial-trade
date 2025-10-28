@@ -11,7 +11,8 @@ type AnimationPhase =
   | 'logoRotate'    // 0.3-0.83s: Logo rotates 2x clockwise (2.25x speed)
   | 'textReveal'    // 0.8-1.5s: Text reveals L→R
   | 'wipeRight'     // 2.0-2.5s: Logo slides to end of "L" with fade
-  | 'fadeOut';      // 2.5s: Complete
+  | 'crossBlur'     // 2.5-3.5s: Cross-blur transition
+  | 'fadeOut';      // 3.5s: Complete
 
 export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<AnimationPhase>('logoAppear');
@@ -41,11 +42,12 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     timers.push(setTimeout(() => setPhase('logoRotate'), 300));
     timers.push(setTimeout(() => setPhase('textReveal'), 800));
     timers.push(setTimeout(() => setPhase('wipeRight'), 2000));
+    timers.push(setTimeout(() => setPhase('crossBlur'), 2500));
     timers.push(setTimeout(() => {
       setPhase('fadeOut');
       document.body.style.overflow = originalOverflow;
       onComplete?.();
-    }, 2500));
+    }, 3500));
 
     return () => {
       timers.forEach(timer => clearTimeout(timer));
@@ -123,13 +125,22 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   };
 
   const containerVariants = {
-    logoAppear: { opacity: 1 },
-    logoRotate: { opacity: 1 },
-    textReveal: { opacity: 1 },
-    wipeRight: { opacity: 1 },
+    logoAppear: { opacity: 1, filter: 'blur(0px)' },
+    logoRotate: { opacity: 1, filter: 'blur(0px)' },
+    textReveal: { opacity: 1, filter: 'blur(0px)' },
+    wipeRight: { opacity: 1, filter: 'blur(0px)' },
+    crossBlur: { 
+      opacity: 0,
+      filter: 'blur(20px)',
+      transition: { 
+        duration: 1.0,
+        ease: [0.4, 0, 0.2, 1] as const 
+      }
+    },
     fadeOut: { 
       opacity: 0,
-      transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }
+      filter: 'blur(20px)',
+      transition: { duration: 0.1 }
     }
   };
 
@@ -140,7 +151,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
       initial="logoAppear"
       animate={phase}
       style={{
-        willChange: 'opacity',
+        willChange: 'opacity, filter',
         pointerEvents: phase === 'fadeOut' ? 'none' : 'auto'
       }}
     >

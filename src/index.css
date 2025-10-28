@@ -1407,6 +1407,43 @@
   }
 }
 
+/* Cross-blur transition from opening to dashboard */
+@keyframes dashboardCrossBlurIn {
+  0% { 
+    opacity: 0;
+    filter: blur(20px);
+    transform: scale(0.98);
+  }
+  100% { 
+    opacity: 1;
+    filter: blur(0px);
+    transform: scale(1);
+  }
+}
+
+/* Navigation cross-blur in */
+@keyframes navCrossBlurIn {
+  0% { 
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(-10px);
+  }
+  100% { 
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
+}
+
+.animate-dashboard-cross-blur-in {
+  animation: dashboardCrossBlurIn 1.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-nav-cross-blur-in {
+  animation: navCrossBlurIn 1.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 0.2s;
+}
+
 /* AI Tech Font Styles */
 .imperial-tech-font {
   font-family: 'Orbitron', 'Courier New', monospace;

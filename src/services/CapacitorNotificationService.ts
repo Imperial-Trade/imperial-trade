@@ -357,14 +357,17 @@ class CapacitorNotificationService {
       }
 
       // Update profile with device token
-      const { error } = await supabase
+      // Type assertion needed until Supabase types regenerate after migration
+      const updateData = {
+        device_token: token,
+        device_platform: this.platform,
+        device_token_updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await (supabase
         .from('profiles')
-        .update({
-          device_token: token,
-          device_platform: this.platform,
-          device_token_updated_at: new Date().toISOString(),
-        } as any) // Type assertion until types regenerate
-        .eq('id', this.currentUserId);
+        .update(updateData as any)
+        .eq('id', this.currentUserId) as any);
 
       if (error) throw error;
       console.log('✅ Device token registered successfully');

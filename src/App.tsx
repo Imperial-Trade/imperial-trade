@@ -123,10 +123,10 @@ function App() {
           <VersionChecker />
           <CacheCleanerMount />
           <Sonner />
-          <ModernNotificationSystem />
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>
+                <ModernNotificationSystem />
                 <WelcomeProvider>
                   <NotificationPromptProvider>
                     <NavigationGuard>

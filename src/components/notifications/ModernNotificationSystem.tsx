@@ -45,7 +45,26 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
-  const { user } = useAuth();
+  // Safely get auth context - handle case where it's not ready yet
+  let user: any = undefined;
+  let authReady = false;
+
+  try {
+    const auth = useAuth();
+    user = auth.user || undefined;
+    authReady = true;
+  } catch (error) {
+    // AuthContext not initialized yet - this is expected during initial render
+    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready yet, deferring initialization');
+    authReady = false;
+  }
+
+  // Don't render notification listeners until auth is ready
+  // This prevents race conditions during app initialization
+  if (!authReady) {
+    return null;
+  }
+
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
   const componentMountTimeRef = useRef<number>(Date.now());

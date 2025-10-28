@@ -26,6 +26,13 @@
     "test:coverage": "vitest run --coverage --reporter=lcov"
   },
   "dependencies": {
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/preferences": "^7.0.2",
+    "@capacitor/push-notifications": "^7.0.3",
+    "@capawesome/capacitor-badge": "^7.0.1",
     "@hookform/resolvers": "^3.9.0",
     "@playwright/test": "^1.54.0",
     "@radix-ui/react-accordion": "^1.2.0",

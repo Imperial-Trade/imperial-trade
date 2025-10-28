@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -10,6 +10,8 @@ import { ProgressIndicator } from './ProgressIndicator';
 import { ProfitLossDisplay } from './ProfitLossDisplay';
 import type { PipsData } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 declare global {
   interface Window {
@@ -43,8 +45,11 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  const componentMountTimeRef = useRef<number>(Date.now());
+  const isMountedRef = useRef<boolean>(true);
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -168,11 +173,154 @@ const ModernNotificationSystem = () => {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     (window as any).addNotification = addNotification;
     return () => {
+      isMountedRef.current = false;
       delete (window as any).addNotification;
     };
   }, [addNotification]);
+
+  // Set up real-time listener for signal notifications
+  useEffect(() => {
+    if (!user?.id) return;
+
+    componentMountTimeRef.current = Date.now();
+    console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners');
+
+    const channel = supabase
+      .channel('instant-alerts')
+      .on('broadcast', { event: 'signal_notification' }, (payload) => {
+        if (!isMountedRef.current) {
+          console.log('⏭️ [UNMOUNTED] Ignoring broadcast after unmount');
+          return;
+        }
+
+        console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
+        
+        const data = payload.payload;
+        if (!data) return;
+
+        // GUARD 1: TIMESTAMP FILTERING
+        const eventTimestamp = data.timestamp || data.created_at;
+        if (!eventTimestamp) {
+          console.warn('⚠️ [MISSING TIMESTAMP] Ignoring broadcast without timestamp');
+          return;
+        }
+
+        const eventTime = new Date(eventTimestamp).getTime();
+        if (isNaN(eventTime)) {
+          console.warn('⚠️ [INVALID TIMESTAMP] Ignoring broadcast with invalid timestamp');
+          return;
+        }
+
+        // Filter events older than component mount
+        if (eventTime < componentMountTimeRef.current) {
+          console.log('⏭️ [REPLAY PREVENTION] Ignoring pre-mount broadcast');
+          return;
+        }
+
+        // Filter events older than 30 seconds
+        const now = Date.now();
+        const ageMs = now - eventTime;
+        if (ageMs > 30000) {
+          console.log(`⏭️ [TOO OLD] Ignoring broadcast older than 30s (${Math.round(ageMs / 1000)}s old)`);
+          return;
+        }
+        
+        // GUARD 2: PAYLOAD VALIDATION
+        if (!data.asset_name || !data.notification_type) {
+          console.warn('⚠️ [INVALID BROADCAST] Missing required fields');
+          return;
+        }
+
+        // Map notification types
+        let type: ModernNotification['type'] = 'trade_closed';
+        let title = '';
+        let message = '';
+
+        switch (data.notification_type) {
+          case 'signal_created':
+            type = 'new_signal';
+            title = `🚨 New ${data.trade_type?.toUpperCase()} Signal`;
+            message = `${data.author_name} posted ${data.asset_name} at $${data.entry_price}`;
+            break;
+          case 'tp_hit':
+          case 'take_profit_hit':
+            type = 'tp_hit';
+            title = `🎯 TP Hit - ${data.asset_name}`;
+            message = `TP ${data.tp_hits?.[data.tp_hits.length - 1] || '1'} reached at $${data.triggered_price || data.target_price}`;
+            break;
+          case 'stop_loss_hit':
+            type = 'stop_loss';
+            title = `🔴 Stop Loss Hit - ${data.asset_name}`;
+            message = `Stop loss triggered at $${data.triggered_price || data.target_price}`;
+            break;
+          case 'limit_activated':
+            type = 'limit_activated';
+            title = `✅ Limit Order Activated - ${data.asset_name}`;
+            message = `${data.trade_type?.replace('_', ' ')?.toUpperCase()} order activated at $${data.entry_price}`;
+            break;
+          case 'manual_close':
+            type = 'manual_close';
+            title = `🔒 Signal Manually Closed - ${data.asset_name}`;
+            message = `${data.author_name} manually closed the signal`;
+            break;
+          case 'notes_updated':
+            type = 'notes_updated';
+            title = `📝 Notes Updated - ${data.asset_name}`;
+            message = `${data.author_name} updated signal notes`;
+            break;
+          case 'all_tps_hit':
+            type = 'trade_closed';
+            title = `🎉 All TPs Hit - ${data.asset_name}`;
+            message = `Trade completed successfully by ${data.author_name}`;
+            break;
+          default:
+            title = `📊 Signal Update - ${data.asset_name}`;
+            message = `${data.author_name} updated the signal`;
+        }
+
+        addNotification({
+          type,
+          title,
+          message,
+          metadata: {
+            signal_id: data.signal_id,
+            provider_name: data.author_name,
+            provider_avatar_url: data.author_avatar_url,
+            provider_type: data.author_user_type,
+            asset_name: data.asset_name,
+            tp_hits: data.tp_hits,
+            total_tps: data.total_tps,
+          },
+          eventKey: data.event_key,
+          timestamp: new Date(eventTime),
+        });
+      })
+      .subscribe();
+
+    // Also listen for custom signal events
+    const handleSignalPosted = () => {
+      if (!isMountedRef.current) return;
+      
+      addNotification({
+        type: 'new_signal',
+        title: '🚨 New Signal Posted',
+        message: 'A new trading signal has been created',
+        metadata: {},
+        timestamp: new Date(),
+      });
+    };
+
+    window.addEventListener('signal-posted', handleSignalPosted);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('signal-posted', handleSignalPosted);
+      console.log('🔔 [ModernNotificationSystem] Cleanup completed');
+    };
+  }, [user?.id, addNotification]);
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

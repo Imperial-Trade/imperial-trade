@@ -21,7 +21,7 @@ declare global {
 
 interface ModernNotification {
   id: string;
-  type: 'new_signal' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
+  type: 'new_signal' | 'pending_limit' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
   title: string;
   message: string;
   metadata?: {
@@ -83,6 +83,7 @@ const ModernNotificationSystem = () => {
 
     const frequencies: Record<string, number> = {
       new_signal: 800,
+      pending_limit: 700,
       tp_hit: 1000,
       limit_activated: 900,
       trade_closed: 600,
@@ -259,45 +260,98 @@ const ModernNotificationSystem = () => {
         let message = '';
 
         switch (data.notification_type) {
+          // ============================================
+          // NEW SIGNAL (BUY/SELL) - BLUE
+          // ============================================
           case 'signal_created':
             type = 'new_signal';
-            title = `🚨 New ${data.trade_type?.toUpperCase()} Signal`;
-            message = `${data.author_name} posted ${data.asset_name} at $${data.entry_price}`;
+            const signalType = (data.trade_type || '').toUpperCase();
+            title = `🚨 ${signalType} Signal`;
+            message = `${data.author_name || 'Provider'} posted ${data.asset_name} at $${data.entry_price}`;
             break;
+
+          // ============================================
+          // PENDING LIMIT (BUY LIMIT/SELL LIMIT) - YELLOW
+          // ============================================
+          case 'pending_limit_created':
+          case 'limit_order_created':
+            type = 'pending_limit';
+            const limitType = data.trade_type === 'buy_limit' ? 'BUY LIMIT' : 'SELL LIMIT';
+            title = `📊 Pending ${limitType}`;
+            message = `${data.author_name || 'Provider'} opened ${limitType} on ${data.asset_name} at $${data.entry_price}`;
+            break;
+
+          // ============================================
+          // TP HIT (TP1-TP5) - GREEN
+          // ============================================
           case 'tp_hit':
           case 'take_profit_hit':
             type = 'tp_hit';
-            title = `🎯 TP Hit - ${data.asset_name}`;
-            message = `TP ${data.tp_hits?.[data.tp_hits.length - 1] || '1'} reached at $${data.triggered_price || data.target_price}`;
+            const tpNumber = data.tp_hits?.[data.tp_hits.length - 1] || data.tp_number || '1';
+            const tpPrice = data.triggered_price || data.target_price || 'N/A';
+            const pips = data.pips || data.pips_gained || '+0';
+            title = `🎯 TP${tpNumber} HIT`;
+            message = `${data.asset_name} reached $${tpPrice} | ${pips} PIPS`;
             break;
+
+          // ============================================
+          // STOP LOSS HIT - RED
+          // ============================================
           case 'stop_loss_hit':
             type = 'stop_loss';
-            title = `🔴 Stop Loss Hit - ${data.asset_name}`;
-            message = `Stop loss triggered at $${data.triggered_price || data.target_price}`;
+            const slPrice = data.triggered_price || data.target_price || data.stop_loss || 'N/A';
+            const slPips = data.pips || data.pips_lost || '-0';
+            title = `❌ STOP LOSS HIT`;
+            message = `${data.asset_name} hit SL at $${slPrice} | ${slPips} PIPS`;
             break;
+
+          // ============================================
+          // LIMIT ACTIVATED (ACTIVE BUY/SELL) - BLUE
+          // ============================================
           case 'limit_activated':
+          case 'limit_order_activated':
             type = 'limit_activated';
-            title = `✅ Limit Order Activated - ${data.asset_name}`;
-            message = `${data.trade_type?.replace('_', ' ')?.toUpperCase()} order activated at $${data.entry_price}`;
+            const activatedType = (data.trade_type || '')
+              .replace('_limit', '')
+              .replace('buy', 'BUY')
+              .replace('sell', 'SELL');
+            title = `✅ ${activatedType} Activated`;
+            message = `${data.asset_name} ${activatedType} order activated at $${data.entry_price}`;
             break;
+
+          // ============================================
+          // MANUAL CLOSE - DARK GREY
+          // ============================================
           case 'manual_close':
+          case 'manually_closed':
             type = 'manual_close';
-            title = `🔒 Signal Manually Closed - ${data.asset_name}`;
-            message = `${data.author_name} manually closed the signal`;
+            title = `🔒 Manually Closed`;
+            message = `${data.author_name || 'Provider'} manually closed ${data.asset_name}`;
             break;
+
+          // ============================================
+          // ALL TPS HIT - GREEN
+          // ============================================
+          case 'all_tps_hit':
+          case 'all_take_profits_hit':
+            type = 'trade_closed';
+            const totalPips = data.total_pips || data.pips_gained || '+0';
+            title = `🎉 ALL TPs HIT`;
+            message = `${data.asset_name} completed successfully | ${totalPips} PIPS`;
+            break;
+
+          // ============================================
+          // NOTES UPDATED - YELLOW
+          // ============================================
           case 'notes_updated':
             type = 'notes_updated';
-            title = `📝 Notes Updated - ${data.asset_name}`;
-            message = `${data.author_name} updated signal notes`;
+            title = `📝 Notes Updated`;
+            message = `${data.author_name || 'Provider'} updated notes for ${data.asset_name}`;
             break;
-          case 'all_tps_hit':
-            type = 'trade_closed';
-            title = `🎉 All TPs Hit - ${data.asset_name}`;
-            message = `Trade completed successfully by ${data.author_name}`;
-            break;
+
           default:
-            title = `📊 Signal Update - ${data.asset_name}`;
-            message = `${data.author_name} updated the signal`;
+            title = `📊 Signal Update`;
+            message = `${data.author_name || 'Provider'} updated ${data.asset_name}`;
         }
 
         addNotification({
@@ -306,12 +360,20 @@ const ModernNotificationSystem = () => {
           message,
           metadata: {
             signal_id: data.signal_id,
-            provider_name: data.author_name,
-            provider_avatar_url: data.author_avatar_url,
-            provider_type: data.author_user_type,
+            provider_name: data.author_name || data.provider_name || 'Provider',
+            provider_avatar_url: data.author_avatar_url || data.avatar_url,
+            provider_type: data.author_user_type || data.user_type || 'member',
             asset_name: data.asset_name,
-            tp_hits: data.tp_hits,
-            total_tps: data.total_tps,
+            tp_hits: data.tp_hits || [],
+            total_tps: data.total_tps || 0,
+            triggered_price: data.triggered_price || data.target_price,
+            pips_data: data.pips
+              ? {
+                  value: parseFloat(data.pips) || 0,
+                  formatted: data.pips,
+                  direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
+                }
+              : undefined,
           },
           eventKey: data.event_key,
           timestamp: new Date(eventTime),
@@ -344,14 +406,29 @@ const ModernNotificationSystem = () => {
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {
       new_signal: 'from-blue-500/10 via-blue-500/5 to-transparent',
+      pending_limit: 'from-yellow-500/10 via-yellow-500/5 to-transparent',
       tp_hit: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
       stop_loss: 'from-red-500/10 via-red-500/5 to-transparent',
       trade_closed: 'from-green-500/10 via-green-500/5 to-transparent',
-      limit_activated: 'from-purple-500/10 via-purple-500/5 to-transparent',
-      manual_close: 'from-orange-500/10 via-orange-500/5 to-transparent',
+      limit_activated: 'from-blue-500/10 via-blue-500/5 to-transparent',
+      manual_close: 'from-gray-500/10 via-gray-500/5 to-transparent',
       notes_updated: 'from-yellow-500/10 via-yellow-500/5 to-transparent',
     };
     return gradients[type] || 'from-gray-500/10 via-gray-500/5 to-transparent';
+  };
+
+  const getBorderClass = (type: string) => {
+    const borderColors: Record<string, string> = {
+      new_signal: 'border-l-blue-500',
+      pending_limit: 'border-l-yellow-500',
+      tp_hit: 'border-l-emerald-500',
+      stop_loss: 'border-l-red-500',
+      trade_closed: 'border-l-green-500',
+      limit_activated: 'border-l-blue-500',
+      manual_close: 'border-l-gray-500',
+      notes_updated: 'border-l-yellow-500',
+    };
+    return borderColors[type] || 'border-l-gray-500';
   };
 
   return (
@@ -365,7 +442,7 @@ const ModernNotificationSystem = () => {
             exit={{ opacity: 0, x: 300, scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           >
-            <Card className={`overflow-hidden border-2 shadow-2xl backdrop-blur-md bg-gradient-to-br ${getGradientClass(notification.type)} border-border/50`}>
+            <Card className={`overflow-hidden border-2 border-l-4 shadow-2xl backdrop-blur-md bg-gradient-to-br ${getGradientClass(notification.type)} ${getBorderClass(notification.type)} border-border/50`}>
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3 flex-1">

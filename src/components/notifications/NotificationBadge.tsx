@@ -1,9 +1,9 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle, Target, TrendingUp, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Target, TrendingUp, XCircle } from 'lucide-react';
 
 interface NotificationBadgeProps {
-  type: 'new_signal' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
+  type: 'new_signal' | 'pending_limit' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
   priority?: number;
 }
 
@@ -13,6 +13,11 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({ type, prio
       label: 'New Signal',
       icon: <TrendingUp className="h-3 w-3" />,
       className: 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+    },
+    pending_limit: {
+      label: 'Pending',
+      icon: <Clock className="h-3 w-3" />,
+      className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
     },
     tp_hit: {
       label: 'TP Hit',
@@ -32,7 +37,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({ type, prio
     limit_activated: {
       label: 'Activated',
       icon: <CheckCircle className="h-3 w-3" />,
-      className: 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+      className: 'bg-blue-500/20 text-blue-400 border-blue-500/50'
     },
     notes_updated: {
       label: 'Updated',
@@ -40,9 +45,9 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({ type, prio
       className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
     },
     manual_close: {
-      label: 'Manual Close',
+      label: 'Closed',
       icon: <XCircle className="h-3 w-3" />,
-      className: 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+      className: 'bg-gray-500/20 text-gray-400 border-gray-500/50'
     }
   };
 

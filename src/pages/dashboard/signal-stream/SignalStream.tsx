@@ -572,7 +572,7 @@ export default function SignalStream() {
           error
         } = await supabase.from('trade_alerts').select('*').eq('status', 'closed').in('user_id', educatorIds).order('updated_at', {
           ascending: false
-        });
+        }).limit(12);
         if (error) {
           console.error('Failed to fetch static closed alerts:', error);
           setIsLoadingClosedAlerts(false); // ✅ BUG FIX #19

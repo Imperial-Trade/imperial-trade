@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import imperialLogo from '@/assets/imperial-logo.png';
 
@@ -7,15 +7,25 @@ interface ModernImperialWelcomeProps {
 }
 
 type AnimationPhase = 
-  | 'logoAppear'    // 0.0-0.5s: Logo appears
-  | 'logoRotate'    // 0.5-1.5s: Logo rotates top-down
-  | 'textReveal'    // 0.9-2.0s: Text reveals L→R
-  | 'wipeRight'     // 2.0-2.5s: Logo slides right to end of text
+  | 'logoAppear'    // 0.0-0.3s: Logo appears
+  | 'logoRotate'    // 0.3-1.5s: Logo rotates 2x counterclockwise
+  | 'textReveal'    // 0.8-1.5s: Text reveals L→R
+  | 'wipeRight'     // 2.0-2.5s: Logo slides to end of "L" with fade
   | 'fadeOut';      // 2.5s: Complete
 
 export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<AnimationPhase>('logoAppear');
+  const [textWidth, setTextWidth] = useState<number>(0);
+  const textRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (textRef.current) {
+      const rect = textRef.current.getBoundingClientRect();
+      const gap = 16; // gap-4 = 16px
+      setTextWidth(rect.width + gap);
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -28,8 +38,8 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
 
     const timers: NodeJS.Timeout[] = [];
     
-    timers.push(setTimeout(() => setPhase('logoRotate'), 500));
-    timers.push(setTimeout(() => setPhase('textReveal'), 900));
+    timers.push(setTimeout(() => setPhase('logoRotate'), 300));
+    timers.push(setTimeout(() => setPhase('textReveal'), 800));
     timers.push(setTimeout(() => setPhase('wipeRight'), 2000));
     timers.push(setTimeout(() => {
       setPhase('fadeOut');
@@ -50,7 +60,7 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
   const logoVariants = {
     logoAppear: {
       x: 0,
-      rotateX: 0,
+      rotateZ: 0,
       opacity: 1,
       transition: {
         opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }
@@ -58,21 +68,21 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
     },
     logoRotate: {
       x: 0,
-      rotateX: 360,
+      rotateZ: -720,
       opacity: 1,
       transition: {
-        rotateX: { duration: 1.0, ease: [0, 0, 1, 1] as const }
+        rotateZ: { duration: 1.2, ease: [0, 0, 0, 0] as const }
       }
     },
     textReveal: {
       x: 0,
-      rotateX: 360,
+      rotateZ: -720,
       opacity: 1
     },
     wipeRight: {
-      x: 'calc(50vw + 200px)',
-      rotateX: 360,
-      opacity: 1,
+      x: textWidth,
+      rotateZ: -720,
+      opacity: 0,
       transition: {
         duration: 0.5,
         ease: [0.4, 0, 0.2, 1] as const
@@ -147,13 +157,12 @@ export const ModernImperialWelcome: React.FC<ModernImperialWelcomeProps> = ({ on
           initial="logoAppear"
           animate={phase}
           style={{
-            willChange: 'transform, opacity',
-            backfaceVisibility: 'hidden',
-            transformStyle: 'preserve-3d'
+            willChange: 'transform, opacity'
           }}
         />
 
         <motion.div
+          ref={textRef}
           className="flex imperial-tech-font text-xl md:text-2xl tracking-wider text-white"
           variants={textContainerVariants}
           initial="logoAppear"

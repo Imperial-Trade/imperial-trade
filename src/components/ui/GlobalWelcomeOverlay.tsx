@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { ImperialWelcomeAnimation } from './imperial-welcome-animation';
+import { ModernImperialWelcome } from './modern-imperial-welcome';
 import { useWelcome } from '@/contexts/WelcomeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -27,7 +27,7 @@ export const GlobalWelcomeOverlay: React.FC = () => {
 
   // Render directly to document.body using portal for maximum control
   return createPortal(
-    <ImperialWelcomeAnimation
+    <ModernImperialWelcome
       onComplete={markWelcomeAsSeen}
     />,
     document.body

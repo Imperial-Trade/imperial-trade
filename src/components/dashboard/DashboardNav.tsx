@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import imperialLogo from '@/assets/imperial-logo.png';
+import { useWelcome } from '@/contexts/WelcomeContext';
 import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +23,7 @@ const DashboardNav: React.FC = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { hasSeenWelcome } = useWelcome();
 
   // Navigation items for dashboard
   const primaryNavItems = [
@@ -96,9 +99,17 @@ const DashboardNav: React.FC = () => {
       
       <div className="w-full max-w-7xl flex items-center justify-between relative">
         {/* Logo */}
-        <Link to="/dashboard/home" className="flex items-center gap-2">
-          <Crown className="h-6 w-6 text-primary" />
-          <span className="text-xl imperial-tech-font">IMPERIAL</span>
+        <Link to="/dashboard/home" className="flex items-center gap-3">
+          <div className={`flex items-center gap-3 transition-opacity duration-500 ${
+            hasSeenWelcome ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}>
+            <img 
+              src={imperialLogo} 
+              alt="Imperial Trading Logo" 
+              className="h-8 w-8"
+            />
+            <span className="text-xl imperial-tech-font">TRADE IMPERIAL</span>
+          </div>
         </Link>
 
         {/* Desktop Navigation - Primary Items Only */}
@@ -299,9 +310,13 @@ const DashboardNav: React.FC = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-l border-border/50">
             <SheetHeader className="border-b border-border/50 pb-6">
-              <SheetTitle className="flex items-center gap-2 text-left">
-                <Crown className="h-6 w-6 text-primary" />
-                <span className="text-xl imperial-tech-font">IMPERIAL</span>
+              <SheetTitle className="flex items-center gap-3 text-left">
+                <img 
+                  src={imperialLogo} 
+                  alt="Imperial Trading Logo" 
+                  className="h-6 w-6"
+                />
+                <span className="text-xl imperial-tech-font">TRADE IMPERIAL</span>
               </SheetTitle>
             </SheetHeader>
 

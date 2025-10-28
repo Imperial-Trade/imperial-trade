@@ -2077,6 +2077,9 @@ export type Database = {
           cover_position_y: string | null
           created_at: string | null
           device_fingerprint: string | null
+          device_platform: string | null
+          device_token: string | null
+          device_token_updated_at: string | null
           display_name: string | null
           email: string | null
           email_notifications: boolean
@@ -2132,6 +2135,9 @@ export type Database = {
           cover_position_y?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
+          device_platform?: string | null
+          device_token?: string | null
+          device_token_updated_at?: string | null
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean
@@ -2187,6 +2193,9 @@ export type Database = {
           cover_position_y?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
+          device_platform?: string | null
+          device_token?: string | null
+          device_token_updated_at?: string | null
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean

@@ -9,6 +9,7 @@ import { NotificationBadge } from './NotificationBadge';
 import { ProgressIndicator } from './ProgressIndicator';
 import { ProfitLossDisplay } from './ProfitLossDisplay';
 import type { PipsData } from '@/utils/pipsCalculator';
+import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 
 declare global {
   interface Window {
@@ -142,6 +143,16 @@ const ModernNotificationSystem = () => {
       setNotifications((prev) => [enhancedNotification, ...prev]);
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
+
+      // Use Capacitor notification service for cross-platform notifications
+      await capacitorNotificationService.showNotification({
+        title: notification.title,
+        body: notification.message,
+        data: notification.metadata || {},
+        eventKey: notification.eventKey,
+        type: notification.type,
+        signalId: notification.metadata?.signal_id,
+      });
 
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {

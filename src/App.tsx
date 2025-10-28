@@ -28,6 +28,7 @@ import { initializeAppState } from "@/utils/appStateCleanup";
 import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
+import { capacitorNotificationService } from "@/services/CapacitorNotificationService";
 
 // Auth Components
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -100,6 +101,10 @@ function App() {
     try {
       initializeAppState();
       verifyServiceWorkerSafety();
+      
+      // Initialize Capacitor notification service
+      capacitorNotificationService.initialize();
+      
       console.log('✅ App state initialized successfully');
     } catch (error) {
       console.error('❌ Error during app state initialization:', error);

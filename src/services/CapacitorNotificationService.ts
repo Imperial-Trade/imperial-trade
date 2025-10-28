@@ -363,7 +363,7 @@ class CapacitorNotificationService {
           device_token: token,
           device_platform: this.platform,
           device_token_updated_at: new Date().toISOString(),
-        })
+        } as any) // Type assertion until types regenerate
         .eq('id', this.currentUserId);
 
       if (error) throw error;

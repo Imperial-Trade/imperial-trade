@@ -29,7 +29,7 @@ export const useOrderManagement = () => {
 
     try {
       // ============================================
-      // FIX #3: Use RPC function instead of direct update
+      // Call RPC function to close the alert
       // ============================================
       const { data, error } = await supabase.rpc('close_trade_alert', {
         p_alert_id: orderId,
@@ -39,7 +39,22 @@ export const useOrderManagement = () => {
 
       if (error) {
         console.error('❌ RPC close_trade_alert failed:', error);
-        throw new Error(error.message || 'Failed to cancel order');
+        
+        // ✅ Enhanced error handling
+        let errorMessage = error.message || 'Failed to cancel order';
+        
+        // Check for constraint violation (backward compatibility with old RPC)
+        if (errorMessage.includes('limit_orders_start_pending')) {
+          errorMessage = 'Unable to cancel pending limit order. Please try again or contact support.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // ✅ Check RPC response success flag
+      if (data && !data.success) {
+        console.error('❌ RPC returned error:', data);
+        throw new Error(data.error || 'Failed to cancel order');
       }
 
       console.log('✅ Order cancelled via RPC:', data);
@@ -49,6 +64,7 @@ export const useOrderManagement = () => {
         detail: {
           signalId: orderId,
           closeReason: 'manual',
+          wasPending: data?.was_pending || false,
           timestamp: new Date().toISOString()
         }
       }));

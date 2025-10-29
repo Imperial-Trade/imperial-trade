@@ -235,6 +235,12 @@ const ModernNotificationSystem = () => {
 
     componentMountTimeRef.current = Date.now();
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners');
+    console.log('🔍 [DEBUG] System initialized:', {
+      userId: user?.id,
+      hasAddNotificationFn: typeof (window as any).addNotification === 'function',
+      componentMounted: isMountedRef.current,
+      authReady: authReady
+    });
 
     const channel = supabase
       .channel('instant-alerts')

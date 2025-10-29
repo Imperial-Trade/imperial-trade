@@ -1032,7 +1032,12 @@ export default function SignalStream() {
                   asset_name: signal.assetName,
                   tp_hits: updatedTPHits,
                   total_tps: totalTPs,
-                  progress_percentage: (updatedTPHits.length / totalTPs) * 100
+                  progress_percentage: (updatedTPHits.length / totalTPs) * 100,
+                  pips_data: {
+                    value: Math.abs(priceData.price - signal.entryPrice) * (signal.assetName?.includes('XAU') || signal.assetName?.includes('Gold') ? 10 : 100),
+                    isPositive: isBuy ? priceData.price > signal.entryPrice : priceData.price < signal.entryPrice,
+                    direction: isBuy ? 'up' : 'down'
+                  }
                 },
                 timestamp: new Date(),
                 priority: 4
@@ -1191,6 +1196,12 @@ export default function SignalStream() {
         });
         
         console.log('🔔 [INSTANT] Modern notification triggered for new signal');
+        console.log('🔍 [DEBUG] Notification payload:', {
+          id: `signal-created-${newSignal.id}-${Date.now()}`,
+          type: 'new_signal',
+          provider_name: profile?.display_name || user?.email || 'You',
+          has_window_fn: typeof (window as any).addNotification === 'function'
+        });
       }
 
       // Show toast notification

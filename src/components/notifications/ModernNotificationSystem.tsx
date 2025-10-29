@@ -267,7 +267,7 @@ const ModernNotificationSystem = () => {
             type = 'new_signal';
             const signalType = (data.trade_type || '').toUpperCase();
             title = `🚨 ${signalType} Signal`;
-            message = `${data.author_name || 'Provider'} posted ${data.asset_name} at $${data.entry_price}`;
+            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} posted ${data.asset_name} at $${data.entry_price}`;
             break;
 
           // ============================================
@@ -278,7 +278,7 @@ const ModernNotificationSystem = () => {
             type = 'pending_limit';
             const limitType = data.trade_type === 'buy_limit' ? 'BUY LIMIT' : 'SELL LIMIT';
             title = `📊 Pending ${limitType}`;
-            message = `${data.author_name || 'Provider'} opened ${limitType} on ${data.asset_name} at $${data.entry_price}`;
+            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} opened ${limitType} on ${data.asset_name} at $${data.entry_price}`;
             break;
 
           // ============================================
@@ -351,7 +351,7 @@ const ModernNotificationSystem = () => {
 
           default:
             title = `📊 Signal Update`;
-            message = `${data.author_name || 'Provider'} updated ${data.asset_name}`;
+            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} updated ${data.asset_name}`;
         }
 
         addNotification({
@@ -360,7 +360,7 @@ const ModernNotificationSystem = () => {
           message,
           metadata: {
             signal_id: data.signal_id,
-            provider_name: data.author_name || data.provider_name || 'Provider',
+            provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
             provider_avatar_url: data.author_avatar_url || data.avatar_url,
             provider_type: data.author_user_type || data.user_type || 'member',
             asset_name: data.asset_name,
@@ -449,7 +449,7 @@ const ModernNotificationSystem = () => {
                     {notification.metadata?.provider_avatar_url || notification.metadata?.provider_name ? (
                       <ProviderAvatar
                         avatarUrl={notification.metadata.provider_avatar_url}
-                        displayName={notification.metadata.provider_name || 'Provider'}
+                        displayName={notification.metadata.provider_name || 'Educator'}
                         userType={notification.metadata.provider_type}
                         size="md"
                         showBadge={true}
@@ -458,7 +458,7 @@ const ModernNotificationSystem = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-foreground text-sm">
-                          {notification.metadata?.provider_name || 'Provider'}
+                          {notification.metadata?.provider_name || 'Educator'}
                         </h4>
                         <NotificationBadge 
                           type={notification.type} 

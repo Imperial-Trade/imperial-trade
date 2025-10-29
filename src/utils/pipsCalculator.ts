@@ -13,29 +13,20 @@ export function calculatePipsForSignal(
   symbol: string,
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
 ): PipsData {
-  const pips = calculatePipsFromPrice(entryPrice, currentPrice, symbol);
+  const rawPips = calculatePipsFromPrice(entryPrice, currentPrice, symbol);
   const isBuy = tradeType === 'buy' || tradeType === 'buy_limit';
   
-  let actualPips = pips;
-  let direction: 'profit' | 'loss' = 'profit';
+  let actualPips: number;
+  let direction: 'profit' | 'loss';
   
-  // Determine profit/loss based on trade direction
   if (isBuy) {
-    if (currentPrice >= entryPrice) {
-      direction = 'profit';
-      actualPips = pips;
-    } else {
-      direction = 'loss';
-      actualPips = pips;
-    }
+    // BUY: positive pips = profit, negative pips = loss
+    actualPips = rawPips;
+    direction = rawPips >= 0 ? 'profit' : 'loss';
   } else {
-    if (currentPrice <= entryPrice) {
-      direction = 'profit';
-      actualPips = pips;
-    } else {
-      direction = 'loss';
-      actualPips = pips;
-    }
+    // SELL: flip the sign (negative raw pips = positive profit, positive raw pips = negative loss)
+    actualPips = -rawPips;
+    direction = actualPips >= 0 ? 'profit' : 'loss';
   }
   
   return {

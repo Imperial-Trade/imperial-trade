@@ -56,7 +56,7 @@ export const calculatePipsFromPrice = (
   symbol: string
 ): number => {
   const pipSize = getPipSize(symbol);
-  const priceDiff = Math.abs(targetPrice - entryPrice);
+  const priceDiff = targetPrice - entryPrice;
   return priceDiff / pipSize;
 };
 

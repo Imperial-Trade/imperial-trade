@@ -223,8 +223,18 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       if (cached) {
         const parsed = JSON.parse(cached);
         const now = Date.now();
-        // Use cached prices that are less than 10 minutes old (increased from 5)
-        if (parsed.timestamp && (now - parsed.timestamp) < 600000) {
+        // ✅ PHASE 2: Extended cache to 24 hours (from 10 minutes)
+        if (parsed.timestamp && (now - parsed.timestamp) < 86400000) {
+          return parsed.prices || {};
+        }
+      }
+      
+      // ✅ PHASE 2: Add localStorage fallback for longer-term persistence
+      const localCached = localStorage.getItem('last_known_prices');
+      if (localCached) {
+        const parsed = JSON.parse(localCached);
+        const now = Date.now();
+        if (parsed.timestamp && (now - parsed.timestamp) < 86400000) {
           return parsed.prices || {};
         }
       }

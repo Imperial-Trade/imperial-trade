@@ -8,6 +8,7 @@ import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
 import { LivePriceWidgetProps } from '@/types/components';
+import { getMarketStatus } from '@/utils/marketStatus';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -90,6 +91,13 @@ const LivePriceWidgetComponent = ({
     stabilityThreshold: 10000, // 10 seconds
     cooldownPeriod: 2000 // 2 seconds
   });
+
+  // ✅ PHASE 3: Market status for displaying "Market Closed" badges
+  const marketStatus = useMemo(() => {
+    return getMarketStatus(alert.tradermade_symbol);
+  }, [alert.tradermade_symbol]);
+
+  const isMarketClosed = marketStatus.isClosed;
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
@@ -548,8 +556,13 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <div className="text-white text-sm font-medium">
-              Live Price for {alert.asset_name}
+              {isMarketClosed ? 'Last Price' : 'Live Price'} for {alert.asset_name}
             </div>
+            {isMarketClosed && (
+              <Badge variant="outline" className="text-xs text-amber-400 border-amber-400 ml-2">
+                Market Closed
+              </Badge>
+            )}
             <div className="flex items-center gap-1 text-xs text-amber-400">
               <Hourglass className="w-3 h-3" />
               <span>{isBuyLimit ? 'Buy Limit' : isSellLimit ? 'Sell Limit' : 'Pending Order'}</span>
@@ -574,7 +587,7 @@ const LivePriceWidgetComponent = ({
           <div className="flex items-center gap-2">
               <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span style={{ willChange: 'transform' }}>
-                  ${displayPrice > 0 ? formatPrice(displayPrice) : '---'}
+                  ${displayPrice > 0 ? formatPrice(displayPrice) : (prevPrice > 0 ? formatPrice(prevPrice) : 'Loading...')}
                 </span>
               </div>
             
@@ -614,8 +627,13 @@ const LivePriceWidgetComponent = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <div className="text-white text-sm font-medium">
-            Live Price for {alert.asset_name}
+            {isMarketClosed ? 'Last Price' : 'Live Price'} for {alert.asset_name}
           </div>
+          {isMarketClosed && (
+            <Badge variant="outline" className="text-xs text-amber-400 border-amber-400 ml-2">
+              Market Closed
+            </Badge>
+          )}
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
             <connectionStatusInfo.icon 
               className="w-3 h-3" 
@@ -660,7 +678,7 @@ const LivePriceWidgetComponent = ({
               </div>
             ) : (
               <div className="text-muted-foreground font-mono text-lg min-h-[28px] flex items-center">
-                <span>---</span>
+                <span>{prevPrice > 0 ? `$${formatPrice(prevPrice)}` : 'Loading...'}</span>
               </div>
             )}
           </div>

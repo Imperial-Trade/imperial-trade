@@ -46,19 +46,16 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
-  // Get auth context - component mounts immediately regardless of auth state
-  let user: any = undefined;
-  let authReady = false;
-
-  try {
-    const auth = useAuth();
-    user = auth.user || undefined;
-    authReady = true;
-  } catch (error) {
-    // AuthContext not initialized yet - component still mounts to be ready for notifications
-    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready, but component mounted');
-    authReady = false;
-  }
+  // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
+  const { user, loading: authLoading } = useAuth();
+  const authReady = !authLoading && !!user?.id;
+  
+  console.log('🔔 [ModernNotificationSystem] Auth state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    authLoading,
+    authReady
+  });
 
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
@@ -230,9 +227,11 @@ const ModernNotificationSystem = () => {
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
     console.log('🔍 [DEBUG] System initialized:', {
       userId: user?.id,
+      hasUser: !!user,
+      authLoading,
+      authReady,
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
-      componentMounted: isMountedRef.current,
-      authReady: authReady
+      componentMounted: isMountedRef.current
     });
 
     const channel = supabase
@@ -245,9 +244,19 @@ const ModernNotificationSystem = () => {
 
         console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
         
-        // ✅ Auth check moved HERE instead of useEffect guard
+        // ✅ Auth check - only process if auth is ready
+        if (!authReady) {
+          console.log('⏳ [AUTH NOT READY] Notification received while auth loading:', {
+            hasUser: !!user,
+            userId: user?.id,
+            authLoading,
+            authReady
+          });
+          return;
+        }
+
         if (!user?.id) {
-          console.log('⏳ [BUFFERING] Notification received before auth ready - buffering for later');
+          console.log('⚠️ [NO USER] Auth ready but no user ID found');
           return;
         }
         

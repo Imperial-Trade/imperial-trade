@@ -4,11 +4,8 @@ import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Crown, ChevronDown } from "lucide-react";
 import ContentSection from "./ContentSection";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function HeroSection() {
-  const { user, loading } = useAuth();
-  
   return (
     <div className="bg-background text-primary w-full overflow-x-hidden">
       {/* Full Screen Video Background */}

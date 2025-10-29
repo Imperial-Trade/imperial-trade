@@ -40,7 +40,7 @@ export function calculatePipsForSignal(
   
   return {
     value: actualPips,
-    formatted: `${direction === 'profit' ? '+' : '-'}${formatPips(Math.abs(actualPips))} pips`,
+    formatted: `${direction === 'profit' ? '+' : '-'}${formatPips(Math.abs(actualPips))} PIPS`,
     direction,
     percentage: (actualPips / entryPrice) * 100
   };

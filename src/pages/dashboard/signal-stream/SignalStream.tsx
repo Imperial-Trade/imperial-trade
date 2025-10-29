@@ -4,6 +4,7 @@ import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw } from 'lucide-react';
+import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
 import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
@@ -1016,14 +1017,22 @@ export default function SignalStream() {
             });
 
             // 🚀 NEW: Instant modern notification for TP hits
-            if ((window as any).addNotification) {
+            // ⚠️ ONLY show individual TP notification if NOT all TPs are hit
+            if ((window as any).addNotification && !allTPsHit) {
+              // Calculate pips for this specific TP
+              const tpPrice = signal[`tp${level}` as keyof typeof signal] as number;
+              const pipsData = calculatePipsForSignal(
+                signal.entryPrice,
+                tpPrice,
+                signal.tradermadeSymbol,
+                signal.tradeType
+              );
+
               (window as any).addNotification({
                 id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
                 type: 'tp_hit',
                 title: `🎯 TP${level} Hit!`,
-                message: allTPsHit 
-                  ? `${signal.assetName} reached final TP${level} - Signal closing`
-                  : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`,
+                message: `TP${level} HIT on ${signal.assetName} at $${tpPrice.toFixed(2)} | ${pipsData.formatted.toUpperCase()} - ${remainingTPs} TPs remaining`,
                 metadata: {
                   signal_id: signal.id,
                   provider_name: signal.creator?.display_name || 'Educator',
@@ -1032,18 +1041,18 @@ export default function SignalStream() {
                   asset_name: signal.assetName,
                   tp_hits: updatedTPHits,
                   total_tps: totalTPs,
-                  progress_percentage: (updatedTPHits.length / totalTPs) * 100,
+                  triggered_price: tpPrice,
                   pips_data: {
-                    value: Math.abs(priceData.price - signal.entryPrice) * (signal.assetName?.includes('XAU') || signal.assetName?.includes('Gold') ? 10 : 100),
-                    isPositive: isBuy ? priceData.price > signal.entryPrice : priceData.price < signal.entryPrice,
-                    direction: isBuy ? 'up' : 'down'
+                    value: pipsData.value,
+                    formatted: pipsData.formatted,
+                    direction: pipsData.direction
                   }
                 },
                 timestamp: new Date(),
                 priority: 4
               });
               
-              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit`);
+              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted})`);
             }
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
@@ -1059,11 +1068,21 @@ export default function SignalStream() {
               
               // 🎉 NEW: Celebration notification for all TPs hit
               if (allTPsHit && (window as any).addNotification) {
+                // Calculate pips for the final TP (highest TP that exists)
+                const finalTpLevel = Math.max(...updatedTPHits);
+                const finalTpPrice = signal[`tp${finalTpLevel}` as keyof typeof signal] as number;
+                const pipsData = calculatePipsForSignal(
+                  signal.entryPrice,
+                  finalTpPrice,
+                  signal.tradermadeSymbol,
+                  signal.tradeType
+                );
+
                 (window as any).addNotification({
                   id: `all-tps-${signal.id}-${Date.now()}`,
                   type: 'trade_closed',
-                  title: '🎉 ALL TARGETS HIT!',
-                  message: `${signal.assetName} completed all ${totalTPs} take profits successfully!`,
+                  title: '🎉 ALL TPs HIT!',
+                  message: `${signal.assetName} completed all ${totalTPs} take profits successfully | ${pipsData.formatted.toUpperCase()}`,
                   metadata: {
                     signal_id: signal.id,
                     provider_name: signal.creator?.display_name || 'Educator',
@@ -1072,13 +1091,19 @@ export default function SignalStream() {
                     asset_name: signal.assetName,
                     tp_hits: updatedTPHits,
                     total_tps: totalTPs,
-                    progress_percentage: 100
+                    progress_percentage: 100,
+                    triggered_price: finalTpPrice,
+                    pips_data: {
+                      value: pipsData.value,
+                      formatted: pipsData.formatted,
+                      direction: pipsData.direction
+                    }
                   },
                   timestamp: new Date(),
                   priority: 5
                 });
                 
-                console.log('🎉 [CELEBRATION] All TPs hit notification sent');
+                console.log(`🎉 [CELEBRATION] All TPs hit notification sent with ${pipsData.formatted}`);
               }
             });
           }

@@ -2849,6 +2849,33 @@ export type Database = {
         }
         Relationships: []
       }
+      system_configuration: {
+        Row: {
+          config_description: string | null
+          config_key: string
+          config_value: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config_description?: string | null
+          config_key: string
+          config_value: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          config_description?: string | null
+          config_key?: string
+          config_value?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       trade_alerts: {
         Row: {
           activated_at: string | null
@@ -4428,6 +4455,7 @@ export type Database = {
         Returns: Json
       }
       get_realtime_system_status: { Args: never; Returns: Json }
+      get_system_config: { Args: { p_config_key: string }; Returns: string }
       get_trader_stats: { Args: { p_user_id: string }; Returns: Json }
       get_unread_notification_count: { Args: never; Returns: number }
       get_user_access_level: {

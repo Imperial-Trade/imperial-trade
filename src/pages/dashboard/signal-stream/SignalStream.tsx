@@ -738,24 +738,25 @@ export default function SignalStream() {
       return bDate - aDate; // Descending: newest closed first
     });
 
-    // ✅ Store total count before applying UI limit
-    const totalClosedFiltered = sortedClosed.length;
+    // ✅ Store filtered count for display
+    const filteredClosedCount = sortedClosed.length;
 
     // ✅ Apply UI limit of 12 for closed alerts display only
     const closedFilteredLimited = sortedClosed.slice(0, 12);
     console.log('🔍 Filter results:', {
       total: filtered.length,
       active: sortedActive.length,
-      closed: totalClosedFiltered,
+      closedFiltered: filteredClosedCount,
       closedDisplayed: closedFilteredLimited.length,
+      closedDatabaseTotal: totalClosedCount,  // Database count (754)
       filters
     });
     return {
       active: sortedActive,
       closed: closedFilteredLimited,
-      closedTotal: totalClosedFiltered
+      closedTotal: totalClosedCount  // ✅ FIXED: Use database count
     };
-  }, [allAlerts, staticClosedAlerts, filters, excludedSignalIds]);
+  }, [allAlerts, staticClosedAlerts, filters, excludedSignalIds, totalClosedCount]);
 
   // ✅ DEBUG: Track signal flow through filter pipeline
   useEffect(() => {

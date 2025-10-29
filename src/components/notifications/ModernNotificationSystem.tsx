@@ -141,14 +141,41 @@ const ModernNotificationSystem = () => {
         return;
       }
 
-      // Enhanced deduplication with 120s TTL
-      const notificationKey = notification.eventKey || `${notification.title}:${notification.message}`;
+      // ============================================================================
+      // DEDUPLICATION: Prevent showing same notification multiple times
+      // ============================================================================
+
+      // Use signal_id + notification_type + title for better uniqueness
+      const notificationKey = notification.metadata?.signal_id 
+        ? `${notification.metadata.signal_id}:${notification.type}:${notification.title}`
+        : notification.eventKey || `${notification.title}:${notification.message}`;
+
       const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      if (now - lastShownTime < 120000) {
-        console.warn('Notification suppressed due to 120s deduplication:', notificationKey);
+      const deduplicationWindow = 120000; // 120 seconds
+
+      if (now - lastShownTime < deduplicationWindow) {
+        const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
+        
+        console.warn('🚫 [Deduplication] Notification suppressed:', {
+          key_preview: notificationKey.substring(0, 60) + '...',
+          signal_id: notification.metadata?.signal_id,
+          type: notification.type,
+          title: notification.title,
+          time_since_last_shown: `${timeSinceLastShown}s`,
+          deduplication_window: `${deduplicationWindow/1000}s`
+        });
         return;
       }
-      
+
+      // Log successful deduplication check
+      console.log('✅ [Deduplication] Unique notification passed:', {
+        key_preview: notificationKey.substring(0, 60) + '...',
+        signal_id: notification.metadata?.signal_id,
+        type: notification.type,
+        title: notification.title
+      });
+
+      // Update last shown time
       if (!(window as any).lastShownMap) {
         (window as any).lastShownMap = new Map();
       }
@@ -391,9 +418,30 @@ const ModernNotificationSystem = () => {
           timestamp: new Date(eventTime),
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        // Log every subscription status change
+        console.log('📡 [Channel Status]', status, {
+          channel: 'instant-alerts',
+          event: 'signal_notification',
+          user_id: user?.id,
+          timestamp: new Date().toISOString(),
+          mounted_at: new Date(componentMountTimeRef.current).toISOString()
+        });
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [Channel] Successfully subscribed to instant-alerts');
+          console.log('✅ [Channel] Ready to receive signal notifications');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [Channel] Subscription error - will retry on reconnect');
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ [Channel] Subscription timed out - check network connection');
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ [Channel] Channel closed - will reconnect on next mount');
+        }
+      });
 
     return () => {
+      console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
       supabase.removeChannel(channel);
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };

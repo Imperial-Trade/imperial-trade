@@ -1015,6 +1015,32 @@ export default function SignalStream() {
               description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
             });
 
+            // 🚀 NEW: Instant modern notification for TP hits
+            if ((window as any).addNotification) {
+              (window as any).addNotification({
+                id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
+                type: 'tp_hit',
+                title: `🎯 TP${level} Hit!`,
+                message: allTPsHit 
+                  ? `${signal.assetName} reached final TP${level} - Signal closing`
+                  : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`,
+                metadata: {
+                  signal_id: signal.id,
+                  provider_name: signal.creator?.display_name || 'Educator',
+                  provider_avatar_url: signal.creator?.avatar_url,
+                  provider_type: signal.creator?.user_type || 'educator',
+                  asset_name: signal.assetName,
+                  tp_hits: updatedTPHits,
+                  total_tps: totalTPs,
+                  progress_percentage: (updatedTPHits.length / totalTPs) * 100
+                },
+                timestamp: new Date(),
+                priority: 4
+              });
+              
+              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit`);
+            }
+
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
             supabase.from('trade_alerts').update(allTPsHit ? {
               tp_hits: updatedTPHits,
@@ -1025,6 +1051,30 @@ export default function SignalStream() {
             }).eq('id', signal.id).then(() => {
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(tpKey);
+              
+              // 🎉 NEW: Celebration notification for all TPs hit
+              if (allTPsHit && (window as any).addNotification) {
+                (window as any).addNotification({
+                  id: `all-tps-${signal.id}-${Date.now()}`,
+                  type: 'trade_closed',
+                  title: '🎉 ALL TARGETS HIT!',
+                  message: `${signal.assetName} completed all ${totalTPs} take profits successfully!`,
+                  metadata: {
+                    signal_id: signal.id,
+                    provider_name: signal.creator?.display_name || 'Educator',
+                    provider_avatar_url: signal.creator?.avatar_url,
+                    provider_type: signal.creator?.user_type || 'educator',
+                    asset_name: signal.assetName,
+                    tp_hits: updatedTPHits,
+                    total_tps: totalTPs,
+                    progress_percentage: 100
+                  },
+                  timestamp: new Date(),
+                  priority: 5
+                });
+                
+                console.log('🎉 [CELEBRATION] All TPs hit notification sent');
+              }
             });
           }
         });
@@ -1091,7 +1141,7 @@ export default function SignalStream() {
           }
         }
       });
-    }, 100); // 🚀 TIER 2: 100ms debounce
+    }, 50); // 🚀 OPTIMIZED: 50ms debounce for instant TP detection
 
     return () => {
       // 🚀 TIER 2: Cleanup timeout on unmount
@@ -1118,17 +1168,43 @@ export default function SignalStream() {
       });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
+      // 🚀 NEW: Show instant modern notification with sound
+      if ((window as any).addNotification) {
+        const isBuy = newSignal.tradeType === 'buy' || newSignal.tradeType === 'buy_limit';
+        
+        (window as any).addNotification({
+          id: `signal-created-${newSignal.id}-${Date.now()}`,
+          type: 'new_signal',
+          title: '🎯 New Signal Created',
+          message: `${newSignal.assetName} ${isBuy ? 'BUY' : 'SELL'} signal is now live`,
+          metadata: {
+            signal_id: newSignal.id,
+            provider_name: profile?.display_name || user?.email || 'You',
+            provider_type: profile?.access_level || 'educator',
+            asset_name: newSignal.assetName,
+            tp_hits: [],
+            total_tps: [newSignal.tp1, newSignal.tp2, newSignal.tp3, newSignal.tp4, newSignal.tp5]
+              .filter(Boolean).length
+          },
+          timestamp: new Date(),
+          priority: 3
+        });
+        
+        console.log('🔔 [INSTANT] Modern notification triggered for new signal');
+      }
+
       // Show toast notification
       toast({
         title: '🎯 New Signal Added',
         description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`
       });
     };
+    
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     return () => {
       window.removeEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     };
-  }, []);
+  }, [toast, profile, user]);
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
     return staticClosedAlerts;

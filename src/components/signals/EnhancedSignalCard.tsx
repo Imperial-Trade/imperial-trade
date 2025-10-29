@@ -6,6 +6,7 @@ import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'l
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { motion } from 'framer-motion';
 
 interface EnhancedSignalCardProps {
   alert: TradeAlertWithProfile;
@@ -106,15 +107,51 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
                 if (!tpPrice) return null;
                 
                 const isHit = alert.tpHits?.includes(level);
+                
                 return (
-                  <div 
+                  <motion.div
                     key={level}
-                    className={`flex-1 h-2 rounded-sm transition-colors ${
+                    initial={{ scale: 0.9, opacity: 0.7 }}
+                    animate={{ 
+                      scale: isHit ? [1, 1.15, 1] : 1,
+                      opacity: 1,
+                      backgroundColor: isHit ? '#10b981' : undefined
+                    }}
+                    transition={{ 
+                      scale: { 
+                        duration: 0.5, 
+                        ease: 'easeOut',
+                        times: [0, 0.6, 1]
+                      },
+                      backgroundColor: { duration: 0.3 }
+                    }}
+                    className={`relative flex-1 h-10 rounded-lg flex items-center justify-center transition-colors ${
                       isHit 
-                        ? 'bg-green-500' 
-                        : 'bg-gray-200 dark:bg-gray-700'
+                        ? 'bg-green-500 shadow-lg shadow-green-500/30' 
+                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
-                  />
+                  >
+                    {isHit && (
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180, opacity: 0 }}
+                        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                        transition={{ 
+                          type: 'spring', 
+                          stiffness: 260, 
+                          damping: 20,
+                          delay: 0.1
+                        }}
+                        className="flex items-center justify-center"
+                      >
+                        <CheckCircle2 className="h-5 w-5 text-white drop-shadow-lg" />
+                      </motion.div>
+                    )}
+                    {!isHit && (
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        TP{level}
+                      </span>
+                    )}
+                  </motion.div>
                 );
               })}
             </div>

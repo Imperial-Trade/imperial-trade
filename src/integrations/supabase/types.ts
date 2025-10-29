@@ -2816,6 +2816,39 @@ export type Database = {
           },
         ]
       }
+      signal_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          provider_id: string
+          subscribed_at: string | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider_id: string
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider_id?: string
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       trade_alerts: {
         Row: {
           activated_at: string | null

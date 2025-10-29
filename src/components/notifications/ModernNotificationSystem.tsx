@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -9,6 +9,10 @@ import { NotificationBadge } from './NotificationBadge';
 import { ProgressIndicator } from './ProgressIndicator';
 import { ProfitLossDisplay } from './ProfitLossDisplay';
 import type { PipsData } from '@/utils/pipsCalculator';
+import { calculatePipsForSignal } from '@/utils/pipsCalculator';
+import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 declare global {
   interface Window {
@@ -18,7 +22,7 @@ declare global {
 
 interface ModernNotification {
   id: string;
-  type: 'new_signal' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
+  type: 'new_signal' | 'pending_limit' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
   title: string;
   message: string;
   metadata?: {
@@ -42,8 +46,24 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
+  // Get auth context - component mounts immediately regardless of auth state
+  let user: any = undefined;
+  let authReady = false;
+
+  try {
+    const auth = useAuth();
+    user = auth.user || undefined;
+    authReady = true;
+  } catch (error) {
+    // AuthContext not initialized yet - component still mounts to be ready for notifications
+    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready, but component mounted');
+    authReady = false;
+  }
+
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  const componentMountTimeRef = useRef<number>(Date.now());
+  const isMountedRef = useRef<boolean>(true);
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -58,6 +78,7 @@ const ModernNotificationSystem = () => {
 
     const frequencies: Record<string, number> = {
       new_signal: 800,
+      pending_limit: 700,
       tp_hit: 1000,
       limit_activated: 900,
       trade_closed: 600,
@@ -115,14 +136,41 @@ const ModernNotificationSystem = () => {
         return;
       }
 
-      // Enhanced deduplication with 120s TTL
-      const notificationKey = notification.eventKey || `${notification.title}:${notification.message}`;
+      // ============================================================================
+      // DEDUPLICATION: Prevent showing same notification multiple times
+      // ============================================================================
+
+      // Use signal_id + notification_type + title for better uniqueness
+      const notificationKey = notification.metadata?.signal_id 
+        ? `${notification.metadata.signal_id}:${notification.type}:${notification.title}`
+        : notification.eventKey || `${notification.title}:${notification.message}`;
+
       const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      if (now - lastShownTime < 120000) {
-        console.warn('Notification suppressed due to 120s deduplication:', notificationKey);
+      const deduplicationWindow = 30000; // 30 seconds (reduced for faster testing)
+
+      if (now - lastShownTime < deduplicationWindow) {
+        const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
+        
+        console.warn('🚫 [Deduplication] Notification suppressed:', {
+          key_preview: notificationKey.substring(0, 60) + '...',
+          signal_id: notification.metadata?.signal_id,
+          type: notification.type,
+          title: notification.title,
+          time_since_last_shown: `${timeSinceLastShown}s`,
+          deduplication_window: `${deduplicationWindow/1000}s`
+        });
         return;
       }
-      
+
+      // Log successful deduplication check
+      console.log('✅ [Deduplication] Unique notification passed:', {
+        key_preview: notificationKey.substring(0, 60) + '...',
+        signal_id: notification.metadata?.signal_id,
+        type: notification.type,
+        title: notification.title
+      });
+
+      // Update last shown time
       if (!(window as any).lastShownMap) {
         (window as any).lastShownMap = new Map();
       }
@@ -143,6 +191,16 @@ const ModernNotificationSystem = () => {
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
+      // Use Capacitor notification service for cross-platform notifications
+      await capacitorNotificationService.showNotification({
+        title: notification.title,
+        body: notification.message,
+        data: notification.metadata || {},
+        eventKey: notification.eventKey,
+        type: notification.type,
+        signalId: notification.metadata?.signal_id,
+      });
+
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {
           notificationService.recordNotificationDelivery(
@@ -157,23 +215,354 @@ const ModernNotificationSystem = () => {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     (window as any).addNotification = addNotification;
     return () => {
+      isMountedRef.current = false;
       delete (window as any).addNotification;
     };
   }, [addNotification]);
 
+  // Set up real-time listener for signal notifications
+  useEffect(() => {
+    if (!user?.id) return;
+
+    componentMountTimeRef.current = Date.now();
+    console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners');
+    console.log('🔍 [DEBUG] System initialized:', {
+      userId: user?.id,
+      hasAddNotificationFn: typeof (window as any).addNotification === 'function',
+      componentMounted: isMountedRef.current,
+      authReady: authReady
+    });
+
+    const channel = supabase
+      .channel('instant-alerts')
+      .on('broadcast', { event: 'signal_notification' }, (payload) => {
+        if (!isMountedRef.current) {
+          console.log('⏭️ [UNMOUNTED] Ignoring broadcast after unmount');
+          return;
+        }
+
+        console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
+        
+        const data = payload.payload;
+
+        // 🔍 DEBUG: Log broadcast notification data
+        console.log('🔍 [Broadcast Notification]', {
+          notification_type: data.notification_type,
+          author_name: data.author_name,
+          provider_name: data.provider_name,
+          display_name: data.display_name,
+          asset_name: data.asset_name,
+          entry_price: data.entry_price,
+          has_full_data: !!data.author_name
+        });
+
+        if (!data) return;
+
+        // GUARD 1: TIMESTAMP FILTERING
+        const eventTimestamp = data.timestamp || data.created_at;
+        if (!eventTimestamp) {
+          console.warn('⚠️ [MISSING TIMESTAMP] Ignoring broadcast without timestamp');
+          return;
+        }
+
+        const eventTime = new Date(eventTimestamp).getTime();
+        if (isNaN(eventTime)) {
+          console.warn('⚠️ [INVALID TIMESTAMP] Ignoring broadcast with invalid timestamp');
+          return;
+        }
+
+        // Filter events older than component mount
+        if (eventTime < componentMountTimeRef.current) {
+          console.log('⏭️ [REPLAY PREVENTION] Ignoring pre-mount broadcast');
+          return;
+        }
+
+        // Filter events older than 30 seconds
+        const now = Date.now();
+        const ageMs = now - eventTime;
+        if (ageMs > 30000) {
+          console.log(`⏭️ [TOO OLD] Ignoring broadcast older than 30s (${Math.round(ageMs / 1000)}s old)`);
+          return;
+        }
+        
+        // GUARD 2: PAYLOAD VALIDATION
+        if (!data.asset_name || !data.notification_type) {
+          console.warn('⚠️ [INVALID BROADCAST] Missing required fields');
+          return;
+        }
+
+        // Map notification types
+        let type: ModernNotification['type'] = 'trade_closed';
+        let title = '';
+        let message = '';
+
+        switch (data.notification_type) {
+          // ============================================
+          // Type 1: NEW SIGNAL (BUY/SELL) - Blue
+          // ============================================
+          case 'signal_created': {
+            type = 'new_signal';
+            const tradeDirection = data.trade_type?.toUpperCase().includes('BUY') ? 'BUY' : 'SELL';
+            title = `🚀 New ${tradeDirection} Signal`;
+            message = `${tradeDirection} Signal is Posted on ${data.asset_name} at $${data.entry_price}`;
+            break;
+          }
+
+          // ============================================
+          // Type 2: PENDING LIMIT - Yellow
+          // ============================================
+          case 'pending_limit_created':
+          case 'limit_order_created': {
+            type = 'pending_limit';
+            const limitDirection = data.trade_type === 'buy_limit' ? 'BUY' : 'SELL';
+            title = `⏳ Pending ${limitDirection} Limit`;
+            message = `Waiting to reached ${data.asset_name} at $${data.entry_price}`;
+            break;
+          }
+
+          // ============================================
+          // Type 3: LIMIT ACTIVATED - Blue
+          // ============================================
+          case 'limit_activated':
+          case 'limit_order_activated': {
+            type = 'limit_activated';
+            const activatedDirection = data.trade_type?.replace('_limit', '').toUpperCase();
+            title = `✅ ${activatedDirection} Limit Activated`;
+            message = `${activatedDirection} LIMIT is activated on ${data.asset_name} at $${data.entry_price}`;
+            break;
+          }
+
+          // ============================================
+          // Type 4: TP HIT (TP1-TP5) - Green
+          // ============================================
+          case 'tp_hit':
+          case 'take_profit_hit':
+          case 'multiple_tps_hit': {
+            type = 'tp_hit';
+            
+            // Get TP number
+            const tpNumber = data.tp_number || data.tp_hits?.[data.tp_hits.length - 1] || 1;
+            
+            // Get TP price
+            let tpPrice = data.triggered_price;
+            if (!tpPrice) {
+              const tpField = `tp${tpNumber}`;
+              tpPrice = data[tpField];
+            }
+            
+            // Calculate pips
+            let tpPips = data.pips;
+            
+            if (!tpPips && data.calculated_pips && data.calculated_pips > 0) {
+              tpPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!tpPips && tpPrice && data.entry_price && data.trade_type) {
+              const pipsCalc = calculatePipsForSignal(
+                parseFloat(data.entry_price),
+                parseFloat(tpPrice),
+                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.trade_type
+              );
+              tpPips = pipsCalc.formatted;
+            }
+            
+            title = `🎯 Take Profit Hit`;
+            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'} | ${tpPips || '+0'} PIPS`;
+            break;
+          }
+
+          // ============================================
+          // Type 5: STOP LOSS HIT - Red
+          // ============================================
+          case 'stop_loss_hit': {
+            type = 'stop_loss';
+            
+            const slPrice = data.stop_loss || data.triggered_price || data.target_price;
+            
+            let slPips = data.pips;
+            
+            if (!slPips && data.calculated_pips && data.calculated_pips > 0) {
+              slPips = `-${data.calculated_pips.toFixed(1)}`;
+            } else if (!slPips && slPrice && data.entry_price && data.trade_type) {
+              const pipsCalc = calculatePipsForSignal(
+                parseFloat(data.entry_price),
+                parseFloat(slPrice),
+                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.trade_type
+              );
+              slPips = pipsCalc.formatted.replace('+', '-');
+              if (!slPips.startsWith('-')) {
+                slPips = '-' + slPips;
+              }
+            }
+            
+            title = `▼ Stop Loss Hit`;
+            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'} | ${slPips || '-0'} PIPS`;
+            break;
+          }
+
+          // ============================================
+          // Type 6: MANUAL CLOSE - Grey
+          // ============================================
+          case 'manual_close':
+          case 'manually_closed': {
+            type = 'manual_close';
+            title = `🔒 Manually Closed`;
+            message = `manually closed ${data.asset_name}`;
+            break;
+          }
+
+          // ============================================
+          // Type 7: MANUAL CLOSE WITH TP HIT - Grey
+          // ============================================
+          case 'manual_close_with_tp_hit': {
+            type = 'manual_close';
+            
+            let securedPips = data.pips;
+            
+            if (!securedPips && data.calculated_pips && data.calculated_pips > 0) {
+              securedPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!securedPips) {
+              securedPips = '+0';
+            }
+            
+            title = `💰 Closed in Profits`;
+            message = `Secured Profits on ${data.asset_name} | ${securedPips} PIPS`;
+            break;
+          }
+
+          // ============================================
+          // Type 8: ALL TPS HIT - Green
+          // ============================================
+          case 'all_tps_hit':
+          case 'all_take_profits_hit': {
+            type = 'trade_closed';
+            
+            let allTpsPips = data.pips;
+            
+            if (!allTpsPips && data.calculated_pips && data.calculated_pips > 0) {
+              allTpsPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!allTpsPips && data.entry_price) {
+              const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
+              if (highestTP && data.trade_type) {
+                const pipsCalc = calculatePipsForSignal(
+                  parseFloat(data.entry_price),
+                  parseFloat(highestTP),
+                  data.tradermade_symbol || data.symbol || data.asset_name,
+                  data.trade_type
+                );
+                allTpsPips = pipsCalc.formatted;
+              }
+            }
+            
+            title = `🎉 ALL TPs HIT`;
+            message = `${data.asset_name} completed all Profits successfully | ${allTpsPips || '+0'} PIPS`;
+            break;
+          }
+
+          // ============================================
+          // Type 9: NOTES UPDATED - Yellow
+          // ============================================
+          case 'notes_updated': {
+            type = 'notes_updated';
+            title = `📝 Notes Updated`;
+            message = `${data.author_name || 'Educator'} updated notes for ${data.asset_name}`;
+            break;
+          }
+
+          // ============================================
+          // Default: REJECT
+          // ============================================
+          default: {
+            console.warn(`⚠️ Unknown notification type: "${data.notification_type}"`);
+            return;
+          }
+        }
+
+        addNotification({
+          type,
+          title,
+          message,
+          metadata: {
+            signal_id: data.signal_id,
+            provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
+            provider_avatar_url: data.author_avatar_url || data.avatar_url,
+            provider_type: data.author_user_type || data.user_type || 'member',
+            asset_name: data.asset_name,
+            tp_hits: data.tp_hits || [],
+            total_tps: data.total_tps || 0,
+            triggered_price: data.triggered_price || data.target_price,
+            pips_data: data.pips
+              ? {
+                  value: parseFloat(data.pips) || 0,
+                  formatted: data.pips,
+                  direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
+                }
+              : undefined,
+          },
+          eventKey: data.event_key,
+          timestamp: new Date(eventTime),
+        });
+      })
+      .subscribe((status) => {
+        // Log every subscription status change
+        console.log('📡 [Channel Status]', status, {
+          channel: 'instant-alerts',
+          event: 'signal_notification',
+          user_id: user?.id,
+          timestamp: new Date().toISOString(),
+          mounted_at: new Date(componentMountTimeRef.current).toISOString()
+        });
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [Channel] Successfully subscribed to instant-alerts');
+          console.log('✅ [Channel] Ready to receive signal notifications');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [Channel] Subscription error - will retry on reconnect');
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ [Channel] Subscription timed out - check network connection');
+          console.log('🔄 [Fallback] Continuing with client-side notifications only');
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ [Channel] Channel closed - will reconnect on next mount');
+          console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
+        }
+      });
+
+    return () => {
+      console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
+      supabase.removeChannel(channel);
+      console.log('🔔 [ModernNotificationSystem] Cleanup completed');
+    };
+  }, [user?.id, addNotification]);
+
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {
       new_signal: 'from-blue-500/10 via-blue-500/5 to-transparent',
+      pending_limit: 'from-yellow-500/10 via-yellow-500/5 to-transparent',
       tp_hit: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
       stop_loss: 'from-red-500/10 via-red-500/5 to-transparent',
       trade_closed: 'from-green-500/10 via-green-500/5 to-transparent',
-      limit_activated: 'from-purple-500/10 via-purple-500/5 to-transparent',
-      manual_close: 'from-orange-500/10 via-orange-500/5 to-transparent',
+      limit_activated: 'from-blue-500/10 via-blue-500/5 to-transparent',
+      manual_close: 'from-gray-500/10 via-gray-500/5 to-transparent',
       notes_updated: 'from-yellow-500/10 via-yellow-500/5 to-transparent',
     };
     return gradients[type] || 'from-gray-500/10 via-gray-500/5 to-transparent';
+  };
+
+  const getBorderClass = (type: string) => {
+    const borderColors: Record<string, string> = {
+      new_signal: 'border-l-blue-500',
+      pending_limit: 'border-l-yellow-500',
+      tp_hit: 'border-l-emerald-500',
+      stop_loss: 'border-l-red-500',
+      trade_closed: 'border-l-green-500',
+      limit_activated: 'border-l-blue-500',
+      manual_close: 'border-l-gray-500',
+      notes_updated: 'border-l-yellow-500',
+    };
+    return borderColors[type] || 'border-l-gray-500';
   };
 
   return (
@@ -187,14 +576,14 @@ const ModernNotificationSystem = () => {
             exit={{ opacity: 0, x: 300, scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           >
-            <Card className={`overflow-hidden border-2 shadow-2xl backdrop-blur-md bg-gradient-to-br ${getGradientClass(notification.type)} border-border/50`}>
+            <Card className={`overflow-hidden border-2 border-l-4 shadow-2xl backdrop-blur-md bg-gradient-to-br ${getGradientClass(notification.type)} ${getBorderClass(notification.type)} border-border/50`}>
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3 flex-1">
                     {notification.metadata?.provider_avatar_url || notification.metadata?.provider_name ? (
                       <ProviderAvatar
                         avatarUrl={notification.metadata.provider_avatar_url}
-                        displayName={notification.metadata.provider_name || 'Provider'}
+                        displayName={notification.metadata.provider_name || 'Educator'}
                         userType={notification.metadata.provider_type}
                         size="md"
                         showBadge={true}
@@ -203,7 +592,7 @@ const ModernNotificationSystem = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-foreground text-sm">
-                          {notification.metadata?.provider_name || 'Provider'}
+                          {notification.metadata?.provider_name || 'Educator'}
                         </h4>
                         <NotificationBadge 
                           type={notification.type} 
@@ -230,7 +619,9 @@ const ModernNotificationSystem = () => {
                     {notification.message}
                   </p>
 
-                  {notification.metadata?.pips_data && (
+                  {notification.metadata?.pips_data && 
+                   notification.metadata.pips_data.value !== 0 && 
+                   notification.metadata.pips_data.value !== undefined && (
                     <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
                   )}
 

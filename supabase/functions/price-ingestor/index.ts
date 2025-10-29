@@ -437,194 +437,227 @@ serve(async (req) => {
         continue;
       }
 
-      try {
-        // PHASE 4: Use enhanced alert processing with Stop Loss priority
-        const { data: alertResults, error: alertError } = await supabaseClient
-          .rpc('process_price_alerts_enhanced_v2', {
-            p_symbol: priceUpdate.symbol,
-            p_current_bid: bidPrice,
-            p_current_ask: askPrice
-          });
+      // ============================================================================
+      // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
+      // ============================================================================
 
-        if (alertError) {
-          console.error(`❌ Alert processing error for ${priceUpdate.symbol}:`, alertError);
-        } else if (alertResults && alertResults.length > 0) {
-          // Process triggered alerts in priority order (Stop Loss first)
-          const triggeredAlerts = alertResults.filter((alert: any) => alert.triggered);
-          totalTriggeredAlerts += triggeredAlerts.length;
+      // Configuration: Cooldown period per symbol
+      const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
+      const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
+
+      // In-memory tracking of last alert processing time per symbol
+      const lastAlertProcessing: Map<string, number> = new Map();
+
+      // ============================================================================
+      // STEP 1: Determine which symbols need alert processing
+      // ============================================================================
+
+      const symbolsToProcess: string[] = [];
+      const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
+
+      for (const priceUpdate of prices) {
+        const symbol = priceUpdate.symbol;
+        const lastProcessed = lastAlertProcessing.get(symbol) || 0;
+        const timeSinceLastProcess = Date.now() - lastProcessed;
+        
+        // Only process if cooldown period has elapsed
+        if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
+          symbolsToProcess.push(symbol);
           
-          // PHASE 4: STOP LOSS PRIORITY - Process Stop Loss alerts first
-          const stopLossAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type === 'stop_loss');
-          const takeProfitAlerts = triggeredAlerts.filter((alert: any) => alert.alert_type.startsWith('take_profit_'));
+          // Build priceData in the format the SQL function expects
+          priceData[symbol] = {
+            bid: priceUpdate.bid,
+            ask: priceUpdate.ask,
+            mid: priceUpdate.mid
+          };
           
-          // ============================================
-          // FIX #1: Process Stop Loss with RPC (HIGHEST PRIORITY)
-          // ============================================
-          for (const alert of stopLossAlerts) {
-            console.log(`🛑 CRITICAL: Stop Loss triggered for signal ${alert.signal_id} at ${bidPrice}`);
-            
-            try {
-              // ✅ FIX: Fetch user_id from trade_alerts table
-              const { data: signalData, error: fetchError } = await supabaseClient
-                .from('trade_alerts')
-                .select('user_id, asset_name')
-                .eq('id', alert.signal_id)
-                .single();
-              
-              if (fetchError || !signalData) {
-                console.error(`❌ Failed to fetch signal ${alert.signal_id}:`, fetchError);
-                continue;
-              }
-              
-              console.log(`🔍 Fetched user_id for signal ${alert.signal_id}: ${signalData.user_id}`);
-              
-              // ✅ Now call RPC with CORRECT user_id
-              const { data: closeResult, error: closeError } = await supabaseClient
-                .rpc('close_trade_alert', {
-                  p_alert_id: alert.signal_id,
-                  p_user_id: signalData.user_id,
-                  p_close_reason: 'stop_loss'
-                });
-              
-              if (closeError) {
-                console.error(`❌ Failed to close signal ${alert.signal_id}:`, closeError);
-                continue;
-              }
-              
-              console.log(`✅ Signal ${alert.signal_id} closed via RPC due to stop loss`);
-              
-              // ✅ Queue notification
-              notificationTriggers.push({
-                signal_id: alert.signal_id,
-                alert_type: 'stop_loss_hit',
-                notification_type: 'stop_loss_hit',
-                triggered_price: bidPrice,
-                symbol: priceUpdate.symbol,
-                timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                priority_level: 4,
-                user_id: signalData.user_id,
-                asset_name: signalData.asset_name || priceUpdate.symbol
-              });
-              
-            } catch (error) {
-              console.error(`💥 Exception closing signal ${alert.signal_id}:`, error);
-            }
-          }
+          // Update last processed time
+          lastAlertProcessing.set(symbol, Date.now());
           
-          // ============================================
-          // 🚀 PARALLEL TP PROCESSING: Process all TP hits simultaneously
-          // ============================================
-          console.log(`🔄 [TP Processing] Checking ${takeProfitAlerts.length} signals in PARALLEL`);
-
-          const tpPromises = takeProfitAlerts.map(async (alert) => {
-            try {
-              // Fetch trade type and other data
-              const { data: signalData, error: fetchError } = await supabaseClient
-                .from('trade_alerts')
-                .select('trade_type, asset_name, user_id')
-                .eq('id', alert.signal_id)
-                .single();
-
-              if (fetchError || !signalData) {
-                throw new Error(`Failed to fetch signal data: ${fetchError?.message}`);
-              }
-
-              const isBuy = signalData.trade_type.includes('buy');
-              const currentPrice = isBuy ? priceUpdate.ask : priceUpdate.bid;
-              
-              // Call sequential TP processor RPC
-              const { data: tpResult, error: tpError } = await supabaseClient.rpc('process_tp_hits_sequential', {
-                p_trade_id: alert.signal_id,
-                p_current_price: currentPrice,
-                p_is_buy: isBuy
-              });
-
-              if (tpError) throw tpError;
-
-              // Check for all TPs hit (auto-close)
-              if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
-                console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed - ${tpResult.total_tps_hit}/${tpResult.total_tps_defined} TPs`);
-                
-                return {
-                  success: true,
-                  alertId: alert.signal_id,
-                  tpHit: true,
-                  allTPsHit: true,
-                  notification: {
-                    signal_id: alert.signal_id,
-                    alert_type: 'all_targets_hit',
-                    notification_type: 'all_tps_hit',
-                    triggered_price: currentPrice,
-                    symbol: priceUpdate.symbol,
-                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                    priority_level: 4,
-                    close_reason: 'all_targets_hit',
-                    tp_hits_completed: tpResult.total_tps_hit
-                  }
-                };
-              }
-              // Check for individual TP hit
-              else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                console.log(`🎯 SEQUENTIAL TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)} at ${currentPrice}`);
-                
-                return {
-                  success: true,
-                  alertId: alert.signal_id,
-                  tpHit: true,
-                  allTPsHit: false,
-                  notification: {
-                    signal_id: alert.signal_id,
-                    alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                    notification_type: 'take_profit_hit',
-                    triggered_price: currentPrice,
-                    symbol: priceUpdate.symbol,
-                    timestamp: priceUpdate.timestamp || new Date().toISOString(),
-                    priority_level: 3,
-                    tp_level: tpResult.tp_hit_this_cycle[0]
-                  }
-                };
-              }
-
-              return { success: true, alertId: alert.signal_id, tpHit: false };
-
-            } catch (err) {
-              console.error(`❌ TP processing error for signal ${alert.signal_id?.substring(0,8)}:`, err);
-              return { success: false, alertId: alert.signal_id, error: err };
-            }
-          });
-
-          // Wait for all TP checks to complete (parallel execution)
-          const results = await Promise.all(tpPromises);
-
-          // Add notifications for successful TP hits
-          results.forEach(result => {
-            if (result.success && result.notification) {
-              notificationTriggers.push(result.notification);
-            }
-          });
-
-          // Count successes and failures
-          const successCount = results.filter(r => r.success && r.tpHit).length;
-          const failureCount = results.filter(r => !r.success).length;
-
-          console.log(
-            `✅ [TP Processing Complete] ${successCount} TPs hit, ${failureCount} errors, ` +
-            `${takeProfitAlerts.length} total signals processed in PARALLEL`
-          );
-
-          // Log failures for monitoring
-          if (failureCount > 0) {
-            const failures = results.filter(r => !r.success);
-            console.error(`⚠️ [TP Failures]`, failures.map(f => ({
-              alertId: f.alertId?.substring(0, 8),
-              error: f.error
-            })));
-          }
-          
-          console.log(`🚨 ${triggeredAlerts.length} alerts triggered for ${priceUpdate.symbol} (${stopLossAlerts.length} SL, ${takeProfitAlerts.length} TP)`);
+          console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
+        } else {
+          console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
         }
-      } catch (error) {
-        console.error(`❌ Critical alert processing error for ${priceUpdate.symbol}:`, error);
+      }
+
+      // ============================================================================
+      // STEP 2: Batch process alerts with timeout protection
+      // ============================================================================
+
+      if (symbolsToProcess.length > 0) {
+        console.log(`🎯 [Alert Processing] Processing ${symbolsToProcess.length} symbols: ${symbolsToProcess.join(', ')}`);
+        console.log(`🎯 [Alert Processing] Price data:`, priceData);
+        
+        try {
+          // Race condition: Either get results or timeout after 3 seconds
+          const alertResults = await Promise.race([
+            supabaseClient.rpc('process_price_alerts_batch_v3', {
+              p_symbols: symbolsToProcess,
+              p_prices: priceData
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(
+                () => reject(new Error(`Alert processing timeout after ${ALERT_PROCESSING_TIMEOUT_MS}ms`)), 
+                ALERT_PROCESSING_TIMEOUT_MS
+              )
+            )
+          ]);
+
+          if (alertResults.error) {
+            console.error(`❌ [Alert Processing] Batch error:`, {
+              error: alertResults.error,
+              code: alertResults.error.code,
+              message: alertResults.error.message,
+              symbols: symbolsToProcess
+            });
+          } else if (alertResults.data && Array.isArray(alertResults.data)) {
+            const allAlerts = alertResults.data;
+            const triggeredAlerts = allAlerts.filter((alert: any) => alert.triggered);
+            
+            console.log(`✅ [Alert Processing] Processed ${allAlerts.length} total alerts, ${triggeredAlerts.length} triggered`);
+            
+            // ============================================================================
+            // STEP 3: Process triggered alerts (existing notification logic)
+            // ============================================================================
+            
+            if (triggeredAlerts.length > 0) {
+              console.log(`🚨 [Triggered Alerts] Processing ${triggeredAlerts.length} triggered alerts...`);
+              
+              // Group by type for efficient processing
+              const stopLossAlerts = triggeredAlerts.filter((a: any) => a.alert_type === 'stop_loss');
+              const takeProfitAlerts = triggeredAlerts.filter((a: any) => a.alert_type?.startsWith('take_profit'));
+              
+              // Process stop losses (highest priority)
+              if (stopLossAlerts.length > 0) {
+                console.log(`🛑 [Stop Loss] Processing ${stopLossAlerts.length} stop loss alerts`);
+                
+                for (const alert of stopLossAlerts) {
+                  try {
+                    // Get signal details
+                    const { data: signalData, error: signalError } = await supabaseClient
+                      .from('trade_alerts')
+                      .select('user_id, asset_name, trade_type')
+                      .eq('id', alert.signal_id)
+                      .single();
+                    
+                    if (signalError || !signalData) {
+                      console.error(`❌ [Stop Loss] Failed to fetch signal ${alert.signal_id}:`, signalError);
+                      continue;
+                    }
+                    
+                    // Close the signal
+                    const { error: closeError } = await supabaseClient.rpc('close_trade_alert', {
+                      p_alert_id: alert.signal_id,
+                      p_user_id: signalData.user_id,
+                      p_close_reason: 'stop_loss'
+                    });
+                    
+                    if (closeError) {
+                      console.error(`❌ [Stop Loss] Failed to close signal ${alert.signal_id}:`, closeError);
+                    } else {
+                      console.log(`✅ [Stop Loss] Closed signal ${alert.signal_id} (${signalData.asset_name})`);
+                      
+                      // Queue notification
+                      notificationTriggers.push({
+                        signal_id: alert.signal_id,
+                        alert_type: 'stop_loss_hit',
+                        notification_type: 'stop_loss_hit',
+                        triggered_price: alert.current_price,
+                        symbol: alert.symbol,
+                        timestamp: new Date().toISOString(),
+                        priority_level: 4,
+                        user_id: signalData.user_id,
+                        asset_name: signalData.asset_name || alert.symbol
+                      });
+                    }
+                  } catch (error) {
+                    console.error(`❌ [Stop Loss] Unexpected error processing alert ${alert.alert_id}:`, error);
+                  }
+                }
+              }
+              
+              // Process take profits
+              if (takeProfitAlerts.length > 0) {
+                console.log(`🎯 [Take Profit] Processing ${takeProfitAlerts.length} TP alerts`);
+                
+                // Process TPs in parallel (they don't conflict)
+                const tpPromises = takeProfitAlerts.map(async (alert: any) => {
+                  try {
+                    const { data: signalData } = await supabaseClient
+                      .from('trade_alerts')
+                      .select('trade_type, asset_name, user_id')
+                      .eq('id', alert.signal_id)
+                      .single();
+                    
+                    if (!signalData) return;
+                    
+                    const isBuy = signalData.trade_type === 'buy' || signalData.trade_type === 'buy_limit';
+                    
+                    const { data: tpResult, error: tpError } = await supabaseClient.rpc('process_tp_hits_sequential', {
+                      p_trade_id: alert.signal_id,
+                      p_current_price: alert.current_price,
+                      p_is_buy: isBuy
+                    });
+                    
+                    if (tpError) throw tpError;
+                    
+                    // Check for all TPs hit
+                    if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
+                      console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed`);
+                      
+                      notificationTriggers.push({
+                        signal_id: alert.signal_id,
+                        alert_type: 'all_targets_hit',
+                        notification_type: 'all_tps_hit',
+                        triggered_price: alert.current_price,
+                        symbol: alert.symbol,
+                        timestamp: new Date().toISOString(),
+                        priority_level: 4,
+                        user_id: signalData.user_id || '',
+                        asset_name: signalData.asset_name || alert.symbol
+                      });
+                    } else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
+                      console.log(`🎯 TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)}`);
+                      
+                      notificationTriggers.push({
+                        signal_id: alert.signal_id,
+                        alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
+                        notification_type: 'take_profit_hit',
+                        triggered_price: alert.current_price,
+                        symbol: alert.symbol,
+                        timestamp: new Date().toISOString(),
+                        priority_level: 3,
+                        user_id: signalData.user_id || '',
+                        asset_name: signalData.asset_name || alert.symbol
+                      });
+                    }
+                    
+                    console.log(`✅ [Take Profit] Processed TP for signal ${alert.signal_id}`);
+                  } catch (error) {
+                    console.error(`❌ [Take Profit] Error processing ${alert.alert_id}:`, error);
+                  }
+                });
+                
+                await Promise.allSettled(tpPromises);
+              }
+            }
+          } else {
+            console.log(`ℹ️ [Alert Processing] No alerts returned from batch processing`);
+          }
+          
+        } catch (error: any) {
+          if (error.message?.includes('timeout')) {
+            console.warn(`⚠️ [Alert Processing] Timeout after ${ALERT_PROCESSING_TIMEOUT_MS}ms - continuing with price broadcast`);
+          } else {
+            console.error(`❌ [Alert Processing] Unexpected error:`, {
+              error: error.message,
+              stack: error.stack,
+              symbols: symbolsToProcess
+            });
+          }
+        }
+      } else {
+        console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
       }
     }
 

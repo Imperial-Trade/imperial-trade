@@ -583,13 +583,72 @@ async function sendRealtimeNotification(
       asset_name: notification.asset_name,
       trade_type: notification.trade_type,
       entry_price: notification.entry_price,
-      author_name: notification.author_name || 'Educator', // Safe fallback
+      
+      // Complete author info
+      author_name: notification.author_name || 'Educator',
+      author_avatar_url: notification.author_avatar_url,
+      author_user_type: notification.author_user_type,
+      
       status: notification.status,
       priority_level: notification.priority_level,
       created_at: notification.created_at,
       updated_at: notification.updated_at,
       change_types: notification.change_types || [],
       tp_hits: notification.tp_hits || [],
+      
+      // TP/SL specific fields
+      triggered_price: notification.triggered_price,
+      target_price: notification.target_price,
+      stop_loss: notification.stop_loss,
+      
+      // All TP prices for calculation
+      tp1: notification.tp1,
+      tp2: notification.tp2,
+      tp3: notification.tp3,
+      tp4: notification.tp4,
+      tp5: notification.tp5,
+      
+      // TP number for display
+      tp_number: notification.tp_hits?.[notification.tp_hits.length - 1],
+      total_tps: [notification.tp1, notification.tp2, notification.tp3, notification.tp4, notification.tp5]
+        .filter(tp => tp !== null && tp !== undefined).length,
+      
+      // Calculated pips from database
+      calculated_pips: notification.pip_calculation?.calculated_pips,
+      pip_size: notification.pip_calculation?.pip_size,
+      
+      // Formatted pips with sign
+      pips: notification.pip_calculation?.calculated_pips 
+        ? (() => {
+            const pipsValue = notification.pip_calculation.calculated_pips;
+            const notifType = notification.notification_type;
+            
+            if (notifType === 'stop_loss_hit') {
+              return '-' + pipsValue.toFixed(1);
+            }
+            
+            if (notifType === 'tp_hit' || notifType === 'multiple_tps_hit' ||
+                notifType === 'all_tps_hit' || notifType === 'manual_close_with_tp_hit') {
+              return '+' + pipsValue.toFixed(1);
+            }
+            
+            const isBuy = notification.trade_type === 'buy' || notification.trade_type === 'buy_limit';
+            const isProfit = notification.triggered_price 
+              ? (isBuy ? notification.triggered_price >= notification.entry_price 
+                       : notification.triggered_price <= notification.entry_price)
+              : true;
+            
+            return (isProfit ? '+' : '-') + pipsValue.toFixed(1);
+          })()
+        : null,
+      
+      // Close reason
+      close_reason: notification.close_reason,
+      
+      // Symbols for calculation
+      symbol: notification.symbol,
+      tradermade_symbol: notification.tradermade_symbol,
+      
       version: '2.0',
       timestamp: new Date().toISOString()
     };

@@ -2077,6 +2077,9 @@ export type Database = {
           cover_position_y: string | null
           created_at: string | null
           device_fingerprint: string | null
+          device_platform: string | null
+          device_token: string | null
+          device_token_updated_at: string | null
           display_name: string | null
           email: string | null
           email_notifications: boolean
@@ -2132,6 +2135,9 @@ export type Database = {
           cover_position_y?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
+          device_platform?: string | null
+          device_token?: string | null
+          device_token_updated_at?: string | null
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean
@@ -2187,6 +2193,9 @@ export type Database = {
           cover_position_y?: string | null
           created_at?: string | null
           device_fingerprint?: string | null
+          device_platform?: string | null
+          device_token?: string | null
+          device_token_updated_at?: string | null
           display_name?: string | null
           email?: string | null
           email_notifications?: boolean
@@ -2806,6 +2815,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      signal_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          provider_id: string
+          subscribed_at: string | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider_id: string
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider_id?: string
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      system_configuration: {
+        Row: {
+          config_description: string | null
+          config_key: string
+          config_value: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config_description?: string | null
+          config_key: string
+          config_value: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          config_description?: string | null
+          config_key?: string
+          config_value?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       trade_alerts: {
         Row: {
@@ -4386,6 +4455,7 @@ export type Database = {
         Returns: Json
       }
       get_realtime_system_status: { Args: never; Returns: Json }
+      get_system_config: { Args: { p_config_key: string }; Returns: string }
       get_trader_stats: { Args: { p_user_id: string }; Returns: Json }
       get_unread_notification_count: { Args: never; Returns: number }
       get_user_access_level: {

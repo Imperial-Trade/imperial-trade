@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/utils/authUtils';
+import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 
 interface Profile {
   id: string;
@@ -240,6 +241,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
+        // Update Capacitor notification service with current user
+        if (session?.user) {
+          capacitorNotificationService.setCurrentUser(session.user.id);
+        } else {
+          capacitorNotificationService.setCurrentUser(null);
+        }
+        
         // Only fetch profile for non-recovery sessions
         if (session?.user && !hasRecoveryTokens()) {
           fetchProfile(session.user.id).then(setProfile);
@@ -261,6 +269,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Clean up auth state first
       cleanupAuthState();
+      
+      // Clear Capacitor notification service user
+      capacitorNotificationService.setCurrentUser(null);
       
       // Reset state immediately
       setSession(null);

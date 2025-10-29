@@ -219,6 +219,18 @@ const ModernNotificationSystem = () => {
         console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
         
         const data = payload.payload;
+
+        // 🔍 DEBUG: Log broadcast notification data
+        console.log('🔍 [Broadcast Notification]', {
+          notification_type: data.notification_type,
+          author_name: data.author_name,
+          provider_name: data.provider_name,
+          display_name: data.display_name,
+          asset_name: data.asset_name,
+          entry_price: data.entry_price,
+          has_full_data: !!data.author_name
+        });
+
         if (!data) return;
 
         // GUARD 1: TIMESTAMP FILTERING
@@ -381,24 +393,8 @@ const ModernNotificationSystem = () => {
       })
       .subscribe();
 
-    // Also listen for custom signal events
-    const handleSignalPosted = () => {
-      if (!isMountedRef.current) return;
-      
-      addNotification({
-        type: 'new_signal',
-        title: '🚨 New Signal Posted',
-        message: 'A new trading signal has been created',
-        metadata: {},
-        timestamp: new Date(),
-      });
-    };
-
-    window.addEventListener('signal-posted', handleSignalPosted);
-
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener('signal-posted', handleSignalPosted);
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
   }, [user?.id, addNotification]);

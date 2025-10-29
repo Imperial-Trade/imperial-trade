@@ -125,11 +125,8 @@ export class TradingApiService {
         };
       }
 
-      // Dispatch custom event to notify about new signal
+      // Invalidate signal cache for instant visibility
       try {
-        window.dispatchEvent(new CustomEvent('signal-posted'));
-        
-        // ✅ FIX: Invalidate signal cache for instant visibility
         window.dispatchEvent(new CustomEvent('invalidate-signal-cache', {
           detail: { signalId: responseDto.id }
         }));

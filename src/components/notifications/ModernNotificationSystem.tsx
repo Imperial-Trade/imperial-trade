@@ -46,7 +46,7 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
-  // Safely get auth context - handle case where it's not ready yet
+  // Get auth context - component mounts immediately regardless of auth state
   let user: any = undefined;
   let authReady = false;
 
@@ -55,15 +55,9 @@ const ModernNotificationSystem = () => {
     user = auth.user || undefined;
     authReady = true;
   } catch (error) {
-    // AuthContext not initialized yet - this is expected during initial render
-    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready yet, deferring initialization');
+    // AuthContext not initialized yet - component still mounts to be ready for notifications
+    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready, but component mounted');
     authReady = false;
-  }
-
-  // Don't render notification listeners until auth is ready
-  // This prevents race conditions during app initialization
-  if (!authReady) {
-    return null;
   }
 
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
@@ -529,8 +523,10 @@ const ModernNotificationSystem = () => {
           console.error('❌ [Channel] Subscription error - will retry on reconnect');
         } else if (status === 'TIMED_OUT') {
           console.error('❌ [Channel] Subscription timed out - check network connection');
+          console.log('🔄 [Fallback] Continuing with client-side notifications only');
         } else if (status === 'CLOSED') {
           console.warn('⚠️ [Channel] Channel closed - will reconnect on next mount');
+          console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
         }
       });
 

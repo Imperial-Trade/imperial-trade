@@ -96,5 +96,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'Pragma': 'no-cache',
       'Expires': '0'
     }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    },
+    timeout: 30000,
+    heartbeatIntervalMs: 15000
   }
 });

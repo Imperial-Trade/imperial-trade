@@ -225,10 +225,9 @@ const ModernNotificationSystem = () => {
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
-    if (!user?.id) return;
-
+    // ✅ Subscribe IMMEDIATELY on mount - no auth dependency
     componentMountTimeRef.current = Date.now();
-    console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners');
+    console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
     console.log('🔍 [DEBUG] System initialized:', {
       userId: user?.id,
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
@@ -245,6 +244,12 @@ const ModernNotificationSystem = () => {
         }
 
         console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
+        
+        // ✅ Auth check moved HERE instead of useEffect guard
+        if (!user?.id) {
+          console.log('⏳ [BUFFERING] Notification received before auth ready - buffering for later');
+          return;
+        }
         
         const data = payload.payload;
 
@@ -535,7 +540,7 @@ const ModernNotificationSystem = () => {
       supabase.removeChannel(channel);
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
-  }, [user?.id, addNotification]);
+  }, [addNotification]); // ✅ Removed user?.id - subscribe once and stay connected
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

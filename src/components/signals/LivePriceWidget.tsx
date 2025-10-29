@@ -526,20 +526,32 @@ const LivePriceWidgetComponent = ({
     if (!priceChange) return null;
     const isBuy = alert.trade_type.includes('buy');
     const isProfit = isBuy ? priceChange.isPositive : !priceChange.isPositive;
+    
+    // For SELL trades, flip the pips and dollar signs to match profit/loss
+    let displayPips = priceChange.pips;
+    let displayDollar = priceChange.absolute;
+    
+    if (!isBuy) {
+      if (priceChange.pips !== null) displayPips = -priceChange.pips;
+      displayDollar = -priceChange.absolute;
+    }
+    
     let valueText;
-    if (priceChange.pips !== null) {
-      valueText = `${priceChange.pips.toFixed(1)} pips`;
+    if (displayPips !== null) {
+      valueText = `${Math.abs(displayPips).toFixed(1)} pips`;
     } else if (priceChange.points !== null) {
-      valueText = `${priceChange.points.toFixed(2)} pts`;
+      valueText = `${Math.abs(priceChange.points).toFixed(2)} pts`;
     } else {
       valueText = 'N/A';
     }
+    
     return {
       isProfit,
       color: isProfit ? 'text-emerald-400' : 'text-red-400',
       bgColor: isProfit ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-red-500/20 border-red-500/30',
       valueText,
-      sign: priceChange.isPositive ? '+' : ''
+      sign: isProfit ? '+' : '-',
+      displayDollar
     };
   }, [priceChange, alert.trade_type]);
 
@@ -714,7 +726,7 @@ const LivePriceWidgetComponent = ({
               </span>
             </Badge>
             <div className={`text-xs ${profitLossDisplay.color}`}>
-              {priceChange.isPositive ? '+' : ''}${Math.abs(priceChange.absolute).toFixed(2)}
+              {profitLossDisplay.sign}${Math.abs(profitLossDisplay.displayDollar).toFixed(2)}
             </div>
           </div>
         </div>

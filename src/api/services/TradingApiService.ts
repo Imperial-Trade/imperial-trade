@@ -93,34 +93,50 @@ export class TradingApiService {
         };
       }
 
-      const responseDto: TradeAlertResponseDto = {
-        id: result.data.id,
-        userId: result.data.user_id,
-        assetName: result.data.asset_name,
-        tradermadeSymbol: result.data.tradermade_symbol,
-        tradeType: result.data.trade_type,
-        entryPrice: Number(result.data.entry_price),
-        stopLoss: Number(result.data.stop_loss),
-        status: result.data.status,
-        tp1: result.data.tp1 ? Number(result.data.tp1) : undefined,
-        tp2: result.data.tp2 ? Number(result.data.tp2) : undefined,
-        tp3: result.data.tp3 ? Number(result.data.tp3) : undefined,
-        tp4: result.data.tp4 ? Number(result.data.tp4) : undefined,
-        tp5: result.data.tp5 ? Number(result.data.tp5) : undefined,
-        tpHits: result.data.tp_hits || [],
-        notes: result.data.notes,
-        closeReason: result.data.close_reason,
-        createdAt: result.data.created_at,
-        updatedAt: result.data.updated_at
-      };
+      let responseDto: TradeAlertResponseDto;
+      try {
+        responseDto = {
+          id: result.data.id,
+          userId: result.data.user_id,
+          assetName: result.data.asset_name,
+          tradermadeSymbol: result.data.tradermade_symbol,
+          tradeType: result.data.trade_type,
+          entryPrice: Number(result.data.entry_price) || 0,
+          stopLoss: Number(result.data.stop_loss) || 0,
+          status: result.data.status,
+          tp1: result.data.tp1 ? Number(result.data.tp1) : undefined,
+          tp2: result.data.tp2 ? Number(result.data.tp2) : undefined,
+          tp3: result.data.tp3 ? Number(result.data.tp3) : undefined,
+          tp4: result.data.tp4 ? Number(result.data.tp4) : undefined,
+          tp5: result.data.tp5 ? Number(result.data.tp5) : undefined,
+          tpHits: result.data.tp_hits || [],
+          notes: result.data.notes,
+          closeReason: result.data.close_reason,
+          createdAt: result.data.created_at,
+          updatedAt: result.data.updated_at
+        };
+        console.log('✅ Response DTO constructed successfully:', responseDto.id);
+      } catch (dtoError) {
+        console.error('🔴 Failed to construct response DTO:', dtoError);
+        return {
+          success: false,
+          error: 'Failed to process alert data: ' + (dtoError instanceof Error ? dtoError.message : 'Unknown error'),
+          data: undefined
+        };
+      }
 
       // Dispatch custom event to notify about new signal
-      window.dispatchEvent(new CustomEvent('signal-posted'));
-      
-      // ✅ FIX: Invalidate signal cache for instant visibility
-      window.dispatchEvent(new CustomEvent('invalidate-signal-cache', {
-        detail: { signalId: responseDto.id }
-      }));
+      try {
+        window.dispatchEvent(new CustomEvent('signal-posted'));
+        
+        // ✅ FIX: Invalidate signal cache for instant visibility
+        window.dispatchEvent(new CustomEvent('invalidate-signal-cache', {
+          detail: { signalId: responseDto.id }
+        }));
+      } catch (eventError) {
+        console.warn('⚠️ Failed to dispatch events (non-critical):', eventError);
+        // Don't fail the whole operation if events fail
+      }
 
       return {
         success: true,

@@ -78,7 +78,7 @@ const NewSignalPage: React.FC = () => {
       if (result) {
         toast({
           title: "🚀 Educational Pattern Created!",
-          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
+          description: `${result.assetName} ${result.tradeType.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
         });
         
         // Navigate to pattern stream page to show the new pattern

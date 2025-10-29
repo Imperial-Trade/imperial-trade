@@ -56,10 +56,19 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
   // Trading operations with proper return types
   const createAlert = async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
     try {
+      console.log('🔵 useOptimizedTrading: Creating alert', {
+        asset: dto.assetName,
+        type: dto.tradeType
+      });
       const result = await realtimeHook.createAlert(dto);
+      console.log('🔵 useOptimizedTrading: Got result:', result ? '✅ SUCCESS' : '❌ NULL');
+      if (result) {
+        console.log('🔵 Signal created successfully:', result.id);
+      }
       return result;
     } catch (error) {
-      console.error('Error in createAlert:', error);
+      console.error('🔴 useOptimizedTrading: Exception caught:', error);
+      console.error('🔴 Error stack:', error instanceof Error ? error.stack : 'No stack');
       return null;
     }
   };

@@ -9,6 +9,7 @@ import { NotificationBadge } from './NotificationBadge';
 import { ProgressIndicator } from './ProgressIndicator';
 import { ProfitLossDisplay } from './ProfitLossDisplay';
 import type { PipsData } from '@/utils/pipsCalculator';
+import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -300,97 +301,184 @@ const ModernNotificationSystem = () => {
 
         switch (data.notification_type) {
           // ============================================
-          // NEW SIGNAL (BUY/SELL) - BLUE
+          // Type 1: NEW SIGNAL (BUY/SELL) - Blue
           // ============================================
-          case 'signal_created':
+          case 'signal_created': {
             type = 'new_signal';
-            const signalType = (data.trade_type || '').toUpperCase();
-            title = `🚨 ${signalType} Signal`;
-            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} posted ${data.asset_name} at $${data.entry_price}`;
+            const tradeDirection = data.trade_type?.toUpperCase().includes('BUY') ? 'BUY' : 'SELL';
+            title = `🚀 New ${tradeDirection} Signal`;
+            message = `${tradeDirection} Signal is Posted on ${data.asset_name} at $${data.entry_price}`;
             break;
+          }
 
           // ============================================
-          // PENDING LIMIT (BUY LIMIT/SELL LIMIT) - YELLOW
+          // Type 2: PENDING LIMIT - Yellow
           // ============================================
           case 'pending_limit_created':
-          case 'limit_order_created':
+          case 'limit_order_created': {
             type = 'pending_limit';
-            const limitType = data.trade_type === 'buy_limit' ? 'BUY LIMIT' : 'SELL LIMIT';
-            title = `📊 Pending ${limitType}`;
-            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} opened ${limitType} on ${data.asset_name} at $${data.entry_price}`;
+            const limitDirection = data.trade_type === 'buy_limit' ? 'BUY' : 'SELL';
+            title = `⏳ Pending ${limitDirection} Limit`;
+            message = `Waiting to reached ${data.asset_name} at $${data.entry_price}`;
             break;
+          }
 
           // ============================================
-          // TP HIT (TP1-TP5) - GREEN
+          // Type 3: LIMIT ACTIVATED - Blue
+          // ============================================
+          case 'limit_activated':
+          case 'limit_order_activated': {
+            type = 'limit_activated';
+            const activatedDirection = data.trade_type?.replace('_limit', '').toUpperCase();
+            title = `✅ ${activatedDirection} Limit Activated`;
+            message = `${activatedDirection} LIMIT is activated on ${data.asset_name} at $${data.entry_price}`;
+            break;
+          }
+
+          // ============================================
+          // Type 4: TP HIT (TP1-TP5) - Green
           // ============================================
           case 'tp_hit':
           case 'take_profit_hit':
+          case 'multiple_tps_hit': {
             type = 'tp_hit';
-            const tpNumber = data.tp_hits?.[data.tp_hits.length - 1] || data.tp_number || '1';
-            const tpPrice = data.triggered_price || data.target_price || 'N/A';
-            const pips = data.pips || data.pips_gained || '+0';
-            title = `🎯 TP${tpNumber} HIT`;
-            message = `${data.asset_name} reached $${tpPrice} | ${pips} PIPS`;
+            
+            // Get TP number
+            const tpNumber = data.tp_number || data.tp_hits?.[data.tp_hits.length - 1] || 1;
+            
+            // Get TP price
+            let tpPrice = data.triggered_price;
+            if (!tpPrice) {
+              const tpField = `tp${tpNumber}`;
+              tpPrice = data[tpField];
+            }
+            
+            // Calculate pips
+            let tpPips = data.pips;
+            
+            if (!tpPips && data.calculated_pips && data.calculated_pips > 0) {
+              tpPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!tpPips && tpPrice && data.entry_price && data.trade_type) {
+              const pipsCalc = calculatePipsForSignal(
+                parseFloat(data.entry_price),
+                parseFloat(tpPrice),
+                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.trade_type
+              );
+              tpPips = pipsCalc.formatted;
+            }
+            
+            title = `🎯 Take Profit Hit`;
+            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'} | ${tpPips || '+0'} PIPS`;
             break;
+          }
 
           // ============================================
-          // STOP LOSS HIT - RED
+          // Type 5: STOP LOSS HIT - Red
           // ============================================
-          case 'stop_loss_hit':
+          case 'stop_loss_hit': {
             type = 'stop_loss';
-            const slPrice = data.triggered_price || data.target_price || data.stop_loss || 'N/A';
-            const slPips = data.pips || data.pips_lost || '-0';
-            title = `❌ STOP LOSS HIT`;
-            message = `${data.asset_name} hit SL at $${slPrice} | ${slPips} PIPS`;
+            
+            const slPrice = data.stop_loss || data.triggered_price || data.target_price;
+            
+            let slPips = data.pips;
+            
+            if (!slPips && data.calculated_pips && data.calculated_pips > 0) {
+              slPips = `-${data.calculated_pips.toFixed(1)}`;
+            } else if (!slPips && slPrice && data.entry_price && data.trade_type) {
+              const pipsCalc = calculatePipsForSignal(
+                parseFloat(data.entry_price),
+                parseFloat(slPrice),
+                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.trade_type
+              );
+              slPips = pipsCalc.formatted.replace('+', '-');
+              if (!slPips.startsWith('-')) {
+                slPips = '-' + slPips;
+              }
+            }
+            
+            title = `▼ Stop Loss Hit`;
+            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'} | ${slPips || '-0'} PIPS`;
             break;
+          }
 
           // ============================================
-          // LIMIT ACTIVATED (ACTIVE BUY/SELL) - BLUE
-          // ============================================
-          case 'limit_activated':
-          case 'limit_order_activated':
-            type = 'limit_activated';
-            const activatedType = (data.trade_type || '')
-              .replace('_limit', '')
-              .replace('buy', 'BUY')
-              .replace('sell', 'SELL');
-            title = `✅ ${activatedType} Activated`;
-            message = `${data.asset_name} ${activatedType} order activated at $${data.entry_price}`;
-            break;
-
-          // ============================================
-          // MANUAL CLOSE - DARK GREY
+          // Type 6: MANUAL CLOSE - Grey
           // ============================================
           case 'manual_close':
-          case 'manually_closed':
+          case 'manually_closed': {
             type = 'manual_close';
             title = `🔒 Manually Closed`;
-            message = `${data.author_name || 'Provider'} manually closed ${data.asset_name}`;
+            message = `manually closed ${data.asset_name}`;
             break;
+          }
 
           // ============================================
-          // ALL TPS HIT - GREEN
+          // Type 7: MANUAL CLOSE WITH TP HIT - Grey
+          // ============================================
+          case 'manual_close_with_tp_hit': {
+            type = 'manual_close';
+            
+            let securedPips = data.pips;
+            
+            if (!securedPips && data.calculated_pips && data.calculated_pips > 0) {
+              securedPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!securedPips) {
+              securedPips = '+0';
+            }
+            
+            title = `💰 Closed in Profits`;
+            message = `Secured Profits on ${data.asset_name} | ${securedPips} PIPS`;
+            break;
+          }
+
+          // ============================================
+          // Type 8: ALL TPS HIT - Green
           // ============================================
           case 'all_tps_hit':
-          case 'all_take_profits_hit':
+          case 'all_take_profits_hit': {
             type = 'trade_closed';
-            const totalPips = data.total_pips || data.pips_gained || '+0';
+            
+            let allTpsPips = data.pips;
+            
+            if (!allTpsPips && data.calculated_pips && data.calculated_pips > 0) {
+              allTpsPips = `+${data.calculated_pips.toFixed(1)}`;
+            } else if (!allTpsPips && data.entry_price) {
+              const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
+              if (highestTP && data.trade_type) {
+                const pipsCalc = calculatePipsForSignal(
+                  parseFloat(data.entry_price),
+                  parseFloat(highestTP),
+                  data.tradermade_symbol || data.symbol || data.asset_name,
+                  data.trade_type
+                );
+                allTpsPips = pipsCalc.formatted;
+              }
+            }
+            
             title = `🎉 ALL TPs HIT`;
-            message = `${data.asset_name} completed successfully | ${totalPips} PIPS`;
+            message = `${data.asset_name} completed all Profits successfully | ${allTpsPips || '+0'} PIPS`;
             break;
+          }
 
           // ============================================
-          // NOTES UPDATED - YELLOW
+          // Type 9: NOTES UPDATED - Yellow
           // ============================================
-          case 'notes_updated':
+          case 'notes_updated': {
             type = 'notes_updated';
             title = `📝 Notes Updated`;
-            message = `${data.author_name || 'Provider'} updated notes for ${data.asset_name}`;
+            message = `${data.author_name || 'Educator'} updated notes for ${data.asset_name}`;
             break;
+          }
 
-          default:
-            title = `📊 Signal Update`;
-            message = `${data.author_name || data.provider_name || data.display_name || 'Educator'} updated ${data.asset_name}`;
+          // ============================================
+          // Default: REJECT
+          // ============================================
+          default: {
+            console.warn(`⚠️ Unknown notification type: "${data.notification_type}"`);
+            return;
+          }
         }
 
         addNotification({
@@ -529,7 +617,9 @@ const ModernNotificationSystem = () => {
                     {notification.message}
                   </p>
 
-                  {notification.metadata?.pips_data && (
+                  {notification.metadata?.pips_data && 
+                   notification.metadata.pips_data.value !== 0 && 
+                   notification.metadata.pips_data.value !== undefined && (
                     <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
                   )}
 

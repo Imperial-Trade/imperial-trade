@@ -146,7 +146,7 @@ const ModernNotificationSystem = () => {
         : notification.eventKey || `${notification.title}:${notification.message}`;
 
       const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      const deduplicationWindow = 120000; // 120 seconds
+      const deduplicationWindow = 30000; // 30 seconds (reduced for faster testing)
 
       if (now - lastShownTime < deduplicationWindow) {
         const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);

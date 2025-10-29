@@ -11,8 +11,8 @@ interface UseOptimizedTradingReturn {
   alerts: TradeAlertWithProfile[];
   isLoading: boolean;
   error: string | null;
-  createAlert: (dto: CreateTradeAlertDto) => Promise<boolean>;
-  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<boolean>;
+  createAlert: (dto: CreateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
+  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
   connectionStatus?: 'connecting' | 'connected' | 'disconnected' | 'error' | 'polling-fallback';
@@ -53,28 +53,24 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     setUsingFallback
   });
 
-  // Use operations hook with boolean return types
-  const createAlert = async (dto: CreateTradeAlertDto): Promise<boolean> => {
+  // Trading operations with proper return types
+  const createAlert = async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
     try {
-      const result = usingFallback 
-        ? await realtimeHook.createAlert(dto)
-        : await realtimeHook.createAlert(dto);
-      return !!result;
+      const result = await realtimeHook.createAlert(dto);
+      return result;
     } catch (error) {
       console.error('Error in createAlert:', error);
-      return false;
+      return null;
     }
   };
 
-  const updateAlert = async (id: string, dto: UpdateTradeAlertDto): Promise<boolean> => {
+  const updateAlert = async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
     try {
-      const result = usingFallback 
-        ? await realtimeHook.updateAlert(id, dto)
-        : await realtimeHook.updateAlert(id, dto);
-      return !!result;
+      const result = await realtimeHook.updateAlert(id, dto);
+      return result;
     } catch (error) {
       console.error('Error in updateAlert:', error);
-      return false;
+      return null;
     }
   };
 

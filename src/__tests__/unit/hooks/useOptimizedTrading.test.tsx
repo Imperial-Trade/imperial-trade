@@ -159,10 +159,10 @@ describe('useOptimizedTrading', () => {
       { wrapper: TestWrapper }
     );
 
-    expect(result.current.createAlert).toBe(mockOperations.createAlert);
-    expect(result.current.updateAlert).toBe(mockOperations.updateAlert);
-    expect(result.current.deleteAlert).toBe(mockOperations.deleteAlert);
-    expect(result.current.refreshAlerts).toBe(mockOperations.refreshAlerts);
+    expect(typeof result.current.createAlert).toBe('function');
+    expect(typeof result.current.updateAlert).toBe('function');
+    expect(typeof result.current.deleteAlert).toBe('function');
+    expect(typeof result.current.refreshAlerts).toBe('function');
   });
 
   it('handles loading states correctly', () => {

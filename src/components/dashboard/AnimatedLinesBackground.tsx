@@ -66,7 +66,6 @@ export const AnimatedLinesBackground: React.FC = () => {
           height: 100%;
           margin: auto;
           width: 90vw;
-          max-width: 1600px;
           display: flex;
           justify-content: space-between;
         }
@@ -87,8 +86,8 @@ export const AnimatedLinesBackground: React.FC = () => {
           width: 100%;
           top: -50%;
           left: 0;
-          will-change: transform;
           animation: line-drop 7s infinite cubic-bezier(0.4, 0.26, 0, 0.97);
+          animation-fill-mode: forwards;
         }
 
         @media (max-width: 640px) {
@@ -101,17 +100,9 @@ export const AnimatedLinesBackground: React.FC = () => {
         @keyframes line-drop {
           0% {
             top: -50%;
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
           }
           100% {
             top: 110%;
-            opacity: 0;
           }
         }
 
@@ -144,7 +135,7 @@ export const AnimatedLinesBackground: React.FC = () => {
                     ${color} 75%,
                     ${color} 100%
                   );
-                  animation-delay: ${(index + 1) * 0.6}s;
+                  animation-delay: ${(index + 1) * 0.5}s;
                 }
               `}</style>
             </div>

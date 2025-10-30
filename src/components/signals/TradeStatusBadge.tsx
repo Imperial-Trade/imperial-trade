@@ -72,7 +72,16 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     }
 
     if (isClosed) {
-        // ✅ PRIORITY 1: Manual close takes highest priority
+        // ✅ PRIORITY 1: Manual close with TP hits = CLOSED IN PROFITS
+        if (closeReason === 'manual' && hitTPs && hitTPs.length > 0) {
+            return (
+                <Badge className="bg-transparent border text-amber-400 border-amber-400 text-xs px-1.5 py-0.5">
+                    💰 CLOSED IN PROFITS
+                </Badge>
+            );
+        }
+        
+        // ✅ PRIORITY 2: Manual close without TPs = MANUALLY CLOSED
         if (closeReason === 'manual') {
             return (
                 <Badge className="bg-transparent border text-gray-500 border-gray-500 text-xs px-1.5 py-0.5">

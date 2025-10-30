@@ -9,9 +9,7 @@ export class TestDataFactory {
       id: '123e4567-e89b-12d3-a456-426614174000',
       email: 'test@example.com',
       display_name: 'Test User',
-      role: 'user',
-      user_type: 'user',
-      access_level: 'user',
+      userRoles: ['user'],
       account_status: 'active',
       registration_source: 'direct',
       created_at: '2024-01-01T00:00:00Z',
@@ -23,9 +21,7 @@ export class TestDataFactory {
     return this.createMockUser({
       email: 'admin@example.com',
       display_name: 'Admin User',
-      role: 'admin',
-      user_type: 'admin',
-      access_level: 'admin',
+      userRoles: ['admin'],
       ...overrides
     });
   }

@@ -2,8 +2,17 @@
  * Pip calculation utilities for converting between price and pips
  */
 
-export const getPipSize = (symbol: string): number => {
-  const upperSymbol = symbol.toUpperCase();
+export const getPipSize = (tradingPairSymbol: string | null | undefined): number => {
+  // ✅ NULL-SAFETY: Defensive null/undefined/empty check
+  if (!tradingPairSymbol || typeof tradingPairSymbol !== 'string' || tradingPairSymbol.trim() === '') {
+    console.warn('⚠️ NULL-SAFETY: Invalid trading pair symbol, using default pip size', {
+      received_value: tradingPairSymbol,
+      fallback_pip_size: 0.0001
+    });
+    return 0.0001; // Default forex pip size
+  }
+
+  const upperSymbol = tradingPairSymbol.toUpperCase();
   
   // Indices (points): 1.0 (e.g., US30, US100)
   if (
@@ -56,7 +65,7 @@ export const calculatePipsFromPrice = (
   symbol: string
 ): number => {
   const pipSize = getPipSize(symbol);
-  const priceDiff = Math.abs(targetPrice - entryPrice);
+  const priceDiff = targetPrice - entryPrice;
   return priceDiff / pipSize;
 };
 

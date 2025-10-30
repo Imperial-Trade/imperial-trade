@@ -1,15 +1,9 @@
 -- ============================================
--- FIX: Complete Notification System Repair
+-- FIX: Manual Close Pips - Use Highest TP Hit
 -- ============================================
--- Fixes 4 critical bugs for notification system
+-- Fixes calculation to use MAX(tp_hits) instead of last array element
+-- Example: tp_hits = [1, 3, 2] should use TP3, not TP2
 
--- Enable HTTP extension for edge function calls
-CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
-
--- Drop old trigger if exists on trade_alerts table
-DROP TRIGGER IF EXISTS enhanced_notification_trigger_v2 ON trade_alerts;
-
--- Recreate the complete notification function with all fixes
 CREATE OR REPLACE FUNCTION public.enhanced_notification_pipeline_v2()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -149,7 +143,10 @@ BEGIN
     END IF;
     
   ELSIF notification_type = 'manual_close_with_tp_hit' THEN
-    new_tp_num := NEW.tp_hits[array_length(NEW.tp_hits, 1)];
+    -- ✅ FIX: Use HIGHEST TP hit, not last array element
+    SELECT MAX(tp_num) INTO new_tp_num
+    FROM unnest(NEW.tp_hits) AS tp_num;
+    
     triggered_price := CASE new_tp_num
       WHEN 1 THEN NEW.tp1
       WHEN 2 THEN NEW.tp2
@@ -245,20 +242,12 @@ BEGIN
 END;
 $function$;
 
--- Attach trigger to trade_alerts table
-CREATE TRIGGER enhanced_notification_trigger_v2
-  AFTER INSERT OR UPDATE ON trade_alerts
-  FOR EACH ROW
-  EXECUTE FUNCTION enhanced_notification_pipeline_v2();
-
-COMMENT ON FUNCTION enhanced_notification_pipeline_v2() IS 'Complete notification pipeline: 9 types, accurate pips, edge function dispatch';
-
--- Log success
+-- Log migration success
 INSERT INTO cron_job_logs (job_name, execution_time, records_affected, status, error_message)
 VALUES (
-  'notification_system_repair',
+  'migration_fix_manual_close_pips',
   NOW(),
   1,
   'success',
-  '🎉 Notification system fully operational: HTTP enabled, trigger on trade_alerts, all 9 types active'
+  '✅ Fixed manual_close_with_tp_hit to use MAX(tp_hits) instead of last array element'
 );

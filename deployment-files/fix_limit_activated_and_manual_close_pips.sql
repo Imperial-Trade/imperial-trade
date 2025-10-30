@@ -1,15 +1,10 @@
 -- ============================================
--- FIX: Complete Notification System Repair
+-- FIX: Limit Activated & Manual Close Pips
 -- ============================================
--- Fixes 4 critical bugs for notification system
+-- 1. Adds trade_type validation for limit_activated (only triggers for buy_limit/sell_limit)
+-- 2. Uses MAX(tp_hits) for manual_close_with_tp_hit calculation
+-- Example: tp_hits = [1, 3, 2] should use TP3 (highest), not TP2 (last)
 
--- Enable HTTP extension for edge function calls
-CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
-
--- Drop old trigger if exists on trade_alerts table
-DROP TRIGGER IF EXISTS enhanced_notification_trigger_v2 ON trade_alerts;
-
--- Recreate the complete notification function with all fixes
 CREATE OR REPLACE FUNCTION public.enhanced_notification_pipeline_v2()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -47,7 +42,9 @@ BEGIN
   
   IF TG_OP = 'UPDATE' THEN
     -- Type 3: limit_activated
-    IF OLD.status = 'pending' AND NEW.status = 'active' THEN
+    -- ✅ FIX: Only trigger for actual limit orders (buy_limit/sell_limit)
+    IF OLD.status = 'pending' AND NEW.status = 'active' 
+       AND NEW.trade_type IN ('buy_limit', 'sell_limit') THEN
       change_types := array_append(change_types, 'status_change');
       notification_type := 'limit_activated';
       priority_level := 'high';
@@ -149,7 +146,11 @@ BEGIN
     END IF;
     
   ELSIF notification_type = 'manual_close_with_tp_hit' THEN
-    new_tp_num := NEW.tp_hits[array_length(NEW.tp_hits, 1)];
+    -- ✅ FIX: Use HIGHEST TP hit (MAX), not last array element
+    -- Example: tp_hits = [1, 3, 2] → uses TP3 (highest), not TP2 (last)
+    SELECT MAX(tp_num) INTO new_tp_num
+    FROM unnest(NEW.tp_hits) AS tp_num;
+    
     triggered_price := CASE new_tp_num
       WHEN 1 THEN NEW.tp1
       WHEN 2 THEN NEW.tp2
@@ -245,20 +246,28 @@ BEGIN
 END;
 $function$;
 
--- Attach trigger to trade_alerts table
-CREATE TRIGGER enhanced_notification_trigger_v2
-  AFTER INSERT OR UPDATE ON trade_alerts
-  FOR EACH ROW
-  EXECUTE FUNCTION enhanced_notification_pipeline_v2();
-
-COMMENT ON FUNCTION enhanced_notification_pipeline_v2() IS 'Complete notification pipeline: 9 types, accurate pips, edge function dispatch';
-
--- Log success
+-- Log migration success
 INSERT INTO cron_job_logs (job_name, execution_time, records_affected, status, error_message)
 VALUES (
-  'notification_system_repair',
+  'migration_fix_limit_activated_and_manual_close',
   NOW(),
   1,
   'success',
-  '🎉 Notification system fully operational: HTTP enabled, trigger on trade_alerts, all 9 types active'
+  '✅ Fixed limit_activated (trade_type validation) & manual_close_with_tp_hit (MAX logic)'
 );
+
+-- ============================================
+-- VERIFICATION QUERIES
+-- ============================================
+
+-- Verify function has been updated with both fixes
+SELECT 
+  pg_get_functiondef(p.oid) LIKE '%manual_close_with_tp_hit%' as has_manual_close_fix,
+  pg_get_functiondef(p.oid) LIKE '%SELECT MAX(tp_num) INTO new_tp_num%' as has_max_tp_logic,
+  pg_get_functiondef(p.oid) LIKE '%AND NEW.trade_type IN (''buy_limit'', ''sell_limit'')%' as has_limit_type_check
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE p.proname = 'enhanced_notification_pipeline_v2'
+  AND n.nspname = 'public';
+
+-- Expected result: All three columns should return TRUE

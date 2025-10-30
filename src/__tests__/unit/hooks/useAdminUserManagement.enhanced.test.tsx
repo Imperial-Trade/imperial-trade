@@ -122,8 +122,8 @@ describe('useAdminUserManagement - Enhanced Tests', () => {
       const { result } = renderHook(() => useAdminUserManagement());
 
       const invalidData = {
-        access_level: 'invalid_level' as any,
-        user_type: 'invalid_type' as any
+        account_status: 'invalid_status' as any,
+        phone_number: 'not-a-valid-phone'
       };
 
       await act(async () => {
@@ -208,7 +208,7 @@ describe('useAdminUserManagement - Enhanced Tests', () => {
 
       // Update user
       await act(async () => {
-        await result.current.updateUser('1', { access_level: 'moderator' });
+        await result.current.updateUser('1', { display_name: 'Updated Name' });
       });
 
       expect(mockToast.success).toHaveBeenCalledWith('User updated successfully');

@@ -46,19 +46,16 @@ interface ModernNotification {
 }
 
 const ModernNotificationSystem = () => {
-  // Get auth context - component mounts immediately regardless of auth state
-  let user: any = undefined;
-  let authReady = false;
-
-  try {
-    const auth = useAuth();
-    user = auth.user || undefined;
-    authReady = true;
-  } catch (error) {
-    // AuthContext not initialized yet - component still mounts to be ready for notifications
-    console.log('⏳ [ModernNotificationSystem] AuthProvider not ready, but component mounted');
-    authReady = false;
-  }
+  // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
+  const { user, loading: authLoading } = useAuth();
+  const authReady = !authLoading && !!user?.id;
+  
+  console.log('🔔 [ModernNotificationSystem] Auth state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    authLoading,
+    authReady
+  });
 
   const [notifications, setNotifications] = useState<ModernNotification[]>([]);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
@@ -106,7 +103,18 @@ const ModernNotificationSystem = () => {
   const addNotification = useCallback(
     async (notification: any) => {
       const now = Date.now();
-      const cooldown = 5000;
+      const cooldown = 500;
+
+      // ============================================================================
+      // PHASE 1: DIAGNOSTIC LOGGING
+      // ============================================================================
+      console.log('🔍 [DIAGNOSTIC] Notification received:', {
+        signal_id: notification.metadata?.signal_id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message?.substring(0, 50),
+        timestamp: new Date().toISOString()
+      });
 
       // Enhanced validation for signal-related notifications
       if (notification.metadata?.signal_id && notification.metadata?.change_types) {
@@ -120,21 +128,46 @@ const ModernNotificationSystem = () => {
 
         const validation = await notificationValidator.validateSignalChange(changeData);
         if (!validation.isValid) {
-          console.log(`🚫 Notification blocked by validation: ${validation.reason}`);
+          console.log(`🚫 [DIAGNOSTIC] Blocked by validation: ${validation.reason}`);
           return;
         }
 
         const rateLimitPassed = await notificationValidator.checkNotificationRateLimit(notification.metadata.signal_id);
         if (!rateLimitPassed) {
-          console.log(`🚫 Notification blocked by rate limit: ${notification.metadata.signal_id}`);
+          console.log(`🚫 [DIAGNOSTIC] Blocked by rate limit: ${notification.metadata.signal_id}`);
           return;
         }
       }
 
-      if (now - lastNotificationTime < cooldown) {
-        console.warn('Notification suppressed due to cooldown.');
+      // ============================================================================
+      // PHASE 2: SIGNAL-SPECIFIC COOLDOWN (replaces global cooldown)
+      // ============================================================================
+      // Initialize signal-specific cooldown map
+      if (!(window as any).signalCooldowns) {
+        (window as any).signalCooldowns = new Map<string, number>();
+      }
+
+      // Use signal_id for cooldown key, or 'global' for non-signal notifications
+      const cooldownKey = notification.metadata?.signal_id || 'global';
+      const lastCooldownTime = (window as any).signalCooldowns.get(cooldownKey) || 0;
+
+      if (now - lastCooldownTime < cooldown) {
+        const timeSinceLast = ((now - lastCooldownTime)).toFixed(0);
+        console.warn('🚫 [DIAGNOSTIC] Blocked by cooldown:', {
+          signal_id: notification.metadata?.signal_id,
+          cooldown_key: cooldownKey,
+          time_since_last: `${timeSinceLast}ms`,
+          cooldown_window: `${cooldown}ms`
+        });
         return;
       }
+
+      // Update signal-specific cooldown
+      (window as any).signalCooldowns.set(cooldownKey, now);
+      console.log('✅ [DIAGNOSTIC] Passed cooldown check:', {
+        signal_id: notification.metadata?.signal_id,
+        cooldown_key: cooldownKey
+      });
 
       // ============================================================================
       // DEDUPLICATION: Prevent showing same notification multiple times
@@ -145,13 +178,20 @@ const ModernNotificationSystem = () => {
         ? `${notification.metadata.signal_id}:${notification.type}:${notification.title}`
         : notification.eventKey || `${notification.title}:${notification.message}`;
 
+      console.log('🔑 [DIAGNOSTIC] Generated deduplication key:', {
+        full_key: notificationKey,
+        signal_id: notification.metadata?.signal_id,
+        type: notification.type,
+        title: notification.title
+      });
+
       const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      const deduplicationWindow = 30000; // 30 seconds (reduced for faster testing)
+      const deduplicationWindow = 30000; // 30 seconds
 
       if (now - lastShownTime < deduplicationWindow) {
         const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
         
-        console.warn('🚫 [Deduplication] Notification suppressed:', {
+        console.warn('🚫 [DIAGNOSTIC] Blocked by deduplication:', {
           key_preview: notificationKey.substring(0, 60) + '...',
           signal_id: notification.metadata?.signal_id,
           type: notification.type,
@@ -163,7 +203,7 @@ const ModernNotificationSystem = () => {
       }
 
       // Log successful deduplication check
-      console.log('✅ [Deduplication] Unique notification passed:', {
+      console.log('✅ [DIAGNOSTIC] Passed deduplication check:', {
         key_preview: notificationKey.substring(0, 60) + '...',
         signal_id: notification.metadata?.signal_id,
         type: notification.type,
@@ -186,6 +226,13 @@ const ModernNotificationSystem = () => {
         eventKey: notification.eventKey || `notification_${id}`,
         deliveryChannel: notification.deliveryChannel || 'in_app'
       };
+      
+      console.log('✅ [DIAGNOSTIC] Notification APPROVED and will be displayed:', {
+        signal_id: notification.metadata?.signal_id,
+        type: notification.type,
+        title: notification.title,
+        notification_id: id.toString()
+      });
       
       setNotifications((prev) => [enhancedNotification, ...prev]);
       setTimeout(() => removeNotification(id.toString()), 8000);
@@ -230,9 +277,11 @@ const ModernNotificationSystem = () => {
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
     console.log('🔍 [DEBUG] System initialized:', {
       userId: user?.id,
+      hasUser: !!user,
+      authLoading,
+      authReady,
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
-      componentMounted: isMountedRef.current,
-      authReady: authReady
+      componentMounted: isMountedRef.current
     });
 
     const channel = supabase
@@ -245,9 +294,19 @@ const ModernNotificationSystem = () => {
 
         console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
         
-        // ✅ Auth check moved HERE instead of useEffect guard
+        // ✅ Auth check - only process if auth is ready
+        if (!authReady) {
+          console.log('⏳ [AUTH NOT READY] Notification received while auth loading:', {
+            hasUser: !!user,
+            userId: user?.id,
+            authLoading,
+            authReady
+          });
+          return;
+        }
+
         if (!user?.id) {
-          console.log('⏳ [BUFFERING] Notification received before auth ready - buffering for later');
+          console.log('⚠️ [NO USER] Auth ready but no user ID found');
           return;
         }
         
@@ -367,7 +426,7 @@ const ModernNotificationSystem = () => {
               const pipsCalc = calculatePipsForSignal(
                 parseFloat(data.entry_price),
                 parseFloat(tpPrice),
-                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.tradermade_symbol || data.asset_name,
                 data.trade_type
               );
               tpPips = pipsCalc.formatted;
@@ -394,7 +453,7 @@ const ModernNotificationSystem = () => {
               const pipsCalc = calculatePipsForSignal(
                 parseFloat(data.entry_price),
                 parseFloat(slPrice),
-                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.tradermade_symbol || data.asset_name,
                 data.trade_type
               );
               slPips = pipsCalc.formatted.replace('+', '-');
@@ -455,7 +514,7 @@ const ModernNotificationSystem = () => {
                 const pipsCalc = calculatePipsForSignal(
                   parseFloat(data.entry_price),
                   parseFloat(highestTP),
-                  data.tradermade_symbol || data.symbol || data.asset_name,
+                  data.tradermade_symbol || data.asset_name,
                   data.trade_type
                 );
                 allTpsPips = pipsCalc.formatted;

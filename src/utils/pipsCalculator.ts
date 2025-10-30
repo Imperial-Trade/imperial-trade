@@ -10,37 +10,44 @@ export interface PipsData {
 export function calculatePipsForSignal(
   entryPrice: number,
   currentPrice: number,
-  symbol: string,
+  symbol: string | null | undefined,
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
 ): PipsData {
-  const pips = calculatePipsFromPrice(entryPrice, currentPrice, symbol);
+  // ✅ NULL-SAFETY: Validate symbol before calculations
+  if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
+    console.warn('⚠️ NULL-SAFETY: Invalid symbol in calculatePipsForSignal', {
+      symbol,
+      entryPrice,
+      currentPrice,
+      tradeType
+    });
+    return {
+      value: 0,
+      formatted: '0.0 PIPS',
+      direction: 'loss',
+      percentage: 0
+    };
+  }
+
+  const rawPips = calculatePipsFromPrice(entryPrice, currentPrice, symbol);
   const isBuy = tradeType === 'buy' || tradeType === 'buy_limit';
   
-  let actualPips = pips;
-  let direction: 'profit' | 'loss' = 'profit';
+  let actualPips: number;
+  let direction: 'profit' | 'loss';
   
-  // Determine profit/loss based on trade direction
   if (isBuy) {
-    if (currentPrice >= entryPrice) {
-      direction = 'profit';
-      actualPips = pips;
-    } else {
-      direction = 'loss';
-      actualPips = pips;
-    }
+    // BUY: positive pips = profit, negative pips = loss
+    actualPips = rawPips;
+    direction = rawPips >= 0 ? 'profit' : 'loss';
   } else {
-    if (currentPrice <= entryPrice) {
-      direction = 'profit';
-      actualPips = pips;
-    } else {
-      direction = 'loss';
-      actualPips = pips;
-    }
+    // SELL: flip the sign (negative raw pips = positive profit, positive raw pips = negative loss)
+    actualPips = -rawPips;
+    direction = actualPips >= 0 ? 'profit' : 'loss';
   }
   
   return {
     value: actualPips,
-    formatted: `${direction === 'profit' ? '+' : '-'}${formatPips(Math.abs(actualPips))} pips`,
+    formatted: `${direction === 'profit' ? '+' : '-'}${formatPips(Math.abs(actualPips))} PIPS`,
     direction,
     percentage: (actualPips / entryPrice) * 100
   };

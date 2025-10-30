@@ -64,6 +64,9 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     getInternalPrice // 🔥 CRITICAL: Access internal prices for accurate age calculation
   } = useOptimizedWebSocketPrices();
   
+  const PRICE_CACHE_KEY = `last_known_price_${symbol}`;
+  const PRICE_CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+  
   const [localState, setLocalState] = useState({
     change: 0,
     changePercent: 0,
@@ -74,13 +77,45 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     isInterpolating: false // Flag to indicate if showing interpolated value
   });
 
+  // ✅ PHASE 1: Load cached price on mount if no current price available
+  useEffect(() => {
+    const currentPrice = prices[normalizeSymbol(symbol)]?.price;
+    if (!currentPrice || currentPrice <= 0) {
+      try {
+        const cached = localStorage.getItem(PRICE_CACHE_KEY);
+        if (cached) {
+          const { price: cachedPrice, timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          if (age < PRICE_CACHE_EXPIRY_MS && cachedPrice > 0) {
+            setLocalState(prev => ({ ...prev, optimisticPrice: cachedPrice }));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached price:', e);
+      }
+    }
+  }, [symbol]);
+
+  // ✅ PHASE 1: Save valid prices to cache
+  const currentPrice = prices[normalizeSymbol(symbol)];
+  useEffect(() => {
+    if (currentPrice?.price && currentPrice.price > 0) {
+      try {
+        localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({
+          price: currentPrice.price,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache price:', e);
+      }
+    }
+  }, [currentPrice?.price, symbol]);
+
   // 🚀 STEP 3: Price history for interpolation (last 3 data points)
   const priceHistoryRef = useRef<Array<{ price: number; timestamp: number }>>([]);
 
   // PATH A: Phase 3 Complete - Zero throttling for ultra-responsive updates
   const previousPriceRef = useRef<number | null>(null);
-
-  const currentPrice = prices[normalizeSymbol(symbol)];
 
   const applyImmediateUpdate = useCallback((price: number, timestamp: string) => {
     // PATH A: Phase 3 Complete - Immediate state updates with zero throttling + Sub-2s guarantee

@@ -27,6 +27,39 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   const [pulseKey, setPulseKey] = useState(0);
   const [priceChangeDirection, setPriceChangeDirection] = useState<'up' | 'down' | null>(null);
 
+  // ✅ PHASE 4: localStorage persistence for market closed scenarios
+  useEffect(() => {
+    const CACHE_KEY = `last_price_${symbol}`;
+    const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+    
+    if (price && price > 0) {
+      // Save valid price
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          price,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache price:', e);
+      }
+      setDisplayPrice(price);
+      setLastPrice(price);
+    } else if (!displayPrice) {
+      // Load cached price if no current price
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { price: cachedPrice, timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          if (age < CACHE_EXPIRY_MS && cachedPrice > 0) {
+            setDisplayPrice(cachedPrice);
+            setLastPrice(cachedPrice);
+          }
+        }
+      } catch (e) {}
+    }
+  }, [price, symbol, displayPrice]);
+
   // ✅ FLICKER ELIMINATION: Stability-aware quality changes
   useEffect(() => {
     if (shouldAllowQualityChange(symbol, stableQuality, connectionQuality)) {
@@ -59,7 +92,7 @@ export const ZeroPausePriceDisplay: React.FC<ZeroPausePriceDisplayProps> = ({
   }, [price, lastPrice, displayPrice]);
 
   const formatPrice = (value: number | null) => {
-    if (!value) return '---';
+    if (!value || value <= 0) return 'Loading...';
     if (symbol === 'XAUUSD') {
       return value.toFixed(2);
     } else if (symbol === 'BTCUSD') {

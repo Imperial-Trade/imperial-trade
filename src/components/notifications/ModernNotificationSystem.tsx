@@ -426,7 +426,7 @@ const ModernNotificationSystem = () => {
               const pipsCalc = calculatePipsForSignal(
                 parseFloat(data.entry_price),
                 parseFloat(tpPrice),
-                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.tradermade_symbol || data.asset_name,
                 data.trade_type
               );
               tpPips = pipsCalc.formatted;
@@ -453,7 +453,7 @@ const ModernNotificationSystem = () => {
               const pipsCalc = calculatePipsForSignal(
                 parseFloat(data.entry_price),
                 parseFloat(slPrice),
-                data.tradermade_symbol || data.symbol || data.asset_name,
+                data.tradermade_symbol || data.asset_name,
                 data.trade_type
               );
               slPips = pipsCalc.formatted.replace('+', '-');
@@ -514,7 +514,7 @@ const ModernNotificationSystem = () => {
                 const pipsCalc = calculatePipsForSignal(
                   parseFloat(data.entry_price),
                   parseFloat(highestTP),
-                  data.tradermade_symbol || data.symbol || data.asset_name,
+                  data.tradermade_symbol || data.asset_name,
                   data.trade_type
                 );
                 allTpsPips = pipsCalc.formatted;

@@ -1652,7 +1652,7 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert);
     if (!alertIsCreator && !isAdmin) {
       return;
     }
@@ -1826,7 +1826,7 @@ export default function SignalStream() {
     }
 
     // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
+    const alertIsCreator = isCreator(alert);
     if (!alertIsCreator && !isAdmin) {
       return;
     }

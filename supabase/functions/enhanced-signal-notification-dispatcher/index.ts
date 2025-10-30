@@ -218,6 +218,23 @@ function createRichNotificationContent(notification: NotificationPayload): {
       body = `${asset_name} • Closed at: $${closePrice.toFixed(2)} • ${notification.close_reason || 'Manual close'}`;
       break;
       
+    case 'manual_close_with_tp_hit': {
+      const highestTP = Math.max(...(tp_hits || [1]));
+      title = `💰 ${safeAuthorName} • Closed in Profits`;
+      
+      // Use provided pips calculation from database
+      let profitPips = pipsText;
+      if (!profitPips && notification.pip_calculation?.calculated_pips) {
+        const pipsValue = notification.pip_calculation.calculated_pips;
+        profitPips = `+${pipsValue.toFixed(1)} pips`;
+      } else if (!profitPips) {
+        profitPips = '+0 pips';
+      }
+      
+      body = `${asset_name} • Secured Profits | ${profitPips}`;
+      break;
+    }
+      
     // ============================================
     // BUG #24 FIX - PHASE 3: All Targets Hit notification
     // ============================================

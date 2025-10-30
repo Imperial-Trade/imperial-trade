@@ -173,15 +173,15 @@ function createRichNotificationContent(notification: NotificationPayload): {
   webButtons?: Array<{ id: string; text: string; url: string; }>;
 } {
   const { asset_name, trade_type, entry_price, author_name, notification_type, status, tp_hits, symbol, tradermade_symbol } = notification;
-  
+
   let title = '';
   let body = '';
-  
+
   // ============================================
   // BUG #22 FIX: Only use fallback when author_name is truly undefined/null/empty
   // ============================================
   const safeAuthorName = (author_name && author_name.trim() !== '') ? author_name : 'Unknown Trader';
-  
+
   // Log when fallback is used
   if (safeAuthorName === 'Unknown Trader') {
     logProfessional('warn', '⚠️ BUG #22: Using fallback author name', {
@@ -216,12 +216,13 @@ function createRichNotificationContent(notification: NotificationPayload): {
 
   // ============================================
   // BUG #40 FIX: Calculate pips for relevant notifications
+  // ✅ Now uses safeSymbol which is guaranteed to have a value
   // ============================================
   let pipsText = '';
   if (notification.triggered_price && notification.entry_price) {
     const pips = calculatePips(notification.entry_price, notification.triggered_price, safeSymbol);
     const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
-    const isProfit = (isBuy && notification.triggered_price > entry_price) || 
+    const isProfit = (isBuy && notification.triggered_price > entry_price) ||
                      (!isBuy && notification.triggered_price < entry_price);
     pipsText = `${isProfit ? '+' : '-'}${pips} pips`;
   }

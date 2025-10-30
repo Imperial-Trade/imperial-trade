@@ -30,7 +30,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
 import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
-import { VideoBackground } from "@/components/account-request/VideoBackground";
+import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl } from "@/utils/environment";
@@ -87,7 +87,7 @@ export const DashboardHome: React.FC = () => {
   return (
     <div className="relative min-h-screen">
       {/* Video Background */}
-      <VideoBackground />
+      <AnimatedLinesBackground />
 
       {/* Hero Section with Typewriter Welcome */}
       <div className="relative z-20 min-h-screen flex items-center justify-center">

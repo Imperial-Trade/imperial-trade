@@ -129,16 +129,36 @@ function generateEventKey(
   return `${notification.signal_id}-${notification.notification_type}-${triggerSource}-${changeHash}-${timestamp}-${nanoSeconds}-${sequence}`;
 }
 
-// Pips calculation helper
-function calculatePips(entryPrice: number, targetPrice: number, symbol: string): string {
-  const pipSize = getPipSize(symbol);
+// Pips calculation helper with null-safety
+function calculatePips(entryPrice: number, targetPrice: number, tradingPairSymbol: string | null | undefined): string {
+  // ✅ NULL-SAFETY: Defensive check before calculation
+  if (!tradingPairSymbol || typeof tradingPairSymbol !== 'string' || tradingPairSymbol.trim() === '') {
+    logProfessional('warn', '⚠️ NULL-SAFETY: Cannot calculate pips with invalid symbol', {
+      entryPrice,
+      targetPrice,
+      received_symbol: tradingPairSymbol,
+      fallback: '0.0'
+    });
+    return '0.0'; // Safe fallback
+  }
+
+  const pipSize = getPipSize(tradingPairSymbol);
   const priceDiff = Math.abs(targetPrice - entryPrice);
   const pips = priceDiff / pipSize;
   return pips.toFixed(1);
 }
 
-function getPipSize(symbol: string): number {
-  const upperSymbol = symbol.toUpperCase();
+function getPipSize(tradingPairSymbol: string | null | undefined): number {
+  // ✅ NULL-SAFETY: Defensive null/undefined/empty check with logging
+  if (!tradingPairSymbol || typeof tradingPairSymbol !== 'string' || tradingPairSymbol.trim() === '') {
+    logProfessional('warn', '⚠️ NULL-SAFETY: Invalid trading pair symbol, using default pip size', {
+      received_value: tradingPairSymbol,
+      fallback_pip_size: 0.0001
+    });
+    return 0.0001; // Default forex pip size
+  }
+
+  const upperSymbol = tradingPairSymbol.toUpperCase();
   if (upperSymbol.includes('JPY')) return 0.01;
   if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) return 0.1;
   if (upperSymbol.includes('BTC')) return 1.0;
@@ -172,7 +192,27 @@ function createRichNotificationContent(notification: NotificationPayload): {
     });
   }
   
-  const safeSymbol = tradermade_symbol || symbol || asset_name;
+  // ✅ NULL-SAFETY: Enhanced safe symbol with validation and explicit null handling
+  const safeSymbol = (() => {
+    const candidates = [tradermade_symbol, symbol, asset_name];
+    
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'string' && candidate.trim() !== '') {
+        return candidate.trim();
+      }
+    }
+    
+    // Last resort fallback with critical warning
+    logProfessional('error', '🚨 NULL-SAFETY CRITICAL: All symbol fields are null/empty', {
+      signal_id: notification.signal_id,
+      notification_type: notification.notification_type,
+      tradermade_symbol,
+      symbol,
+      asset_name
+    });
+    
+    return 'UNKNOWN'; // Prevents crashes but triggers alerts
+  })();
 
   // ============================================
   // BUG #40 FIX: Calculate pips for relevant notifications

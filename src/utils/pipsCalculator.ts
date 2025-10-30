@@ -10,9 +10,25 @@ export interface PipsData {
 export function calculatePipsForSignal(
   entryPrice: number,
   currentPrice: number,
-  symbol: string,
+  symbol: string | null | undefined,
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
 ): PipsData {
+  // ✅ NULL-SAFETY: Validate symbol before calculations
+  if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
+    console.warn('⚠️ NULL-SAFETY: Invalid symbol in calculatePipsForSignal', {
+      symbol,
+      entryPrice,
+      currentPrice,
+      tradeType
+    });
+    return {
+      value: 0,
+      formatted: '0.0 PIPS',
+      direction: 'loss',
+      percentage: 0
+    };
+  }
+
   const rawPips = calculatePipsFromPrice(entryPrice, currentPrice, symbol);
   const isBuy = tradeType === 'buy' || tradeType === 'buy_limit';
   

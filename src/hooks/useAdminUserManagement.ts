@@ -9,11 +9,7 @@ export interface AdminUser {
   email: string;
   display_name: string;
   real_name?: string;
-  role: string;
-  // DEPRECATED: Replaced by user_roles table
-  user_type?: 'user' | 'educator' | 'admin';
-  access_level?: 'user' | 'moderator' | 'admin';
-  // NEW: Server-validated roles from user_roles table
+  // ✅ SECURITY: Roles are managed in separate user_roles table
   userRoles?: string[];
   account_status: 'active' | 'suspended' | 'pending_verification' | 'inactive';
   registration_source: 'direct' | 'account_request' | 'social' | 'admin_created' | 'invitation';

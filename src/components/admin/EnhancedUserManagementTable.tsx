@@ -47,33 +47,38 @@ function EnhancedUserManagementTableComponent() {
   const { users, loading, loadUsers, updateUser, deleteUser, createUser, resetPassword } = useAdminUserManagement();
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
-  const [accessLevelFilter, setAccessLevelFilter] = useState<string>('all');
   const [accountStatusFilter, setAccountStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
-  const getUserTypeBadge = (userType: string) => {
-    switch (userType) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'educator':
-        return <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">Educator</Badge>;
-      default:
-        return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">Member</Badge>;
+  const getRolesBadge = (userRoles?: string[]) => {
+    if (!userRoles || userRoles.length === 0) {
+      return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">No Roles</Badge>;
     }
-  };
-
-  const getAccessLevelBadge = (accessLevel: string) => {
-    switch (accessLevel) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'moderator':
-        return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Moderator</Badge>;
-      default:
-        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">User</Badge>;
-    }
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {userRoles.map((role) => {
+          const badgeClass = role === 'admin' 
+            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+            : role === 'educator+' 
+            ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+            : role === 'educator'
+            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            : role === 'moderator'
+            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+            : 'bg-green-500/10 text-green-400 border-green-500/20';
+            
+          return (
+            <Badge key={role} className={badgeClass}>
+              {role === 'educator+' ? 'Educator+' : role.charAt(0).toUpperCase() + role.slice(1)}
+            </Badge>
+          );
+        })}
+      </div>
+    );
   };
 
   const getAccountStatusBadge = (status: string) => {
@@ -110,11 +115,11 @@ function EnhancedUserManagementTableComponent() {
       user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
-    const matchesUserType = userTypeFilter === 'all' || user.user_type === userTypeFilter;
-    const matchesAccessLevel = accessLevelFilter === 'all' || user.access_level === accessLevelFilter;
+    // Filter by roles instead of deprecated fields
+    const matchesRoleFilter = userTypeFilter === 'all' || user.userRoles?.includes(userTypeFilter);
     const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;
     
-    return matchesSearch && matchesUserType && matchesAccessLevel && matchesAccountStatus;
+    return matchesSearch && matchesRoleFilter && matchesAccountStatus;
   });
 
   const handleUpdateRole = async (userId: string, field: string, value: string) => {
@@ -178,25 +183,15 @@ function EnhancedUserManagementTableComponent() {
             <div className="flex gap-4">
               <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
                 <SelectTrigger className="w-40 bg-surface border-default text-primary">
-                  <SelectValue placeholder="User Type" />
+                  <SelectValue placeholder="Role Filter" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface border-default">
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="educator+">Educator+</SelectItem>
                   <SelectItem value="educator">Educator</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={accessLevelFilter} onValueChange={setAccessLevelFilter}>
-                <SelectTrigger className="w-40 bg-surface border-default text-primary">
-                  <SelectValue placeholder="Access Level" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-default">
-                  <SelectItem value="all">All Levels</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
                   <SelectItem value="moderator">Moderator</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -223,8 +218,7 @@ function EnhancedUserManagementTableComponent() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-primary">User</TableHead>
-                    <TableHead className="text-primary">Type</TableHead>
-                    <TableHead className="text-primary">Access Level</TableHead>
+                    <TableHead className="text-primary">Roles</TableHead>
                     <TableHead className="text-primary">Status</TableHead>
                     <TableHead className="text-primary">Source</TableHead>
                     <TableHead className="text-primary">Created</TableHead>
@@ -254,35 +248,7 @@ function EnhancedUserManagementTableComponent() {
                       </TableCell>
                       
                       <TableCell>
-                        <Select
-                          value={user.user_type}
-                          onValueChange={(value) => handleUpdateRole(user.id, 'user_type', value)}
-                        >
-                          <SelectTrigger className="w-32 h-8 text-xs bg-surface border-default">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-surface border-default">
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="educator">Educator</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Select
-                          value={user.access_level}
-                          onValueChange={(value) => handleUpdateRole(user.id, 'access_level', value)}
-                        >
-                          <SelectTrigger className="w-32 h-8 text-xs bg-surface border-default">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-surface border-default">
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {getRolesBadge(user.userRoles)}
                       </TableCell>
                       
                       <TableCell>
@@ -397,7 +363,7 @@ function EnhancedUserManagementTableComponent() {
                 No Users Found
               </h3>
               <p className="text-secondary">
-                {searchTerm || userTypeFilter !== 'all' || accessLevelFilter !== 'all' || accountStatusFilter !== 'all'
+                {searchTerm || userTypeFilter !== 'all' || accountStatusFilter !== 'all'
                   ? 'No users match your search criteria.'
                   : 'No users found in the system.'}
               </p>

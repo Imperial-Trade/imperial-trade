@@ -106,7 +106,7 @@ describe('useAdminUserManagement', () => {
 
     const { result } = renderHook(() => useAdminUserManagement());
 
-    const updateData = { access_level: 'moderator' as const };
+    const updateData = { display_name: 'Updated Name', account_status: 'active' as const };
 
     await act(async () => {
       await result.current.updateUser('1', updateData);

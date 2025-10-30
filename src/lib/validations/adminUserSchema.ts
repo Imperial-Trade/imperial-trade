@@ -1,6 +1,8 @@
 
 import { z } from 'zod';
 
+// ✅ SECURITY: Only non-role fields that can be updated in profiles table
+// Roles are managed separately in user_roles table via RPC functions
 export const adminUserUpdateSchema = z.object({
   display_name: z.string().max(100, 'Display name is too long').optional().nullable(),
   account_status: z.enum(['active', 'suspended', 'pending_verification', 'inactive'], {

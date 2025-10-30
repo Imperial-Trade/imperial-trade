@@ -41,33 +41,42 @@ export const removeExtraWhitespace = (text: string): string => {
  */
 export const sanitizeDatabasePayload = <T extends Record<string, any>>(payload: T): T => {
   const sanitized: Record<string, any> = { ...payload };
-  
+
   // List of field names that should be text and can have empty strings
   const textFields = ['notes', 'description', 'content', 'message', 'text', 'name', 'title'];
-  
+
+  // List of fields to exclude from database payloads (security/data integrity)
+  const excludedFields = ['is_xeon_stream', 'expectedVersion'];
+
   Object.keys(sanitized).forEach(key => {
     const value = sanitized[key];
-    
+
+    // Remove excluded fields to prevent type errors
+    if (excludedFields.includes(key)) {
+      delete sanitized[key];
+      return;
+    }
+
     // Check if this is a text field
     const isTextField = textFields.some(field => key.toLowerCase().includes(field));
-    
+
     // Convert empty strings to undefined for non-text fields
     if (value === '' && !isTextField) {
       sanitized[key] = undefined;
     }
-    
+
     // Remove string representations of booleans
     if (value === 'true') {
       sanitized[key] = true;
     } else if (value === 'false') {
       sanitized[key] = false;
     }
-    
+
     // Explicitly handle null values (keep them as null)
     if (value === null) {
       sanitized[key] = null;
     }
   });
-  
+
   return sanitized as T;
 };

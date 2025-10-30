@@ -137,7 +137,14 @@ function calculatePips(entryPrice: number, targetPrice: number, symbol: string):
   return pips.toFixed(1);
 }
 
-function getPipSize(symbol: string): number {
+// ✅ FIX: Added null safety for symbol parameter
+function getPipSize(symbol: string | undefined | null): number {
+  // ✅ CRITICAL FIX: Handle undefined/null symbol
+  if (!symbol) {
+    logProfessional('warn', 'getPipSize called with undefined/null symbol, using default pip size');
+    return 0.0001; // Default forex pip size
+  }
+
   const upperSymbol = symbol.toUpperCase();
   if (upperSymbol.includes('JPY')) return 0.01;
   if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) return 0.1;
@@ -153,15 +160,15 @@ function createRichNotificationContent(notification: NotificationPayload): {
   webButtons?: Array<{ id: string; text: string; url: string; }>;
 } {
   const { asset_name, trade_type, entry_price, author_name, notification_type, status, tp_hits, symbol, tradermade_symbol } = notification;
-  
+
   let title = '';
   let body = '';
-  
+
   // ============================================
   // BUG #22 FIX: Only use fallback when author_name is truly undefined/null/empty
   // ============================================
   const safeAuthorName = (author_name && author_name.trim() !== '') ? author_name : 'Unknown Trader';
-  
+
   // Log when fallback is used
   if (safeAuthorName === 'Unknown Trader') {
     logProfessional('warn', '⚠️ BUG #22: Using fallback author name', {
@@ -171,17 +178,19 @@ function createRichNotificationContent(notification: NotificationPayload): {
       author_id: notification.author_id
     });
   }
-  
+
+  // ✅ CRITICAL FIX: Define safeSymbol BEFORE using it
   const safeSymbol = tradermade_symbol || symbol || asset_name;
 
   // ============================================
   // BUG #40 FIX: Calculate pips for relevant notifications
+  // ✅ Now uses safeSymbol which is guaranteed to have a value
   // ============================================
   let pipsText = '';
   if (notification.triggered_price && notification.entry_price) {
     const pips = calculatePips(notification.entry_price, notification.triggered_price, safeSymbol);
     const isBuy = trade_type === 'buy' || trade_type === 'buy_limit';
-    const isProfit = (isBuy && notification.triggered_price > entry_price) || 
+    const isProfit = (isBuy && notification.triggered_price > entry_price) ||
                      (!isBuy && notification.triggered_price < entry_price);
     pipsText = `${isProfit ? '+' : '-'}${pips} pips`;
   }

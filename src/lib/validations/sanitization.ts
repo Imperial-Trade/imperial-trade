@@ -60,9 +60,11 @@ export const sanitizeDatabasePayload = <T extends Record<string, any>>(payload: 
     // Check if this is a text field
     const isTextField = textFields.some(field => key.toLowerCase().includes(field));
 
-    // Convert empty strings to undefined for non-text fields
+    // CRITICAL FIX: Delete empty string keys for non-text fields to prevent boolean errors
+    // Setting to undefined doesn't work because Supabase converts undefined to empty string
     if (value === '' && !isTextField) {
-      sanitized[key] = undefined;
+      delete sanitized[key];
+      return;
     }
 
     // Remove string representations of booleans

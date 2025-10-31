@@ -1,30 +1,9 @@
-
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TypewriterText } from "@/components/ui/typewriter-text";
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  Users,
-  Bell,
-  Plus,
-  ArrowRight,
-  Activity,
-  Target,
-  Zap,
-  Star,
-  Award,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, BarChart3, Users, Bell, Plus, ArrowRight, Activity, Target, Zap, Star, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
@@ -33,35 +12,38 @@ import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBac
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl } from "@/utils/environment";
-
 export const DashboardHome: React.FC = () => {
-  const { user } = useAuth();
-  const { hasSeenWelcome } = useWelcome();
-  const { 
-    hasSeenNotificationPrompt, 
-    shouldShowNotificationPrompt, 
+  const {
+    user
+  } = useAuth();
+  const {
+    hasSeenWelcome
+  } = useWelcome();
+  const {
+    hasSeenNotificationPrompt,
+    shouldShowNotificationPrompt,
     setShouldShowNotificationPrompt,
     isSubscribedToPush
   } = useNotificationPrompt();
-  const { isPushEnabled, isInitialized } = useOneSignalPush();
-  
+  const {
+    isPushEnabled,
+    isInitialized
+  } = useOneSignalPush();
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
 
   // Show notification modal after welcome animation completes or after login
   useEffect(() => {
     if (!user || !isInitialized) return;
-    
+
     // Don't show if user is already subscribed to push notifications or welcome animation is showing
     if (isSubscribedToPush || isPushEnabled || !hasSeenWelcome) return;
-
     const timer = setTimeout(() => {
       setShouldShowNotificationPrompt(true);
     }, 1500); // 1.5 seconds delay for immediate visibility
 
     return () => clearTimeout(timer);
   }, [user, isInitialized, isSubscribedToPush, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
-
   const handleNotificationModalClose = () => {
     setShouldShowNotificationPrompt(false);
     // Don't mark as seen here - only mark when actually subscribed in the modal
@@ -80,11 +62,8 @@ export const DashboardHome: React.FC = () => {
     }
     return user?.email?.split("@")[0] || "Trader";
   };
-
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
-
-  return (
-    <div className="relative min-h-screen">
+  return <div className="relative min-h-screen">
       {/* Video Background */}
       <AnimatedLinesBackground />
 
@@ -95,16 +74,10 @@ export const DashboardHome: React.FC = () => {
             {/* Welcome Message with Typewriter Effect */}
             <div className="space-y-8">
           <h1 className="text-4xl lg:text-6xl font-bold text-white mb-8 flex items-center justify-center">
-                <TypewriterText
-                  text={welcomeText}
-                  speed={80}
-                  showCursor={false}
-                  cursorBlinkSpeed={500}
-                  className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
-                />
+                <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent" />
               </h1>
 
-              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
+              <p className="text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed mb-16 font-extralight text-zinc-700">
                 You've taken the brave step into the world of trading education. Every
                 successful trader was once a beginner, and every champion was once a
                 student who refused to give up.
@@ -151,11 +124,7 @@ export const DashboardHome: React.FC = () => {
                 Monitor your signals with advanced analytics and performance
                 metrics.
               </p>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
-              >
+              <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                 <Link to="/dashboard/signal-stream">
                   View Analytics
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -185,11 +154,7 @@ export const DashboardHome: React.FC = () => {
               <p className="text-muted-foreground mb-4">
                 Join discussions with verified traders and educational contributors.
               </p>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
-              >
+              <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                 <a href={getOrderFlowAppUrl()}>
                   Join Community
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -219,11 +184,7 @@ export const DashboardHome: React.FC = () => {
               <p className="text-muted-foreground mb-4">
                 Participate in live educational sessions with market educators.
               </p>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
-              >
+              <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
                 <Link to="/dashboard/live">
                   Join Session
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -235,11 +196,6 @@ export const DashboardHome: React.FC = () => {
       </div>
 
       {/* Professional Notification Modal */}
-      <ProfessionalNotificationModal
-        isOpen={shouldShowNotificationPrompt}
-        onClose={handleNotificationModalClose}
-        userName={getUserFullName()}
-      />
-    </div>
-  );
+      <ProfessionalNotificationModal isOpen={shouldShowNotificationPrompt} onClose={handleNotificationModalClose} userName={getUserFullName()} />
+    </div>;
 };

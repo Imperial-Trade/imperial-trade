@@ -22,6 +22,7 @@ import MobileEquityCurve from './mobile/MobileEquityCurve';
 import MobileAIAnalytics from './mobile/MobileAIAnalytics';
 import MobileCalendarView from './mobile/MobileCalendarView';
 import MobileDayView from './mobile/MobileDayView';
+import { JournalSidebarMenu } from './JournalSidebarMenu';
 
 type MobileTab = 'overview' | 'add' | 'history' | 'analytics' | 'calendar' | 'day';
 
@@ -290,7 +291,10 @@ export default function MobileTradingJournal({
       {!['calendar', 'day'].includes(activeTab) && (
         <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">Trading Journal</h1>
+            <div className="flex items-center gap-3">
+              <JournalSidebarMenu activeTab={activeTab} onTabChange={setActiveTab} />
+              <h1 className="text-xl font-bold text-foreground">Trading Journal</h1>
+            </div>
             {activeTab !== 'add' && (
               <Button
                 size="sm"

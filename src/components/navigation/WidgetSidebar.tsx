@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   Calendar,
@@ -81,6 +82,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   
   // Authorization checks
   const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
@@ -88,6 +90,12 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   
   // Fetch top signal providers for leaderboard
   const { topProviders, isLoading: isLoadingProviders } = useTopSignalProviders();
+
+  console.log('📊 WidgetSidebar - Top Providers Data:', {
+    isLoading: isLoadingProviders,
+    providerCount: topProviders?.length || 0,
+    providers: topProviders
+  });
 
   // Device detection and responsive behavior
   const {
@@ -114,6 +122,14 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   // Detect if user prefers reduced motion
   const prefersReducedMotion = useMemo(() => 
     window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+
+  // Force refetch when sidebar opens
+  useEffect(() => {
+    if (isVisible) {
+      console.log('🔄 Sidebar opened - invalidating top providers cache');
+      queryClient.invalidateQueries({ queryKey: ['top-signal-providers'] });
+    }
+  }, [isVisible, queryClient]);
 
   const handleToggleSidebar = useCallback(() => {
     setIsVisible(prev => !prev);

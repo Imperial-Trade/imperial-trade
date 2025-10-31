@@ -40,6 +40,12 @@ export const useTopSignalProviders = () => {
         .eq('status', 'closed')
         .gte('created_at', twentyFourHoursAgoISO);
 
+      console.log('🔍 Top Providers Query - Date Range:', {
+        twentyFourHoursAgo: twentyFourHoursAgoISO,
+        now: new Date().toISOString(),
+        signalCount: signals?.length || 0
+      });
+
       if (signalsError) throw signalsError;
       if (!signals || signals.length === 0) return [];
 
@@ -60,6 +66,11 @@ export const useTopSignalProviders = () => {
         .in('user_id', educatorIds);
 
       if (rolesError) throw rolesError;
+
+      console.log('🔍 Top Providers - User Roles:', {
+        totalRoles: userRolesData?.length || 0,
+        rolesMap: userRolesData?.map(ur => ({ userId: ur.user_id, role: ur.role }))
+      });
 
       // Create a map of userId -> highest priority role
       const userRolesMap = new Map<string, 'admin' | 'educator+' | 'educator' | 'moderator'>();
@@ -97,6 +108,15 @@ export const useTopSignalProviders = () => {
         });
       });
 
+      console.log('🔍 Top Providers - Initial Provider Stats:', {
+        totalProviders: providerStats.size,
+        providers: Array.from(providerStats.entries()).map(([id, stats]) => ({
+          id,
+          name: stats.displayName,
+          role: stats.userType
+        }))
+      });
+
       // Calculate pips for each signal
       signals.forEach(signal => {
         const stats = providerStats.get(signal.user_id);
@@ -112,16 +132,29 @@ export const useTopSignalProviders = () => {
           const targetPrice = signal[targetPriceKey] as number;
 
           if (targetPrice) {
-            const pipsData = calculatePipsForSignal(
-              signal.entry_price,
-              targetPrice,
-              signal.tradermade_symbol,
-              signal.trade_type
-            );
+            try {
+              const pipsData = calculatePipsForSignal(
+                signal.entry_price,
+                targetPrice,
+                signal.tradermade_symbol,
+                signal.trade_type
+              );
 
-            if (pipsData.direction === 'profit') {
-              stats.totalPips += pipsData.value;
-              stats.winningSignals++;
+              console.log(`💰 Pip calculation for signal ${signal.id}:`, {
+                provider: stats.displayName,
+                entryPrice: signal.entry_price,
+                targetPrice,
+                symbol: signal.tradermade_symbol,
+                tradeType: signal.trade_type,
+                pipsData
+              });
+
+              if (pipsData.direction === 'profit') {
+                stats.totalPips += pipsData.value;
+                stats.winningSignals++;
+              }
+            } catch (error) {
+              console.error(`❌ Pip calculation error for signal ${signal.id}:`, error);
             }
           }
         } else if (signal.close_reason === 'stop_loss') {
@@ -136,6 +169,17 @@ export const useTopSignalProviders = () => {
         }
       });
 
+      console.log('🔍 Top Providers - After Pip Calculation:', {
+        providers: Array.from(providerStats.entries()).map(([id, stats]) => ({
+          id,
+          name: stats.displayName,
+          role: stats.userType,
+          totalPips: stats.totalPips,
+          signalCount: stats.signalCount,
+          winningSignals: stats.winningSignals
+        }))
+      });
+
       // Convert to array and sort by total pips
       const sortedProviders = Array.from(providerStats.values())
         .filter(p => p.signalCount > 0)
@@ -143,7 +187,7 @@ export const useTopSignalProviders = () => {
         .slice(0, 3);
 
       // Add ranks and calculate win rates
-      return sortedProviders.map((provider, index) => ({
+      const finalResults = sortedProviders.map((provider, index) => ({
         rank: (index + 1) as 1 | 2 | 3,
         userId: provider.userId,
         displayName: provider.displayName,
@@ -155,9 +199,14 @@ export const useTopSignalProviders = () => {
           ? (provider.winningSignals / provider.signalCount) * 100 
           : 0
       }));
+
+      console.log('🔍 Top Providers - Final Sorted Results:', finalResults);
+      
+      return finalResults;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Force fresh data for debugging
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    gcTime: 0, // Don't cache at all for debugging
   });
 
   // Subscribe to real-time updates on closed signals

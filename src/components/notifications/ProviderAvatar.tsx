@@ -7,7 +7,7 @@ interface ProviderAvatarProps {
   avatarUrl?: string;
   displayName: string;
   userType?: 'educator' | 'educator+' | 'admin' | 'moderator' | 'member';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   showBadge?: boolean;
 }
 
@@ -19,6 +19,7 @@ export const ProviderAvatar: React.FC<ProviderAvatarProps> = ({
   showBadge = true
 }) => {
   const sizeClasses = {
+    xs: 'h-6 w-6',
     sm: 'h-8 w-8',
     md: 'h-10 w-10',
     lg: 'h-12 w-12'

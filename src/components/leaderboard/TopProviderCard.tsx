@@ -47,7 +47,7 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
     cardGap: isMobileOrTablet ? 'gap-1' : 'gap-2',
     itemGap: isMobileOrTablet ? 'gap-1' : 'gap-1.5',
     emojiSize: isMobileOrTablet ? 'text-base' : 'text-lg',
-    avatarSize: 'sm' as const,
+    avatarSize: 'xs' as const,
     nameSize: isMobileOrTablet ? 'text-[10px]' : 'text-[11px]',
     badgeSize: isMobileOrTablet ? 'text-[8px]' : 'text-[9px]',
     badgeHeight: isMobileOrTablet ? 'h-3.5' : 'h-4',
@@ -91,52 +91,55 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
           <div
             key={provider.userId}
             className={cn(
-              "flex items-center justify-between rounded-lg",
+              "rounded-lg",
               responsiveStyles.cardPadding,
-              responsiveStyles.cardGap,
               "border transition-all duration-300 hover:scale-[1.02]",
               getRankStyles(provider.rank)
             )}
           >
-            {/* Left: Rank + Provider Info */}
-            <div className={cn("flex items-center min-w-0 flex-1", responsiveStyles.itemGap)}>
-              <span className={cn(responsiveStyles.emojiSize, "flex-shrink-0")}>{getRankEmoji(provider.rank)}</span>
-              <ProviderAvatar
-                avatarUrl={provider.avatarUrl || undefined}
-                displayName={provider.displayName}
-                userType={provider.userType}
-                size={responsiveStyles.avatarSize}
-                showBadge={true}
-              />
-              <div className="flex flex-col gap-0.5 min-w-0 flex-shrink">
-                <span className={cn("font-semibold truncate", responsiveStyles.nameSize)}>
-                  {provider.displayName}
+            <div className="flex flex-col gap-1 w-full">
+              {/* Row 1: Rank Emoji + Badge */}
+              <div className="flex items-center gap-1.5">
+                <span className={cn(responsiveStyles.emojiSize, "flex-shrink-0")}>
+                  {getRankEmoji(provider.rank)}
                 </span>
                 <Badge 
                   variant="outline" 
-                  className={cn("capitalize w-fit px-1 py-0", responsiveStyles.badgeSize, responsiveStyles.badgeHeight)}
+                  className={cn("capitalize px-1.5 py-0", responsiveStyles.badgeSize, responsiveStyles.badgeHeight)}
                 >
                   {provider.userType}
                 </Badge>
               </div>
-            </div>
 
-            {/* Right: Pips Display */}
-            <div className="text-right flex-shrink-0">
-              <div
-                className={cn(
-                  "font-bold flex items-center gap-0.5 justify-end whitespace-nowrap",
+              {/* Row 2: Small Avatar + Name */}
+              <div className="flex items-center gap-1.5 pl-1">
+                <ProviderAvatar
+                  avatarUrl={provider.avatarUrl || undefined}
+                  displayName={provider.displayName}
+                  userType={provider.userType}
+                  size="xs"
+                  showBadge={false}
+                />
+                <span className={cn("font-semibold truncate", responsiveStyles.nameSize)}>
+                  {provider.displayName}
+                </span>
+              </div>
+
+              {/* Row 3: Pips + Trades */}
+              <div className="flex items-center justify-between pl-1">
+                <div className={cn(
+                  "font-bold flex items-center gap-0.5 whitespace-nowrap",
                   responsiveStyles.pipsSize,
                   provider.totalPips >= 0 ? "text-green-500" : "text-red-500"
-                )}
-              >
-                {provider.totalPips >= 0 ? "+" : ""}
-                {provider.totalPips.toFixed(1)}
-                <span className={cn("text-muted-foreground font-normal", responsiveStyles.pipsLabelSize)}>pips</span>
-                {provider.totalPips >= 0 && <span className={responsiveStyles.greenCircle}>🟢</span>}
-              </div>
-              <div className={cn("text-muted-foreground whitespace-nowrap", responsiveStyles.tradeCountSize)}>
-                {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
+                )}>
+                  {provider.totalPips >= 0 ? "+" : ""}
+                  {provider.totalPips.toFixed(1)}
+                  <span className={cn("text-muted-foreground font-normal", responsiveStyles.pipsLabelSize)}>pips</span>
+                  {provider.totalPips >= 0 && <span className={responsiveStyles.greenCircle}>🟢</span>}
+                </div>
+                <div className={cn("text-muted-foreground whitespace-nowrap", responsiveStyles.tradeCountSize)}>
+                  {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
           </div>

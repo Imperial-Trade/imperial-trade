@@ -81,7 +81,7 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
 
-  const welcomeText = `Welcome to Trade Imperial, ${getUserFullName()}`;
+  const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
 
   return (
     <div className="relative min-h-screen">

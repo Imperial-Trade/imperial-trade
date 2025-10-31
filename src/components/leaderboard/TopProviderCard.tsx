@@ -69,50 +69,48 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
           <div
             key={provider.userId}
             className={cn(
-              "flex items-center justify-between p-3 rounded-lg",
+              "flex items-center justify-between gap-2 p-2.5 rounded-lg",
               "border transition-all duration-300 hover:scale-[1.02]",
               getRankStyles(provider.rank)
             )}
           >
             {/* Left: Rank + Provider Info */}
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{getRankEmoji(provider.rank)}</span>
-              <div className="flex items-center gap-2">
-                <ProviderAvatar
-                  avatarUrl={provider.avatarUrl || undefined}
-                  displayName={provider.displayName}
-                  userType={provider.userType}
-                  size="sm"
-                  showBadge={true}
-                />
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-semibold text-xs truncate max-w-[80px]">
-                    {provider.displayName}
-                  </span>
-                  <Badge 
-                    variant="outline" 
-                    className="capitalize text-[10px] w-fit px-1.5 py-0"
-                  >
-                    {provider.userType}
-                  </Badge>
-                </div>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className="text-lg flex-shrink-0">{getRankEmoji(provider.rank)}</span>
+              <ProviderAvatar
+                avatarUrl={provider.avatarUrl || undefined}
+                displayName={provider.displayName}
+                userType={provider.userType}
+                size="sm"
+                showBadge={true}
+              />
+              <div className="flex flex-col gap-0.5 min-w-0 flex-shrink">
+                <span className="font-semibold text-[11px] truncate">
+                  {provider.displayName}
+                </span>
+                <Badge 
+                  variant="outline" 
+                  className="capitalize text-[9px] w-fit px-1 py-0 h-4"
+                >
+                  {provider.userType}
+                </Badge>
               </div>
             </div>
 
             {/* Right: Pips Display */}
-            <div className="text-right">
+            <div className="text-right flex-shrink-0">
               <div
                 className={cn(
-                  "text-base font-bold flex items-center gap-0.5 justify-end",
+                  "text-sm font-bold flex items-center gap-0.5 justify-end whitespace-nowrap",
                   provider.totalPips >= 0 ? "text-green-500" : "text-red-500"
                 )}
               >
                 {provider.totalPips >= 0 ? "+" : ""}
                 {provider.totalPips.toFixed(1)}
-                <span className="text-[10px] text-muted-foreground font-normal">pips</span>
-                {provider.totalPips >= 0 && <span className="text-sm">🟢</span>}
+                <span className="text-[9px] text-muted-foreground font-normal">pips</span>
+                {provider.totalPips >= 0 && <span className="text-xs">🟢</span>}
               </div>
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[9px] text-muted-foreground whitespace-nowrap">
                 {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
               </div>
             </div>

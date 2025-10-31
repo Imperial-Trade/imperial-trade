@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X } from "lucide-react";
+import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSmartProtection } from "@/hooks/useSmartProtection";
 import { useTopSignalProviders, TopProvider } from "@/hooks/useTopSignalProviders";
+import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 
 // Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [{
@@ -45,6 +46,28 @@ const tradingTools = [{
   icon: Scale,
   description: "Simulate trade setups to assess risk before you enter.",
   route: "/dashboard/advanced-tools?tool=simulator"
+}, {
+  name: "Pattern Stream",
+  icon: Bell,
+  description: "Live trading signals and market alerts.",
+  route: "/dashboard/signal-stream"
+}, {
+  name: "Education",
+  icon: GraduationCap,
+  description: "Courses, videos and learning pathways.",
+  route: getAcademyAppUrl(),
+  external: true
+}, {
+  name: "Community",
+  icon: MessageSquare,
+  description: "Forum, discussions and networking.",
+  route: getOrderFlowAppUrl(),
+  external: true
+}, {
+  name: "Tools",
+  icon: Target,
+  description: "Advanced trading calculators and analyzers.",
+  route: "/dashboard/advanced-tools"
 }];
 interface WidgetSidebarProps {
   className?: string;
@@ -230,7 +253,12 @@ export function WidgetSidebar({
   }, [edgeThreshold, canTriggerSidebar, isVisible, isHovering, isDragging, showEdgeIndicator, isMobile, isTouchDevice, handleCloseSidebar]);
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
-    navigate(tool.route);
+    
+    if (tool.external) {
+      window.location.href = tool.route;
+    } else {
+      navigate(tool.route);
+    }
   };
 
   // Enhanced drag handlers with device-specific optimizations
@@ -505,6 +533,62 @@ export function WidgetSidebar({
                 </div>
               </div>
             </div>;
+        case "Pattern Stream":
+          return <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-blue-100 dark:to-cyan-50 rounded-lg overflow-hidden">
+              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
+                <motion.div animate={{
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, -5, 0]
+                }} transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }} className="relative">
+                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-300 dark:text-blue-700" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 dark:bg-green-600 rounded-full animate-pulse" />
+                </motion.div>
+              </div>
+            </div>;
+        case "Education":
+          return <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
+              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
+                <motion.div animate={{
+                  y: [-2, 2, -2]
+                }} transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}>
+                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-300 dark:text-purple-700" />
+                </motion.div>
+              </div>
+            </div>;
+        case "Community":
+          return <div className="w-full h-full bg-gradient-to-br from-slate-800 to-green-900 dark:from-green-100 dark:to-emerald-50 rounded-lg overflow-hidden">
+              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
+                <motion.div animate={{
+                  scale: [1, 1.05, 1]
+                }} transition={{
+                  duration: 2.5,
+                  repeat: Infinity
+                }}>
+                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-green-300 dark:text-green-700" />
+                </motion.div>
+              </div>
+            </div>;
+        case "Tools":
+          return <div className="w-full h-full bg-gradient-to-br from-slate-800 to-orange-900 dark:from-orange-100 dark:to-amber-50 rounded-lg overflow-hidden">
+              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
+                <motion.div animate={{
+                  rotate: [0, 180, 360]
+                }} transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}>
+                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-300 dark:text-orange-700" />
+                </motion.div>
+              </div>
+            </div>;
         default:
           return <div className="w-full h-full bg-gray-800 dark:bg-gray-100 rounded-lg flex items-center justify-center">
               <Icon className="w-4 h-4 sm:w-6 sm:h-6 text-gray-300 dark:text-gray-600" />
@@ -638,39 +722,42 @@ export function WidgetSidebar({
 
           {/* Widget Grid */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            {isLoadingProviders ?
+          {isLoadingProviders ?
           // Show skeleton loaders for first 3 spots while loading
           <>
                 <div className="col-span-2 h-24 bg-muted/50 rounded-xl animate-pulse" />
                 <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
                 <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
-                <WidgetTool tool={tradingTools[3]} size="medium" />
-                <WidgetTool tool={tradingTools[4]} size="small" />
-                <WidgetTool tool={tradingTools[5]} size="small" />
+                {/* NEW: Navigation cards while loading */}
+                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[7]} size="small" />
+                <WidgetTool tool={tradingTools[8]} size="small" />
+                <WidgetTool tool={tradingTools[9]} size="medium" />
               </> : topProviders.length > 0 ?
-          // Show top 3 providers as individual cards (replacing first 3 tools)
+          // Show top 3 providers + 4 navigation cards
           <>
-                {/* Top Provider #1 - Full width (replaces Trading Journal) */}
+                {/* Top Provider #1 - Full width */}
                 {topProviders[0] && <div className="col-span-2">
                     <ProviderWidget provider={topProviders[0]} rank={1} />
                   </div>}
                 
-                {/* Top Provider #2 - Half width (replaces Economic Calendar) */}
+                {/* Top Provider #2 - Half width */}
                 {topProviders[1] && <div className="col-span-1">
                     <ProviderWidget provider={topProviders[1]} rank={2} />
                   </div>}
                 
-                {/* Top Provider #3 - Half width (replaces Risk Calculator) */}
+                {/* Top Provider #3 - Half width */}
                 {topProviders[2] && <div className="col-span-1">
                     <ProviderWidget provider={topProviders[2]} rank={3} />
                   </div>}
                 
-                {/* Remaining tools (Trade Analyst, Opportunity Scanner, Risk Simulator) */}
-                <WidgetTool tool={tradingTools[3]} size="medium" />
-                <WidgetTool tool={tradingTools[4]} size="small" />
-                <WidgetTool tool={tradingTools[5]} size="small" />
+                {/* NEW: 4 Navigation Quick-Access Cards */}
+                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[7]} size="small" />
+                <WidgetTool tool={tradingTools[8]} size="small" />
+                <WidgetTool tool={tradingTools[9]} size="medium" />
               </> :
-          // No providers - show all 6 tools as normal
+          // No providers - show all 6 original tools + 4 navigation cards
           <>
                 <WidgetTool tool={tradingTools[0]} size="large" />
                 <WidgetTool tool={tradingTools[1]} size="small" />
@@ -678,6 +765,12 @@ export function WidgetSidebar({
                 <WidgetTool tool={tradingTools[3]} size="medium" />
                 <WidgetTool tool={tradingTools[4]} size="small" />
                 <WidgetTool tool={tradingTools[5]} size="small" />
+                
+                {/* NEW: Navigation cards */}
+                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[7]} size="small" />
+                <WidgetTool tool={tradingTools[8]} size="small" />
+                <WidgetTool tool={tradingTools[9]} size="medium" />
               </>}
           </div>
 

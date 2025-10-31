@@ -173,7 +173,7 @@ export const DashboardHome: React.FC = () => {
                 Join discussions with verified traders and educational contributors.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <a href={getOrderFlowAppUrl()} target="_blank" rel="noopener noreferrer">
+                <a href={getOrderFlowAppUrl()}>
                   Join Community
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </a>
@@ -218,7 +218,7 @@ export const DashboardHome: React.FC = () => {
                 Participate in live educational sessions with market educators.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <a href={getAcademyAppUrl()} target="_blank" rel="noopener noreferrer">
+                <a href={getAcademyAppUrl()}>
                   Join Session
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </a>

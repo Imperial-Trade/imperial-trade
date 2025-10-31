@@ -63,38 +63,33 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
-  return <div className="relative min-h-screen">
-      {/* Video Background */}
+  return <div className="relative h-screen overflow-hidden">
+      {/* Animated Background */}
       <AnimatedLinesBackground />
 
-      {/* Hero Section with Typewriter Welcome */}
-      <div className="relative z-20 min-h-screen flex items-center justify-center">
-        <div className="container mx-auto px-6 text-center">
-          <div className="max-w-6xl mx-auto space-y-8">
-            {/* Welcome Message with Typewriter Effect */}
-            <div className="space-y-8">
-          <h1 className="text-4xl lg:text-6xl font-bold text-white mb-8 flex items-center justify-center">
-                <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent" />
-              </h1>
-
-              <p className="text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed mb-16 font-extralight text-zinc-700">
-                You've taken the brave step into the world of trading education. Every
-                successful trader was once a beginner, and every champion was once a
-                student who refused to give up.
-              </p>
-            </div>
-
-            {/* Large spacer to push content below viewport */}
-            <div className="pt-16"></div>
+      {/* Single Page Layout - No Scrolling */}
+      <div className="relative z-20 h-screen flex flex-col items-center justify-center px-6">
+        <div className="container mx-auto max-w-7xl">
+          {/* Compact Welcome Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+              <TypewriterText 
+                text={welcomeText} 
+                speed={80} 
+                showCursor={false} 
+                cursorBlinkSpeed={500} 
+                className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent" 
+              />
+            </h1>
+            <p className="text-base lg:text-lg max-w-3xl mx-auto leading-relaxed font-light text-zinc-400">
+              You've taken the brave step into the world of trading education. Every
+              successful trader was once a beginner, and every champion was once a
+              student who refused to give up.
+            </p>
           </div>
-        </div>
-      </div>
 
-      {/* Advanced Trading Hub */}
-      <div className="relative z-20 container mx-auto px-6 mb-12">
-        
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 my-0 mx-0 py-0 px-[100px]">
+          {/* Trading Hub Cards - Centered */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
           <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             {/* Background Image Layer */}
               <div className="absolute inset-0 z-0">
@@ -230,6 +225,7 @@ export const DashboardHome: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
 

@@ -116,7 +116,9 @@ export const AnimatedLinesBackground: React.FC = () => {
       <div 
         className="fixed inset-0 z-0 transition-colors duration-300"
         style={{ 
-          backgroundColor: isDark ? '#111' : '#ffffff'
+          background: isDark 
+            ? 'linear-gradient(to bottom, #0b0b2b, #1b2735 70%, #090a0f)'
+            : 'linear-gradient(to bottom, #e0f2ff, #bae6fd 70%, #7dd3fc)'
         }}
       />
 

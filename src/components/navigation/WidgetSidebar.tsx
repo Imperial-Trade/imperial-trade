@@ -734,49 +734,28 @@ export function WidgetSidebar({
                 <WidgetTool tool={tradingTools[8]} size="small" />
                 <WidgetTool tool={tradingTools[9]} size="small" />
               </> : topProviders.length > 0 ?
-          // Show top 3 providers + 4 navigation cards
+          // Smart layout: Providers adapt based on count
           <>
-                {/* Top Provider #1 - Full width */}
-                <div className="col-span-2">
-                  {topProviders[0] ? (
+                {/* Provider #1 - Always full width when exists */}
+                {topProviders[0] && (
+                  <div className="col-span-2">
                     <ProviderWidget provider={topProviders[0]} rank={1} />
-                  ) : (
-                    <div className="h-24 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground/50 text-xs">
-                        <Trophy className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                        <p>Top Provider #1</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
-                {/* Top Provider #2 - Half width */}
-                <div className="col-span-1">
-                  {topProviders[1] ? (
+                {/* Provider #2 - Full width if no #3, half width if #3 exists */}
+                {topProviders[1] && (
+                  <div className={topProviders[2] ? "col-span-1" : "col-span-2"}>
                     <ProviderWidget provider={topProviders[1]} rank={2} />
-                  ) : (
-                    <div className="h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground/50 text-xs">
-                        <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
-                        <p className="text-[10px]">Top #2</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
-                {/* Top Provider #3 - Half width */}
-                <div className="col-span-1">
-                  {topProviders[2] ? (
+                {/* Provider #3 - Only render if exists */}
+                {topProviders[2] && (
+                  <div className="col-span-1">
                     <ProviderWidget provider={topProviders[2]} rank={3} />
-                  ) : (
-                    <div className="h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground/50 text-xs">
-                        <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
-                        <p className="text-[10px]">Top #3</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
                 {/* 4 Navigation Quick-Access Cards - Always 2x2 grid */}
                 <WidgetTool tool={tradingTools[6]} size="small" />

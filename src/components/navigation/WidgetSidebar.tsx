@@ -737,21 +737,48 @@ export function WidgetSidebar({
           // Show top 3 providers + 4 navigation cards
           <>
                 {/* Top Provider #1 - Full width */}
-                {topProviders[0] && <div className="col-span-2">
+                <div className="col-span-2">
+                  {topProviders[0] ? (
                     <ProviderWidget provider={topProviders[0]} rank={1} />
-                  </div>}
+                  ) : (
+                    <div className="h-24 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                      <div className="text-center text-muted-foreground/50 text-xs">
+                        <Trophy className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                        <p>Top Provider #1</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Top Provider #2 - Half width */}
-                {topProviders[1] && <div className="col-span-1">
+                <div className="col-span-1">
+                  {topProviders[1] ? (
                     <ProviderWidget provider={topProviders[1]} rank={2} />
-                  </div>}
+                  ) : (
+                    <div className="h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                      <div className="text-center text-muted-foreground/50 text-xs">
+                        <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
+                        <p className="text-[10px]">Top #2</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Top Provider #3 - Half width */}
-                {topProviders[2] && <div className="col-span-1">
+                <div className="col-span-1">
+                  {topProviders[2] ? (
                     <ProviderWidget provider={topProviders[2]} rank={3} />
-                  </div>}
+                  ) : (
+                    <div className="h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                      <div className="text-center text-muted-foreground/50 text-xs">
+                        <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
+                        <p className="text-[10px]">Top #3</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
-                {/* NEW: 4 Navigation Quick-Access Cards */}
+                {/* 4 Navigation Quick-Access Cards - Always 2x2 grid */}
                 <WidgetTool tool={tradingTools[6]} size="small" />
                 <WidgetTool tool={tradingTools[7]} size="small" />
                 <WidgetTool tool={tradingTools[8]} size="small" />

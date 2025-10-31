@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target } from "lucide-react";
+import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -757,16 +757,33 @@ export function WidgetSidebar({
                 <WidgetTool tool={tradingTools[8]} size="small" />
                 <WidgetTool tool={tradingTools[9]} size="small" />
               </> :
-          // No providers - show all 6 original tools + 4 navigation cards
+          // No providers - show empty placeholders + 4 navigation cards
           <>
-                <WidgetTool tool={tradingTools[0]} size="large" />
-                <WidgetTool tool={tradingTools[1]} size="small" />
-                <WidgetTool tool={tradingTools[2]} size="small" />
-                <WidgetTool tool={tradingTools[3]} size="medium" />
-                <WidgetTool tool={tradingTools[4]} size="small" />
-                <WidgetTool tool={tradingTools[5]} size="small" />
+                {/* Empty placeholder for Provider #1 - Full width */}
+                <div className="col-span-2 h-24 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground/50 text-xs">
+                    <Trophy className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                    <p>Top Provider #1</p>
+                  </div>
+                </div>
                 
-                {/* NEW: Navigation cards */}
+                {/* Empty placeholder for Provider #2 - Half width */}
+                <div className="col-span-1 h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground/50 text-xs">
+                    <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
+                    <p className="text-[10px]">Top #2</p>
+                  </div>
+                </div>
+                
+                {/* Empty placeholder for Provider #3 - Half width */}
+                <div className="col-span-1 h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground/50 text-xs">
+                    <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
+                    <p className="text-[10px]">Top #3</p>
+                  </div>
+                </div>
+                
+                {/* 4 Navigation Quick-Access Cards */}
                 <WidgetTool tool={tradingTools[6]} size="small" />
                 <WidgetTool tool={tradingTools[7]} size="small" />
                 <WidgetTool tool={tradingTools[8]} size="small" />

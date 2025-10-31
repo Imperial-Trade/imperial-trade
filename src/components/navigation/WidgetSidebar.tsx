@@ -26,6 +26,7 @@ import { EdgeIndicator } from "./EdgeIndicator";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSmartProtection } from "@/hooks/useSmartProtection";
+import { useTopSignalProviders, TopProvider } from "@/hooks/useTopSignalProviders";
 
 // Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [
@@ -84,6 +85,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   // Authorization checks
   const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
   const canAccessAdminPanel = isAdmin || isEducatorPlus || isEducator || isModerator;
+  
+  // Fetch top signal providers for leaderboard
+  const { topProviders, isLoading: isLoadingProviders } = useTopSignalProviders();
 
   // Device detection and responsive behavior
   const {
@@ -284,6 +288,84 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const handleClose = () => {
     setIsVisible(false);
     dragX.set(0); // Reset drag position
+  };
+
+  // ProviderWidget Component - Renders individual provider leaderboard cards
+  const ProviderWidget = ({
+    provider,
+    rank
+  }: {
+    provider: TopProvider;
+    rank: 1 | 2 | 3;
+  }) => {
+    const getRankEmoji = (rank: 1 | 2 | 3) => {
+      switch (rank) {
+        case 1: return "🥇";
+        case 2: return "🥈";
+        case 3: return "🥉";
+      }
+    };
+
+    const getRankGradient = (rank: 1 | 2 | 3) => {
+      switch (rank) {
+        case 1: return "from-yellow-400 to-amber-600";
+        case 2: return "from-gray-300 to-zinc-400";
+        case 3: return "from-orange-600 to-amber-800";
+      }
+    };
+
+    const getRankGlow = (rank: 1 | 2 | 3) => {
+      switch (rank) {
+        case 1: return "shadow-lg shadow-yellow-500/30";
+        case 2: return "shadow-lg shadow-gray-400/20";
+        case 3: return "shadow-lg shadow-orange-500/20";
+      }
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: rank * 0.1 }}
+        className={`bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-md rounded-xl p-3 border border-border ${getRankGlow(rank)} pointer-events-none`}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{getRankEmoji(rank)}</span>
+            <span className={`text-xs font-bold bg-gradient-to-r ${getRankGradient(rank)} bg-clip-text text-transparent`}>
+              #{rank}
+            </span>
+          </div>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            {provider.userType}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {provider.avatarUrl ? (
+              <img src={provider.avatarUrl} alt={provider.displayName} className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-4 h-4 text-primary" />
+            )}
+          </div>
+          <span className="text-sm font-semibold text-foreground truncate">
+            {provider.displayName}
+          </span>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className={`text-lg font-bold ${provider.totalPips >= 0 ? 'text-green-500' : 'text-red-500'} flex items-center gap-1`}>
+            {provider.totalPips >= 0 ? '+' : ''}{provider.totalPips.toFixed(1)}
+            <span className="text-xs text-muted-foreground">pips</span>
+            {provider.totalPips >= 0 && <span className="text-sm">🟢</span>}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {provider.signalCount} {provider.signalCount === 1 ? 'signal' : 'signals'}
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
   const WidgetTool = ({
@@ -594,12 +676,56 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
           {/* Widget Grid */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <WidgetTool tool={tradingTools[0]} size="large" />
-            <WidgetTool tool={tradingTools[1]} size="small" />
-            <WidgetTool tool={tradingTools[2]} size="small" />
-            <WidgetTool tool={tradingTools[3]} size="medium" />
-            <WidgetTool tool={tradingTools[4]} size="small" />
-            <WidgetTool tool={tradingTools[5]} size="small" />
+            {isLoadingProviders ? (
+              // Show skeleton loaders for first 3 spots while loading
+              <>
+                <div className="col-span-2 h-24 bg-muted/50 rounded-xl animate-pulse" />
+                <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
+                <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
+                <WidgetTool tool={tradingTools[3]} size="medium" />
+                <WidgetTool tool={tradingTools[4]} size="small" />
+                <WidgetTool tool={tradingTools[5]} size="small" />
+              </>
+            ) : topProviders.length > 0 ? (
+              // Show top 3 providers as individual cards (replacing first 3 tools)
+              <>
+                {/* Top Provider #1 - Full width (replaces Trading Journal) */}
+                {topProviders[0] && (
+                  <div className="col-span-2">
+                    <ProviderWidget provider={topProviders[0]} rank={1} />
+                  </div>
+                )}
+                
+                {/* Top Provider #2 - Half width (replaces Economic Calendar) */}
+                {topProviders[1] && (
+                  <div className="col-span-1">
+                    <ProviderWidget provider={topProviders[1]} rank={2} />
+                  </div>
+                )}
+                
+                {/* Top Provider #3 - Half width (replaces Risk Calculator) */}
+                {topProviders[2] && (
+                  <div className="col-span-1">
+                    <ProviderWidget provider={topProviders[2]} rank={3} />
+                  </div>
+                )}
+                
+                {/* Remaining tools (Trade Analyst, Opportunity Scanner, Risk Simulator) */}
+                <WidgetTool tool={tradingTools[3]} size="medium" />
+                <WidgetTool tool={tradingTools[4]} size="small" />
+                <WidgetTool tool={tradingTools[5]} size="small" />
+              </>
+            ) : (
+              // No providers - show all 6 tools as normal
+              <>
+                <WidgetTool tool={tradingTools[0]} size="large" />
+                <WidgetTool tool={tradingTools[1]} size="small" />
+                <WidgetTool tool={tradingTools[2]} size="small" />
+                <WidgetTool tool={tradingTools[3]} size="medium" />
+                <WidgetTool tool={tradingTools[4]} size="small" />
+                <WidgetTool tool={tradingTools[5]} size="small" />
+              </>
+            )}
           </div>
 
           {/* Profile and Controls Section */}

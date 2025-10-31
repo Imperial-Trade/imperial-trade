@@ -104,12 +104,12 @@ export const DashboardHome: React.FC = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             {/* Background Image Layer */}
-            <div className="absolute inset-0 z-0">
-              <img 
-                src="/images/space-background.png" 
-                alt="" 
-                className="w-full h-full object-cover"
-              />
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src="/images/space-background.png" 
+                  alt="" 
+                  className="w-full h-full object-cover blur-[12px]"
+                />
             </div>
             
             {/* Glassmorphism Overlay - Blue Tint */}
@@ -157,12 +157,12 @@ export const DashboardHome: React.FC = () => {
 
           <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             {/* Background Image Layer */}
-            <div className="absolute inset-0 z-0">
-              <img 
-                src="/images/space-background.png" 
-                alt="" 
-                className="w-full h-full object-cover"
-              />
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src="/images/space-background.png" 
+                  alt="" 
+                  className="w-full h-full object-cover blur-[12px]"
+                />
             </div>
             
             {/* Glassmorphism Overlay - Green Tint */}
@@ -209,12 +209,12 @@ export const DashboardHome: React.FC = () => {
 
           <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             {/* Background Image Layer */}
-            <div className="absolute inset-0 z-0">
-              <img 
-                src="/images/space-background.png" 
-                alt="" 
-                className="w-full h-full object-cover"
-              />
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src="/images/space-background.png" 
+                  alt="" 
+                  className="w-full h-full object-cover blur-[12px]"
+                />
             </div>
             
             {/* Glassmorphism Overlay - Purple Tint */}

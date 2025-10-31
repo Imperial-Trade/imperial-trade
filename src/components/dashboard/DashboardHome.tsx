@@ -11,6 +11,7 @@ import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
+import { getOrderFlowAppUrl, getAcademyAppUrl } from "@/utils/environment";
 export const DashboardHome: React.FC = () => {
   const {
     user
@@ -172,10 +173,10 @@ export const DashboardHome: React.FC = () => {
                 Join discussions with verified traders and educational contributors.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <Link to="/dashboard/forum">
+                <a href={getOrderFlowAppUrl()} target="_blank" rel="noopener noreferrer">
                   Join Community
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </a>
               </Button>
             </CardContent>
           </Card>
@@ -217,10 +218,10 @@ export const DashboardHome: React.FC = () => {
                 Participate in live educational sessions with market educators.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <Link to="/dashboard/education">
+                <a href={getAcademyAppUrl()} target="_blank" rel="noopener noreferrer">
                   Join Session
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </a>
               </Button>
             </CardContent>
           </Card>

@@ -39,6 +39,8 @@ import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
+import { useTopSignalProviders } from "@/hooks/useTopSignalProviders";
+import { TopProviderCard } from "@/components/leaderboard/TopProviderCard";
 
 const coreTools = [
   {
@@ -103,6 +105,7 @@ const navButtons = [
 export default function AdvancedTools() {
   const location = useLocation();
   const [activeTool, setActiveTool] = useState(coreTools[0]);
+  const { topProviders, isLoading: isLoadingProviders } = useTopSignalProviders();
 
   // Memoize all tools to prevent recreation on every render
   const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
@@ -299,33 +302,54 @@ export default function AdvancedTools() {
           )}
         </motion.div>
 
-        {/* Tool Display - Mobile Optimized */}
+        {/* Tool Display - Mobile Optimized with Leaderboard */}
         <div className="min-h-[500px] sm:min-h-[600px]">
-          <div className="relative h-full">
-            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
-              <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
-                {activeTool?.name === "Educational Journal" && (
-                  <TradeJournalProvider>
-                    <TradingJournal />
-                  </TradeJournalProvider>
-                )}
-                {activeTool?.name === "Economic Calendar" && (
-                  <OptimizedEconomicCalendar />
-                )}
-                {activeTool?.name === "Educational Calculator" && (
-                  <RiskCalculator />
-                )}
-                {activeTool?.name === "MECCA" && (
-                  <MeccaAnalysisHub />
-                )}
-                {activeTool?.name === "Educational Pattern Scanner" && (
-                  <OpportunityScanner />
-                )}
-                {activeTool?.name === "Educational Risk Calculator" && (
-                  <RiskSimulator />
-                )}
-              </div>
-            </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+            {/* Main Tool - 2 columns on desktop */}
+            <div className="lg:col-span-2">
+              <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
+                <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
+                  {activeTool?.name === "Educational Journal" && (
+                    <TradeJournalProvider>
+                      <TradingJournal />
+                    </TradeJournalProvider>
+                  )}
+                  {activeTool?.name === "Economic Calendar" && (
+                    <OptimizedEconomicCalendar />
+                  )}
+                  {activeTool?.name === "Educational Calculator" && (
+                    <RiskCalculator />
+                  )}
+                  {activeTool?.name === "MECCA" && (
+                    <MeccaAnalysisHub />
+                  )}
+                  {activeTool?.name === "Educational Pattern Scanner" && (
+                    <OpportunityScanner />
+                  )}
+                  {activeTool?.name === "Educational Risk Calculator" && (
+                    <RiskSimulator />
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* Top Providers Leaderboard - 1 column on desktop */}
+            <div className="lg:col-span-1 order-first lg:order-last">
+              {isLoadingProviders ? (
+                <Card className="w-full glass-effect border-accent/20 animate-pulse">
+                  <CardHeader className="pb-3">
+                    <div className="h-6 bg-muted rounded w-3/4" />
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="h-20 bg-muted rounded" />
+                    <div className="h-20 bg-muted rounded" />
+                    <div className="h-20 bg-muted rounded" />
+                  </CardContent>
+                </Card>
+              ) : (
+                <TopProviderCard providers={topProviders} />
+              )}
+            </div>
           </div>
         </div>
       </div>

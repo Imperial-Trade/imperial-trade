@@ -92,30 +92,24 @@ export const DashboardHome: React.FC = () => {
 
       {/* Advanced Trading Hub */}
       <div className="relative z-20 container mx-auto px-6 mb-12">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold tracking-tight mb-2">
-            Trading Hub
-          </h2>
-          <p className="text-muted-foreground">
-            Access your most important trading tools and insights
-          </p>
-        </div>
+        
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
-            {/* Darker Glassmorphism - Blue Gradient */}
-            <div 
-              className="absolute inset-0 z-0"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(20px) saturate(120%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
-            />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 my-0 mx-0 py-0 px-[100px]">
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+            {/* Background Image Layer */}
+              <div className="absolute inset-0 z-0">
+                <img src="/images/space-background.png" alt="" className="w-full h-full object-cover blur-[12px]" />
+            </div>
             
-              {/* Hover Enhancement */}
-              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            {/* Glassmorphism Overlay - Blue Tint */}
+            <div className="absolute inset-0 z-10" style={{
+            background: 'rgba(10, 10, 20, 0.75)',
+            backdropFilter: 'blur(8px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(8px) saturate(150%)'
+          }} />
+            
+            {/* Hover Enhancement Gradient */}
+            <div className="absolute inset-0 z-10 bg-gradient-to-br from-blue-500/10 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">
@@ -147,20 +141,21 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
-            {/* Darker Glassmorphism - Green Gradient */}
-            <div 
-              className="absolute inset-0 z-0"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(20px) saturate(120%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
-            />
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+            {/* Background Image Layer */}
+              <div className="absolute inset-0 z-0">
+                <img src="/images/space-background.png" alt="" className="w-full h-full object-cover blur-[12px]" />
+            </div>
             
-              {/* Hover Enhancement */}
-              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            {/* Glassmorphism Overlay - Green Tint */}
+            <div className="absolute inset-0 z-10" style={{
+            background: 'rgba(10, 15, 12, 0.75)',
+            backdropFilter: 'blur(8px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(8px) saturate(150%)'
+          }} />
+            
+            {/* Hover Enhancement Gradient */}
+            <div className="absolute inset-0 z-10 bg-gradient-to-br from-green-500/10 via-transparent to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">
@@ -191,20 +186,21 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
-            {/* Darker Glassmorphism - Purple Gradient */}
-            <div 
-              className="absolute inset-0 z-0"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(20px) saturate(120%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-              }}
-            />
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+            {/* Background Image Layer */}
+              <div className="absolute inset-0 z-0">
+                <img src="/images/space-background.png" alt="" className="w-full h-full object-cover blur-[12px]" />
+            </div>
             
-              {/* Hover Enhancement */}
-              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            {/* Glassmorphism Overlay - Purple Tint */}
+            <div className="absolute inset-0 z-10" style={{
+            background: 'rgba(15, 10, 18, 0.75)',
+            backdropFilter: 'blur(8px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(8px) saturate(150%)'
+          }} />
+            
+            {/* Hover Enhancement Gradient */}
+            <div className="absolute inset-0 z-10 bg-gradient-to-br from-purple-500/10 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">

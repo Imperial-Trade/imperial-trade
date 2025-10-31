@@ -75,27 +75,27 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
             )}
           >
             {/* Left: Rank + Provider Info */}
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{getRankEmoji(provider.rank)}</span>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <ProviderAvatar
-                    avatarUrl={provider.avatarUrl || undefined}
-                    displayName={provider.displayName}
-                    userType={provider.userType}
-                    size="sm"
-                    showBadge={true}
-                  />
-                  <span className="font-semibold text-sm truncate max-w-[120px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{getRankEmoji(provider.rank)}</span>
+              <div className="flex items-center gap-2">
+                <ProviderAvatar
+                  avatarUrl={provider.avatarUrl || undefined}
+                  displayName={provider.displayName}
+                  userType={provider.userType}
+                  size="sm"
+                  showBadge={true}
+                />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-xs truncate max-w-[80px]">
                     {provider.displayName}
                   </span>
+                  <Badge 
+                    variant="outline" 
+                    className="capitalize text-[10px] w-fit px-1.5 py-0"
+                  >
+                    {provider.userType}
+                  </Badge>
                 </div>
-                <Badge 
-                  variant="outline" 
-                  className="capitalize text-xs w-fit"
-                >
-                  {provider.userType}
-                </Badge>
               </div>
             </div>
 
@@ -103,17 +103,17 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
             <div className="text-right">
               <div
                 className={cn(
-                  "text-xl font-bold flex items-center gap-1 justify-end",
+                  "text-base font-bold flex items-center gap-0.5 justify-end",
                   provider.totalPips >= 0 ? "text-green-500" : "text-red-500"
                 )}
               >
                 {provider.totalPips >= 0 ? "+" : ""}
                 {provider.totalPips.toFixed(1)}
-                <span className="text-xs text-muted-foreground font-normal">pips</span>
-                {provider.totalPips >= 0 && <span>🟢</span>}
+                <span className="text-[10px] text-muted-foreground font-normal">pips</span>
+                {provider.totalPips >= 0 && <span className="text-sm">🟢</span>}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {provider.signalCount} signal{provider.signalCount !== 1 ? 's' : ''}
+              <div className="text-[10px] text-muted-foreground">
+                {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
               </div>
             </div>
           </div>

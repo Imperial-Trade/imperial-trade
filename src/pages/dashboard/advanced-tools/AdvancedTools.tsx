@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,7 +28,9 @@ import {
   User,
   Shield,
   LogOut,
+  Crown,
 } from "lucide-react";
+import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
@@ -181,6 +183,18 @@ export default function AdvancedTools() {
             <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center gap-4">
+                {/* Logo & Hamburger Section */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <SidebarTriggerButton />
+                  <Link to="/dashboard/home" className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-primary" />
+                    <span className="text-lg imperial-tech-font">IMPERIAL</span>
+                  </Link>
+                </div>
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-border/20"></div>
+
                 {/* Active Tool Info - Desktop only */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
@@ -239,6 +253,16 @@ export default function AdvancedTools() {
 
               {/* Mobile Layout - Swipe Carousel */}
               <div className="sm:hidden">
+                {/* Logo & Hamburger Row */}
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <SidebarTriggerButton />
+                  <Link to="/dashboard/home" className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-primary" />
+                    <span className="text-base imperial-tech-font">IMPERIAL</span>
+                  </Link>
+                  <div className="w-8"></div>
+                </div>
+
                 <Carousel
                   opts={{
                     align: "center",
@@ -327,6 +351,22 @@ export default function AdvancedTools() {
           </Card>
         </div>
       </div>
+
+      {/* Imperial Tech Font Styles */}
+      <style>{`
+        .imperial-tech-font {
+          font-family: 'Orbitron', 'Courier New', monospace;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          background: linear-gradient(135deg, #e6d3b3, #c09a58);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+      `}</style>
     </div>
   );
 }

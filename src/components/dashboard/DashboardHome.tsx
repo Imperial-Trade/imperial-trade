@@ -102,23 +102,15 @@ export const DashboardHome: React.FC = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
-            {/* Background Image Layer */}
-              <div className="absolute inset-0 z-0">
-                <img 
-                  src="/images/space-background.png" 
-                  alt="" 
-                  className="w-full h-full object-cover blur-[12px]"
-                />
-            </div>
-            
-            {/* Glassmorphism Overlay - Blue Tint */}
+          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
+            {/* Darker Glassmorphism - Blue Gradient */}
             <div 
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-0"
               style={{
-                background: 'rgba(10, 10, 20, 0.75)',
-                backdropFilter: 'blur(8px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                background: 'linear-gradient(135deg, rgba(15, 18, 35, 0.95) 0%, rgba(20, 25, 45, 0.98) 100%)',
+                backdropFilter: 'blur(20px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
               }}
             />
             
@@ -155,23 +147,15 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
-            {/* Background Image Layer */}
-              <div className="absolute inset-0 z-0">
-                <img 
-                  src="/images/space-background.png" 
-                  alt="" 
-                  className="w-full h-full object-cover blur-[12px]"
-                />
-            </div>
-            
-            {/* Glassmorphism Overlay - Green Tint */}
+          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
+            {/* Darker Glassmorphism - Green Gradient */}
             <div 
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-0"
               style={{
-                background: 'rgba(10, 15, 12, 0.75)',
-                backdropFilter: 'blur(8px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                background: 'linear-gradient(135deg, rgba(15, 25, 20, 0.95) 0%, rgba(20, 35, 28, 0.98) 100%)',
+                backdropFilter: 'blur(20px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
               }}
             />
             
@@ -207,23 +191,15 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
-            {/* Background Image Layer */}
-              <div className="absolute inset-0 z-0">
-                <img 
-                  src="/images/space-background.png" 
-                  alt="" 
-                  className="w-full h-full object-cover blur-[12px]"
-                />
-            </div>
-            
-            {/* Glassmorphism Overlay - Purple Tint */}
+          <Card className="group relative overflow-hidden bg-transparent border-2 border-primary/20 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-2 cursor-pointer rounded-xl">
+            {/* Darker Glassmorphism - Purple Gradient */}
             <div 
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-0"
               style={{
-                background: 'rgba(15, 10, 18, 0.75)',
-                backdropFilter: 'blur(8px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                background: 'linear-gradient(135deg, rgba(25, 18, 35, 0.95) 0%, rgba(35, 25, 50, 0.98) 100%)',
+                backdropFilter: 'blur(20px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
               }}
             />
             

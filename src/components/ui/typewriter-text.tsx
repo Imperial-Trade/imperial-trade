@@ -59,16 +59,22 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
     if (className) return {}; // Allow className override
     
     if (themeAware) {
+      // Dark mode: Silver shimmer gradient
+      if (isDark) {
+        return {
+          background: 'linear-gradient(90deg, transparent 0%, rgba(212, 212, 216, 0.8) 20%, rgba(244, 244, 245, 1) 50%, rgba(212, 212, 216, 0.8) 80%, transparent 100%)',
+          backgroundSize: '200% 100%',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          color: 'transparent',
+          animation: 'shimmer 6s infinite',
+          backgroundPosition: '-200% 0'
+        };
+      }
+      
+      // Light mode: Solid #383838 color (no shimmer)
       return {
-        background: isDark 
-          ? 'linear-gradient(90deg, transparent 0%, rgba(212, 212, 216, 0.8) 20%, rgba(244, 244, 245, 1) 50%, rgba(212, 212, 216, 0.8) 80%, transparent 100%)'
-          : 'linear-gradient(90deg, transparent 0%, rgba(56, 56, 56, 0.8) 20%, rgba(56, 56, 56, 1) 50%, rgba(56, 56, 56, 0.8) 80%, transparent 100%)',
-        backgroundSize: '200% 100%',
-        backgroundClip: 'text',
-        WebkitBackgroundClip: 'text',
-        color: 'transparent',
-        animation: 'shimmer 6s infinite',
-        backgroundPosition: '-200% 0'
+        color: '#383838'
       };
     }
     

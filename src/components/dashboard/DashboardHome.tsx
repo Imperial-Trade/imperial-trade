@@ -77,10 +77,8 @@ export const DashboardHome: React.FC = () => {
                 <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent" />
               </h1>
 
-              <p className="text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed mb-16 font-extralight text-zinc-700">
-                You've taken the brave step into the world of trading education. Every
-                successful trader was once a beginner, and every champion was once a
-                student who refused to give up.
+              <p className="text-lg lg:text-xl max-w-3xl mx-auto leading-relaxed mb-16 font-extralight text-zinc-700">
+                Every champion was once a beginner who refused to give up. Your trading mastery journey starts now.
               </p>
             </div>
 

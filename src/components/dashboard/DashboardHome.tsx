@@ -63,27 +63,24 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
-  return <div className="relative min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden">
+  return <div className="relative h-screen overflow-hidden">
       {/* Animated Background */}
       <AnimatedLinesBackground />
 
       {/* Single Page Layout - No Scrolling */}
-      <div className="relative z-20 min-h-screen lg:h-screen flex flex-col items-center justify-start lg:justify-center px-6 py-8 lg:py-0">
-        <div className="container mx-auto max-w-7xl">
+      <div className="relative z-20 h-screen flex items-center justify-center px-6">
+        <div className="container mx-auto max-w-5xl">
           {/* Compact Welcome Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-              <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent" />
+          <div className="text-center space-y-6">
+            <h1 className="text-3xl lg:text-5xl xl:text-6xl font-bold">
+              <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} themeAware={true} />
             </h1>
-            <p className="text-base lg:text-lg max-w-3xl mx-auto leading-relaxed font-light text-zinc-400">
+            <p className="text-base lg:text-lg xl:text-xl max-w-3xl mx-auto leading-relaxed font-light text-zinc-400">
               You've taken the brave step into the world of trading education. Every
               successful trader was once a beginner, and every champion was once a
               student who refused to give up.
             </p>
           </div>
-
-          {/* Trading Hub Cards - Centered */}
-          
         </div>
       </div>
 

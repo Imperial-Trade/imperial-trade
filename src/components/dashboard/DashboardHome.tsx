@@ -63,12 +63,12 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
-  return <div className="relative h-screen overflow-hidden">
+  return <div className="relative min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden">
       {/* Animated Background */}
       <AnimatedLinesBackground />
 
       {/* Single Page Layout - No Scrolling */}
-      <div className="relative z-20 h-screen flex flex-col items-center justify-center px-6">
+      <div className="relative z-20 min-h-screen lg:h-screen flex flex-col items-center justify-start lg:justify-center px-6 py-8 lg:py-0">
         <div className="container mx-auto max-w-7xl">
           {/* Compact Welcome Header */}
           <div className="text-center mb-12">

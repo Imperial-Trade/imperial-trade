@@ -11,7 +11,6 @@ import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
-import { getOrderFlowAppUrl } from "@/utils/environment";
 export const DashboardHome: React.FC = () => {
   const {
     user
@@ -173,10 +172,10 @@ export const DashboardHome: React.FC = () => {
                 Join discussions with verified traders and educational contributors.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <a href={getOrderFlowAppUrl()}>
+                <Link to="/dashboard/forum">
                   Join Community
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </a>
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -218,7 +217,7 @@ export const DashboardHome: React.FC = () => {
                 Participate in live educational sessions with market educators.
               </p>
               <Button asChild variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <Link to="/dashboard/live">
+                <Link to="/dashboard/education">
                   Join Session
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>

@@ -151,7 +151,7 @@ export default function Live() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 pointer-events-none select-none">
+      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 select-none">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6 sm:mb-8">
@@ -524,10 +524,10 @@ export default function Live() {
       </div>
 
       {/* Coming Soon Glassmorphism Overlay */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
         {/* Blur Background */}
         <div 
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
             backdropFilter: 'blur(20px) saturate(120%)',
             WebkitBackdropFilter: 'blur(20px) saturate(120%)',
@@ -537,7 +537,7 @@ export default function Live() {
         
         {/* Glassmorphism Card with Coming Soon Text */}
         <div 
-          className="relative z-10 rounded-3xl px-8 sm:px-12 lg:px-16 py-8 sm:py-10 lg:py-12"
+          className="relative z-10 rounded-3xl px-8 sm:px-12 lg:px-16 py-8 sm:py-10 lg:py-12 pointer-events-auto"
           style={{
             background: 'rgba(255, 255, 255, 0.05)',
             backdropFilter: 'blur(30px) saturate(150%)',

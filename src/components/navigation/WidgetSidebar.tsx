@@ -650,7 +650,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
           <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-                Today
+                24h Performance
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Trading Arsenal

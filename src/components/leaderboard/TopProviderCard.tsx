@@ -41,13 +41,13 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-accent" />
             <CardTitle className="text-lg font-bold bg-gradient-to-r from-accent to-accent-foreground bg-clip-text text-transparent">
-              Top Providers Today
+              Top Providers (24h)
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            No signals closed yet today
+            No signals closed in last 24h
           </p>
         </CardContent>
       </Card>
@@ -60,7 +60,7 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-accent" />
           <CardTitle className="text-lg font-bold bg-gradient-to-r from-accent to-accent-foreground bg-clip-text text-transparent">
-            Top Providers Today
+            Top Providers (24h)
           </CardTitle>
         </div>
       </CardHeader>

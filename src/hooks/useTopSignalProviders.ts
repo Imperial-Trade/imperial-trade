@@ -28,17 +28,17 @@ export const useTopSignalProviders = () => {
   const { data: topProviders, isLoading, error, refetch } = useQuery({
     queryKey: ['top-signal-providers'],
     queryFn: async () => {
-      // Get today's date at midnight
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+      // Get timestamp for 24 hours ago
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      const twentyFourHoursAgoISO = twentyFourHoursAgo.toISOString();
 
-      // Fetch all closed signals from today
+      // Fetch all closed signals from last 24 hours
       const { data: signals, error: signalsError } = await supabase
         .from('trade_alerts')
         .select('*')
         .eq('status', 'closed')
-        .gte('created_at', todayISO);
+        .gte('created_at', twentyFourHoursAgoISO);
 
       if (signalsError) throw signalsError;
       if (!signals || signals.length === 0) return [];

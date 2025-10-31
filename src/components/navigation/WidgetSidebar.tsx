@@ -729,10 +729,10 @@ export function WidgetSidebar({
                 <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
                 <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
                 {/* NEW: Navigation cards while loading */}
-                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[6]} size="small" />
                 <WidgetTool tool={tradingTools[7]} size="small" />
                 <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="medium" />
+                <WidgetTool tool={tradingTools[9]} size="small" />
               </> : topProviders.length > 0 ?
           // Show top 3 providers + 4 navigation cards
           <>
@@ -752,10 +752,10 @@ export function WidgetSidebar({
                   </div>}
                 
                 {/* NEW: 4 Navigation Quick-Access Cards */}
-                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[6]} size="small" />
                 <WidgetTool tool={tradingTools[7]} size="small" />
                 <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="medium" />
+                <WidgetTool tool={tradingTools[9]} size="small" />
               </> :
           // No providers - show all 6 original tools + 4 navigation cards
           <>
@@ -767,10 +767,10 @@ export function WidgetSidebar({
                 <WidgetTool tool={tradingTools[5]} size="small" />
                 
                 {/* NEW: Navigation cards */}
-                <WidgetTool tool={tradingTools[6]} size="medium" />
+                <WidgetTool tool={tradingTools[6]} size="small" />
                 <WidgetTool tool={tradingTools[7]} size="small" />
                 <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="medium" />
+                <WidgetTool tool={tradingTools[9]} size="small" />
               </>}
           </div>
 

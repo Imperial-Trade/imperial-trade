@@ -1,5 +1,5 @@
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Home, Clock, BarChart3, Calendar } from 'lucide-react';
+import { Menu, Home, Clock, BarChart3, Calendar, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -16,10 +16,11 @@ export function JournalSidebarMenu({ activeTab, onTabChange }: JournalSidebarMen
     { id: 'history', icon: Clock, label: 'History' },
     { id: 'analytics', icon: BarChart3, label: 'Analytics' },
     { id: 'calendar', icon: Calendar, label: 'Calendar' },
+    { id: 'overview', icon: Zap, label: 'AI Insights', isAI: true },
   ];
 
-  const handleTabClick = (tabId: 'overview' | 'history' | 'analytics' | 'calendar') => {
-    onTabChange(tabId);
+  const handleTabClick = (tabId: string, isAI?: boolean) => {
+    onTabChange(isAI ? 'overview' : tabId as 'overview' | 'history' | 'analytics' | 'calendar');
     setOpen(false);
   };
 
@@ -39,7 +40,7 @@ export function JournalSidebarMenu({ activeTab, onTabChange }: JournalSidebarMen
             return (
               <button
                 key={tab.id}
-                onClick={() => handleTabClick(tab.id as any)}
+                onClick={() => handleTabClick(tab.id, (tab as any).isAI)}
                 className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
                   activeTab === tab.id 
                     ? 'bg-primary text-primary-foreground' 

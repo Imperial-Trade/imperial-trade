@@ -316,40 +316,13 @@ export default function MobileTradingJournal({
         </AnimatePresence>
       </div>
 
-      {/* Bottom Navigation */}
-      {!['add', 'calendar', 'day'].includes(activeTab) && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border z-50">
-          <div className="grid grid-cols-5 max-w-md mx-auto">
-            {[
-              { tab: 'overview' as MobileTab, icon: Home, label: 'Overview' },
-              { tab: 'history' as MobileTab, icon: Clock, label: 'History' },
-              { tab: 'analytics' as MobileTab, icon: BarChart3, label: 'Analytics' },
-              { tab: 'calendar' as MobileTab, icon: Calendar, label: 'Calendar' },
-              { tab: 'overview' as MobileTab, icon: Zap, label: 'AI', isAI: true },
-            ].map(({ tab, icon: Icon, label, isAI }) => (
-              <button
-                key={label}
-                onClick={() => isAI ? setActiveTab('overview') : setActiveTab(tab)}
-                className={`flex flex-col items-center justify-center py-3 px-1 transition-colors ${
-                  (activeTab === tab || (isAI && activeTab === 'overview'))
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="w-4 h-4 mb-1" />
-                <span className="text-xs font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Floating Add Button */}
       {!['add', 'calendar', 'day'].includes(activeTab) && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-20 right-4 z-40"
+          className="fixed bottom-6 right-4 z-40"
         >
           <Button
             onClick={() => setActiveTab('add')}

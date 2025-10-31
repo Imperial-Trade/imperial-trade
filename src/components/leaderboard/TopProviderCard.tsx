@@ -35,26 +35,21 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
   providers, 
   containerClassName 
 }) => {
-  const { isMobile, isTablet } = useDeviceDetection();
-  const isMobileOrTablet = isMobile || isTablet;
-  
   const responsiveStyles = {
-    trophySize: isMobileOrTablet ? 'h-4 w-4' : 'h-5 w-5',
-    titleSize: isMobileOrTablet ? 'text-base' : 'text-lg',
-    headerPadding: isMobileOrTablet ? 'pb-2' : 'pb-3',
-    contentSpacing: isMobileOrTablet ? 'space-y-2' : 'space-y-3',
-    cardPadding: isMobileOrTablet ? 'p-1.5' : 'p-2.5',
-    cardGap: 'gap-1.5',
-    itemGap: isMobileOrTablet ? 'gap-1' : 'gap-1.5',
-    emojiSize: isMobileOrTablet ? 'text-base' : 'text-lg',
+    trophySize: 'h-5 w-5',
+    titleSize: 'text-lg',
+    headerPadding: 'pb-3',
+    contentSpacing: 'space-y-3',
+    cardPadding: 'p-3',
+    emojiSize: 'text-lg',
     avatarSize: 'xs' as const,
-    nameSize: isMobileOrTablet ? 'text-[10px]' : 'text-[11px]',
-    badgeSize: isMobileOrTablet ? 'text-[8px]' : 'text-[9px]',
-    badgeHeight: isMobileOrTablet ? 'h-3.5' : 'h-4',
-    pipsSize: 'text-xs',
-    pipsLabelSize: isMobileOrTablet ? 'text-[8px]' : 'text-[9px]',
-    tradeCountSize: isMobileOrTablet ? 'text-[8px]' : 'text-[9px]',
-    greenCircle: isMobileOrTablet ? 'text-[10px]' : 'text-xs',
+    nameSize: 'text-sm',
+    badgeSize: 'text-xs',
+    badgeHeight: 'h-4',
+    pipsSize: 'text-sm',
+    pipsLabelSize: 'text-xs',
+    tradeCountSize: 'text-xs',
+    greenCircle: 'text-xs',
   };
   if (providers.length === 0) {
     return (
@@ -99,7 +94,7 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
           >
             <div className="flex flex-col gap-1 w-full">
               {/* Row 1: Rank Emoji + Badge */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn(responsiveStyles.emojiSize, "flex-shrink-0")}>
                   {getRankEmoji(provider.rank)}
                 </span>
@@ -112,21 +107,23 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
               </div>
 
               {/* Row 2: Small Avatar + Name */}
-              <div className="flex items-center gap-1.5 pl-1">
-                <ProviderAvatar
-                  avatarUrl={provider.avatarUrl || undefined}
-                  displayName={provider.displayName}
-                  userType={provider.userType}
-                  size="xs"
-                  showBadge={false}
-                />
-                <span className={cn("font-semibold truncate", responsiveStyles.nameSize)}>
+              <div className="flex items-center gap-2 pl-1 min-w-0">
+                <div className="flex-shrink-0">
+                  <ProviderAvatar
+                    avatarUrl={provider.avatarUrl || undefined}
+                    displayName={provider.displayName}
+                    userType={provider.userType}
+                    size="xs"
+                    showBadge={false}
+                  />
+                </div>
+                <span className={cn("font-semibold min-w-0", responsiveStyles.nameSize)}>
                   {provider.displayName}
                 </span>
               </div>
 
               {/* Row 3: Pips + Trades */}
-              <div className="flex items-center justify-between pl-1">
+              <div className="flex items-center justify-between pl-1 gap-2">
                 <div className={cn(
                   "font-bold flex items-center gap-0.5 whitespace-nowrap",
                   responsiveStyles.pipsSize,

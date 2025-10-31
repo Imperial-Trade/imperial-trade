@@ -23,23 +23,15 @@ export const AnimatedLinesBackground: React.FC = () => {
         <source src="/videos/space-particles.mp4" type="video/mp4" />
       </video>
 
-      {/* Noisy Blur Overlay */}
+      {/* Glassmorphism Layer */}
       <div 
         className="fixed inset-0 z-10 pointer-events-none transition-all duration-300"
         style={{
-          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.3)',
-          backdropFilter: 'blur(2px)',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")`,
-        }}
-      />
-
-      {/* Additional Gradient Overlay for Depth */}
-      <div 
-        className="fixed inset-0 z-20 pointer-events-none"
-        style={{
-          background: isDark
-            ? 'linear-gradient(to bottom, rgba(11, 11, 43, 0.3) 0%, rgba(27, 39, 53, 0.2) 50%, rgba(9, 10, 15, 0.4) 100%)'
-            : 'linear-gradient(to bottom, rgba(224, 242, 255, 0.2) 0%, rgba(186, 230, 253, 0.15) 50%, rgba(125, 211, 252, 0.25) 100%)'
+          background: isDark 
+            ? 'rgba(18, 18, 20, 0.7)' 
+            : 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(20px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(150%)',
         }}
       />
 

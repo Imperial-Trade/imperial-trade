@@ -107,15 +107,15 @@ export const DashboardHome: React.FC = () => {
             <div 
               className="absolute inset-0 z-0"
               style={{
-                background: 'linear-gradient(135deg, rgba(15, 18, 35, 0.95) 0%, rgba(20, 25, 45, 0.98) 100%)',
+                background: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(20px) saturate(120%)',
                 WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             />
             
-            {/* Hover Enhancement Gradient */}
-            <div className="absolute inset-0 z-10 bg-gradient-to-br from-blue-500/10 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              {/* Hover Enhancement */}
+              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">
@@ -152,15 +152,15 @@ export const DashboardHome: React.FC = () => {
             <div 
               className="absolute inset-0 z-0"
               style={{
-                background: 'linear-gradient(135deg, rgba(15, 25, 20, 0.95) 0%, rgba(20, 35, 28, 0.98) 100%)',
+                background: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(20px) saturate(120%)',
                 WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             />
             
-            {/* Hover Enhancement Gradient */}
-            <div className="absolute inset-0 z-10 bg-gradient-to-br from-green-500/10 via-transparent to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              {/* Hover Enhancement */}
+              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">
@@ -196,15 +196,15 @@ export const DashboardHome: React.FC = () => {
             <div 
               className="absolute inset-0 z-0"
               style={{
-                background: 'linear-gradient(135deg, rgba(25, 18, 35, 0.95) 0%, rgba(35, 25, 50, 0.98) 100%)',
+                background: 'rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(20px) saturate(120%)',
                 WebkitBackdropFilter: 'blur(20px) saturate(120%)',
-                border: '1px solid rgba(168, 85, 247, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             />
             
-            {/* Hover Enhancement Gradient */}
-            <div className="absolute inset-0 z-10 bg-gradient-to-br from-purple-500/10 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              {/* Hover Enhancement */}
+              <div className="absolute inset-0 z-10 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             {/* Card Content */}
             <CardHeader className="relative z-20">

@@ -1,159 +1,56 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTheme } from '@/contexts/SafeThemeProvider';
-import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 
 export const AnimatedLinesBackground: React.FC = () => {
   const { theme } = useTheme();
-  const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
   const isDark = theme === 'dark';
-
-  // Adaptive line count: 6 mobile, 8 tablet, 10 desktop
-  const lineCount = useMemo(() => {
-    if (isMobile) return 6;
-    if (isTablet) return 8;
-    return 10;
-  }, [isMobile, isTablet]);
-
-  // Dark mode: Monochrome grayscale / Light mode: Vibrant colors
-  const colorPalette = isDark 
-    ? [
-        'rgba(255, 255, 255, 0.8)',
-        'rgba(220, 220, 220, 0.7)',
-        'rgba(200, 200, 200, 0.7)',
-        'rgba(180, 180, 180, 0.6)',
-        'rgba(160, 160, 160, 0.6)',
-        'rgba(140, 140, 140, 0.5)',
-        'rgba(120, 120, 120, 0.5)',
-        'rgba(100, 100, 100, 0.4)',
-        'rgba(80, 80, 80, 0.4)',
-        'rgba(60, 60, 60, 0.3)',
-      ]
-    : [
-        '#FF4500',
-        '#32CD32',
-        '#1E90FF',
-        '#FFD700',
-        '#8A2BE2',
-        '#20B2AA',
-        '#DC143C',
-        '#00FA9A',
-        '#FF1493',
-        '#00BFFF',
-      ];
-
-  const selectedColors = colorPalette.slice(0, lineCount);
 
   return (
     <>
+      {/* Video Background Layer */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0"
+        style={{ 
+          filter: isDark 
+            ? 'brightness(0.4) contrast(1.1)' 
+            : 'brightness(0.7) contrast(1.05)'
+        }}
+      >
+        <source src="/videos/space-particles.mp4" type="video/mp4" />
+      </video>
+
+      {/* Noisy Blur Overlay */}
+      <div 
+        className="fixed inset-0 z-10 pointer-events-none transition-all duration-300"
+        style={{
+          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.3)',
+          backdropFilter: 'blur(2px)',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Additional Gradient Overlay for Depth */}
+      <div 
+        className="fixed inset-0 z-20 pointer-events-none"
+        style={{
+          background: isDark
+            ? 'linear-gradient(to bottom, rgba(11, 11, 43, 0.3) 0%, rgba(27, 39, 53, 0.2) 50%, rgba(9, 10, 15, 0.4) 100%)'
+            : 'linear-gradient(to bottom, rgba(224, 242, 255, 0.2) 0%, rgba(186, 230, 253, 0.15) 50%, rgba(125, 211, 252, 0.25) 100%)'
+        }}
+      />
+
+      {/* Accessibility: Hide video for reduced motion */}
       <style>{`
-        .animated-lines-container {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          z-index: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-
-        .lines-wrapper {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 100%;
-          margin: auto;
-          width: 90vw;
-          display: flex;
-          justify-content: space-between;
-        }
-
-        .animated-line {
-          position: relative;
-          width: 1px;
-          height: 100%;
-          overflow: hidden;
-          flex-shrink: 0;
-        }
-
-        .animated-line::after {
-          content: '';
-          display: block;
-          position: absolute;
-          height: 15vh;
-          width: 100%;
-          top: -50%;
-          left: 0;
-          animation: line-drop 7s infinite cubic-bezier(0.4, 0.26, 0, 0.97);
-          animation-fill-mode: forwards;
-        }
-
-        @media (max-width: 640px) {
-          .animated-line::after {
-            animation-duration: 8s;
-            height: 12vh;
-          }
-        }
-
-        @keyframes line-drop {
-          0% {
-            top: -50%;
-          }
-          100% {
-            top: 110%;
-          }
-        }
-
         @media (prefers-reduced-motion: reduce) {
-          .animated-line::after {
-            animation: none;
+          video {
+            display: none;
           }
         }
       `}</style>
-
-      <div 
-        className="fixed inset-0 z-0 transition-colors duration-300"
-        style={{ 
-          background: isDark 
-            ? 'linear-gradient(to bottom, #0b0b2b, #1b2735 70%, #090a0f)'
-            : 'linear-gradient(to bottom, #e0f2ff, #bae6fd 70%, #7dd3fc)'
-        }}
-      />
-
-      <div className="animated-lines-container">
-        <div className="lines-wrapper">
-          {selectedColors.map((color, index) => (
-            <div 
-              key={`line-${index}`} 
-              className="animated-line"
-            >
-              <style>{`
-                .animated-line:nth-child(${index + 1})::after {
-                  background: linear-gradient(
-                    to bottom,
-                    transparent 0%,
-                    ${color} 75%,
-                    ${color} 100%
-                  );
-                  animation-delay: ${(index + 1) * 0.5}s;
-                }
-              `}</style>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div 
-        className="fixed inset-0 z-10 transition-colors duration-300 pointer-events-none"
-        style={{
-          backgroundColor: isDark 
-            ? 'rgba(0, 0, 0, 0.5)' 
-            : 'rgba(255, 255, 255, 0.3)',
-          backdropFilter: 'blur(1px)',
-        }}
-      />
     </>
   );
 };

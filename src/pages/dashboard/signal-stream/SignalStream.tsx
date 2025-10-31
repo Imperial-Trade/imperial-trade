@@ -590,6 +590,22 @@ export default function SignalStream() {
           console.error('Failed to fetch profiles for closed alerts:', profilesError);
         }
 
+        // Fetch roles from user_roles table
+        const { data: userRolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds);
+
+        // Create roles map with highest priority role per user
+        const rolesMap = new Map<string, string>();
+        const rolePriority: Record<string, number> = { admin: 4, 'educator+': 3, moderator: 2, educator: 1 };
+        userRolesData?.forEach(ur => {
+          const current = rolesMap.get(ur.user_id);
+          if (!current || (rolePriority[ur.role] || 0) > (rolePriority[current] || 0)) {
+            rolesMap.set(ur.user_id, ur.role);
+          }
+        });
+
         // Create profile map
         const profilesMap = new Map();
         if (profilesData) {
@@ -633,7 +649,7 @@ export default function SignalStream() {
             creator: profile ? {
               id: profile.id,
               display_name: profile.display_name || 'Anonymous User',
-              role: profile.role || 'user',
+              role: rolesMap.get(profile.id) || 'user',
               avatar_url: profile.avatar_url,
               user_type: profile.user_type,
               access_level: profile.access_level

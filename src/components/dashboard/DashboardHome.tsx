@@ -24,7 +24,6 @@ import {
   Zap,
   Star,
   Award,
-  Crown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,7 +81,7 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split("@")[0] || "Trader";
   };
 
-  const welcomeText = `Welcome to Imperial\n${getUserFullName()}`;
+  const welcomeText = `Welcome to Trade Imperial, ${getUserFullName()}`;
 
   return (
     <div className="relative min-h-screen">
@@ -95,11 +94,7 @@ export const DashboardHome: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-8">
             {/* Welcome Message with Typewriter Effect */}
             <div className="space-y-8">
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
-              </div>
-
-              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+          <h1 className="text-4xl lg:text-6xl font-bold text-white mb-8 flex items-center justify-center">
                 <TypewriterText
                   text={welcomeText}
                   speed={80}
@@ -117,7 +112,7 @@ export const DashboardHome: React.FC = () => {
             </div>
 
             {/* Large spacer to push content below viewport */}
-            <div className="pt-32"></div>
+            <div className="pt-16"></div>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ export interface TopProvider {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
-  userType: 'educator' | 'admin' | 'moderator';
+  userType: 'admin' | 'educator+' | 'educator' | 'moderator';
   totalPips: number;
   signalCount: number;
   winRate: number;
@@ -18,7 +18,7 @@ interface ProviderStats {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
-  userType: 'educator' | 'admin' | 'moderator';
+  userType: 'admin' | 'educator+' | 'educator' | 'moderator';
   totalPips: number;
   signalCount: number;
   winningSignals: number;
@@ -47,29 +47,50 @@ export const useTopSignalProviders = () => {
       const educatorIds = [...new Set(signals.map(s => s.user_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, user_type, access_level, role')
+        .select('id, display_name, avatar_url')
         .in('id', educatorIds);
 
       if (profilesError) throw profilesError;
       if (!profiles) return [];
 
+      // Fetch user roles from user_roles table (secure)
+      const { data: userRolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', educatorIds);
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of userId -> highest priority role
+      const userRolesMap = new Map<string, 'admin' | 'educator+' | 'educator' | 'moderator'>();
+      userRolesData?.forEach(ur => {
+        const currentRole = userRolesMap.get(ur.user_id);
+        // Priority: admin > educator+ > moderator > educator
+        if (!currentRole || 
+            (ur.role === 'admin') ||
+            (ur.role === 'educator+' && currentRole !== 'admin') ||
+            (ur.role === 'moderator' && !['admin', 'educator+'].includes(currentRole)) ||
+            (ur.role === 'educator' && !['admin', 'educator+', 'moderator'].includes(currentRole))) {
+          userRolesMap.set(ur.user_id, ur.role as 'admin' | 'educator+' | 'educator' | 'moderator');
+        }
+      });
+
       // Calculate stats for each provider
       const providerStats = new Map<string, ProviderStats>();
 
       profiles.forEach(profile => {
-        // Only include educators, admins, and moderators
-        const userType = profile.access_level === 'admin' ? 'admin' 
-          : profile.access_level === 'moderator' ? 'moderator'
-          : profile.user_type === 'educator' ? 'educator'
-          : null;
-
-        if (!userType) return;
+        const role = userRolesMap.get(profile.id);
+        
+        // Only include users with signal creation privileges
+        if (!role || !['admin', 'educator+', 'educator', 'moderator'].includes(role)) {
+          return;
+        }
 
         providerStats.set(profile.id, {
           userId: profile.id,
           displayName: profile.display_name || 'Unknown Educator',
           avatarUrl: profile.avatar_url,
-          userType,
+          userType: role,
           totalPips: 0,
           signalCount: 0,
           winningSignals: 0

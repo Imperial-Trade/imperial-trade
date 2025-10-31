@@ -6,7 +6,7 @@ import { Shield, Star, Users } from 'lucide-react';
 interface ProviderAvatarProps {
   avatarUrl?: string;
   displayName: string;
-  userType?: 'educator' | 'admin' | 'moderator' | 'member';
+  userType?: 'educator' | 'educator+' | 'admin' | 'moderator' | 'member';
   size?: 'sm' | 'md' | 'lg';
   showBadge?: boolean;
 }
@@ -26,6 +26,7 @@ export const ProviderAvatar: React.FC<ProviderAvatarProps> = ({
 
   const badgeIcons = {
     admin: <Shield className="h-3 w-3" />,
+    'educator+': <Star className="h-3 w-3" />,
     educator: <Star className="h-3 w-3" />,
     moderator: <Users className="h-3 w-3" />,
     member: null
@@ -33,6 +34,7 @@ export const ProviderAvatar: React.FC<ProviderAvatarProps> = ({
 
   const badgeColors = {
     admin: 'bg-red-500',
+    'educator+': 'bg-amber-500',
     educator: 'bg-blue-500',
     moderator: 'bg-purple-500',
     member: 'bg-gray-500'

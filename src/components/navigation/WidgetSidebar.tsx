@@ -308,59 +308,106 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
     const getRankGradient = (rank: 1 | 2 | 3) => {
       switch (rank) {
-        case 1: return "from-yellow-400 to-amber-600";
-        case 2: return "from-gray-300 to-zinc-400";
-        case 3: return "from-orange-600 to-amber-800";
+        case 1: return "from-yellow-400 via-yellow-500 to-amber-600";
+        case 2: return "from-gray-300 via-gray-400 to-zinc-500";
+        case 3: return "from-orange-500 via-orange-600 to-amber-700";
       }
     };
 
     const getRankGlow = (rank: 1 | 2 | 3) => {
       switch (rank) {
         case 1: return "shadow-lg shadow-yellow-500/30";
-        case 2: return "shadow-lg shadow-gray-400/20";
-        case 3: return "shadow-lg shadow-orange-500/20";
+        case 2: return "shadow-md shadow-gray-400/20";
+        case 3: return "shadow-md shadow-orange-500/20";
       }
     };
+
+    const getRankBorder = (rank: 1 | 2 | 3) => {
+      switch (rank) {
+        case 1: return "border-yellow-500/40";
+        case 2: return "border-gray-400/40";
+        case 3: return "border-orange-500/40";
+      }
+    };
+
+    const formatRoleDisplay = (userType: string) => {
+      switch (userType) {
+        case 'educator+': return 'EDUCATOR+';
+        case 'educator': return 'EDUCATOR';
+        case 'admin': return 'ADMIN';
+        case 'moderator': return 'MODERATOR';
+        default: return userType.toUpperCase();
+      }
+    };
+
+    // Determine if this is the #1 card (full width) or #2/#3 (compact)
+    const isFullWidth = rank === 1;
+
+    // Size classes based on rank
+    const avatarSize = isFullWidth ? "w-10 h-10" : "w-8 h-8";
+    const nameSize = isFullWidth ? "text-sm" : "text-xs";
+    const pipsSize = isFullWidth ? "text-xl" : "text-base";
+    const pipsSuffix = isFullWidth ? "text-xs" : "text-[10px]";
+    const signalSize = isFullWidth ? "text-xs" : "text-[10px]";
+    const emojiSize = isFullWidth ? "text-2xl" : "text-xl";
+    const rankNumSize = isFullWidth ? "text-sm" : "text-xs";
+    const roleSize = isFullWidth ? "text-[10px]" : "text-[9px]";
+    const cardPadding = isFullWidth ? "p-3" : "p-2";
+    const spacing = isFullWidth ? "mb-2" : "mb-1.5";
 
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: rank * 0.1 }}
-        className={`bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-md rounded-xl p-3 border border-border ${getRankGlow(rank)} pointer-events-none`}
+        className={`
+          bg-black/50 backdrop-blur-md rounded-xl 
+          ${cardPadding}
+          border ${getRankBorder(rank)}
+          ${getRankGlow(rank)} 
+          pointer-events-none
+          transition-all duration-300
+        `}
       >
-        <div className="flex items-center justify-between mb-2">
+        {/* Header: Rank Badge + Role Label */}
+        <div className={`flex items-center justify-between ${spacing}`}>
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{getRankEmoji(rank)}</span>
-            <span className={`text-xs font-bold bg-gradient-to-r ${getRankGradient(rank)} bg-clip-text text-transparent`}>
+            <span className={emojiSize}>{getRankEmoji(rank)}</span>
+            <span className={`${rankNumSize} font-bold bg-gradient-to-r ${getRankGradient(rank)} bg-clip-text text-transparent`}>
               #{rank}
             </span>
           </div>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-            {provider.userType}
+          <span className={`${roleSize} text-gray-400 uppercase tracking-wider font-semibold`}>
+            {formatRoleDisplay(provider.userType)}
           </span>
         </div>
         
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+        {/* Avatar + Name */}
+        <div className={`flex items-center gap-2 ${spacing}`}>
+          <div className={`${avatarSize} rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0`}>
             {provider.avatarUrl ? (
-              <img src={provider.avatarUrl} alt={provider.displayName} className="w-full h-full object-cover" />
+              <img 
+                src={provider.avatarUrl} 
+                alt={provider.displayName} 
+                className="w-full h-full object-cover" 
+              />
             ) : (
-              <User className="w-4 h-4 text-primary" />
+              <User className={`${isFullWidth ? 'w-5 h-5' : 'w-4 h-4'} text-primary`} />
             )}
           </div>
-          <span className="text-sm font-semibold text-foreground truncate">
+          <span className={`${nameSize} font-semibold text-white truncate`}>
             {provider.displayName}
           </span>
         </div>
         
+        {/* Pips + Signal Count */}
         <div className="flex items-center justify-between">
-          <div className={`text-lg font-bold ${provider.totalPips >= 0 ? 'text-green-500' : 'text-red-500'} flex items-center gap-1`}>
+          <div className={`${pipsSize} font-bold ${provider.totalPips >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-1`}>
             {provider.totalPips >= 0 ? '+' : ''}{provider.totalPips.toFixed(1)}
-            <span className="text-xs text-muted-foreground">pips</span>
-            {provider.totalPips >= 0 && <span className="text-sm">🟢</span>}
+            <span className={`${pipsSuffix} text-gray-400 font-normal`}>pips</span>
+            {provider.totalPips >= 0 && <span className={isFullWidth ? 'text-sm' : 'text-xs'}>🟢</span>}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className={`${signalSize} text-gray-400`}>
             {provider.signalCount} {provider.signalCount === 1 ? 'signal' : 'signals'}
           </div>
         </div>

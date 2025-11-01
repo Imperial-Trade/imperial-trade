@@ -143,7 +143,7 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-2 sm:mb-4 flex items-center justify-center">
+      }} className="mb-4 sm:mb-6 lg:mb-8 flex items-center justify-center">
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}

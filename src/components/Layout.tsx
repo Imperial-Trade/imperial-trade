@@ -5,7 +5,6 @@ import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
 import { AdminArsenalSidebar } from "@/components/navigation/AdminArsenalSidebar";
 import { Outlet, useLocation } from "react-router-dom";
 import AppBar from "@/components/layout/AppBar";
-import DashboardNav from "@/components/dashboard/DashboardNav";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile";
@@ -65,10 +64,7 @@ export default function Layout({
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
-        {/* Desktop Top Navigation Bar */}
-        <ErrorBoundary componentName="Dashboard Navigation">
-          <DashboardNav />
-        </ErrorBoundary>
+        {/* Header removed */}
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && <ErrorBoundary componentName="Mobile Sidebar">
@@ -81,7 +77,7 @@ export default function Layout({
         </ErrorBoundary>
 
         {/* Main content - centered, no left margin */}
-        <main className="w-full min-h-screen lg:pt-16 bg-background border-l border-border/10">
+        <main className="w-full min-h-screen lg:pt-20 bg-background border-l border-border/10">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

@@ -64,7 +64,7 @@ export function AuthenticatedHeader() {
                 variant="ghost"
                 className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
                   isActive 
-                    ? 'bg-primary/15 text-primary font-semibold' 
+                    ? 'bg-background/80 text-foreground' 
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
                 }`}
               >
@@ -74,7 +74,7 @@ export function AuthenticatedHeader() {
             );
 
             return item.external ? (
-              <a key={item.to} href={item.to}>
+              <a key={item.to} href={item.to} target="_blank" rel="noopener noreferrer">
                 {ButtonComponent}
               </a>
             ) : (

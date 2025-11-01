@@ -1873,10 +1873,10 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      <div className="min-h-screen relative overflow-hidden bg-black">
+      <div className="min-h-screen relative overflow-hidden bg-black z-40">
         
         {/* Content wrapper with z-index */}
-        <div className="relative z-10">
+        <div className="relative z-50">
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}

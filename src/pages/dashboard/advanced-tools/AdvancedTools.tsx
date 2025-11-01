@@ -178,7 +178,7 @@ export default function AdvancedTools() {
         >
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && (
-            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
+            <div className="bg-background border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center gap-4">
                 {/* Active Tool Info - Desktop only */}

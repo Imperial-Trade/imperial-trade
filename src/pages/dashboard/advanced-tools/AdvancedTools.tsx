@@ -145,10 +145,10 @@ export default function AdvancedTools() {
         <span>Hover near the left edge to reveal the educational toolkit</span>
       </div>
     </motion.div>;
-  return <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-transparent relative">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pb-20 md:pb-6 bg-background">
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pb-20 md:pb-6 bg-transparent">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,

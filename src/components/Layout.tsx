@@ -5,7 +5,7 @@ import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
 import { AdminArsenalSidebar } from "@/components/navigation/AdminArsenalSidebar";
 import { Outlet, useLocation } from "react-router-dom";
 import AppBar from "@/components/layout/AppBar";
-import DashboardNav from "@/components/dashboard/DashboardNav";
+import AuthenticatedAppBar from "@/components/dashboard/AuthenticatedAppBar";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile";
@@ -65,9 +65,9 @@ export default function Layout({
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
-        {/* Desktop Top Navigation Bar */}
-        <ErrorBoundary componentName="Dashboard Navigation">
-          <DashboardNav />
+        {/* Authenticated Apple-style Navigation Bar */}
+        <ErrorBoundary componentName="Authenticated Navigation">
+          <AuthenticatedAppBar />
         </ErrorBoundary>
 
         {/* Mobile: Use existing Sheet-based sidebar */}

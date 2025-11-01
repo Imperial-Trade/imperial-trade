@@ -13,6 +13,7 @@ import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
+import { MobileBottomNav } from "@/components/advanced-tools/MobileBottomNav";
 const coreTools = [{
   name: "Educational Journal",
   icon: BookOpen,
@@ -125,8 +126,8 @@ export default function AdvancedTools() {
     </motion.div>;
   return <div className="min-h-screen bg-background">
 
-      {/* Main Content Area - Responsive Width */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 bg-background">
+      {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pb-20 md:pb-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,
@@ -175,17 +176,21 @@ export default function AdvancedTools() {
                 </div>
               </div>
 
-              {/* Mobile Layout - Swipe Carousel */}
-              <div className="sm:hidden">
-                <Carousel opts={{
-              align: "center",
-              loop: true,
-              dragFree: true
-            }} className="w-full max-w-sm mx-auto">
-                  <CarouselContent className="-ml-2">
-                    {[...coreTools, ...aiTools].map((tool, index) => {})}
-                  </CarouselContent>
-                </Carousel>
+              {/* Mobile: Only show active tool info */}
+              <div className="sm:hidden flex items-center gap-3 p-2">
+                <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+                  {React.createElement(activeTool.icon, {
+                    className: "w-4 h-4 text-primary"
+                  })}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-semibold text-sm text-foreground tracking-tight truncate">
+                    {activeTool.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {activeTool.description}
+                  </p>
+                </div>
               </div>
             </div>}
         </motion.div>
@@ -206,5 +211,14 @@ export default function AdvancedTools() {
           </Card>
         </div>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav 
+        activeTool={activeTool}
+        onToolChange={(toolName) => {
+          const tool = [...coreTools, ...aiTools].find(t => t.name === toolName);
+          if (tool) setActiveTool(tool);
+        }}
+      />
     </div>;
 }

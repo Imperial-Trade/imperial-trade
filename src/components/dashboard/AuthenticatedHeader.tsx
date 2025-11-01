@@ -46,7 +46,7 @@ export function AuthenticatedHeader() {
   ];
 
   return (
-    <header className="hidden lg:flex fixed top-0 left-0 right-0 z-[100] h-20 items-center justify-center px-6 nav-glass-effect border-b">
+    <header className="hidden lg:flex fixed top-0 left-0 right-0 z-[9999] h-20 items-center justify-center px-6 nav-glass-effect border-b">
       <div className="w-full max-w-7xl flex items-center justify-between">
         
         {/* Left: Logo */}

@@ -190,7 +190,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                 <span className="sr-only">Open navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 nav-glass-effect border-r">
+            <SheetContent side="left" className="w-52 nav-glass-effect border-r">
               <SheetHeader className="border-b border-border/50 pb-6">
                 <SheetTitle className="flex items-center gap-2 text-left">
                   <Crown className="h-6 w-6 text-primary" />

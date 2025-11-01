@@ -88,15 +88,13 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
   return (
     <>
       <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300`}>
-        {/* Logo - Fixed to leftmost position */}
-        {location.pathname !== '/dashboard/advanced-tools' && (
-          <div className="fixed top-4 left-6 z-60">
-            <Link to={`${baseUrl}/dashboard/home`} className="flex items-center gap-2">
-              <Crown className="h-6 w-6 text-primary" />
-              <span className="text-xl imperial-tech-font">IMPERIAL</span>
-            </Link>
-          </div>
-        )}
+      {/* Logo - Fixed to leftmost position */}
+      <div className="fixed top-16 left-6 z-60">
+        <Link to={`${baseUrl}/dashboard/home`} className="flex items-center gap-2">
+          <Crown className="h-6 w-6 text-primary" />
+          <span className="text-xl imperial-tech-font">IMPERIAL</span>
+        </Link>
+      </div>
 
         <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
           {/* Desktop Navigation */}
@@ -151,23 +149,22 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
             </Button>
           </div>
 
-          {/* Mobile Menu - Fixed to the far right edge */}
-          {location.pathname !== '/dashboard/advanced-tools' && (
-            <div className="fixed top-4 right-6 z-60 lg:hidden">
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
-                    <Menu className="h-6 w-6" />
-                    <span className="sr-only">Open navigation menu</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-80 nav-glass-effect border-r">
-                  <SheetHeader className="border-b border-border/50 pb-6">
-                    <SheetTitle className="flex items-center gap-2 text-left">
-                      <Crown className="h-6 w-6 text-primary" />
-                      <span className="text-xl imperial-tech-font">IMPERIAL</span>
-                    </SheetTitle>
-                  </SheetHeader>
+        {/* Mobile Menu - Fixed to the far right edge */}
+        <div className="fixed top-16 right-6 z-60 lg:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 nav-glass-effect border-r">
+              <SheetHeader className="border-b border-border/50 pb-6">
+                <SheetTitle className="flex items-center gap-2 text-left">
+                  <Crown className="h-6 w-6 text-primary" />
+                  <span className="text-xl imperial-tech-font">IMPERIAL</span>
+                </SheetTitle>
+              </SheetHeader>
 
                   <nav className="flex flex-col gap-2 mt-8">
                     {navigationItems.map(item => {
@@ -231,9 +228,8 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                 </SheetContent>
               </Sheet>
             </div>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
 
       <style>{`
         /* Imperial Tech Font Styles */

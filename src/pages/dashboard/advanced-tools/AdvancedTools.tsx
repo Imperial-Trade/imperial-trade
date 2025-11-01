@@ -168,7 +168,7 @@ export default function AdvancedTools() {
     <div className="min-h-screen bg-background">
 
       {/* Main Content Area - Responsive Width */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 bg-background">
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

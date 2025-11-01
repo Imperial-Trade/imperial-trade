@@ -39,50 +39,37 @@ const AuthenticatedAppBar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const navigationItems = [
     {
       to: "/dashboard/advanced-tools",
       icon: TrendingUp,
       label: "Advanced Tools",
-      description: "Advanced trading tools and analytics",
-      features: ["Risk Calculator", "Portfolio Analysis", "Market Scanner"],
     },
     {
       to: "/dashboard/signal-stream",
       icon: Bell,
       label: "Signals",
-      description: "Real-time trading signals and alerts",
-      features: ["Live Alerts", "Custom Indicators", "Signal History"],
     },
     {
       to: "/dashboard/education",
       icon: GraduationCap,
       label: "Education",
-      description: "Comprehensive trading education platform",
-      features: ["Video Courses", "Live Webinars", "Trading Guides"],
     },
     {
       to: "/dashboard/live",
       icon: Video,
       label: "Live Sessions",
-      description: "Interactive live trading sessions",
-      features: ["Market Analysis", "Live Q&A", "Trading Psychology"],
     },
     {
       to: "/dashboard/community",
       icon: Users,
       label: "Community",
-      description: "Connect with fellow traders",
-      features: ["Discussions", "Strategy Sharing", "Expert Advice"],
     },
     {
       to: "/dashboard/ib-partnership",
       icon: Handshake,
       label: "IB Partnership",
-      description: "Institutional broker partnerships",
-      features: ["Revenue Share", "White Label", "API Access"],
     },
   ];
 
@@ -116,57 +103,18 @@ const AuthenticatedAppBar: React.FC = () => {
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
-        {/* Desktop Navigation - Compact with dropdowns */}
+        {/* Desktop Navigation - Compact pills */}
         <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
           {navigationItems.map((item) => (
-            <div
-              key={item.to}
-              className="relative"
-              onMouseEnter={() => setActiveDropdown(item.label)}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <Link to={item.to}>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
-              </Link>
-
-              {/* Apple/Stripe style dropdown */}
-              {activeDropdown === item.label && (
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 nav-glass-effect rounded-2xl shadow-2xl p-6 animate-fade-in-up z-50">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-foreground mb-1">
-                        {item.label}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      {item.features.map((feature, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 text-sm text-muted-foreground"
-                        >
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                    <Link to={item.to}>
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                        Explore {item.label}
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+            <Link key={item.to} to={item.to}>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Button>
+            </Link>
           ))}
         </nav>
 
@@ -249,9 +197,6 @@ const AuthenticatedAppBar: React.FC = () => {
                         <span className="text-base font-medium block leading-tight">
                           {item.label}
                         </span>
-                        <span className="text-sm text-muted-foreground leading-tight">
-                          {item.description}
-                        </span>
                       </div>
                     </Link>
                   ))}
@@ -316,22 +261,6 @@ const AuthenticatedAppBar: React.FC = () => {
 
         /* Load Orbitron font */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
-        /* Dropdown animations */
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px) translateX(-50%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) translateX(-50%);
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fadeInUp 0.2s ease-out;
-        }
       `}</style>
     </header>
   );

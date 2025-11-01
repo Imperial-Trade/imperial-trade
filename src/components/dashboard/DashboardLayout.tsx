@@ -9,7 +9,7 @@ export const DashboardLayout: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   
   return (
-    <div className="min-h-screen bg-black">
+    <div className="h-screen overflow-hidden bg-black">
       {/* Top Navigation - Hidden during welcome animation */}
       {hasSeenWelcome && (
         <div className="animate-nav-cross-blur-in opacity-0">
@@ -19,7 +19,7 @@ export const DashboardLayout: React.FC = () => {
       
       {/* Main Content with Dynamic Top Padding */}
       <main 
-        className={`relative ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'}`}
+        className={`relative h-full overflow-hidden ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'}`}
       >
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />

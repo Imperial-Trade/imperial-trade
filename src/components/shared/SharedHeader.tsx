@@ -87,7 +87,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-background ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300`}>
       {/* Logo - Fixed to leftmost position */}
       <div className="fixed top-16 left-6 z-60">
         <Link to={`${baseUrl}/dashboard/home`} className="flex items-center gap-2">

@@ -1,16 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion } from 'framer-motion';
-import { Calendar, BarChart3, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { TradeJournalEntry } from '@/api/entities';
 import { compressImage } from '@/utils/imageUtils';
-import JournalFormCard from '@/components/trading/JournalFormCard';
-import JournalLogList from '@/components/trading/JournalLogList';
-import JournalAnalytics from '@/components/trading/JournalAnalytics';
 import { TradingJournalApp } from '@/components/tools/TradingJournalApp';
 import MobileTradingJournal from '@/components/tools/MobileTradingJournal';
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
@@ -21,7 +15,6 @@ import { normalizeTradeDate, mapDbRowToEntry } from '@/features/trade-journal/no
 const TradingJournal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('log');
   
   // Use shared journal context
   const { entries, isLoading, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
@@ -32,28 +25,6 @@ const TradingJournal: React.FC = () => {
   
   const { user } = useAuth();
   const { toast } = useToast();
-
-  // Listen for journal tab change events from hamburger menu
-  useEffect(() => {
-    const handleTabChange = (event: CustomEvent) => {
-      const { tab } = event.detail;
-      // Map hamburger menu items to journal tabs
-      const tabMap: Record<string, string> = {
-        'overview': 'log',
-        'analytics': 'analytics',
-        'calendar': 'log',
-        'ai': 'advanced',
-        'history': 'log'
-      };
-      const mappedTab = tabMap[tab] || 'log';
-      setActiveTab(mappedTab);
-    };
-
-    window.addEventListener('journal-tab-change', handleTabChange as EventListener);
-    return () => {
-      window.removeEventListener('journal-tab-change', handleTabChange as EventListener);
-    };
-  }, []);
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -269,29 +240,6 @@ const TradingJournal: React.FC = () => {
     loadUserProfile();
   }, [loadUserProfile]);
 
-  const LogTab = useMemo(() => 
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      className="space-y-6"
-    >
-      <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-      <JournalLogList entries={entries as any} isLoading={isLoading} onDelete={handleDelete} />
-    </motion.div>, 
-    [handleSubmit, isSubmitting, entries, isLoading, handleDelete]
-  );
-  
-  const AnalyticsTab = useMemo(() => 
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      className="space-y-6"
-    >
-      <JournalAnalytics entries={entries as any} />
-    </motion.div>, 
-    [entries]
-  );
-
   // Mobile/Tablet optimized view
   if (isMobile || isTablet) {
     return (
@@ -306,46 +254,13 @@ const TradingJournal: React.FC = () => {
     );
   }
 
-  // Desktop view
+  // Desktop view - Direct render of Advanced Educational Journal
   return (
-    <div className={`min-h-screen p-2 sm:p-4 lg:p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
-      <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-2 sm:px-4' : 'max-w-6xl'}`}>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-6">
-          <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
-            <TabsTrigger value="log" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Educational</span> Log
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
-              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Educational</span> Analytics
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className={`font-semibold truncate ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
-                <span className="hidden sm:inline">Advanced Educational</span> Journal
-              </span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="log" className="mt-6 relative z-10">
-            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
-              {LogTab}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="mt-6 relative z-10">
-            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
-              {AnalyticsTab}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="advanced" className="mt-6 relative z-10">
-            <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
-              <TradingJournalApp />
-            </div>
-          </TabsContent>
-        </Tabs>
+    <div className="min-h-screen p-2 sm:p-4 lg:p-6 bg-transparent">
+      <div className="mx-auto max-w-full px-2 sm:px-4">
+        <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
+          <TradingJournalApp />
+        </div>
       </div>
     </div>
   );

@@ -90,9 +90,8 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
     {
       to: getAcademyAppUrl(),
       icon: GraduationCap,
-      label: "Education", 
-      description: "Comprehensive trading education platform",
-      external: true
+      label: "Education",
+      description: "Comprehensive trading education platform"
     },
     {
       to: `${baseUrl}/dashboard/live`,
@@ -104,8 +103,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       to: getOrderFlowAppUrl(),
       icon: Users,
       label: "Community",
-      description: "Connect with fellow traders",
-      external: true
+      description: "Connect with fellow traders"
     },
     {
       to: `${baseUrl}/dashboard/advanced-tools`,
@@ -135,11 +133,11 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;
               const ButtonComponent = (
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-primary/10 text-primary border border-primary/20' 
+                    isActive
+                      ? 'bg-primary/10 text-primary border border-primary/20'
                       : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
                   }`}
                 >
@@ -148,11 +146,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                 </Button>
               );
 
-              return item.external ? (
-                <a key={item.to} href={item.to}>
-                  {ButtonComponent}
-                </a>
-              ) : (
+              return (
                 <Link key={item.to} to={item.to}>
                   {ButtonComponent}
                 </Link>
@@ -231,30 +225,20 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                           </>
                         );
                         const linkClassName = `flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
-                          isActive 
-                            ? 'bg-primary/10 border-primary/20 text-primary' 
+                          isActive
+                            ? 'bg-primary/10 border-primary/20 text-primary'
                             : 'hover:bg-primary/10 text-foreground border-border/50'
                         }`;
 
                         return (
                           <div key={item.to} className="space-y-2">
-                            {item.external ? (
-                              <a 
-                                href={item.to} 
-                                onClick={closeMobileMenu} 
-                                className={linkClassName}
-                              >
-                                {linkContent}
-                              </a>
-                            ) : (
-                              <Link 
-                                to={item.to} 
-                                onClick={closeMobileMenu} 
-                                className={linkClassName}
-                              >
-                                {linkContent}
-                              </Link>
-                            )}
+                            <Link
+                              to={item.to}
+                              onClick={closeMobileMenu}
+                              className={linkClassName}
+                            >
+                              {linkContent}
+                            </Link>
                           </div>
                         );
                       })

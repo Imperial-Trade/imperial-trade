@@ -55,14 +55,12 @@ const tradingTools = [{
   name: "Education",
   icon: GraduationCap,
   description: "Courses, videos and learning pathways.",
-  route: getAcademyAppUrl(),
-  external: true
+  route: getAcademyAppUrl()
 }, {
   name: "Community",
   icon: MessageSquare,
   description: "Forum, discussions and networking.",
-  route: getOrderFlowAppUrl(),
-  external: true
+  route: getOrderFlowAppUrl()
 }, {
   name: "Tools",
   icon: Target,
@@ -253,12 +251,7 @@ export function WidgetSidebar({
   }, [edgeThreshold, canTriggerSidebar, isVisible, isHovering, isDragging, showEdgeIndicator, isMobile, isTouchDevice, handleCloseSidebar]);
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
-    
-    if (tool.external) {
-      window.location.href = tool.route;
-    } else {
-      navigate(tool.route);
-    }
+    navigate(tool.route);
   };
 
   // Enhanced drag handlers with device-specific optimizations

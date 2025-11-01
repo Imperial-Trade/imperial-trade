@@ -29,12 +29,12 @@ const DashboardNav: React.FC = () => {
   const primaryNavItems = [
     { to: "/dashboard/home", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
-    { to: getAcademyAppUrl(), icon: GraduationCap, label: "Education", external: true },
+    { to: getAcademyAppUrl(), icon: GraduationCap, label: "Education" },
   ];
 
   const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
-    { to: getOrderFlowAppUrl(), icon: MessageSquare, label: "Community", external: true },
+    { to: getOrderFlowAppUrl(), icon: MessageSquare, label: "Community" },
     { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];

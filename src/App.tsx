@@ -75,6 +75,8 @@ import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
 import PriceTestingPage from "@/pages/dashboard/dev-tests/PriceTestingPage";
+import OrderFlow from "@/pages/dashboard/orderflow/OrderFlow";
+import Academy from "@/pages/dashboard/academy/Academy";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -224,6 +226,8 @@ function App() {
                             path="signal-stream"
                             element={<SignalStreamOptimized />}
                           />
+                          <Route path="orderflow" element={<OrderFlow />} />
+                          <Route path="academy" element={<Academy />} />
                   <Route
                     path="new-signal"
                     element={

@@ -29,7 +29,6 @@ const AuthenticatedAppBar: React.FC = () => {
       to: getAcademyAppUrl(),
       icon: GraduationCap,
       label: "Education",
-      external: true,
     },
     {
       to: "/dashboard/live",
@@ -40,7 +39,6 @@ const AuthenticatedAppBar: React.FC = () => {
       to: getOrderFlowAppUrl(),
       icon: Users,
       label: "Community",
-      external: true,
     },
     {
       to: "/dashboard/advanced-tools",

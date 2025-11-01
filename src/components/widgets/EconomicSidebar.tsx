@@ -41,7 +41,6 @@ export default function EconomicSidebar({
     bgColor: 'bg-purple-50/80 dark:bg-purple-950/20',
     iconBgColor: 'bg-purple-100 dark:bg-purple-900/30',
     path: getAcademyAppUrl(),
-    external: true,
     delay: 0.15
   }, {
     id: 'community',
@@ -50,7 +49,6 @@ export default function EconomicSidebar({
     bgColor: 'bg-green-50/80 dark:bg-green-950/20',
     iconBgColor: 'bg-green-100 dark:bg-green-900/30',
     path: getOrderFlowAppUrl(),
-    external: true,
     delay: 0.3
   }, {
     id: 'tools',

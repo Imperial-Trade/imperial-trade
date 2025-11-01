@@ -86,16 +86,8 @@ const DashboardNav: React.FC = () => {
     <header 
       className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 ${
         isHeaderCollapsed ? 'h-12' : 'h-16'
-      } items-center justify-center px-6 transition-all duration-300 ${
-        scrolled 
-          ? 'backdrop-blur-xl border-b border-border/50 bg-background/60 shadow-lg' 
-          : 'backdrop-blur-md bg-background/40'
-      }`}
+      } items-center justify-center px-6 transition-all duration-300 border-b border-border/20`}
     >
-      {/* Gradient overlay that becomes more visible on scroll */}
-      <div className={`absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 transition-opacity duration-300 ${
-        scrolled ? 'opacity-100' : 'opacity-40'
-      }`}></div>
       
       <div className="w-full max-w-7xl flex items-center justify-between relative">
         {/* Logo */}

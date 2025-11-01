@@ -1902,8 +1902,7 @@ export default function SignalStream() {
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
+        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div className="min-w-0 flex-1">
                 
@@ -1977,7 +1976,6 @@ export default function SignalStream() {
                   </>}
               </div>
             </div>
-          </div>
         </div>
 
 

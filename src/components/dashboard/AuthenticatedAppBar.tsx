@@ -120,9 +120,18 @@ const AuthenticatedAppBar: React.FC = () => {
             );
 
             return item.external ? (
-              <a key={item.to} href={item.to} target="_blank" rel="noopener noreferrer">
-                {ButtonComponent}
-              </a>
+              <Button
+                key={item.to}
+                variant="ghost"
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
+                  isActive && "bg-primary/15 text-primary"
+                )}
+                onClick={() => window.location.href = item.to}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Button>
             ) : (
               <Link key={item.to} to={item.to}>
                 {ButtonComponent}
@@ -210,17 +219,17 @@ const AuthenticatedAppBar: React.FC = () => {
                     );
 
                     return item.external ? (
-                      <a
+                      <button
                         key={item.to}
-                        href={item.to}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={closeMobileMenu}
+                        onClick={() => {
+                          window.location.href = item.to;
+                          closeMobileMenu();
+                        }}
                         className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
                         aria-label={`Navigate to ${item.label}`}
                       >
                         {NavContent}
-                      </a>
+                      </button>
                     ) : (
                       <Link
                         key={item.to}

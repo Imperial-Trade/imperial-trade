@@ -64,9 +64,7 @@ export default function Layout({
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
-        <ErrorBoundary componentName="Header">
-          
-        </ErrorBoundary>
+        {/* Header removed */}
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && <ErrorBoundary componentName="Mobile Sidebar">

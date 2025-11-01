@@ -1,20 +1,23 @@
-import React from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/AppSidebar"
-import { WidgetSidebar } from "@/components/navigation/WidgetSidebar"
-import { AdminArsenalSidebar } from "@/components/navigation/AdminArsenalSidebar"
-import { Outlet, useLocation } from "react-router-dom"
-import AppBar from "@/components/layout/AppBar"
-import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
-import { useSidebar } from "@/components/ui/sidebar"
-import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
-import { SharedHeader } from "@/components/shared/SharedHeader"
-import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
+import React from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
+import { AdminArsenalSidebar } from "@/components/navigation/AdminArsenalSidebar";
+import { Outlet, useLocation } from "react-router-dom";
+import AppBar from "@/components/layout/AppBar";
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
+import { useSidebar } from "@/components/ui/sidebar";
+import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile";
+import { SharedHeader } from "@/components/shared/SharedHeader";
+import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
 
 // DashboardHeader replaced with SharedHeader component
 
 function SidebarOverlay() {
-  const { openMobile, setOpenMobile } = useSidebar();
+  const {
+    openMobile,
+    setOpenMobile
+  } = useSidebar();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const isDesktop = useIsDesktop();
@@ -24,35 +27,29 @@ function SidebarOverlay() {
 
   // For tablet and desktop, show custom overlay when open
   if (!openMobile) return null;
-
-  return (
-    <>
+  return <>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
-        onClick={() => setOpenMobile(false)}
-      />
+      <div className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm" onClick={() => setOpenMobile(false)} />
       {/* Sidebar Content */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
-        isTablet ? 'w-72' : 'w-64'
-      }`}>
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${isTablet ? 'w-72' : 'w-64'}`}>
         <div className="h-[100vh] max-h-[100vh] bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
           <AppSidebar />
         </div>
       </div>
-    </>
-  );
+    </>;
 }
-
-export default function Layout({ children }: { children: React.ReactNode }) {
-  const location = useLocation()
-  const isHomePage = location.pathname === '/'
-  const isMobile = useIsMobile()
+export default function Layout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  const isMobile = useIsMobile();
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
-    return (
-      <div className="min-h-screen bg-background">
+    return <div className="min-h-screen bg-background">
         <ErrorBoundary componentName="AppBar">
           <AppBar />
         </ErrorBoundary>
@@ -61,24 +58,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {children}
           </ErrorBoundary>
         </main>
-      </div>
-    )
+      </div>;
   }
 
   // For dashboard pages, use sidebar layout
-  return (
-    <SidebarProvider defaultOpen={false}>
+  return <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
         <ErrorBoundary componentName="Header">
-          <SharedHeader />
+          
         </ErrorBoundary>
 
         {/* Mobile: Use existing Sheet-based sidebar */}
-        {isMobile && (
-          <ErrorBoundary componentName="Mobile Sidebar">
+        {isMobile && <ErrorBoundary componentName="Mobile Sidebar">
             <AppSidebar />
-          </ErrorBoundary>
-        )}
+          </ErrorBoundary>}
 
         {/* Tablet & Desktop: Use custom overlay sidebar */}
         <ErrorBoundary componentName="Sidebar Overlay">
@@ -98,15 +91,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </ErrorBoundary>
         
         {/* Admin Arsenal Sidebar - Right side - Only on Admin Tools page */}
-        {location.pathname === '/dashboard/admin-tools' && (
-          <ErrorBoundary componentName="Admin Arsenal Sidebar">
+        {location.pathname === '/dashboard/admin-tools' && <ErrorBoundary componentName="Admin Arsenal Sidebar">
             <AdminArsenalSidebar />
-          </ErrorBoundary>
-        )}
+          </ErrorBoundary>}
         
         {/* Compliance Footer */}
         <ComplianceFooter />
       </div>
-    </SidebarProvider>
-  )
+    </SidebarProvider>;
 }

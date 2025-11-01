@@ -32,6 +32,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
 import { supabase } from "@/integrations/supabase/client";
+import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
+import { cn } from "@/lib/utils";
 
 const AuthenticatedAppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -42,34 +44,31 @@ const AuthenticatedAppBar: React.FC = () => {
 
   const navigationItems = [
     {
-      to: "/dashboard/advanced-tools",
-      icon: TrendingUp,
-      label: "Advanced Tools",
-    },
-    {
       to: "/dashboard/signal-stream",
       icon: Bell,
-      label: "Signals",
+      label: "Pattern Stream",
     },
     {
-      to: "/dashboard/education",
+      to: getAcademyAppUrl(),
       icon: GraduationCap,
       label: "Education",
+      external: true,
     },
     {
       to: "/dashboard/live",
       icon: Video,
-      label: "Live Sessions",
+      label: "Live Session",
     },
     {
-      to: "/dashboard/community",
+      to: getOrderFlowAppUrl(),
       icon: Users,
       label: "Community",
+      external: true,
     },
     {
-      to: "/dashboard/ib-partnership",
-      icon: Handshake,
-      label: "IB Partnership",
+      to: "/dashboard/advanced-tools",
+      icon: TrendingUp,
+      label: "Tools",
     },
   ];
 
@@ -105,17 +104,31 @@ const AuthenticatedAppBar: React.FC = () => {
 
         {/* Desktop Navigation - Compact pills */}
         <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
-          {navigationItems.map((item) => (
-            <Link key={item.to} to={item.to}>
+          {navigationItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            const ButtonComponent = (
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
+                className={cn(
+                  "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
+                  isActive && "bg-primary/15 text-primary"
+                )}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
               </Button>
-            </Link>
-          ))}
+            );
+
+            return item.external ? (
+              <a key={item.to} href={item.to} target="_blank" rel="noopener noreferrer">
+                {ButtonComponent}
+              </a>
+            ) : (
+              <Link key={item.to} to={item.to}>
+                {ButtonComponent}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Desktop User Menu & Theme Toggle */}
@@ -184,22 +197,42 @@ const AuthenticatedAppBar: React.FC = () => {
                   <h3 className="text-sm font-semibold text-muted-foreground px-2">
                     Platform Features
                   </h3>
-                  {navigationItems.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={closeMobileMenu}
-                      className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
-                      aria-label={`Navigate to ${item.label}`}
-                    >
-                      <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
-                      <div className="flex-1 text-left">
-                        <span className="text-base font-medium block leading-tight">
-                          {item.label}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+                  {navigationItems.map((item) => {
+                    const NavContent = (
+                      <>
+                        <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
+                        <div className="flex-1 text-left">
+                          <span className="text-base font-medium block leading-tight">
+                            {item.label}
+                          </span>
+                        </div>
+                      </>
+                    );
+
+                    return item.external ? (
+                      <a
+                        key={item.to}
+                        href={item.to}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                        aria-label={`Navigate to ${item.label}`}
+                      >
+                        {NavContent}
+                      </a>
+                    ) : (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                        aria-label={`Navigate to ${item.label}`}
+                      >
+                        {NavContent}
+                      </Link>
+                    );
+                  })}
                 </div>
 
                 {/* User Info Section */}

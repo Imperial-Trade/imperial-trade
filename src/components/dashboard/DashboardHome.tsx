@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
 import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
+import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl, getAcademyAppUrl } from "@/utils/environment";
@@ -63,6 +64,9 @@ export const DashboardHome: React.FC = () => {
   };
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
   return <div className="relative h-screen overflow-hidden">
+      {/* Animated Background */}
+      <AnimatedLinesBackground />
+
       {/* Single Page Layout - No Scrolling */}
       <div className="relative z-20 h-screen flex items-center justify-center px-6">
         <div className="container mx-auto max-w-5xl">

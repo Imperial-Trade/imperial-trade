@@ -4,13 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut } from "lucide-react";
+import { BookOpen, Calculator, Brain, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
 import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
-import OpportunityScanner from "@/components/ai/OpportunityScanner";
-import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 import { MobileBottomNav } from "@/components/advanced-tools/MobileBottomNav";
@@ -30,22 +27,7 @@ const coreTools = [{
   component: MeccaAnalysisHub,
   description: "Premium AI-powered trading analysis hub with advanced visual insights and performance tracking."
 }];
-const aiTools = [{
-  name: "Economic Calendar",
-  icon: Calendar,
-  component: OptimizedEconomicCalendar,
-  description: "Stay informed about market-moving events for educational analysis."
-}, {
-  name: "Educational Pattern Scanner",
-  icon: Search,
-  component: OpportunityScanner,
-  description: "Scan markets for educational pattern recognition and learning opportunities."
-}, {
-  name: "Educational Risk Calculator",
-  icon: Scale,
-  component: RiskSimulator,
-  description: "Analyze hypothetical setups to learn risk assessment principles."
-}];
+const aiTools = [];
 const navButtons = [{
   name: "Pattern Learning",
   icon: Bell,
@@ -81,11 +63,8 @@ export default function AdvancedTools() {
     const toolParam = params.get("tool");
     const toolMap = {
       journal: "Educational Journal",
-      calendar: "Economic Calendar",
       calculator: "Educational Calculator",
-      analyst: "Setup Learning Analyzer",
-      scanner: "Educational Pattern Scanner",
-      simulator: "Educational Risk Calculator"
+      analyst: "Setup Learning Analyzer"
     };
     const toolName = toolMap[toolParam];
     return allTools.find(tool => tool.name === toolName) || null;
@@ -203,11 +182,8 @@ export default function AdvancedTools() {
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>
                   <TradingJournal />
                 </TradeJournalProvider>}
-              {activeTool?.name === "Economic Calendar" && <OptimizedEconomicCalendar />}
               {activeTool?.name === "Educational Calculator" && <RiskCalculator />}
               {activeTool?.name === "MECCA" && <MeccaAnalysisHub />}
-              {activeTool?.name === "Educational Pattern Scanner" && <OpportunityScanner />}
-              {activeTool?.name === "Educational Risk Calculator" && <RiskSimulator />}
             </div>
           </Card>
         </div>

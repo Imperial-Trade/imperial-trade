@@ -11,6 +11,8 @@ import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl, getAcademyAppUrl } from "@/utils/environment";
+import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
+
 export const DashboardHome: React.FC = () => {
   const {
     user
@@ -63,6 +65,9 @@ export const DashboardHome: React.FC = () => {
   };
   const welcomeText = `Welcome to Trade Imperial\n${getUserFullName()}`;
   return <div className="relative h-screen overflow-hidden bg-black">
+      {/* Animated Background with Video & Glassmorphism */}
+      <AnimatedLinesBackground />
+      
       {/* Single Page Layout - No Scrolling */}
       <div className="relative z-20 h-screen flex items-center justify-center px-6">
         <div className="container mx-auto max-w-5xl">

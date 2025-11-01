@@ -78,16 +78,25 @@ const DashboardNav: React.FC = () => {
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--header-height', 
-      isHeaderCollapsed ? '3rem' : '5rem'
+      isHeaderCollapsed ? '3rem' : '4rem'
     );
   }, [isHeaderCollapsed]);
 
   return (
     <header 
       className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 ${
-        isHeaderCollapsed ? 'h-12' : 'h-20'
-      } items-center justify-center px-6 transition-all duration-300 nav-glass-effect border-b`}
+        isHeaderCollapsed ? 'h-12' : 'h-16'
+      } items-center justify-center px-6 transition-all duration-300 ${
+        scrolled 
+          ? 'backdrop-blur-xl border-b border-border/50 bg-background/60 shadow-lg' 
+          : 'backdrop-blur-md bg-background/40'
+      }`}
     >
+      {/* Gradient overlay that becomes more visible on scroll */}
+      <div className={`absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 transition-opacity duration-300 ${
+        scrolled ? 'opacity-100' : 'opacity-40'
+      }`}></div>
+      
       <div className="w-full max-w-7xl flex items-center justify-between relative">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-3">
@@ -105,17 +114,21 @@ const DashboardNav: React.FC = () => {
 
         {/* Desktop Navigation - Primary Items Only */}
         {!isHeaderCollapsed && (
-          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+          <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
+            scrolled 
+              ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
+              : 'bg-muted/30 backdrop-blur-sm border border-border/30'
+          }`}>
             {/* Primary navigation items */}
             {primaryNavItems.map(item => {
               const isActive = location.pathname === item.to;
               const ButtonComponent = (
                 <Button 
                   variant="ghost" 
-                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
+                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
                     isActive 
                       ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
                   }`}
                 >
                   <item.icon className="h-4 w-4" />
@@ -140,7 +153,11 @@ const DashboardNav: React.FC = () => {
         <div className="hidden lg:flex items-center gap-3">
           {/* Live Market Indicator - hide when collapsed */}
           {!isHeaderCollapsed && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-green-500/10 border-green-500/30 transition-all duration-300">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
+              scrolled 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-green-500/5 border-green-500/20'
+            }`}>
               <BarChart3 className="h-3 w-3 text-green-500" />
               <span className="text-xs font-medium text-green-700 dark:text-green-400">S&P +0.75%</span>
             </div>
@@ -151,7 +168,9 @@ const DashboardNav: React.FC = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="relative hover:bg-primary/10 group transition-all duration-200"
+                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+                  scrolled ? 'bg-background/60' : 'bg-background/30'
+                }`}
               >
                 <Search className="h-4 w-4 transition-colors group-hover:text-primary" />
               </Button>
@@ -159,7 +178,9 @@ const DashboardNav: React.FC = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="relative hover:bg-primary/10 group transition-all duration-200"
+                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+                  scrolled ? 'bg-background/60' : 'bg-background/30'
+                }`}
                 onClick={() => setUnreadCount(0)}
               >
                 <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
@@ -179,7 +200,9 @@ const DashboardNav: React.FC = () => {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="relative hover:bg-primary/10 group transition-all duration-200 flex items-center gap-1 px-3"
+                    className={`relative hover:bg-primary/10 group transition-all duration-200 flex items-center gap-1 px-3 ${
+                      scrolled ? 'bg-background/60' : 'bg-background/30'
+                    }`}
                   >
                     <Grid3X3 className="h-4 w-4 transition-colors group-hover:text-primary" />
                     <ChevronDown className="h-3 w-3 transition-colors group-hover:text-primary" />
@@ -226,7 +249,9 @@ const DashboardNav: React.FC = () => {
             variant="ghost" 
             size="sm"
             onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-            className="relative hover:bg-primary/10 group transition-all duration-200 border-2 border-primary/30"
+            className={`relative hover:bg-primary/10 group transition-all duration-200 border-2 border-primary/30 ${
+              scrolled ? 'bg-background/60' : 'bg-background/30'
+            }`}
             title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
           >
             {isHeaderCollapsed ? (
@@ -239,7 +264,9 @@ const DashboardNav: React.FC = () => {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full transition-all duration-200">
+              <Button variant="ghost" className={`relative h-8 w-8 rounded-full transition-all duration-200 ${
+                scrolled ? 'bg-background/60' : 'bg-background/30'
+              }`}>
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email} />
                   <AvatarFallback>

@@ -1873,7 +1873,16 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      <div className="min-h-screen relative bg-background">
+      {/* Animated Gradient Background + Mesh Overlay */}
+      <div className="min-h-screen relative overflow-hidden" style={{
+        background: colors.bg.gradient,
+        animation: 'gradientShift 15s ease infinite'
+      }}>
+        {/* Optional: Animated mesh overlay */}
+        <div className="fixed inset-0 pointer-events-none opacity-30" style={{
+          background: colors.bg.meshGradient,
+          animation: 'meshFloat 20s ease-in-out infinite alternate'
+        }} />
         
         {/* Content wrapper with z-index */}
         <div className="relative z-10">

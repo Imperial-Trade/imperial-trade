@@ -12,7 +12,6 @@ import { ProfessionalNotificationModal } from "@/components/notifications/Profes
 import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl, getAcademyAppUrl } from "@/utils/environment";
 import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
-
 export const DashboardHome: React.FC = () => {
   const {
     user
@@ -72,7 +71,7 @@ export const DashboardHome: React.FC = () => {
       <div className="relative z-20 h-full flex items-center justify-center">
         <div className="container mx-auto max-w-5xl px-4">
           {/* Compact Welcome Header */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4 mx-0 my-[250px]">
             <h1 className="text-3xl lg:text-5xl xl:text-6xl font-bold">
               <TypewriterText text={welcomeText} speed={80} showCursor={false} cursorBlinkSpeed={500} themeAware={true} />
             </h1>

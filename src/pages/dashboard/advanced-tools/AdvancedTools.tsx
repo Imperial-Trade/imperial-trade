@@ -184,7 +184,7 @@ export default function AdvancedTools() {
 
                 {/* Tools Selection Grid - Desktop */}
                 <div className="grid grid-cols-6 gap-1.5">
-                  {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 rounded-lg border transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "bg-primary/10 border-primary/20 text-primary" : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"}`}>
+                  {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
                       <div className="flex items-center justify-start gap-1.5">
                         {React.createElement(tool.icon, {
                     className: "w-3 h-3 flex-shrink-0"
@@ -208,9 +208,6 @@ export default function AdvancedTools() {
                   <h2 className="font-semibold text-sm text-foreground tracking-tight truncate">
                     {activeTool.name}
                   </h2>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {activeTool.description}
-                  </p>
                 </div>
               </div>
             </div>}

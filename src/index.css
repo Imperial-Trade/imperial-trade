@@ -269,14 +269,14 @@
   /* Glassmorphism Effects for Mobile Bottom Nav */
   .glass-dark {
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
   }
 
   .glass-emerald {
     background: rgba(60, 186, 146, 0.1);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(60, 186, 146, 0.2);
   }
 
@@ -290,14 +290,15 @@
     position: fixed !important;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
-    will-change: transform;
+    will-change: transform, opacity;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    user-select: none;
   }
 
   /* Emerald Glow Shadow */
   .shadow-emerald-glow {
-    box-shadow: 0 0 20px rgba(60, 186, 146, 0.3);
+    box-shadow: 0 0 20px rgba(60, 186, 146, 0.4);
   }
 
   /* Emerald primary color */

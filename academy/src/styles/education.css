@@ -1,0 +1,19 @@
+
+/* Education page specific styles */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+/* Netflix-style animations and transitions */
+.netflix-card {
+  transition: transform 0.3s ease;
+}
+
+.netflix-card:hover {
+  transform: scale(1.05);
+}

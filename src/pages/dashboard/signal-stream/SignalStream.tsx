@@ -1873,11 +1873,7 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      {/* Animated Gradient Background */}
-      <div className="min-h-screen relative" style={{
-        background: colors.bg.gradient,
-        animation: 'gradientShift 15s ease infinite'
-      }}>
+      <div className="min-h-screen relative bg-background">
         
         {/* Content wrapper with z-index */}
         <div className="relative z-10">

@@ -92,11 +92,6 @@ const DashboardNav: React.FC = () => {
           : 'backdrop-blur-md bg-background/40'
       }`}
     >
-      {/* Gradient overlay that becomes more visible on scroll */}
-      <div className={`absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 transition-opacity duration-300 ${
-        scrolled ? 'opacity-100' : 'opacity-40'
-      }`}></div>
-      
       <div className="w-full max-w-7xl flex items-center justify-between relative">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-3">

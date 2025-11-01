@@ -9,7 +9,7 @@ export const DashboardLayout: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   
   return (
-    <div className="h-screen overflow-hidden bg-black">
+    <div className="fixed inset-0 overflow-hidden bg-black">
       {/* Top Navigation - Hidden during welcome animation */}
       {hasSeenWelcome && (
         <div className="animate-nav-cross-blur-in opacity-0">

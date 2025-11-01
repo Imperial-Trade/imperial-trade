@@ -10,7 +10,7 @@ export const DashboardLayout: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Video Background with Glassmorphism Overlay */}
       <AnimatedLinesBackground />
 

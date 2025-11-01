@@ -157,6 +157,7 @@ function App() {
                           />
                           <Route path="signals" element={<SignalsPage />} />
                           <Route path="education" element={<EducationPage />} />
+                          <Route path="academy" element={<EducationPage />} />
                           <Route
                             path="live-sessions"
                             element={<LiveSessionsPage />}
@@ -165,6 +166,7 @@ function App() {
                             path="community-forum"
                             element={<CommunityForumPage />}
                           />
+                          <Route path="orderflow" element={<CommunityForumPage />} />
 <Route
                             path="ib-partnership"
                             element={<ImperialPartnership />}
@@ -244,7 +246,9 @@ function App() {
                           <Route path="progress" element={<Progress />} />
                            <Route path="settings" element={<Settings />} />
                            <Route path="education" element={<Education />} />
+                           <Route path="academy" element={<Education />} />
                            <Route path="forum" element={<Forum />} />
+                           <Route path="orderflow" element={<Forum />} />
                             {isDevToolsEnabled() && (
                                <>
                                  <Route path="athena" element={<AthenaTest />} />

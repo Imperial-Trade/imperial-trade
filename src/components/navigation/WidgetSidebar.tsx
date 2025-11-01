@@ -55,14 +55,12 @@ const tradingTools = [{
   name: "Education",
   icon: GraduationCap,
   description: "Courses, videos and learning pathways.",
-  route: getAcademyAppUrl(),
-  external: true
+  route: getAcademyAppUrl()
 }, {
   name: "Community",
   icon: MessageSquare,
   description: "Forum, discussions and networking.",
-  route: getOrderFlowAppUrl(),
-  external: true
+  route: getOrderFlowAppUrl()
 }, {
   name: "Tools",
   icon: Target,

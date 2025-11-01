@@ -84,18 +84,23 @@ export default function AdvancedTools() {
   // Listen for journal navigation events from hamburger menu
   useEffect(() => {
     const handleJournalNavChange = (event: CustomEvent) => {
-      const { tab } = event.detail;
+      const {
+        tab
+      } = event.detail;
       // Switch to Journal tool first
       const journalTool = allTools.find(t => t.name === 'Educational Journal');
       if (journalTool) {
         setActiveTool(journalTool);
         // Then dispatch event for journal tab change
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('journal-tab-change', { detail: { tab } }));
+          window.dispatchEvent(new CustomEvent('journal-tab-change', {
+            detail: {
+              tab
+            }
+          }));
         }, 100);
       }
     };
-
     window.addEventListener('journal-nav-change', handleJournalNavChange as EventListener);
     return () => {
       window.removeEventListener('journal-nav-change', handleJournalNavChange as EventListener);
@@ -143,16 +148,7 @@ export default function AdvancedTools() {
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center gap-4">
                 {/* Active Tool Info - Desktop only */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="p-1.5 flex-shrink-0">
-                    {React.createElement(activeTool.icon, {
-                  className: "w-4 h-4 text-primary"
-                })}
-                  </div>
-                  <h2 className="font-semibold text-base text-foreground tracking-tight truncate">
-                    {activeTool.name}
-                  </h2>
-                </div>
+                
 
                 {/* Separator - Desktop only */}
                 <div className="w-px h-6 bg-border/20"></div>
@@ -190,12 +186,9 @@ export default function AdvancedTools() {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav 
-        activeTool={activeTool}
-        onToolChange={(toolName) => {
-          const tool = [...coreTools, ...aiTools].find(t => t.name === toolName);
-          if (tool) setActiveTool(tool);
-        }}
-      />
+      <MobileBottomNav activeTool={activeTool} onToolChange={toolName => {
+      const tool = [...coreTools, ...aiTools].find(t => t.name === toolName);
+      if (tool) setActiveTool(tool);
+    }} />
     </div>;
 }

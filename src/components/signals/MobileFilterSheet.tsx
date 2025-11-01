@@ -193,7 +193,7 @@ export function MobileFilterSheet({
   return (
     <Drawer open={isOpen} onOpenChange={onClose}>
       <DrawerContent 
-        className="max-h-[70vh] rounded-t-3xl"
+        className="max-h-[70vh] rounded-t-3xl z-[110]"
         style={{
           background: colors.bg.glass,
           backdropFilter: 'blur(40px) saturate(180%)',

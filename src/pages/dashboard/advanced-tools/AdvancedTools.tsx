@@ -101,6 +101,27 @@ export default function AdvancedTools() {
       setActiveTool(coreTools[0]);
     }
   }, [getToolFromQuery]);
+
+  // Listen for journal navigation events from hamburger menu
+  useEffect(() => {
+    const handleJournalNavChange = (event: CustomEvent) => {
+      const { tab } = event.detail;
+      // Switch to Journal tool first
+      const journalTool = allTools.find(t => t.name === 'Educational Journal');
+      if (journalTool) {
+        setActiveTool(journalTool);
+        // Then dispatch event for journal tab change
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('journal-tab-change', { detail: { tab } }));
+        }, 100);
+      }
+    };
+
+    window.addEventListener('journal-nav-change', handleJournalNavChange as EventListener);
+    return () => {
+      window.removeEventListener('journal-nav-change', handleJournalNavChange as EventListener);
+    };
+  }, [allTools]);
   const Placeholder = () => <motion.div initial={{
     opacity: 0,
     scale: 0.95

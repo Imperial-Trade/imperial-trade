@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, ChevronUp, ChevronDown } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, ChevronUp, ChevronDown, Home, BarChart3, Calendar, Brain, Clock } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAuth } from "@/contexts/AuthContext"
@@ -46,6 +46,38 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
     };
     return levels[level as keyof typeof levels] || levels.free;
   };
+
+  // Check if we're on the advanced tools/journal page
+  const isJournalSection = location.pathname.includes('/dashboard/advanced-tools');
+
+  // Journal-specific navigation items
+  const journalNavigationItems = [
+    {
+      id: 'overview',
+      icon: Home,
+      label: "Overview"
+    },
+    {
+      id: 'analytics',
+      icon: BarChart3,
+      label: "Analytics"
+    },
+    {
+      id: 'calendar',
+      icon: Calendar,
+      label: "Calendar"
+    },
+    {
+      id: 'ai',
+      icon: Brain,
+      label: "AI"
+    },
+    {
+      id: 'history',
+      icon: Clock,
+      label: "History"
+    }
+  ];
 
   // Navigation items with baseUrl support
   const navigationItems = [
@@ -167,45 +199,66 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
               </SheetHeader>
 
                   <nav className="flex flex-col gap-2 mt-8">
-                    {navigationItems.map(item => {
-                      const isActive = location.pathname === item.to;
-                      const linkContent = (
-                        <>
+                    {isJournalSection ? (
+                      // Journal section navigation
+                      journalNavigationItems.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            // Dispatch custom event for journal navigation
+                            window.dispatchEvent(new CustomEvent('journal-nav-change', { 
+                              detail: { tab: item.id } 
+                            }));
+                            closeMobileMenu();
+                          }}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-primary/10 text-foreground border border-transparent hover:border-primary/20"
+                        >
                           <item.icon className="h-5 w-5" />
-                          <div>
-                            <span className="text-base font-medium block">{item.label}</span>
-                            <span className="text-sm text-muted-foreground">{item.description}</span>
-                          </div>
-                        </>
-                      );
-                      const linkClassName = `flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
-                        isActive 
-                          ? 'bg-primary/10 border-primary/20 text-primary' 
-                          : 'hover:bg-primary/10 text-foreground border-border/50'
-                      }`;
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </button>
+                      ))
+                    ) : (
+                      // Regular navigation
+                      navigationItems.map(item => {
+                        const isActive = location.pathname === item.to;
+                        const linkContent = (
+                          <>
+                            <item.icon className="h-5 w-5" />
+                            <div>
+                              <span className="text-base font-medium block">{item.label}</span>
+                              <span className="text-sm text-muted-foreground">{item.description}</span>
+                            </div>
+                          </>
+                        );
+                        const linkClassName = `flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
+                          isActive 
+                            ? 'bg-primary/10 border-primary/20 text-primary' 
+                            : 'hover:bg-primary/10 text-foreground border-border/50'
+                        }`;
 
-                      return (
-                        <div key={item.to} className="space-y-2">
-                          {item.external ? (
-                            <a 
-                              href={item.to} 
-                              onClick={closeMobileMenu} 
-                              className={linkClassName}
-                            >
-                              {linkContent}
-                            </a>
-                          ) : (
-                            <Link 
-                              to={item.to} 
-                              onClick={closeMobileMenu} 
-                              className={linkClassName}
-                            >
-                              {linkContent}
-                            </Link>
-                          )}
-                        </div>
-                      );
-                    })}
+                        return (
+                          <div key={item.to} className="space-y-2">
+                            {item.external ? (
+                              <a 
+                                href={item.to} 
+                                onClick={closeMobileMenu} 
+                                className={linkClassName}
+                              >
+                                {linkContent}
+                              </a>
+                            ) : (
+                              <Link 
+                                to={item.to} 
+                                onClick={closeMobileMenu} 
+                                className={linkClassName}
+                              >
+                                {linkContent}
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
 
                     <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
                       <div className="flex justify-center">

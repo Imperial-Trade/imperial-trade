@@ -33,6 +33,28 @@ const TradingJournal: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Listen for journal tab change events from hamburger menu
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      const { tab } = event.detail;
+      // Map hamburger menu items to journal tabs
+      const tabMap: Record<string, string> = {
+        'overview': 'log',
+        'analytics': 'analytics',
+        'calendar': 'log',
+        'ai': 'advanced',
+        'history': 'log'
+      };
+      const mappedTab = tabMap[tab] || 'log';
+      setActiveTab(mappedTab);
+    };
+
+    window.addEventListener('journal-tab-change', handleTabChange as EventListener);
+    return () => {
+      window.removeEventListener('journal-tab-change', handleTabChange as EventListener);
+    };
+  }, []);
+
   const loadUserProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

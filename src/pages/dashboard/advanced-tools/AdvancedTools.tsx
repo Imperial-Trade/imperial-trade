@@ -109,12 +109,7 @@ export default function AdvancedTools() {
   }} transition={{
     duration: 0.5
   }} className="flex flex-col items-center justify-center h-full text-center p-8 glass-effect rounded-2xl">
-      <div className="relative mb-6">
-        <div className="absolute -inset-2 bg-accent-gold/10 rounded-full animate-ping"></div>
-        <div className="relative p-5 bg-surface rounded-full border border-default glow-effect-gold">
-          <Sparkles className="w-12 h-12 text-accent-gold" />
-        </div>
-      </div>
+      
       <h2 className="text-2xl font-bold text-primary mb-2">
         Welcome to the Educational Learning Arsenal
       </h2>

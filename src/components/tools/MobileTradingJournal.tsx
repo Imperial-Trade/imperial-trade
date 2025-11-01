@@ -3,18 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  BarChart3, 
-  Clock, 
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  Zap,
-  Home,
-  Activity
-} from 'lucide-react';
+import { Plus, BarChart3, Clock, Calendar, TrendingUp, TrendingDown, Target, Zap, Home, Activity } from 'lucide-react';
 import MobileJournalForm from './mobile/MobileJournalForm';
 import MobileRecentTrades from './mobile/MobileRecentTrades';
 import MobileAnalytics from './mobile/MobileAnalytics';
@@ -22,9 +11,8 @@ import MobileEquityCurve from './mobile/MobileEquityCurve';
 import MobileAIAnalytics from './mobile/MobileAIAnalytics';
 import MobileCalendarView from './mobile/MobileCalendarView';
 import MobileDayView from './mobile/MobileDayView';
-
+import { JournalSidebarMenu } from './JournalSidebarMenu';
 type MobileTab = 'overview' | 'add' | 'history' | 'analytics' | 'calendar' | 'day';
-
 interface MobileTradingJournalProps {
   entries: any[];
   isSubmitting: boolean;
@@ -33,7 +21,6 @@ interface MobileTradingJournalProps {
   onDelete: (entryId: string) => void;
   userProfile: any;
 }
-
 export default function MobileTradingJournal({
   entries,
   isSubmitting,
@@ -47,20 +34,19 @@ export default function MobileTradingJournal({
 
   // Calculate key metrics for overview
   const metrics = useMemo(() => {
-    if (!entries.length) return { 
-      totalPnL: 0, 
-      winRate: 0, 
-      totalTrades: 0, 
-      bestTrade: 0, 
+    if (!entries.length) return {
+      totalPnL: 0,
+      winRate: 0,
+      totalTrades: 0,
+      bestTrade: 0,
       worstTrade: 0,
       winStreak: 0,
-      lossStreak: 0 
+      lossStreak: 0
     };
-
     const totalPnL = entries.reduce((sum, entry) => sum + (entry.pnl || 0), 0);
     const wins = entries.filter(entry => (entry.pnl || 0) > 0).length;
     const losses = entries.filter(entry => (entry.pnl || 0) < 0).length;
-    const winRate = (wins / entries.length) * 100;
+    const winRate = wins / entries.length * 100;
     const bestTrade = Math.max(...entries.map(entry => entry.pnl || 0));
     const worstTrade = Math.min(...entries.map(entry => entry.pnl || 0));
 
@@ -68,27 +54,23 @@ export default function MobileTradingJournal({
     let currentWinStreak = 0;
     let currentLossStreak = 0;
     let isWinStreak = true;
-
     for (let i = entries.length - 1; i >= 0; i--) {
       const pnl = entries[i].pnl || 0;
       if (pnl > 0) {
-        if (isWinStreak) currentWinStreak++;
-        else break;
+        if (isWinStreak) currentWinStreak++;else break;
         isWinStreak = true;
       } else if (pnl < 0) {
-        if (!isWinStreak) currentLossStreak++;
-        else break;
+        if (!isWinStreak) currentLossStreak++;else break;
         isWinStreak = false;
       } else {
         break;
       }
     }
-
-    return { 
-      totalPnL, 
-      winRate, 
-      totalTrades: entries.length, 
-      bestTrade, 
+    return {
+      totalPnL,
+      winRate,
+      totalTrades: entries.length,
+      bestTrade,
       worstTrade,
       winStreak: currentWinStreak,
       lossStreak: currentLossStreak,
@@ -96,27 +78,24 @@ export default function MobileTradingJournal({
       losses
     };
   }, [entries]);
-
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
     setActiveTab('day');
   };
-
   const handleBackFromDay = () => {
     setSelectedDate(null);
     setActiveTab('calendar');
   };
-
   const handleBackFromCalendar = () => {
     setActiveTab('overview');
   };
-
-  const OverviewContent = (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4 pb-24"
-    >
+  const OverviewContent = <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="space-y-4 pb-24">
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
@@ -182,12 +161,7 @@ export default function MobileTradingJournal({
           <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Quick Access</p>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:text-primary hover:bg-primary/10 p-0 h-auto font-medium"
-                onClick={() => setActiveTab('add')}
-              >
+              <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 p-0 h-auto font-medium" onClick={() => setActiveTab('add')}>
                 Add Trade →
               </Button>
             </div>
@@ -197,12 +171,7 @@ export default function MobileTradingJournal({
           <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Calendar</p>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:text-primary hover:bg-primary/10 p-0 h-auto font-medium"
-                onClick={() => setActiveTab('calendar')}
-              >
+              <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 p-0 h-auto font-medium" onClick={() => setActiveTab('calendar')}>
                 View Calendar →
               </Button>
             </div>
@@ -224,86 +193,31 @@ export default function MobileTradingJournal({
         </CardHeader>
         <CardContent className="pt-0">
           <MobileRecentTrades entries={entries.slice(0, 3)} onDelete={onDelete} showAll={false} />
-          {entries.length > 3 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveTab('history')}
-              className="w-full mt-3"
-            >
+          {entries.length > 3 && <Button variant="outline" size="sm" onClick={() => setActiveTab('history')} className="w-full mt-3">
               View All Trades ({entries.length})
-            </Button>
-          )}
+            </Button>}
         </CardContent>
       </Card>
-    </motion.div>
-  );
-
+    </motion.div>;
   const renderContent = () => {
     switch (activeTab) {
       case 'add':
-        return (
-          <MobileJournalForm
-            onSubmit={onSubmit}
-            isSubmitting={isSubmitting}
-            onBack={() => setActiveTab('overview')}
-          />
-        );
+        return <MobileJournalForm onSubmit={onSubmit} isSubmitting={isSubmitting} onBack={() => setActiveTab('overview')} />;
       case 'history':
-        return (
-          <MobileRecentTrades
-            entries={entries}
-            onDelete={onDelete}
-            showAll={true}
-          />
-        );
+        return <MobileRecentTrades entries={entries} onDelete={onDelete} showAll={true} />;
       case 'analytics':
-        return (
-          <MobileAnalytics entries={entries} />
-        );
+        return <MobileAnalytics entries={entries} />;
       case 'calendar':
-        return (
-          <MobileCalendarView
-            entries={entries}
-            onDateSelect={handleDateSelect}
-            onBack={handleBackFromCalendar}
-            selectedDate={selectedDate}
-          />
-        );
+        return <MobileCalendarView entries={entries} onDateSelect={handleDateSelect} onBack={handleBackFromCalendar} selectedDate={selectedDate} />;
       case 'day':
-        return selectedDate ? (
-          <MobileDayView
-            date={selectedDate}
-            entries={entries}
-            onBack={handleBackFromDay}
-            onDelete={onDelete}
-          />
-        ) : null;
+        return selectedDate ? <MobileDayView date={selectedDate} entries={entries} onBack={handleBackFromDay} onDelete={onDelete} /> : null;
       default:
         return OverviewContent;
     }
   };
-
-  return (
-    <div className="min-h-screen bg-background relative">
+  return <div className="min-h-screen bg-background relative">
       {/* Header - only show for main views */}
-      {!['calendar', 'day'].includes(activeTab) && (
-        <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">Trading Journal</h1>
-            {activeTab !== 'add' && (
-              <Button
-                size="sm"
-                onClick={() => setActiveTab('add')}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Trade
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+      {!['calendar', 'day'].includes(activeTab)}
 
       {/* Content */}
       <div className={`${!['calendar', 'day'].includes(activeTab) ? 'px-4 pt-4' : ''}`}>
@@ -312,50 +226,14 @@ export default function MobileTradingJournal({
         </AnimatePresence>
       </div>
 
-      {/* Bottom Navigation */}
-      {!['add', 'calendar', 'day'].includes(activeTab) && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border z-50">
-          <div className="grid grid-cols-5 max-w-md mx-auto">
-            {[
-              { tab: 'overview' as MobileTab, icon: Home, label: 'Overview' },
-              { tab: 'history' as MobileTab, icon: Clock, label: 'History' },
-              { tab: 'analytics' as MobileTab, icon: BarChart3, label: 'Analytics' },
-              { tab: 'calendar' as MobileTab, icon: Calendar, label: 'Calendar' },
-              { tab: 'overview' as MobileTab, icon: Zap, label: 'AI', isAI: true },
-            ].map(({ tab, icon: Icon, label, isAI }) => (
-              <button
-                key={label}
-                onClick={() => isAI ? setActiveTab('overview') : setActiveTab(tab)}
-                className={`flex flex-col items-center justify-center py-3 px-1 transition-colors ${
-                  (activeTab === tab || (isAI && activeTab === 'overview'))
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="w-4 h-4 mb-1" />
-                <span className="text-xs font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Floating Add Button */}
-      {!['add', 'calendar', 'day'].includes(activeTab) && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="fixed bottom-20 right-4 z-40"
-        >
-          <Button
-            onClick={() => setActiveTab('add')}
-            size="lg"
-            className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-          >
-            <Plus className="w-6 h-6" />
-          </Button>
-        </motion.div>
-      )}
-    </div>
-  );
+      {!['add', 'calendar', 'day'].includes(activeTab) && <motion.div initial={{
+      scale: 0
+    }} animate={{
+      scale: 1
+    }} className="fixed bottom-6 right-4 z-40">
+          
+        </motion.div>}
+    </div>;
 }

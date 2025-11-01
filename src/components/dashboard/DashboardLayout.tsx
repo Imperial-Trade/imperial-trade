@@ -27,8 +27,7 @@ export const DashboardLayout: React.FC = () => {
       
       {/* Main Content with Dynamic Top Padding */}
       <main 
-        className={`relative ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'}`}
-        style={{ paddingTop: 'var(--header-height, 4rem)' }}
+        className={`relative ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'} lg:pt-[var(--header-height,4rem)]`}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/5 to-transparent pointer-events-none"></div>
         <Suspense fallback={<LoadingSpinner />}>

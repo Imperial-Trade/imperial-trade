@@ -590,6 +590,26 @@ export default function SignalStream() {
           console.error('Failed to fetch profiles for closed alerts:', profilesError);
         }
 
+        // Fetch roles from user_roles table
+        const {
+          data: userRolesData
+        } = await supabase.from('user_roles').select('user_id, role').in('user_id', userIds);
+
+        // Create roles map with highest priority role per user
+        const rolesMap = new Map<string, string>();
+        const rolePriority: Record<string, number> = {
+          admin: 4,
+          'educator+': 3,
+          moderator: 2,
+          educator: 1
+        };
+        userRolesData?.forEach(ur => {
+          const current = rolesMap.get(ur.user_id);
+          if (!current || (rolePriority[ur.role] || 0) > (rolePriority[current] || 0)) {
+            rolesMap.set(ur.user_id, ur.role);
+          }
+        });
+
         // Create profile map
         const profilesMap = new Map();
         if (profilesData) {
@@ -633,7 +653,7 @@ export default function SignalStream() {
             creator: profile ? {
               id: profile.id,
               display_name: profile.display_name || 'Anonymous User',
-              role: profile.role || 'user',
+              role: rolesMap.get(profile.id) || 'user',
               avatar_url: profile.avatar_url,
               user_type: profile.user_type,
               access_level: profile.access_level
@@ -749,13 +769,14 @@ export default function SignalStream() {
       active: sortedActive.length,
       closedFiltered: filteredClosedCount,
       closedDisplayed: closedFilteredLimited.length,
-      closedDatabaseTotal: totalClosedCount,  // Database count (754)
+      closedDatabaseTotal: totalClosedCount,
+      // Database count (754)
       filters
     });
     return {
       active: sortedActive,
       closed: closedFilteredLimited,
-      closedTotal: totalClosedCount  // ✅ FIXED: Use database count
+      closedTotal: totalClosedCount // ✅ FIXED: Use database count
     };
   }, [allAlerts, staticClosedAlerts, filters, excludedSignalIds, totalClosedCount]);
 
@@ -1021,13 +1042,7 @@ export default function SignalStream() {
             if ((window as any).addNotification && !allTPsHit) {
               // Calculate pips for this specific TP
               const tpPrice = signal[`tp${level}` as keyof typeof signal] as number;
-              const pipsData = calculatePipsForSignal(
-                signal.entryPrice,
-                tpPrice,
-                signal.tradermadeSymbol,
-                signal.tradeType
-              );
-
+              const pipsData = calculatePipsForSignal(signal.entryPrice, tpPrice, signal.tradermadeSymbol, signal.tradeType);
               (window as any).addNotification({
                 id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
                 type: 'tp_hit',
@@ -1051,7 +1066,6 @@ export default function SignalStream() {
                 timestamp: new Date(),
                 priority: 4
               });
-              
               console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted})`);
             }
 
@@ -1065,19 +1079,13 @@ export default function SignalStream() {
             }).eq('id', signal.id).then(() => {
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(tpKey);
-              
+
               // 🎉 NEW: Celebration notification for all TPs hit
               if (allTPsHit && (window as any).addNotification) {
                 // Calculate pips for the final TP (highest TP that exists)
                 const finalTpLevel = Math.max(...updatedTPHits);
                 const finalTpPrice = signal[`tp${finalTpLevel}` as keyof typeof signal] as number;
-                const pipsData = calculatePipsForSignal(
-                  signal.entryPrice,
-                  finalTpPrice,
-                  signal.tradermadeSymbol,
-                  signal.tradeType
-                );
-
+                const pipsData = calculatePipsForSignal(signal.entryPrice, finalTpPrice, signal.tradermadeSymbol, signal.tradeType);
                 (window as any).addNotification({
                   id: `all-tps-${signal.id}-${Date.now()}`,
                   type: 'trade_closed',
@@ -1102,7 +1110,6 @@ export default function SignalStream() {
                   timestamp: new Date(),
                   priority: 5
                 });
-                
                 console.log(`🎉 [CELEBRATION] All TPs hit notification sent with ${pipsData.formatted}`);
               }
             });
@@ -1201,7 +1208,6 @@ export default function SignalStream() {
       // 🚀 NEW: Show instant modern notification with sound
       if ((window as any).addNotification) {
         const isBuy = newSignal.tradeType === 'buy' || newSignal.tradeType === 'buy_limit';
-        
         (window as any).addNotification({
           id: `signal-created-${newSignal.id}-${Date.now()}`,
           type: 'new_signal',
@@ -1213,13 +1219,11 @@ export default function SignalStream() {
             provider_type: profile?.access_level || 'educator',
             asset_name: newSignal.assetName,
             tp_hits: [],
-            total_tps: [newSignal.tp1, newSignal.tp2, newSignal.tp3, newSignal.tp4, newSignal.tp5]
-              .filter(Boolean).length
+            total_tps: [newSignal.tp1, newSignal.tp2, newSignal.tp3, newSignal.tp4, newSignal.tp5].filter(Boolean).length
           },
           timestamp: new Date(),
           priority: 3
         });
-        
         console.log('🔔 [INSTANT] Modern notification triggered for new signal');
         console.log('🔍 [DEBUG] Notification payload:', {
           id: `signal-created-${newSignal.id}-${Date.now()}`,
@@ -1235,7 +1239,6 @@ export default function SignalStream() {
         description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`
       });
     };
-    
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     return () => {
       window.removeEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
@@ -1886,87 +1889,11 @@ export default function SignalStream() {
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="min-w-0 flex-1">
-                
-                <p className="text-sm sm:text-base text-muted-foreground hidden">
-                  Educational market analysis patterns with reference pricing from verified educational contributors
-                </p>
-              </div>
-              
-              {/* ✅ BUG FIX #10: Connection Status with Manual Recovery */}
-              <div className="flex items-center gap-3">
-                {/* ✅ FIX #6: Force Refresh Button */}
-                {isDevToolsEnabled() && <Button onClick={() => {
-                    console.log('🔄 [Manual] Force refresh triggered by user');
-                    refreshAlerts(true);
-                  }} size="sm" variant="outline" className="flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-500">
-                    <RefreshCw className="w-3 h-3" />
-                    <span className="hidden sm:inline">Force Refresh</span>
-                  </Button>}
-                
-                {isDevToolsEnabled() && <>
-                    {connectionStatus === 'connected' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
-                      background: 'rgba(0, 200, 5, 0.12)',
-                      border: '1px solid rgba(0, 200, 5, 0.3)'
-                    }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
-                        background: '#00C805'
-                      }}></div>
-                        <span className="text-xs font-medium" style={{
-                        color: '#00C805'
-                      }}>Live</span>
-                      </div>}
-                    {connectionStatus === 'connecting' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
-                      background: 'rgba(255, 215, 0, 0.12)',
-                      border: '1px solid rgba(255, 215, 0, 0.3)'
-                    }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
-                        background: '#FFD700'
-                      }}></div>
-                        <span className="text-xs font-medium" style={{
-                        color: '#FFD700'
-                      }}>Connecting...</span>
-                      </div>}
-                    {connectionStatus === 'polling-fallback' && <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
-                      background: 'rgba(0, 200, 5, 0.12)',
-                      border: '1px solid rgba(0, 200, 5, 0.3)'
-                    }}>
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{
-                        background: '#00C805'
-                      }}></div>
-                        <span className="text-xs font-medium" style={{
-                        color: '#00C805'
-                      }}>Live (Polling)</span>
-                      </div>}
-                    {(connectionStatus === 'disconnected' || connectionStatus === 'error' || connectionIssue) && <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
-                        background: 'rgba(255, 69, 58, 0.12)',
-                        border: '1px solid rgba(255, 69, 58, 0.3)'
-                      }}>
-                          <div className="w-2 h-2 rounded-full" style={{
-                          background: '#FF453A'
-                        }}></div>
-                          <span className="text-xs font-medium" style={{
-                          color: '#FF453A'
-                        }}>Connection Issue</span>
-                        </div>
-                        <Button onClick={() => refreshAlerts(true)} size="sm" variant="outline" className="border-yellow-500/20 hover:bg-yellow-500/10">
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Refresh Now
-                        </Button>
-                      </div>}
-                  </>}
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
 
           {/* Main Content - Mobile Optimized grid layout with granular protection */}
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
+          <div className="w-full px-2 sm:px-4 py-3 sm:py-6 pb-24 md:pb-6">
             <div className="max-w-none w-full">
               <div className="w-full">
               

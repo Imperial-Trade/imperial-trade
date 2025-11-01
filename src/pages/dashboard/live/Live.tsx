@@ -151,7 +151,7 @@ export default function Live() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
+      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 select-none">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6 sm:mb-8">
@@ -520,6 +520,35 @@ export default function Live() {
             onDecline={handleComplianceDecline}
             sessionType="live"
           />
+        </div>
+      </div>
+
+      {/* Coming Soon Glassmorphism Overlay */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        {/* Blur Background */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(20px) saturate(120%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(120%)',
+            background: 'rgba(0, 0, 0, 0.3)',
+          }}
+        />
+        
+        {/* Glassmorphism Card with Coming Soon Text */}
+        <div 
+          className="relative z-10 rounded-3xl px-8 sm:px-12 lg:px-16 py-8 sm:py-10 lg:py-12 pointer-events-auto"
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(30px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(150%)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+          }}
+        >
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-orange-500 tracking-wider text-center">
+            COMING SOON
+          </h1>
         </div>
       </div>
     </TooltipProvider>

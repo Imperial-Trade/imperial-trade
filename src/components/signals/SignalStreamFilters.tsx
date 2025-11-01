@@ -27,6 +27,8 @@ import { MobileFilterButton } from './MobileFilterButton';
 import { MobileFilterSheet } from './MobileFilterSheet';
 import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { SignalStreamBottomNav } from './SignalStreamBottomNav';
+import { SignalSearchSheet } from './SignalSearchSheet';
 
 interface FilterState {
   search: string;
@@ -61,7 +63,7 @@ export function SignalStreamFilters({
 }: SignalStreamFiltersProps) {
   const { isMobile } = useDeviceDetection();
   const { colors } = useSignalTheme();
-  const [mobileSheetOpen, setMobileSheetOpen] = useState<'status' | 'tradeType' | 'educator' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | null>(null);
 
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -147,123 +149,57 @@ export function SignalStreamFilters({
   if (isMobile) {
     return (
       <>
-        <div 
-          className="mb-4 p-3 rounded-2xl border"
-          style={{
-            background: colors.bg.glass,
-            backdropFilter: 'blur(30px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-            borderColor: colors.border.default,
-          }}
-          data-prevent-widget-open="true"
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerMove={(e) => e.stopPropagation()}
-        >
-          {/* SINGLE ROW: Search + Filter Icons + Create */}
-          <div className="flex items-center gap-2">
-            {/* Search (flex-1) */}
-            <div className="flex-1 relative min-w-0">
-                <Search 
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" 
-                  style={{ color: colors.text.tertiary }}
-                />
-                
-            <Input
-              value={filters.search}
-              onChange={(e) => updateFilter('search', e.target.value)}
-              placeholder="Search"
-              className="h-9 pl-9 pr-3 text-sm rounded-xl border transition-all duration-200"
-              style={{
-                background: colors.bg.surface,
-                borderColor: colors.border.default,
-                color: colors.text.primary,
-              }}
-            />
-          </div>
-          
-          {/* Status Filter Icon */}
-          <MobileFilterButton
-            icon={<Filter className="w-4 h-4" />}
-            label="Status"
-            isActive={filters.status !== 'all' && filters.status !== ''}
-            onClick={() => setMobileSheetOpen('status')}
-          />
-          
-          {/* Trade Type Filter Icon */}
-          <MobileFilterButton
-            icon={<TrendingUp className="w-4 h-4" />}
-            label="Type"
-            isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
-            onClick={() => setMobileSheetOpen('tradeType')}
-          />
-          
-          {/* Educator Filter Icon */}
-          {educatorOptions.length > 1 && (
-            <MobileFilterButton
-              icon={<Users className="w-4 h-4" />}
-              label="Educator"
-              isActive={filters.educator !== 'all' && filters.educator !== ''}
-              onClick={() => setMobileSheetOpen('educator')}
-            />
-          )}
-          
-          {/* Create Signal Button */}
-          {canCreateSignals && (
-            <GlassmorphismCreateButton onClick={handleCreateSignalClick} />
-          )}
-          
-          {/* Clear All (icon only if active) */}
-          {hasActiveFilters && (
-            <button
-              onClick={handleClearAllClick}
-              className="h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200"
-              style={{
-                background: colors.state.danger,
-                border: `1px solid ${colors.border.danger}`,
-                color: colors.accent.danger,
-              }}
-              aria-label="Clear all filters"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        </div>
+        {/* Bottom Navigation Bar */}
+        <SignalStreamBottomNav
+          filters={filters}
+          onOpenSheet={setActiveSheet}
+          educatorOptions={educatorOptions}
+        />
 
-        {/* Filter Sheets */}
+        {/* Search Sheet */}
+        <SignalSearchSheet
+          isOpen={activeSheet === 'search'}
+          onClose={() => setActiveSheet(null)}
+          searchValue={filters.search}
+          onSearchChange={(value) => updateFilter('search', value)}
+        />
+
+        {/* Status Filter Sheet */}
         <MobileFilterSheet
           type="status"
-          isOpen={mobileSheetOpen === 'status'}
-          onClose={() => setMobileSheetOpen(null)}
+          isOpen={activeSheet === 'status'}
+          onClose={() => setActiveSheet(null)}
           currentValue={filters.status}
           onValueChange={(value) => {
             updateFilter('status', value);
-            setMobileSheetOpen(null);
+            setActiveSheet(null);
           }}
           options={statusOptions}
         />
 
+        {/* Trade Type Filter Sheet */}
         <MobileFilterSheet
           type="tradeType"
-          isOpen={mobileSheetOpen === 'tradeType'}
-          onClose={() => setMobileSheetOpen(null)}
+          isOpen={activeSheet === 'tradeType'}
+          onClose={() => setActiveSheet(null)}
           currentValue={filters.tradeType}
           onValueChange={(value) => {
             updateFilter('tradeType', value);
-            setMobileSheetOpen(null);
+            setActiveSheet(null);
           }}
           options={tradeTypeOptions}
         />
 
+        {/* Educator Filter Sheet */}
         {educatorOptions.length > 1 && (
           <MobileFilterSheet
             type="educator"
-            isOpen={mobileSheetOpen === 'educator'}
-            onClose={() => setMobileSheetOpen(null)}
+            isOpen={activeSheet === 'educator'}
+            onClose={() => setActiveSheet(null)}
             currentValue={filters.educator}
             onValueChange={(value) => {
               updateFilter('educator', value);
-              setMobileSheetOpen(null);
+              setActiveSheet(null);
             }}
             educatorOptions={educatorOptions}
             selectedEducators={filters.selectedEducators || []}
@@ -333,7 +269,7 @@ export function SignalStreamFilters({
               icon={<Filter className="w-4 h-4" />}
               label="Status"
               isActive={filters.status !== 'all' && filters.status !== ''}
-              onClick={() => setMobileSheetOpen('status')}
+              onClick={() => setActiveSheet('status')}
             />
             
             {/* Trade Type Filter Icon */}
@@ -341,7 +277,7 @@ export function SignalStreamFilters({
               icon={<TrendingUp className="w-4 h-4" />}
               label="Type"
               isActive={filters.tradeType !== 'all' && filters.tradeType !== ''}
-              onClick={() => setMobileSheetOpen('tradeType')}
+              onClick={() => setActiveSheet('tradeType')}
             />
             
             {/* Educator Filter Icon */}
@@ -350,7 +286,7 @@ export function SignalStreamFilters({
                 icon={<Users className="w-4 h-4" />}
                 label="Educator"
                 isActive={filters.educator !== 'all' && filters.educator !== ''}
-                onClick={() => setMobileSheetOpen('educator')}
+                onClick={() => setActiveSheet('educator')}
               />
             )}
             
@@ -400,24 +336,24 @@ export function SignalStreamFilters({
       {/* Desktop Filter Sheets */}
       <MobileFilterSheet
         type="status"
-        isOpen={mobileSheetOpen === 'status'}
-        onClose={() => setMobileSheetOpen(null)}
+        isOpen={activeSheet === 'status'}
+        onClose={() => setActiveSheet(null)}
         currentValue={filters.status}
         onValueChange={(value) => {
           updateFilter('status', value);
-          setMobileSheetOpen(null);
+          setActiveSheet(null);
         }}
         options={statusOptions}
       />
 
       <MobileFilterSheet
         type="tradeType"
-        isOpen={mobileSheetOpen === 'tradeType'}
-        onClose={() => setMobileSheetOpen(null)}
+        isOpen={activeSheet === 'tradeType'}
+        onClose={() => setActiveSheet(null)}
         currentValue={filters.tradeType}
         onValueChange={(value) => {
           updateFilter('tradeType', value);
-          setMobileSheetOpen(null);
+          setActiveSheet(null);
         }}
         options={tradeTypeOptions}
       />
@@ -425,13 +361,13 @@ export function SignalStreamFilters({
       {educatorOptions.length > 1 && (
         <MobileFilterSheet
           type="educator"
-          isOpen={mobileSheetOpen === 'educator'}
-          onClose={() => setMobileSheetOpen(null)}
+          isOpen={activeSheet === 'educator'}
+          onClose={() => setActiveSheet(null)}
           currentValue={filters.educator}
-          onValueChange={(value) => {
-            updateFilter('educator', value);
-            setMobileSheetOpen(null);
-          }}
+            onValueChange={(value) => {
+              updateFilter('educator', value);
+              setActiveSheet(null);
+            }}
           educatorOptions={educatorOptions}
           selectedEducators={filters.selectedEducators || []}
           onEducatorsChange={(educators) => {

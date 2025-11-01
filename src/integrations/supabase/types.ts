@@ -4594,6 +4594,19 @@ export type Database = {
           triggered: boolean
         }[]
       }
+      process_price_alerts_batch_v3: {
+        Args: { p_prices: Json; p_symbols: string[] }
+        Returns: {
+          alert_id: string
+          alert_type: string
+          current_price: number
+          priority_level: number
+          signal_id: string
+          symbol: string
+          target_price: number
+          triggered: boolean
+        }[]
+      }
       process_price_alerts_enhanced: {
         Args: { p_current_ask: number; p_current_bid: number; p_symbol: string }
         Returns: {

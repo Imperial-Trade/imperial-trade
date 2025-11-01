@@ -265,6 +265,54 @@
       background-color: rgba(15, 15, 20, 0.95) !important;
     }
   }
+
+  /* Glassmorphism Effects for Mobile Bottom Nav */
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+  }
+
+  .glass-emerald {
+    background: rgba(60, 186, 146, 0.1);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(60, 186, 146, 0.2);
+  }
+
+  /* iOS Safe Area Support */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Bottom Nav Performance Optimizations */
+  .bottom-nav-fixed {
+    position: fixed !important;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform, opacity;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  /* Emerald Glow Shadow */
+  .shadow-emerald-glow {
+    box-shadow: 0 0 20px rgba(60, 186, 146, 0.4);
+  }
+
+  /* Emerald primary color */
+  .text-emerald-primary {
+    color: hsl(158, 64%, 52%);
+  }
+
+  .fill-emerald-primary\/20 {
+    fill: hsla(158, 64%, 52%, 0.2);
+  }
+
+  .border-emerald-primary {
+    border-color: hsl(158, 64%, 52%);
+  }
   
   /* Admin Arsenal Pure Black Glassmorphism */
   .admin-tabs-glassmorphism {

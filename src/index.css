@@ -131,7 +131,7 @@
 
   .dark {
     /* Trading platform dark mode - inspired by professional trading interfaces */
-    --background: 210 24% 9%; /* Dark navy background #121826 */
+    --background: 0 0% 0%; /* Pure black background */
     --foreground: 0 0% 95%; /* Pure white text */
 
     --card: 210 20% 12%; /* Darker navy cards #1A1F2E */

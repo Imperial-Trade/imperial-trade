@@ -65,9 +65,11 @@ export default function Layout({
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
-        {/* Authenticated Apple-style Navigation Bar */}
+        {/* Authenticated Apple-style Navigation Bar - Desktop Only */}
         <ErrorBoundary componentName="Authenticated Navigation">
-          <AuthenticatedAppBar />
+          <div className="hidden lg:block">
+            <AuthenticatedAppBar />
+          </div>
         </ErrorBoundary>
 
         {/* Mobile: Use existing Sheet-based sidebar */}
@@ -81,7 +83,7 @@ export default function Layout({
         </ErrorBoundary>
 
         {/* Main content - centered, no left margin */}
-        <main className="w-full min-h-screen lg:pt-20 bg-background border-l border-border/10">
+        <main className="w-full min-h-screen pt-0 lg:pt-20 bg-background border-l border-border/10">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

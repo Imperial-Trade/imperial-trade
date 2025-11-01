@@ -77,7 +77,7 @@ export default function Layout({
         </ErrorBoundary>
 
         {/* Main content - centered, no left margin */}
-        <main className="w-full min-h-screen lg:pt-20 bg-background/20 backdrop-blur-sm border-l border-border/10">
+        <main className="w-full min-h-screen lg:pt-20 bg-background border-l border-border/10">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

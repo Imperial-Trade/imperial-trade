@@ -73,7 +73,7 @@ const DashboardNav: React.FC = () => {
     <header 
       className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 ${
         isHeaderCollapsed ? 'h-12' : 'h-20'
-      } items-center justify-center px-6 transition-all duration-300 nav-glass-effect border-b`}
+      } items-center justify-center px-6 transition-all duration-300 border-b border-border/20`}
     >
       
       <div className="w-full max-w-7xl flex items-center justify-between relative">

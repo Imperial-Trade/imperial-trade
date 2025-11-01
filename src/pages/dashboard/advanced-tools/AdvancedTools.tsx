@@ -132,7 +132,7 @@ export default function AdvancedTools() {
   return <div className="min-h-screen bg-background">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pb-20 md:pb-6 bg-background">
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 lg:pt-24 pb-20 md:pb-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,

@@ -1,7 +1,7 @@
 
 import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
-import DashboardNav from './DashboardNav';
+import { AuthenticatedHeader } from './AuthenticatedHeader';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useWelcome } from '@/contexts/WelcomeContext';
 
@@ -10,14 +10,10 @@ export const DashboardLayout: React.FC = () => {
   
   return (
     <div className="h-screen overflow-hidden bg-black">
-      {/* Top Navigation - Hidden during welcome animation */}
-      {hasSeenWelcome && (
-        <div className="animate-nav-cross-blur-in opacity-0">
-          <DashboardNav />
-        </div>
-      )}
+      {/* Glassmorphic Header - Desktop Only */}
+      <AuthenticatedHeader />
       
-      {/* Main Content with Dynamic Top Padding */}
+      {/* Main Content */}
       <main 
         className={`relative h-full overflow-hidden ${hasSeenWelcome ? 'animate-dashboard-cross-blur-in' : 'opacity-0'}`}
       >

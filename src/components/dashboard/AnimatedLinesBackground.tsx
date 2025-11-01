@@ -28,8 +28,8 @@ export const AnimatedLinesBackground: React.FC = () => {
         className="fixed inset-0 z-0 pointer-events-none transition-all duration-300"
         style={{
           background: isDark 
-            ? 'rgba(18, 18, 20, 0.7)' 
-            : 'rgba(255, 255, 255, 0.7)',
+            ? 'rgba(18, 18, 20, 0.2)' 
+            : 'rgba(255, 255, 255, 0.2)',
           backdropFilter: 'blur(20px) saturate(150%)',
           WebkitBackdropFilter: 'blur(20px) saturate(150%)',
         }}

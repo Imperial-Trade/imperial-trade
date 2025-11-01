@@ -4,16 +4,12 @@ import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useWelcome } from '@/contexts/WelcomeContext';
-import { AnimatedLinesBackground } from './AnimatedLinesBackground';
 
 export const DashboardLayout: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   
   return (
-    <div className="min-h-screen">
-      {/* Video Background with Glassmorphism Overlay */}
-      <AnimatedLinesBackground />
-
+    <div className="min-h-screen bg-black">
       {/* Top Navigation - Hidden during welcome animation */}
       {hasSeenWelcome && (
         <div className="animate-nav-cross-blur-in opacity-0">

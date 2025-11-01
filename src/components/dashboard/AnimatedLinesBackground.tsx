@@ -25,7 +25,7 @@ export const AnimatedLinesBackground: React.FC = () => {
 
       {/* Glassmorphism Layer */}
       <div 
-        className="fixed inset-0 z-10 pointer-events-none transition-all duration-300"
+        className="fixed inset-0 z-0 pointer-events-none transition-all duration-300"
         style={{
           background: isDark 
             ? 'rgba(18, 18, 20, 0.7)' 

@@ -84,7 +84,7 @@ const DashboardNav: React.FC = () => {
 
   return (
     <header 
-      className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 ${
+      className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 bg-background ${
         isHeaderCollapsed ? 'h-12' : 'h-16'
       } items-center justify-center px-6 transition-all duration-300 border-b border-border/20`}
     >

@@ -69,7 +69,7 @@ export const DashboardHome: React.FC = () => {
       <AnimatedLinesBackground />
       
       {/* Single Page Layout - No Scrolling */}
-      <div className="relative z-20 h-full flex items-start justify-center pt-20">
+      <div className="relative z-20 h-full flex items-center justify-center">
         <div className="container mx-auto max-w-5xl px-4">
           {/* Compact Welcome Header */}
           <div className="text-center space-y-4">

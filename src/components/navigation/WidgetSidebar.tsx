@@ -656,7 +656,7 @@ export function WidgetSidebar({
   return <>
       <EdgeIndicator isVisible={isVisible} canTrigger={showEdgeIndicator} />
       
-      <motion.aside ref={sidebarRef} className={`fixed left-2 sm:left-4 top-16 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`} initial={{
+      <motion.aside ref={sidebarRef} className={`fixed left-2 sm:left-4 top-2 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`} initial={{
       x: "-110%",
       opacity: 0
     }} animate={{

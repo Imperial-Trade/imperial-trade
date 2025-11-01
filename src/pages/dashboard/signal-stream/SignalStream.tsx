@@ -1873,19 +1873,10 @@ export default function SignalStream() {
   // PHASE 2: Wrap entire signal stream with error boundary
   return <SignalStreamErrorBoundary>
     <StreamErrorBoundary>
-      {/* Animated Gradient Background + Mesh Overlay */}
-      <div className="min-h-screen relative overflow-hidden" style={{
-        background: colors.bg.gradient,
-        animation: 'gradientShift 15s ease infinite'
-      }}>
-        {/* Optional: Animated mesh overlay */}
-        <div className="fixed inset-0 pointer-events-none opacity-30" style={{
-          background: colors.bg.meshGradient,
-          animation: 'meshFloat 20s ease-in-out infinite alternate'
-        }} />
+      <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
         {/* Content wrapper with z-index */}
-        <div className="relative z-10">
+        <div className="relative z-[60] h-full overflow-y-auto pt-0 lg:pt-20 pb-20 md:pb-6">
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
@@ -1893,7 +1884,7 @@ export default function SignalStream() {
 
 
           {/* Main Content - Mobile Optimized grid layout with granular protection */}
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-6 pb-24 md:pb-6">
+          <div className="w-full px-2 sm:px-4 pt-0 pb-24 md:pb-6">
             <div className="max-w-none w-full">
               <div className="w-full">
               

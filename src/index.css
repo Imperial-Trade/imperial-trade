@@ -221,8 +221,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    background: hsl(var(--background));
+    @apply text-foreground;
+    background: transparent;
     min-height: 100vh;
     color: hsl(var(--foreground));
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;

@@ -209,10 +209,15 @@ export const TradingJournalApp: React.FC = () => {
   const [showStats, setShowStats] = useState(true);
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
-  
+
   // Use shared journal context
-  const { entries: journalEntries, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
-  
+  const {
+    entries: journalEntries,
+    addOptimisticEntry,
+    updateOptimisticEntry,
+    removeOptimisticEntry
+  } = useTradeJournal();
+
   // Map journal entries to Trade format for existing UI
   const trades = useMemo(() => {
     const mappedTrades: Trade[] = journalEntries.map(entry => ({
@@ -233,12 +238,13 @@ export const TradingJournalApp: React.FC = () => {
       screenshot_url: entry.screenshot_url,
       screenshot_urls: entry.screenshot_urls,
       ai_feedback: entry.ai_positive_feedback,
-      ai_positive_feedback: entry.ai_positive_feedback, // Also map to ai_positive_feedback property
+      ai_positive_feedback: entry.ai_positive_feedback,
+      // Also map to ai_positive_feedback property
       coach_status: (entry as any).coach_status,
       created_at: entry.created_at,
       updated_at: entry.updated_at
     }));
-    
+
     // Add sample trades if no real data exists
     return mappedTrades.length > 0 ? mappedTrades : sampleTrades;
   }, [journalEntries]);
@@ -357,15 +363,15 @@ export const TradingJournalApp: React.FC = () => {
   const triggerCoachingAnalysis = async (journalEntryId: string, userId: string) => {
     try {
       console.log('🤖 Triggering coaching analysis for journal entry:', journalEntryId);
-      
-      const { error } = await supabase.functions.invoke('coach-agent', {
+      const {
+        error
+      } = await supabase.functions.invoke('coach-agent', {
         body: {
           event_type: "LOG_TRADE",
           user_id: userId,
           journal_entry_id: journalEntryId
         }
       });
-      
       if (error) {
         console.error('Coaching analysis error:', error);
       } else {
@@ -382,10 +388,10 @@ export const TradingJournalApp: React.FC = () => {
     screenshotFiles?: File[];
   }) => {
     if (!user) return;
-    
+
     // Generate temporary ID for optimistic updates
     const tempId = `temp-${Date.now()}`;
-    
+
     // Create optimistic entry for immediate UI update
     const optimisticTrade: Trade = {
       id: tempId,
@@ -402,7 +408,8 @@ export const TradingJournalApp: React.FC = () => {
       emotion: tradeData.emotion,
       session: tradeData.session || undefined,
       notes: tradeData.notes,
-      screenshot_urls: [], // Will be updated after upload
+      screenshot_urls: [],
+      // Will be updated after upload
       ai_feedback: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -413,7 +420,8 @@ export const TradingJournalApp: React.FC = () => {
       id: tempId,
       user_id: optimisticTrade.user_id,
       asset_ticker: optimisticTrade.asset,
-      trade_type: optimisticTrade.direction === "long" ? "Long" : "Short", // Title case for consistency
+      trade_type: optimisticTrade.direction === "long" ? "Long" : "Short",
+      // Title case for consistency
       pnl: optimisticTrade.pnl,
       entry_price: optimisticTrade.entry_price,
       exit_price: optimisticTrade.exit_price,
@@ -427,7 +435,6 @@ export const TradingJournalApp: React.FC = () => {
       updated_at: optimisticTrade.updated_at
     };
     addOptimisticEntry(journalEntry);
-
     try {
       let screenshotUrls: string[] = [];
 
@@ -438,26 +445,23 @@ export const TradingJournalApp: React.FC = () => {
             const timestamp = Date.now();
             const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const filePath = `${user.id}/${tradeData.date}/${timestamp}-${index}-${sanitizedFilename}`;
-
-            const { data, error } = await supabase.storage
-              .from('journal-charts')
-              .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-              });
-
+            const {
+              data,
+              error
+            } = await supabase.storage.from('journal-charts').upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
             if (error) {
               console.error(`Upload failed for ${file.name}:`, error);
               return null;
             }
-
             return data.path;
           } catch (error) {
             console.error(`Upload error for ${file.name}:`, error);
             return null;
           }
         });
-
         const results = await Promise.all(uploadPromises);
         screenshotUrls = results.filter(path => path !== null) as string[];
 
@@ -465,13 +469,12 @@ export const TradingJournalApp: React.FC = () => {
         if (screenshotUrls.length !== tradeData.screenshotFiles.length) {
           const failedCount = tradeData.screenshotFiles.length - screenshotUrls.length;
           toast({
-            title: "Partial Upload Success", 
+            title: "Partial Upload Success",
             description: `${screenshotUrls.length} images uploaded successfully. ${failedCount} failed.`,
             variant: "default"
           });
         }
       }
-
       const tradeEntry = {
         user_id: user.id,
         asset_ticker: tradeData.asset,
@@ -482,10 +485,10 @@ export const TradingJournalApp: React.FC = () => {
         exit_price: tradeData.exit_price,
         position_size: tradeData.position_size,
         notes: tradeData.notes,
-        screenshot_url: tradeData.screenshot_url || (screenshotUrls.length > 0 ? screenshotUrls[0] : null), // Keep legacy field for backward compatibility
+        screenshot_url: tradeData.screenshot_url || (screenshotUrls.length > 0 ? screenshotUrls[0] : null),
+        // Keep legacy field for backward compatibility
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : []
       };
-
       const {
         data,
         error
@@ -498,18 +501,16 @@ export const TradingJournalApp: React.FC = () => {
 
       // Trigger AI coaching analysis (coach-agent handles database updates automatically)
       triggerCoachingAnalysis(data.id, user.id);
-
       toast({
         title: "Trade Saved",
         description: `Your trade has been logged${screenshotUrls.length > 0 ? ` with ${screenshotUrls.length} image(s)` : ''}`
       });
     } catch (error) {
       console.error("Error saving trade:", error);
-      
+
       // Remove optimistic entry on error
       console.log('❌ Removing optimistic entry due to error:', tempId);
       removeOptimisticEntry(tempId);
-      
       toast({
         title: "Error",
         description: "Failed to save trade",
@@ -907,57 +908,63 @@ export const TradingJournalApp: React.FC = () => {
       if (notesLower.includes('momentum') || notesLower.includes('momentum')) return "Momentum Trading";
       return "General Trading";
     };
-
     const strategyPerformance = trades.reduce((acc, trade) => {
       const detectedStrategy = trade.strategy || detectStrategyFromNotes(trade.notes);
-      if (!acc[detectedStrategy]) acc[detectedStrategy] = { wins: 0, total: 0, totalPnL: 0 };
+      if (!acc[detectedStrategy]) acc[detectedStrategy] = {
+        wins: 0,
+        total: 0,
+        totalPnL: 0
+      };
       acc[detectedStrategy].total++;
       acc[detectedStrategy].totalPnL += trade.pnl;
       if (trade.outcome === "win") acc[detectedStrategy].wins++;
       return acc;
-    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
-
-    const topStrategies = Object.entries(strategyPerformance)
-      .map(([strategy, data]) => ({
-        strategy,
-        winRate: (data.wins / data.total) * 100,
-        avgPnL: data.totalPnL / data.total,
-        total: data.total
-      }))
-      .filter(s => s.total >= 2)
-      .sort((a, b) => b.winRate - a.winRate);
+    }, {} as Record<string, {
+      wins: number;
+      total: number;
+      totalPnL: number;
+    }>);
+    const topStrategies = Object.entries(strategyPerformance).map(([strategy, data]) => ({
+      strategy,
+      winRate: data.wins / data.total * 100,
+      avgPnL: data.totalPnL / data.total,
+      total: data.total
+    })).filter(s => s.total >= 2).sort((a, b) => b.winRate - a.winRate);
 
     // Enhanced Timing Analysis with proper session mapping
     const mapSessionToReadable = (session?: string): string => {
       if (!session || session === "Unknown") return "Mixed Sessions";
       const sessionMap: Record<string, string> = {
         "LondonSession": "London session",
-        "NewYorkSession": "New York session", 
+        "NewYorkSession": "New York session",
         "AsianSession": "Asian session",
         "EuropeanOverlap": "European overlap hours",
         "AmericanOverlap": "American overlap hours"
       };
       return sessionMap[session] || session.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
     };
-
     const timePerformance = trades.reduce((acc, trade) => {
       const readableSession = mapSessionToReadable(trade.session);
-      if (!acc[readableSession]) acc[readableSession] = { wins: 0, total: 0, totalPnL: 0 };
+      if (!acc[readableSession]) acc[readableSession] = {
+        wins: 0,
+        total: 0,
+        totalPnL: 0
+      };
       acc[readableSession].total++;
       acc[readableSession].totalPnL += trade.pnl;
       if (trade.outcome === "win") acc[readableSession].wins++;
       return acc;
-    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
-
-    const bestTiming = Object.entries(timePerformance)
-      .map(([session, data]) => ({
-        session,
-        winRate: (data.wins / data.total) * 100,
-        avgPnL: data.totalPnL / data.total,
-        total: data.total
-      }))
-      .filter(t => t.total >= 2)
-      .sort((a, b) => b.avgPnL - a.avgPnL)[0];
+    }, {} as Record<string, {
+      wins: number;
+      total: number;
+      totalPnL: number;
+    }>);
+    const bestTiming = Object.entries(timePerformance).map(([session, data]) => ({
+      session,
+      winRate: data.wins / data.total * 100,
+      avgPnL: data.totalPnL / data.total,
+      total: data.total
+    })).filter(t => t.total >= 2).sort((a, b) => b.avgPnL - a.avgPnL)[0];
 
     // Enhanced Psychology Analysis with sentiment detection
     const detectEmotionFromNotes = (notes?: string): string => {
@@ -970,26 +977,29 @@ export const TradingJournalApp: React.FC = () => {
       if (notesLower.includes('frustrated') || notesLower.includes('angry')) return "Frustrated";
       return "Neutral";
     };
-
     const emotionPerformance = trades.reduce((acc, trade) => {
       const detectedEmotion = trade.emotion || detectEmotionFromNotes(trade.notes);
-      if (!acc[detectedEmotion]) acc[detectedEmotion] = { wins: 0, total: 0, totalPnL: 0 };
+      if (!acc[detectedEmotion]) acc[detectedEmotion] = {
+        wins: 0,
+        total: 0,
+        totalPnL: 0
+      };
       acc[detectedEmotion].total++;
       acc[detectedEmotion].totalPnL += trade.pnl;
       if (trade.outcome === "win") acc[detectedEmotion].wins++;
       return acc;
-    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
-
-    const bestEmotion = Object.entries(emotionPerformance)
-      .map(([emotion, data]) => ({
-        emotion,
-        winRate: (data.wins / data.total) * 100,
-        avgPnL: data.totalPnL / data.total,
-        total: data.total,
-        profitImprovement: data.totalPnL / data.total
-      }))
-      .filter(e => e.total >= 2)
-      .sort((a, b) => b.avgPnL - a.avgPnL);
+    }, {} as Record<string, {
+      wins: number;
+      total: number;
+      totalPnL: number;
+    }>);
+    const bestEmotion = Object.entries(emotionPerformance).map(([emotion, data]) => ({
+      emotion,
+      winRate: data.wins / data.total * 100,
+      avgPnL: data.totalPnL / data.total,
+      total: data.total,
+      profitImprovement: data.totalPnL / data.total
+    })).filter(e => e.total >= 2).sort((a, b) => b.avgPnL - a.avgPnL);
 
     // Enhanced Risk Management Analysis
     const winningTrades = trades.filter(t => t.pnl > 0);
@@ -1011,7 +1021,6 @@ export const TradingJournalApp: React.FC = () => {
         return `${best.strategy} needs improvement (${best.winRate.toFixed(0)}% win rate). Review what's working vs. what isn't.`;
       }
     };
-
     const generateTimingInsight = () => {
       if (!bestTiming) return "Track trading sessions to discover your optimal market timing patterns";
       if (bestTiming.avgPnL > 50) {
@@ -1022,22 +1031,18 @@ export const TradingJournalApp: React.FC = () => {
         return `Review your ${bestTiming.session} trades - currently averaging $${bestTiming.avgPnL.toFixed(2)}. Consider adjusting your approach.`;
       }
     };
-
     const generatePsychologyTip = () => {
       if (bestEmotion.length === 0) return "Add emotional state tracking to your notes for powerful psychology insights";
       const topEmotion = bestEmotion[0];
       const worstEmotion = bestEmotion[bestEmotion.length - 1];
-      
       if (topEmotion.avgPnL > worstEmotion.avgPnL + 20) {
         return `${topEmotion.emotion.toLowerCase()} trading yields ${Math.abs(topEmotion.avgPnL - worstEmotion.avgPnL).toFixed(0)}% better results than ${worstEmotion.emotion.toLowerCase()} trading. Mind your emotional state!`;
       } else {
         return `Your emotional consistency is good. ${topEmotion.emotion} entries average $${topEmotion.avgPnL.toFixed(2)} profit.`;
       }
     };
-
     const generateRiskManagementTip = () => {
       if (riskRewardRatio === 0) return "Add entry and exit prices to unlock powerful risk management insights";
-      
       if (riskRewardRatio >= 2) {
         return `Excellent risk management! Your ${riskRewardRatio.toFixed(1)}:1 risk-reward ratio shows disciplined trading.`;
       } else if (riskRewardRatio >= 1.5) {
@@ -1048,7 +1053,6 @@ export const TradingJournalApp: React.FC = () => {
         return `Risk management needs attention - ${riskRewardRatio.toFixed(1)}:1 ratio means losses exceed gains on average.`;
       }
     };
-
     return {
       bestStrategy: generateBestStrategyInsight(),
       timingInsight: generateTimingInsight(),
@@ -1356,15 +1360,10 @@ export const TradingJournalApp: React.FC = () => {
                       </div>
 
                       {/* Screenshots Display */}
-                      {(trade.screenshot_urls && trade.screenshot_urls.length > 0) ? (
-                        <ImageGalleryWithUrls paths={trade.screenshot_urls} />
-                      ) : trade.screenshot_url ? (
-                        <ImageGalleryWithUrls paths={[trade.screenshot_url]} />
-                      ) : null}
+                      {trade.screenshot_urls && trade.screenshot_urls.length > 0 ? <ImageGalleryWithUrls paths={trade.screenshot_urls} /> : trade.screenshot_url ? <ImageGalleryWithUrls paths={[trade.screenshot_url]} /> : null}
 
                       {/* Your Trading Coach Feedback */}
-                      {(trade.ai_positive_feedback || trade.coach_status === 'pending') && (
-                        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 min-h-[64px]">
+                      {(trade.ai_positive_feedback || trade.coach_status === 'pending') && <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 min-h-[64px]">
                           <div className="flex items-start gap-3">
                             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                               <Brain className="w-4 h-4 text-primary" />
@@ -1375,15 +1374,11 @@ export const TradingJournalApp: React.FC = () => {
                                 <Badge variant="outline" className="text-xs">AI Analysis</Badge>
                               </div>
                               <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                                {trade.coach_status === 'pending' 
-                                  ? '👉 "Your coach is looking over your journal…"'
-                                  : trade.ai_positive_feedback
-                                }
+                                {trade.coach_status === 'pending' ? '👉 "Your coach is looking over your journal…"' : trade.ai_positive_feedback}
                               </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        </div>}
                     </div>
 
                     <div className="text-right ml-6">
@@ -1406,10 +1401,8 @@ export const TradingJournalApp: React.FC = () => {
   const DashboardView: React.FC = () => <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Journal XX</h1>
-          <p className="text-muted-foreground">
-            Your intelligent trading companion
-          </p>
+          
+          
         </div>
         <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)} className="flex items-center gap-2">
           {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1519,15 +1512,12 @@ export const TradingJournalApp: React.FC = () => {
         <EnhancedStatsPanel />
       </div>
     </div>;
-
-  return (
-    <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-transparent focus:border-transparent active:border-transparent focus:outline-none">
+  return <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-transparent focus:border-transparent active:border-transparent focus:outline-none">
       <AnimatePresence mode="wait">
         {journalState.selectedDate ? <EnhancedDayView key="day-view" date={journalState.selectedDate} /> : <DashboardView key="dashboard-view" />}
       </AnimatePresence>
 
       <AddTradeModal isOpen={showAddTradeModal} onClose={() => setShowAddTradeModal(false)} onSave={handleSaveTrade} selectedDate={journalState.selectedDate || undefined} />
-    </div>
-  );
+    </div>;
 };
 export default TradingJournalApp;

@@ -11,30 +11,39 @@ import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { parseNumStrict, isNonEmpty } from '@/lib/utils';
 import { TRADE_TYPES, coerceTradeType } from '@/constants/trading';
 import { normalizeTradeDate, mapDbRowToEntry } from '@/features/trade-journal/normalizers';
-
 const TradingJournal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  
+
   // Use shared journal context
-  const { entries, isLoading, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
-  
+  const {
+    entries,
+    isLoading,
+    addOptimisticEntry,
+    updateOptimisticEntry,
+    removeOptimisticEntry
+  } = useTradeJournal();
+
   // Mobile detection
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-width: 1024px)');
-  
-  const { user } = useAuth();
-  const { toast } = useToast();
-
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const loadUserProfile = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        const {
+          data: profile
+        } = await supabase.from('profiles').select('*').eq('id', user.id).single();
         if (profile) {
           setUserProfile(profile);
         }
@@ -43,33 +52,29 @@ const TradingJournal: React.FC = () => {
       console.error('Error loading user profile:', error);
     }
   }, []);
-
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
       toast({
         title: 'Success',
-        description: 'Journal entry deleted successfully',
+        description: 'Journal entry deleted successfully'
       });
     } catch (error) {
       console.error('Error deleting entry:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete journal entry',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   }, [toast]);
-
   const handleSubmit = useCallback(async (data: any) => {
     if (!user) return;
-    
     setIsSubmitting(true);
     console.log('📝 Starting journal entry submission:', data);
-    
+
     // Generate temporary ID for optimistic updates
     const tempId = `temp-${Date.now()}`;
-    
     try {
       // STRICT VALIDATION: Required P&L
       const pnl = parseNumStrict(data.pnl);
@@ -77,7 +82,7 @@ const TradingJournal: React.FC = () => {
         toast({
           title: 'Validation Error',
           description: 'P&L is required and must be a valid number',
-          variant: 'destructive',
+          variant: 'destructive'
         });
         return;
       }
@@ -87,16 +92,14 @@ const TradingJournal: React.FC = () => {
       const entry_price = isNonEmpty(data.entry) ? parseNumStrict(data.entry) : null;
       const exit_price = isNonEmpty(data.exit) ? parseNumStrict(data.exit) : null;
       const position_size = isNonEmpty(data.size) ? parseNumStrict(data.size) : null;
-
       if (isNonEmpty(data.entry) && entry_price === null) invalidFields.push('Entry Price');
       if (isNonEmpty(data.exit) && exit_price === null) invalidFields.push('Exit Price');
       if (isNonEmpty(data.size) && position_size === null) invalidFields.push('Position Size');
-
       if (invalidFields.length > 0) {
         toast({
           title: 'Validation Error',
           description: `Invalid numeric values: ${invalidFields.join(', ')}`,
-          variant: 'destructive',
+          variant: 'destructive'
         });
         return;
       }
@@ -104,36 +107,30 @@ const TradingJournal: React.FC = () => {
       // NORMALIZE trade_type and trade_date
       const trade_type = coerceTradeType(data.tradeType) || TRADE_TYPES[0]; // Default to 'Long'
       const trade_date = normalizeTradeDate(data.date || new Date());
-
       let screenshotUrls: string[] = [];
-      
+
       // Handle image uploads if screenshots exist
       if (data.screenshotFiles && data.screenshotFiles.length > 0) {
         console.log('📤 Uploading screenshots:', data.screenshotFiles.length);
-        
         const uploadPromises = data.screenshotFiles.map(async (file: File) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${user.id}/${Date.now()}-${Math.random()}.${fileExt}`;
-          
+
           // Compress image before upload
           const compressedFile = await compressImage(file, {
             maxWidth: 1920,
             maxHeight: 1080,
             quality: 0.8
           });
-          
-          const { error: uploadError } = await supabase.storage
-            .from('journal-charts')
-            .upload(fileName, compressedFile);
-          
+          const {
+            error: uploadError
+          } = await supabase.storage.from('journal-charts').upload(fileName, compressedFile);
           if (uploadError) {
             console.error('Upload error:', uploadError);
             throw new Error(`Failed to upload image: ${uploadError.message}`);
           }
-          
           return fileName;
         });
-        
         screenshotUrls = await Promise.all(uploadPromises);
         console.log('✅ Images uploaded successfully:', screenshotUrls);
       }
@@ -157,7 +154,6 @@ const TradingJournal: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-
       console.log('✨ Adding optimistic entry via shared context:', optimisticEntry);
       addOptimisticEntry(optimisticEntry);
 
@@ -172,40 +168,35 @@ const TradingJournal: React.FC = () => {
         position_size,
         trade_date,
         notes: data.notes || null,
-        screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
+        screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null
       };
-
       console.log('💾 Inserting journal entry:', entryToInsert);
-      
-      const { data: newEntry, error: insertError } = await supabase
-        .from('trade_journal_entries')
-        .insert(entryToInsert)
-        .select()
-        .single();
-      
+      const {
+        data: newEntry,
+        error: insertError
+      } = await supabase.from('trade_journal_entries').insert(entryToInsert).select().single();
       if (insertError) {
         console.error('Insert error:', insertError);
         throw new Error(`Failed to save journal entry: ${insertError.message}`);
       }
-      
       console.log('✅ Journal entry created:', newEntry);
-      
+
       // Reconcile optimistic entry with real DB row using normalizer
       console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', newEntry.id);
       updateOptimisticEntry(tempId, mapDbRowToEntry(newEntry));
-      
+
       // Trigger AI coaching analysis
       if (newEntry.id) {
         console.log('🤖 Triggering AI coaching analysis for entry:', newEntry.id);
-        
-        const { error: coachingError } = await supabase.functions.invoke('coach-agent', {
-          body: { 
+        const {
+          error: coachingError
+        } = await supabase.functions.invoke('coach-agent', {
+          body: {
             event_type: "LOG_TRADE",
             user_id: user.id,
             journal_entry_id: newEntry.id
           }
         });
-        
         if (coachingError) {
           console.error('AI coaching analysis error:', coachingError);
           // Don't throw error here as the entry was saved successfully
@@ -213,57 +204,41 @@ const TradingJournal: React.FC = () => {
           console.log('✅ AI coaching analysis triggered successfully');
         }
       }
-      
       toast({
         title: 'Success',
-        description: 'Journal entry saved successfully!',
+        description: 'Journal entry saved successfully!'
       });
-      
     } catch (error) {
       console.error('Error saving journal entry:', error);
-      
+
       // Remove optimistic entry on error
       console.log('❌ Removing optimistic entry due to error:', tempId);
       removeOptimisticEntry(tempId);
-      
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save journal entry',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsSubmitting(false);
     }
   }, [user, toast, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);
-
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
 
   // Mobile/Tablet optimized view
   if (isMobile || isTablet) {
-    return (
-      <MobileTradingJournal
-        entries={entries as any}
-        isSubmitting={isSubmitting}
-        isLoading={isLoading}
-        onSubmit={handleSubmit}
-        onDelete={handleDelete}
-        userProfile={userProfile}
-      />
-    );
+    return <MobileTradingJournal entries={entries as any} isSubmitting={isSubmitting} isLoading={isLoading} onSubmit={handleSubmit} onDelete={handleDelete} userProfile={userProfile} />;
   }
 
   // Desktop view - Direct render of Advanced Educational Journal
-  return (
-    <div className="min-h-screen p-2 sm:p-4 lg:p-6 bg-transparent">
+  return <div className="min-h-screen p-2 sm:p-4 lg:p-6 bg-transparent">
       <div className="mx-auto max-w-full px-2 sm:px-4">
         <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
-          <TradingJournalApp />
+          <TradingJournalApp className="py-0 mx-0 my-0 px-0" />
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default TradingJournal;

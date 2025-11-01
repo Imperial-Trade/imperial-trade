@@ -188,7 +188,7 @@ export default function AdvancedTools() {
         </motion.div>
 
         {/* Tool Display - Mobile Optimized */}
-        <div className="min-h-[500px] sm:min-h-[600px]">
+        <div className="min-h-[500px] sm:min-h-[600px] pt-4 sm:pt-6">
           <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
             <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>

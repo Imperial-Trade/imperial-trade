@@ -185,8 +185,10 @@ export default function RiskCalculator() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-6">
-      <Card className="bg-card/50 border-border/50 shadow-xl sm:shadow-2xl backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-2 sm:p-4 lg:p-6">
+      <div className="max-w-6xl mx-auto space-y-3 sm:space-y-6">
+
+        <Card className="bg-card/50 border-border/50 shadow-xl sm:shadow-2xl backdrop-blur-sm">
           <CardHeader className="p-3 sm:p-6">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
@@ -451,6 +453,7 @@ export default function RiskCalculator() {
             )}
           </CardContent>
         </Card>
+      </div>
     </div>
   );
 }

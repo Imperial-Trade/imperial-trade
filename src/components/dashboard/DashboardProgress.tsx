@@ -38,8 +38,7 @@ export default function DashboardProgress() {
   ];
 
   return (
-    <div className="min-h-screen bg-background overflow-y-auto pt-0 lg:pt-20 pb-20 md:pb-6">
-      <div className="container mx-auto p-2 sm:p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3 mb-8">
         <BarChart3 className="h-8 w-8 text-primary" />
         <div>
@@ -131,7 +130,6 @@ export default function DashboardProgress() {
           </div>
         </CardContent>
       </Card>
-      </div>
     </div>
   );
 }

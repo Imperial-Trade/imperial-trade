@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { BookOpen, Calculator, Brain, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut, Eye, EyeOff } from "lucide-react";
+import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
 import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
+import OpportunityScanner from "@/components/ai/OpportunityScanner";
+import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 import { MobileBottomNav } from "@/components/advanced-tools/MobileBottomNav";
@@ -27,7 +30,22 @@ const coreTools = [{
   component: MeccaAnalysisHub,
   description: "Premium AI-powered trading analysis hub with advanced visual insights and performance tracking."
 }];
-const aiTools = [];
+const aiTools = [{
+  name: "Economic Calendar",
+  icon: Calendar,
+  component: OptimizedEconomicCalendar,
+  description: "Stay informed about market-moving events for educational analysis."
+}, {
+  name: "Educational Pattern Scanner",
+  icon: Search,
+  component: OpportunityScanner,
+  description: "Scan markets for educational pattern recognition and learning opportunities."
+}, {
+  name: "Educational Risk Calculator",
+  icon: Scale,
+  component: RiskSimulator,
+  description: "Analyze hypothetical setups to learn risk assessment principles."
+}];
 const navButtons = [{
   name: "Pattern Learning",
   icon: Bell,
@@ -53,7 +71,6 @@ const navButtons = [{
 export default function AdvancedTools() {
   const location = useLocation();
   const [activeTool, setActiveTool] = useState(coreTools[0]);
-  const [showStats, setShowStats] = useState(true);
 
   // Memoize all tools to prevent recreation on every render
   const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
@@ -64,8 +81,11 @@ export default function AdvancedTools() {
     const toolParam = params.get("tool");
     const toolMap = {
       journal: "Educational Journal",
+      calendar: "Economic Calendar",
       calculator: "Educational Calculator",
-      analyst: "Setup Learning Analyzer"
+      analyst: "Setup Learning Analyzer",
+      scanner: "Educational Pattern Scanner",
+      simulator: "Educational Risk Calculator"
     };
     const toolName = toolMap[toolParam];
     return allTools.find(tool => tool.name === toolName) || null;
@@ -85,23 +105,18 @@ export default function AdvancedTools() {
   // Listen for journal navigation events from hamburger menu
   useEffect(() => {
     const handleJournalNavChange = (event: CustomEvent) => {
-      const {
-        tab
-      } = event.detail;
+      const { tab } = event.detail;
       // Switch to Journal tool first
       const journalTool = allTools.find(t => t.name === 'Educational Journal');
       if (journalTool) {
         setActiveTool(journalTool);
         // Then dispatch event for journal tab change
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('journal-tab-change', {
-            detail: {
-              tab
-            }
-          }));
+          window.dispatchEvent(new CustomEvent('journal-tab-change', { detail: { tab } }));
         }, 100);
       }
     };
+
     window.addEventListener('journal-nav-change', handleJournalNavChange as EventListener);
     return () => {
       window.removeEventListener('journal-nav-change', handleJournalNavChange as EventListener);
@@ -133,7 +148,7 @@ export default function AdvancedTools() {
   return <div className="min-h-screen bg-background">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-20 md:pb-6 bg-background overflow-y-auto">
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pb-20 md:pb-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,
@@ -143,44 +158,38 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-4 sm:mb-6 lg:mb-8 flex items-center justify-center">
+      }} className="mb-2 sm:mb-4 flex items-center justify-center">
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center gap-4">
                 {/* Active Tool Info - Desktop only */}
-                
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-1.5 flex-shrink-0">
+                    {React.createElement(activeTool.icon, {
+                  className: "w-4 h-4 text-primary"
+                })}
+                  </div>
+                  <h2 className="font-semibold text-base text-foreground tracking-tight truncate">
+                    {activeTool.name}
+                  </h2>
+                </div>
 
                 {/* Separator - Desktop only */}
                 <div className="w-px h-6 bg-border/20"></div>
 
                 {/* Tools Selection Grid - Desktop */}
-                <div className="flex items-center gap-4">
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <div className="flex items-center justify-start gap-1.5">
-                          {React.createElement(tool.icon, {
-                      className: "w-3 h-3 flex-shrink-0"
-                    })}
-                          <span className="text-xs font-medium truncate">
-                            {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "MECCA" ? "MECCA" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
-                          </span>
-                        </div>
-                      </button>)}
-                  </div>
-                  
-                  {/* Stats Toggle Button - Only for Educational Journal */}
-                  {activeTool?.name === "Educational Journal" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowStats(!showStats)} 
-                      className="flex items-center gap-2 ml-4"
-                    >
-                      {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      {showStats ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                  )}
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                      <div className="flex items-center justify-start gap-1.5">
+                        {React.createElement(tool.icon, {
+                    className: "w-3 h-3 flex-shrink-0"
+                  })}
+                        <span className="text-xs font-medium truncate">
+                          {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "MECCA" ? "MECCA" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
+                        </span>
+                      </div>
+                    </button>)}
                 </div>
               </div>
 
@@ -188,23 +197,29 @@ export default function AdvancedTools() {
         </motion.div>
 
         {/* Tool Display - Mobile Optimized */}
-        <div className="min-h-[500px] sm:min-h-[600px] pt-4 sm:pt-6">
+        <div className="min-h-[500px] sm:min-h-[600px]">
           <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
             <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>
-                  <TradingJournal showStats={showStats} onToggleStats={() => setShowStats(!showStats)} />
+                  <TradingJournal />
                 </TradeJournalProvider>}
+              {activeTool?.name === "Economic Calendar" && <OptimizedEconomicCalendar />}
               {activeTool?.name === "Educational Calculator" && <RiskCalculator />}
               {activeTool?.name === "MECCA" && <MeccaAnalysisHub />}
+              {activeTool?.name === "Educational Pattern Scanner" && <OpportunityScanner />}
+              {activeTool?.name === "Educational Risk Calculator" && <RiskSimulator />}
             </div>
           </Card>
         </div>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav activeTool={activeTool} onToolChange={toolName => {
-      const tool = [...coreTools, ...aiTools].find(t => t.name === toolName);
-      if (tool) setActiveTool(tool);
-    }} />
+      <MobileBottomNav 
+        activeTool={activeTool}
+        onToolChange={(toolName) => {
+          const tool = [...coreTools, ...aiTools].find(t => t.name === toolName);
+          if (tool) setActiveTool(tool);
+        }}
+      />
     </div>;
 }

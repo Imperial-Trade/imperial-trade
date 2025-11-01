@@ -10,6 +10,8 @@ import {
   Users,
   Handshake,
   Settings,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +39,7 @@ import { cn } from "@/lib/utils";
 
 const AuthenticatedAppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
@@ -94,7 +97,10 @@ const AuthenticatedAppBar: React.FC = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[200] h-20 flex items-center justify-center px-6 nav-glass-effect border-b">
+    <header className={cn(
+      "fixed top-0 left-0 right-0 z-[200] flex items-center justify-center px-6 nav-glass-effect border-b transition-all duration-300",
+      isCollapsed ? "h-16" : "h-20"
+    )}>
       <div className="w-full max-w-7xl flex items-center justify-between">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-2">
@@ -103,77 +109,58 @@ const AuthenticatedAppBar: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation - Compact pills */}
-        <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
-          {navigationItems.map((item) => {
-            const isActive = location.pathname === item.to;
-            const ButtonComponent = (
-              <Button
-                variant="ghost"
-                className={cn(
-                  "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
-                  isActive && "bg-primary/15 text-primary"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Button>
-            );
+        {!isCollapsed && (
+          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+            {navigationItems.map((item) => {
+              const isActive = location.pathname === item.to;
+              
+              return item.external ? (
+                <Button
+                  key={item.to}
+                  variant="ghost"
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
+                    isActive && "bg-primary/15 text-primary"
+                  )}
+                  onClick={() => window.location.href = item.to}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              ) : (
+                <Link key={item.to} to={item.to}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
+                      isActive && "bg-primary/15 text-primary"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
-            return item.external ? (
-              <Button
-                key={item.to}
-                variant="ghost"
-                className={cn(
-                  "flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200",
-                  isActive && "bg-primary/15 text-primary"
-                )}
-                onClick={() => window.location.href = item.to}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Button>
-            ) : (
-              <Link key={item.to} to={item.to}>
-                {ButtonComponent}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Desktop User Menu & Theme Toggle */}
+        {/* Desktop Theme Toggle & Collapse Button */}
         <div className="hidden lg:flex items-center gap-2">
           <ThemeToggle />
-          
-          {/* User Menu Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email} />
-                  <AvatarFallback>
-                    {user?.email ? getInitials(user.email) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <div className="flex flex-col space-y-1 p-2">
-                <p className="text-sm font-medium leading-none">{user?.email}</p>
-                <DashboardUserRole />
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/settings" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="h-8 w-8"
+            aria-label={isCollapsed ? "Expand header" : "Collapse header"}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </Button>
         </div>
 
         {/* Mobile & Tablet Navigation */}

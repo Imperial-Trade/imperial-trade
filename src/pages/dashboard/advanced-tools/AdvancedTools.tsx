@@ -193,19 +193,6 @@ export default function AdvancedTools() {
                 </div>
               </div>
 
-              {/* Mobile: Only show active tool info */}
-              <div className="sm:hidden flex items-center gap-3 p-2">
-                <div className="p-1.5 flex-shrink-0">
-                  {React.createElement(activeTool.icon, {
-                    className: "w-4 h-4 text-primary"
-                  })}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold text-sm text-foreground tracking-tight truncate">
-                    {activeTool.name}
-                  </h2>
-                </div>
-              </div>
             </div>}
         </motion.div>
 

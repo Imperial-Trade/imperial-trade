@@ -160,12 +160,12 @@ export default function AdvancedTools() {
         duration: 0.3
       }} className="mb-2 sm:mb-4 flex items-center justify-center">
           {/* Combined Tool Info and Selection Panel */}
-          {activeTool && <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
+          {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center gap-4">
                 {/* Active Tool Info - Desktop only */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+                  <div className="p-1.5 flex-shrink-0">
                     {React.createElement(activeTool.icon, {
                   className: "w-4 h-4 text-primary"
                 })}
@@ -173,10 +173,6 @@ export default function AdvancedTools() {
                   <h2 className="font-semibold text-base text-foreground tracking-tight truncate">
                     {activeTool.name}
                   </h2>
-                  <span className="text-sm text-muted-foreground">•</span>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {activeTool.description}
-                  </p>
                 </div>
 
                 {/* Separator - Desktop only */}
@@ -199,7 +195,7 @@ export default function AdvancedTools() {
 
               {/* Mobile: Only show active tool info */}
               <div className="sm:hidden flex items-center gap-3 p-2">
-                <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+                <div className="p-1.5 flex-shrink-0">
                   {React.createElement(activeTool.icon, {
                     className: "w-4 h-4 text-primary"
                   })}

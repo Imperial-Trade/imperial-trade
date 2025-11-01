@@ -11,7 +11,13 @@ import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { parseNumStrict, isNonEmpty } from '@/lib/utils';
 import { TRADE_TYPES, coerceTradeType } from '@/constants/trading';
 import { normalizeTradeDate, mapDbRowToEntry } from '@/features/trade-journal/normalizers';
-const TradingJournal: React.FC = () => {
+
+interface TradingJournalProps {
+  showStats?: boolean;
+  onToggleStats?: () => void;
+}
+
+const TradingJournal: React.FC<TradingJournalProps> = ({ showStats, onToggleStats }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -236,7 +242,7 @@ const TradingJournal: React.FC = () => {
   return <div className="min-h-screen p-2 sm:p-4 lg:p-6 bg-transparent">
       <div className="mx-auto max-w-full px-2 sm:px-4">
         <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
-          <TradingJournalApp className="py-0 mx-0 my-0 px-0" />
+          <TradingJournalApp className="py-0 mx-0 my-0 px-0" showStats={showStats} onToggleStats={onToggleStats} />
         </div>
       </div>
     </div>;

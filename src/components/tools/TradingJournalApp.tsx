@@ -186,7 +186,13 @@ const sampleTrades: Trade[] = [{
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 }];
-export const TradingJournalApp: React.FC = () => {
+interface TradingJournalAppProps {
+  showStats?: boolean;
+  onToggleStats?: () => void;
+  className?: string;
+}
+
+export const TradingJournalApp: React.FC<TradingJournalAppProps> = ({ showStats: externalShowStats, onToggleStats, className }) => {
   const {
     theme
   } = useTheme();
@@ -206,7 +212,9 @@ export const TradingJournalApp: React.FC = () => {
     isLoading: false,
     isDayViewActive: false
   });
-  const [showStats, setShowStats] = useState(true);
+  const [internalShowStats, setInternalShowStats] = useState(true);
+  const showStats = externalShowStats !== undefined ? externalShowStats : internalShowStats;
+  const setShowStats = onToggleStats || setInternalShowStats;
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
 
@@ -1398,18 +1406,7 @@ export const TradingJournalApp: React.FC = () => {
   };
 
   // Main Dashboard View
-  const DashboardView: React.FC = () => <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          
-          
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => setShowStats(!showStats)} className="flex items-center gap-2">
-          {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          {showStats ? "Hide Stats" : "Show Stats"}
-        </Button>
-      </div>
-
+  const DashboardView: React.FC = () => <div className="space-y-4">
       <EnhancedDashboardMetrics metrics={metrics} />
 
       <div className="flex gap-4">

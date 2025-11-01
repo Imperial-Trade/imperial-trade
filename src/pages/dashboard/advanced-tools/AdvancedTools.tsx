@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { BookOpen, Calculator, Brain, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut } from "lucide-react";
+import { BookOpen, Calculator, Brain, ChevronLeft, Wrench, Sparkles, ChevronRight, MousePointerClick, Home, TrendingUp, GraduationCap, Users, Settings, BarChart3, Bell, Video, User, Shield, LogOut, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import RiskCalculator from "@/components/tools/RiskCalculator";
 import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
@@ -53,6 +53,7 @@ const navButtons = [{
 export default function AdvancedTools() {
   const location = useLocation();
   const [activeTool, setActiveTool] = useState(coreTools[0]);
+  const [showStats, setShowStats] = useState(true);
 
   // Memoize all tools to prevent recreation on every render
   const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
@@ -154,17 +155,32 @@ export default function AdvancedTools() {
                 <div className="w-px h-6 bg-border/20"></div>
 
                 {/* Tools Selection Grid - Desktop */}
-                <div className="grid grid-cols-6 gap-1.5">
-                  {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                      <div className="flex items-center justify-start gap-1.5">
-                        {React.createElement(tool.icon, {
-                    className: "w-3 h-3 flex-shrink-0"
-                  })}
-                        <span className="text-xs font-medium truncate">
-                          {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "MECCA" ? "MECCA" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
-                        </span>
-                      </div>
-                    </button>)}
+                <div className="flex items-center gap-4">
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                        <div className="flex items-center justify-start gap-1.5">
+                          {React.createElement(tool.icon, {
+                      className: "w-3 h-3 flex-shrink-0"
+                    })}
+                          <span className="text-xs font-medium truncate">
+                            {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "MECCA" ? "MECCA" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
+                          </span>
+                        </div>
+                      </button>)}
+                  </div>
+                  
+                  {/* Stats Toggle Button - Only for Educational Journal */}
+                  {activeTool?.name === "Educational Journal" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowStats(!showStats)} 
+                      className="flex items-center gap-2 ml-4"
+                    >
+                      {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showStats ? "Hide Stats" : "Show Stats"}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -176,7 +192,7 @@ export default function AdvancedTools() {
           <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
             <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>
-                  <TradingJournal />
+                  <TradingJournal showStats={showStats} onToggleStats={() => setShowStats(!showStats)} />
                 </TradeJournalProvider>}
               {activeTool?.name === "Educational Calculator" && <RiskCalculator />}
               {activeTool?.name === "MECCA" && <MeccaAnalysisHub />}

@@ -1876,7 +1876,7 @@ export default function SignalStream() {
       <div className="fixed inset-0 overflow-hidden bg-black z-40">
         
         {/* Content wrapper with z-index */}
-        <div className="relative z-50 h-full overflow-y-auto">
+        <div className="relative z-50 h-full overflow-y-auto mx-0 my-[100px]">
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}

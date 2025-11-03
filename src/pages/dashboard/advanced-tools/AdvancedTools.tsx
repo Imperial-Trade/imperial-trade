@@ -147,13 +147,7 @@ export default function AdvancedTools() {
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
               {/* Desktop Layout */}
-              <div className="hidden sm:flex items-center gap-4">
-                {/* Active Tool Info - Desktop only */}
-                
-
-                {/* Separator - Desktop only */}
-                <div className="w-px h-6 bg-border/20"></div>
-
+              <div className="hidden sm:flex items-center gap-4 justify-end w-full">
                 {/* Tools Selection Grid - Desktop */}
                 <div className="flex items-center gap-4">
                   <div className="grid grid-cols-6 gap-1.5">

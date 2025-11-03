@@ -235,7 +235,7 @@ const TradingJournal: React.FC<TradingJournalProps> = ({ showStats, onToggleStat
 
   // Mobile/Tablet optimized view
   if (isMobile || isTablet) {
-    return <MobileTradingJournal entries={entries as any} isSubmitting={isSubmitting} isLoading={isLoading} onSubmit={handleSubmit} onDelete={handleDelete} userProfile={userProfile} showStats={showStats} onToggleStats={onToggleStats} />;
+    return <MobileTradingJournal entries={entries as any} isSubmitting={isSubmitting} isLoading={isLoading} onSubmit={handleSubmit} onDelete={handleDelete} userProfile={userProfile} />;
   }
 
   // Desktop view - Direct render of Advanced Educational Journal

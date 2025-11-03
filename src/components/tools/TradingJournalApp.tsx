@@ -1413,12 +1413,22 @@ export const TradingJournalApp: React.FC<TradingJournalAppProps> = ({ showStats:
         <div className="flex-1 space-y-6">
           <Card className="h-96 bg-card border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-stone-900 dark:text-stone-100">
-                <Activity className="h-5 w-5" />
-                Equity Curve (
-                {journalState.currentFilter.charAt(0).toUpperCase() + journalState.currentFilter.slice(1)}
-                )
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-stone-900 dark:text-stone-100">
+                  <Activity className="h-5 w-5" />
+                  Equity Curve (
+                  {journalState.currentFilter.charAt(0).toUpperCase() + journalState.currentFilter.slice(1)}
+                  )
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setShowStats(!showStats)}
+                  className="h-8 w-8 text-stone-900 hover:text-stone-800 hover:bg-stone-100 dark:text-stone-100 dark:hover:text-stone-200 dark:hover:bg-stone-800"
+                >
+                  {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <EquityCurveChart data={getEquityCurveData()} />

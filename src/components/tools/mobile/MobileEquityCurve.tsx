@@ -1,13 +1,16 @@
 import React, { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Eye, EyeOff } from 'lucide-react';
 import { TradeJournalEntry } from '@/api/entities';
+import { Button } from '@/components/ui/button';
 
 interface MobileEquityCurveProps {
   entries: TradeJournalEntry[];
+  showStats?: boolean;
+  onToggleStats?: () => void;
 }
 
-const MobileEquityCurve = memo(({ entries }: MobileEquityCurveProps) => {
+const MobileEquityCurve = memo(({ entries, showStats = true, onToggleStats }: MobileEquityCurveProps) => {
   const equityData = useMemo(() => {
     if (!entries.length) return [];
 
@@ -87,6 +90,16 @@ const MobileEquityCurve = memo(({ entries }: MobileEquityCurveProps) => {
           <span className="text-sm font-medium text-muted-foreground">
             Current Equity
           </span>
+          {onToggleStats && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={onToggleStats}
+              className="h-4 w-4 p-0 hover:bg-transparent"
+            >
+              {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          )}
         </div>
         <span className={`text-lg font-bold ${
           finalValue >= 0 ? 'text-emerald-600' : 'text-red-500'

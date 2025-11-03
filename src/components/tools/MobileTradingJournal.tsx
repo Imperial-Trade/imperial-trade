@@ -20,6 +20,8 @@ interface MobileTradingJournalProps {
   onSubmit: (data: any) => void;
   onDelete: (entryId: string) => void;
   userProfile: any;
+  showStats?: boolean;
+  onToggleStats?: () => void;
 }
 export default function MobileTradingJournal({
   entries,
@@ -27,7 +29,9 @@ export default function MobileTradingJournal({
   isLoading,
   onSubmit,
   onDelete,
-  userProfile
+  userProfile,
+  showStats,
+  onToggleStats
 }: MobileTradingJournalProps) {
   const [activeTab, setActiveTab] = useState<MobileTab>('overview');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -136,7 +140,7 @@ export default function MobileTradingJournal({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <MobileEquityCurve entries={entries} />
+          <MobileEquityCurve entries={entries} showStats={showStats} onToggleStats={onToggleStats} />
         </CardContent>
       </Card>
 

@@ -143,7 +143,7 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-1 flex items-start justify-end pr-6">
+      }} className="mb-0 flex items-start justify-end pr-4">
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && <div className="p-0 w-auto">
               {/* Desktop Layout */}

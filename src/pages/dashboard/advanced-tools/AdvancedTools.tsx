@@ -170,17 +170,7 @@ export default function AdvancedTools() {
                   </div>
                   
                   {/* Stats Toggle Button - Only for Educational Journal */}
-                  {activeTool?.name === "Educational Journal" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowStats(!showStats)} 
-                      className="flex items-center gap-2 ml-4"
-                    >
-                      {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      {showStats ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                  )}
+                  {activeTool?.name === "Educational Journal"}
                 </div>
               </div>
 

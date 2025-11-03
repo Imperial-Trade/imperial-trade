@@ -325,8 +325,8 @@ const MeccaAnalysisHub: React.FC = () => {
     }} transition={{
       duration: 0.6
     }}>
-        <div className="container mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between my-[50px]">
+        <div className="container mx-auto px-4 sm:px-6 py-1">
+          <div className="flex items-center justify-between my-2">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="mecca-neural-brain">
                 <NeuralBrain />
@@ -346,11 +346,11 @@ const MeccaAnalysisHub: React.FC = () => {
       </motion.div>
 
       {/* Main Content - Responsive Layout */}
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-1 sm:py-2">
         <div className="mecca-main-grid">
           
           {/* Left Panel - Evidence Viewer */}
-          <motion.div className="mecca-left-panel space-y-4" initial={{
+          <motion.div className="mecca-left-panel space-y-2" initial={{
           opacity: 0,
           x: -50
         }} animate={{
@@ -525,7 +525,7 @@ const MeccaAnalysisHub: React.FC = () => {
           </motion.div>
 
           {/* Center Panel - Dashboard */}
-          <motion.div className="mecca-center-panel space-y-4 sm:space-y-6" initial={{
+          <motion.div className="mecca-center-panel space-y-2 sm:space-y-3" initial={{
           opacity: 0,
           y: 20
         }} animate={{
@@ -671,7 +671,7 @@ const MeccaAnalysisHub: React.FC = () => {
           </motion.div>
 
           {/* Right Panel - AI Insight Stream */}
-          <motion.div className="mecca-right-panel space-y-4" initial={{
+          <motion.div className="mecca-right-panel space-y-2" initial={{
           opacity: 0,
           x: 50
         }} animate={{

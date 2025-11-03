@@ -185,15 +185,15 @@ export default function RiskCalculator() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-6">
+    <div className="space-y-1 sm:space-y-2">
       <Card className="bg-card/50 border-border/50 shadow-xl sm:shadow-2xl backdrop-blur-sm">
-          <CardHeader className="p-3 sm:p-6">
+          <CardHeader className="p-2 sm:p-3">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span className="truncate">Educational Setup Calculator</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+          <CardContent className="p-2 sm:p-3 space-y-2 sm:space-y-3">
             {/* Asset Selection Section */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Educational Asset / Learning Pair</label>

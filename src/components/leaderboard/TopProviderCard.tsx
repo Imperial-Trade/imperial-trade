@@ -58,13 +58,13 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
           <div className="flex items-center gap-2">
             <Trophy className={cn(responsiveStyles.trophySize, "text-accent")} />
             <CardTitle className={cn(responsiveStyles.titleSize, "font-bold bg-gradient-to-r from-accent to-accent-foreground bg-clip-text text-transparent")}>
-              Top Providers (24h)
+              Top Providers (7d)
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            No trades closed in last 24h
+            No trades closed in last 7 days
           </p>
         </CardContent>
       </Card>
@@ -77,7 +77,7 @@ export const TopProviderCard: React.FC<TopProviderCardProps> = ({
         <div className="flex items-center gap-2">
           <Trophy className={cn(responsiveStyles.trophySize, "text-accent")} />
           <CardTitle className={cn(responsiveStyles.titleSize, "font-bold bg-gradient-to-r from-accent to-accent-foreground bg-clip-text text-transparent")}>
-            Top Providers (24h)
+            Top Providers (7d)
           </CardTitle>
         </div>
       </CardHeader>

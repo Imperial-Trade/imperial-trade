@@ -143,13 +143,13 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-4 sm:mb-6 lg:mb-8 flex items-center justify-center">
+      }} className="mb-2 sm:mb-3 lg:mb-4 flex items-start justify-end">
           {/* Combined Tool Info and Selection Panel */}
-          {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
+          {activeTool && <div className="rounded-lg sm:rounded-xl p-1 w-auto">
               {/* Desktop Layout */}
-              <div className="hidden sm:flex items-center gap-4 justify-end w-full">
+              <div className="hidden sm:flex items-center justify-end">
                 {/* Tools Selection Grid - Desktop */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   <div className="grid grid-cols-6 gap-1.5">
                     {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
                         <div className="flex items-center justify-start gap-1.5">

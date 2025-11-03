@@ -143,16 +143,16 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-2 sm:mb-3 lg:mb-4 flex items-start justify-end">
+      }} className="mb-1 flex items-start justify-end pr-6">
           {/* Combined Tool Info and Selection Panel */}
-          {activeTool && <div className="rounded-lg sm:rounded-xl p-1 w-auto">
+          {activeTool && <div className="p-0 w-auto">
               {/* Desktop Layout */}
               <div className="hidden sm:flex items-center justify-end">
                 {/* Tools Selection Grid - Desktop */}
-                <div className="flex items-center gap-2">
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <div className="flex items-center justify-start gap-1.5">
+                <div className="flex items-center gap-0.5">
+                  <div className="grid grid-cols-3 gap-0.5 bg-background/80 backdrop-blur-sm rounded-md p-0.5 border border-border">
+                    {coreTools.map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-1.5 transition-all text-left min-h-[38px] rounded-sm ${activeTool?.name === tool.name ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}>
+                        <div className="flex items-center justify-start gap-1">
                           {React.createElement(tool.icon, {
                       className: "w-3 h-3 flex-shrink-0"
                     })}
@@ -172,7 +172,7 @@ export default function AdvancedTools() {
         </motion.div>
 
         {/* Tool Display - Mobile Optimized */}
-        <div className="min-h-[500px] sm:min-h-[600px] pt-4 sm:pt-6">
+        <div className="min-h-[500px] sm:min-h-[600px] pt-2">
           <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
             <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>

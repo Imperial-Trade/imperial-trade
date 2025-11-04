@@ -756,9 +756,9 @@
 }
 
 /* Navigation glassmorphism effect - Light mode */
+[data-sidebar="sidebar"][data-mobile="true"],
 .nav-glass-effect,
-.nav-glass-effect [data-sidebar="sidebar"],
-[data-sidebar="sidebar"][data-mobile="true"] {
+.nav-glass-effect [data-sidebar="sidebar"] {
   background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(30px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
@@ -767,9 +767,9 @@
 }
 
 /* Navigation glassmorphism effect - Dark mode */
+.dark [data-sidebar="sidebar"][data-mobile="true"],
 .dark .nav-glass-effect,
-.dark .nav-glass-effect [data-sidebar="sidebar"],
-.dark [data-sidebar="sidebar"][data-mobile="true"] {
+.dark .nav-glass-effect [data-sidebar="sidebar"] {
   background: rgba(15, 15, 20, 0.3) !important;
   backdrop-filter: blur(30px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(30px) saturate(180%) !important;

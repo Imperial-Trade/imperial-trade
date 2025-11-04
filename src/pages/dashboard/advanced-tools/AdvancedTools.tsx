@@ -133,7 +133,7 @@ export default function AdvancedTools() {
   return <div className="min-h-screen bg-background">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-20 md:pb-6 bg-background overflow-y-auto">
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-2 lg:pt-4 pb-20 md:pb-6 bg-background overflow-y-auto">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,
@@ -143,11 +143,11 @@ export default function AdvancedTools() {
         y: 0
       }} transition={{
         duration: 0.3
-      }} className="mb-4 sm:mb-6 lg:mb-8 flex items-center justify-center">
+      }} className="mb-1 flex items-start justify-center pt-2">
           {/* Combined Tool Info and Selection Panel */}
-          {activeTool && <div className="rounded-lg sm:rounded-xl p-2 w-full max-w-full overflow-hidden">
+          {activeTool && <div className="rounded-lg sm:rounded-xl p-0 w-auto overflow-hidden">
               {/* Desktop Layout */}
-              <div className="hidden sm:flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-1">
                 {/* Active Tool Info - Desktop only */}
                 
 
@@ -155,10 +155,10 @@ export default function AdvancedTools() {
                 <div className="w-px h-6 bg-border/20"></div>
 
                 {/* Tools Selection Grid - Desktop */}
-                <div className="flex items-center gap-4">
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-2 transition-all text-left min-h-[44px] ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <div className="flex items-center justify-start gap-1.5">
+                <div className="flex items-center gap-1">
+                  <div className="grid grid-cols-3 gap-0.5 bg-background/80 backdrop-blur-sm rounded-md p-1 border border-border">
+                    {[...coreTools, ...aiTools].map(tool => <button key={tool.name} onClick={() => setActiveTool(tool)} className={`p-1.5 transition-all text-left min-h-[36px] rounded-sm ${activeTool?.name === tool.name ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                        <div className="flex items-center justify-start gap-1">
                           {React.createElement(tool.icon, {
                       className: "w-3 h-3 flex-shrink-0"
                     })}
@@ -170,17 +170,7 @@ export default function AdvancedTools() {
                   </div>
                   
                   {/* Stats Toggle Button - Only for Educational Journal */}
-                  {activeTool?.name === "Educational Journal" && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowStats(!showStats)} 
-                      className="flex items-center gap-2 ml-4"
-                    >
-                      {showStats ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      {showStats ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                  )}
+                  {activeTool?.name === "Educational Journal"}
                 </div>
               </div>
 
@@ -188,9 +178,9 @@ export default function AdvancedTools() {
         </motion.div>
 
         {/* Tool Display - Mobile Optimized */}
-        <div className="min-h-[500px] sm:min-h-[600px] pt-4 sm:pt-6">
-          <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
-            <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
+        <div className="min-h-[500px] sm:min-h-[600px] pt-1">
+          <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg border-0 h-full overflow-y-auto">
+            <div className="p-0 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>
                   <TradingJournal showStats={showStats} onToggleStats={() => setShowStats(!showStats)} />
                 </TradeJournalProvider>}

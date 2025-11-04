@@ -371,7 +371,7 @@ export function WidgetSidebar({
     // Size classes based on rank
     const avatarSize = isFullWidth ? "w-10 h-10" : "w-8 h-8";
     const nameSize = isFullWidth ? "text-sm" : "text-xs";
-    const pipsSize = isFullWidth ? "text-xl" : "text-base";
+    const pipsSize = isFullWidth ? "text-base" : "text-sm";
     const pipsSuffix = isFullWidth ? "text-xs" : "text-[10px]";
     const signalSize = isFullWidth ? "text-xs" : "text-[10px]";
     const emojiSize = isFullWidth ? "text-2xl" : "text-xl";
@@ -389,6 +389,7 @@ export function WidgetSidebar({
       duration: 0.3,
       delay: rank * 0.1
     }} className={`
+          relative
           bg-black/50 backdrop-blur-md rounded-xl 
           ${cardPadding}
           border ${getRankBorder(rank)}
@@ -396,40 +397,59 @@ export function WidgetSidebar({
           pointer-events-none
           transition-all duration-300
         `}>
-        {/* Header: Rank Badge + Role Label */}
-        <div className={`flex items-center justify-between ${spacing}`}>
-          <div className="flex items-center gap-2">
-            <span className={emojiSize}>{getRankEmoji(rank)}</span>
-            <span className={`${rankNumSize} font-bold bg-gradient-to-r ${getRankGradient(rank)} bg-clip-text text-transparent`}>
-              #{rank}
-            </span>
+        {/* Medal - Absolute Top Right */}
+        <div className={`absolute ${isFullWidth ? 'top-2 right-2' : 'top-1.5 right-1.5'}`}>
+          <span className={emojiSize}>{getRankEmoji(rank)}</span>
+        </div>
+
+        {/* Centered Avatar */}
+        <div className={`flex justify-center ${isFullWidth ? 'mb-2' : 'mb-1.5 mt-4'}`}>
+          <div className={`${avatarSize} rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0`}>
+            {provider.avatarUrl ? <img src={provider.avatarUrl} alt={provider.displayName} className="w-full h-full object-cover" /> : <User className={`${isFullWidth ? 'w-5 h-5' : 'w-4 h-4'} text-primary`} />}
           </div>
+        </div>
+
+        {/* Centered Name */}
+        <div className="text-center mb-1">
+          <span className={`${nameSize} ${isFullWidth ? 'font-bold' : 'font-semibold'} text-white truncate block px-1`}>
+            {provider.displayName}
+          </span>
+        </div>
+
+        {/* Centered Badge */}
+        <div className={`flex justify-center ${isFullWidth ? 'mb-2' : 'mb-1.5'}`}>
           <span className={`${roleSize} text-gray-400 uppercase tracking-wider font-semibold`}>
             {formatRoleDisplay(provider.userType)}
           </span>
         </div>
-        
-        {/* Avatar + Name */}
-        <div className={`flex items-center gap-2 ${spacing}`}>
-          <div className={`${avatarSize} rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0`}>
-            {provider.avatarUrl ? <img src={provider.avatarUrl} alt={provider.displayName} className="w-full h-full object-cover" /> : <User className={`${isFullWidth ? 'w-5 h-5' : 'w-4 h-4'} text-primary`} />}
+
+        {isFullWidth ? (
+          /* Rank #1: Stats Row with Border */
+          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+            <div className={`${pipsSize} font-bold ${provider.totalPips >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-1`}>
+              {provider.totalPips >= 0 ? '+' : ''}{provider.totalPips.toFixed(1)}
+              <span className={`${pipsSuffix} text-gray-400 font-normal`}>pips</span>
+              {provider.totalPips >= 0 && <span className='text-sm'>🟢</span>}
+            </div>
+            <div className={`${signalSize} text-foreground`}>
+              {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
+            </div>
           </div>
-          <span className={`${nameSize} font-semibold text-white truncate`}>
-            {provider.displayName}
-          </span>
-        </div>
-        
-        {/* Pips + Signal Count */}
-        <div className="flex items-center justify-between">
-          <div className={`${pipsSize} font-bold ${provider.totalPips >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-1`}>
-            {provider.totalPips >= 0 ? '+' : ''}{provider.totalPips.toFixed(1)}
-            <span className={`${pipsSuffix} text-gray-400 font-normal`}>pips</span>
-            {provider.totalPips >= 0 && <span className={isFullWidth ? 'text-sm' : 'text-xs'}>🟢</span>}
-          </div>
-          <div className={`${signalSize} text-gray-400`}>
-            {provider.signalCount} {provider.signalCount === 1 ? 'signal' : 'signals'}
-          </div>
-        </div>
+        ) : (
+          /* Ranks #2 & #3: Centered Stats */
+          <>
+            <div className="text-center mb-0.5">
+              <div className={`${pipsSize} font-bold ${provider.totalPips >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center justify-center gap-1`}>
+                {provider.totalPips >= 0 ? '+' : ''}{provider.totalPips.toFixed(1)}
+                <span className={`${pipsSuffix} text-gray-400 font-normal`}>pips</span>
+                {provider.totalPips >= 0 && <span className='text-xs'>🟢</span>}
+              </div>
+            </div>
+            <div className={`text-center text-foreground ${signalSize}`}>
+              {provider.signalCount} trade{provider.signalCount !== 1 ? 's' : ''}
+            </div>
+          </>
+        )}
       </motion.div>;
   };
   const WidgetTool = ({

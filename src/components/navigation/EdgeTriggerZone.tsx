@@ -37,9 +37,7 @@ export function EdgeTriggerZone({
         width: `${edgeWidth}px`,
         pointerEvents: 'auto',
         touchAction: 'none',
-        background: showIndicator 
-          ? 'linear-gradient(to right, rgba(59, 130, 246, 0.1), transparent)'
-          : 'transparent',
+        background: 'transparent',
         cursor: 'pointer',
         transition: 'background 0.2s ease'
       }}

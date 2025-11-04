@@ -163,10 +163,10 @@ export function WidgetSidebar({
       bottomNavHeight = hasBottomNav ? 64 : 0; // ~56px button + padding + safe margin
     }
     
-    // Calculate height - trust browser's viewport height (already accounts for notches/Dynamic Island)
-    const height = viewportHeight - headerHeight - bottomNavHeight;
+    // Calculate height - container extends to viewport bottom (don't subtract bottomNavHeight)
+    const height = viewportHeight - headerHeight;
     
-    return { width, height, top };
+    return { width, height, top, bottomNavHeight };
   };
 
   const dimensions = getSidebarDimensions();
@@ -698,8 +698,9 @@ export function WidgetSidebar({
         aria-hidden={!isVisible}
       >
         <div 
-          className="pt-2 px-2 sm:pt-3 sm:px-3 md:pt-4 md:px-4 pb-4 h-full overflow-y-auto scrollbar-hide"
+          className="pt-2 px-2 sm:pt-3 sm:px-3 md:pt-4 md:px-4 h-full overflow-y-auto scrollbar-hide"
           style={{ 
+            paddingBottom: dimensions.bottomNavHeight > 0 ? `${dimensions.bottomNavHeight + 16}px` : '16px',
             touchAction: 'pan-y',
             overscrollBehavior: 'contain'
           }}

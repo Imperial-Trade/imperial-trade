@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -106,10 +106,53 @@ export function WidgetSidebar({
   });
 
   // Device detection
+  const deviceInfo = useDeviceDetection();
   const {
     isMobile,
     isTouchDevice
-  } = useDeviceDetection();
+  } = deviceInfo;
+
+  // Location detection for dynamic spacing
+  const location = useLocation();
+
+  // Dynamic sizing based on device
+  const getSidebarDimensions = () => {
+    const { viewportWidth, viewportHeight, deviceCategory, isMobile, isTablet } = deviceInfo;
+    
+    // Width calculation (percentage-based for mobile, fixed for larger)
+    let width = 256; // default (w-64)
+    if (isMobile) {
+      if (deviceCategory === 'xs') {
+        width = Math.floor(viewportWidth * 0.70); // 70% for small phones
+      } else if (deviceCategory === 'sm') {
+        width = Math.floor(viewportWidth * 0.75); // 75% for standard phones
+      } else {
+        width = Math.floor(viewportWidth * 0.80); // 80% for large phones
+      }
+      // Clamp between 240px and 320px
+      width = Math.max(240, Math.min(320, width));
+    } else if (isTablet) {
+      width = 288; // w-72
+    } else {
+      width = 384; // w-96 for desktop
+    }
+    
+    // Height calculation (account for header, safe areas, and bottom nav)
+    const hasBottomNav = location.pathname === '/dashboard/signal-stream' && isMobile;
+    const headerHeight = isMobile ? 64 : 80; // 4rem or 5rem
+    const bottomNavHeight = hasBottomNav ? 72 : 0; // ~56px + safe area
+    const safeAreaTop = isMobile ? 20 : 0; // Extra for notches
+    const safeAreaBottom = isMobile ? 20 : 0; // Extra for home indicators
+    
+    const height = viewportHeight - headerHeight - bottomNavHeight - safeAreaTop - safeAreaBottom;
+    
+    // Top position (just below header + safe area)
+    const top = headerHeight + safeAreaTop;
+    
+    return { width, height, top };
+  };
+
+  const dimensions = getSidebarDimensions();
 
   // Swipe detection refs
   const touchStartX = useRef(0);
@@ -606,7 +649,14 @@ export function WidgetSidebar({
       
       <motion.aside 
         ref={sidebarRef} 
-        className={`fixed left-2 sm:left-4 top-2 sm:top-20 z-[90] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+        className={`fixed left-2 sm:left-4 z-[90] bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+        style={{
+          top: `${dimensions.top}px`,
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          touchAction: 'none',
+          pointerEvents: 'auto'
+        }}
         initial={{
           x: "-110%",
           opacity: 0
@@ -626,16 +676,12 @@ export function WidgetSidebar({
         }} 
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        style={{
-          touchAction: 'none',
-          pointerEvents: 'auto'
-        }} 
         role="complementary" 
         aria-label="Trading Arsenal Sidebar" 
         aria-hidden={!isVisible}
       >
         <div 
-          className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-hide"
+          className="pt-2 px-2 sm:pt-3 sm:px-3 md:pt-4 md:px-4 pb-4 h-full overflow-y-auto scrollbar-hide"
           style={{ 
             touchAction: 'pan-y',
             overscrollBehavior: 'contain'

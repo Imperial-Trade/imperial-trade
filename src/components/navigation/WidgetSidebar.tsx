@@ -136,9 +136,12 @@ export function WidgetSidebar({
   // Detect if user prefers reduced motion
   const prefersReducedMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
 
-  // Force refetch when sidebar opens
+  // Track previous visibility state to only invalidate on open transition
+  const prevVisibleRef = useRef(false);
+
+  // Force refetch when sidebar opens (only on false → true transition)
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && !prevVisibleRef.current) {
       console.log('🔄 Sidebar opened - invalidating top providers cache');
       queryClient.invalidateQueries({
         queryKey: ['top-signal-providers']
@@ -146,6 +149,7 @@ export function WidgetSidebar({
       // Increment animation key to trigger provider animations
       setAnimationKey(prev => prev + 1);
     }
+    prevVisibleRef.current = isVisible;
   }, [isVisible, queryClient]);
   const handleToggleSidebar = useCallback(() => {
     setIsVisible(prev => !prev);
@@ -178,7 +182,7 @@ export function WidgetSidebar({
         if (!showEdgeIndicator) {
           edgeIndicatorTimeout = setTimeout(() => {
             setShowEdgeIndicator(true);
-          }, 200); // Small delay to prevent flicker
+          }, 100); // Reduced delay for faster response
         }
 
         // Open sidebar after brief hover in safe area
@@ -193,7 +197,7 @@ export function WidgetSidebar({
                 navigator.vibrate(15);
               }
             }
-          }, isMobile ? 300 : 500); // Faster on mobile
+          }, isMobile ? 150 : 250); // Faster trigger on mobile
 
           return () => clearTimeout(openTimeout);
         }
@@ -213,10 +217,14 @@ export function WidgetSidebar({
       }
     };
 
-    // Click outside to close
+    // Click outside to close with haptic feedback
     const handleClickOutside = (e: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node) && isVisible) {
         handleCloseSidebar();
+        // Haptic feedback
+        if (isTouchDevice && 'vibrate' in navigator) {
+          navigator.vibrate(10);
+        }
       }
     };
 
@@ -276,11 +284,9 @@ export function WidgetSidebar({
     // Only allow dragging to the left (negative x)
     if (info.offset.x > 0) return false;
 
-    // Progressive resistance based on device type
-    const resistance = Math.abs(info.offset.x) / (isMobile ? 250 : 280);
-    const adjustedOffset = info.offset.x * (1 - resistance * (isMobile ? 0.2 : 0.3));
-    dragX.set(adjustedOffset);
-  }, [dragX, isMobile]);
+    // Direct 1:1 mapping for instant response - no resistance
+    dragX.set(info.offset.x);
+  }, [dragX]);
   const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     const dragDistance = Math.abs(info.offset.x);
@@ -695,10 +701,10 @@ export function WidgetSidebar({
         duration: 0.3
       }
     }} transition={{
-      type: "spring",
-      stiffness: prefersReducedMotion ? 200 : isMobile ? 280 : 260,
-      damping: prefersReducedMotion ? 40 : isMobile ? 20 : 25,
-      mass: isMobile ? 0.5 : 0.6
+      type: isMobile ? "tween" : "spring",
+      duration: isMobile ? 0.15 : 0.2,
+      stiffness: 400,
+      damping: 30,
     }} drag={isVisible ? "x" : false} dragConstraints={{
       left: isMobile ? -300 : -320,
       right: 0
@@ -715,10 +721,14 @@ export function WidgetSidebar({
       opacity: isDragging ? opacity : undefined,
       scale: isDragging ? scale : undefined,
       filter: isDragging ? `blur(${blur}px)` : undefined,
-      touchAction: 'pan-y pinch-zoom',
+      touchAction: isVisible ? 'none' : 'auto',
       pointerEvents: isVisible ? 'auto' : 'none'
     }} role="complementary" aria-label="Trading Arsenal Sidebar" aria-hidden={!isVisible}>
-        <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+        <div 
+          className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
+          style={{ touchAction: 'pan-y' }}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           {/* Header with Close Button */}
           <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
             <div>

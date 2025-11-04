@@ -158,9 +158,16 @@ export function WidgetSidebar({
       headerHeight = 0;
       top = 0;
       
-      // Bottom nav only on signal-stream page
-      const hasBottomNav = location.pathname === '/dashboard/signal-stream';
-      bottomNavHeight = hasBottomNav ? 64 : 0; // ~56px button + padding + safe margin
+      // Bottom nav detection: All pages with mobile bottom navigation bars
+      const PAGES_WITH_BOTTOM_NAV = [
+        '/dashboard/signal-stream',    // SignalStreamBottomNav
+        '/dashboard/advanced-tools'     // MobileBottomNav
+      ];
+      
+      const hasBottomNav = PAGES_WITH_BOTTOM_NAV.some(
+        page => location.pathname === page || location.pathname.startsWith(page + '?')
+      );
+      bottomNavHeight = hasBottomNav ? 64 : 0; // ~56px button + 16px padding
     }
     
     // Calculate height - container extends to viewport bottom (don't subtract bottomNavHeight)

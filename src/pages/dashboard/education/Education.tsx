@@ -85,7 +85,7 @@ export default function Education() {
   }
 
   return (
-    <div className="flex flex-col bg-background text-primary min-h-screen overflow-y-auto pt-0 lg:pt-20 pb-16 md:pb-6">
+    <div className="flex flex-col bg-background text-primary min-h-screen overflow-y-auto pt-0 lg:pt-20 pb-20 md:pb-6">
       <HeroSection video={featuredVideo} onPlay={handleVideoPlay} />
 
       <div className="relative z-10 -mt-10 sm:-mt-16 lg:-mt-20 overflow-auto flex-1 px-2 sm:px-4 lg:px-6">

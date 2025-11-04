@@ -95,7 +95,7 @@ export default function MobileTradingJournal({
   }} animate={{
     opacity: 1,
     y: 0
-  }} className="space-y-4 pb-24 mx-0 my-[50px]">
+  }} className="space-y-4 pb-4 mx-0 my-[50px]">
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">

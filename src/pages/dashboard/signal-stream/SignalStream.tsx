@@ -1876,7 +1876,7 @@ export default function SignalStream() {
       <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
         {/* Content wrapper with z-index */}
-        <div className="relative z-[60] h-full overflow-y-auto pt-0 lg:pt-20 pb-16 md:pb-6">
+        <div className="relative z-[60] h-full overflow-y-auto pt-0 lg:pt-20 pb-20 md:pb-6">
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
@@ -1884,7 +1884,7 @@ export default function SignalStream() {
 
 
           {/* Main Content - Mobile Optimized grid layout with granular protection */}
-          <div className="w-full px-2 sm:px-4 pt-0 pb-16 md:pb-6">
+          <div className="w-full px-2 sm:px-4 pt-0">
             <div className="max-w-none w-full">
               <div className="w-full">
               

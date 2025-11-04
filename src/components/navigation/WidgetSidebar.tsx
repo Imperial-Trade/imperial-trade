@@ -117,7 +117,7 @@ export function WidgetSidebar({
 
   // Dynamic sizing based on device
   const getSidebarDimensions = () => {
-    const { viewportWidth, viewportHeight, deviceCategory, isMobile, isTablet } = deviceInfo;
+    const { viewportWidth, viewportHeight, deviceCategory, isMobile, isTablet, isDesktop } = deviceInfo;
     
     // Width calculation (percentage-based for mobile, fixed for larger)
     let width = 256; // default (w-64)
@@ -137,17 +137,34 @@ export function WidgetSidebar({
       width = 384; // w-96 for desktop
     }
     
-    // Height calculation (account for header, safe areas, and bottom nav)
-    const hasBottomNav = location.pathname === '/dashboard/signal-stream' && isMobile;
-    const headerHeight = isMobile ? 64 : 80; // 4rem or 5rem
-    const bottomNavHeight = hasBottomNav ? 72 : 0; // ~56px + safe area
-    const safeAreaTop = isMobile ? 20 : 0; // Extra for notches
-    const safeAreaBottom = isMobile ? 20 : 0; // Extra for home indicators
+    // Height calculation - device-specific and accurate
+    let headerHeight = 0;
+    let bottomNavHeight = 0;
+    let top = 0;
     
-    const height = viewportHeight - headerHeight - bottomNavHeight - safeAreaTop - safeAreaBottom;
+    if (isDesktop) {
+      // Desktop: Fixed AuthenticatedAppBar at top (80px, or 64px when collapsed)
+      // Using 80px as standard since collapsed state is dynamic
+      headerHeight = 80;
+      top = 80;
+      bottomNavHeight = 0; // No bottom nav on desktop
+    } else if (isTablet) {
+      // Tablet: No fixed header (overlay sidebar instead)
+      headerHeight = 0;
+      top = 0;
+      bottomNavHeight = 0; // No bottom nav on tablet
+    } else {
+      // Mobile: No fixed header (Sheet-based sidebar)
+      headerHeight = 0;
+      top = 0;
+      
+      // Bottom nav only on signal-stream page
+      const hasBottomNav = location.pathname === '/dashboard/signal-stream';
+      bottomNavHeight = hasBottomNav ? 64 : 0; // ~56px button + padding + safe margin
+    }
     
-    // Top position (just below header + safe area)
-    const top = headerHeight + safeAreaTop;
+    // Calculate height - trust browser's viewport height (already accounts for notches/Dynamic Island)
+    const height = viewportHeight - headerHeight - bottomNavHeight;
     
     return { width, height, top };
   };

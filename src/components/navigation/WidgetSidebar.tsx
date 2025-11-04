@@ -659,10 +659,10 @@ export function WidgetSidebar({
         showIndicator={true}
       />
       
-      {/* Backdrop overlay */}
+      {/* Backdrop overlay - transparent click target */}
       {isVisible && (
         <motion.div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[80]"
+          className="fixed inset-0 z-[80]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -673,7 +673,7 @@ export function WidgetSidebar({
       
       <motion.aside 
         ref={sidebarRef} 
-        className={`fixed left-2 sm:left-4 z-[90] bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+        className={`fixed left-2 sm:left-4 z-[105] bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
         style={{
           top: `${dimensions.top}px`,
           width: `${dimensions.width}px`,

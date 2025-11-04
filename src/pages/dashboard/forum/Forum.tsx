@@ -53,7 +53,7 @@ export default function Forum() {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-20 md:pb-6 overflow-y-auto">
+    <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-16 md:pb-6 overflow-y-auto">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">

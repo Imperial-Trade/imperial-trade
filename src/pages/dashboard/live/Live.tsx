@@ -151,7 +151,7 @@ export default function Live() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-20 md:pb-6 select-none overflow-y-auto">
+      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6 pt-0 lg:pt-20 pb-16 md:pb-6 select-none overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6 sm:mb-8">

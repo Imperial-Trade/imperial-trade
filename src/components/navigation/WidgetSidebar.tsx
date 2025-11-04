@@ -635,7 +635,7 @@ export function WidgetSidebar({
         aria-hidden={!isVisible}
       >
         <div 
-          className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
+          className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-hide"
           style={{ 
             touchAction: 'pan-y',
             overscrollBehavior: 'contain'

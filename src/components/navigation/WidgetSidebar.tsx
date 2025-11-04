@@ -673,7 +673,7 @@ export function WidgetSidebar({
       
       <motion.aside 
         ref={sidebarRef} 
-        className={`fixed left-2 sm:left-4 z-[105] bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+        className={`nav-glass-effect fixed left-2 sm:left-4 z-[105] rounded-xl overflow-hidden shadow-2xl ${className}`}
         style={{
           top: `${dimensions.top}px`,
           width: `${dimensions.width}px`,

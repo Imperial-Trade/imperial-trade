@@ -371,7 +371,7 @@ export function WidgetSidebar({
     // Size classes based on rank
     const avatarSize = isFullWidth ? "w-10 h-10" : "w-8 h-8";
     const nameSize = isFullWidth ? "text-sm" : "text-xs";
-    const pipsSize = isFullWidth ? "text-xl" : "text-base";
+    const pipsSize = isFullWidth ? "text-base" : "text-sm";
     const pipsSuffix = isFullWidth ? "text-xs" : "text-[10px]";
     const signalSize = isFullWidth ? "text-xs" : "text-[10px]";
     const emojiSize = isFullWidth ? "text-2xl" : "text-xl";

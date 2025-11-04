@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy } from "lucide-react";
@@ -8,10 +8,9 @@ import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
 import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
-import { EdgeIndicator } from "./EdgeIndicator";
+import { EdgeTriggerZone } from "./EdgeTriggerZone";
 import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { useSmartProtection } from "@/hooks/useSmartProtection";
 import { useTopSignalProviders, TopProvider } from "@/hooks/useTopSignalProviders";
 import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 
@@ -77,9 +76,6 @@ export function WidgetSidebar({
 }: WidgetSidebarProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showEdgeIndicator, setShowEdgeIndicator] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
   const {
     user,
@@ -109,32 +105,15 @@ export function WidgetSidebar({
     providers: topProviders
   });
 
-  // Device detection and responsive behavior
+  // Device detection
   const {
     isMobile,
-    isTablet,
-    isTouchDevice,
-    edgeThreshold,
-    dragThreshold,
-    orientation
+    isTouchDevice
   } = useDeviceDetection();
 
-  // Smart protection system
-  const {
-    canTriggerSidebar
-  } = useSmartProtection({
-    edgeThreshold,
-    allowedSelectors: ['.sidebar-safe-zone', '[data-sidebar-safe]']
-  });
-
-  // Motion values for smooth drag animations
-  const dragX = useMotionValue(0);
-  const opacity = useTransform(dragX, [-280, -140, 0], [0, 0.5, 1]);
-  const scale = useTransform(dragX, [-280, -140, 0], [0.8, 0.9, 1]);
-  const blur = useTransform(dragX, [0, -140, -280], [0, 2, 8]);
-
-  // Detect if user prefers reduced motion
-  const prefersReducedMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+  // Swipe detection refs
+  const touchStartX = useRef(0);
+  const touchStartTime = useRef(0);
 
   // Track previous visibility state to only invalidate on open transition
   const prevVisibleRef = useRef(false);
@@ -153,13 +132,16 @@ export function WidgetSidebar({
   }, [isVisible, queryClient]);
   const handleToggleSidebar = useCallback(() => {
     setIsVisible(prev => !prev);
-  }, [isVisible]);
+  }, []);
+  
   const handleCloseSidebar = useCallback(() => {
-    if (isVisible) {
-      setIsVisible(false);
-      dragX.set(0);
+    setIsVisible(false);
+    
+    // Haptic feedback
+    if (isTouchDevice && 'vibrate' in navigator) {
+      navigator.vibrate(10);
     }
-  }, [isVisible, dragX]);
+  }, [isTouchDevice]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -168,100 +150,24 @@ export function WidgetSidebar({
     isEnabled: true
   });
 
-  // Enhanced mouse position tracking with smart protection
+  // Click outside to close - simplified
   useEffect(() => {
-    let edgeIndicatorTimeout: NodeJS.Timeout;
-    let hideIndicatorTimeout: NodeJS.Timeout;
-    const handleMouseMove = (e: MouseEvent) => {
-      const isNearLeftEdge = e.clientX <= edgeThreshold;
-      const canTrigger = canTriggerSidebar(e);
-
-      // Show edge indicator when near edge but not over protected elements
-      if (isNearLeftEdge && canTrigger && !isVisible) {
-        clearTimeout(hideIndicatorTimeout);
-        if (!showEdgeIndicator) {
-          edgeIndicatorTimeout = setTimeout(() => {
-            setShowEdgeIndicator(true);
-          }, 100); // Reduced delay for faster response
-        }
-
-        // Open sidebar after brief hover in safe area
-        if (!isDragging) {
-          const openTimeout = setTimeout(() => {
-            if (!isVisible && canTriggerSidebar(e)) {
-              setIsVisible(true);
-              setShowEdgeIndicator(false);
-
-              // Haptic feedback on mobile
-              if (isTouchDevice && 'vibrate' in navigator) {
-                navigator.vibrate(15);
-              }
-            }
-          }, isMobile ? 150 : 250); // Faster trigger on mobile
-
-          return () => clearTimeout(openTimeout);
-        }
-      } else {
-        clearTimeout(edgeIndicatorTimeout);
-        if (showEdgeIndicator) {
-          hideIndicatorTimeout = setTimeout(() => {
-            setShowEdgeIndicator(false);
-          }, 100);
-        }
-      }
-    };
-    const handleMouseLeave = () => {
-      if (!isHovering && !isDragging) {
-        setIsVisible(false);
-        setShowEdgeIndicator(false);
-      }
-    };
-
-    // Click outside to close with haptic feedback
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node) && isVisible) {
         handleCloseSidebar();
-        // Haptic feedback
-        if (isTouchDevice && 'vibrate' in navigator) {
-          navigator.vibrate(10);
-        }
       }
     };
 
-    // Enhanced touch handling for mobile
-    const handleTouchStart = (e: TouchEvent) => {
-      if (isTouchDevice && e.touches.length === 1) {
-        const touch = e.touches[0];
-        if (touch.clientX <= edgeThreshold && canTriggerSidebar({
-          target: e.target,
-          clientX: touch.clientX
-        } as MouseEvent)) {
-          setIsVisible(true);
-          if ('vibrate' in navigator) {
-            navigator.vibrate(10);
-          }
-        }
-      }
-    };
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseleave", handleMouseLeave);
-    document.addEventListener("mousedown", handleClickOutside);
-    if (isTouchDevice) {
-      document.addEventListener("touchstart", handleTouchStart, {
-        passive: true
-      });
+    if (isVisible) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
+
     return () => {
-      clearTimeout(edgeIndicatorTimeout);
-      clearTimeout(hideIndicatorTimeout);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseleave", handleMouseLeave);
-      document.removeEventListener("mousedown", handleClickOutside);
-      if (isTouchDevice) {
-        document.removeEventListener("touchstart", handleTouchStart);
-      }
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [edgeThreshold, canTriggerSidebar, isVisible, isHovering, isDragging, showEdgeIndicator, isMobile, isTouchDevice, handleCloseSidebar]);
+  }, [isVisible, handleCloseSidebar]);
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
     
@@ -272,47 +178,43 @@ export function WidgetSidebar({
     }
   };
 
-  // Enhanced drag handlers with device-specific optimizations
-  const handleDragStart = useCallback(() => {
-    setIsDragging(true);
-    // Enhanced haptic feedback
-    if (isTouchDevice && 'vibrate' in navigator) {
-      navigator.vibrate(isMobile ? 15 : 10);
-    }
-  }, [isTouchDevice, isMobile]);
-  const handleDrag = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    // Only allow dragging to the left (negative x)
-    if (info.offset.x > 0) return false;
+  // Manual swipe-to-close detection
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isVisible) return;
+    
+    touchStartX.current = e.touches[0].clientX;
+    touchStartTime.current = Date.now();
+  }, [isVisible]);
 
-    // Direct 1:1 mapping for instant response - no resistance
-    dragX.set(info.offset.x);
-  }, [dragX]);
-  const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    setIsDragging(false);
-    const dragDistance = Math.abs(info.offset.x);
-    const dragVelocity = Math.abs(info.velocity.x);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isVisible) return;
 
-    // Device-specific thresholds
-    const shouldClose = dragDistance > dragThreshold || dragVelocity > (isMobile ? 300 : 400);
-    if (shouldClose) {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndTime = Date.now();
+    
+    const swipeDistance = touchStartX.current - touchEndX;
+    const swipeTime = touchEndTime - touchStartTime.current;
+    const swipeVelocity = swipeDistance / swipeTime;
+
+    // Close if:
+    // - Swiped left more than 80px
+    // - OR velocity > 0.5 px/ms (fast swipe)
+    if (swipeDistance > 80 || swipeVelocity > 0.5) {
       handleCloseSidebar();
-
-      // Success haptic feedback
-      if (isTouchDevice && 'vibrate' in navigator) {
-        navigator.vibrate(isMobile ? 30 : 25);
+      
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(25);
       }
-    } else {
-      // Snap back animation
-      dragX.set(0);
     }
-  }, [dragThreshold, isMobile, isTouchDevice, handleCloseSidebar, dragX]);
+  }, [isVisible, handleCloseSidebar]);
+
   const handleClose = () => {
-    setIsVisible(false);
-    dragX.set(0); // Reset drag position
+    handleCloseSidebar();
   };
 
-  // ProviderWidget Component - Renders individual provider leaderboard cards
-  const ProviderWidget = ({
+  // ProviderWidget Component - Memoized for performance
+  const ProviderWidget = React.memo(({
     provider,
     rank
   }: {
@@ -388,16 +290,9 @@ export function WidgetSidebar({
     const roleSize = isFullWidth ? "text-[10px]" : "text-[9px]";
     const cardPadding = isFullWidth ? "p-3" : "p-2";
     const spacing = isFullWidth ? "mb-2" : "mb-1.5";
-    return <motion.div initial={{
-      opacity: 0,
-      scale: 0.9
-    }} animate={{
-      opacity: 1,
-      scale: 1
-    }} transition={{
-      duration: 0.3,
-      delay: rank * 0.1
-    }} className={`
+    return <div 
+      className={`
+          provider-widget-animated
           relative
           bg-black/50 backdrop-blur-md rounded-xl 
           ${cardPadding}
@@ -405,7 +300,11 @@ export function WidgetSidebar({
           ${getRankGlow(rank)} 
           pointer-events-none
           transition-all duration-300
-        `}>
+        `}
+        style={{
+          animationDelay: `${rank * 0.1}s`
+        }}
+      >
         {/* Medal - Absolute Top Right */}
         <div className={`absolute ${isFullWidth ? 'top-2 right-2' : 'top-1.5 right-1.5'}`}>
           <span className={emojiSize}>{getRankEmoji(rank)}</span>
@@ -459,8 +358,8 @@ export function WidgetSidebar({
             </div>
           </>
         )}
-      </motion.div>;
-  };
+      </div>;
+  });
   const WidgetTool = ({
     tool,
     size = "small"
@@ -683,50 +582,60 @@ export function WidgetSidebar({
     // Regular users → No navigation (do nothing)
   }, [isAdmin, isEducatorPlus, isEducator, isModerator, navigate]);
   return <>
-      <EdgeIndicator isVisible={isVisible} canTrigger={showEdgeIndicator} />
+      <EdgeTriggerZone 
+        onTrigger={() => setIsVisible(true)} 
+        isVisible={isVisible}
+        edgeWidth={isMobile ? 50 : 35}
+      />
       
-      <motion.aside ref={sidebarRef} className={`fixed left-2 sm:left-4 top-2 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`} initial={{
-      x: "-110%",
-      opacity: 0
-    }} animate={{
-      x: isVisible ? 0 : "-110%",
-      opacity: isVisible ? 1 : 0
-    }} exit={{
-      x: "-110%",
-      opacity: 0,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-        duration: 0.3
-      }
-    }} transition={{
-      type: isMobile ? "tween" : "spring",
-      duration: isMobile ? 0.15 : 0.2,
-      stiffness: 400,
-      damping: 30,
-    }} drag={isVisible ? "x" : false} dragConstraints={{
-      left: isMobile ? -300 : -320,
-      right: 0
-    }} dragElastic={isMobile ? 0.15 : 0.2} dragMomentum={!prefersReducedMotion} onDragStart={handleDragStart} onDrag={handleDrag} onDragEnd={handleDragEnd} onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => {
-      setIsHovering(false);
-      if (!isDragging) {
-        setIsVisible(false);
-      }
-    }} whileHover={!isDragging && !isMobile ? {
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-      scale: 1.01
-    } : {}} style={{
-      x: dragX,
-      opacity: isDragging ? opacity : undefined,
-      scale: isDragging ? scale : undefined,
-      filter: isDragging ? `blur(${blur}px)` : undefined,
-      touchAction: isVisible ? 'none' : 'auto',
-      pointerEvents: isVisible ? 'auto' : 'none'
-    }} role="complementary" aria-label="Trading Arsenal Sidebar" aria-hidden={!isVisible}>
+      {/* Backdrop overlay */}
+      {isVisible && (
+        <motion.div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[59]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          onClick={handleCloseSidebar}
+        />
+      )}
+      
+      <motion.aside 
+        ref={sidebarRef} 
+        className={`fixed left-2 sm:left-4 top-2 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`} 
+        initial={{
+          x: "-110%",
+          opacity: 0
+        }} 
+        animate={{
+          x: isVisible ? 0 : "-110%",
+          opacity: isVisible ? 1 : 0
+        }} 
+        exit={{
+          x: "-110%",
+          opacity: 0
+        }} 
+        transition={{
+          type: "tween",
+          duration: isVisible ? 0.12 : 0.1,
+          ease: isVisible ? "easeOut" : "easeIn"
+        }} 
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          touchAction: 'none',
+          pointerEvents: 'auto'
+        }} 
+        role="complementary" 
+        aria-label="Trading Arsenal Sidebar" 
+        aria-hidden={!isVisible}
+      >
         <div 
           className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
-          style={{ touchAction: 'pan-y' }}
+          style={{ 
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain'
+          }}
           onTouchStart={(e) => e.stopPropagation()}
         >
           {/* Header with Close Button */}

@@ -758,7 +758,7 @@
 /* Navigation glassmorphism effect - Light mode */
 .nav-glass-effect,
 .nav-glass-effect [data-sidebar="sidebar"],
-.nav-glass-effect .sheet-content {
+[data-sidebar="sidebar"][data-mobile="true"] {
   background: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(30px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
@@ -769,7 +769,7 @@
 /* Navigation glassmorphism effect - Dark mode */
 .dark .nav-glass-effect,
 .dark .nav-glass-effect [data-sidebar="sidebar"],
-.dark .nav-glass-effect .sheet-content {
+.dark [data-sidebar="sidebar"][data-mobile="true"] {
   background: rgba(15, 15, 20, 0.3) !important;
   backdrop-filter: blur(30px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(30px) saturate(180%) !important;

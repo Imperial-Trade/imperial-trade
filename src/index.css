@@ -263,10 +263,11 @@
   }
   
   /* Mobile-only: remove blur effects for performance */
+  /* Mobile-only: remove blur effects for performance (except sidebars) */
   @media (max-width: 767px) {
-    .backdrop-blur-sm, 
-    .backdrop-blur-md,
-    .backdrop-blur-xl {
+    .backdrop-blur-sm:not(.nav-glass-effect):not([data-sidebar]), 
+    .backdrop-blur-md:not(.nav-glass-effect):not([data-sidebar]),
+    .backdrop-blur-xl:not(.nav-glass-effect):not([data-sidebar]) {
       backdrop-filter: none !important;
       /* Use pure background color from theme - matches nav-glass-effect */
       background-color: rgba(15, 15, 20, 0.95) !important;
@@ -754,19 +755,24 @@
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3);
 }
 
-/* Navigation glassmorphism effect */
-.nav-glass-effect {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+/* Navigation glassmorphism effect - Light mode */
+.nav-glass-effect,
+.nav-glass-effect [data-sidebar="sidebar"],
+.nav-glass-effect .sheet-content {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08);
 }
 
-.dark .nav-glass-effect {
-  background: rgba(15, 15, 20, 0.3);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+/* Navigation glassmorphism effect - Dark mode */
+.dark .nav-glass-effect,
+.dark .nav-glass-effect [data-sidebar="sidebar"],
+.dark .nav-glass-effect .sheet-content {
+  background: rgba(15, 15, 20, 0.3) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3);
 }

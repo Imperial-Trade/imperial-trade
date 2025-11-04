@@ -80,6 +80,7 @@ export function WidgetSidebar({
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showEdgeIndicator, setShowEdgeIndicator] = useState(false);
+  const [animationKey, setAnimationKey] = useState(0);
   const {
     user,
     signOut
@@ -142,6 +143,8 @@ export function WidgetSidebar({
       queryClient.invalidateQueries({
         queryKey: ['top-signal-providers']
       });
+      // Increment animation key to trigger provider animations
+      setAnimationKey(prev => prev + 1);
     }
   }, [isVisible, queryClient]);
   const handleToggleSidebar = useCallback(() => {
@@ -758,21 +761,21 @@ export function WidgetSidebar({
           <>
                 {/* Provider #1 - Always full width when exists */}
                 {topProviders[0] && (
-                  <div className="col-span-2">
+                  <div className="col-span-2" key={`provider-1-${animationKey}`}>
                     <ProviderWidget provider={topProviders[0]} rank={1} />
                   </div>
                 )}
                 
                 {/* Provider #2 - Full width if no #3, half width if #3 exists */}
                 {topProviders[1] && (
-                  <div className={topProviders[2] ? "col-span-1" : "col-span-2"}>
+                  <div className={topProviders[2] ? "col-span-1" : "col-span-2"} key={`provider-2-${animationKey}`}>
                     <ProviderWidget provider={topProviders[1]} rank={2} />
                   </div>
                 )}
                 
                 {/* Provider #3 - Only render if exists */}
                 {topProviders[2] && (
-                  <div className="col-span-1">
+                  <div className="col-span-1" key={`provider-3-${animationKey}`}>
                     <ProviderWidget provider={topProviders[2]} rank={3} />
                   </div>
                 )}

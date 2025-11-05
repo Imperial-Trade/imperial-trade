@@ -228,34 +228,86 @@ serve(async (req) => {
   // Method validation
   if (req.method !== 'POST') {
     console.warn(`❌ Method ${req.method} not allowed`);
-    return new Response('Method Not Allowed', { 
+    return new Response('Method Not Allowed', {
       status: 405,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   // Authentication
   const ingestKey = req.headers.get('X-INGEST-KEY') || req.headers.get('x-ingest-key');
   const expectedKey = Deno.env.get('INGEST_SECRET');
-  
+
   if (!expectedKey) {
     console.error('❌ INGEST_SECRET not configured');
-    return new Response('Server configuration error', { 
+    return new Response('Server configuration error', {
       status: 500,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   if (!ingestKey || ingestKey !== expectedKey) {
     console.warn('❌ Invalid or missing X-INGEST-KEY header');
-    return new Response('Unauthorized', { 
+    return new Response('Unauthorized', {
       status: 401,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   console.log('✅ Authentication successful');
 
+  // 🚀 CRITICAL FIX: Parse payload and validate BEFORE heavy processing
+  let prices: any[];
+  try {
+    const requestBody = await req.json();
+    prices = requestBody.prices;
+
+    // Validate payload early
+    if (!prices || !Array.isArray(prices) || prices.length === 0) {
+      console.warn('❌ Invalid payload: missing or empty prices array');
+      return new Response('Invalid payload: prices array required', {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    console.log(`📊 Received ${prices.length} prices - sending early response to prevent EarlyDrop`);
+  } catch (error) {
+    console.error('❌ Failed to parse request body:', error);
+    return new Response('Invalid JSON payload', {
+      status: 400,
+      headers: corsHeaders
+    });
+  }
+
+  // 🚀 CRITICAL FIX: Send immediate 200 response to prevent EarlyDrop shutdown
+  // This acknowledges receipt and prevents timeout while processing continues
+  const responsePromise = new Promise<Response>((resolve) => {
+    resolve(new Response(JSON.stringify({
+      success: true,
+      received: prices.length,
+      status: 'processing'
+    }), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    }));
+  });
+
+  // 🔥 Start background processing immediately (don't await)
+  // This runs after the response is sent, preventing EarlyDrop
+  processInBackground(prices).catch(error => {
+    console.error('❌ Background processing error:', error);
+  });
+
+  // Return response immediately
+  return responsePromise;
+});
+
+// 🚀 BACKGROUND PROCESSING: Runs after response is sent
+async function processInBackground(prices: any[]) {
   try {
     // Initialize Supabase client
     await initializeSupabase();
@@ -275,23 +327,11 @@ serve(async (req) => {
     }
     
     console.log(`👥 Active UI sessions: ${activeUserCount}`);
-    
-    // Parse request payload FIRST
-    const requestBody = await req.json();
-    const { prices } = requestBody;
-    
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${activeUserCount} active users (notifications always processed)`);
-
-    // Validate payload
-    if (!prices || !Array.isArray(prices) || prices.length === 0) {
-      console.warn('❌ Invalid payload: missing or empty prices array');
-      return new Response('Invalid payload: prices array required', { 
-        status: 400,
-        headers: corsHeaders 
-      });
-    }
+    console.log(`📊 Processing ${prices.length} price updates for ${activeUserCount} active users (notifications always processed)`);
 
     totalPricesProcessed += prices.length;
+
+    console.log(`📊 Background processing started for ${prices.length} prices`);
 
     // 🚀 STEP 1: CRITICAL PRIORITY PROCESSING - Stop Loss FIRST, then Take Profits
     console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
@@ -775,18 +815,8 @@ serve(async (req) => {
     
     if (EMERGENCY_DISABLE_BROADCASTS) {
       console.log('🚨 Emergency broadcast disable active - skipping UI updates');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'emergency_disabled'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ Background processing complete: processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - emergency disable active
     }
 
     // STEP 3A: Calculate prices for UI FIRST (before using significantPrices)
@@ -813,18 +843,8 @@ serve(async (req) => {
     // 🚀 CRITICAL: Skip UI broadcast if no active users
     if (!hasActiveUsers) {
       console.log('📡 UI broadcast skipped: no_active_users');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_active_users'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ Background processing complete: processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - no active users
     }
     
     // 🎯 PHASE 3: COOPERATIVE LOCK - Always acquire, use 1s duration for real-time mode
@@ -834,18 +854,8 @@ serve(async (req) => {
     if (!lockId && !isHeartbeatBroadcast) {
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
       console.log('📡 UI broadcast skipped: cooperative locking active');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_lock'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ Background processing complete: processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - another instance has the lock
     }
     
     if (isHeartbeatBroadcast && !lockId) {
@@ -857,36 +867,20 @@ serve(async (req) => {
     // This eliminates $32.50/month in Realtime message costs
     console.log(`💾 Database upserts complete. Frontend will poll for updates (no broadcasts).`);
 
-    // Return success response
-    return new Response(JSON.stringify({
-      success: true,
-      processed: prices.length,
-      upserted: successfulUpserts,
-      alerts_triggered: totalTriggeredAlerts,
-      notifications_sent: notificationTriggers.length,
-      architecture: 'zero_realtime_polling', // No broadcasts - frontend polls database
-      performance: {
-        total_processed: totalPricesProcessed,
-        total_alerts: totalAlertsTriggered,
-        total_upserted: totalPricesUpserted
-      }
-    }), {
-      status: 200,
-      headers: corsHeaders
-    });
+    // Log successful completion
+    console.log(`✅ Background processing COMPLETE: {
+      processed: ${prices.length},
+      upserted: ${successfulUpserts},
+      alerts_triggered: ${totalTriggeredAlerts},
+      notifications_sent: ${notificationTriggers.length},
+      architecture: 'zero_realtime_polling',
+      total_processed: ${totalPricesProcessed},
+      total_alerts: ${totalAlertsTriggered},
+      total_upserted: ${totalPricesUpserted}
+    }`);
 
   } catch (error) {
-    console.error('❌ Critical error in price processing:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: (error as Error).message,
-      processed: 0,
-      upserted: 0,
-      alerts_triggered: 0,
-      notifications_sent: 0
-    }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    console.error('❌ Critical error in background price processing:', error);
+    console.error('Error details:', (error as Error).message);
   }
-});
+}

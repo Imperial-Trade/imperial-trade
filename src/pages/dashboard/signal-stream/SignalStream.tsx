@@ -1884,7 +1884,7 @@ export default function SignalStream() {
 
 
           {/* Main Content - Mobile Optimized grid layout with granular protection */}
-          <div className="w-full px-2 sm:px-4 pt-0 pb-24 md:pb-6">
+          <div className="w-full px-2 sm:px-4 pt-0">
             <div className="max-w-none w-full">
               <div className="w-full">
               

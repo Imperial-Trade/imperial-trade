@@ -1,7 +1,6 @@
 import React from 'react';
 import { BookOpen, Calculator, Brain } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProfileMenu } from './ProfileMenu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MobileBottomNavProps {
@@ -28,7 +27,7 @@ const navItems = [
 ];
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTool, onToolChange }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   if (!user) return null;
 
@@ -59,18 +58,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTool, on
           );
         })}
 
-        {/* Profile Menu */}
-        <ProfileMenu>
-          <button className="flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg text-gray-400 hover:text-gray-300 hover:bg-white/5">
-            <Avatar className="h-7 w-7 border-2 border-white/20 hover:border-emerald-primary hover:shadow-emerald-glow transition-all">
-              <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name || 'User'} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                {user?.user_metadata?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-        </ProfileMenu>
+        {/* Profile Display - Non-clickable */}
+        <div className="flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center">
+          <Avatar className="h-7 w-7 border-2 border-white/20">
+            <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name || 'User'} />
+            <AvatarFallback className="bg-primary/10 text-primary text-xs">
+              {user?.user_metadata?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium text-gray-400">Profile</span>
+        </div>
       </div>
     </nav>
   );

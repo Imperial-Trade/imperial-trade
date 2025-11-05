@@ -239,7 +239,7 @@ const TradingJournal: React.FC<TradingJournalProps> = ({ showStats, onToggleStat
   }
 
   // Desktop view - Direct render of Advanced Educational Journal
-  return <div className="min-h-screen p-2 sm:p-4 lg:p-6 bg-transparent">
+  return <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-full px-2 sm:px-4">
         <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
           <TradingJournalApp className="py-0 mx-0 my-0 px-0" showStats={showStats} onToggleStats={onToggleStats} />

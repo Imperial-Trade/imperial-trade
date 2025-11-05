@@ -1,0 +1,110 @@
+/* =====================================================
+   WIDGET SIDEBAR - COMPLETE CSS STYLES
+   Import this into your index.css or main CSS file
+   ===================================================== */
+
+/* Provider Widget Fade-in Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.provider-widget-animated {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Glassmorphism Navigation Effect - Light Mode */
+.nav-glass-effect {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Glassmorphism Navigation Effect - Dark Mode */
+.dark .nav-glass-effect {
+  background: rgba(15, 15, 20, 0.3) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Hide Scrollbar */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+  width: 0;
+  height: 0;
+}
+
+/* Rank Gradients */
+.gradient-gold {
+  background: linear-gradient(135deg, 
+    #facc15 0%,    /* from-yellow-400 */
+    #eab308 50%,   /* via-yellow-500 */
+    #d97706 100%   /* to-amber-600 */
+  );
+}
+
+.gradient-silver {
+  background: linear-gradient(135deg,
+    #d1d5db 0%,    /* from-gray-300 */
+    #9ca3af 50%,   /* via-gray-400 */
+    #71717a 100%   /* to-zinc-500 */
+  );
+}
+
+.gradient-bronze {
+  background: linear-gradient(135deg,
+    #f97316 0%,    /* from-orange-500 */
+    #ea580c 50%,   /* via-orange-600 */
+    #d97706 100%   /* to-amber-700 */
+  );
+}
+
+/* Rank Glow Shadows */
+.shadow-gold-glow {
+  box-shadow: 0 10px 40px -10px rgba(234, 179, 8, 0.3);
+}
+
+.shadow-silver-glow {
+  box-shadow: 0 4px 20px -4px rgba(156, 163, 175, 0.2);
+}
+
+.shadow-bronze-glow {
+  box-shadow: 0 4px 20px -4px rgba(249, 115, 22, 0.2);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 767px) {
+  /* Remove blur effects on mobile except for sidebar */
+  .backdrop-blur-sm:not(.nav-glass-effect):not([data-sidebar]), 
+  .backdrop-blur-md:not(.nav-glass-effect):not([data-sidebar]),
+  .backdrop-blur-xl:not(.nav-glass-effect):not([data-sidebar]) {
+    backdrop-filter: none !important;
+    background-color: rgba(15, 15, 20, 0.95) !important;
+  }
+}
+
+/* iOS Safe Area Support */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Touch-friendly utilities */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}

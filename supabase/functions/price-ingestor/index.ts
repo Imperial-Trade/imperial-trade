@@ -369,8 +369,10 @@ async function processInBackground(prices: any[]) {
     let limitOrdersActivated = 0;
     let notificationTriggers: any[] = [];
     
-    // First, process limit order activations using mid prices
-    const symbolsWithPrices = new Map();
+    // Initialize global symbolsWithPrices Map for this batch
+    symbolsWithPrices = new Map();
+    
+    // Populate symbolsWithPrices with calculated bid/ask/mid prices
     for (const priceUpdate of prices) {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
       const hasMidOnly = typeof priceUpdate.price === 'number';
@@ -380,9 +382,25 @@ async function processInBackground(prices: any[]) {
         continue;
       }
 
-      // Store current prices for limit order processing
-      const currentPrice = hasFullData ? (priceUpdate.bid + priceUpdate.ask) / 2 : priceUpdate.price;
-      symbolsWithPrices.set(priceUpdate.symbol, currentPrice);
+      // Calculate bid/ask/mid prices with consistent object structure
+      let bidPrice: number, askPrice: number, currentPrice: number;
+      
+      if (hasFullData) {
+        bidPrice = priceUpdate.bid!;
+        askPrice = priceUpdate.ask!;
+        currentPrice = (bidPrice + askPrice) / 2;
+      } else {
+        currentPrice = priceUpdate.price;
+        // Estimate bid/ask from mid
+        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
+        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        const halfSpread = isGold ? 0.05 : (isBitcoin ? 2.50 : 0.00005);
+        bidPrice = currentPrice - halfSpread;
+        askPrice = currentPrice + halfSpread;
+      }
+      
+      // Store in global Map for use throughout processing
+      symbolsWithPrices.set(priceUpdate.symbol, { bid: bidPrice, ask: askPrice, mid: currentPrice });
     }
 
     // Process limit order activations
@@ -400,8 +418,9 @@ async function processInBackground(prices: any[]) {
         console.error('❌ Error fetching pending limits:', fetchError);
       } else if (pendingLimits && pendingLimits.length > 0) {
         for (const alert of pendingLimits) {
-          const currentPrice = symbolsWithPrices.get(alert.tradermade_symbol);
-          if (!currentPrice) continue;
+          const priceData = symbolsWithPrices.get(alert.tradermade_symbol);
+          if (!priceData) continue;
+          const currentPrice = priceData.mid;
 
           const shouldTrigger = 
             (alert.trade_type === 'buy_limit' && currentPrice <= alert.entry_price) ||
@@ -440,121 +459,57 @@ async function processInBackground(prices: any[]) {
       }
     }
 
-    // PHASE 4: CRITICAL - Use enhanced alert processing with Stop Loss priority
-    for (const priceUpdate of prices) {
-      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
-      const hasMidOnly = typeof priceUpdate.price === 'number';
+    // ============================================================================
+    // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
+    // ============================================================================
+
+    // Configuration: Cooldown period per symbol
+    const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
+    const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
+
+    // In-memory tracking of last alert processing time per symbol
+    const lastAlertProcessing: Map<string, number> = new Map();
+
+    // ============================================================================
+    // STEP 1: Determine which symbols need alert processing
+    // ============================================================================
+
+    const symbolsToProcess: string[] = [];
+    const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
+
+    // Use symbolsWithPrices Map (already populated) to build alert processing list
+    for (const [symbol, storedPriceData] of symbolsWithPrices.entries()) {
+      const lastProcessed = lastAlertProcessing.get(symbol) || 0;
+      const timeSinceLastProcess = Date.now() - lastProcessed;
       
-      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
-        continue;
-      }
-
-      // ✅ CRITICAL FIX: Calculate bid/ask from mid-only prices
-      let bidPrice: number;
-      let askPrice: number;
-      let currentPrice: number;
-
-      if (hasFullData) {
-        // Full bid/ask data available (most accurate)
-        bidPrice = priceUpdate.bid!;
-        askPrice = priceUpdate.ask!;
-        currentPrice = (bidPrice + askPrice) / 2;
-        console.log(`📊 Full price data for ${priceUpdate.symbol}: Bid=${bidPrice}, Ask=${askPrice}, Mid=${currentPrice}`);
-      } else if (typeof priceUpdate.price === 'number') {
-        // ✅ Mid-only price - ESTIMATE bid/ask from mid
-        currentPrice = priceUpdate.price;
+      // Only process if cooldown period has elapsed
+      if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
+        symbolsToProcess.push(symbol);
         
-        // Asset-specific spread estimation (based on institutional market data)
-        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
-        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        // Use already-calculated price data from symbolsWithPrices
+        priceData[symbol] = {
+          bid: storedPriceData.bid,
+          ask: storedPriceData.ask,
+          mid: storedPriceData.mid
+        };
         
-        let halfSpread: number;
-        if (isGold) {
-          halfSpread = 0.05;  // Gold: typical $0.10 total spread ($0.05 per side)
-        } else if (isBitcoin) {
-          halfSpread = 2.50;  // Bitcoin: typical ~$5 total spread
-        } else {
-          halfSpread = 0.00005;  // Forex: typical ~0.5-1 pip
-        }
+        // Update last processed time
+        lastAlertProcessing.set(symbol, Date.now());
         
-        bidPrice = currentPrice - halfSpread;
-        askPrice = currentPrice + halfSpread;
-        
-        console.log(`⚠️ Mid-price fallback for ${priceUpdate.symbol}: ${currentPrice} (estimated bid=${bidPrice}, ask=${askPrice})`);
+        console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
       } else {
-        // No usable price data - skip THIS symbol only
-        console.log(`❌ No price data for ${priceUpdate.symbol} - skipping`);
-        continue;
+        console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
       }
+    }
 
-      // ✅ Store calculated prices for database upsert (used in CHANGE #4)
-      if (!symbolsWithPrices) {
-        symbolsWithPrices = new Map();
-      }
-      symbolsWithPrices.set(priceUpdate.symbol, {
-        bid: bidPrice,
-        ask: askPrice,
-        mid: currentPrice
-      });
+    // Note: Price data already calculated and stored in symbolsWithPrices Map above
+    // No need for additional loops - all prices are ready for alert processing
 
-      // ✅ NOW PROCEED WITH ALERT PROCESSING (previously skipped by continue statement)
+    // ============================================================================
+    // STEP 2: Batch process alerts with timeout protection (MOVED OUTSIDE LOOP)
+    // ============================================================================
 
-      // ✅ FIXED: Validate CALCULATED bid/ask values (not undefined priceUpdate)
-      if (!isFinite(bidPrice) || !isFinite(askPrice) ||
-          bidPrice <= 0 || askPrice <= 0 ||
-          isNaN(bidPrice) || isNaN(askPrice)) {
-        console.warn(`⚠️ Skipping invalid calculated bid/ask: symbol=${priceUpdate.symbol}, bid=${bidPrice}, ask=${askPrice}`);
-        continue;
-      }
-
-      // ============================================================================
-      // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
-      // ============================================================================
-
-      // Configuration: Cooldown period per symbol
-      const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
-      const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
-
-      // In-memory tracking of last alert processing time per symbol
-      const lastAlertProcessing: Map<string, number> = new Map();
-
-      // ============================================================================
-      // STEP 1: Determine which symbols need alert processing
-      // ============================================================================
-
-      const symbolsToProcess: string[] = [];
-      const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
-
-      for (const priceUpdate of prices) {
-        const symbol = priceUpdate.symbol;
-        const lastProcessed = lastAlertProcessing.get(symbol) || 0;
-        const timeSinceLastProcess = Date.now() - lastProcessed;
-        
-        // Only process if cooldown period has elapsed
-        if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
-          symbolsToProcess.push(symbol);
-          
-          // Build priceData in the format the SQL function expects
-          priceData[symbol] = {
-            bid: priceUpdate.bid,
-            ask: priceUpdate.ask,
-            mid: priceUpdate.mid
-          };
-          
-          // Update last processed time
-          lastAlertProcessing.set(symbol, Date.now());
-          
-          console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
-        } else {
-          console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
-        }
-      }
-
-      // ============================================================================
-      // STEP 2: Batch process alerts with timeout protection
-      // ============================================================================
-
-      if (symbolsToProcess.length > 0) {
+    if (symbolsToProcess.length > 0) {
         console.log(`🎯 [Alert Processing] Processing ${symbolsToProcess.length} symbols: ${symbolsToProcess.join(', ')}`);
         console.log(`🎯 [Alert Processing] Price data:`, priceData);
         
@@ -726,9 +681,8 @@ async function processInBackground(prices: any[]) {
             });
           }
         }
-      } else {
-        console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
-      }
+    } else {
+      console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
     // 🚀 ENHANCED: Send notifications for all significant events

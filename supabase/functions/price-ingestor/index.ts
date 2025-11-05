@@ -380,9 +380,24 @@ async function processInBackground(prices: any[]) {
         continue;
       }
 
-      // Store current prices for limit order processing
-      const currentPrice = hasFullData ? (priceUpdate.bid + priceUpdate.ask) / 2 : priceUpdate.price;
-      symbolsWithPrices.set(priceUpdate.symbol, currentPrice);
+      // Store current prices for limit order processing - use consistent object structure
+      let bidPrice: number, askPrice: number, currentPrice: number;
+      
+      if (hasFullData) {
+        bidPrice = priceUpdate.bid!;
+        askPrice = priceUpdate.ask!;
+        currentPrice = (bidPrice + askPrice) / 2;
+      } else {
+        currentPrice = priceUpdate.price;
+        // Estimate bid/ask from mid
+        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
+        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        const halfSpread = isGold ? 0.05 : (isBitcoin ? 2.50 : 0.00005);
+        bidPrice = currentPrice - halfSpread;
+        askPrice = currentPrice + halfSpread;
+      }
+      
+      symbolsWithPrices.set(priceUpdate.symbol, { bid: bidPrice, ask: askPrice, mid: currentPrice });
     }
 
     // Process limit order activations
@@ -400,8 +415,9 @@ async function processInBackground(prices: any[]) {
         console.error('❌ Error fetching pending limits:', fetchError);
       } else if (pendingLimits && pendingLimits.length > 0) {
         for (const alert of pendingLimits) {
-          const currentPrice = symbolsWithPrices.get(alert.tradermade_symbol);
-          if (!currentPrice) continue;
+          const priceData = symbolsWithPrices.get(alert.tradermade_symbol);
+          if (!priceData) continue;
+          const currentPrice = priceData.mid;
 
           const shouldTrigger = 
             (alert.trade_type === 'buy_limit' && currentPrice <= alert.entry_price) ||
@@ -437,6 +453,52 @@ async function processInBackground(prices: any[]) {
             }
           }
         }
+      }
+    }
+
+    // ============================================================================
+    // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
+    // ============================================================================
+
+    // Configuration: Cooldown period per symbol
+    const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
+    const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
+
+    // In-memory tracking of last alert processing time per symbol
+    const lastAlertProcessing: Map<string, number> = new Map();
+
+    // ============================================================================
+    // STEP 1: Determine which symbols need alert processing (MOVED OUTSIDE LOOP)
+    // ============================================================================
+
+    const symbolsToProcess: string[] = [];
+    const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
+
+    for (const priceUpdate of prices) {
+      const symbol = priceUpdate.symbol;
+      const lastProcessed = lastAlertProcessing.get(symbol) || 0;
+      const timeSinceLastProcess = Date.now() - lastProcessed;
+      
+      // Only process if cooldown period has elapsed
+      if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
+        symbolsToProcess.push(symbol);
+        
+        // Build priceData using symbolsWithPrices Map (already populated)
+        const storedPriceData = symbolsWithPrices.get(symbol);
+        if (storedPriceData) {
+          priceData[symbol] = {
+            bid: storedPriceData.bid,
+            ask: storedPriceData.ask,
+            mid: storedPriceData.mid
+          };
+        }
+        
+        // Update last processed time
+        lastAlertProcessing.set(symbol, Date.now());
+        
+        console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
+      } else {
+        console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
       }
     }
 
@@ -487,10 +549,7 @@ async function processInBackground(prices: any[]) {
         continue;
       }
 
-      // ✅ Store calculated prices for database upsert (used in CHANGE #4)
-      if (!symbolsWithPrices) {
-        symbolsWithPrices = new Map();
-      }
+      // ✅ Store calculated prices for database upsert (overwrite with most accurate data)
       symbolsWithPrices.set(priceUpdate.symbol, {
         bid: bidPrice,
         ask: askPrice,
@@ -506,55 +565,13 @@ async function processInBackground(prices: any[]) {
         console.warn(`⚠️ Skipping invalid calculated bid/ask: symbol=${priceUpdate.symbol}, bid=${bidPrice}, ask=${askPrice}`);
         continue;
       }
+    }
 
-      // ============================================================================
-      // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
-      // ============================================================================
+    // ============================================================================
+    // STEP 2: Batch process alerts with timeout protection (MOVED OUTSIDE LOOP)
+    // ============================================================================
 
-      // Configuration: Cooldown period per symbol
-      const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
-      const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
-
-      // In-memory tracking of last alert processing time per symbol
-      const lastAlertProcessing: Map<string, number> = new Map();
-
-      // ============================================================================
-      // STEP 1: Determine which symbols need alert processing
-      // ============================================================================
-
-      const symbolsToProcess: string[] = [];
-      const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
-
-      for (const priceUpdate of prices) {
-        const symbol = priceUpdate.symbol;
-        const lastProcessed = lastAlertProcessing.get(symbol) || 0;
-        const timeSinceLastProcess = Date.now() - lastProcessed;
-        
-        // Only process if cooldown period has elapsed
-        if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
-          symbolsToProcess.push(symbol);
-          
-          // Build priceData in the format the SQL function expects
-          priceData[symbol] = {
-            bid: priceUpdate.bid,
-            ask: priceUpdate.ask,
-            mid: priceUpdate.mid
-          };
-          
-          // Update last processed time
-          lastAlertProcessing.set(symbol, Date.now());
-          
-          console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
-        } else {
-          console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
-        }
-      }
-
-      // ============================================================================
-      // STEP 2: Batch process alerts with timeout protection
-      // ============================================================================
-
-      if (symbolsToProcess.length > 0) {
+    if (symbolsToProcess.length > 0) {
         console.log(`🎯 [Alert Processing] Processing ${symbolsToProcess.length} symbols: ${symbolsToProcess.join(', ')}`);
         console.log(`🎯 [Alert Processing] Price data:`, priceData);
         
@@ -726,9 +743,8 @@ async function processInBackground(prices: any[]) {
             });
           }
         }
-      } else {
-        console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
-      }
+    } else {
+      console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
     // 🚀 ENHANCED: Send notifications for all significant events

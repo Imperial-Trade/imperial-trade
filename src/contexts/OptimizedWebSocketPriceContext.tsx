@@ -646,24 +646,38 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // ✅ PHASE 1: Restored 60-second window for instant hydration
+      // ✅ PHASE 1: Extended 5-minute window for better data availability
       const cacheBustNonce = Date.now();
-      const oneMinuteAgo = new Date(cacheBustNonce - 60000).toISOString(); // ✅ Loosened to 60s for fresh data
-      
+      const fiveMinutesAgo = new Date(cacheBustNonce - 300000).toISOString(); // ✅ Extended to 5 minutes for better availability
+
       // ⚡ CRITICAL: Use timestamp in query to bypass HTTP cache
       const { data } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
-        .gte('updated_at', oneMinuteAgo) // ✅ Accept recent fresh data (60s window)
+        .gte('updated_at', fiveMinutesAgo) // ✅ Accept data from last 5 minutes
         .limit(50); // ⚡ Force query re-execution
       
-      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${oneMinuteAgo}`);
+      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${fiveMinutesAgo}`);
         
       if (data) {
+        if (data.length === 0) {
+          console.warn(`⚠️ [Database Poll] No recent price data found for symbols: ${targetSymbols.join(', ')}`);
+          console.warn(`⚠️ [Database Poll] Possible causes:`);
+          console.warn(`   1. External price feed (DigitalOcean service) is not running`);
+          console.warn(`   2. Price ingestor edge function has not received updates`);
+          console.warn(`   3. Database prices are older than 5 minutes`);
+
+          // Set connection status to 'error' to show user that data is unavailable
+          if (connectionStatus !== 'error') {
+            setConnectionStatus('error');
+            setError('No recent price data available. External price feed may be down.');
+          }
+        }
+
         const hydratedPrices: Record<string, PriceData> = {};
         const timestampUpdates: Record<string, number> = {};
-        
+
         data.forEach(row => {
           // 🔥 MID-ONLY SUPPORT: Prioritize mid, then calculate from bid/ask, then fallback
           const hasMidOnly = row.mid && (!row.bid || !row.ask);
@@ -979,35 +993,43 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return;
     }
 
-    // ✅ PHASE 2: Dynamic polling frequency based on data freshness
+    // ✅ PHASE 2: Dynamic polling frequency based on active subscriptions and page
     const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
-    
+    const isNewSignalPage = window.location.pathname.includes('/new-signal'); // Create Alerts page
+    const hasActiveSubscriptions = symbolList.length > 0;
+
     // 🚨 PHASE 2D FIX (Bug #9): Check ALL subscribed symbols have fresh data (not just ANY symbol)
     const hasRecentData = symbolList.length > 0 && symbolList.every(symbol => {
       const timestamp = lastDatabaseTimestampRef.current[symbol];
       const isFresh = timestamp && (Date.now() - timestamp < 5000);
-      
+
       if (!isFresh && isDevToolsEnabled()) {
         console.log(`⚠️  [Freshness Check] Symbol ${symbol} is stale - Last update: ${timestamp ? new Date(timestamp).toISOString() : 'never'}`);
       }
-      
+
       return isFresh;
     });
-    
-    // 🚀 UPDATED: Constant 500ms polling for fast live prices
-    // - Signal stream: 500ms (always - no transitions)
-    // - Other pages: 30s (minimal background polling)
-    const pollingInterval = isSignalStreamPage 
-      ? 500  // ✅ FIX #1D: Always 500ms (no hydration/backup modes)
-      : 30000;
+
+    // 🚀 CRITICAL FIX: Fast polling when prices are needed (signal-stream OR create alerts)
+    // - Signal stream: 500ms (always - for live price monitoring)
+    // - Create alerts (/new-signal): 500ms (needs live prices for trading decisions)
+    // - Other pages with active subscriptions: 2000ms (moderate polling)
+    // - Other pages without subscriptions: 30s (minimal background polling)
+    const pollingInterval = (isSignalStreamPage || isNewSignalPage)
+      ? 500  // ✅ FIX: Fast polling for pages that display live prices
+      : hasActiveSubscriptions
+      ? 2000 // Moderate polling for other pages with subscriptions
+      : 30000; // Minimal polling for background
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
-    console.log(`🔄 [Polling] Starting ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);
+    const pageContext = isSignalStreamPage ? 'signal-stream' : isNewSignalPage ? 'create-alerts' : 'other';
+    console.log(`🔄 [Polling] Starting ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols on ${pageContext} page`);
     console.log(`📊 [Polling Strategy] Fresh data check:`, {
       hasRecentData,
       lastTimestamps: lastDatabaseTimestampRef.current,
       pollingInterval,
-      mode: modeLabel
+      mode: modeLabel,
+      page: pageContext
     });
     
     if (!hasRecentData) {

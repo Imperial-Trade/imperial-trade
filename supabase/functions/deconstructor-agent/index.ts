@@ -552,36 +552,9 @@ serve(async (req) => {
       analysisResponse.substring(0, 200) + "..."
     );
 
-    // Store analysis in agent_outputs table
-    console.log("Deconstructor Agent - Storing agent output...");
-    const { error: agentOutputError } = await supabase
-      .from("agent_outputs")
-      .insert({
-        user_id,
-        agent_name: "Deconstructor",
-        output_text: analysisResponse,
-        user_readable_text: analysisResponse,
-        metadata: {
-          screenshots_analyzed: file_urls.length,
-          trades_analyzed: sanitizedTrades.length,
-          analysis_type: "comprehensive_pattern_analysis",
-          model_used: modelName,
-          processing_status: analysisResponse.includes(
-            "temporarily unavailable"
-          )
-            ? "fallback"
-            : "success",
-        },
-      });
-
-    if (agentOutputError) {
-      console.error(
-        "Deconstructor Agent - Error storing agent output:",
-        agentOutputError
-      );
-    } else {
-      console.log("Deconstructor Agent - Agent output stored successfully");
-    }
+    // Note: agent_outputs table removed for cost optimization
+    // Analysis is now stored in screenshot_analysis_history table (see below)
+    console.log("Deconstructor Agent - Analysis will be stored in screenshot_analysis_history...");
 
     // Store screenshot analysis history for personalization learning
     if (file_urls.length > 0) {

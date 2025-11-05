@@ -233,25 +233,9 @@ serve(async (req) => {
       userReadableResponse.substring(0, 100) + "..."
     );
 
-    // Store the coach output in agent_outputs table with both versions
-    console.log("Coach Agent - Storing agent output...");
-    const { error: agentOutputError } = await supabase
-      .from("agent_outputs")
-      .insert({
-        user_id,
-        agent_name: "Coach",
-        output_text: coachResponse,
-        user_readable_text: userReadableResponse,
-      });
-
-    if (agentOutputError) {
-      console.error(
-        "Coach Agent - Error storing agent output:",
-        agentOutputError
-      );
-    } else {
-      console.log("Coach Agent - Agent output stored successfully");
-    }
+    // Note: agent_outputs table removed for cost optimization
+    // Coach feedback is now stored directly in trade_journal_entries.ai_positive_feedback
+    console.log("Coach Agent - Feedback will be stored in journal entry...");
 
     // If this is a trade log event and we have a journal entry ID, update the journal entry
     if (event_type === "LOG_TRADE" && journal_entry_id) {

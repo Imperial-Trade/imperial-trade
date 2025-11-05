@@ -1,4 +1,12 @@
-// IMPERIAL TRADING PRICE INGESTOR v4.1 - CRITICAL RELIABILITY FIXES
+// IMPERIAL TRADING PRICE INGESTOR v4.2 - EARLYDROP FIX
+// =====================================================================
+// CRITICAL FIX: Prevents EarlyDrop shutdown using EdgeRuntime.waitUntil()
+// - Returns 200 OK response immediately after validation
+// - Uses EdgeRuntime.waitUntil() to keep function alive during background processing
+// - Processes alerts, DB upserts, and notifications in background
+// - Works even with 0 active users (alerts and DB always processed)
+// - Comprehensive logging with timing metrics
+// =====================================================================
 // Enhanced with Stop Loss Priority, Sequential TP Processing, and 100% Reliability
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,6 +20,18 @@ let supabaseClient: any = null;
 
 // Global map to store calculated bid/ask/mid prices for database upsert
 let symbolsWithPrices: Map<string, { bid: number; ask: number; mid: number }> | undefined;
+
+// 🛡️ SHUTDOWN HANDLER: Log when function is about to terminate
+addEventListener('beforeunload', () => {
+  console.log('⚠️ Function shutting down - beforeunload event triggered');
+  console.log(`📊 Final stats: processed=${totalPricesProcessed}, alerts=${totalAlertsTriggered}, upserted=${totalPricesUpserted}`);
+});
+
+// 🛡️ UNHANDLED REJECTION HANDLER: Catch any background processing errors
+addEventListener('unhandledrejection', (event) => {
+  console.error('❌ Unhandled promise rejection in background processing:', event.reason);
+  event.preventDefault(); // Prevent the default behavior which might crash the function
+});
 
 // 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
 // These thresholds deliver maximum responsiveness matching top-tier trading platforms
@@ -228,37 +248,99 @@ serve(async (req) => {
   // Method validation
   if (req.method !== 'POST') {
     console.warn(`❌ Method ${req.method} not allowed`);
-    return new Response('Method Not Allowed', { 
+    return new Response('Method Not Allowed', {
       status: 405,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   // Authentication
   const ingestKey = req.headers.get('X-INGEST-KEY') || req.headers.get('x-ingest-key');
   const expectedKey = Deno.env.get('INGEST_SECRET');
-  
+
   if (!expectedKey) {
     console.error('❌ INGEST_SECRET not configured');
-    return new Response('Server configuration error', { 
+    return new Response('Server configuration error', {
       status: 500,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   if (!ingestKey || ingestKey !== expectedKey) {
     console.warn('❌ Invalid or missing X-INGEST-KEY header');
-    return new Response('Unauthorized', { 
+    return new Response('Unauthorized', {
       status: 401,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   console.log('✅ Authentication successful');
 
+  // 🚀 CRITICAL FIX: Parse payload and validate BEFORE heavy processing
+  let prices: any[];
+  try {
+    const requestBody = await req.json();
+    prices = requestBody.prices;
+
+    // Validate payload early
+    if (!prices || !Array.isArray(prices) || prices.length === 0) {
+      console.warn('❌ Invalid payload: missing or empty prices array');
+      return new Response('Invalid payload: prices array required', {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    console.log(`📊 Received ${prices.length} prices - sending early response to prevent EarlyDrop`);
+  } catch (error) {
+    console.error('❌ Failed to parse request body:', error);
+    return new Response('Invalid JSON payload', {
+      status: 400,
+      headers: corsHeaders
+    });
+  }
+
+  // 🚀 CRITICAL FIX: Use EdgeRuntime.waitUntil() for guaranteed background processing
+  // This prevents EarlyDrop by keeping function alive after response is sent
+  const backgroundTask = processInBackground(prices).catch(error => {
+    console.error('❌ Background processing error:', error);
+  });
+
+  // Mark the background task to keep function alive until completion
+  // EdgeRuntime.waitUntil() ensures the function doesn't terminate early
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+    EdgeRuntime.waitUntil(backgroundTask);
+    console.log('🔄 Background processing registered with EdgeRuntime.waitUntil()');
+  } else {
+    // Fallback: await the task if waitUntil is not available (local development)
+    console.log('⚠️ EdgeRuntime.waitUntil() not available, processing synchronously');
+    await backgroundTask;
+  }
+
+  // Return response immediately (background continues via waitUntil)
+  return new Response(JSON.stringify({
+    success: true,
+    received: prices.length,
+    status: 'processing'
+  }), {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json'
+    }
+  });
+});
+
+// 🚀 BACKGROUND PROCESSING: Runs after response is sent
+// Uses EdgeRuntime.waitUntil() to prevent EarlyDrop termination
+async function processInBackground(prices: any[]) {
+  const startTime = Date.now();
+  console.log(`🔄 [BACKGROUND START] Processing ${prices.length} prices at ${new Date().toISOString()}`);
+
   try {
     // Initialize Supabase client
     await initializeSupabase();
+    console.log(`✅ [BACKGROUND] Supabase client initialized (${Date.now() - startTime}ms)`);
     
     // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -275,23 +357,11 @@ serve(async (req) => {
     }
     
     console.log(`👥 Active UI sessions: ${activeUserCount}`);
-    
-    // Parse request payload FIRST
-    const requestBody = await req.json();
-    const { prices } = requestBody;
-    
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${activeUserCount} active users (notifications always processed)`);
-
-    // Validate payload
-    if (!prices || !Array.isArray(prices) || prices.length === 0) {
-      console.warn('❌ Invalid payload: missing or empty prices array');
-      return new Response('Invalid payload: prices array required', { 
-        status: 400,
-        headers: corsHeaders 
-      });
-    }
+    console.log(`📊 Processing ${prices.length} price updates for ${activeUserCount} active users (notifications always processed)`);
 
     totalPricesProcessed += prices.length;
+
+    console.log(`📊 Background processing started for ${prices.length} prices`);
 
     // 🚀 STEP 1: CRITICAL PRIORITY PROCESSING - Stop Loss FIRST, then Take Profits
     console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
@@ -774,19 +844,10 @@ serve(async (req) => {
     console.log('📡 STEP 3: Checking if UI broadcast should proceed...');
     
     if (EMERGENCY_DISABLE_BROADCASTS) {
+      const totalTime = Date.now() - startTime;
       console.log('🚨 Emergency broadcast disable active - skipping UI updates');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'emergency_disabled'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - emergency disable active
     }
 
     // STEP 3A: Calculate prices for UI FIRST (before using significantPrices)
@@ -810,21 +871,12 @@ serve(async (req) => {
     const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
       significantPrices.every((p: any) => p.reason === 'heartbeat');
 
-    // 🚀 CRITICAL: Skip UI broadcast if no active users
+    // 🚀 CRITICAL: Skip UI broadcast if no active users (alerts and DB still processed!)
     if (!hasActiveUsers) {
-      console.log('📡 UI broadcast skipped: no_active_users');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_active_users'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      const totalTime = Date.now() - startTime;
+      console.log('📡 UI broadcast skipped: no_active_users (this is normal when no one is viewing)');
+      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - no active users
     }
     
     // 🎯 PHASE 3: COOPERATIVE LOCK - Always acquire, use 1s duration for real-time mode
@@ -832,20 +884,11 @@ serve(async (req) => {
     const lockId = await acquireBroadcastLock(supabaseClient, lockDuration);
     
     if (!lockId && !isHeartbeatBroadcast) {
+      const totalTime = Date.now() - startTime;
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
       console.log('📡 UI broadcast skipped: cooperative locking active');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_lock'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - another instance has the lock
     }
     
     if (isHeartbeatBroadcast && !lockId) {
@@ -857,36 +900,25 @@ serve(async (req) => {
     // This eliminates $32.50/month in Realtime message costs
     console.log(`💾 Database upserts complete. Frontend will poll for updates (no broadcasts).`);
 
-    // Return success response
-    return new Response(JSON.stringify({
-      success: true,
-      processed: prices.length,
-      upserted: successfulUpserts,
-      alerts_triggered: totalTriggeredAlerts,
-      notifications_sent: notificationTriggers.length,
-      architecture: 'zero_realtime_polling', // No broadcasts - frontend polls database
-      performance: {
-        total_processed: totalPricesProcessed,
-        total_alerts: totalAlertsTriggered,
-        total_upserted: totalPricesUpserted
-      }
-    }), {
-      status: 200,
-      headers: corsHeaders
-    });
+    // Log successful completion with timing
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [BACKGROUND COMPLETE] Total time: ${totalTime}ms`);
+    console.log(`📊 [BACKGROUND STATS] {
+      processed: ${prices.length},
+      upserted: ${successfulUpserts},
+      alerts_triggered: ${totalTriggeredAlerts},
+      notifications_sent: ${notificationTriggers.length},
+      architecture: 'zero_realtime_polling',
+      total_processed: ${totalPricesProcessed},
+      total_alerts: ${totalAlertsTriggered},
+      total_upserted: ${totalPricesUpserted},
+      duration_ms: ${totalTime}
+    }`);
 
   } catch (error) {
-    console.error('❌ Critical error in price processing:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: (error as Error).message,
-      processed: 0,
-      upserted: 0,
-      alerts_triggered: 0,
-      notifications_sent: 0
-    }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    const totalTime = Date.now() - startTime;
+    console.error(`❌ [BACKGROUND ERROR] Failed after ${totalTime}ms:`, error);
+    console.error('Error details:', (error as Error).message);
+    console.error('Stack trace:', (error as Error).stack);
   }
-});
+}

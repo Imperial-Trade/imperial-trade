@@ -12,6 +12,19 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// Type definitions for price data with optional reason field
+interface PriceData {
+  symbol: string;
+  price: number;
+  timestamp: string;
+  reason?: string;
+}
+
+// Global EdgeRuntime type declaration
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<any>): void;
+} | undefined;
+
 // 🔥 CRITICAL FIX: Emergency kill switch for broadcasts
 const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS') === 'true';
 
@@ -169,7 +182,7 @@ async function acquireBroadcastLock(supabaseClient: any, durationSeconds: number
 function filterSignificantPrices(
   incomingPrices: Array<{symbol: string, price: number, timestamp: string}>,
   broadcastAll: boolean = false
-) {
+): Array<PriceData> {
   // 🚀 REAL-TIME MODE: When active UI listeners present, broadcast ALL prices
   if (broadcastAll) {
     console.log(`🚀 REAL-TIME MODE: Broadcasting ALL ${incomingPrices.length} prices (active UI listeners)`);

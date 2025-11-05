@@ -647,12 +647,13 @@ const MeccaAnalysisHub: React.FC = () => {
                     <Button variant="outline" size="sm" onClick={async () => {
                 if (user?.id) {
                   try {
-                    // COST OPTIMIZED: agent_outputs table removed
+                    // Clear all agent-related data for fresh start
+                    await supabase.from('agent_outputs').delete().eq('user_id', user.id);
                     await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
                     await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
                     toast({
                       title: "Data cleared",
-                      description: "Your analysis history has been reset (agent outputs disabled for cost optimization)."
+                      description: "Your analysis history has been reset successfully."
                     });
                     window.location.reload();
                   } catch (error) {

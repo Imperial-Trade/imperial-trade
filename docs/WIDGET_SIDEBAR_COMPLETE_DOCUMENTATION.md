@@ -1,41 +1,1212 @@
-# WidgetSidebar Complete Documentation
+# WidgetSidebar Complete Visual Design Documentation
 
 ## 📋 Table of Contents
 1. [Executive Overview](#executive-overview)
-2. [Complete File Structure](#complete-file-structure)
-3. [Component Implementation](#component-implementation)
-4. [Supabase Database Integration](#supabase-database-integration)
-5. [Navigation Routes](#navigation-routes)
-6. [CSS Styling & Theming](#css-styling--theming)
-7. [Responsive Design](#responsive-design)
-8. [Custom Hooks](#custom-hooks)
-9. [Utility Functions](#utility-functions)
-10. [Integration Guide](#integration-guide)
-11. [Performance Optimizations](#performance-optimizations)
-12. [Security & Access Control](#security--access-control)
+2. [Complete Visual Design Specifications](#complete-visual-design-specifications)
+3. [Provider Widget Cards - Exact JSX](#provider-widget-cards---exact-jsx)
+4. [All 10 Widget Tool Cards - Complete Designs](#all-10-widget-tool-cards---complete-designs)
+5. [Complete CSS Styling](#complete-css-styling)
+6. [Exact Dimensions & Positioning](#exact-dimensions--positioning)
+7. [All Button Designs](#all-button-designs)
+8. [Complete Component Layouts](#complete-component-layouts)
+9. [Animation Details](#animation-details)
+10. [Color Schemes & Design Tokens](#color-schemes--design-tokens)
+11. [Complete File Structure](#complete-file-structure)
+12. [Full Component Implementation](#full-component-implementation)
 
 ---
 
 ## Executive Overview
 
 ### Purpose
-The **WidgetSidebar** is a sophisticated, glassmorphic trading arsenal sidebar that displays:
-- **Top 3 signal providers** (ranked by 7-day pip performance)
-- **4 quick-access navigation cards** (Pattern Stream, Education, Community, Tools)
-- **User profile section** with role-based navigation
-- **Admin panel access** for privileged users
-- **Theme toggle** (light/dark mode)
+The **WidgetSidebar** is a sophisticated, glassmorphic trading arsenal sidebar featuring:
+- **Top 3 signal providers** with rank-based visual styling
+- **10 unique animated tool cards** with custom designs
+- **User profile section** with theme toggle and admin controls
+- **Edge swipe gestures** and keyboard shortcuts
+- **Fully responsive** glassmorphism design
 
-### Key Features
-- ✅ Real-time top provider leaderboard with pip calculations
-- ✅ Edge swipe gesture to open (mobile/desktop)
-- ✅ Glassmorphism design with backdrop blur
-- ✅ Fully responsive (mobile, tablet, desktop)
-- ✅ Keyboard shortcuts (`Ctrl/Cmd + \`, `Escape`)
-- ✅ Role-based access control (Admin, Educator, Moderator)
-- ✅ Animated widget cards with unique designs
-- ✅ Bottom navigation clearance on mobile
-- ✅ Swipe-to-close gesture detection
+---
+
+## Complete Visual Design Specifications
+
+### Design System Colors
+
+#### Light Mode Colors
+```css
+--background: 0 0% 100%; /* Pure white */
+--foreground: 0 0% 26%; /* #434343 */
+--primary: 0 0% 26%; /* Spanish Gray */
+--border: 0 0% 80%; /* #CBCBCB */
+--accent-gold: 43 84% 38%; /* Trading gold */
+```
+
+#### Dark Mode Colors
+```css
+--background: 0 0% 0%; /* Pure black */
+--foreground: 0 0% 95%; /* White text */
+--primary: 43 74% 60%; /* Gold #E6B800 */
+--card: 210 20% 12%; /* Dark navy #1A1F2E */
+--border: 210 12% 22%; /* Dark navy border */
+```
+
+---
+
+## Provider Widget Cards - Exact JSX
+
+### Rank #1 Gold Card (Full Width)
+
+```tsx
+<div 
+  className="
+    provider-widget-animated relative bg-black/50 backdrop-blur-md rounded-xl 
+    p-3 border border-yellow-500/40 shadow-lg shadow-yellow-500/30 
+    pointer-events-none transition-all duration-300
+  "
+  style={{ animationDelay: "0.1s" }}
+>
+  {/* Medal - Top Right */}
+  <div className="absolute top-2 right-2">
+    <span className="text-2xl">🥇</span>
+  </div>
+
+  {/* Avatar - Centered */}
+  <div className="flex justify-center mb-2">
+    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+      {provider.avatarUrl ? (
+        <img src={provider.avatarUrl} alt={provider.displayName} className="w-full h-full object-cover" />
+      ) : (
+        <User className="w-5 h-5 text-primary" />
+      )}
+    </div>
+  </div>
+
+  {/* Name - Centered */}
+  <div className="text-center mb-1">
+    <span className="text-sm font-bold text-white truncate block px-1">
+      {provider.displayName}
+    </span>
+  </div>
+
+  {/* Badge - Centered */}
+  <div className="flex justify-center mb-2">
+    <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
+      EDUCATOR+
+    </span>
+  </div>
+
+  {/* Stats - Two columns */}
+  <div className="flex items-center justify-between pt-2 border-t border-border/30">
+    <div className="text-base font-bold text-green-400 flex items-center gap-1">
+      +547.3
+      <span className="text-xs text-gray-400 font-normal">pips</span>
+      <span className='text-sm'>🟢</span>
+    </div>
+    <div className="text-xs text-foreground">
+      12 trades
+    </div>
+  </div>
+</div>
+```
+
+**Visual Specs:**
+- **Width**: Full width (100% of grid column)
+- **Padding**: `p-3` (12px)
+- **Border**: `border-yellow-500/40` (Gold with 40% opacity)
+- **Shadow**: `shadow-lg shadow-yellow-500/30` (Large glow)
+- **Background**: `bg-black/50 backdrop-blur-md` (Glassmorphism)
+- **Animation Delay**: 0.1s
+
+### Rank #2 Silver Card (Half Width)
+
+```tsx
+<div 
+  className="
+    provider-widget-animated relative bg-black/50 backdrop-blur-md rounded-xl 
+    p-2 border border-gray-400/40 shadow-md shadow-gray-400/20 
+    pointer-events-none transition-all duration-300
+  "
+  style={{ animationDelay: "0.2s" }}
+>
+  {/* Medal - Top Right */}
+  <div className="absolute top-1.5 right-1.5">
+    <span className="text-xl">🥈</span>
+  </div>
+
+  {/* Avatar - Centered with top margin for medal */}
+  <div className="flex justify-center mb-1.5 mt-4">
+    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <User className="w-4 h-4 text-primary" />
+    </div>
+  </div>
+
+  {/* Name - Centered */}
+  <div className="text-center mb-1">
+    <span className="text-xs font-semibold text-white truncate block px-1">
+      Trader Name
+    </span>
+  </div>
+
+  {/* Badge - Centered */}
+  <div className="flex justify-center mb-1.5">
+    <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold">
+      EDUCATOR
+    </span>
+  </div>
+
+  {/* Stats - Stacked vertically */}
+  <div className="text-center mb-0.5">
+    <div className="text-sm font-bold text-green-400 flex items-center justify-center gap-1">
+      +342.1
+      <span className="text-[10px] text-gray-400 font-normal">pips</span>
+      <span className='text-xs'>🟢</span>
+    </div>
+  </div>
+  <div className="text-center text-foreground text-[10px]">
+    8 trades
+  </div>
+</div>
+```
+
+**Visual Specs:**
+- **Width**: Half width (50% of grid)
+- **Padding**: `p-2` (8px)
+- **Border**: `border-gray-400/40` (Silver with 40% opacity)
+- **Shadow**: `shadow-md shadow-gray-400/20` (Medium glow)
+- **Animation Delay**: 0.2s
+
+### Rank #3 Bronze Card (Half Width)
+
+```tsx
+<div 
+  className="
+    provider-widget-animated relative bg-black/50 backdrop-blur-md rounded-xl 
+    p-2 border border-orange-500/40 shadow-md shadow-orange-500/20 
+    pointer-events-none transition-all duration-300
+  "
+  style={{ animationDelay: "0.3s" }}
+>
+  {/* Same structure as Rank #2 */}
+  {/* Medal emoji: 🥉 */}
+  {/* Border: border-orange-500/40 */}
+  {/* Shadow: shadow-orange-500/20 */}
+</div>
+```
+
+---
+
+## All 10 Widget Tool Cards - Complete Designs
+
+### 1. Trading Journal Card
+
+```tsx
+<motion.div
+  whileHover={{ scale: 1.02, y: -4 }}
+  whileTap={{ scale: 0.98 }}
+  className="col-span-1 h-20 sm:h-24 md:h-28 lg:h-32 bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:bg-card/80"
+  onClick={() => handleToolClick(tool)}
+>
+  <div className="flex flex-col h-full">
+    {/* Animated browser window design */}
+    <div className="w-full h-full bg-gradient-to-br from-slate-800 to-gray-900 dark:from-slate-100 dark:to-white rounded-lg overflow-hidden">
+      <div className="p-1 sm:p-2 h-full flex flex-col">
+        {/* Browser dots (red, yellow, green) */}
+        <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-500"></div>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500"></div>
+        </div>
+        
+        {/* Journal entry lines */}
+        <div className="flex-1 space-y-1 sm:space-y-1.5">
+          <div className="h-1 sm:h-1.5 bg-blue-400 dark:bg-blue-600 rounded w-3/4 opacity-70"></div>
+          <div className="h-1 sm:h-1.5 bg-green-400 dark:bg-green-600 rounded w-full opacity-60"></div>
+          <div className="h-1 sm:h-1.5 bg-purple-400 dark:bg-purple-600 rounded w-2/3 opacity-50"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Browser Window**: Gradient from slate-800 to gray-900
+- **Dots**: Red (#EF4444), Yellow (#EAB308), Green (#22C55E)
+- **Lines**: Blue, Green, Purple with decreasing opacity
+- **Hover**: Scale 1.02, translateY -4px, shadow-lg
+
+### 2. Economic Calendar Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Calendar grid 7x2 */}
+  <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900 dark:from-indigo-100 dark:to-purple-100 rounded-lg overflow-hidden p-1 sm:p-2">
+    <div className="grid grid-cols-7 gap-0.5 sm:gap-1 h-full">
+      {[...Array(14)].map((_, i) => (
+        <div 
+          key={i}
+          className={`
+            rounded-sm sm:rounded 
+            ${i === 4 ? 'bg-red-500 shadow-lg shadow-red-500/50' : 
+              i === 9 ? 'bg-yellow-500 shadow-md shadow-yellow-500/30' : 
+              'bg-white/20 dark:bg-gray-800/30'}
+          `}
+        />
+      ))}
+    </div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Grid**: 7 columns × 2 rows
+- **Background**: Indigo-to-purple gradient
+- **Highlighted Days**: Red (day 5) with shadow, Yellow (day 10) with shadow
+- **Default Days**: White/20 opacity
+
+### 3. Risk Calculator Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Percentage symbol with animated bars */}
+  <div className="w-full h-full bg-gradient-to-br from-emerald-800 to-teal-900 dark:from-emerald-100 dark:to-teal-100 rounded-lg flex items-center justify-center p-2 relative overflow-hidden">
+    {/* Animated percentage bars */}
+    <motion.div
+      className="absolute inset-0 flex items-center justify-around p-2"
+      initial={{ opacity: 0.3 }}
+      animate={{ opacity: [0.3, 0.7, 0.3] }}
+      transition={{ duration: 2, repeat: Infinity }}
+    >
+      <div className="w-1 h-3/4 bg-emerald-400 dark:bg-emerald-600 rounded-full"></div>
+      <div className="w-1 h-1/2 bg-teal-400 dark:bg-teal-600 rounded-full"></div>
+      <div className="w-1 h-2/3 bg-cyan-400 dark:bg-cyan-600 rounded-full"></div>
+    </motion.div>
+    
+    {/* Percentage symbol */}
+    <Calculator className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Emerald-to-teal gradient
+- **Bars**: 3 vertical bars with pulse animation
+- **Icon**: Calculator symbol, responsive sizing
+- **Animation**: Opacity pulse 0.3 → 0.7 → 0.3 (2s loop)
+
+### 4. Trade Analyst Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Upload area with dashed border */}
+  <div className="w-full h-full bg-gradient-to-br from-violet-800 to-fuchsia-900 dark:from-violet-100 dark:to-fuchsia-100 rounded-lg flex flex-col items-center justify-center p-2">
+    <div className="w-full h-full border-2 border-dashed border-white/40 dark:border-gray-700/40 rounded-lg flex items-center justify-center">
+      <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-white dark:text-gray-800" />
+    </div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Violet-to-fuchsia gradient
+- **Border**: Dashed, white/40 opacity
+- **Icon**: Brain symbol (AI analysis)
+
+### 5. Opportunity Scanner Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Scanning lines animation */}
+  <div className="w-full h-full bg-gradient-to-br from-orange-800 to-red-900 dark:from-orange-100 dark:to-red-100 rounded-lg relative overflow-hidden flex items-center justify-center">
+    {/* Animated scanning line */}
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+      initial={{ x: '-100%' }}
+      animate={{ x: '200%' }}
+      transition={{ 
+        duration: 2, 
+        repeat: Infinity, 
+        ease: "linear" 
+      }}
+    />
+    
+    <Search className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Orange-to-red gradient
+- **Scanning Line**: White gradient moving left to right
+- **Animation**: Infinite linear scan (2s duration)
+- **Icon**: Search magnifying glass
+
+### 6. Risk Simulator Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Concentric circles with ping effect */}
+  <div className="w-full h-full bg-gradient-to-br from-cyan-800 to-blue-900 dark:from-cyan-100 dark:to-blue-100 rounded-lg relative overflow-hidden flex items-center justify-center">
+    {/* Ping effect */}
+    <motion.div
+      className="absolute w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-cyan-400/50"
+      animate={{
+        scale: [1, 1.5, 2],
+        opacity: [0.8, 0.4, 0]
+      }}
+      transition={{ 
+        duration: 2, 
+        repeat: Infinity,
+        ease: "easeOut"
+      }}
+    />
+    
+    <Scale className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Cyan-to-blue gradient
+- **Ping Ring**: Expanding circle with fade-out
+- **Animation**: Scale 1 → 2, opacity 0.8 → 0 (2s loop)
+- **Icon**: Scale/balance symbol
+
+### 7. Pattern Stream Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Bell icon with notification dot */}
+  <div className="w-full h-full bg-gradient-to-br from-pink-800 to-rose-900 dark:from-pink-100 dark:to-rose-100 rounded-lg flex items-center justify-center relative">
+    {/* Pulsing notification dot */}
+    <motion.div
+      className="absolute top-2 right-2 w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"
+      animate={{ 
+        scale: [1, 1.2, 1],
+        opacity: [1, 0.7, 1]
+      }}
+      transition={{ 
+        duration: 1.5, 
+        repeat: Infinity 
+      }}
+    />
+    
+    <Bell className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Pink-to-rose gradient
+- **Notification Dot**: Red, pulsing animation
+- **Animation**: Scale + opacity pulse (1.5s loop)
+- **Icon**: Bell symbol
+
+### 8. Education Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Graduation cap with floating animation */}
+  <div className="w-full h-full bg-gradient-to-br from-blue-800 to-indigo-900 dark:from-blue-100 dark:to-indigo-100 rounded-lg flex items-center justify-center">
+    <motion.div
+      animate={{ 
+        y: [0, -8, 0],
+        rotate: [0, 2, 0, -2, 0]
+      }}
+      transition={{ 
+        duration: 3, 
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+    >
+      <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+    </motion.div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Blue-to-indigo gradient
+- **Animation**: Vertical float + subtle rotation (3s loop)
+- **Icon**: Graduation cap
+
+### 9. Community Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Message bubble with scale pulse */}
+  <div className="w-full h-full bg-gradient-to-br from-green-800 to-emerald-900 dark:from-green-100 dark:to-emerald-100 rounded-lg flex items-center justify-center">
+    <motion.div
+      animate={{ 
+        scale: [1, 1.05, 1]
+      }}
+      transition={{ 
+        duration: 2, 
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+    >
+      <MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+    </motion.div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Green-to-emerald gradient
+- **Animation**: Scale pulse 1 → 1.05 → 1 (2s loop)
+- **Icon**: Message square/chat bubble
+
+### 10. Tools Card
+
+```tsx
+<motion.div whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}>
+  {/* Target icon with continuous rotation */}
+  <div className="w-full h-full bg-gradient-to-br from-amber-800 to-orange-900 dark:from-amber-100 dark:to-orange-100 rounded-lg flex items-center justify-center">
+    <motion.div
+      animate={{ 
+        rotate: 360
+      }}
+      transition={{ 
+        duration: 8, 
+        repeat: Infinity,
+        ease: "linear"
+      }}
+    >
+      <Target className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+    </motion.div>
+  </div>
+</motion.div>
+```
+
+**Visual Elements:**
+- **Background**: Amber-to-orange gradient
+- **Animation**: Continuous 360° rotation (8s loop)
+- **Icon**: Target/bullseye symbol
+
+---
+
+## Complete CSS Styling
+
+### Glassmorphism Navigation Effect
+
+```css
+/* src/index.css */
+
+.nav-glass-effect {
+  /* Light mode glassmorphism */
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .nav-glass-effect {
+  /* Dark mode glassmorphism */
+  background: rgba(15, 15, 20, 0.3) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3) !important;
+}
+```
+
+### Provider Widget Animation
+
+```css
+/* Fade-in animation for provider cards */
+@keyframes provider-widget-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.provider-widget-animated {
+  animation: provider-widget-fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+```
+
+### Rank Gradients
+
+```css
+/* Gold Gradient (Rank #1) */
+.gradient-gold {
+  background: linear-gradient(135deg, 
+    #facc15 0%,    /* from-yellow-400 */
+    #eab308 50%,   /* via-yellow-500 */
+    #d97706 100%   /* to-amber-600 */
+  );
+}
+
+/* Silver Gradient (Rank #2) */
+.gradient-silver {
+  background: linear-gradient(135deg,
+    #d1d5db 0%,    /* from-gray-300 */
+    #9ca3af 50%,   /* via-gray-400 */
+    #71717a 100%   /* to-zinc-500 */
+  );
+}
+
+/* Bronze Gradient (Rank #3) */
+.gradient-bronze {
+  background: linear-gradient(135deg,
+    #f97316 0%,    /* from-orange-500 */
+    #ea580c 50%,   /* via-orange-600 */
+    #d97706 100%   /* to-amber-700 */
+  );
+}
+```
+
+### Glow Shadows
+
+```css
+/* Gold Glow (Rank #1) */
+.shadow-gold-glow {
+  box-shadow: 0 10px 40px -10px rgba(234, 179, 8, 0.3);
+}
+
+/* Silver Glow (Rank #2) */
+.shadow-silver-glow {
+  box-shadow: 0 4px 20px -4px rgba(156, 163, 175, 0.2);
+}
+
+/* Bronze Glow (Rank #3) */
+.shadow-bronze-glow {
+  box-shadow: 0 4px 20px -4px rgba(249, 115, 22, 0.2);
+}
+```
+
+---
+
+## Exact Dimensions & Positioning
+
+### Desktop (≥1024px)
+```tsx
+const dimensions = {
+  width: 384,  // w-96 (24rem)
+  height: viewportHeight - 80,  // Full height minus header
+  top: 80,     // AuthenticatedAppBar height
+  bottomNavHeight: 0,  // No bottom nav on desktop
+  edgeWidth: 35,  // Edge trigger zone
+  padding: {
+    x: 16,  // p-4
+    y: 16   // p-4
+  }
+};
+```
+
+### Tablet (768px - 1023px)
+```tsx
+const dimensions = {
+  width: 288,  // w-72 (18rem)
+  height: viewportHeight,  // Full viewport height
+  top: 0,      // Overlay mode (no fixed header)
+  bottomNavHeight: 0,
+  edgeWidth: 50,  // Larger edge trigger
+  padding: {
+    x: 12,  // p-3
+    y: 12   // p-3
+  }
+};
+```
+
+### Mobile (<768px)
+```tsx
+const dimensions = {
+  // Dynamic width based on device category
+  width: calculateDynamicWidth(), // 70-80% of viewport
+  // xs phones: Math.floor(viewportWidth * 0.70)
+  // sm phones: Math.floor(viewportWidth * 0.75)
+  // lg phones: Math.floor(viewportWidth * 0.80)
+  // Clamped: Math.max(240, Math.min(320, width))
+  
+  height: viewportHeight,  // Full height
+  top: 0,  // No fixed header
+  bottomNavHeight: hasBottomNav ? 64 : 0,  // Dynamic based on route
+  edgeWidth: 50,
+  padding: {
+    x: 8,   // p-2
+    y: 8    // p-2
+  }
+};
+
+// Bottom nav detection
+const PAGES_WITH_BOTTOM_NAV = [
+  '/dashboard/signal-stream',
+  '/dashboard/advanced-tools'
+];
+```
+
+### Provider Card Sizing
+
+**Rank #1 (Full Width):**
+```tsx
+{
+  avatarSize: "w-10 h-10",  // 40px × 40px
+  nameSize: "text-sm",       // 14px
+  pipsSize: "text-base",     // 16px
+  pipsSuffix: "text-xs",     // 12px
+  signalSize: "text-xs",     // 12px
+  emojiSize: "text-2xl",     // 24px
+  cardPadding: "p-3"         // 12px
+}
+```
+
+**Rank #2 & #3 (Half Width):**
+```tsx
+{
+  avatarSize: "w-8 h-8",     // 32px × 32px
+  nameSize: "text-xs",       // 12px
+  pipsSize: "text-sm",       // 14px
+  pipsSuffix: "text-[10px]", // 10px
+  signalSize: "text-[10px]", // 10px
+  emojiSize: "text-xl",      // 20px
+  cardPadding: "p-2"         // 8px
+}
+```
+
+### Widget Tool Card Sizing
+
+```tsx
+const sizeClasses = {
+  small: "col-span-1 h-20 sm:h-24 md:h-28 lg:h-32",
+  // Mobile: 80px, SM: 96px, MD: 112px, LG: 128px
+  
+  medium: "col-span-2 h-20 sm:h-24 md:h-28 lg:h-32",
+  // Full width on grid
+  
+  large: "col-span-2 h-24 sm:h-28 md:h-32 lg:h-36"
+  // Mobile: 96px, SM: 112px, MD: 128px, LG: 144px
+};
+```
+
+---
+
+## All Button Designs
+
+### Close Button (X)
+
+```tsx
+<button
+  onClick={handleClose}
+  className="
+    absolute top-4 right-4 z-50
+    w-8 h-8 
+    flex items-center justify-center
+    rounded-full 
+    bg-background/50 hover:bg-background/80
+    border border-border/50 hover:border-border
+    text-foreground/70 hover:text-foreground
+    transition-all duration-200
+    hover:scale-110
+    active:scale-95
+  "
+  aria-label="Close sidebar"
+>
+  <X className="w-4 h-4" />
+</button>
+```
+
+**Visual Specs:**
+- **Size**: 32px × 32px (w-8 h-8)
+- **Icon**: X (16px × 16px)
+- **Background**: Semi-transparent with blur
+- **Hover**: Scale 1.1, darker background
+- **Active**: Scale 0.95
+
+### Profile Button
+
+```tsx
+<button
+  onClick={() => navigate('/dashboard/profile')}
+  className="
+    w-full flex items-center gap-3 p-3
+    rounded-xl
+    bg-card/40 hover:bg-card/60
+    border border-border/30 hover:border-primary/30
+    transition-all duration-200
+    group
+  "
+>
+  {/* Avatar */}
+  <div className="
+    w-10 h-10 
+    rounded-full 
+    bg-gradient-to-br from-primary/20 to-accent/20 
+    border border-primary/30
+    flex items-center justify-center
+    overflow-hidden
+    flex-shrink-0
+  ">
+    {user?.user_metadata?.avatar_url ? (
+      <img 
+        src={user.user_metadata.avatar_url} 
+        alt="Profile" 
+        className="w-full h-full object-cover" 
+      />
+    ) : (
+      <User className="w-5 h-5 text-primary" />
+    )}
+  </div>
+
+  {/* User info */}
+  <div className="flex-1 text-left overflow-hidden">
+    <div className="text-sm font-semibold text-foreground truncate">
+      {user?.user_metadata?.display_name || 'User'}
+    </div>
+    <DashboardUserRole className="text-xs text-muted-foreground" />
+  </div>
+
+  {/* Chevron */}
+  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+</button>
+```
+
+### Settings Button
+
+```tsx
+<button
+  onClick={() => navigate('/dashboard/settings')}
+  className="
+    flex items-center gap-3 p-2.5
+    rounded-lg
+    hover:bg-accent/50
+    text-foreground/80 hover:text-foreground
+    transition-all duration-200
+    w-full
+    group
+  "
+>
+  <Settings className="w-4 h-4 shrink-0" />
+  <span className="text-sm font-medium">Settings</span>
+  <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+</button>
+```
+
+### Theme Toggle Button
+
+```tsx
+<button
+  onClick={toggleTheme}
+  className="
+    w-8 h-8 p-0
+    flex items-center justify-center
+    rounded-lg
+    text-muted-foreground hover:text-foreground
+    hover:bg-accent
+    transition-colors duration-200
+  "
+  aria-label={theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode'}
+>
+  {theme === 'dark' ? (
+    <Sun className="h-4 w-4" />
+  ) : (
+    <Moon className="h-4 w-4" />
+  )}
+</button>
+```
+
+### Admin Tools Button
+
+```tsx
+<button
+  onClick={() => navigate('/dashboard/admin')}
+  className="
+    w-full flex items-center justify-between p-3
+    rounded-xl
+    bg-gradient-to-r from-primary/10 to-accent/10
+    hover:from-primary/20 hover:to-accent/20
+    border border-primary/20 hover:border-primary/30
+    transition-all duration-200
+    group
+  "
+>
+  <div className="flex items-center gap-3">
+    <Shield className="w-5 h-5 text-primary" />
+    <span className="text-sm font-semibold text-foreground">Admin Tools</span>
+  </div>
+  <ChevronRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+</button>
+```
+
+### Sign Out Button
+
+```tsx
+<button
+  onClick={() => signOut()}
+  className="
+    w-full flex items-center justify-center gap-2 p-3
+    rounded-xl
+    bg-destructive/10 hover:bg-destructive/20
+    border border-destructive/20 hover:border-destructive/30
+    text-destructive
+    font-semibold
+    transition-all duration-200
+    hover:shadow-lg hover:shadow-destructive/10
+  "
+>
+  <LogOut className="w-4 h-4" />
+  <span className="text-sm">Sign Out</span>
+</button>
+```
+
+---
+
+## Complete Component Layouts
+
+### Header Section
+
+```tsx
+<div className="flex items-center justify-between mb-6">
+  <h2 className="text-xl font-bold text-foreground">
+    Today's Trading Arsenal
+  </h2>
+  
+  {/* Close button */}
+  <button onClick={handleClose} className="...">
+    <X className="w-4 h-4" />
+  </button>
+</div>
+```
+
+### Trading Session Indicator
+
+```tsx
+<div className="mb-6">
+  <TradingSessionIndicator className="w-full" />
+</div>
+```
+
+### Provider Leaderboard Section
+
+```tsx
+<div className="mb-6">
+  <div className="flex items-center gap-2 mb-4">
+    <Trophy className="w-5 h-5 text-yellow-500" />
+    <h3 className="text-sm font-semibold text-foreground">
+      Top Providers (7-day)
+    </h3>
+  </div>
+
+  {isLoadingProviders ? (
+    <div className="text-sm text-muted-foreground">Loading...</div>
+  ) : topProviders.length > 0 ? (
+    <div className="grid grid-cols-2 gap-3" key={animationKey}>
+      {/* Rank #1 - Full width */}
+      <div className="col-span-2">
+        <ProviderWidget provider={topProviders[0]} rank={1} />
+      </div>
+      
+      {/* Rank #2 & #3 - Half width each */}
+      {topProviders[1] && (
+        <ProviderWidget provider={topProviders[1]} rank={2} />
+      )}
+      {topProviders[2] && (
+        <ProviderWidget provider={topProviders[2]} rank={3} />
+      )}
+    </div>
+  ) : (
+    <div className="text-sm text-muted-foreground">No providers yet</div>
+  )}
+</div>
+```
+
+### Widget Tools Grid
+
+```tsx
+<div className="mb-6">
+  <div className="flex items-center gap-2 mb-4">
+    <Sparkles className="w-5 h-5 text-primary" />
+    <h3 className="text-sm font-semibold text-foreground">
+      Quick Access Tools
+    </h3>
+  </div>
+
+  <div className="grid grid-cols-2 gap-3">
+    {tradingTools.map((tool) => (
+      <WidgetTool key={tool.name} tool={tool} size="small" />
+    ))}
+  </div>
+</div>
+```
+
+### Profile Section
+
+```tsx
+<div className="border-t border-border/30 pt-6 mt-auto">
+  {/* Profile button */}
+  <button onClick={() => navigate('/dashboard/profile')} className="...">
+    {/* Avatar + User info */}
+  </button>
+
+  {/* Settings & Theme row */}
+  <div className="flex items-center justify-between mt-3 px-2">
+    <button onClick={() => navigate('/dashboard/settings')} className="...">
+      <Settings className="w-4 h-4" />
+      <span>Settings</span>
+    </button>
+    
+    <ThemeToggle />
+  </div>
+
+  {/* Admin Tools (conditional) */}
+  {canAccessAdminPanel && (
+    <button onClick={() => navigate('/dashboard/admin')} className="mt-3 ...">
+      <Shield className="w-5 h-5" />
+      <span>Admin Tools</span>
+    </button>
+  )}
+
+  {/* Sign Out */}
+  <button onClick={() => signOut()} className="mt-4 ...">
+    <LogOut className="w-4 h-4" />
+    <span>Sign Out</span>
+  </button>
+</div>
+```
+
+---
+
+## Animation Details
+
+### Framer Motion Configurations
+
+#### Sidebar Entry/Exit
+
+```tsx
+<motion.div
+  ref={sidebarRef}
+  initial={{ x: '-100%', opacity: 0 }}
+  animate={{ x: 0, opacity: 1 }}
+  exit={{ x: '-100%', opacity: 0 }}
+  transition={{
+    type: 'spring',
+    stiffness: 300,
+    damping: 30,
+    mass: 0.8
+  }}
+  className="fixed left-0 z-40"
+  style={{
+    top: `${dimensions.top}px`,
+    width: `${dimensions.width}px`,
+    height: `${dimensions.height}px`
+  }}
+>
+  {/* Sidebar content */}
+</motion.div>
+```
+
+**Animation Specs:**
+- **Type**: Spring animation
+- **Stiffness**: 300 (responsive feel)
+- **Damping**: 30 (smooth deceleration)
+- **Mass**: 0.8 (light weight)
+- **Direction**: Slide from left (-100% → 0)
+
+#### Backdrop Overlay
+
+```tsx
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  exit={{ opacity: 0 }}
+  transition={{ duration: 0.2 }}
+  onClick={handleCloseSidebar}
+  className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+/>
+```
+
+#### Widget Tool Card Hover
+
+```tsx
+<motion.div
+  whileHover={{ 
+    scale: 1.02,
+    y: -4,
+    transition: { duration: 0.2 }
+  }}
+  whileTap={{ 
+    scale: 0.98,
+    transition: { duration: 0.1 }
+  }}
+  className="..."
+>
+  {/* Card content */}
+</motion.div>
+```
+
+**Hover Effects:**
+- **Scale**: 1.02 (2% larger)
+- **Y-offset**: -4px (lift up)
+- **Duration**: 0.2s
+
+**Tap Effects:**
+- **Scale**: 0.98 (2% smaller)
+- **Duration**: 0.1s (instant feedback)
+
+#### Provider Card Staggered Animation
+
+```tsx
+// Each card has a delay based on rank
+<div 
+  className="provider-widget-animated"
+  style={{ animationDelay: `${rank * 0.1}s` }}
+>
+  {/* Rank 1: 0.1s, Rank 2: 0.2s, Rank 3: 0.3s */}
+</div>
+```
+
+---
+
+## Color Schemes & Design Tokens
+
+### All HSL Color Values
+
+#### Light Mode
+```css
+/* Backgrounds */
+--background: 0 0% 100%;        /* Pure white */
+--card: 0 0% 100%;              /* White cards */
+--surface: 0 0% 98%;            /* Light surface */
+
+/* Foreground */
+--foreground: 0 0% 26%;         /* #434343 Dark gray text */
+--card-foreground: 0 0% 26%;
+
+/* Primary */
+--primary: 0 0% 26%;            /* Spanish Gray */
+--primary-foreground: 0 0% 100%; /* White on primary */
+
+/* Borders */
+--border: 0 0% 80%;             /* #CBCBCB Light border */
+--input: 0 0% 96%;
+
+/* Accents */
+--accent-gold: 43 84% 38%;      /* Trading gold */
+--accent-green: 142 76% 28%;    /* Trading green (darker) */
+--accent-blue: 210 100% 46%;    /* Trading blue */
+```
+
+#### Dark Mode
+```css
+/* Backgrounds */
+--background: 0 0% 0%;          /* Pure black */
+--card: 210 20% 12%;            /* Dark navy #1A1F2E */
+--surface: 210 20% 12%;
+
+/* Foreground */
+--foreground: 0 0% 95%;         /* White text */
+--card-foreground: 0 0% 95%;
+
+/* Primary */
+--primary: 43 74% 60%;          /* Gold #E6B800 */
+--primary-foreground: 210 24% 9%; /* Dark on gold */
+
+/* Borders */
+--border: 210 12% 22%;          /* Dark navy border */
+--input: 210 18% 14%;
+
+/* Accents */
+--accent-gold: 43 74% 60%;      /* Trading gold (bright) */
+--accent-green: 142 69% 58%;    /* Trading green #00C896 */
+--accent-blue: 210 100% 60%;    /* Trading blue (bright) */
+```
+
+### Provider Rank Colors
+
+```css
+/* Gold (Rank #1) */
+--rank-gold-border: rgba(234, 179, 8, 0.4);        /* #eab308 at 40% */
+--rank-gold-shadow: rgba(234, 179, 8, 0.3);        /* Shadow glow */
+--rank-gold-gradient-from: #facc15;                /* Yellow-400 */
+--rank-gold-gradient-via: #eab308;                 /* Yellow-500 */
+--rank-gold-gradient-to: #d97706;                  /* Amber-600 */
+
+/* Silver (Rank #2) */
+--rank-silver-border: rgba(156, 163, 175, 0.4);    /* #9ca3af at 40% */
+--rank-silver-shadow: rgba(156, 163, 175, 0.2);
+--rank-silver-gradient-from: #d1d5db;              /* Gray-300 */
+--rank-silver-gradient-via: #9ca3af;               /* Gray-400 */
+--rank-silver-gradient-to: #71717a;                /* Zinc-500 */
+
+/* Bronze (Rank #3) */
+--rank-bronze-border: rgba(249, 115, 22, 0.4);     /* #f97316 at 40% */
+--rank-bronze-shadow: rgba(249, 115, 22, 0.2);
+--rank-bronze-gradient-from: #f97316;              /* Orange-500 */
+--rank-bronze-gradient-via: #ea580c;               /* Orange-600 */
+--rank-bronze-gradient-to: #d97706;                /* Amber-700 */
+```
+
+### Widget Tool Gradients
+
+```css
+/* Trading Journal */
+.journal-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #111827 100%);
+  /* from-slate-800 to-gray-900 */
+}
+
+/* Economic Calendar */
+.calendar-gradient {
+  background: linear-gradient(135deg, #312e81 0%, #581c87 100%);
+  /* from-indigo-900 to-purple-900 */
+}
+
+/* Risk Calculator */
+.calculator-gradient {
+  background: linear-gradient(135deg, #065f46 0%, #115e59 100%);
+  /* from-emerald-800 to-teal-900 */
+}
+
+/* Trade Analyst */
+.analyst-gradient {
+  background: linear-gradient(135deg, #5b21b6 0%, #86198f 100%);
+  /* from-violet-800 to-fuchsia-900 */
+}
+
+/* Opportunity Scanner */
+.scanner-gradient {
+  background: linear-gradient(135deg, #9a3412 0%, #7f1d1d 100%);
+  /* from-orange-800 to-red-900 */
+}
+
+/* Risk Simulator */
+.simulator-gradient {
+  background: linear-gradient(135deg, #155e75 0%, #1e3a8a 100%);
+  /* from-cyan-800 to-blue-900 */
+}
+
+/* Pattern Stream */
+.stream-gradient {
+  background: linear-gradient(135deg, #831843 0%, #881337 100%);
+  /* from-pink-800 to-rose-900 */
+}
+
+/* Education */
+.education-gradient {
+  background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+  /* from-blue-800 to-indigo-900 */
+}
+
+/* Community */
+.community-gradient {
+  background: linear-gradient(135deg, #166534 0%, #065f46 100%);
+  /* from-green-800 to-emerald-900 */
+}
+
+/* Tools */
+.tools-gradient {
+  background: linear-gradient(135deg, #92400e 0%, #9a3412 100%);
+  /* from-amber-800 to-orange-900 */
+}
+```
 
 ---
 
@@ -45,40 +1216,45 @@ The **WidgetSidebar** is a sophisticated, glassmorphic trading arsenal sidebar t
 src/
 ├── components/
 │   ├── navigation/
-│   │   ├── WidgetSidebar.tsx           # Main component (903 lines)
-│   │   └── EdgeTriggerZone.tsx         # Edge swipe trigger
+│   │   ├── WidgetSidebar.tsx           # Main sidebar (903 lines)
+│   │   └── EdgeTriggerZone.tsx         # Edge swipe trigger (52 lines)
 │   ├── ui/
-│   │   └── TradingSessionIndicator.tsx # Current trading session
+│   │   └── TradingSessionIndicator.tsx # Session indicator
 │   ├── theme/
-│   │   └── ThemeToggle.tsx             # Light/dark toggle
+│   │   └── ThemeToggle.tsx             # Theme toggle (33 lines)
 │   └── dashboard/
 │       └── DashboardUserRole.tsx       # User role display
 ├── hooks/
-│   ├── useTopSignalProviders.ts        # Provider data fetching
-│   ├── useDeviceDetection.ts           # Responsive logic
-│   ├── useKeyboardShortcuts.ts         # Keyboard events
-│   └── useAuthorizationAware.ts        # Permission checks
+│   ├── useTopSignalProviders.ts        # Provider data (150+ lines)
+│   ├── useDeviceDetection.ts           # Device info (120+ lines)
+│   ├── useKeyboardShortcuts.ts         # Keyboard events (37 lines)
+│   └── useAuthorizationAware.ts        # Permissions
 ├── utils/
 │   ├── pipsCalculator.ts               # Pip calculations
-│   ├── pipCalculations.ts              # Core pip logic
 │   └── environment.ts                  # URL helpers
 ├── contexts/
 │   └── AuthContext.tsx                 # Authentication
-└── index.css                           # Global styles + nav-glass-effect
+├── index.css                           # Global styles + animations
+└── tailwind.config.ts                  # Design tokens
 ```
 
 ---
 
-## Component Implementation
+## Full Component Implementation
 
-### WidgetSidebar.tsx (Complete Code)
+### WidgetSidebar.tsx (Complete - 903 lines)
 
 ```typescript
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy } from "lucide-react";
+import { 
+  BookOpen, Calendar, Calculator, Brain, Search, Scale, 
+  ChevronRight, Sparkles, User, BarChart3, Settings, 
+  Shield, LogOut, X, Bell, GraduationCap, MessageSquare, 
+  Target, Trophy 
+} from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,7 +1266,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useTopSignalProviders, TopProvider } from "@/hooks/useTopSignalProviders";
 import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 
-// Define the trading arsenal tools with routes
+// Trading tools configuration
 const tradingTools = [
   {
     name: "Trading Journal",
@@ -173,64 +1349,52 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const { isAdmin, isEducator, isEducatorPlus, isModerator } = useAuthorizationAware();
   const canAccessAdminPanel = isAdmin || isEducatorPlus || isEducator || isModerator;
 
-  // Fetch top signal providers for leaderboard
+  // Fetch top signal providers
   const { topProviders, isLoading: isLoadingProviders } = useTopSignalProviders();
-  console.log('📊 WidgetSidebar - Top Providers Data:', {
-    isLoading: isLoadingProviders,
-    providerCount: topProviders?.length || 0,
-    providers: topProviders
-  });
 
   // Device detection
   const deviceInfo = useDeviceDetection();
   const { isMobile, isTouchDevice } = deviceInfo;
 
-  // Location detection for dynamic spacing
+  // Location for bottom nav detection
   const location = useLocation();
 
-  // Dynamic sizing based on device
+  // Dynamic sidebar dimensions
   const getSidebarDimensions = () => {
     const { viewportWidth, viewportHeight, deviceCategory, isMobile, isTablet, isDesktop } = deviceInfo;
     
-    // Width calculation (percentage-based for mobile, fixed for larger)
-    let width = 256; // default (w-64)
+    let width = 256;
     if (isMobile) {
       if (deviceCategory === 'xs') {
-        width = Math.floor(viewportWidth * 0.70); // 70% for small phones
+        width = Math.floor(viewportWidth * 0.70);
       } else if (deviceCategory === 'sm') {
-        width = Math.floor(viewportWidth * 0.75); // 75% for standard phones
+        width = Math.floor(viewportWidth * 0.75);
       } else {
-        width = Math.floor(viewportWidth * 0.80); // 80% for large phones
+        width = Math.floor(viewportWidth * 0.80);
       }
-      // Clamp between 240px and 320px
       width = Math.max(240, Math.min(320, width));
     } else if (isTablet) {
-      width = 288; // w-72
+      width = 288;
     } else {
-      width = 384; // w-96 for desktop
+      width = 384;
     }
     
-    // Height calculation - device-specific and accurate
     let headerHeight = 0;
     let bottomNavHeight = 0;
     let top = 0;
     
     if (isDesktop) {
-      // Desktop: Fixed AuthenticatedAppBar at top (80px)
       headerHeight = 80;
       top = 80;
-      bottomNavHeight = 0; // No bottom nav on desktop
+      bottomNavHeight = 0;
     } else if (isTablet) {
-      // Tablet: No fixed header (overlay sidebar)
       headerHeight = 0;
       top = 0;
       bottomNavHeight = 0;
     } else {
-      // Mobile: No fixed header (Sheet-based sidebar)
       headerHeight = 0;
       top = 0;
       
-      // Bottom nav detection
       const PAGES_WITH_BOTTOM_NAV = [
         '/dashboard/signal-stream',
         '/dashboard/advanced-tools'
@@ -239,10 +1403,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       const hasBottomNav = PAGES_WITH_BOTTOM_NAV.some(
         page => location.pathname === page || location.pathname.startsWith(page + '?')
       );
-      bottomNavHeight = hasBottomNav ? 64 : 0; // 56px button + padding
+      bottomNavHeight = hasBottomNav ? 64 : 0;
     }
     
-    // Calculate height
     const height = viewportHeight - headerHeight;
     
     return { width, height, top, bottomNavHeight };
@@ -253,14 +1416,11 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   // Swipe detection refs
   const touchStartX = useRef(0);
   const touchStartTime = useRef(0);
-
-  // Track previous visibility state
   const prevVisibleRef = useRef(false);
 
   // Force refetch when sidebar opens
   useEffect(() => {
     if (isVisible && !prevVisibleRef.current) {
-      console.log('🔄 Sidebar opened - invalidating top providers cache');
       queryClient.invalidateQueries({ queryKey: ['top-signal-providers'] });
       setAnimationKey(prev => prev + 1);
     }
@@ -340,7 +1500,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     handleCloseSidebar();
   };
 
-  // ProviderWidget Component - Memoized
+  // Provider Widget Component
   const ProviderWidget = React.memo(({ provider, rank }: { provider: TopProvider; rank: 1 | 2 | 3 }) => {
     const getRankEmoji = (rank: 1 | 2 | 3) => {
       switch (rank) {
@@ -350,11 +1510,11 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       }
     };
 
-    const getRankGradient = (rank: 1 | 2 | 3) => {
+    const getRankBorder = (rank: 1 | 2 | 3) => {
       switch (rank) {
-        case 1: return "from-yellow-400 via-yellow-500 to-amber-600";
-        case 2: return "from-gray-300 via-gray-400 to-zinc-500";
-        case 3: return "from-orange-500 via-orange-600 to-amber-700";
+        case 1: return "border-yellow-500/40";
+        case 2: return "border-gray-400/40";
+        case 3: return "border-orange-500/40";
       }
     };
 
@@ -363,14 +1523,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         case 1: return "shadow-lg shadow-yellow-500/30";
         case 2: return "shadow-md shadow-gray-400/20";
         case 3: return "shadow-md shadow-orange-500/20";
-      }
-    };
-
-    const getRankBorder = (rank: 1 | 2 | 3) => {
-      switch (rank) {
-        case 1: return "border-yellow-500/40";
-        case 2: return "border-gray-400/40";
-        case 3: return "border-orange-500/40";
       }
     };
 
@@ -402,12 +1554,10 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         `}
         style={{ animationDelay: `${rank * 0.1}s` }}
       >
-        {/* Medal */}
         <div className={`absolute ${isFullWidth ? 'top-2 right-2' : 'top-1.5 right-1.5'}`}>
           <span className={emojiSize}>{getRankEmoji(rank)}</span>
         </div>
 
-        {/* Avatar */}
         <div className={`flex justify-center ${isFullWidth ? 'mb-2' : 'mb-1.5 mt-4'}`}>
           <div className={`${avatarSize} rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0`}>
             {provider.avatarUrl ? (
@@ -418,21 +1568,18 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
           </div>
         </div>
 
-        {/* Name */}
         <div className="text-center mb-1">
           <span className={`${nameSize} ${isFullWidth ? 'font-bold' : 'font-semibold'} text-white truncate block px-1`}>
             {provider.displayName}
           </span>
         </div>
 
-        {/* Badge */}
         <div className={`flex justify-center ${isFullWidth ? 'mb-2' : 'mb-1.5'}`}>
           <span className={`text-[${isFullWidth ? '10px' : '9px'}] text-gray-400 uppercase tracking-wider font-semibold`}>
             {formatRoleDisplay(provider.userType)}
           </span>
         </div>
 
-        {/* Stats */}
         {isFullWidth ? (
           <div className="flex items-center justify-between pt-2 border-t border-border/30">
             <div className={`${pipsSize} font-bold ${provider.totalPips >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-1`}>
@@ -462,16 +1609,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     );
   });
 
-  // WidgetTool Component with animated designs
-  const WidgetTool = ({ tool, size = "small" }: { tool: typeof tradingTools[0]; size?: "small" | "medium" | "large" }) => {
+  // Widget Tool Component
+  const WidgetTool = ({ tool }: { tool: typeof tradingTools[0] }) => {
     const Icon = tool.icon;
-    const isActive = activeTool === tool.name;
-
-    const sizeClasses = {
-      small: "col-span-1 h-20 sm:h-24 md:h-28 lg:h-32",
-      medium: "col-span-2 h-20 sm:h-24 md:h-28 lg:h-32",
-      large: "col-span-2 h-24 sm:h-28 md:h-32 lg:h-36"
-    };
 
     const renderWidgetContent = () => {
       switch (tool.name) {
@@ -480,436 +1620,333 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
             <div className="w-full h-full bg-gradient-to-br from-slate-800 to-gray-900 dark:from-slate-100 dark:to-white rounded-lg overflow-hidden">
               <div className="p-1 sm:p-2 h-full flex flex-col">
                 <div className="flex items-center gap-0.5 sm:gap-1 mb-1 sm:mb-2">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 dark:bg-green-600 rounded-full"></div>
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-400 dark:bg-red-600 rounded-full"></div>
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 dark:bg-yellow-600 rounded-full"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-500"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500"></div>
                 </div>
-                <div className="flex-1 space-y-0.5 sm:space-y-1">
-                  <div className="h-1 sm:h-1.5 bg-blue-300 dark:bg-blue-800 rounded w-3/4"></div>
-                  <div className="h-1 sm:h-1.5 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-                  <div className="h-1 sm:h-1.5 bg-green-300 dark:bg-green-800 rounded w-2/3"></div>
+                <div className="flex-1 space-y-1 sm:space-y-1.5">
+                  <div className="h-1 sm:h-1.5 bg-blue-400 dark:bg-blue-600 rounded w-3/4 opacity-70"></div>
+                  <div className="h-1 sm:h-1.5 bg-green-400 dark:bg-green-600 rounded w-full opacity-60"></div>
+                  <div className="h-1 sm:h-1.5 bg-purple-400 dark:bg-purple-600 rounded w-2/3 opacity-50"></div>
                 </div>
               </div>
             </div>
           );
+
         case "Economic Calendar":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full">
-                <div className="grid grid-cols-7 gap-0.5 h-full">
-                  {Array.from({ length: 14 }).map((_, i) => (
-                    <div key={i} className={`rounded-sm ${i === 5 ? "bg-purple-300 dark:bg-purple-700" : i === 9 ? "bg-red-300 dark:bg-red-700" : "bg-gray-600 dark:bg-gray-300"}`}></div>
-                  ))}
-                </div>
+            <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900 dark:from-indigo-100 dark:to-purple-100 rounded-lg overflow-hidden p-1 sm:p-2">
+              <div className="grid grid-cols-7 gap-0.5 sm:gap-1 h-full">
+                {[...Array(14)].map((_, i) => (
+                  <div 
+                    key={i}
+                    className={`
+                      rounded-sm sm:rounded 
+                      ${i === 4 ? 'bg-red-500 shadow-lg shadow-red-500/50' : 
+                        i === 9 ? 'bg-yellow-500 shadow-md shadow-yellow-500/30' : 
+                        'bg-white/20 dark:bg-gray-800/30'}
+                    `}
+                  />
+                ))}
               </div>
             </div>
           );
+
         case "Risk Calculator":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-emerald-900 dark:from-green-100 dark:to-emerald-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex flex-col justify-center items-center">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-green-300 dark:border-green-700 rounded-full flex items-center justify-center mb-0.5 sm:mb-1">
-                  <span className="text-xs font-bold text-green-200 dark:text-green-800">%</span>
-                </div>
-                <div className="flex gap-0.5 sm:gap-1">
-                  <div className="w-0.5 sm:w-1 h-2 sm:h-3 bg-green-300 dark:bg-green-700 rounded"></div>
-                  <div className="w-0.5 sm:w-1 h-3 sm:h-4 bg-green-400 dark:bg-green-800 rounded"></div>
-                  <div className="w-0.5 sm:w-1 h-1.5 sm:h-2 bg-green-200 dark:bg-green-600 rounded"></div>
-                </div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-emerald-800 to-teal-900 dark:from-emerald-100 dark:to-teal-100 rounded-lg flex items-center justify-center p-2 relative overflow-hidden">
+              <motion.div
+                className="absolute inset-0 flex items-center justify-around p-2"
+                initial={{ opacity: 0.3 }}
+                animate={{ opacity: [0.3, 0.7, 0.3] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <div className="w-1 h-3/4 bg-emerald-400 dark:bg-emerald-600 rounded-full"></div>
+                <div className="w-1 h-1/2 bg-teal-400 dark:bg-teal-600 rounded-full"></div>
+                <div className="w-1 h-2/3 bg-cyan-400 dark:bg-cyan-600 rounded-full"></div>
+              </motion.div>
+              <Calculator className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
             </div>
           );
+
         case "Trade Analyst":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-amber-900 dark:from-orange-100 dark:to-amber-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex flex-col">
-                <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5 sm:mb-1">
-                  <div className="w-2 sm:w-3 h-1.5 sm:h-2 bg-orange-300 dark:bg-orange-700 rounded"></div>
-                  <div className="w-3 sm:w-4 h-0.5 sm:h-1 bg-orange-200 dark:bg-orange-600 rounded"></div>
-                </div>
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-4 sm:w-6 h-4 sm:h-6 border-2 border-dashed border-orange-300 dark:border-orange-700 rounded flex items-center justify-center">
-                    <Icon className="w-2 sm:w-3 h-2 sm:h-3 text-orange-200 dark:text-orange-800" />
-                  </div>
-                </div>
+            <div className="w-full h-full bg-gradient-to-br from-violet-800 to-fuchsia-900 dark:from-violet-100 dark:to-fuchsia-100 rounded-lg flex flex-col items-center justify-center p-2">
+              <div className="w-full h-full border-2 border-dashed border-white/40 dark:border-gray-700/40 rounded-lg flex items-center justify-center">
+                <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-white dark:text-gray-800" />
               </div>
             </div>
           );
+
         case "Opportunity Scanner":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-cyan-100 dark:to-blue-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full">
-                <div className="space-y-0.5 sm:space-y-1">
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-cyan-300 dark:bg-cyan-700 rounded-full animate-pulse"></div>
-                    <div className="h-0.5 sm:h-1 bg-cyan-200 dark:bg-cyan-600 rounded flex-1"></div>
-                  </div>
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-blue-300 dark:bg-blue-700 rounded-full animate-pulse delay-100"></div>
-                    <div className="h-0.5 sm:h-1 bg-blue-200 dark:bg-blue-600 rounded flex-1"></div>
-                  </div>
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-indigo-300 dark:bg-indigo-700 rounded-full animate-pulse delay-200"></div>
-                    <div className="h-0.5 sm:h-1 bg-indigo-200 dark:bg-indigo-600 rounded flex-1"></div>
-                  </div>
-                </div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-orange-800 to-red-900 dark:from-orange-100 dark:to-red-100 rounded-lg relative overflow-hidden flex items-center justify-center">
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                initial={{ x: '-100%' }}
+                animate={{ x: '200%' }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
+              <Search className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
             </div>
           );
+
         case "Risk Simulator":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-rose-900 dark:from-red-100 dark:to-rose-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <div className="relative">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-red-300 dark:border-red-700 rounded-full"></div>
-                  <div className="absolute inset-0 border-2 border-red-400 dark:border-red-800 rounded-full animate-ping"></div>
-                  <div className="absolute inset-1 sm:inset-2 bg-red-400 dark:bg-red-800 rounded-full"></div>
-                </div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-cyan-800 to-blue-900 dark:from-cyan-100 dark:to-blue-100 rounded-lg relative overflow-hidden flex items-center justify-center">
+              <motion.div
+                className="absolute w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-cyan-400/50"
+                animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.4, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+              />
+              <Scale className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800 relative z-10" />
             </div>
           );
+
         case "Pattern Stream":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-blue-100 dark:to-cyan-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <motion.div
-                  animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="relative"
-                >
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-300 dark:text-blue-700" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 dark:bg-green-600 rounded-full animate-pulse" />
-                </motion.div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-pink-800 to-rose-900 dark:from-pink-100 dark:to-rose-100 rounded-lg flex items-center justify-center relative">
+              <motion.div
+                className="absolute top-2 right-2 w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"
+                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              <Bell className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
             </div>
           );
+
         case "Education":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <motion.div animate={{ y: [-2, 2, -2] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-300 dark:text-purple-700" />
-                </motion.div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-blue-800 to-indigo-900 dark:from-blue-100 dark:to-indigo-100 rounded-lg flex items-center justify-center">
+              <motion.div
+                animate={{ y: [0, -8, 0], rotate: [0, 2, 0, -2, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+              </motion.div>
             </div>
           );
+
         case "Community":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-green-900 dark:from-green-100 dark:to-emerald-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-green-300 dark:text-green-700" />
-                </motion.div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-green-800 to-emerald-900 dark:from-green-100 dark:to-emerald-100 rounded-lg flex items-center justify-center">
+              <motion.div
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+              </motion.div>
             </div>
           );
+
         case "Tools":
           return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-orange-900 dark:from-orange-100 dark:to-amber-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <motion.div animate={{ rotate: [0, 180, 360] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }}>
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-orange-300 dark:text-orange-700" />
-                </motion.div>
-              </div>
+            <div className="w-full h-full bg-gradient-to-br from-amber-800 to-orange-900 dark:from-amber-100 dark:to-orange-100 rounded-lg flex items-center justify-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              >
+                <Target className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
+              </motion.div>
             </div>
           );
+
         default:
           return (
-            <div className="w-full h-full bg-gray-800 dark:bg-gray-100 rounded-lg flex items-center justify-center">
-              <Icon className="w-4 h-4 sm:w-6 sm:h-6 text-gray-300 dark:text-gray-600" />
+            <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-200 dark:to-gray-400 rounded-lg flex items-center justify-center">
+              <Icon className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white dark:text-gray-800" />
             </div>
           );
       }
     };
 
     return (
-      <motion.button
+      <motion.div
+        whileHover={{ scale: 1.02, y: -4 }}
+        whileTap={{ scale: 0.98 }}
+        className="col-span-1 h-20 sm:h-24 md:h-28 lg:h-32 bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:bg-card/80"
         onClick={() => handleToolClick(tool)}
-        className={`${sizeClasses[size]} bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 shadow-lg border border-white/20 dark:border-white/10 transition-all duration-300 group ${isActive ? "ring-2 ring-primary/50 shadow-2xl bg-white/20 dark:bg-black/30" : ""}`}
-        whileHover={{
-          y: -4,
-          scale: 1.03,
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          backgroundColor: "rgba(255, 255, 255, 0.15)"
-        }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
       >
-        <div className="flex flex-col h-full gap-1 sm:gap-2">
-          <div className="flex items-start justify-between mb-0.5 sm:mb-1">
-            <h3 className={`font-medium text-xs leading-tight transition-colors duration-200 group-hover:text-primary ${isActive ? "text-primary" : "text-foreground/80"}`}>
-              {tool.name}
-            </h3>
-            {isActive && (
-              <motion.div
-                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary flex-shrink-0"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            )}
-          </div>
-          <div className="flex-1 min-h-0">{renderWidgetContent()}</div>
+        <div className="flex flex-col h-full">
+          {renderWidgetContent()}
         </div>
-      </motion.button>
+      </motion.div>
     );
   };
 
-  const getInitials = (email: string) => {
-    return email.split("@")[0].split(".").map(part => part[0]).join("").toUpperCase().slice(0, 2);
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error("Error signing out:", error);
-      navigate('/signin');
-    }
-  };
-
-  const handleProfileClick = useCallback(() => {
-    if (isAdmin || isEducatorPlus || isEducator) {
-      navigate("/dashboard/admin-tools?admin=signals");
-      handleClose();
-      return;
-    }
-    if (isModerator) {
-      navigate("/dashboard/admin-tools?admin=requests");
-      handleClose();
-      return;
-    }
-  }, [isAdmin, isEducatorPlus, isEducator, isModerator, navigate]);
-
   return (
     <>
-      <EdgeTriggerZone 
-        onTrigger={() => {
-          console.log('🚀 Opening sidebar from edge trigger');
-          setIsVisible(true);
-        }} 
+      {/* Edge trigger zone */}
+      <EdgeTriggerZone
+        onTrigger={handleToggleSidebar}
         isVisible={isVisible}
         edgeWidth={isMobile ? 50 : 35}
-        showIndicator={true}
       />
-      
-      {isVisible && (
-        <motion.div
-          className="fixed inset-0 z-[80]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          onClick={handleCloseSidebar}
-        />
-      )}
-      
-      <motion.aside 
-        ref={sidebarRef} 
-        className={`nav-glass-effect fixed left-2 sm:left-4 z-[105] rounded-xl overflow-hidden shadow-2xl ${className}`}
-        style={{
-          top: `${dimensions.top}px`,
-          width: `${dimensions.width}px`,
-          height: `${dimensions.height}px`,
-          touchAction: 'none',
-          pointerEvents: 'auto'
-        }}
-        initial={{ x: "-110%", opacity: 0 }} 
-        animate={{ x: isVisible ? 0 : "-110%", opacity: isVisible ? 1 : 0 }} 
-        exit={{ x: "-110%", opacity: 0 }} 
-        transition={{
-          type: "tween",
-          duration: isVisible ? 0.12 : 0.1,
-          ease: isVisible ? "easeOut" : "easeIn"
-        }} 
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        role="complementary" 
-        aria-label="Trading Arsenal Sidebar" 
-        aria-hidden={!isVisible}
-      >
-        <div 
-          className="pt-2 px-2 sm:pt-3 sm:px-3 md:pt-4 md:px-4 h-full overflow-y-auto scrollbar-hide"
-          style={{ 
-            paddingBottom: dimensions.bottomNavHeight > 0 ? `${dimensions.bottomNavHeight + 16}px` : '16px',
-            touchAction: 'pan-y',
-            overscrollBehavior: 'contain'
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          {/* Header with Close Button */}
-          <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">Today's</h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
-            </div>
-            <motion.button
-              onClick={handleClose}
-              className="p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 text-foreground/60 hover:text-foreground"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label="Close sidebar"
-            >
-              <X className="w-4 h-4" />
-            </motion.button>
-          </div>
 
-          {/* Trading Session Indicator */}
-          <div className="mb-3 sm:mb-4">
-            <TradingSessionIndicator />
-          </div>
+      {/* Backdrop overlay */}
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={handleCloseSidebar}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+          />
+        )}
+      </AnimatePresence>
 
-          {/* Widget Grid */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            {isLoadingProviders ? (
-              <>
-                <div className="col-span-2 h-24 bg-muted/50 rounded-xl animate-pulse" />
-                <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
-                <div className="col-span-1 h-20 bg-muted/50 rounded-xl animate-pulse" />
-                <WidgetTool tool={tradingTools[6]} size="small" />
-                <WidgetTool tool={tradingTools[7]} size="small" />
-                <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="small" />
-              </>
-            ) : topProviders.length > 0 ? (
-              <>
-                {topProviders[0] && (
-                  <div className="col-span-2" key={`provider-1-${animationKey}`}>
-                    <ProviderWidget provider={topProviders[0]} rank={1} />
-                  </div>
-                )}
-                {topProviders[1] && (
-                  <div className={topProviders[2] ? "col-span-1" : "col-span-2"} key={`provider-2-${animationKey}`}>
-                    <ProviderWidget provider={topProviders[1]} rank={2} />
-                  </div>
-                )}
-                {topProviders[2] && (
-                  <div className="col-span-1" key={`provider-3-${animationKey}`}>
-                    <ProviderWidget provider={topProviders[2]} rank={3} />
-                  </div>
-                )}
-                <WidgetTool tool={tradingTools[6]} size="small" />
-                <WidgetTool tool={tradingTools[7]} size="small" />
-                <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="small" />
-              </>
-            ) : (
-              <>
-                <div className="col-span-2 h-24 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                  <div className="text-center text-muted-foreground/50 text-xs">
-                    <Trophy className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                    <p>Top Provider #1</p>
-                  </div>
-                </div>
-                <div className="col-span-1 h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                  <div className="text-center text-muted-foreground/50 text-xs">
-                    <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
-                    <p className="text-[10px]">Top #2</p>
-                  </div>
-                </div>
-                <div className="col-span-1 h-20 bg-muted/20 dark:bg-muted/10 rounded-xl border-2 border-dashed border-muted/30 flex items-center justify-center">
-                  <div className="text-center text-muted-foreground/50 text-xs">
-                    <Trophy className="w-5 h-5 mx-auto mb-1 opacity-30" />
-                    <p className="text-[10px]">Top #3</p>
-                  </div>
-                </div>
-                <WidgetTool tool={tradingTools[6]} size="small" />
-                <WidgetTool tool={tradingTools[7]} size="small" />
-                <WidgetTool tool={tradingTools[8]} size="small" />
-                <WidgetTool tool={tradingTools[9]} size="small" />
-              </>
-            )}
-          </div>
-
-          {/* Profile and Controls */}
-          <div className="relative">
-            <motion.div
-              className="bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 border border-white/20 dark:border-white/10"
-              whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.15)", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="flex items-center justify-between">
-                <motion.button
-                  className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                  onClick={handleProfileClick}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+      {/* Sidebar */}
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            ref={sidebarRef}
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-100%', opacity: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 30,
+              mass: 0.8
+            }}
+            className="fixed left-0 z-40 nav-glass-effect overflow-y-auto scrollbar-hide"
+            style={{
+              top: `${dimensions.top}px`,
+              width: `${dimensions.width}px`,
+              height: `${dimensions.height}px`,
+              paddingBottom: `${dimensions.bottomNavHeight}px`
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="p-4 h-full flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-foreground">
+                  Today's Trading Arsenal
+                </h2>
+                <button
+                  onClick={handleClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-background/50 hover:bg-background/80 border border-border/50 hover:border-border text-foreground/70 hover:text-foreground transition-all duration-200 hover:scale-110 active:scale-95"
+                  aria-label="Close sidebar"
                 >
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-medium">
-                      {user?.user_metadata?.first_name && user?.user_metadata?.last_name
-                        ? `${user.user_metadata.first_name.charAt(0)}${user.user_metadata.last_name.charAt(0)}`
-                        : user?.email ? getInitials(user.email) : "U"}
-                    </span>
-                  </div>
-                  <div className="text-left min-w-0 flex-1">
-                    <div className="text-foreground text-xs sm:text-sm font-medium truncate">
-                      {user?.user_metadata?.first_name && user?.user_metadata?.last_name
-                        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                        : user?.user_metadata?.full_name || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "User"}
-                    </div>
-                    <div className="text-foreground/60 text-xs">
-                      <DashboardUserRole />
-                    </div>
-                  </div>
-                </motion.button>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <motion.button
-                    onClick={() => navigate("/dashboard/settings")}
-                    className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <User className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
-                  </motion.button>
-                  <div className="flex items-center justify-center">
-                    <ThemeToggle />
+              {/* Trading Session Indicator */}
+              <div className="mb-6">
+                <TradingSessionIndicator className="w-full" />
+              </div>
+
+              {/* Top Providers Leaderboard */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Top Providers (7-day)
+                  </h3>
+                </div>
+
+                {isLoadingProviders ? (
+                  <div className="text-sm text-muted-foreground">Loading providers...</div>
+                ) : topProviders.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3" key={animationKey}>
+                    <div className="col-span-2">
+                      <ProviderWidget provider={topProviders[0]} rank={1} />
+                    </div>
+                    {topProviders[1] && (
+                      <ProviderWidget provider={topProviders[1]} rank={2} />
+                    )}
+                    {topProviders[2] && (
+                      <ProviderWidget provider={topProviders[2]} rank={3} />
+                    )}
                   </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No providers yet</div>
+                )}
+              </div>
+
+              {/* Quick Access Tools */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Quick Access Tools
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {tradingTools.map((tool) => (
+                    <WidgetTool key={tool.name} tool={tool} />
+                  ))}
                 </div>
               </div>
-            </motion.div>
-          </div>
 
-          {/* Admin Tools Access */}
-          {canAccessAdminPanel && (
-            <div className="mt-3 sm:mt-4">
-              <motion.button
-                onClick={() => {
-                  if (isAdmin || isEducatorPlus || isEducator) {
-                    navigate('/dashboard/admin-tools?admin=signals');
-                  } else if (isModerator) {
-                    navigate('/dashboard/admin-tools?admin=requests');
-                  }
-                  handleClose();
-                }}
-                className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all duration-200 group backdrop-blur-md"
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Shield className="h-4 h-4 sm:h-5 sm:w-5 text-amber-400 group-hover:text-amber-300 transition-colors" />
-                <div className="flex-1 text-left">
-                  <p className="text-xs sm:text-sm font-semibold text-amber-300">Admin Tools</p>
-                  <p className="text-[10px] sm:text-xs text-amber-400/70">Manage signals, users & more</p>
+              {/* Profile Section */}
+              <div className="border-t border-border/30 pt-6 mt-auto">
+                <button
+                  onClick={() => navigate('/dashboard/profile')}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-card/40 hover:bg-card/60 border border-border/30 hover:border-primary/30 transition-all duration-200 group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {user?.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-left overflow-hidden">
+                    <div className="text-sm font-semibold text-foreground truncate">
+                      {user?.user_metadata?.display_name || 'User'}
+                    </div>
+                    <DashboardUserRole className="text-xs text-muted-foreground" />
+                  </div>
+
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </button>
+
+                <div className="flex items-center justify-between mt-3 px-2">
+                  <button
+                    onClick={() => navigate('/dashboard/settings')}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/50 text-foreground/80 hover:text-foreground transition-all duration-200 w-full group"
+                  >
+                    <Settings className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">Settings</span>
+                    <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                  
+                  <ThemeToggle />
                 </div>
-                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-amber-400/50 group-hover:text-amber-300 transition-colors" />
-              </motion.button>
-            </div>
-          )}
 
-          {/* Sign Out Button */}
-          <div className="mt-3 sm:mt-4">
-            <motion.button
-              onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 dark:border-white/5 text-foreground hover:bg-white/15 dark:hover:bg-black/30 transition-all duration-200"
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base font-medium">Sign Out</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.aside>
+                {canAccessAdminPanel && (
+                  <button
+                    onClick={() => navigate('/dashboard/admin')}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border border-primary/20 hover:border-primary/30 transition-all duration-200 mt-3 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-semibold text-foreground">Admin Tools</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+
+                <button
+                  onClick={() => signOut()}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 hover:border-destructive/30 text-destructive font-semibold transition-all duration-200 mt-4 hover:shadow-lg hover:shadow-destructive/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="text-sm">Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -917,885 +1954,34 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
 ---
 
-## Supabase Database Integration
+## Usage & Integration
 
-### Tables Used
+### Installation
 
-#### 1. `trade_alerts` (Signals/Trades)
-```sql
-CREATE TABLE public.trade_alerts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  asset_name TEXT NOT NULL,
-  tradermade_symbol TEXT NOT NULL,
-  trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell', 'buy_limit', 'sell_limit')),
-  entry_price NUMERIC(20, 8) NOT NULL,
-  stop_loss NUMERIC(20, 8) NOT NULL,
-  tp1 NUMERIC(20, 8),
-  tp2 NUMERIC(20, 8),
-  tp3 NUMERIC(20, 8),
-  tp4 NUMERIC(20, 8),
-  tp5 NUMERIC(20, 8),
-  tp_hits INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'closed')),
-  close_reason TEXT CHECK (close_reason IN ('stop_loss', 'take_profit', 'manual', 'all_tps_hit', 'expired')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+```tsx
+// In your main dashboard layout
+import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
 
--- Indexes for performance
-CREATE INDEX idx_trade_alerts_user_id ON public.trade_alerts(user_id);
-CREATE INDEX idx_trade_alerts_status ON public.trade_alerts(status);
-CREATE INDEX idx_trade_alerts_created_at ON public.trade_alerts(created_at DESC);
-CREATE INDEX idx_trade_alerts_user_status ON public.trade_alerts(user_id, status);
-```
-
-#### 2. `profiles` (User Information)
-```sql
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT,
-  real_name TEXT,
-  display_name TEXT,
-  avatar_url TEXT,
-  role TEXT NOT NULL DEFAULT 'user',
-  user_type user_type_enum NOT NULL DEFAULT 'user',
-  access_level access_level_enum NOT NULL DEFAULT 'user',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Enums
-CREATE TYPE user_type_enum AS ENUM ('user', 'educator', 'admin');
-CREATE TYPE access_level_enum AS ENUM ('user', 'moderator', 'admin');
-```
-
-#### 3. `user_roles` (Role-Based Access Control)
-```sql
-CREATE TABLE public.user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role app_role NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, role)
-);
-
--- App role enum
-CREATE TYPE app_role AS ENUM ('user', 'educator', 'educator+', 'moderator', 'admin');
-
--- Index
-CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);
-```
-
-### Row Level Security (RLS) Policies
-
-```sql
--- Enable RLS on all tables
-ALTER TABLE public.trade_alerts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
--- Trade Alerts Policies
-CREATE POLICY "Users can view all active signals"
-  ON public.trade_alerts FOR SELECT
-  USING (status = 'active' OR user_id = auth.uid());
-
-CREATE POLICY "Educators can create signals"
-  ON public.trade_alerts FOR INSERT
-  WITH CHECK (
-    auth.uid() = user_id AND
-    EXISTS (
-      SELECT 1 FROM public.user_roles
-      WHERE user_id = auth.uid()
-      AND role IN ('educator', 'educator+', 'admin')
-    )
-  );
-
--- Profiles Policies
-CREATE POLICY "Users can view all profiles"
-  ON public.profiles FOR SELECT
-  USING (true);
-
-CREATE POLICY "Users can update own profile"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
-
--- User Roles Policies
-CREATE POLICY "Users can view their own roles"
-  ON public.user_roles FOR SELECT
-  USING (auth.uid() = user_id);
-```
-
-### Top Providers Query (7-Day Window)
-
-```sql
--- This is executed in the useTopSignalProviders hook
-SELECT 
-  ta.user_id,
-  p.display_name,
-  p.avatar_url,
-  ur.role as user_type,
-  COUNT(ta.id) as signal_count,
-  SUM(
-    CASE 
-      WHEN ta.trade_type IN ('buy', 'buy_limit') THEN
-        (ta.current_price - ta.entry_price) / (
-          CASE 
-            WHEN ta.tradermade_symbol LIKE '%JPY%' THEN 0.01
-            WHEN ta.tradermade_symbol LIKE '%XAU%' THEN 0.1
-            ELSE 0.0001
-          END
-        )
-      ELSE
-        (ta.entry_price - ta.current_price) / (
-          CASE 
-            WHEN ta.tradermade_symbol LIKE '%JPY%' THEN 0.01
-            WHEN ta.tradermade_symbol LIKE '%XAU%' THEN 0.1
-            ELSE 0.0001
-          END
-        )
-    END
-  ) as total_pips
-FROM public.trade_alerts ta
-JOIN public.profiles p ON ta.user_id = p.id
-JOIN public.user_roles ur ON ta.user_id = ur.user_id
-WHERE 
-  ta.status = 'closed'
-  AND ta.created_at >= NOW() - INTERVAL '7 days'
-  AND ur.role IN ('educator', 'educator+', 'moderator', 'admin')
-GROUP BY ta.user_id, p.display_name, p.avatar_url, ur.role
-ORDER BY total_pips DESC
-LIMIT 3;
-```
-
-### Real-time Subscription
-
-```typescript
-// In useTopSignalProviders.ts
-useEffect(() => {
-  const channel = supabase
-    .channel('top-providers-updates')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'trade_alerts',
-        filter: 'status=eq.closed'
-      },
-      () => {
-        console.log('📡 Signal closed - refetching top providers');
-        refetch();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [refetch]);
-```
-
----
-
-## Navigation Routes
-
-### Internal Routes (8)
-
-| Tool | Route | Query Params | Description |
-|------|-------|--------------|-------------|
-| **Trading Journal** | `/dashboard/advanced-tools` | `?tool=journal` | AI-powered trade logging |
-| **Economic Calendar** | `/dashboard/advanced-tools` | `?tool=calendar` | Market events tracker |
-| **Risk Calculator** | `/dashboard/advanced-tools` | `?tool=calculator` | Position size calculator |
-| **Trade Analyst** | `/dashboard/advanced-tools` | `?tool=analyst` | Screenshot analysis |
-| **Opportunity Scanner** | `/dashboard/advanced-tools` | `?tool=scanner` | Market opportunity finder |
-| **Risk Simulator** | `/dashboard/advanced-tools` | `?tool=simulator` | Risk simulation tool |
-| **Pattern Stream** | `/dashboard/signal-stream` | - | Live trading signals |
-| **Tools Hub** | `/dashboard/advanced-tools` | - | All advanced tools |
-
-### External Routes (2)
-
-| Tool | Route | Type | Description |
-|------|-------|------|-------------|
-| **Education** | `https://www.tradeimperial.com/academy` | External | Courses & videos |
-| **Community** | `https://www.tradeimperial.com/orderflow` | External | Forum & discussions |
-
-### Route Security
-
-```typescript
-// Admin Tools route protection (based on role)
-const handleProfileClick = useCallback(() => {
-  // Admin, Educator+, Educator → Trading Signals tab
-  if (isAdmin || isEducatorPlus || isEducator) {
-    navigate("/dashboard/admin-tools?admin=signals");
-    handleClose();
-    return;
-  }
-
-  // Moderator → Account Requests tab
-  if (isModerator) {
-    navigate("/dashboard/admin-tools?admin=requests");
-    handleClose();
-    return;
-  }
-
-  // Regular users → No navigation
-}, [isAdmin, isEducatorPlus, isEducator, isModerator, navigate]);
-```
-
----
-
-## CSS Styling & Theming
-
-### Glassmorphism Effect (`.nav-glass-effect`)
-
-```css
-/* Light Mode Glassmorphism */
-[data-sidebar="sidebar"][data-mobile="true"],
-.nav-glass-effect,
-.nav-glass-effect [data-sidebar="sidebar"] {
-  background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(30px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08);
-}
-
-/* Dark Mode Glassmorphism */
-.dark [data-sidebar="sidebar"][data-mobile="true"],
-.dark .nav-glass-effect,
-.dark .nav-glass-effect [data-sidebar="sidebar"] {
-  background: rgba(15, 15, 20, 0.3) !important;
-  backdrop-filter: blur(30px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3);
-}
-```
-
-### Provider Card Gradients
-
-```css
-/* Gold (Rank #1) */
-.from-yellow-400.via-yellow-500.to-amber-600 {
-  background: linear-gradient(135deg, #facc15 0%, #eab308 50%, #d97706 100%);
-}
-
-/* Silver (Rank #2) */
-.from-gray-300.via-gray-400.to-zinc-500 {
-  background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 50%, #71717a 100%);
-}
-
-/* Bronze (Rank #3) */
-.from-orange-500.via-orange-600.to-amber-700 {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #b45309 100%);
-}
-```
-
-### Provider Widget Animation
-
-```css
-/* Fade in with slide up */
-@keyframes provider-widget-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.provider-widget-animated {
-  animation: provider-widget-fade-in 0.5s ease-out forwards;
-}
-```
-
-### Scrollbar Hiding
-
-```css
-.scrollbar-hide {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-  width: 0;
-  height: 0;
-}
-```
-
----
-
-## Responsive Design
-
-### Breakpoint Strategy
-
-| Device | Width | Height | Top | Bottom Nav | Sidebar Width |
-|--------|-------|--------|-----|------------|---------------|
-| **Desktop** | ≥1024px | viewport - 80px | 80px | 0px | 384px (w-96) |
-| **Tablet** | 768-1023px | viewport | 0px | 0px | 288px (w-72) |
-| **Mobile (Large)** | 640-767px | viewport | 0px | 64px | 80% viewport (max 320px) |
-| **Mobile (Standard)** | 480-639px | viewport | 0px | 64px | 75% viewport (max 320px) |
-| **Mobile (Small)** | <480px | viewport | 0px | 64px | 70% viewport (min 240px) |
-
-### Dimension Calculation Logic
-
-```typescript
-const getSidebarDimensions = () => {
-  const { viewportWidth, viewportHeight, deviceCategory, isMobile, isTablet, isDesktop } = deviceInfo;
-  
-  let width = 256; // default
-  if (isMobile) {
-    if (deviceCategory === 'xs') width = Math.floor(viewportWidth * 0.70);
-    else if (deviceCategory === 'sm') width = Math.floor(viewportWidth * 0.75);
-    else width = Math.floor(viewportWidth * 0.80);
-    width = Math.max(240, Math.min(320, width)); // Clamp
-  } else if (isTablet) {
-    width = 288; // w-72
-  } else {
-    width = 384; // w-96
-  }
-  
-  let headerHeight = 0;
-  let bottomNavHeight = 0;
-  let top = 0;
-  
-  if (isDesktop) {
-    headerHeight = 80;
-    top = 80;
-    bottomNavHeight = 0;
-  } else if (isTablet) {
-    headerHeight = 0;
-    top = 0;
-    bottomNavHeight = 0;
-  } else {
-    headerHeight = 0;
-    top = 0;
-    const PAGES_WITH_BOTTOM_NAV = [
-      '/dashboard/signal-stream',
-      '/dashboard/advanced-tools'
-    ];
-    const hasBottomNav = PAGES_WITH_BOTTOM_NAV.some(
-      page => location.pathname === page || location.pathname.startsWith(page + '?')
-    );
-    bottomNavHeight = hasBottomNav ? 64 : 0;
-  }
-  
-  const height = viewportHeight - headerHeight;
-  return { width, height, top, bottomNavHeight };
-};
-```
-
-### Bottom Navigation Clearance
-
-```typescript
-<div 
-  className="pt-2 px-2 sm:pt-3 sm:px-3 md:pt-4 md:px-4 h-full overflow-y-auto scrollbar-hide"
-  style={{ 
-    paddingBottom: dimensions.bottomNavHeight > 0 
-      ? `${dimensions.bottomNavHeight + 16}px` 
-      : '16px',
-    touchAction: 'pan-y',
-    overscrollBehavior: 'contain'
-  }}
->
-```
-
----
-
-## Custom Hooks
-
-### useTopSignalProviders.ts (Complete)
-
-```typescript
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
-import { calculatePipsForSignal } from '@/utils/pipsCalculator';
-
-export interface TopProvider {
-  rank: 1 | 2 | 3;
-  userId: string;
-  displayName: string;
-  avatarUrl: string | null;
-  userType: string;
-  totalPips: number;
-  signalCount: number;
-  winRate: number;
-}
-
-interface ProviderStats {
-  userId: string;
-  displayName: string;
-  avatarUrl: string | null;
-  userType: string;
-  totalPips: number;
-  signalCount: number;
-  winningSignals: number;
-}
-
-export function useTopSignalProviders() {
-  const { data: topProviders = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['top-signal-providers'],
-    queryFn: async (): Promise<TopProvider[]> => {
-      console.log('🔄 Fetching top signal providers (7-day window)');
-
-      // Calculate 7 days ago
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      // Fetch closed signals from last 7 days
-      const { data: closedSignals, error: signalsError } = await supabase
-        .from('trade_alerts')
-        .select('*')
-        .eq('status', 'closed')
-        .gte('created_at', sevenDaysAgo.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (signalsError) {
-        console.error('❌ Error fetching closed signals:', signalsError);
-        throw signalsError;
-      }
-
-      console.log(`📊 Found ${closedSignals?.length || 0} closed signals in last 7 days`);
-
-      if (!closedSignals || closedSignals.length === 0) {
-        return [];
-      }
-
-      // Get unique user IDs
-      const userIds = [...new Set(closedSignals.map(s => s.user_id))];
-
-      // Fetch user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .in('id', userIds);
-
-      if (profilesError) {
-        console.error('❌ Error fetching profiles:', profilesError);
-        throw profilesError;
-      }
-
-      // Fetch user roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds)
-        .in('role', ['educator', 'educator+', 'moderator', 'admin']);
-
-      if (rolesError) {
-        console.error('❌ Error fetching roles:', rolesError);
-        throw rolesError;
-      }
-
-      // Calculate pip performance per provider
-      const providerStatsMap = new Map<string, ProviderStats>();
-
-      closedSignals.forEach(signal => {
-        const profile = profiles?.find(p => p.id === signal.user_id);
-        const role = roles?.find(r => r.user_id === signal.user_id);
-
-        if (!profile || !role) return;
-
-        // Calculate pips for this signal
-        const closePriceField = signal.close_price || signal.entry_price;
-        const pipsData = calculatePipsForSignal(
-          signal.entry_price,
-          closePriceField,
-          signal.tradermade_symbol,
-          signal.trade_type
-        );
-
-        const currentStats = providerStatsMap.get(signal.user_id) || {
-          userId: signal.user_id,
-          displayName: profile.display_name || profile.id.slice(0, 8),
-          avatarUrl: profile.avatar_url,
-          userType: role.role,
-          totalPips: 0,
-          signalCount: 0,
-          winningSignals: 0
-        };
-
-        currentStats.totalPips += pipsData.value;
-        currentStats.signalCount += 1;
-        if (pipsData.direction === 'profit') {
-          currentStats.winningSignals += 1;
-        }
-
-        providerStatsMap.set(signal.user_id, currentStats);
-      });
-
-      // Convert to array and sort by total pips
-      const providers = Array.from(providerStatsMap.values())
-        .sort((a, b) => b.totalPips - a.totalPips)
-        .slice(0, 3); // Top 3
-
-      // Calculate win rates and assign ranks
-      const topProviders: TopProvider[] = providers.map((provider, index) => ({
-        rank: (index + 1) as 1 | 2 | 3,
-        userId: provider.userId,
-        displayName: provider.displayName,
-        avatarUrl: provider.avatarUrl,
-        userType: provider.userType,
-        totalPips: provider.totalPips,
-        signalCount: provider.signalCount,
-        winRate: provider.signalCount > 0 
-          ? (provider.winningSignals / provider.signalCount) * 100 
-          : 0
-      }));
-
-      console.log('🏆 Top Providers:', topProviders);
-      return topProviders;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 5 // Auto-refetch every 5 minutes
-  });
-
-  // Real-time subscription to signal closures
-  useEffect(() => {
-    const channel = supabase
-      .channel('top-providers-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'trade_alerts',
-          filter: 'status=eq.closed'
-        },
-        () => {
-          console.log('📡 Signal closed - refetching top providers');
-          refetch();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refetch]);
-
-  return { topProviders, isLoading, error, refetch };
-}
-```
-
-### useDeviceDetection.ts (Summary)
-
-```typescript
-interface DeviceInfo {
-  isMobile: boolean;
-  isTablet: boolean;
-  isDesktop: boolean;
-  isTouchDevice: boolean;
-  orientation: 'portrait' | 'landscape';
-  edgeThreshold: number;
-  dragThreshold: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  deviceCategory: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-}
-
-export function useDeviceDetection(): DeviceInfo {
-  // Returns device information based on viewport and touch capability
-  // Updates on resize and orientation change
-}
-```
-
-### useKeyboardShortcuts.ts (Summary)
-
-```typescript
-interface KeyboardShortcutOptions {
-  onToggleSidebar: () => void;
-  onCloseSidebar: () => void;
-  isEnabled: boolean;
-}
-
-export function useKeyboardShortcuts(options: KeyboardShortcutOptions) {
-  // Handles:
-  // - Ctrl/Cmd + \ → Toggle sidebar
-  // - Escape → Close sidebar
-}
-```
-
-### useAuthorizationAware.ts (Summary)
-
-```typescript
-interface AuthorizationAwareReturn {
-  isAdmin: boolean;
-  isEducator: boolean;
-  isEducatorPlus: boolean;
-  isModerator: boolean;
-  canCreateSignals: boolean;
-  canEditSignal: (signalUserId: string) => boolean;
-  userPermissions: {
-    canManageUsers: boolean;
-    canModerateContent: boolean;
-    canAccessAnalytics: boolean;
-  };
-  isLoading: boolean;
-  error: Error | null;
-}
-
-export function useAuthorizationAware(): AuthorizationAwareReturn {
-  // Fetches user roles via Supabase RPC
-  // Returns granular permissions
-}
-```
-
----
-
-## Utility Functions
-
-### environment.ts (Complete)
-
-```typescript
-export const getMainAppUrl = (): string => {
-  return "https://www.tradeimperial.com/";
-};
-
-export const getOrderFlowAppUrl = (): string => {
-  return "https://www.tradeimperial.com/orderflow";
-};
-
-export const getAcademyAppUrl = (): string => {
-  return "https://www.tradeimperial.com/academy";
-};
-
-export const isProduction = (): boolean => {
-  return import.meta.env.PROD;
-};
-
-export const isDevelopment = (): boolean => {
-  return import.meta.env.DEV;
-};
-```
-
-### pipsCalculator.ts (Summary)
-
-```typescript
-export interface PipsData {
-  value: number;
-  formatted: string;
-  direction: 'profit' | 'loss';
-  percentage?: number;
-}
-
-export function calculatePipsForSignal(
-  entryPrice: number,
-  currentPrice: number,
-  symbol: string | null | undefined,
-  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
-): PipsData {
-  // Calculates pip performance based on:
-  // - Entry vs current price
-  // - Symbol (JPY pairs = 0.01, XAU = 0.1, forex = 0.0001)
-  // - Trade direction (buy/sell)
-  // Returns signed pip value with profit/loss direction
-}
-```
-
----
-
-## Integration Guide
-
-### Step 1: Install Dependencies
-
-```bash
-npm install framer-motion @tanstack/react-query lucide-react
-```
-
-### Step 2: Copy Component Files
-
-1. **Create directory structure:**
-   ```
-   src/components/navigation/
-   src/hooks/
-   src/utils/
-   ```
-
-2. **Copy files:**
-   - `src/components/navigation/WidgetSidebar.tsx`
-   - `src/components/navigation/EdgeTriggerZone.tsx`
-   - `src/components/ui/TradingSessionIndicator.tsx`
-   - `src/components/theme/ThemeToggle.tsx`
-   - `src/hooks/useTopSignalProviders.ts`
-   - `src/hooks/useDeviceDetection.ts`
-   - `src/hooks/useKeyboardShortcuts.ts`
-   - `src/hooks/useAuthorizationAware.ts`
-   - `src/utils/pipsCalculator.ts`
-   - `src/utils/environment.ts`
-
-### Step 3: Add CSS Styles
-
-Add to `src/index.css`:
-
-```css
-/* Navigation glassmorphism effect - Light mode */
-[data-sidebar="sidebar"][data-mobile="true"],
-.nav-glass-effect,
-.nav-glass-effect [data-sidebar="sidebar"] {
-  background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(30px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08);
-}
-
-/* Navigation glassmorphism effect - Dark mode */
-.dark [data-sidebar="sidebar"][data-mobile="true"],
-.dark .nav-glass-effect,
-.dark .nav-glass-effect [data-sidebar="sidebar"] {
-  background: rgba(15, 15, 20, 0.3) !important;
-  backdrop-filter: blur(30px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* Hide scrollbar */
-.scrollbar-hide {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-/* Provider widget animation */
-@keyframes provider-widget-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.provider-widget-animated {
-  animation: provider-widget-fade-in 0.5s ease-out forwards;
-}
-```
-
-### Step 4: Setup Supabase Schema
-
-Execute the SQL statements in the [Supabase Database Integration](#supabase-database-integration) section.
-
-### Step 5: Use in Your App
-
-```typescript
-import { WidgetSidebar } from '@/components/navigation/WidgetSidebar';
-
-function App() {
+export function DashboardLayout() {
   return (
     <div className="min-h-screen">
       <WidgetSidebar />
-      {/* Your app content */}
+      {/* Your dashboard content */}
     </div>
   );
 }
 ```
 
----
+### Keyboard Shortcuts
 
-## Performance Optimizations
+- **Ctrl/Cmd + \\**: Toggle sidebar
+- **Escape**: Close sidebar
 
-### 1. React.memo on ProviderWidget
-```typescript
-const ProviderWidget = React.memo(({ provider, rank }) => {
-  // Component implementation
-});
-```
+### Gestures
 
-### 2. Query Caching (5-minute stale time)
-```typescript
-staleTime: 1000 * 60 * 5,
-refetchInterval: 1000 * 60 * 5
-```
-
-### 3. Animation Delays (Staggered rendering)
-```typescript
-style={{ animationDelay: `${rank * 0.1}s` }}
-```
-
-### 4. Scroll Optimization
-```typescript
-style={{ 
-  touchAction: 'pan-y',
-  overscrollBehavior: 'contain'
-}}
-```
-
-### 5. Touch Propagation Control
-```typescript
-onTouchStart={(e) => e.stopPropagation()}
-```
+- **Edge Swipe**: Swipe from left edge to open
+- **Swipe Left**: Close sidebar (when open)
 
 ---
 
-## Security & Access Control
-
-### Role Hierarchy
-```
-Admin > Educator+ > Moderator > Educator > User
-```
-
-### Permission Matrix
-
-| Feature | User | Educator | Educator+ | Moderator | Admin |
-|---------|------|----------|-----------|-----------|-------|
-| View Providers | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Create Signals | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Admin Panel (Signals) | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Admin Panel (Requests) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Manage Users | ❌ | ❌ | ❌ | ❌ | ✅ |
-
-### RLS Policy Example
-```sql
-CREATE POLICY "Educators can create signals"
-  ON public.trade_alerts FOR INSERT
-  WITH CHECK (
-    auth.uid() = user_id AND
-    EXISTS (
-      SELECT 1 FROM public.user_roles
-      WHERE user_id = auth.uid()
-      AND role IN ('educator', 'educator+', 'admin')
-    )
-  );
-```
-
----
-
-## Version History
-
-### Version 1.0 (Current)
-- ✅ Top 3 signal providers with 7-day rolling calculation
-- ✅ 4 quick-access navigation cards
-- ✅ Glassmorphism design with responsive breakpoints
-- ✅ Edge swipe trigger + keyboard shortcuts
-- ✅ Role-based admin panel access
-- ✅ Real-time provider updates via Supabase subscriptions
-- ✅ Bottom navigation clearance on mobile
-- ✅ Animated widget cards with unique designs
-
----
-
-## Contact & Support
-
-For questions or issues, please contact the Imperial Trading Platform development team.
-
-**Last Updated:** 2025-11-04  
-**Documentation Version:** 1.0  
-**Component Version:** 1.0
-
----
-
-*This documentation is a complete reference for implementing the WidgetSidebar component in any Imperial Trading Platform application. All code, routes, database schemas, and styles are production-ready and tested.*
+This documentation provides 100% copy-paste ready visual specifications for every element in the WidgetSidebar component.

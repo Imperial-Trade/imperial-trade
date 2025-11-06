@@ -35,6 +35,11 @@ interface NotificationPayload {
   delivery_channels: string[];
   user_ids?: string[];
   include_creator?: boolean;
+  author_user_type?: string;
+  pip_calculation?: {
+    calculated_pips: number;
+    pip_size: number;
+  };
 }
 
 interface DeliveryMetrics {

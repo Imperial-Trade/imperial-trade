@@ -34,6 +34,11 @@ interface SignalNotification {
   autoRemove: boolean;
 }
 
+const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
+const DEFAULT_DEDUP_WINDOW_MS = 15000;
+const CRITICAL_DEDUP_WINDOW_MS = 5000;
+const NOTIFICATION_COOLDOWN_MS = 500;
+
 const InAppNotificationSystem = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
@@ -49,13 +54,13 @@ const InAppNotificationSystem = () => {
   useEffect(() => {
     isMountedRef.current = true; // ✅ Mark as mounted
     const mountTime = Date.now();
-    componentMountTimeRef.current = mountTime;
+    componentMountTimeRef.current = mountTime - BACKFILL_WINDOW_MS;
     console.log(`🎬 [InAppNotificationSystem] Mounted at ${new Date(mountTime).toISOString()}`);
 
     // ✅ CORRECTED: Only clear OLD entries (>5 minutes), keep recent ones
     if ((window as any).lastInAppNotifications) {
       const now = Date.now();
-      const fiveMinutesAgo = now - (5 * 60 * 1000);
+      const fiveMinutesAgo = now - BACKFILL_WINDOW_MS;
       let clearedCount = 0;
       let keptCount = 0;
       
@@ -135,20 +140,16 @@ const InAppNotificationSystem = () => {
       });
 
       // ============================================
-      // ✅ FIX #2: Timestamp Age Guard (30-second limit)
+      // ✅ Timestamp logging for delayed notifications
       // ============================================
-      if (ageSeconds > 30) {
-        console.log(
-          `⏭️ [NOTIFICATION BLOCKED] Rejecting stale event (${ageSeconds}s old): ` +
-          `"${notification.title}" - Signal: ${notification.assetName}`
-        );
-        return; // Block the notification completely
+      if (ageSeconds > 0) {
+        console.log(`⏱️ [IN-APP] Notification age ${ageSeconds}s (will display)`);
       }
 
       // ============================================
       // ✅ EXISTING: Cooldown check (prevent rapid spam)
       // ============================================
-      const cooldown = 3000; // 3 seconds cooldown to prevent spam
+      const cooldown = NOTIFICATION_COOLDOWN_MS;
       if (now - lastNotificationTime < cooldown) {
         console.warn("⏭️ [COOLDOWN] In-app notification suppressed due to cooldown.");
         return;
@@ -166,8 +167,8 @@ const InAppNotificationSystem = () => {
       // ✅ EXISTING: Dynamic deduplication window
       // ============================================
       const deduplicationWindow = notification.type === 'all_tps_hit' 
-        ? 5000   // 5 seconds for "All TPs Hit" (catches rapid backend duplicates)
-        : 60000; // 60 seconds for other notifications
+        ? CRITICAL_DEDUP_WINDOW_MS
+        : DEFAULT_DEDUP_WINDOW_MS;
 
       if (now - lastShownTime < deduplicationWindow) {
         console.warn(
@@ -305,12 +306,10 @@ const InAppNotificationSystem = () => {
         // ✅ CRITICAL: Filter events older than 30 seconds (even if after mount)
         const now = Date.now();
         const ageMs = now - eventTime;
-        if (ageMs > 30000) {
+        if (ageMs > DEFAULT_DEDUP_WINDOW_MS) {
           console.log(
-            `⏭️ [TOO OLD] Ignoring broadcast older than 30s: ` +
-            `${data.notification_type} for ${data.asset_name} (${Math.round(ageMs / 1000)}s old)`
+            `⏱️ [IN-APP BACKFILL] Broadcast delay ${Math.round(ageMs / 1000)}s for ${data.asset_name}`
           );
-          return;
         }
         
         // ============================================

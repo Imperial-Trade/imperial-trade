@@ -1,5 +1,7 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+import { isPushEnabled } from "../_shared/notify.ts";
 
 // ===== INTERFACES & TYPES =====
 
@@ -32,9 +34,15 @@ interface NotificationPayload {
   author_id: string;
   author_name: string;
   author_avatar_url?: string;
+  author_user_type?: string;
   delivery_channels: string[];
   user_ids?: string[];
   include_creator?: boolean;
+  pip_calculation?: {
+    pip_size?: number;
+    calculated_pips?: number;
+    new_tp_count?: number;
+  };
 }
 
 interface DeliveryMetrics {
@@ -631,9 +639,59 @@ async function sendRealtimeNotification(
   notification: NotificationPayload,
   eventKey: string
 ): Promise<{ success: boolean; error?: string }> {
+  const channel = supabase.channel('instant-alerts', {
+    config: {
+      broadcast: {
+        ack: true
+      }
+    }
+  });
+
   try {
-    const channel = supabase.channel('instant-alerts');
-    
+    let subscribed = false;
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        logProfessional('warn', 'Realtime subscription acknowledgment timed out for instant-alerts', {
+          signalId: notification.signal_id,
+          notificationType: notification.notification_type
+        });
+        resolve();
+      }, 1000);
+
+      channel.subscribe((status: string) => {
+        if (status === 'CHANNEL_ERROR') {
+          logProfessional('error', 'Realtime subscription error for instant-alerts', {
+            signalId: notification.signal_id,
+            notificationType: notification.notification_type
+          });
+          subscribed = false;
+          clearTimeout(timeout);
+          resolve();
+        }
+
+        if (status === 'TIMED_OUT') {
+          logProfessional('warn', 'Realtime subscription timed out for instant-alerts', {
+            signalId: notification.signal_id,
+            notificationType: notification.notification_type
+          });
+          subscribed = false;
+          clearTimeout(timeout);
+          resolve();
+        }
+
+        if (status === 'SUBSCRIBED') {
+          subscribed = true;
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    });
+
+    if (!subscribed) {
+      return { success: false, error: 'subscription_failed' };
+    }
+
     const realtimePayload = {
       event_key: eventKey,
       notification_type: notification.notification_type,
@@ -711,11 +769,20 @@ async function sendRealtimeNotification(
       timestamp: new Date().toISOString()
     };
 
-    await channel.send({
+    const sendResult: { error?: any } = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload: realtimePayload
     });
+
+    if (sendResult?.error) {
+      logProfessional('error', 'Realtime broadcast failed', {
+        signalId: notification.signal_id,
+        notificationType: notification.notification_type,
+        error: sendResult.error
+      });
+      return { success: false, error: sendResult.error?.message || 'broadcast_failed' };
+    }
 
     logProfessional('info', 'Realtime notification sent', {
       eventKey,
@@ -731,6 +798,22 @@ async function sendRealtimeNotification(
       signalId: notification.signal_id 
     });
     return { success: false, error: (error as Error).message };
+  } finally {
+    try {
+      await channel.unsubscribe();
+    } catch (error) {
+      logProfessional('warn', 'Realtime channel unsubscribe failed', {
+        signalId: notification.signal_id,
+        notificationType: notification.notification_type,
+        error: (error as Error).message
+      });
+    }
+
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // ignore remove errors
+    }
   }
 }
 
@@ -763,7 +846,8 @@ async function logNotificationDelivery(
           change_types: notification.change_types || [],
           priority_level: notification.priority_level,
           asset_symbol: notification.asset_name,
-          author_id: notification.author_id
+          author_id: notification.author_id,
+          event_key: eventKey
         }
       });
   } catch (error) {
@@ -1020,58 +1104,72 @@ serve(async (req) => {
 
         // Send push notifications via OneSignal
         if (notification.delivery_channels.includes('push')) {
-          const playerIds = eligibleUsers
-            .filter(user => user.onesignal_player_id)
-            .map(user => user.onesignal_player_id);
-
-          if (playerIds.length > 0) {
-            const content = createRichNotificationContent(notification);
-            const pushResult = await sendOneSignalNotification(
-              playerIds,
-              content,
-              notification.priority_level
-            );
-
-            if (pushResult.success) {
-              // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
-              let actualSentCount = 0;
-              for (const user of eligibleUsers) {
-                if (user.onesignal_player_id) {
-                  await logNotificationDelivery(
-                    supabase,
-                    notification,
-                    user.id,
-                    'push',
-                    'sent',
-                    eventKey
-                  );
-                  actualSentCount++;
-                }
-              }
-              
-              metrics.push_sent += actualSentCount;
-              metrics.sent += actualSentCount;
-            } else {
-              metrics.failed += playerIds.length;
-              metrics.errors.push(`Push notification failed: ${pushResult.error}`);
-              
-              // Log failed deliveries
-              for (const user of eligibleUsers) {
-                if (user.onesignal_player_id) {
-                  await logNotificationDelivery(
-                    supabase,
-                    notification,
-                    user.id,
-                    'push',
-                    'failed',
-                    eventKey,
-                    pushResult.error
-                  );
-                }
-              }
-            }
+          if (!isPushEnabled()) {
+            logProfessional('info', 'Push delivery skipped (PUSH_ENABLED flag is false)', {
+              signalId: notification.signal_id,
+              notificationType: notification.notification_type
+            });
+          } else if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+            const reason = 'Missing OneSignal credentials';
+            logProfessional('error', reason, {
+              signalId: notification.signal_id,
+              notificationType: notification.notification_type
+            });
+            metrics.errors.push(`Push notification skipped: ${reason}`);
           } else {
-            logProfessional('warn', `No valid OneSignal player IDs found for signal ${notification.signal_id}`);
+            const playerIds = eligibleUsers
+              .filter(user => user.onesignal_player_id)
+              .map(user => user.onesignal_player_id);
+
+            if (playerIds.length > 0) {
+              const content = createRichNotificationContent(notification);
+              const pushResult = await sendOneSignalNotification(
+                playerIds,
+                content,
+                notification.priority_level
+              );
+
+              if (pushResult.success) {
+                // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
+                let actualSentCount = 0;
+                for (const user of eligibleUsers) {
+                  if (user.onesignal_player_id) {
+                    await logNotificationDelivery(
+                      supabase,
+                      notification,
+                      user.id,
+                      'push',
+                      'sent',
+                      eventKey
+                    );
+                    actualSentCount++;
+                  }
+                }
+                
+                metrics.push_sent += actualSentCount;
+                metrics.sent += actualSentCount;
+              } else {
+                metrics.failed += playerIds.length;
+                metrics.errors.push(`Push notification failed: ${pushResult.error}`);
+                
+                // Log failed deliveries
+                for (const user of eligibleUsers) {
+                  if (user.onesignal_player_id) {
+                    await logNotificationDelivery(
+                      supabase,
+                      notification,
+                      user.id,
+                      'push',
+                      'failed',
+                      eventKey,
+                      pushResult.error
+                    );
+                  }
+                }
+              }
+            } else {
+              logProfessional('warn', `No valid OneSignal player IDs found for signal ${notification.signal_id}`);
+            }
           }
         }
 

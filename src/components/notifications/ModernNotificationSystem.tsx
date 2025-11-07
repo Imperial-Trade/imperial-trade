@@ -14,6 +14,9 @@ import { capacitorNotificationService } from '@/services/CapacitorNotificationSe
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
+const DEDUP_WINDOW_MS = 5000;
+
 declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
@@ -186,7 +189,7 @@ const ModernNotificationSystem = () => {
       });
 
       const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      const deduplicationWindow = 30000; // 30 seconds
+      const deduplicationWindow = DEDUP_WINDOW_MS;
 
       if (now - lastShownTime < deduplicationWindow) {
         const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
@@ -273,7 +276,7 @@ const ModernNotificationSystem = () => {
   // Set up real-time listener for signal notifications
   useEffect(() => {
     // ✅ Subscribe IMMEDIATELY on mount - no auth dependency
-    componentMountTimeRef.current = Date.now();
+    componentMountTimeRef.current = Date.now() - BACKFILL_WINDOW_MS;
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
     console.log('🔍 [DEBUG] System initialized:', {
       userId: user?.id,
@@ -344,12 +347,10 @@ const ModernNotificationSystem = () => {
           return;
         }
 
-        // Filter events older than 30 seconds
         const now = Date.now();
         const ageMs = now - eventTime;
-        if (ageMs > 30000) {
-          console.log(`⏭️ [TOO OLD] Ignoring broadcast older than 30s (${Math.round(ageMs / 1000)}s old)`);
-          return;
+        if (ageMs > DEDUP_WINDOW_MS) {
+          console.log(`⏱️ [BACKFILL] Broadcast received after delay ${Math.round(ageMs / 1000)}s`);
         }
         
         // GUARD 2: PAYLOAD VALIDATION

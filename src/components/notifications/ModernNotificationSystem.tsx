@@ -426,18 +426,15 @@ const ModernNotificationSystem = () => {
         let type: ModernNotification['type'] = 'trade_closed';
         let title = '';
         let message = '';
+        let computedPipsData: PipsData | undefined;
 
         const symbolForPips =
           data.tradermade_symbol ||
           data.symbol ||
-          data.asset_name ||
-          notification.metadata?.tradermade_symbol ||
-          notification.metadata?.asset_name;
+          data.asset_name;
         const entryPrice =
           typeof data.entry_price !== 'undefined'
             ? parseFloat(data.entry_price)
-            : notification.metadata?.entry_price
-            ? parseFloat(notification.metadata.entry_price)
             : undefined;
 
         switch (data.notification_type) {

@@ -4,6 +4,8 @@
  * Utility script to inspect recent OneSignal notifications.
  *
  * Usage:
+ *   export ONESIGNAL_APP_ID="your-app-id"
+ *   export ONESIGNAL_API_KEY="your-api-key"
  *   node scripts/check-onesignal-notifications.js [limit]
  *
  * Environment variables required:

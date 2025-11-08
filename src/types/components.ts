@@ -56,6 +56,7 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   connectionStatus: 'connecting' | 'connected' | 'error' | 'polling';
   priceSource: string;
   isRecentClosure: boolean;
+  timestampRefreshKey?: number;
 }
 
 // Live Price Widget Types

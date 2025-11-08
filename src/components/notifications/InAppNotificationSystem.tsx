@@ -17,6 +17,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  NotificationEvent,
+  subscribeToNotifications,
+  emitNotification,
+} from "@/utils/notificationBus";
 
 // Enhanced notification interface for all signal events
 interface SignalNotification {
@@ -34,6 +39,11 @@ interface SignalNotification {
   autoRemove: boolean;
 }
 
+const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
+const DEFAULT_DEDUP_WINDOW_MS = 15000;
+const CRITICAL_DEDUP_WINDOW_MS = 5000;
+const NOTIFICATION_COOLDOWN_MS = 500;
+
 const InAppNotificationSystem = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<SignalNotification[]>([]);
@@ -49,13 +59,13 @@ const InAppNotificationSystem = () => {
   useEffect(() => {
     isMountedRef.current = true; // ✅ Mark as mounted
     const mountTime = Date.now();
-    componentMountTimeRef.current = mountTime;
+    componentMountTimeRef.current = mountTime - BACKFILL_WINDOW_MS;
     console.log(`🎬 [InAppNotificationSystem] Mounted at ${new Date(mountTime).toISOString()}`);
 
     // ✅ CORRECTED: Only clear OLD entries (>5 minutes), keep recent ones
     if ((window as any).lastInAppNotifications) {
       const now = Date.now();
-      const fiveMinutesAgo = now - (5 * 60 * 1000);
+      const fiveMinutesAgo = now - BACKFILL_WINDOW_MS;
       let clearedCount = 0;
       let keptCount = 0;
       
@@ -135,20 +145,16 @@ const InAppNotificationSystem = () => {
       });
 
       // ============================================
-      // ✅ FIX #2: Timestamp Age Guard (30-second limit)
+      // ✅ Timestamp logging for delayed notifications
       // ============================================
-      if (ageSeconds > 30) {
-        console.log(
-          `⏭️ [NOTIFICATION BLOCKED] Rejecting stale event (${ageSeconds}s old): ` +
-          `"${notification.title}" - Signal: ${notification.assetName}`
-        );
-        return; // Block the notification completely
+      if (ageSeconds > 0) {
+        console.log(`⏱️ [IN-APP] Notification age ${ageSeconds}s (will display)`);
       }
 
       // ============================================
       // ✅ EXISTING: Cooldown check (prevent rapid spam)
       // ============================================
-      const cooldown = 3000; // 3 seconds cooldown to prevent spam
+      const cooldown = NOTIFICATION_COOLDOWN_MS;
       if (now - lastNotificationTime < cooldown) {
         console.warn("⏭️ [COOLDOWN] In-app notification suppressed due to cooldown.");
         return;
@@ -166,8 +172,8 @@ const InAppNotificationSystem = () => {
       // ✅ EXISTING: Dynamic deduplication window
       // ============================================
       const deduplicationWindow = notification.type === 'all_tps_hit' 
-        ? 5000   // 5 seconds for "All TPs Hit" (catches rapid backend duplicates)
-        : 60000; // 60 seconds for other notifications
+        ? CRITICAL_DEDUP_WINDOW_MS
+        : DEFAULT_DEDUP_WINDOW_MS;
 
       if (now - lastShownTime < deduplicationWindow) {
         console.warn(
@@ -250,184 +256,67 @@ const InAppNotificationSystem = () => {
     [playNotificationSound, removeNotification, lastNotificationTime, user?.id]
   );
 
-  // Set up real-time listener for signal notifications
+  // Subscribe to notification bus for signal toasts
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('🔔 Setting up in-app notification listeners');
+    console.log('🔔 Setting up in-app notification listeners via notification bus');
 
-    const channel = supabase
-      .channel('instant-alerts')
-      .on('broadcast', { event: 'signal_notification' }, (payload) => {
-        // ✅ GUARD 0: Ignore if component is unmounted
-        if (!isMountedRef.current) {
-          console.log('⏭️ [UNMOUNTED] Ignoring broadcast received after unmount');
-          return;
-        }
+    const unsubscribeBus = subscribeToNotifications((event: NotificationEvent) => {
+      if (!isMountedRef.current) {
+        console.log('⏭️ [UNMOUNTED] Ignoring bus event after unmount');
+        return;
+      }
 
-        console.log('🚨 Received signal notification:', payload);
-        
-        const data = payload.payload;
-        if (!data) return;
+      const metadata = (event.metadata as Record<string, any>) || {};
+      const payload = metadata.raw_payload || metadata;
 
-        // ============================================
-        // ✅ GUARD 1: TIMESTAMP FILTERING (Enhanced)
-        // ============================================
-        const eventTimestamp = data.timestamp || data.created_at;
+      const mappedType =
+        (event.type as SignalNotification['type']) || 'signal_updated';
 
-        // Require valid timestamp
-        if (!eventTimestamp) {
-          console.warn('⚠️ [MISSING TIMESTAMP] Ignoring broadcast without timestamp:', {
-            notification_type: data.notification_type,
-            asset_name: data.asset_name
-          });
-          return;
-        }
+      // Safely map priority to the correct type
+      const rawPriority = event.priority || metadata.priority;
+      const priority: SignalNotification['priority'] = 
+        typeof rawPriority === 'string' && ['low', 'medium', 'high', 'critical'].includes(rawPriority)
+          ? (rawPriority as SignalNotification['priority'])
+          : 'medium';
 
-        const eventTime = new Date(eventTimestamp).getTime();
-
-        // Validate timestamp is valid
-        if (isNaN(eventTime)) {
-          console.warn('⚠️ [INVALID TIMESTAMP] Ignoring broadcast with invalid timestamp:', eventTimestamp);
-          return;
-        }
-
-        // Filter events older than component mount
-        if (eventTime < componentMountTimeRef.current) {
-          const ageSeconds = Math.round((componentMountTimeRef.current - eventTime) / 1000);
-          console.log(
-            `⏭️ [REPLAY PREVENTION] Ignoring pre-mount broadcast: ` +
-            `${data.notification_type} for ${data.asset_name} (${ageSeconds}s before mount)`
-          );
-          return;
-        }
-
-        // ✅ CRITICAL: Filter events older than 30 seconds (even if after mount)
-        const now = Date.now();
-        const ageMs = now - eventTime;
-        if (ageMs > 30000) {
-          console.log(
-            `⏭️ [TOO OLD] Ignoring broadcast older than 30s: ` +
-            `${data.notification_type} for ${data.asset_name} (${Math.round(ageMs / 1000)}s old)`
-          );
-          return;
-        }
-        
-        // ============================================
-        // ✅ GUARD 2: PAYLOAD VALIDATION (Prevents "undefined" glitches)
-        // ============================================
-        if (!data.asset_name || !data.notification_type) {
-          console.warn(
-            '⚠️ [INVALID BROADCAST] Ignoring event with missing required fields:',
-            {
-              asset_name: data.asset_name,
-              notification_type: data.notification_type,
-              has_signal_id: !!data.signal_id,
-              raw_data: data
-            }
-          );
-          return;
-        }
-
-        // Map notification types to our enhanced system
-        let type: SignalNotification['type'] = 'signal_updated';
-        let title = '';
-        let message = '';
-        let priority: SignalNotification['priority'] = 'medium';
-
-        switch (data.notification_type) {
-          case 'signal_created':
-            type = 'signal_created';
-            title = `🚨 New ${data.trade_type?.toUpperCase()} Signal`;
-            message = `${data.author_name} posted ${data.asset_name} at $${data.entry_price}`;
-            priority = 'high';
-            break;
-          case 'tp_hit':
-          case 'take_profit_hit':
-            type = 'tp_hit';
-            title = `🎯 Take Profit Hit - ${data.asset_name}`;
-            message = `TP ${data.tp_hits?.[data.tp_hits.length - 1]} reached at $${data.triggered_price || data.target_price}`;
-            priority = 'high';
-            break;
-          case 'stop_loss_hit':
-            type = 'stop_loss_hit';
-            title = `🔴 Stop Loss Hit - ${data.asset_name}`;
-            message = `Stop loss triggered at $${data.triggered_price || data.target_price}`;
-            priority = 'critical';
-            break;
-          case 'limit_activated':
-            type = 'limit_activated';
-            title = `✅ Limit Order Activated - ${data.asset_name}`;
-            message = `${data.trade_type?.replace('_', ' ')?.toUpperCase()} order activated at $${data.entry_price}`;
-            priority = 'high';
-            break;
-          case 'limit_cancelled':
-            type = 'limit_cancelled';
-            title = `❌ Limit Order Cancelled - ${data.asset_name}`;
-            message = `${data.trade_type?.replace('_', ' ')?.toUpperCase()} order cancelled by ${data.author_name}`;
-            priority = 'medium';
-            break;
-          case 'manual_close':
-            type = 'manual_close';
-            title = `🔒 Signal Manually Closed - ${data.asset_name}`;
-            message = `${data.author_name} manually closed the signal`;
-            priority = 'medium';
-            break;
-          case 'notes_updated':
-            type = 'notes_updated';
-            title = `📝 Notes Updated - ${data.asset_name}`;
-            message = `${data.author_name} updated signal notes`;
-            priority = 'low';
-            break;
-          case 'all_tps_hit':
-            type = 'all_tps_hit';
-            title = `🎉 All Take Profits Hit - ${data.asset_name}`;
-            message = `Trade completed successfully by ${data.author_name}`;
-            priority = 'high';
-            break;
-          default:
-            title = `📊 Signal Update - ${data.asset_name}`;
-            message = `${data.author_name} updated the signal`;
-            priority = 'medium';
-        }
-
-        addNotification({
-          type,
-          title,
-          message,
-          signalId: data.signal_id,
-          assetName: data.asset_name,
-          authorName: data.author_name,
-          eventKey: data.event_key,
-          priority,
-          timestamp: new Date(eventTime),
-        });
-      })
-      .subscribe();
-
-    // Also listen for custom signal events
-    const handleSignalPosted = () => {
       addNotification({
+        type: mappedType,
+        title: event.title,
+        message: event.message,
+        signalId: metadata.signal_id || payload.signal_id || '',
+        assetName: metadata.asset_name || payload.asset_name || '',
+        authorName:
+          metadata.provider_name ||
+          payload.author_name ||
+          payload.provider_name ||
+          'Educator',
+        eventKey: event.eventKey,
+        priority,
+        timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
+      });
+    });
+
+    const handleSignalPosted = () => {
+      emitNotification({
         type: 'signal_created',
         title: '🚨 New Signal Posted',
         message: 'A new trading signal has been created',
-        signalId: '',
-        assetName: '',
-        authorName: 'Educator',
-        priority: 'high',
-        timestamp: new Date(),
+        eventKey: `local-signal-${Date.now()}`,
+        metadata: {
+          signal_id: '',
+          asset_name: '',
+          provider_name: 'Educator',
+        },
       });
     };
 
     window.addEventListener('signal-posted', handleSignalPosted);
 
-    // Expose the addNotification function globally for compatibility
-    (window as any).addNotification = addNotification;
-
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeBus();
       window.removeEventListener('signal-posted', handleSignalPosted);
-      delete (window as any).addNotification;
     };
   }, [user?.id, addNotification]);
 

@@ -1,5 +1,7 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+import { isPushEnabled } from "../_shared/notify.ts";
 
 // ===== INTERFACES & TYPES =====
 
@@ -32,13 +34,14 @@ interface NotificationPayload {
   author_id: string;
   author_name: string;
   author_avatar_url?: string;
+  author_user_type?: string;
   delivery_channels: string[];
   user_ids?: string[];
   include_creator?: boolean;
-  author_user_type?: string;
   pip_calculation?: {
-    calculated_pips: number;
-    pip_size: number;
+    calculated_pips?: number;
+    pip_size?: number;
+    new_tp_count?: number;
   };
 }
 
@@ -132,6 +135,121 @@ function generateEventKey(
   
   // Format: signalId-type-triggerSource-changeHash-timestamp-nanos-sequence
   return `${notification.signal_id}-${notification.notification_type}-${triggerSource}-${changeHash}-${timestamp}-${nanoSeconds}-${sequence}`;
+}
+
+function normalizeNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const parsed = Number(entry);
+      return Number.isFinite(parsed) ? parsed : null;
+    })
+    .filter((entry): entry is number => entry !== null)
+    .sort((a, b) => a - b);
+}
+
+function toStringOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function buildRequestDedupSignature(
+  payload: Record<string, unknown>,
+  signalId: string,
+  notificationType: string
+): string {
+  const normalizedType = (notificationType || payload.notification_type || 'unknown') as string;
+  const safeSignalId = signalId || (payload.signal_id as string) || 'unknown';
+  const changeTypes = Array.isArray(payload.change_types)
+    ? [...payload.change_types].map(String).sort()
+    : [];
+  const deliveryChannels = Array.isArray(payload.delivery_channels)
+    ? [...payload.delivery_channels].map(String).sort()
+    : [];
+
+  // Dedup buckets tuned per-notification type to allow distinct events to pass through quickly.
+  const bucketSeconds =
+    normalizedType === 'tp_hit' || normalizedType === 'take_profit_hit' || normalizedType === 'multiple_tps_hit'
+      ? 10
+      : 30;
+  const timeBucket = Math.floor(Date.now() / (bucketSeconds * 1000));
+
+  let tpSignature = 'na';
+  if (['tp_hit', 'take_profit_hit', 'multiple_tps_hit'].includes(normalizedType)) {
+    const tpHits = normalizeNumberArray(payload.tp_hits);
+    const declaredTp =
+      (payload.tp_number as number | string | undefined) ??
+      (payload.tp_level as number | string | undefined) ??
+      (payload.latest_tp_hit as number | string | undefined) ??
+      (tpHits.length > 0 ? tpHits[tpHits.length - 1] : null);
+    const triggeredPrice =
+      toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price);
+    tpSignature = `${tpHits.join('-') || 'none'}|${toStringOrNull(declaredTp) ?? 'na'}|${triggeredPrice ?? 'na'}`;
+  }
+
+  let stopLossSignature = 'na';
+  if (['stop_loss_hit', 'stop_loss'].includes(normalizedType)) {
+    stopLossSignature = `${
+      toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price) ??
+      toStringOrNull(payload.stop_loss) ??
+      'na'
+    }`;
+  }
+
+  let closureSignature = 'na';
+  if (['manual_close', 'manual_close_with_tp_hit', 'signal_closed'].includes(normalizedType)) {
+    closureSignature = `${
+      toStringOrNull(payload.close_reason) ??
+      toStringOrNull(payload.manual_close_reason) ??
+      toStringOrNull(payload.status) ??
+      'na'
+    }`;
+  }
+
+  const uniqueHint =
+    toStringOrNull(payload.event_id) ||
+    toStringOrNull(payload.event_hash) ||
+    toStringOrNull(payload.dedupe_key) ||
+    toStringOrNull(payload.notification_hash) ||
+    toStringOrNull(payload.unique_identifier) ||
+    toStringOrNull(payload.unique_hash) ||
+    toStringOrNull(payload.event_sequence) ||
+    toStringOrNull(payload.alert_type) ||
+    'na';
+
+  const updatedStamp =
+    toStringOrNull(payload.updated_at) ||
+    toStringOrNull(payload.timestamp) ||
+    toStringOrNull(payload.created_at) ||
+    null;
+
+  const signatureParts = [
+    safeSignalId,
+    normalizedType,
+    JSON.stringify(changeTypes),
+    toStringOrNull(payload.priority_level) ?? 'default',
+    toStringOrNull(payload.status) ?? 'unknown',
+    closureSignature,
+    JSON.stringify(deliveryChannels),
+    tpSignature,
+    stopLossSignature,
+    toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price) ??
+      'na',
+    uniqueHint,
+    updatedStamp ? new Date(updatedStamp).toISOString() : 'timestamp:none',
+    String(timeBucket)
+  ];
+
+  return signatureParts.join('|');
 }
 
 // Pips calculation helper with null-safety
@@ -442,13 +560,7 @@ async function checkRequestDeduplication(
 ): Promise<boolean> {
   try {
     // Create hash of the request payload
-    const requestString = JSON.stringify({
-      signal_id: signalId,
-      notification_type: notificationType,
-      change_types: requestPayload.change_types || [],
-      priority_level: requestPayload.priority_level,
-      timestamp_hour: Math.floor(Date.now() / (1000 * 60 * 60)) // Hour-based grouping
-    });
+    const requestString = buildRequestDedupSignature(requestPayload, signalId, notificationType);
     
     const encoder = new TextEncoder();
     const data = encoder.encode(requestString);
@@ -636,9 +748,59 @@ async function sendRealtimeNotification(
   notification: NotificationPayload,
   eventKey: string
 ): Promise<{ success: boolean; error?: string }> {
+  const channel = supabase.channel('instant-alerts', {
+    config: {
+      broadcast: {
+        ack: true
+      }
+    }
+  });
+
   try {
-    const channel = supabase.channel('instant-alerts');
-    
+    let subscribed = false;
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        logProfessional('warn', 'Realtime subscription acknowledgment timed out for instant-alerts', {
+          signalId: notification.signal_id,
+          notificationType: notification.notification_type
+        });
+        resolve();
+      }, 1000);
+
+      channel.subscribe((status: string) => {
+        if (status === 'CHANNEL_ERROR') {
+          logProfessional('error', 'Realtime subscription error for instant-alerts', {
+            signalId: notification.signal_id,
+            notificationType: notification.notification_type
+          });
+          subscribed = false;
+          clearTimeout(timeout);
+          resolve();
+        }
+
+        if (status === 'TIMED_OUT') {
+          logProfessional('warn', 'Realtime subscription timed out for instant-alerts', {
+            signalId: notification.signal_id,
+            notificationType: notification.notification_type
+          });
+          subscribed = false;
+          clearTimeout(timeout);
+          resolve();
+        }
+
+        if (status === 'SUBSCRIBED') {
+          subscribed = true;
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    });
+
+    if (!subscribed) {
+      return { success: false, error: 'subscription_failed' };
+    }
+
     const realtimePayload = {
       event_key: eventKey,
       notification_type: notification.notification_type,
@@ -716,11 +878,20 @@ async function sendRealtimeNotification(
       timestamp: new Date().toISOString()
     };
 
-    await channel.send({
+    const sendResult: { error?: any } = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload: realtimePayload
     });
+
+    if (sendResult?.error) {
+      logProfessional('error', 'Realtime broadcast failed', {
+        signalId: notification.signal_id,
+        notificationType: notification.notification_type,
+        error: sendResult.error
+      });
+      return { success: false, error: sendResult.error?.message || 'broadcast_failed' };
+    }
 
     logProfessional('info', 'Realtime notification sent', {
       eventKey,
@@ -736,6 +907,22 @@ async function sendRealtimeNotification(
       signalId: notification.signal_id 
     });
     return { success: false, error: (error as Error).message };
+  } finally {
+    try {
+      await channel.unsubscribe();
+    } catch (error) {
+      logProfessional('warn', 'Realtime channel unsubscribe failed', {
+        signalId: notification.signal_id,
+        notificationType: notification.notification_type,
+        error: (error as Error).message
+      });
+    }
+
+    try {
+      supabase.removeChannel(channel);
+    } catch {
+      // ignore remove errors
+    }
   }
 }
 
@@ -768,7 +955,8 @@ async function logNotificationDelivery(
           change_types: notification.change_types || [],
           priority_level: notification.priority_level,
           asset_symbol: notification.asset_name,
-          author_id: notification.author_id
+          author_id: notification.author_id,
+          event_key: eventKey
         }
       });
   } catch (error) {
@@ -1025,58 +1213,72 @@ serve(async (req) => {
 
         // Send push notifications via OneSignal
         if (notification.delivery_channels.includes('push')) {
-          const playerIds = eligibleUsers
-            .filter(user => user.onesignal_player_id)
-            .map(user => user.onesignal_player_id);
-
-          if (playerIds.length > 0) {
-            const content = createRichNotificationContent(notification);
-            const pushResult = await sendOneSignalNotification(
-              playerIds,
-              content,
-              notification.priority_level
-            );
-
-            if (pushResult.success) {
-              // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
-              let actualSentCount = 0;
-              for (const user of eligibleUsers) {
-                if (user.onesignal_player_id) {
-                  await logNotificationDelivery(
-                    supabase,
-                    notification,
-                    user.id,
-                    'push',
-                    'sent',
-                    eventKey
-                  );
-                  actualSentCount++;
-                }
-              }
-              
-              metrics.push_sent += actualSentCount;
-              metrics.sent += actualSentCount;
-            } else {
-              metrics.failed += playerIds.length;
-              metrics.errors.push(`Push notification failed: ${pushResult.error}`);
-              
-              // Log failed deliveries
-              for (const user of eligibleUsers) {
-                if (user.onesignal_player_id) {
-                  await logNotificationDelivery(
-                    supabase,
-                    notification,
-                    user.id,
-                    'push',
-                    'failed',
-                    eventKey,
-                    pushResult.error
-                  );
-                }
-              }
-            }
+          if (!isPushEnabled()) {
+            logProfessional('info', 'Push delivery skipped (PUSH_ENABLED flag is false)', {
+              signalId: notification.signal_id,
+              notificationType: notification.notification_type
+            });
+          } else if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+            const reason = 'Missing OneSignal credentials';
+            logProfessional('error', reason, {
+              signalId: notification.signal_id,
+              notificationType: notification.notification_type
+            });
+            metrics.errors.push(`Push notification skipped: ${reason}`);
           } else {
-            logProfessional('warn', `No valid OneSignal player IDs found for signal ${notification.signal_id}`);
+            const playerIds = eligibleUsers
+              .filter(user => user.onesignal_player_id)
+              .map(user => user.onesignal_player_id);
+
+            if (playerIds.length > 0) {
+              const content = createRichNotificationContent(notification);
+              const pushResult = await sendOneSignalNotification(
+                playerIds,
+                content,
+                notification.priority_level
+              );
+
+              if (pushResult.success) {
+                // PHASE 3: Log successful deliveries for ELIGIBLE users only (already filtered)
+                let actualSentCount = 0;
+                for (const user of eligibleUsers) {
+                  if (user.onesignal_player_id) {
+                    await logNotificationDelivery(
+                      supabase,
+                      notification,
+                      user.id,
+                      'push',
+                      'sent',
+                      eventKey
+                    );
+                    actualSentCount++;
+                  }
+                }
+                
+                metrics.push_sent += actualSentCount;
+                metrics.sent += actualSentCount;
+              } else {
+                metrics.failed += playerIds.length;
+                metrics.errors.push(`Push notification failed: ${pushResult.error}`);
+                
+                // Log failed deliveries
+                for (const user of eligibleUsers) {
+                  if (user.onesignal_player_id) {
+                    await logNotificationDelivery(
+                      supabase,
+                      notification,
+                      user.id,
+                      'push',
+                      'failed',
+                      eventKey,
+                      pushResult.error
+                    );
+                  }
+                }
+              }
+            } else {
+              logProfessional('warn', `No valid OneSignal player IDs found for signal ${notification.signal_id}`);
+            }
           }
         }
 

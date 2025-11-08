@@ -6,11 +6,7 @@ interface Window {
   webkitSpeechRecognition: any;
   AudioContext: typeof AudioContext;
   webkitAudioContext: typeof AudioContext;
-  addNotification?: (notification: {
-    type: string;
-    title: string;
-    message: string;
-  }) => void;
+  addNotification?: (notification: import('@/utils/notificationBus').NotificationEvent) => void;
 }
 
 // Speech Recognition API types

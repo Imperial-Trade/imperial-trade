@@ -13,6 +13,14 @@ import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  NotificationEvent,
+  subscribeToNotifications,
+  emitNotification,
+} from '@/utils/notificationBus';
+
+const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
+const DEDUP_WINDOW_MS = 1500;
 
 declare global {
   interface Window {
@@ -45,6 +53,8 @@ interface ModernNotification {
   priority?: number;
 }
 
+const MODERN_DEDUP_WINDOW_MS = 1500;
+
 const ModernNotificationSystem = () => {
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
@@ -61,6 +71,8 @@ const ModernNotificationSystem = () => {
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
   const componentMountTimeRef = useRef<number>(Date.now());
   const isMountedRef = useRef<boolean>(true);
+  const pendingEventsRef = useRef<NotificationEvent[]>([]);
+  const lastShownRef = useRef<Map<string, number>>(new Map());
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -100,7 +112,7 @@ const ModernNotificationSystem = () => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const addNotification = useCallback(
+  const handleNotification = useCallback(
     async (notification: any) => {
       const now = Date.now();
       const cooldown = 500;
@@ -174,9 +186,25 @@ const ModernNotificationSystem = () => {
       // ============================================================================
 
       // Use signal_id + notification_type + title for better uniqueness
-      const notificationKey = notification.metadata?.signal_id 
-        ? `${notification.metadata.signal_id}:${notification.type}:${notification.title}`
-        : notification.eventKey || `${notification.title}:${notification.message}`;
+      const signalId =
+        notification.metadata?.signal_id ||
+        (notification as any).signalId ||
+        notification.metadata?.raw_payload?.signal_id;
+      const triggeredPrice =
+        notification.metadata?.triggered_price ||
+        notification.metadata?.target_price ||
+        notification.metadata?.raw_payload?.triggered_price ||
+        notification.metadata?.raw_payload?.target_price ||
+        (notification as any).triggeredPrice;
+
+      const fallbackKey = signalId
+        ? `${signalId}:${notification.type}:${triggeredPrice ?? 'na'}`
+        : `${notification.title}:${notification.message}`;
+
+      const notificationKey = notification.eventKey || fallbackKey;
+      const keysToCheck = new Set<string>();
+      if (notificationKey) keysToCheck.add(notificationKey);
+      if (fallbackKey) keysToCheck.add(fallbackKey);
 
       console.log('🔑 [DIAGNOSTIC] Generated deduplication key:', {
         full_key: notificationKey,
@@ -185,20 +213,30 @@ const ModernNotificationSystem = () => {
         title: notification.title
       });
 
-      const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
-      const deduplicationWindow = 30000; // 30 seconds
+      let blockedByDedup = false;
+      for (const key of keysToCheck) {
+        if (!key) continue;
+        const lastShownTime =
+          lastShownRef.current.get(key) ||
+          (window as any).lastShownMap?.get(key) ||
+          0;
 
-      if (now - lastShownTime < deduplicationWindow) {
-        const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
-        
-        console.warn('🚫 [DIAGNOSTIC] Blocked by deduplication:', {
-          key_preview: notificationKey.substring(0, 60) + '...',
-          signal_id: notification.metadata?.signal_id,
-          type: notification.type,
-          title: notification.title,
-          time_since_last_shown: `${timeSinceLastShown}s`,
-          deduplication_window: `${deduplicationWindow/1000}s`
-        });
+        if (now - lastShownTime < MODERN_DEDUP_WINDOW_MS) {
+          const timeSinceLastShown = ((now - lastShownTime) / 1000).toFixed(1);
+          console.warn('🚫 [DIAGNOSTIC] Blocked by deduplication:', {
+            key_preview: key.substring(0, 60) + '...',
+            signal_id: signalId,
+            type: notification.type,
+            title: notification.title,
+            time_since_last_shown: `${timeSinceLastShown}s`,
+            deduplication_window: `${MODERN_DEDUP_WINDOW_MS / 1000}s`
+          });
+          blockedByDedup = true;
+          break;
+        }
+      }
+
+      if (blockedByDedup) {
         return;
       }
 
@@ -211,20 +249,28 @@ const ModernNotificationSystem = () => {
       });
 
       // Update last shown time
-      if (!(window as any).lastShownMap) {
-        (window as any).lastShownMap = new Map();
-      }
-      (window as any).lastShownMap.set(notificationKey, now);
+      keysToCheck.forEach((key) => {
+        if (!key) return;
+        lastShownRef.current.set(key, now);
+        if (!(window as any).lastShownMap) {
+          (window as any).lastShownMap = new Map();
+        }
+        (window as any).lastShownMap.set(key, now);
+      });
 
       setLastNotificationTime(now);
 
-      const id = Date.now() + Math.random();
-      const enhancedNotification: ModernNotification = { 
-        ...notification, 
-        id: id.toString(), 
-        timestamp: new Date(),
+      const id = notification.id || Date.now() + Math.random();
+      let computedPipsData: PipsData | undefined;
+
+      const enhancedNotification: ModernNotification = {
+        ...notification,
+        id: id.toString(),
+        timestamp: notification.timestamp
+          ? new Date(notification.timestamp)
+          : new Date(),
         eventKey: notification.eventKey || `notification_${id}`,
-        deliveryChannel: notification.deliveryChannel || 'in_app'
+        deliveryChannel: notification.deliveryChannel || 'in_app',
       };
       
       console.log('✅ [DIAGNOSTIC] Notification APPROVED and will be displayed:', {
@@ -263,17 +309,37 @@ const ModernNotificationSystem = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    (window as any).addNotification = addNotification;
+
+    const unsubscribe = subscribeToNotifications((event) => {
+      if (!authReady) {
+        pendingEventsRef.current.push(event);
+        return;
+      }
+      handleNotification(event);
+    });
+
     return () => {
       isMountedRef.current = false;
-      delete (window as any).addNotification;
+      unsubscribe();
     };
-  }, [addNotification]);
+  }, [handleNotification, authReady]);
+
+  useEffect(() => {
+    if (authReady && pendingEventsRef.current.length > 0) {
+      const queued = pendingEventsRef.current.splice(
+        0,
+        pendingEventsRef.current.length
+      );
+      queued.forEach((event) => {
+        handleNotification(event);
+      });
+    }
+  }, [authReady, handleNotification]);
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
     // ✅ Subscribe IMMEDIATELY on mount - no auth dependency
-    componentMountTimeRef.current = Date.now();
+    componentMountTimeRef.current = Date.now() - BACKFILL_WINDOW_MS;
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
     console.log('🔍 [DEBUG] System initialized:', {
       userId: user?.id,
@@ -344,12 +410,10 @@ const ModernNotificationSystem = () => {
           return;
         }
 
-        // Filter events older than 30 seconds
         const now = Date.now();
         const ageMs = now - eventTime;
-        if (ageMs > 30000) {
-          console.log(`⏭️ [TOO OLD] Ignoring broadcast older than 30s (${Math.round(ageMs / 1000)}s old)`);
-          return;
+        if (ageMs > DEDUP_WINDOW_MS) {
+          console.log(`⏱️ [BACKFILL] Broadcast received after delay ${Math.round(ageMs / 1000)}s`);
         }
         
         // GUARD 2: PAYLOAD VALIDATION
@@ -362,6 +426,16 @@ const ModernNotificationSystem = () => {
         let type: ModernNotification['type'] = 'trade_closed';
         let title = '';
         let message = '';
+        let computedPipsData: PipsData | undefined;
+
+        const symbolForPips =
+          data.tradermade_symbol ||
+          data.symbol ||
+          data.asset_name;
+        const entryPrice =
+          typeof data.entry_price !== 'undefined'
+            ? parseFloat(data.entry_price)
+            : undefined;
 
         switch (data.notification_type) {
           // ============================================
@@ -418,22 +492,25 @@ const ModernNotificationSystem = () => {
             }
             
             // Calculate pips
-            let tpPips = data.pips;
-            
-            if (!tpPips && data.calculated_pips && data.calculated_pips > 0) {
-              tpPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!tpPips && tpPrice && data.entry_price && data.trade_type) {
-              const pipsCalc = calculatePipsForSignal(
-                parseFloat(data.entry_price),
+            if (tpPrice && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
                 parseFloat(tpPrice),
-                data.tradermade_symbol || data.asset_name,
+                symbolForPips,
                 data.trade_type
               );
-              tpPips = pipsCalc.formatted;
             }
-            
+
+            const tpPipsText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.endsWith('PIPS') ? data.pips : `${data.pips} PIPS`}`
+                : undefined);
+
             title = `🎯 Take Profit Hit`;
-            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'} | ${tpPips || '+0'} PIPS`;
+            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'}${
+              tpPipsText ? ` | ${tpPipsText}` : ''
+            }`;
             break;
           }
 
@@ -445,25 +522,27 @@ const ModernNotificationSystem = () => {
             
             const slPrice = data.stop_loss || data.triggered_price || data.target_price;
             
-            let slPips = data.pips;
-            
-            if (!slPips && data.calculated_pips && data.calculated_pips > 0) {
-              slPips = `-${data.calculated_pips.toFixed(1)}`;
-            } else if (!slPips && slPrice && data.entry_price && data.trade_type) {
-              const pipsCalc = calculatePipsForSignal(
-                parseFloat(data.entry_price),
+            if (slPrice && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
                 parseFloat(slPrice),
-                data.tradermade_symbol || data.asset_name,
+                symbolForPips,
                 data.trade_type
               );
-              slPips = pipsCalc.formatted.replace('+', '-');
-              if (!slPips.startsWith('-')) {
-                slPips = '-' + slPips;
-              }
             }
-            
+
+            const slPipsText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.startsWith('-') ? data.pips : `-${data.pips}`}${
+                    data.pips.includes('PIPS') ? '' : ' PIPS'
+                  }`
+                : undefined);
+
             title = `▼ Stop Loss Hit`;
-            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'} | ${slPips || '-0'} PIPS`;
+            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'}${
+              slPipsText ? ` | ${slPipsText}` : ''
+            }`;
             break;
           }
 
@@ -484,16 +563,31 @@ const ModernNotificationSystem = () => {
           case 'manual_close_with_tp_hit': {
             type = 'manual_close';
             
-            let securedPips = data.pips;
-            
-            if (!securedPips && data.calculated_pips && data.calculated_pips > 0) {
-              securedPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!securedPips) {
-              securedPips = '+0';
+            if (entryPrice && symbolForPips && data.trade_type && data.triggered_price) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
+                parseFloat(data.triggered_price),
+                symbolForPips,
+                data.trade_type
+              );
+            } else if (data.pips) {
+              computedPipsData = {
+                value: parseFloat(data.pips),
+                formatted: data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`,
+                direction: data.pips.startsWith('-') ? 'loss' : 'profit'
+              };
             }
-            
+
+            const securedText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.startsWith('+') ? data.pips : `+${data.pips}`} ${
+                    data.pips.includes('PIPS') ? '' : 'PIPS'
+                  }`
+                : '+0 PIPS');
+
             title = `💰 Closed in Profits`;
-            message = `Secured Profits on ${data.asset_name} | ${securedPips} PIPS`;
+            message = `Secured Profits on ${data.asset_name} | ${securedText}`;
             break;
           }
 
@@ -504,25 +598,24 @@ const ModernNotificationSystem = () => {
           case 'all_take_profits_hit': {
             type = 'trade_closed';
             
-            let allTpsPips = data.pips;
-            
-            if (!allTpsPips && data.calculated_pips && data.calculated_pips > 0) {
-              allTpsPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!allTpsPips && data.entry_price) {
-              const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
-              if (highestTP && data.trade_type) {
-                const pipsCalc = calculatePipsForSignal(
-                  parseFloat(data.entry_price),
-                  parseFloat(highestTP),
-                  data.tradermade_symbol || data.asset_name,
-                  data.trade_type
-                );
-                allTpsPips = pipsCalc.formatted;
-              }
+            const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
+            if (highestTP && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
+                parseFloat(highestTP),
+                symbolForPips,
+                data.trade_type
+              );
             }
-            
+
+            const allTpText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`}`
+                : '+0 PIPS');
+
             title = `🎉 ALL TPs HIT`;
-            message = `${data.asset_name} completed all Profits successfully | ${allTpsPips || '+0'} PIPS`;
+            message = `${data.asset_name} completed all Profits successfully | ${allTpText}`;
             break;
           }
 
@@ -545,30 +638,39 @@ const ModernNotificationSystem = () => {
           }
         }
 
-        addNotification({
-          type,
-          title,
-          message,
-          metadata: {
-            signal_id: data.signal_id,
-            provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
-            provider_avatar_url: data.author_avatar_url || data.avatar_url,
-            provider_type: data.author_user_type || data.user_type || 'member',
-            asset_name: data.asset_name,
-            tp_hits: data.tp_hits || [],
-            total_tps: data.total_tps || 0,
-            triggered_price: data.triggered_price || data.target_price,
-            pips_data: data.pips
-              ? {
-                  value: parseFloat(data.pips) || 0,
-                  formatted: data.pips,
-                  direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
-                }
-              : undefined,
+        const finalizedPipsData =
+          computedPipsData ||
+          (typeof data.pips !== 'undefined' && data.pips !== null
+            ? {
+                value: parseFloat(data.pips) || 0,
+                formatted: data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`,
+                direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit'
+              }
+            : undefined);
+
+        emitNotification(
+          {
+            type,
+            title,
+            message,
+            metadata: {
+              signal_id: data.signal_id,
+              provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
+              provider_avatar_url: data.author_avatar_url || data.avatar_url,
+              provider_type: data.author_user_type || data.user_type || 'member',
+              asset_name: data.asset_name,
+              tp_hits: data.tp_hits || [],
+              total_tps: data.total_tps || 0,
+              triggered_price: data.triggered_price || data.target_price,
+              pips_data: finalizedPipsData,
+              raw_payload: data,
+            },
+            eventKey: data.event_key,
+            timestamp: new Date(eventTime),
+            deliveryChannel: 'in_app',
           },
-          eventKey: data.event_key,
-          timestamp: new Date(eventTime),
-        });
+          { queueIfNoListeners: true }
+        );
       })
       .subscribe((status) => {
         // Log every subscription status change
@@ -599,7 +701,7 @@ const ModernNotificationSystem = () => {
       supabase.removeChannel(channel);
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
-  }, [addNotification]); // ✅ Removed user?.id - subscribe once and stay connected
+  }, []); // ✅ Removed user?.id - subscribe once and stay connected
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

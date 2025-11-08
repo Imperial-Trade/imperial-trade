@@ -39,8 +39,8 @@ interface NotificationPayload {
   user_ids?: string[];
   include_creator?: boolean;
   pip_calculation?: {
-    pip_size?: number;
     calculated_pips?: number;
+    pip_size?: number;
     new_tp_count?: number;
   };
 }

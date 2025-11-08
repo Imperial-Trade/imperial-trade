@@ -1,8 +1,29 @@
-// IMPERIAL TRADING PRICE INGESTOR v4.1 - CRITICAL RELIABILITY FIXES
+// IMPERIAL TRADING PRICE INGESTOR v4.2 - EARLYDROP FIX
+// =====================================================================
+// CRITICAL FIX: Prevents EarlyDrop shutdown using EdgeRuntime.waitUntil()
+// - Returns 200 OK response immediately after validation
+// - Uses EdgeRuntime.waitUntil() to keep function alive during background processing
+// - Processes alerts, DB upserts, and notifications in background
+// - Works even with 0 active users (alerts and DB always processed)
+// - Comprehensive logging with timing metrics
+// =====================================================================
 // Enhanced with Stop Loss Priority, Sequential TP Processing, and 100% Reliability
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+
+// Type definitions for price data with optional reason field
+interface PriceData {
+  symbol: string;
+  price: number;
+  timestamp: string;
+  reason?: string;
+}
+
+// Global EdgeRuntime type declaration
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<any>): void;
+} | undefined;
 
 // 🔥 CRITICAL FIX: Emergency kill switch for broadcasts
 const EMERGENCY_DISABLE_BROADCASTS = Deno.env.get('EMERGENCY_DISABLE_BROADCASTS') === 'true';
@@ -12,6 +33,18 @@ let supabaseClient: any = null;
 
 // Global map to store calculated bid/ask/mid prices for database upsert
 let symbolsWithPrices: Map<string, { bid: number; ask: number; mid: number }> | undefined;
+
+// 🛡️ SHUTDOWN HANDLER: Log when function is about to terminate
+addEventListener('beforeunload', () => {
+  console.log('⚠️ Function shutting down - beforeunload event triggered');
+  console.log(`📊 Final stats: processed=${totalPricesProcessed}, alerts=${totalAlertsTriggered}, upserted=${totalPricesUpserted}`);
+});
+
+// 🛡️ UNHANDLED REJECTION HANDLER: Catch any background processing errors
+addEventListener('unhandledrejection', (event) => {
+  console.error('❌ Unhandled promise rejection in background processing:', event.reason);
+  event.preventDefault(); // Prevent the default behavior which might crash the function
+});
 
 // 🚀 ULTRA-SENSITIVE PROFESSIONAL THRESHOLDS - For institutional-grade 1-2 second UI updates
 // These thresholds deliver maximum responsiveness matching top-tier trading platforms
@@ -149,7 +182,7 @@ async function acquireBroadcastLock(supabaseClient: any, durationSeconds: number
 function filterSignificantPrices(
   incomingPrices: Array<{symbol: string, price: number, timestamp: string}>,
   broadcastAll: boolean = false
-) {
+): Array<PriceData> {
   // 🚀 REAL-TIME MODE: When active UI listeners present, broadcast ALL prices
   if (broadcastAll) {
     console.log(`🚀 REAL-TIME MODE: Broadcasting ALL ${incomingPrices.length} prices (active UI listeners)`);
@@ -228,37 +261,99 @@ serve(async (req) => {
   // Method validation
   if (req.method !== 'POST') {
     console.warn(`❌ Method ${req.method} not allowed`);
-    return new Response('Method Not Allowed', { 
+    return new Response('Method Not Allowed', {
       status: 405,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   // Authentication
   const ingestKey = req.headers.get('X-INGEST-KEY') || req.headers.get('x-ingest-key');
   const expectedKey = Deno.env.get('INGEST_SECRET');
-  
+
   if (!expectedKey) {
     console.error('❌ INGEST_SECRET not configured');
-    return new Response('Server configuration error', { 
+    return new Response('Server configuration error', {
       status: 500,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   if (!ingestKey || ingestKey !== expectedKey) {
     console.warn('❌ Invalid or missing X-INGEST-KEY header');
-    return new Response('Unauthorized', { 
+    return new Response('Unauthorized', {
       status: 401,
-      headers: corsHeaders 
+      headers: corsHeaders
     });
   }
 
   console.log('✅ Authentication successful');
 
+  // 🚀 CRITICAL FIX: Parse payload and validate BEFORE heavy processing
+  let prices: any[];
+  try {
+    const requestBody = await req.json();
+    prices = requestBody.prices;
+
+    // Validate payload early
+    if (!prices || !Array.isArray(prices) || prices.length === 0) {
+      console.warn('❌ Invalid payload: missing or empty prices array');
+      return new Response('Invalid payload: prices array required', {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    console.log(`📊 Received ${prices.length} prices - sending early response to prevent EarlyDrop`);
+  } catch (error) {
+    console.error('❌ Failed to parse request body:', error);
+    return new Response('Invalid JSON payload', {
+      status: 400,
+      headers: corsHeaders
+    });
+  }
+
+  // 🚀 CRITICAL FIX: Use EdgeRuntime.waitUntil() for guaranteed background processing
+  // This prevents EarlyDrop by keeping function alive after response is sent
+  const backgroundTask = processInBackground(prices).catch(error => {
+    console.error('❌ Background processing error:', error);
+  });
+
+  // Mark the background task to keep function alive until completion
+  // EdgeRuntime.waitUntil() ensures the function doesn't terminate early
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+    EdgeRuntime.waitUntil(backgroundTask);
+    console.log('🔄 Background processing registered with EdgeRuntime.waitUntil()');
+  } else {
+    // Fallback: await the task if waitUntil is not available (local development)
+    console.log('⚠️ EdgeRuntime.waitUntil() not available, processing synchronously');
+    await backgroundTask;
+  }
+
+  // Return response immediately (background continues via waitUntil)
+  return new Response(JSON.stringify({
+    success: true,
+    received: prices.length,
+    status: 'processing'
+  }), {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json'
+    }
+  });
+});
+
+// 🚀 BACKGROUND PROCESSING: Runs after response is sent
+// Uses EdgeRuntime.waitUntil() to prevent EarlyDrop termination
+async function processInBackground(prices: any[]) {
+  const startTime = Date.now();
+  console.log(`🔄 [BACKGROUND START] Processing ${prices.length} prices at ${new Date().toISOString()}`);
+
   try {
     // Initialize Supabase client
     await initializeSupabase();
+    console.log(`✅ [BACKGROUND] Supabase client initialized (${Date.now() - startTime}ms)`);
     
     // 🚀 ENHANCED: Always process alerts and notifications, only skip UI broadcast if no active users
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -275,23 +370,11 @@ serve(async (req) => {
     }
     
     console.log(`👥 Active UI sessions: ${activeUserCount}`);
-    
-    // Parse request payload FIRST
-    const requestBody = await req.json();
-    const { prices } = requestBody;
-    
-    console.log(`📊 Processing ${prices ? prices.length : 0} price updates for ${activeUserCount} active users (notifications always processed)`);
-
-    // Validate payload
-    if (!prices || !Array.isArray(prices) || prices.length === 0) {
-      console.warn('❌ Invalid payload: missing or empty prices array');
-      return new Response('Invalid payload: prices array required', { 
-        status: 400,
-        headers: corsHeaders 
-      });
-    }
+    console.log(`📊 Processing ${prices.length} price updates for ${activeUserCount} active users (notifications always processed)`);
 
     totalPricesProcessed += prices.length;
+
+    console.log(`📊 Background processing started for ${prices.length} prices`);
 
     // 🚀 STEP 1: CRITICAL PRIORITY PROCESSING - Stop Loss FIRST, then Take Profits
     console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
@@ -299,8 +382,10 @@ serve(async (req) => {
     let limitOrdersActivated = 0;
     let notificationTriggers: any[] = [];
     
-    // First, process limit order activations using mid prices
-    const symbolsWithPrices = new Map();
+    // Initialize global symbolsWithPrices Map for this batch
+    symbolsWithPrices = new Map();
+    
+    // Populate symbolsWithPrices with calculated bid/ask/mid prices
     for (const priceUpdate of prices) {
       const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
       const hasMidOnly = typeof priceUpdate.price === 'number';
@@ -310,9 +395,25 @@ serve(async (req) => {
         continue;
       }
 
-      // Store current prices for limit order processing
-      const currentPrice = hasFullData ? (priceUpdate.bid + priceUpdate.ask) / 2 : priceUpdate.price;
-      symbolsWithPrices.set(priceUpdate.symbol, currentPrice);
+      // Calculate bid/ask/mid prices with consistent object structure
+      let bidPrice: number, askPrice: number, currentPrice: number;
+      
+      if (hasFullData) {
+        bidPrice = priceUpdate.bid!;
+        askPrice = priceUpdate.ask!;
+        currentPrice = (bidPrice + askPrice) / 2;
+      } else {
+        currentPrice = priceUpdate.price;
+        // Estimate bid/ask from mid
+        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
+        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        const halfSpread = isGold ? 0.05 : (isBitcoin ? 2.50 : 0.00005);
+        bidPrice = currentPrice - halfSpread;
+        askPrice = currentPrice + halfSpread;
+      }
+      
+      // Store in global Map for use throughout processing
+      symbolsWithPrices.set(priceUpdate.symbol, { bid: bidPrice, ask: askPrice, mid: currentPrice });
     }
 
     // Process limit order activations
@@ -330,8 +431,9 @@ serve(async (req) => {
         console.error('❌ Error fetching pending limits:', fetchError);
       } else if (pendingLimits && pendingLimits.length > 0) {
         for (const alert of pendingLimits) {
-          const currentPrice = symbolsWithPrices.get(alert.tradermade_symbol);
-          if (!currentPrice) continue;
+          const priceData = symbolsWithPrices.get(alert.tradermade_symbol);
+          if (!priceData) continue;
+          const currentPrice = priceData.mid;
 
           const shouldTrigger = 
             (alert.trade_type === 'buy_limit' && currentPrice <= alert.entry_price) ||
@@ -370,121 +472,57 @@ serve(async (req) => {
       }
     }
 
-    // PHASE 4: CRITICAL - Use enhanced alert processing with Stop Loss priority
-    for (const priceUpdate of prices) {
-      const hasFullData = typeof priceUpdate.bid === 'number' && typeof priceUpdate.ask === 'number';
-      const hasMidOnly = typeof priceUpdate.price === 'number';
+    // ============================================================================
+    // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
+    // ============================================================================
+
+    // Configuration: Cooldown period per symbol
+    const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
+    const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
+
+    // In-memory tracking of last alert processing time per symbol
+    const lastAlertProcessing: Map<string, number> = new Map();
+
+    // ============================================================================
+    // STEP 1: Determine which symbols need alert processing
+    // ============================================================================
+
+    const symbolsToProcess: string[] = [];
+    const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
+
+    // Use symbolsWithPrices Map (already populated) to build alert processing list
+    for (const [symbol, storedPriceData] of symbolsWithPrices.entries()) {
+      const lastProcessed = lastAlertProcessing.get(symbol) || 0;
+      const timeSinceLastProcess = Date.now() - lastProcessed;
       
-      if (!priceUpdate.symbol || (!hasFullData && !hasMidOnly)) {
-        continue;
-      }
-
-      // ✅ CRITICAL FIX: Calculate bid/ask from mid-only prices
-      let bidPrice: number;
-      let askPrice: number;
-      let currentPrice: number;
-
-      if (hasFullData) {
-        // Full bid/ask data available (most accurate)
-        bidPrice = priceUpdate.bid!;
-        askPrice = priceUpdate.ask!;
-        currentPrice = (bidPrice + askPrice) / 2;
-        console.log(`📊 Full price data for ${priceUpdate.symbol}: Bid=${bidPrice}, Ask=${askPrice}, Mid=${currentPrice}`);
-      } else if (typeof priceUpdate.price === 'number') {
-        // ✅ Mid-only price - ESTIMATE bid/ask from mid
-        currentPrice = priceUpdate.price;
+      // Only process if cooldown period has elapsed
+      if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
+        symbolsToProcess.push(symbol);
         
-        // Asset-specific spread estimation (based on institutional market data)
-        const isGold = priceUpdate.symbol === 'XAUUSD' || priceUpdate.symbol.includes('XAU');
-        const isBitcoin = priceUpdate.symbol === 'BTCUSD' || priceUpdate.symbol.includes('BTC');
+        // Use already-calculated price data from symbolsWithPrices
+        priceData[symbol] = {
+          bid: storedPriceData.bid,
+          ask: storedPriceData.ask,
+          mid: storedPriceData.mid
+        };
         
-        let halfSpread: number;
-        if (isGold) {
-          halfSpread = 0.05;  // Gold: typical $0.10 total spread ($0.05 per side)
-        } else if (isBitcoin) {
-          halfSpread = 2.50;  // Bitcoin: typical ~$5 total spread
-        } else {
-          halfSpread = 0.00005;  // Forex: typical ~0.5-1 pip
-        }
+        // Update last processed time
+        lastAlertProcessing.set(symbol, Date.now());
         
-        bidPrice = currentPrice - halfSpread;
-        askPrice = currentPrice + halfSpread;
-        
-        console.log(`⚠️ Mid-price fallback for ${priceUpdate.symbol}: ${currentPrice} (estimated bid=${bidPrice}, ask=${askPrice})`);
+        console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
       } else {
-        // No usable price data - skip THIS symbol only
-        console.log(`❌ No price data for ${priceUpdate.symbol} - skipping`);
-        continue;
+        console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
       }
+    }
 
-      // ✅ Store calculated prices for database upsert (used in CHANGE #4)
-      if (!symbolsWithPrices) {
-        symbolsWithPrices = new Map();
-      }
-      symbolsWithPrices.set(priceUpdate.symbol, {
-        bid: bidPrice,
-        ask: askPrice,
-        mid: currentPrice
-      });
+    // Note: Price data already calculated and stored in symbolsWithPrices Map above
+    // No need for additional loops - all prices are ready for alert processing
 
-      // ✅ NOW PROCEED WITH ALERT PROCESSING (previously skipped by continue statement)
+    // ============================================================================
+    // STEP 2: Batch process alerts with timeout protection (MOVED OUTSIDE LOOP)
+    // ============================================================================
 
-      // ✅ FIXED: Validate CALCULATED bid/ask values (not undefined priceUpdate)
-      if (!isFinite(bidPrice) || !isFinite(askPrice) ||
-          bidPrice <= 0 || askPrice <= 0 ||
-          isNaN(bidPrice) || isNaN(askPrice)) {
-        console.warn(`⚠️ Skipping invalid calculated bid/ask: symbol=${priceUpdate.symbol}, bid=${bidPrice}, ask=${askPrice}`);
-        continue;
-      }
-
-      // ============================================================================
-      // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
-      // ============================================================================
-
-      // Configuration: Cooldown period per symbol
-      const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
-      const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
-
-      // In-memory tracking of last alert processing time per symbol
-      const lastAlertProcessing: Map<string, number> = new Map();
-
-      // ============================================================================
-      // STEP 1: Determine which symbols need alert processing
-      // ============================================================================
-
-      const symbolsToProcess: string[] = [];
-      const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
-
-      for (const priceUpdate of prices) {
-        const symbol = priceUpdate.symbol;
-        const lastProcessed = lastAlertProcessing.get(symbol) || 0;
-        const timeSinceLastProcess = Date.now() - lastProcessed;
-        
-        // Only process if cooldown period has elapsed
-        if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
-          symbolsToProcess.push(symbol);
-          
-          // Build priceData in the format the SQL function expects
-          priceData[symbol] = {
-            bid: priceUpdate.bid,
-            ask: priceUpdate.ask,
-            mid: priceUpdate.mid
-          };
-          
-          // Update last processed time
-          lastAlertProcessing.set(symbol, Date.now());
-          
-          console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
-        } else {
-          console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
-        }
-      }
-
-      // ============================================================================
-      // STEP 2: Batch process alerts with timeout protection
-      // ============================================================================
-
-      if (symbolsToProcess.length > 0) {
+    if (symbolsToProcess.length > 0) {
         console.log(`🎯 [Alert Processing] Processing ${symbolsToProcess.length} symbols: ${symbolsToProcess.join(', ')}`);
         console.log(`🎯 [Alert Processing] Price data:`, priceData);
         
@@ -656,9 +694,8 @@ serve(async (req) => {
             });
           }
         }
-      } else {
-        console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
-      }
+    } else {
+      console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
     // 🚀 ENHANCED: Send notifications for all significant events
@@ -774,19 +811,10 @@ serve(async (req) => {
     console.log('📡 STEP 3: Checking if UI broadcast should proceed...');
     
     if (EMERGENCY_DISABLE_BROADCASTS) {
+      const totalTime = Date.now() - startTime;
       console.log('🚨 Emergency broadcast disable active - skipping UI updates');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'emergency_disabled'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - emergency disable active
     }
 
     // STEP 3A: Calculate prices for UI FIRST (before using significantPrices)
@@ -810,21 +838,12 @@ serve(async (req) => {
     const isHeartbeatBroadcast = significantPrices && significantPrices.length > 0 && 
       significantPrices.every((p: any) => p.reason === 'heartbeat');
 
-    // 🚀 CRITICAL: Skip UI broadcast if no active users
+    // 🚀 CRITICAL: Skip UI broadcast if no active users (alerts and DB still processed!)
     if (!hasActiveUsers) {
-      console.log('📡 UI broadcast skipped: no_active_users');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_active_users'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      const totalTime = Date.now() - startTime;
+      console.log('📡 UI broadcast skipped: no_active_users (this is normal when no one is viewing)');
+      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - no active users
     }
     
     // 🎯 PHASE 3: COOPERATIVE LOCK - Always acquire, use 1s duration for real-time mode
@@ -832,20 +851,11 @@ serve(async (req) => {
     const lockId = await acquireBroadcastLock(supabaseClient, lockDuration);
     
     if (!lockId && !isHeartbeatBroadcast) {
+      const totalTime = Date.now() - startTime;
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
       console.log('📡 UI broadcast skipped: cooperative locking active');
-      return new Response(JSON.stringify({
-        success: true,
-        processed: prices.length,
-        upserted: successfulUpserts,
-        alerts_triggered: totalTriggeredAlerts,
-        notifications_sent: notificationTriggers.length,
-        ui_broadcasts: 0,
-        broadcast_status: 'no_lock'
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      return; // Early exit - another instance has the lock
     }
     
     if (isHeartbeatBroadcast && !lockId) {
@@ -857,36 +867,25 @@ serve(async (req) => {
     // This eliminates $32.50/month in Realtime message costs
     console.log(`💾 Database upserts complete. Frontend will poll for updates (no broadcasts).`);
 
-    // Return success response
-    return new Response(JSON.stringify({
-      success: true,
-      processed: prices.length,
-      upserted: successfulUpserts,
-      alerts_triggered: totalTriggeredAlerts,
-      notifications_sent: notificationTriggers.length,
-      architecture: 'zero_realtime_polling', // No broadcasts - frontend polls database
-      performance: {
-        total_processed: totalPricesProcessed,
-        total_alerts: totalAlertsTriggered,
-        total_upserted: totalPricesUpserted
-      }
-    }), {
-      status: 200,
-      headers: corsHeaders
-    });
+    // Log successful completion with timing
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [BACKGROUND COMPLETE] Total time: ${totalTime}ms`);
+    console.log(`📊 [BACKGROUND STATS] {
+      processed: ${prices.length},
+      upserted: ${successfulUpserts},
+      alerts_triggered: ${totalTriggeredAlerts},
+      notifications_sent: ${notificationTriggers.length},
+      architecture: 'zero_realtime_polling',
+      total_processed: ${totalPricesProcessed},
+      total_alerts: ${totalAlertsTriggered},
+      total_upserted: ${totalPricesUpserted},
+      duration_ms: ${totalTime}
+    }`);
 
   } catch (error) {
-    console.error('❌ Critical error in price processing:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: (error as Error).message,
-      processed: 0,
-      upserted: 0,
-      alerts_triggered: 0,
-      notifications_sent: 0
-    }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    const totalTime = Date.now() - startTime;
+    console.error(`❌ [BACKGROUND ERROR] Failed after ${totalTime}ms:`, error);
+    console.error('Error details:', (error as Error).message);
+    console.error('Stack trace:', (error as Error).stack);
   }
-});
+}

@@ -1063,15 +1063,21 @@ export default function SignalStream() {
 
             // 🚀 NEW: Instant modern notification for TP hits
             // ⚠️ ONLY show individual TP notification if NOT all TPs are hit
+            // ✅ Generate consistent event key format to match backend broadcasts
             if ((window as any).addNotification && !allTPsHit) {
               // Calculate pips for this specific TP
               const tpPrice = signal[`tp${level}` as keyof typeof signal] as number;
               const pipsData = calculatePipsForSignal(signal.entryPrice, tpPrice, signal.tradermadeSymbol, signal.tradeType);
+              
+              // Use exact same event key format as backend for proper deduplication
+              const tpPriceInt = Math.round(parseFloat(tpPrice.toString()) * 100);
+              const eventKey = `signal_${signal.id}_tp_hit_${level}_${tpPriceInt}`;
+              
               (window as any).addNotification({
                 id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
                 type: 'tp_hit',
-                title: `🎯 TP${level} Hit!`,
-                message: `TP${level} HIT on ${signal.assetName} at $${tpPrice.toFixed(2)} | ${pipsData.formatted.toUpperCase()} - ${remainingTPs} TPs remaining`,
+                title: `🎯 Take Profit Hit`,
+                message: `TP (${level}) HIT on ${signal.assetName} at $${tpPrice.toFixed(2)} | ${pipsData.formatted.toUpperCase()}`,
                 metadata: {
                   signal_id: signal.id,
                   provider_name: signal.creator?.display_name || 'Educator',
@@ -1081,16 +1087,18 @@ export default function SignalStream() {
                   tp_hits: updatedTPHits,
                   total_tps: totalTPs,
                   triggered_price: tpPrice,
+                  tp_number: level,
                   pips_data: {
                     value: pipsData.value,
                     formatted: pipsData.formatted,
                     direction: pipsData.direction
                   }
                 },
+                eventKey,
                 timestamp: new Date(),
                 priority: 4
               });
-              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted})`);
+              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted}) - EventKey: ${eventKey}`);
             }
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE

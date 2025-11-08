@@ -75,37 +75,55 @@ const ModernNotificationSystem = () => {
   const lastShownRef = useRef<Map<string, number>>(new Map());
 
   const playNotificationSound = useCallback((type: string) => {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn('⚠️ [Sound] AudioContext not supported in this browser');
+        return;
+      }
 
-    const audioContext = new AudioContextClass();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+      const audioContext = new AudioContextClass();
+      
+      // Check if audioContext is in suspended state (requires user interaction)
+      if (audioContext.state === 'suspended') {
+        console.warn('⚠️ [Sound] AudioContext suspended - user interaction required');
+        audioContext.resume().catch((err) => {
+          console.warn('⚠️ [Sound] Failed to resume AudioContext:', err);
+        });
+      }
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
 
-    const frequencies: Record<string, number> = {
-      new_signal: 800,
-      pending_limit: 700,
-      tp_hit: 1000,
-      limit_activated: 900,
-      trade_closed: 600,
-      stop_loss: 400,
-      manual_close: 500,
-      notes_updated: 700,
-      default: 700,
-    };
-    oscillator.frequency.value = frequencies[type] || frequencies.default;
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
 
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      audioContext.currentTime + 0.5
-    );
+      const frequencies: Record<string, number> = {
+        new_signal: 800,
+        pending_limit: 700,
+        tp_hit: 1000,
+        limit_activated: 900,
+        trade_closed: 600,
+        stop_loss: 400,
+        manual_close: 500,
+        notes_updated: 700,
+        default: 700,
+      };
+      oscillator.frequency.value = frequencies[type] || frequencies.default;
 
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.5);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.5
+      );
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.5);
+      
+      console.log(`🔊 [Sound] Played ${type} notification (${frequencies[type] || frequencies.default}Hz)`);
+    } catch (error) {
+      console.error('❌ [Sound] Error playing notification sound:', error);
+    }
   }, []);
 
   const removeNotification = useCallback((id: string) => {

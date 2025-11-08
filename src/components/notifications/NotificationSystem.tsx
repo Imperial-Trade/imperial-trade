@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { notificationValidator, type SignalChangeData } from '@/utils/notificationValidation';
+import { NotificationEvent, subscribeToNotifications } from '@/utils/notificationBus';
 
 // Extend the Window interface to include webkitAudioContext
 declare global {
@@ -144,9 +145,12 @@ const NotificationSystem = () => {
   );
 
   useEffect(() => {
-    (window as any).addNotification = addNotification;
+    const unsubscribe = subscribeToNotifications((event: NotificationEvent) => {
+      addNotification(event);
+    });
+
     return () => {
-      delete (window as any).addNotification;
+      unsubscribe();
     };
   }, [addNotification]);
 

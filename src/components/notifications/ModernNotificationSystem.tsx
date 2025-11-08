@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   NotificationEvent,
   subscribeToNotifications,
+  emitNotification,
 } from '@/utils/notificationBus';
 
 const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
@@ -109,7 +110,7 @@ const ModernNotificationSystem = () => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const addNotification = useCallback(
+  const handleNotification = useCallback(
     async (notification: any) => {
       const now = Date.now();
       const cooldown = 500;
@@ -286,14 +287,14 @@ const ModernNotificationSystem = () => {
         pendingEventsRef.current.push(event);
         return;
       }
-      addNotification(event);
+      handleNotification(event);
     });
 
     return () => {
       isMountedRef.current = false;
       unsubscribe();
     };
-  }, [addNotification, authReady]);
+  }, [handleNotification, authReady]);
 
   useEffect(() => {
     if (authReady && pendingEventsRef.current.length > 0) {
@@ -302,10 +303,10 @@ const ModernNotificationSystem = () => {
         pendingEventsRef.current.length
       );
       queued.forEach((event) => {
-        addNotification(event);
+        handleNotification(event);
       });
     }
-  }, [authReady, addNotification]);
+  }, [authReady, handleNotification]);
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
@@ -580,30 +581,35 @@ const ModernNotificationSystem = () => {
           }
         }
 
-        addNotification({
-          type,
-          title,
-          message,
-          metadata: {
-            signal_id: data.signal_id,
-            provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
-            provider_avatar_url: data.author_avatar_url || data.avatar_url,
-            provider_type: data.author_user_type || data.user_type || 'member',
-            asset_name: data.asset_name,
-            tp_hits: data.tp_hits || [],
-            total_tps: data.total_tps || 0,
-            triggered_price: data.triggered_price || data.target_price,
-            pips_data: data.pips
-              ? {
-                  value: parseFloat(data.pips) || 0,
-                  formatted: data.pips,
-                  direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
-                }
-              : undefined,
+        emitNotification(
+          {
+            type,
+            title,
+            message,
+            metadata: {
+              signal_id: data.signal_id,
+              provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
+              provider_avatar_url: data.author_avatar_url || data.avatar_url,
+              provider_type: data.author_user_type || data.user_type || 'member',
+              asset_name: data.asset_name,
+              tp_hits: data.tp_hits || [],
+              total_tps: data.total_tps || 0,
+              triggered_price: data.triggered_price || data.target_price,
+              pips_data: data.pips
+                ? {
+                    value: parseFloat(data.pips) || 0,
+                    formatted: data.pips,
+                    direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
+                  }
+                : undefined,
+              raw_payload: data,
+            },
+            eventKey: data.event_key,
+            timestamp: new Date(eventTime),
+            deliveryChannel: 'in_app',
           },
-          eventKey: data.event_key,
-          timestamp: new Date(eventTime),
-        });
+          { queueIfNoListeners: true }
+        );
       })
       .subscribe((status) => {
         // Log every subscription status change
@@ -634,7 +640,7 @@ const ModernNotificationSystem = () => {
       supabase.removeChannel(channel);
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
-  }, [addNotification]); // ✅ Removed user?.id - subscribe once and stay connected
+  }, []); // ✅ Removed user?.id - subscribe once and stay connected
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

@@ -274,10 +274,12 @@ const InAppNotificationSystem = () => {
       const mappedType =
         (event.type as SignalNotification['type']) || 'signal_updated';
 
-      const validPriorities = ['low', 'medium', 'high', 'critical'];
-      const priority: SignalNotification['priority'] =
-        (validPriorities.includes(metadata.priority as string) ? metadata.priority : null) as SignalNotification['priority'] ||
-        'medium';
+      // Safely map priority to the correct type
+      const rawPriority = event.priority || metadata.priority;
+      const priority: SignalNotification['priority'] = 
+        typeof rawPriority === 'string' && ['low', 'medium', 'high', 'critical'].includes(rawPriority)
+          ? (rawPriority as SignalNotification['priority'])
+          : 'medium';
 
       addNotification({
         type: mappedType,

@@ -53,6 +53,8 @@ interface ModernNotification {
   priority?: number;
 }
 
+const MODERN_DEDUP_WINDOW_MS = 1500;
+
 const ModernNotificationSystem = () => {
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
@@ -184,11 +186,25 @@ const ModernNotificationSystem = () => {
       // ============================================================================
 
       // Use signal_id + notification_type + title for better uniqueness
-      const notificationKey =
-        notification.eventKey ||
-        (notification.metadata?.signal_id
-          ? `${notification.metadata.signal_id}:${notification.type}`
-          : `${notification.title}:${notification.message}`);
+      const signalId =
+        notification.metadata?.signal_id ||
+        (notification as any).signalId ||
+        notification.metadata?.raw_payload?.signal_id;
+      const triggeredPrice =
+        notification.metadata?.triggered_price ||
+        notification.metadata?.target_price ||
+        notification.metadata?.raw_payload?.triggered_price ||
+        notification.metadata?.raw_payload?.target_price ||
+        (notification as any).triggeredPrice;
+
+      const fallbackKey = signalId
+        ? `${signalId}:${notification.type}:${triggeredPrice ?? 'na'}`
+        : `${notification.title}:${notification.message}`;
+
+      const notificationKey = notification.eventKey || fallbackKey;
+      const keysToCheck = new Set<string>();
+      if (notificationKey) keysToCheck.add(notificationKey);
+      if (fallbackKey) keysToCheck.add(fallbackKey);
 
       console.log('🔑 [DIAGNOSTIC] Generated deduplication key:', {
         full_key: notificationKey,
@@ -197,23 +213,30 @@ const ModernNotificationSystem = () => {
         title: notification.title
       });
 
-      const lastShownTime =
-        lastShownRef.current.get(notificationKey) ||
-        (window as any).lastShownMap?.get(notificationKey) ||
-        0;
-      const deduplicationWindow = DEDUP_WINDOW_MS;
+      let blockedByDedup = false;
+      for (const key of keysToCheck) {
+        if (!key) continue;
+        const lastShownTime =
+          lastShownRef.current.get(key) ||
+          (window as any).lastShownMap?.get(key) ||
+          0;
 
-      if (now - lastShownTime < deduplicationWindow) {
-        const timeSinceLastShown = ((now - lastShownTime)/1000).toFixed(1);
-        
-        console.warn('🚫 [DIAGNOSTIC] Blocked by deduplication:', {
-          key_preview: notificationKey.substring(0, 60) + '...',
-          signal_id: notification.metadata?.signal_id,
-          type: notification.type,
-          title: notification.title,
-          time_since_last_shown: `${timeSinceLastShown}s`,
-          deduplication_window: `${deduplicationWindow/1000}s`
-        });
+        if (now - lastShownTime < MODERN_DEDUP_WINDOW_MS) {
+          const timeSinceLastShown = ((now - lastShownTime) / 1000).toFixed(1);
+          console.warn('🚫 [DIAGNOSTIC] Blocked by deduplication:', {
+            key_preview: key.substring(0, 60) + '...',
+            signal_id: signalId,
+            type: notification.type,
+            title: notification.title,
+            time_since_last_shown: `${timeSinceLastShown}s`,
+            deduplication_window: `${MODERN_DEDUP_WINDOW_MS / 1000}s`
+          });
+          blockedByDedup = true;
+          break;
+        }
+      }
+
+      if (blockedByDedup) {
         return;
       }
 
@@ -226,15 +249,20 @@ const ModernNotificationSystem = () => {
       });
 
       // Update last shown time
-      lastShownRef.current.set(notificationKey, now);
-      if (!(window as any).lastShownMap) {
-        (window as any).lastShownMap = new Map();
-      }
-      (window as any).lastShownMap.set(notificationKey, now);
+      keysToCheck.forEach((key) => {
+        if (!key) return;
+        lastShownRef.current.set(key, now);
+        if (!(window as any).lastShownMap) {
+          (window as any).lastShownMap = new Map();
+        }
+        (window as any).lastShownMap.set(key, now);
+      });
 
       setLastNotificationTime(now);
 
       const id = notification.id || Date.now() + Math.random();
+      let computedPipsData: PipsData | undefined;
+
       const enhancedNotification: ModernNotification = {
         ...notification,
         id: id.toString(),
@@ -398,6 +426,16 @@ const ModernNotificationSystem = () => {
         let type: ModernNotification['type'] = 'trade_closed';
         let title = '';
         let message = '';
+        let computedPipsData: PipsData | undefined;
+
+        const symbolForPips =
+          data.tradermade_symbol ||
+          data.symbol ||
+          data.asset_name;
+        const entryPrice =
+          typeof data.entry_price !== 'undefined'
+            ? parseFloat(data.entry_price)
+            : undefined;
 
         switch (data.notification_type) {
           // ============================================
@@ -454,22 +492,25 @@ const ModernNotificationSystem = () => {
             }
             
             // Calculate pips
-            let tpPips = data.pips;
-            
-            if (!tpPips && data.calculated_pips && data.calculated_pips > 0) {
-              tpPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!tpPips && tpPrice && data.entry_price && data.trade_type) {
-              const pipsCalc = calculatePipsForSignal(
-                parseFloat(data.entry_price),
+            if (tpPrice && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
                 parseFloat(tpPrice),
-                data.tradermade_symbol || data.asset_name,
+                symbolForPips,
                 data.trade_type
               );
-              tpPips = pipsCalc.formatted;
             }
-            
+
+            const tpPipsText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.endsWith('PIPS') ? data.pips : `${data.pips} PIPS`}`
+                : undefined);
+
             title = `🎯 Take Profit Hit`;
-            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'} | ${tpPips || '+0'} PIPS`;
+            message = `TP (${tpNumber}) HIT on ${data.asset_name} at $${tpPrice || 'N/A'}${
+              tpPipsText ? ` | ${tpPipsText}` : ''
+            }`;
             break;
           }
 
@@ -481,25 +522,27 @@ const ModernNotificationSystem = () => {
             
             const slPrice = data.stop_loss || data.triggered_price || data.target_price;
             
-            let slPips = data.pips;
-            
-            if (!slPips && data.calculated_pips && data.calculated_pips > 0) {
-              slPips = `-${data.calculated_pips.toFixed(1)}`;
-            } else if (!slPips && slPrice && data.entry_price && data.trade_type) {
-              const pipsCalc = calculatePipsForSignal(
-                parseFloat(data.entry_price),
+            if (slPrice && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
                 parseFloat(slPrice),
-                data.tradermade_symbol || data.asset_name,
+                symbolForPips,
                 data.trade_type
               );
-              slPips = pipsCalc.formatted.replace('+', '-');
-              if (!slPips.startsWith('-')) {
-                slPips = '-' + slPips;
-              }
             }
-            
+
+            const slPipsText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.startsWith('-') ? data.pips : `-${data.pips}`}${
+                    data.pips.includes('PIPS') ? '' : ' PIPS'
+                  }`
+                : undefined);
+
             title = `▼ Stop Loss Hit`;
-            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'} | ${slPips || '-0'} PIPS`;
+            message = `SL HIT on ${data.asset_name} at $${slPrice || 'N/A'}${
+              slPipsText ? ` | ${slPipsText}` : ''
+            }`;
             break;
           }
 
@@ -520,16 +563,31 @@ const ModernNotificationSystem = () => {
           case 'manual_close_with_tp_hit': {
             type = 'manual_close';
             
-            let securedPips = data.pips;
-            
-            if (!securedPips && data.calculated_pips && data.calculated_pips > 0) {
-              securedPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!securedPips) {
-              securedPips = '+0';
+            if (entryPrice && symbolForPips && data.trade_type && data.triggered_price) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
+                parseFloat(data.triggered_price),
+                symbolForPips,
+                data.trade_type
+              );
+            } else if (data.pips) {
+              computedPipsData = {
+                value: parseFloat(data.pips),
+                formatted: data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`,
+                direction: data.pips.startsWith('-') ? 'loss' : 'profit'
+              };
             }
-            
+
+            const securedText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.startsWith('+') ? data.pips : `+${data.pips}`} ${
+                    data.pips.includes('PIPS') ? '' : 'PIPS'
+                  }`
+                : '+0 PIPS');
+
             title = `💰 Closed in Profits`;
-            message = `Secured Profits on ${data.asset_name} | ${securedPips} PIPS`;
+            message = `Secured Profits on ${data.asset_name} | ${securedText}`;
             break;
           }
 
@@ -540,25 +598,24 @@ const ModernNotificationSystem = () => {
           case 'all_take_profits_hit': {
             type = 'trade_closed';
             
-            let allTpsPips = data.pips;
-            
-            if (!allTpsPips && data.calculated_pips && data.calculated_pips > 0) {
-              allTpsPips = `+${data.calculated_pips.toFixed(1)}`;
-            } else if (!allTpsPips && data.entry_price) {
-              const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
-              if (highestTP && data.trade_type) {
-                const pipsCalc = calculatePipsForSignal(
-                  parseFloat(data.entry_price),
-                  parseFloat(highestTP),
-                  data.tradermade_symbol || data.asset_name,
-                  data.trade_type
-                );
-                allTpsPips = pipsCalc.formatted;
-              }
+            const highestTP = data.tp5 || data.tp4 || data.tp3 || data.tp2 || data.tp1;
+            if (highestTP && entryPrice && symbolForPips && data.trade_type) {
+              computedPipsData = calculatePipsForSignal(
+                entryPrice,
+                parseFloat(highestTP),
+                symbolForPips,
+                data.trade_type
+              );
             }
-            
+
+            const allTpText =
+              computedPipsData?.formatted ||
+              (data.pips
+                ? `${data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`}`
+                : '+0 PIPS');
+
             title = `🎉 ALL TPs HIT`;
-            message = `${data.asset_name} completed all Profits successfully | ${allTpsPips || '+0'} PIPS`;
+            message = `${data.asset_name} completed all Profits successfully | ${allTpText}`;
             break;
           }
 
@@ -581,6 +638,16 @@ const ModernNotificationSystem = () => {
           }
         }
 
+        const finalizedPipsData =
+          computedPipsData ||
+          (typeof data.pips !== 'undefined' && data.pips !== null
+            ? {
+                value: parseFloat(data.pips) || 0,
+                formatted: data.pips.includes('PIPS') ? data.pips : `${data.pips} PIPS`,
+                direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit'
+              }
+            : undefined);
+
         emitNotification(
           {
             type,
@@ -595,13 +662,7 @@ const ModernNotificationSystem = () => {
               tp_hits: data.tp_hits || [],
               total_tps: data.total_tps || 0,
               triggered_price: data.triggered_price || data.target_price,
-              pips_data: data.pips
-                ? {
-                    value: parseFloat(data.pips) || 0,
-                    formatted: data.pips,
-                    direction: data.pips && data.pips.startsWith('-') ? 'loss' : 'profit',
-                  }
-                : undefined,
+              pips_data: finalizedPipsData,
               raw_payload: data,
             },
             eventKey: data.event_key,

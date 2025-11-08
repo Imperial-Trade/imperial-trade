@@ -80,6 +80,16 @@ export default function SignalStream() {
     type: 'sl' | 'tp';
     level?: number;
   }>>(new Map());
+  const toastHistoryRef = useRef<Map<string, number>>(new Map());
+  const shouldShowToast = useCallback((key: string, dedupWindow = 12000) => {
+    const now = Date.now();
+    const lastShown = toastHistoryRef.current.get(key) || 0;
+    if (now - lastShown < dedupWindow) {
+      return false;
+    }
+    toastHistoryRef.current.set(key, now);
+    return true;
+  }, []);
 
   // 🔒 TOAST DEDUPLICATION: Track signals handled by instant detection to prevent double toasts
   const instantToastHandledRef = useRef<Set<string>>(new Set());
@@ -159,23 +169,27 @@ export default function SignalStream() {
       await refreshAlerts(true); // bypassThrottle = true
 
       console.log('✅ [Manual Sync] Complete - all signals refreshed');
-      toast({
-        title: '✅ Synced Successfully',
-        description: 'All signals refreshed from database',
-        duration: 3000
-      });
+      if (shouldShowToast('manual-sync-success')) {
+        toast({
+          title: '✅ Synced Successfully',
+          description: 'All signals refreshed from database',
+          duration: 3000
+        });
+      }
     } catch (error) {
       console.error('❌ [Manual Sync] Error:', error);
-      toast({
-        title: '❌ Sync Failed',
-        description: 'Failed to refresh signals. Please try again.',
-        variant: 'destructive',
-        duration: 5000
-      });
+      if (shouldShowToast('manual-sync-failed')) {
+        toast({
+          title: '❌ Sync Failed',
+          description: 'Failed to refresh signals. Please try again.',
+          variant: 'destructive',
+          duration: 5000
+        });
+      }
     } finally {
       setIsSyncing(false);
     }
-  }, [refreshAlerts, toast]);
+  }, [refreshAlerts, shouldShowToast]);
   console.log('🔍 DEBUG [SignalStream] Received allAlerts from hook:', {
     totalAlerts: allAlerts.length,
     realtimeLoading,
@@ -218,10 +232,12 @@ export default function SignalStream() {
       setTimeout(() => {
         backendProcessedRef.current.delete(tpKey);
       }, 10000);
-      toast({
-        title: `🎯 TP${tpLevel} Hit!`,
-        description: `${assetName} reached Take Profit ${tpLevel}`
-      });
+      if (shouldShowToast(`tp-hit-confirmed:${signalId}:tp${tpLevel}`)) {
+        toast({
+          title: `🎯 TP${tpLevel} Hit!`,
+          description: `${assetName} reached Take Profit ${tpLevel}`
+        });
+      }
     };
     const handleOrderActivation = (event: CustomEvent) => {
       const {
@@ -229,10 +245,12 @@ export default function SignalStream() {
         assetName
       } = event.detail;
       console.log('🚀 Order activation event received:', event.detail);
-      toast({
-        title: '🚀 Order Activated!',
-        description: `${assetName} limit order is now active`
-      });
+      if (shouldShowToast(`order-activation:${signalId}`)) {
+        toast({
+          title: '🚀 Order Activated!',
+          description: `${assetName} limit order is now active`
+        });
+      }
     };
     const handleSignalCreated = (event: CustomEvent) => {
       const {
@@ -241,10 +259,12 @@ export default function SignalStream() {
         status
       } = event.detail;
       console.log('🆕 New signal created event received:', event.detail);
-      toast({
-        title: '✅ Signal Created!',
-        description: `${assetName} signal is now ${status}`
-      });
+      if (shouldShowToast(`signal-created:${signalId}`)) {
+        toast({
+          title: '✅ Signal Created!',
+          description: `${assetName} signal is now ${status}`
+        });
+      }
     };
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
@@ -254,7 +274,7 @@ export default function SignalStream() {
       window.removeEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
       window.removeEventListener('signal-created-confirmed', handleSignalCreated as EventListener);
     };
-  }, [toast]);
+  }, [shouldShowToast]);
 
   // Local state for operations
   const isLoading = realtimeLoading;
@@ -921,14 +941,16 @@ export default function SignalStream() {
         } else if (signal.closeReason === 'manual') {
           toastDescription = `${signal.assetName} closed manually`;
         }
-        toast({
-          title: toastTitle,
-          description: toastDescription,
-          variant: toastVariant
-        });
+        if (shouldShowToast(`closed:${signal.id}:${signal.closeReason || 'manual'}`)) {
+          toast({
+            title: toastTitle,
+            description: toastDescription,
+            variant: toastVariant
+          });
+        }
       });
     }
-  }, [allAlerts, staticClosedAlerts, excludedSignalIds, toast]);
+  }, [allAlerts, staticClosedAlerts, excludedSignalIds, shouldShowToast]);
 
   // ============================================
   // 🎯 FORTIFIED INSTANT TP & SL DETECTION (Phase 2)
@@ -1032,10 +1054,12 @@ export default function SignalStream() {
             // ✅ ALWAYS show individual TP notification only
             // The "All Targets Hit!" toast will come from the state watcher
             const remainingTPs = totalTPs - updatedTPHits.length;
-            toast({
-              title: `🎯 TP${level} Hit!`,
-              description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
-            });
+            if (shouldShowToast(`instant-tp:${signal.id}:tp${level}`)) {
+              toast({
+                title: `🎯 TP${level} Hit!`,
+                description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
+              });
+            }
 
             // 🚀 NEW: Instant modern notification for TP hits
             // ⚠️ ONLY show individual TP notification if NOT all TPs are hit
@@ -1149,11 +1173,13 @@ export default function SignalStream() {
             instantToastHandledRef.current.add(signal.id);
 
             // Show Toast
-            toast({
-              title: '🛑 Stop Loss Hit!',
-              description: `${signal.assetName} hit Stop Loss.`,
-              variant: 'destructive'
-            });
+            if (shouldShowToast(`instant-sl:${signal.id}`)) {
+              toast({
+                title: '🛑 Stop Loss Hit!',
+                description: `${signal.assetName} hit Stop Loss.`,
+                variant: 'destructive'
+              });
+            }
 
             // Backend Confirmation (non-blocking)
             supabase.rpc('close_trade_alert', {
@@ -1165,11 +1191,13 @@ export default function SignalStream() {
             }) => {
               if (error) {
                 console.error(`❌ Backend SL closure failed:`, error);
-                toast({
-                  title: '❌ SL Closure Failed',
-                  description: 'Could not confirm stop loss. Please try closing manually.',
-                  variant: 'destructive'
-                });
+                if (shouldShowToast(`sl-closure-error:${signal.id}`)) {
+                  toast({
+                    title: '❌ SL Closure Failed',
+                    description: 'Could not confirm stop loss. Please try closing manually.',
+                    variant: 'destructive'
+                  });
+                }
               }
 
               // 🔓 UNLOCK: Always remove from processing
@@ -1186,7 +1214,7 @@ export default function SignalStream() {
         clearTimeout(detectionTimeoutRef.current);
       }
     };
-  }, [prices, allAlerts, user?.id, toast, updateAlert]);
+  }, [prices, allAlerts, user?.id, shouldShowToast, updateAlert]);
 
   // Listen for new signal creation and scroll to top
   useEffect(() => {
@@ -1234,16 +1262,18 @@ export default function SignalStream() {
       }
 
       // Show toast notification
-      toast({
-        title: '🎯 New Signal Added',
-        description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`
-      });
+      if (shouldShowToast(`new-signal:${newSignal.id}`)) {
+        toast({
+          title: '🎯 New Signal Added',
+          description: `${newSignal.assetName || 'Signal'} is now live in Active Alerts`
+        });
+      }
     };
     window.addEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     return () => {
       window.removeEventListener('signal-created-confirmed', handleNewSignalCreated as EventListener);
     };
-  }, [toast, profile, user]);
+  }, [shouldShowToast, profile, user]);
   const sortedClosedAlerts = useMemo(() => {
     // PHASE 6: Use static closed alerts instead of real-time filtered ones
     return staticClosedAlerts;
@@ -1358,11 +1388,13 @@ export default function SignalStream() {
   // Handle creating new signal
   const handleCreateSignal = async (data: TradeAlertSubmissionData) => {
     if (!user?.id || !profile) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to create educational patterns.",
-        variant: "destructive"
-      });
+      if (shouldShowToast('create-signal-auth-error')) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to create educational patterns.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     try {
@@ -1439,21 +1471,25 @@ export default function SignalStream() {
             access_level: profile.access_level
           }
         });
-        toast({
-          title: "⚡ Signal Created Instantly!",
-          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`
-        });
+        if (shouldShowToast(`signal-created-success:${result.data.id}`)) {
+          toast({
+            title: "⚡ Signal Created Instantly!",
+            description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`
+          });
+        }
         setShowCreateModal(false);
       } else {
         throw new Error('Failed to create educational pattern');
       }
     } catch (error) {
       console.error('Error creating trade alert:', error);
-      toast({
-        title: "Error Creating Educational Pattern",
-        description: "Failed to create educational analysis. Please check your inputs and try again.",
-        variant: "destructive"
-      });
+      if (shouldShowToast('create-signal-error')) {
+        toast({
+          title: "Error Creating Educational Pattern",
+          description: "Failed to create educational analysis. Please check your inputs and try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
   // 🚨 PHASE 2B FIX (Bug #3): Replace State with Ref to prevent blocking between signals
@@ -1545,11 +1581,13 @@ export default function SignalStream() {
     // ✅ Verify alert object is valid
     if (!alert || !alert.id) {
       console.error('❌ Invalid alert object:', alert);
-      toast({
-        title: '❌ Invalid signal',
-        description: 'Signal data is missing or corrupted',
-        variant: 'destructive'
-      });
+      if (shouldShowToast('invalid-signal')) {
+        toast({
+          title: '❌ Invalid signal',
+          description: 'Signal data is missing or corrupted',
+          variant: 'destructive'
+        });
+      }
       return;
     }
 
@@ -1557,11 +1595,13 @@ export default function SignalStream() {
     const alertIsCreator = isCreator(alert.creator?.id) || alert.userId === profile?.id;
     if (!alertIsCreator && !isAdmin) {
       console.error('❌ Authorization failed');
-      toast({
-        title: '🚫 Access Denied',
-        description: 'You can only close your own signals',
-        variant: 'destructive'
-      });
+      if (shouldShowToast('signal-access-denied')) {
+        toast({
+          title: '🚫 Access Denied',
+          description: 'You can only close your own signals',
+          variant: 'destructive'
+        });
+      }
       return;
     }
 
@@ -1600,10 +1640,12 @@ export default function SignalStream() {
 
         // ✅ Force refresh with cache bypass
         await refreshAlerts(true);
-        toast({
-          title: '✅ Signal Closed',
-          description: `${alert.assetName} has been closed successfully`
-        });
+        if (shouldShowToast(`signal-closed:${alert.id}`)) {
+          toast({
+            title: '✅ Signal Closed',
+            description: `${alert.assetName} has been closed successfully`
+          });
+        }
       } else {
         // For other status updates, use existing logic
         const updateDto: UpdateTradeAlertDto = {
@@ -1613,24 +1655,28 @@ export default function SignalStream() {
         if (!result) {
           throw new Error('Update failed');
         }
-        toast({
-          title: '✅ Status Updated',
-          description: `Signal status changed to ${newStatus}`
-        });
+        if (shouldShowToast(`status-updated:${alert.id}:${newStatus}`)) {
+          toast({
+            title: '✅ Status Updated',
+            description: `Signal status changed to ${newStatus}`
+          });
+        }
       }
     } catch (error: any) {
       console.error('💥 [SignalStream] Status update failed:', error);
-      toast({
-        title: '❌ Update Failed',
-        description: error.message || 'Please try again',
-        variant: 'destructive'
-      });
+      if (shouldShowToast(`status-update-error:${alert.id}:${newStatus}`)) {
+        toast({
+          title: '❌ Update Failed',
+          description: error.message || 'Please try again',
+          variant: 'destructive'
+        });
+      }
     } finally {
       // ✅ Always unlock signal
       updateInProgressRef.current.delete(alert.id);
       console.log(`🔓 [Update Complete] Signal ${alert.id} unlocked`);
     }
-  }, [updateAlert, profile, user, isAdmin, isCreator, toast, refreshAlerts, supabase]);
+  }, [updateAlert, profile, user, isAdmin, isCreator, shouldShowToast, refreshAlerts, supabase]);
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     // 🔍 PHASE 1 DIAGNOSTIC: Log what we receive
     console.log(`🔍 [PHASE 1 - handleTakeProfitHit] Called for ${alert.asset_name}:`, {
@@ -1737,13 +1783,23 @@ export default function SignalStream() {
         if ((window as any).addNotification) {
           const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
           if (highestTP !== null) {
+            const tpPrice = alert[`tp${highestTP}` as keyof typeof alert] as number | undefined;
             (window as any).addNotification({
               type: 'tp_hit',
               title: `🎯 TP${highestTP} Hit!`,
               message: `${alert.assetName} reached Take Profit ${highestTP}`,
               signalId: alert.id,
               assetName: alert.assetName,
-              timestamp: new Date()
+              timestamp: new Date(),
+              metadata: {
+                signal_id: alert.id,
+                asset_name: alert.assetName,
+                provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
+                provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
+                provider_type: alert.creator?.user_type || profile?.access_level || 'member',
+                triggered_price: tpPrice,
+                trade_type: alert.trade_type
+              }
             });
           }
         }
@@ -1811,7 +1867,16 @@ export default function SignalStream() {
             message: `${alert.assetName} trade closed at stop loss`,
             signalId: alert.id,
             assetName: alert.assetName,
-            timestamp: new Date()
+            timestamp: new Date(),
+            metadata: {
+              signal_id: alert.id,
+              asset_name: alert.assetName,
+              provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
+              provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
+              provider_type: alert.creator?.user_type || profile?.access_level || 'member',
+              triggered_price: alert.stop_loss,
+              trade_type: alert.trade_type
+            }
           });
         }
       }
@@ -1859,7 +1924,16 @@ export default function SignalStream() {
           message: `${alert.assetName} ${alert.tradeType} is now active`,
           signalId: alert.id,
           assetName: alert.assetName,
-          timestamp: new Date()
+          timestamp: new Date(),
+          metadata: {
+            signal_id: alert.id,
+            asset_name: alert.assetName,
+            provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
+            provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
+            provider_type: alert.creator?.user_type || profile?.access_level || 'member',
+            triggered_price: alert.entryPrice,
+            trade_type: alert.tradeType
+          }
         });
       }
     } catch (err) {
@@ -1938,7 +2012,7 @@ export default function SignalStream() {
                        {filteredSignals.active.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{
                       background: 'transparent'
                     }}>
-                         {getSafeRenderList(filteredSignals.active, 'active').map(alert => <TradeAlertCard key={alert.id} alert={{
+                         {getSafeRenderList(filteredSignals.active, 'active').map(alert => <TradeAlertCard key={alert.id} timestampRefreshKey={lastTimestampUpdate} alert={{
                         ...alert,
                         asset_name: alert.assetName,
                         tradermade_symbol: alert.tradermadeSymbol,
@@ -1993,7 +2067,7 @@ export default function SignalStream() {
                        </div> : filteredSignals.closed.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{
                       background: 'transparent'
                     }}>
-                         {getSafeRenderList(filteredSignals.closed, 'closed').map(alert => <TradeAlertCard key={alert.id} alert={{
+                         {getSafeRenderList(filteredSignals.closed, 'closed').map(alert => <TradeAlertCard key={alert.id} timestampRefreshKey={lastTimestampUpdate} alert={{
                         ...alert,
                         asset_name: alert.assetName,
                         tradermade_symbol: alert.tradermadeSymbol,

@@ -274,9 +274,9 @@ const InAppNotificationSystem = () => {
       const mappedType =
         (event.type as SignalNotification['type']) || 'signal_updated';
 
+      const validPriorities = ['low', 'medium', 'high', 'critical'];
       const priority: SignalNotification['priority'] =
-        (event.priority as SignalNotification['priority']) ||
-        (metadata.priority as SignalNotification['priority']) ||
+        (validPriorities.includes(metadata.priority as string) ? metadata.priority : null) as SignalNotification['priority'] ||
         'medium';
 
       addNotification({

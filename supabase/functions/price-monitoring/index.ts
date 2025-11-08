@@ -147,7 +147,13 @@ serve(async (req) => {
             }
           }
 
-          // Fetch profile data for rich notifications
+          // ✅ ENHANCED: Fetch complete signal data and profile for rich notifications
+          const { data: signalData } = await supabase
+            .from('trade_alerts')
+            .select('*')
+            .eq('id', alert.signal_id)
+            .single();
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('display_name, avatar_url, user_type')
@@ -160,23 +166,61 @@ serve(async (req) => {
             asset: (alert.trade_alerts as any).asset_name
           });
 
-          // Send notification about the triggered alert
+          // ✅ ENHANCED: Determine proper notification type based on alert type
+          let notificationType = 'price_alert_triggered';
+          if (alert.alert_type === 'stop_loss') {
+            notificationType = 'stop_loss_hit';
+          } else if (alert.alert_type.startsWith('take_profit_')) {
+            notificationType = 'tp_hit';
+          }
+
+          // ✅ ENHANCED: Send notification with COMPLETE metadata for circuit breaker compatibility
           const notificationPayload = {
             notifications: [{
               signal_id: alert.signal_id,
               user_id: (alert.trade_alerts as any).user_id,
+              author_id: (alert.trade_alerts as any).user_id,
+              
+              // Complete signal data
               asset_name: (alert.trade_alerts as any).asset_name,
+              tradermade_symbol: signalData?.tradermade_symbol || price.symbol,
+              symbol: signalData?.tradermade_symbol || price.symbol,
               trade_type: (alert.trade_alerts as any).trade_type,
-              entry_price: alert.target_price,
-              notification_type: 'price_alert_triggered',
+              entry_price: signalData?.entry_price || alert.target_price,
+              
+              // TP data
+              tp1: signalData?.tp1,
+              tp2: signalData?.tp2,
+              tp3: signalData?.tp3,
+              tp4: signalData?.tp4,
+              tp5: signalData?.tp5,
+              tp_hits: signalData?.tp_hits || [],
+              tp_number: alert.alert_type.startsWith('take_profit_') 
+                ? parseInt(alert.alert_type.replace('take_profit_', ''))
+                : undefined,
+              
+              // Stop loss data
+              stop_loss: signalData?.stop_loss,
+              
+              // Notification metadata
+              notification_type: notificationType,
               alert_type: alert.alert_type,
               target_price: alert.target_price,
               triggered_price: currentPrice,
               status: (alert.trade_alerts as any).status,
+              
+              // Author data for UI display
               author_name: profile?.display_name || 'Price Monitor',
-              provider_name: profile?.display_name || 'Unknown Educator',
-              provider_avatar_url: profile?.avatar_url,
-              provider_type: profile?.user_type || 'educator',
+              author_avatar_url: profile?.avatar_url,
+              author_user_type: profile?.user_type || 'educator',
+              
+              // Timestamps
+              created_at: signalData?.created_at || new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              
+              // Delivery configuration
+              change_types: [notificationType],
+              priority_level: alert.alert_type === 'stop_loss' ? 3 : 2,
               delivery_channels: ['in_app', 'push'],
               include_creator: true
             }]

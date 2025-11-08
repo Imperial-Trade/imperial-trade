@@ -227,29 +227,82 @@ async function processEnhancedAlerts(supabase: any, symbol: string, priceData: P
 
         console.log(`✅ Enhanced handling result: ${result?.action} - ${result?.reason || 'processed'}`);
 
+        // ✅ ENHANCED: Fetch complete signal data for proper notification
+        const { data: signalData } = await supabase
+          .from('trade_alerts')
+          .select(`
+            *,
+            profiles:user_id (
+              display_name,
+              avatar_url,
+              user_type
+            )
+          `)
+          .eq('id', trigger.signal_id)
+          .single();
+
+        const profile = Array.isArray(signalData?.profiles) ? signalData.profiles[0] : signalData?.profiles;
+
         // Send enhanced notifications for critical events
         const notificationType = trigger.alert_type === 'stop_loss' ? 'stop_loss_hit' : 
-                               result?.action === 'signal_closed' ? 'all_tps_hit' : 'take_profit_hit';
+                               result?.action === 'signal_closed' ? 'all_tps_hit' : 'tp_hit';
         
         const notificationPayload = {
           notifications: [{
             signal_id: trigger.signal_id,
+            user_id: signalData?.user_id,
+            author_id: signalData?.user_id,
+            
+            // Complete signal data
+            asset_name: signalData?.asset_name || symbol,
+            tradermade_symbol: signalData?.tradermade_symbol || symbol,
+            symbol: signalData?.tradermade_symbol || symbol,
+            trade_type: signalData?.trade_type,
+            entry_price: signalData?.entry_price,
+            
+            // TP data
+            tp1: signalData?.tp1,
+            tp2: signalData?.tp2,
+            tp3: signalData?.tp3,
+            tp4: signalData?.tp4,
+            tp5: signalData?.tp5,
+            tp_hits: signalData?.tp_hits || [],
+            tp_number: result?.tp_level,
+            total_tps: result?.total_tps_hit,
+            
+            // Stop loss data
+            stop_loss: signalData?.stop_loss,
+            
+            // Notification metadata
             notification_type: notificationType,
-            asset_name: symbol,
-            triggered_price: trigger.trigger_price,
             alert_type: trigger.alert_type,
+            target_price: trigger.target_price,
+            triggered_price: trigger.trigger_price,
+            status: signalData?.status,
+            
+            // Author data for UI display
+            author_name: profile?.display_name || 'Educator',
+            author_avatar_url: profile?.avatar_url,
+            author_user_type: profile?.user_type || 'educator',
+            
+            // Timestamps
+            created_at: signalData?.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            
+            // Result metadata
             action: result?.action,
-            tp_level: result?.tp_level,
-            total_tps_hit: result?.total_tps_hit,
             remaining_tps: result?.remaining_tps,
-            delivery_channels: ['push', 'in_app', 'discord', 'telegram'],
-            priority_level: trigger.priority_order === 1 ? 3 : 2, // SL = highest priority
+            
+            // Delivery configuration
+            delivery_channels: ['push', 'in_app'],
+            priority_level: trigger.priority_order === 1 ? 3 : 2,
+            change_types: [notificationType],
             include_creator: false
           }]
         };
 
         const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/signal-notification-dispatcher';
+        const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-signal-notification-dispatcher';
         
         fetch(functionUrl, {
           method: 'POST',

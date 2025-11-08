@@ -726,6 +726,20 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     return () => clearInterval(pollingInterval);
   }, [lastUpdated, refreshSignals]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👀 [SignalRealtimeContext] Tab visible - refreshing signals');
+        refreshSignals(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshSignals]);
+
   const value: SignalRealtimeContextType = {
     signals,
     error,

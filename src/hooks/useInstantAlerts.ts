@@ -66,7 +66,14 @@ export const useInstantAlerts = () => {
         type: urgency === 'critical' ? 'error' : 'success',
         title,
         message,
-        timestamp: new Date().toISOString()
+        eventKey: payload.event_key,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          signal_id: payload.signal_id,
+          alert_type: payload.alert_type,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+        },
       });
     }
     

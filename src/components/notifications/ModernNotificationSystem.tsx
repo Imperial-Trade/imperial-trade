@@ -13,9 +13,13 @@ import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  NotificationEvent,
+  subscribeToNotifications,
+} from '@/utils/notificationBus';
 
 const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
-const DEDUP_WINDOW_MS = 5000;
+const DEDUP_WINDOW_MS = 1500;
 
 declare global {
   interface Window {
@@ -64,6 +68,8 @@ const ModernNotificationSystem = () => {
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
   const componentMountTimeRef = useRef<number>(Date.now());
   const isMountedRef = useRef<boolean>(true);
+  const pendingEventsRef = useRef<NotificationEvent[]>([]);
+  const lastShownRef = useRef<Map<string, number>>(new Map());
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -177,9 +183,11 @@ const ModernNotificationSystem = () => {
       // ============================================================================
 
       // Use signal_id + notification_type + title for better uniqueness
-      const notificationKey = notification.metadata?.signal_id 
-        ? `${notification.metadata.signal_id}:${notification.type}:${notification.title}`
-        : notification.eventKey || `${notification.title}:${notification.message}`;
+      const notificationKey =
+        notification.eventKey ||
+        (notification.metadata?.signal_id
+          ? `${notification.metadata.signal_id}:${notification.type}`
+          : `${notification.title}:${notification.message}`);
 
       console.log('🔑 [DIAGNOSTIC] Generated deduplication key:', {
         full_key: notificationKey,
@@ -188,7 +196,10 @@ const ModernNotificationSystem = () => {
         title: notification.title
       });
 
-      const lastShownTime = (window as any).lastShownMap?.get(notificationKey) || 0;
+      const lastShownTime =
+        lastShownRef.current.get(notificationKey) ||
+        (window as any).lastShownMap?.get(notificationKey) ||
+        0;
       const deduplicationWindow = DEDUP_WINDOW_MS;
 
       if (now - lastShownTime < deduplicationWindow) {
@@ -214,6 +225,7 @@ const ModernNotificationSystem = () => {
       });
 
       // Update last shown time
+      lastShownRef.current.set(notificationKey, now);
       if (!(window as any).lastShownMap) {
         (window as any).lastShownMap = new Map();
       }
@@ -221,13 +233,15 @@ const ModernNotificationSystem = () => {
 
       setLastNotificationTime(now);
 
-      const id = Date.now() + Math.random();
-      const enhancedNotification: ModernNotification = { 
-        ...notification, 
-        id: id.toString(), 
-        timestamp: new Date(),
+      const id = notification.id || Date.now() + Math.random();
+      const enhancedNotification: ModernNotification = {
+        ...notification,
+        id: id.toString(),
+        timestamp: notification.timestamp
+          ? new Date(notification.timestamp)
+          : new Date(),
         eventKey: notification.eventKey || `notification_${id}`,
-        deliveryChannel: notification.deliveryChannel || 'in_app'
+        deliveryChannel: notification.deliveryChannel || 'in_app',
       };
       
       console.log('✅ [DIAGNOSTIC] Notification APPROVED and will be displayed:', {
@@ -266,12 +280,32 @@ const ModernNotificationSystem = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    (window as any).addNotification = addNotification;
+
+    const unsubscribe = subscribeToNotifications((event) => {
+      if (!authReady) {
+        pendingEventsRef.current.push(event);
+        return;
+      }
+      addNotification(event);
+    });
+
     return () => {
       isMountedRef.current = false;
-      delete (window as any).addNotification;
+      unsubscribe();
     };
-  }, [addNotification]);
+  }, [addNotification, authReady]);
+
+  useEffect(() => {
+    if (authReady && pendingEventsRef.current.length > 0) {
+      const queued = pendingEventsRef.current.splice(
+        0,
+        pendingEventsRef.current.length
+      );
+      queued.forEach((event) => {
+        addNotification(event);
+      });
+    }
+  }, [authReady, addNotification]);
 
   // Set up real-time listener for signal notifications
   useEffect(() => {

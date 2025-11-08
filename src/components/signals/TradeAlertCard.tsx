@@ -39,7 +39,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   className,
   testId,
   creator,
-  justAdded = false
+  justAdded = false,
+  timestampRefreshKey
 }) => {
   const { colors } = useSignalTheme();
   // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
@@ -369,6 +370,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           justAdded={justAdded}
           createdDate={alert.created_date}
           updatedDate={alert.updated_date}
+          timestampRefreshKey={timestampRefreshKey}
           actionIcons={
             <>
               <button
@@ -601,7 +603,8 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
   // Creator comparison (last, most expensive)
   const creatorMatch = JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator);
   
-  
-  return creatorMatch;
+  if (!creatorMatch) return false;
+
+  return prevProps.timestampRefreshKey === nextProps.timestampRefreshKey;
   // 🚀 CRITICAL: livePrice is intentionally excluded to allow smooth 1-second price updates
 });

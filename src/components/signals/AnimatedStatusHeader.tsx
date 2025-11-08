@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Crown } from 'lucide-react';
 import TradeStatusBadge from './TradeStatusBadge';
 
@@ -23,6 +23,7 @@ interface AnimatedStatusHeaderProps {
   justAdded?: boolean;
   createdDate: string;
   updatedDate?: string;
+  timestampRefreshKey?: number;
   // Action icons
   actionIcons?: React.ReactNode;
 }
@@ -39,6 +40,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   justAdded = false,
   createdDate,
   updatedDate,
+  timestampRefreshKey,
   actionIcons
 }) => {
   const getRoleDisplay = (role: string) => {
@@ -62,6 +64,13 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
     return `${diffInDays}d ago`;
   };
 
+  const timeAgoDisplay = useMemo(() => {
+    if (status === 'closed' && updatedDate) {
+      return formatTimeAgo(updatedDate);
+    }
+    return formatTimeAgo(createdDate);
+  }, [status, updatedDate, createdDate, timestampRefreshKey]);
+
   return (
     <div className="mb-2">
       {/* Signal Creator Attribution */}
@@ -75,12 +84,7 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <div className="text-xs text-muted-foreground">
-              {status === 'closed' && updatedDate 
-                ? formatTimeAgo(updatedDate) 
-                : formatTimeAgo(createdDate)
-              }
-            </div>
+            <div className="text-xs text-muted-foreground">{timeAgoDisplay}</div>
           </div>
         </div>
       )}
@@ -122,6 +126,7 @@ export default memo(AnimatedStatusHeader, (prevProps, nextProps) => {
     prevProps.isRecentClosure === nextProps.isRecentClosure &&
     prevProps.justAdded === nextProps.justAdded &&
     prevProps.createdDate === nextProps.createdDate &&
-    prevProps.updatedDate === nextProps.updatedDate
+    prevProps.updatedDate === nextProps.updatedDate &&
+    prevProps.timestampRefreshKey === nextProps.timestampRefreshKey
   );
 });

@@ -137,6 +137,121 @@ function generateEventKey(
   return `${notification.signal_id}-${notification.notification_type}-${triggerSource}-${changeHash}-${timestamp}-${nanoSeconds}-${sequence}`;
 }
 
+function normalizeNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const parsed = Number(entry);
+      return Number.isFinite(parsed) ? parsed : null;
+    })
+    .filter((entry): entry is number => entry !== null)
+    .sort((a, b) => a - b);
+}
+
+function toStringOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function buildRequestDedupSignature(
+  payload: Record<string, unknown>,
+  signalId: string,
+  notificationType: string
+): string {
+  const normalizedType = (notificationType || payload.notification_type || 'unknown') as string;
+  const safeSignalId = signalId || (payload.signal_id as string) || 'unknown';
+  const changeTypes = Array.isArray(payload.change_types)
+    ? [...payload.change_types].map(String).sort()
+    : [];
+  const deliveryChannels = Array.isArray(payload.delivery_channels)
+    ? [...payload.delivery_channels].map(String).sort()
+    : [];
+
+  // Dedup buckets tuned per-notification type to allow distinct events to pass through quickly.
+  const bucketSeconds =
+    normalizedType === 'tp_hit' || normalizedType === 'take_profit_hit' || normalizedType === 'multiple_tps_hit'
+      ? 10
+      : 30;
+  const timeBucket = Math.floor(Date.now() / (bucketSeconds * 1000));
+
+  let tpSignature = 'na';
+  if (['tp_hit', 'take_profit_hit', 'multiple_tps_hit'].includes(normalizedType)) {
+    const tpHits = normalizeNumberArray(payload.tp_hits);
+    const declaredTp =
+      (payload.tp_number as number | string | undefined) ??
+      (payload.tp_level as number | string | undefined) ??
+      (payload.latest_tp_hit as number | string | undefined) ??
+      (tpHits.length > 0 ? tpHits[tpHits.length - 1] : null);
+    const triggeredPrice =
+      toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price);
+    tpSignature = `${tpHits.join('-') || 'none'}|${toStringOrNull(declaredTp) ?? 'na'}|${triggeredPrice ?? 'na'}`;
+  }
+
+  let stopLossSignature = 'na';
+  if (['stop_loss_hit', 'stop_loss'].includes(normalizedType)) {
+    stopLossSignature = `${
+      toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price) ??
+      toStringOrNull(payload.stop_loss) ??
+      'na'
+    }`;
+  }
+
+  let closureSignature = 'na';
+  if (['manual_close', 'manual_close_with_tp_hit', 'signal_closed'].includes(normalizedType)) {
+    closureSignature = `${
+      toStringOrNull(payload.close_reason) ??
+      toStringOrNull(payload.manual_close_reason) ??
+      toStringOrNull(payload.status) ??
+      'na'
+    }`;
+  }
+
+  const uniqueHint =
+    toStringOrNull(payload.event_id) ||
+    toStringOrNull(payload.event_hash) ||
+    toStringOrNull(payload.dedupe_key) ||
+    toStringOrNull(payload.notification_hash) ||
+    toStringOrNull(payload.unique_identifier) ||
+    toStringOrNull(payload.unique_hash) ||
+    toStringOrNull(payload.event_sequence) ||
+    toStringOrNull(payload.alert_type) ||
+    'na';
+
+  const updatedStamp =
+    toStringOrNull(payload.updated_at) ||
+    toStringOrNull(payload.timestamp) ||
+    toStringOrNull(payload.created_at) ||
+    null;
+
+  const signatureParts = [
+    safeSignalId,
+    normalizedType,
+    JSON.stringify(changeTypes),
+    toStringOrNull(payload.priority_level) ?? 'default',
+    toStringOrNull(payload.status) ?? 'unknown',
+    closureSignature,
+    JSON.stringify(deliveryChannels),
+    tpSignature,
+    stopLossSignature,
+    toStringOrNull(payload.triggered_price) ??
+      toStringOrNull(payload.target_price) ??
+      'na',
+    uniqueHint,
+    updatedStamp ? new Date(updatedStamp).toISOString() : 'timestamp:none',
+    String(timeBucket)
+  ];
+
+  return signatureParts.join('|');
+}
+
 // Pips calculation helper with null-safety
 function calculatePips(entryPrice: number, targetPrice: number, tradingPairSymbol: string | null | undefined): string {
   // ✅ NULL-SAFETY: Defensive check before calculation
@@ -445,13 +560,7 @@ async function checkRequestDeduplication(
 ): Promise<boolean> {
   try {
     // Create hash of the request payload
-    const requestString = JSON.stringify({
-      signal_id: signalId,
-      notification_type: notificationType,
-      change_types: requestPayload.change_types || [],
-      priority_level: requestPayload.priority_level,
-      timestamp_hour: Math.floor(Date.now() / (1000 * 60 * 60)) // Hour-based grouping
-    });
+    const requestString = buildRequestDedupSignature(requestPayload, signalId, notificationType);
     
     const encoder = new TextEncoder();
     const data = encoder.encode(requestString);

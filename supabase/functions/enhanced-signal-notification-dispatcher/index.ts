@@ -602,31 +602,69 @@ async function checkRequestDeduplication(
 async function checkCircuitBreaker(
   supabase: any,
   signalId: string,
-  userId: string
+  userId: string,
+  notificationType: string
 ): Promise<boolean> {
   try {
-    const { data: canSend, error } = await supabase.rpc(
-      'check_notification_circuit_breaker',
-      {
-        p_signal_id: signalId,
-        p_user_id: userId,
-        p_cooldown_minutes: 5
-      }
-    );
+    // ✅ FIXED: Check circuit breaker per notification type, not per signal
+    // This allows different types (signal_created, tp_hit, stop_loss_hit) to be sent independently
+    const cooldownWindow = 60; // seconds
+    const now = Date.now();
+
+    const { data: recentNotifications, error} = await supabase
+      .from('notification_circuit_breaker')
+      .select('last_notification_at')
+      .eq('signal_id', signalId)
+      .eq('user_id', userId)
+      .eq('notification_type', notificationType)  // ✅ NEW: Check by type
+      .gte('last_notification_at', new Date(now - (cooldownWindow * 1000)).toISOString())
+      .order('last_notification_at', { ascending: false })
+      .limit(1);
 
     if (error) {
       logProfessional('warn', 'Circuit breaker check failed', { error: error.message });
       return true; // Allow on error
     }
 
-    if (!canSend) {
-      logProfessional('info', 'EMERGENCY: Notification blocked by circuit breaker', { 
-        signalId,
-        userId
-      });
+    if (recentNotifications && recentNotifications.length > 0) {
+      const lastSent = new Date(recentNotifications[0].last_notification_at).getTime();
+      const timeSinceLast = (now - lastSent) / 1000;
+      
+      if (timeSinceLast < cooldownWindow) {
+        await supabase.from('cron_job_logs').insert({
+          job_name: 'notification_circuit_breaker',
+          execution_time: new Date().toISOString(),
+          records_affected: 0,
+          status: 'blocked',
+          error_message: `Blocked duplicate notification - Signal: ${signalId}, User: ${userId}, Type: ${notificationType}, Last sent: ${timeSinceLast.toFixed(1)}s ago`
+        });
+
+        logProfessional('info', 'Notification blocked by circuit breaker', { 
+          signalId,
+          userId,
+          notificationType,
+          timeSinceLast: `${timeSinceLast.toFixed(1)}s`,
+          cooldownWindow: `${cooldownWindow}s`
+        });
+        
+        return false;
+      }
     }
 
-    return canSend;
+    // Update circuit breaker record
+    await supabase
+      .from('notification_circuit_breaker')
+      .upsert({
+        signal_id: signalId,
+        user_id: userId,
+        notification_type: notificationType,  // ✅ NEW: Track by type
+        last_notification_at: new Date().toISOString(),
+        notification_count: 1
+      }, {
+        onConflict: 'signal_id,user_id,notification_type'
+      });
+
+    return true; // Allow notification
   } catch (error) {
     logProfessional('error', 'Circuit breaker exception', { error: (error as Error).message });
     return true; // Allow on error
@@ -977,25 +1015,14 @@ async function checkUserEligibility(
   notificationType: string
 ): Promise<{ allowed: boolean; reason?: string }> {
   try {
-    // Check circuit breaker at user level (5-minute cooldown)
-    const { data: canSend, error } = await supabase.rpc(
-      'check_notification_circuit_breaker',
-      {
-        p_signal_id: signalId,
-        p_user_id: userId,
-        p_cooldown_minutes: 5
-      }
-    );
-
-    if (error) {
-      logProfessional('warn', 'User eligibility check failed', { error: error.message });
-      return { allowed: true }; // Allow on error to prevent blocking
-    }
+    // ✅ FIXED: Check circuit breaker per notification type
+    // This allows different types (signal_created, tp_hit, stop_loss_hit) to be sent independently
+    const canSend = await checkCircuitBreaker(supabase, signalId, userId, notificationType);
 
     if (!canSend) {
       return { 
         allowed: false, 
-        reason: 'User-level circuit breaker active (5-min cooldown)' 
+        reason: `Circuit breaker active for type: ${notificationType} (60s cooldown)` 
       };
     }
 

@@ -63,3 +63,22 @@ verify_jwt = false
 
 [functions.register-device-token]
 verify_jwt = false
+
+# New instant notification system (PR #178)
+[functions.notify-signal-created]
+verify_jwt = false
+
+[functions.notify-tp-hit]
+verify_jwt = false
+
+[functions.notify-stop-loss-hit]
+verify_jwt = false
+
+[functions.notify-limit-activated]
+verify_jwt = false
+
+[functions.notify-signal-closed]
+verify_jwt = false
+
+[functions.notify-notes-updated]
+verify_jwt = false

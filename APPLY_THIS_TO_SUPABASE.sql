@@ -42,11 +42,14 @@ DECLARE
   author_user_type TEXT;
   
   -- Deduplication variables
-  change_hash TEXT;
+  v_change_hash TEXT; -- Renamed to avoid ambiguity with column name
   last_fired TIMESTAMP WITH TIME ZONE;
   dedup_threshold INTERVAL := '2 seconds';
   event_key TEXT;
   tp_price NUMERIC;
+  
+  -- ✅ NEW: Variable to safely hold config value
+  system_op_setting TEXT;
 BEGIN
   service_role_key := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTg2OTI1MCwiZXhwIjoyMDY3NDQ1MjUwfQ.0tHLp8yWK_lNP_6yrdNn4BqM3kGlWnKMcDf9fYMa2hU';
   function_url := 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-signal-notification-dispatcher';
@@ -228,12 +231,16 @@ BEGIN
       );
     END IF;
 
+    -- ✅ CRITICAL FIX: Safely check for system operation setting
     BEGIN
-      is_system_op := current_setting('app.is_system_operation')::boolean;
-    EXCEPTION
-      WHEN undefined_object THEN
+      system_op_setting := current_setting('app.is_system_operation', true);
+      IF system_op_setting IS NOT NULL AND system_op_setting != '' THEN
+        is_system_op := system_op_setting::boolean;
+      ELSE
         is_system_op := false;
-      WHEN invalid_text_representation THEN
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
         is_system_op := false;
     END;
 

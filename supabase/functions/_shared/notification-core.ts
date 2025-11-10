@@ -196,8 +196,8 @@ export async function sendRealtimeNotification(
           value: pipsValue,
           formatted: signalData.pips || '+0.0 PIPS',
           direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
-          percentage: signalData.entry_price 
-            ? Math.abs((pipsValue / signalData.entry_price) * 100)
+          percentage: signalData.entry_price && signalData.triggered_price
+            ? Math.abs(((signalData.triggered_price - signalData.entry_price) / signalData.entry_price) * 100)
             : 0
         },
         

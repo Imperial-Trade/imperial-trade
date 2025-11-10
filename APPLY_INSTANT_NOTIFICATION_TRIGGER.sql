@@ -126,7 +126,15 @@ BEGIN
       -- 🎯 OPTION C: Only send individual TP notification if NOT closing with all_tps_hit
       -- If close_reason is 'all_tps_hit', skip this and let the all_tps_hit notification handle it
       IF NEW.close_reason IS DISTINCT FROM 'all_tps_hit' THEN
-        function_url := base_url || '/notify-tp-hit';
+        -- ✅ ROUTE TO SPECIFIC TP FUNCTION (easier debugging!)
+        function_url := base_url || CASE tp_number
+          WHEN 1 THEN '/notify-tp1-hit'
+          WHEN 2 THEN '/notify-tp2-hit'
+          WHEN 3 THEN '/notify-tp3-hit'
+          WHEN 4 THEN '/notify-tp4-hit'
+          WHEN 5 THEN '/notify-tp5-hit'
+          ELSE '/notify-tp-hit'  -- Fallback to generic handler
+        END;
         notification_type := 'tp_hit';
       END IF;
       

@@ -68,6 +68,23 @@ verify_jwt = false
 [functions.notify-signal-created]
 verify_jwt = false
 
+# Separate TP Edge Functions (easier debugging)
+[functions.notify-tp1-hit]
+verify_jwt = false
+
+[functions.notify-tp2-hit]
+verify_jwt = false
+
+[functions.notify-tp3-hit]
+verify_jwt = false
+
+[functions.notify-tp4-hit]
+verify_jwt = false
+
+[functions.notify-tp5-hit]
+verify_jwt = false
+
+# Legacy TP handler (kept for backwards compatibility)
 [functions.notify-tp-hit]
 verify_jwt = false
 

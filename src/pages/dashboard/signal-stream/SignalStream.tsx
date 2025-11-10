@@ -1061,45 +1061,9 @@ export default function SignalStream() {
               });
             }
 
-            // 🚀 NEW: Instant modern notification for TP hits
-            // ⚠️ ONLY show individual TP notification if NOT all TPs are hit
-            // ✅ Generate consistent event key format to match backend broadcasts
-            if ((window as any).addNotification && !allTPsHit) {
-              // Calculate pips for this specific TP
-              const tpPrice = signal[`tp${level}` as keyof typeof signal] as number;
-              const pipsData = calculatePipsForSignal(signal.entryPrice, tpPrice, signal.tradermadeSymbol, signal.tradeType);
-              
-              // Use exact same event key format as backend for proper deduplication
-              const tpPriceInt = Math.round(parseFloat(tpPrice.toString()) * 100);
-              const eventKey = `signal_${signal.id}_tp_hit_${level}_${tpPriceInt}`;
-              
-              (window as any).addNotification({
-                id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
-                type: 'tp_hit',
-                title: `🎯 Take Profit Hit`,
-                message: `TP (${level}) HIT on ${signal.assetName} at $${tpPrice.toFixed(2)} | ${pipsData.formatted.toUpperCase()}`,
-                metadata: {
-                  signal_id: signal.id,
-                  provider_name: signal.creator?.display_name || 'Educator',
-                  provider_avatar_url: signal.creator?.avatar_url,
-                  provider_type: signal.creator?.user_type || 'educator',
-                  asset_name: signal.assetName,
-                  tp_hits: updatedTPHits,
-                  total_tps: totalTPs,
-                  triggered_price: tpPrice,
-                  tp_number: level,
-                  pips_data: {
-                    value: pipsData.value,
-                    formatted: pipsData.formatted,
-                    direction: pipsData.direction
-                  }
-                },
-                eventKey,
-                timestamp: new Date(),
-                priority: 4
-              });
-              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted}) - EventKey: ${eventKey}`);
-            }
+            // ✅ Notification will be sent automatically by database trigger → edge function → realtime
+            // No need to manually call window.addNotification() for TP hits
+            console.log(`✅ [TP${level} Hit] Database trigger will send notification via Realtime`);
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
             supabase.from('trade_alerts').update(allTPsHit ? {
@@ -1112,37 +1076,9 @@ export default function SignalStream() {
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(tpKey);
 
-              // 🎉 NEW: Celebration notification for all TPs hit
-              if (allTPsHit && (window as any).addNotification) {
-                // Calculate pips for the final TP (highest TP that exists)
-                const finalTpLevel = Math.max(...updatedTPHits);
-                const finalTpPrice = signal[`tp${finalTpLevel}` as keyof typeof signal] as number;
-                const pipsData = calculatePipsForSignal(signal.entryPrice, finalTpPrice, signal.tradermadeSymbol, signal.tradeType);
-                (window as any).addNotification({
-                  id: `all-tps-${signal.id}-${Date.now()}`,
-                  type: 'trade_closed',
-                  title: '🎉 ALL TPs HIT!',
-                  message: `${signal.assetName} completed all ${totalTPs} take profits successfully | ${pipsData.formatted.toUpperCase()}`,
-                  metadata: {
-                    signal_id: signal.id,
-                    provider_name: signal.creator?.display_name || 'Educator',
-                    provider_avatar_url: signal.creator?.avatar_url,
-                    provider_type: signal.creator?.user_type || 'educator',
-                    asset_name: signal.assetName,
-                    tp_hits: updatedTPHits,
-                    total_tps: totalTPs,
-                    progress_percentage: 100,
-                    triggered_price: finalTpPrice,
-                    pips_data: {
-                      value: pipsData.value,
-                      formatted: pipsData.formatted,
-                      direction: pipsData.direction
-                    }
-                  },
-                  timestamp: new Date(),
-                  priority: 5
-                });
-                console.log(`🎉 [CELEBRATION] All TPs hit notification sent with ${pipsData.formatted}`);
+              // ✅ All TPs hit notification sent by database trigger
+              if (allTPsHit) {
+                console.log(`✅ [All TPs Hit] Database trigger will send notification via Realtime`);
               }
             });
           }
@@ -1787,30 +1723,9 @@ export default function SignalStream() {
           }
         }
 
-        // Show notification
-        if ((window as any).addNotification) {
-          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-          if (highestTP !== null) {
-            const tpPrice = alert[`tp${highestTP}` as keyof typeof alert] as number | undefined;
-            (window as any).addNotification({
-              type: 'tp_hit',
-              title: `🎯 TP${highestTP} Hit!`,
-              message: `${alert.assetName} reached Take Profit ${highestTP}`,
-              signalId: alert.id,
-              assetName: alert.assetName,
-              timestamp: new Date(),
-              metadata: {
-                signal_id: alert.id,
-                asset_name: alert.assetName,
-                provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-                provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-                provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-                triggered_price: tpPrice,
-                trade_type: alert.trade_type
-              }
-            });
-          }
-        }
+        // ✅ Notification will be sent automatically by database trigger → edge function → realtime
+        // No need to manually call window.addNotification() - the notification system handles this
+        console.log('✅ [TP Hit] Database trigger will send notification via Realtime');
       }
     } catch (err) {
       console.error("Failed to update TP hits:", err);
@@ -1925,24 +1840,9 @@ export default function SignalStream() {
           timestamp: new Date().toISOString()
         }
       }));
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`,
-          signalId: alert.id,
-          assetName: alert.assetName,
-          timestamp: new Date(),
-          metadata: {
-            signal_id: alert.id,
-            asset_name: alert.assetName,
-            provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-            provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-            provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-            triggered_price: alert.entryPrice,
-            trade_type: alert.tradeType
-          }
-        });
+      // ✅ Limit activation notification sent by database trigger
+      if (result) {
+        console.log(`✅ [Limit Activated] Database trigger will send notification via Realtime`);
       }
     } catch (err) {
       console.error("Failed to activate order:", err);

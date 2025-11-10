@@ -34,14 +34,9 @@ additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
 
-[functions.enhanced-signal-notification-dispatcher]
-verify_jwt = false
-
-[functions.price-monitoring]
-verify_jwt = false
-
-[functions.test-notification]
-verify_jwt = false
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 SIGNAL STREAM & MONITORING EDGE FUNCTIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [functions.order-trigger-monitor]
 verify_jwt = false
@@ -64,7 +59,12 @@ verify_jwt = false
 [functions.register-device-token]
 verify_jwt = false
 
-# New instant notification system (PR #178)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔔 INSTANT NOTIFICATION SYSTEM (New Architecture)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Triggered by database trigger → Routes to specific Edge Functions
+# Each function handles ONE notification type for better debugging
+
 [functions.notify-signal-created]
 verify_jwt = false
 

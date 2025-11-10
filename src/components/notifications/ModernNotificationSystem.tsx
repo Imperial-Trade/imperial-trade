@@ -338,19 +338,24 @@ const ModernNotificationSystem = () => {
   useEffect(() => {
     isMountedRef.current = true;
 
-    const unsubscribe = subscribeToNotifications((event) => {
-      if (!authReady) {
-        pendingEventsRef.current.push(event);
-        return;
-      }
-      handleNotification(event);
-    });
+    // 🚫 DISABLED: notificationBus subscription (causes duplicate notifications)
+    // ModernNotificationSystem already receives notifications directly from Supabase Realtime
+    // via the 'instant-alerts' channel. Subscribing to notificationBus creates a loop because
+    // we emit to the bus (line 697) AND subscribe to it, causing each notification to appear twice.
+    // 
+    // const unsubscribe = subscribeToNotifications((event) => {
+    //   if (!authReady) {
+    //     pendingEventsRef.current.push(event);
+    //     return;
+    //   }
+    //   handleNotification(event);
+    // });
 
     return () => {
       isMountedRef.current = false;
-      unsubscribe();
+      // unsubscribe(); // No longer needed
     };
-  }, [handleNotification, authReady]);
+  }, [authReady]); // Removed handleNotification dependency
 
   useEffect(() => {
     if (authReady && pendingEventsRef.current.length > 0) {

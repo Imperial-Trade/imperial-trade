@@ -35,13 +35,37 @@ jwt_expiry = 3600
 enable_signup = true
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📊 SIGNAL STREAM & MONITORING EDGE FUNCTIONS
+# 📊 SIGNAL STREAM & PRICE SYSTEM
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[functions.order-trigger-monitor]
+[functions.price-ingestor]
 verify_jwt = false
 
-[functions.price-ingestor]
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔍 DETECTION SYSTEM (Separate Detectors for Robust Monitoring)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Each detector monitors ONE specific event type for better isolation
+# Detectors update trade_alerts → Database trigger → Notification functions
+
+[functions.tp1-detector]
+verify_jwt = false
+
+[functions.tp2-detector]
+verify_jwt = false
+
+[functions.tp3-detector]
+verify_jwt = false
+
+[functions.tp4-detector]
+verify_jwt = false
+
+[functions.tp5-detector]
+verify_jwt = false
+
+[functions.stop-loss-detector]
+verify_jwt = false
+
+[functions.limit-activation-detector]
 verify_jwt = false
 
 [functions.admin-user-management]

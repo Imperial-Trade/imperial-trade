@@ -83,7 +83,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   tp_hit: (data) => ({
     type: 'tp_hit',
     title: `${data.author_name} (🎯 Take Profit Hit)`,
-    message: `TP (${data.tp_number}) HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'}`,
+    message: `TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'}`,
     badge: '🎯 Take Profit Hit',
     color: 'green',
     icon: '🎯',
@@ -131,7 +131,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
     title: `${data.author_name} (🎉 ALL TPs HIT)`,
-    message: `Final TP (${data.tp_number}) HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'} | 🎉 ALL PROFITS SECURED`,
+    message: `Final TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'} | 🎉 ALL PROFITS SECURED`,
     badge: '🎉 ALL TPs HIT',
     color: 'green',
     icon: '🎉',

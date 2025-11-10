@@ -257,23 +257,39 @@ export async function sendRealtimeNotification(
     };
 
     // Broadcast via Supabase Realtime
+    console.log('📤 [Realtime Broadcast] Attempting to send...', {
+      channel: 'instant-alerts',
+      event: 'signal_notification',
+      type: template.type,
+      signal_id: signalData.id.substring(0, 8),
+      payload_size: JSON.stringify(payload).length
+    });
+
     const channel = supabase.channel('instant-alerts');
-    await channel.send({
+    const broadcastResult = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload,
     });
 
-    console.log(`✅ Realtime notification sent:`, {
-      type: template.type,
-      asset: signalData.asset_name,
-      recipients: userIds.length,
-      metadata: {
-        provider: signalData.author_name,
-        pips: signalData.pips,
-        tp_progress: `${signalData.tp_hits?.length || 0}/${totalTps}`
-      }
-    });
+    if (broadcastResult.status === 'ok') {
+      console.log(`✅ [Realtime Broadcast] SUCCESS:`, {
+        type: template.type,
+        asset: signalData.asset_name,
+        recipients: userIds.length,
+        metadata: {
+          provider: signalData.author_name,
+          pips: signalData.pips,
+          tp_progress: `${signalData.tp_hits?.length || 0}/${totalTps}`
+        }
+      });
+    } else {
+      console.error(`❌ [Realtime Broadcast] FAILED:`, {
+        status: broadcastResult.status,
+        type: template.type,
+        signal_id: signalData.id.substring(0, 8)
+      });
+    }
 
     return { success: true };
   } catch (error: any) {

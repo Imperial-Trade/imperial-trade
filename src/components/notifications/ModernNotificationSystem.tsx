@@ -274,6 +274,14 @@ const ModernNotificationSystem = () => {
           (window as any).lastShownMap = new Map();
         }
         (window as any).lastShownMap.set(key, now);
+        
+        // ✅ CROSS-TAB SYNC: Notify other tabs
+        if ((window as any).notificationBroadcastChannel) {
+          (window as any).notificationBroadcastChannel.postMessage({ 
+            type: 'notification_shown', 
+            eventKey: key 
+          });
+        }
       });
 
       setLastNotificationTime(now);
@@ -302,15 +310,17 @@ const ModernNotificationSystem = () => {
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
-      // Use Capacitor notification service for cross-platform notifications
-      await capacitorNotificationService.showNotification({
-        title: notification.title,
-        body: notification.message,
-        data: notification.metadata || {},
-        eventKey: notification.eventKey,
-        type: notification.type,
-        signalId: notification.metadata?.signal_id,
-      });
+      // 🚫 DISABLED: Browser native notifications (creates duplicate simple notifications)
+      // We only want ModernNotificationSystem to show rich in-app notifications
+      // If mobile push notifications are needed, they should come from OneSignal, not here
+      // await capacitorNotificationService.showNotification({
+      //   title: notification.title,
+      //   body: notification.message,
+      //   data: notification.metadata || {},
+      //   eventKey: notification.eventKey,
+      //   type: notification.type,
+      //   signalId: notification.metadata?.signal_id,
+      // });
 
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {
@@ -328,19 +338,24 @@ const ModernNotificationSystem = () => {
   useEffect(() => {
     isMountedRef.current = true;
 
-    const unsubscribe = subscribeToNotifications((event) => {
-      if (!authReady) {
-        pendingEventsRef.current.push(event);
-        return;
-      }
-      handleNotification(event);
-    });
+    // 🚫 DISABLED: notificationBus subscription (causes duplicate notifications)
+    // ModernNotificationSystem already receives notifications directly from Supabase Realtime
+    // via the 'instant-alerts' channel. Subscribing to notificationBus creates a loop because
+    // we emit to the bus (line 697) AND subscribe to it, causing each notification to appear twice.
+    // 
+    // const unsubscribe = subscribeToNotifications((event) => {
+    //   if (!authReady) {
+    //     pendingEventsRef.current.push(event);
+    //     return;
+    //   }
+    //   handleNotification(event);
+    // });
 
     return () => {
       isMountedRef.current = false;
-      unsubscribe();
+      // unsubscribe(); // No longer needed
     };
-  }, [handleNotification, authReady]);
+  }, [authReady]); // Removed handleNotification dependency
 
   useEffect(() => {
     if (authReady && pendingEventsRef.current.length > 0) {
@@ -367,6 +382,24 @@ const ModernNotificationSystem = () => {
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
       componentMounted: isMountedRef.current
     });
+
+    // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs
+    const bc = new BroadcastChannel('trade-imperial-notifications');
+    (window as any).notificationBroadcastChannel = bc;
+    
+    bc.onmessage = (event) => {
+      const { type, eventKey } = event.data;
+      if (type === 'notification_shown') {
+        const now = Date.now();
+        // Mark this notification as shown in this tab too
+        lastShownRef.current.set(eventKey, now);
+        if (!(window as any).lastShownMap) {
+          (window as any).lastShownMap = new Map();
+        }
+        (window as any).lastShownMap.set(eventKey, now);
+        console.log('📡 [Cross-Tab] Another tab showed notification:', eventKey);
+      }
+    };
 
     const channel = supabase
       .channel('instant-alerts')
@@ -717,6 +750,8 @@ const ModernNotificationSystem = () => {
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
       supabase.removeChannel(channel);
+      bc.close();
+      (window as any).notificationBroadcastChannel = null;
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
   }, []); // ✅ Removed user?.id - subscribe once and stay connected
@@ -803,19 +838,29 @@ const ModernNotificationSystem = () => {
                     {notification.message}
                   </p>
 
-                  {notification.metadata?.pips_data && 
-                   notification.metadata.pips_data.value !== 0 && 
-                   notification.metadata.pips_data.value !== undefined && (
-                    <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
-                  )}
-
-                  {notification.metadata?.tp_hits && notification.metadata?.total_tps && (
-                    <ProgressIndicator 
-                      tpHits={notification.metadata.tp_hits}
-                      totalTPs={notification.metadata.total_tps}
-                      showPercentage={true}
-                    />
-                  )}
+                  {/* ✅ PIPS and Progress on same line - right aligned */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      {notification.metadata?.pips_data && 
+                       notification.metadata.pips_data.value !== 0 && 
+                       notification.metadata.pips_data.value !== undefined && (
+                        <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
+                      )}
+                    </div>
+                    
+                    {notification.metadata?.tp_hits && 
+                     notification.metadata?.total_tps && 
+                     notification.metadata.tp_hits.length > 0 && 
+                     !['signal_created', 'pending_limit_created'].includes(notification.type) && (
+                      <div className="flex-shrink-0">
+                        <ProgressIndicator 
+                          tpHits={notification.metadata.tp_hits}
+                          totalTPs={notification.metadata.total_tps}
+                          showPercentage={true}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <span className="text-muted-foreground text-xs">

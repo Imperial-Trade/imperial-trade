@@ -34,19 +34,38 @@ additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
 
-[functions.enhanced-signal-notification-dispatcher]
-verify_jwt = false
-
-[functions.price-monitoring]
-verify_jwt = false
-
-[functions.test-notification]
-verify_jwt = false
-
-[functions.order-trigger-monitor]
-verify_jwt = false
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 SIGNAL STREAM & PRICE SYSTEM
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [functions.price-ingestor]
+verify_jwt = false
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔍 DETECTION SYSTEM (Separate Detectors for Robust Monitoring)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Each detector monitors ONE specific event type for better isolation
+# Detectors update trade_alerts → Database trigger → Notification functions
+
+[functions.tp1-detector]
+verify_jwt = false
+
+[functions.tp2-detector]
+verify_jwt = false
+
+[functions.tp3-detector]
+verify_jwt = false
+
+[functions.tp4-detector]
+verify_jwt = false
+
+[functions.tp5-detector]
+verify_jwt = false
+
+[functions.stop-loss-detector]
+verify_jwt = false
+
+[functions.limit-activation-detector]
 verify_jwt = false
 
 [functions.admin-user-management]
@@ -64,10 +83,32 @@ verify_jwt = false
 [functions.register-device-token]
 verify_jwt = false
 
-# New instant notification system (PR #178)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🔔 INSTANT NOTIFICATION SYSTEM (New Architecture)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Triggered by database trigger → Routes to specific Edge Functions
+# Each function handles ONE notification type for better debugging
+
 [functions.notify-signal-created]
 verify_jwt = false
 
+# Separate TP Edge Functions (easier debugging)
+[functions.notify-tp1-hit]
+verify_jwt = false
+
+[functions.notify-tp2-hit]
+verify_jwt = false
+
+[functions.notify-tp3-hit]
+verify_jwt = false
+
+[functions.notify-tp4-hit]
+verify_jwt = false
+
+[functions.notify-tp5-hit]
+verify_jwt = false
+
+# Legacy TP handler (kept for backwards compatibility)
 [functions.notify-tp-hit]
 verify_jwt = false
 

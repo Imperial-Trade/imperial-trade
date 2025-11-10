@@ -91,3 +91,4 @@ Same fix applied - safely check config value before casting to boolean.
 **Date**: November 9, 2025  
 **Functions Fixed**: 2 (`is_system_operation`, `enhanced_notification_pipeline_v2`)
 
+

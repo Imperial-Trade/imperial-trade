@@ -1,9 +1,4 @@
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🎯 TAKE PROFIT HIT NOTIFIER
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Handles notifications for:
-// - Template 4: tp_hit (TP1-TP5) - Individual take profit hits
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🎯 TAKE PROFIT 4 HIT NOTIFIER
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
@@ -25,16 +20,12 @@ serve(async (req) => {
   }
 
   try {
-    const { signal, tp_number, triggered_price, pips, users, push_users } = await req.json();
+    const { signal, triggered_price, pips, users, push_users } = await req.json();
 
-    console.log('🎯 [TP Hit] Processing notification:', {
+    console.log('🎯 [TP4 Hit] Processing notification:', {
       signal_id: signal.id,
       asset: signal.asset_name,
-      tp_number,
-      triggered_price,
-      pips,
-      total_users: users?.length || 0,
-      push_users: push_users?.length || 0,
+      author: signal.author_name,
     });
 
     const supabase = createClient(
@@ -44,33 +35,18 @@ serve(async (req) => {
 
     const signalData: SignalData = {
       ...signal,
-      tp_number,
+      tp_number: 4,
       triggered_price,
       pips: pips || '+0.0 PIPS',
     };
 
     const template = NOTIFICATION_TEMPLATES['tp_hit'](signalData);
-
-    // 🚀 INSTANT: Realtime
-    const realtimeResult = await sendRealtimeNotification(
-      supabase,
-      template,
-      signalData,
-      users || []
-    );
-
-    // 📱 ASYNC: Push
-    const pushResult = await sendPushNotification(
-      supabase,
-      template,
-      signalData,
-      push_users || []
-    );
+    const realtimeResult = await sendRealtimeNotification(supabase, template, signalData, users || []);
+    const pushResult = await sendPushNotification(supabase, template, signalData, push_users || []);
 
     return new Response(JSON.stringify({
       success: true,
-      template_used: 'tp_hit',
-      tp_number,
+      tp_number: 4,
       realtime: realtimeResult,
       push: pushResult,
       timestamp: new Date().toISOString(),
@@ -79,9 +55,10 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('❌ [TP Hit] Error:', error);
+    console.error('❌ [TP4 Hit] Error:', error);
     return new Response(JSON.stringify({
       error: error.message,
+      tp_number: 4,
       timestamp: new Date().toISOString(),
     }), {
       status: 500,
@@ -89,5 +66,4 @@ serve(async (req) => {
     });
   }
 });
-
 

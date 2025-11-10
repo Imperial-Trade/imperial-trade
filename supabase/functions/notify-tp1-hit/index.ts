@@ -1,8 +1,8 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🎯 TAKE PROFIT HIT NOTIFIER
+// 🎯 TAKE PROFIT 1 HIT NOTIFIER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Handles notifications for:
-// - Template 4: tp_hit (TP1-TP5) - Individual take profit hits
+// Dedicated handler for TP1 hits
+// Separate function for easier debugging and monitoring
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -25,12 +25,12 @@ serve(async (req) => {
   }
 
   try {
-    const { signal, tp_number, triggered_price, pips, users, push_users } = await req.json();
+    const { signal, triggered_price, pips, users, push_users } = await req.json();
 
-    console.log('🎯 [TP Hit] Processing notification:', {
+    console.log('🎯 [TP1 Hit] Processing notification:', {
       signal_id: signal.id,
       asset: signal.asset_name,
-      tp_number,
+      author: signal.author_name,
       triggered_price,
       pips,
       total_users: users?.length || 0,
@@ -44,7 +44,7 @@ serve(async (req) => {
 
     const signalData: SignalData = {
       ...signal,
-      tp_number,
+      tp_number: 1,  // ✅ HARDCODED: This is TP1
       triggered_price,
       pips: pips || '+0.0 PIPS',
     };
@@ -67,10 +67,15 @@ serve(async (req) => {
       push_users || []
     );
 
+    console.log('✅ [TP1 Hit] Notification sent successfully:', {
+      realtime: realtimeResult.success,
+      push: pushResult.success,
+    });
+
     return new Response(JSON.stringify({
       success: true,
       template_used: 'tp_hit',
-      tp_number,
+      tp_number: 1,
       realtime: realtimeResult,
       push: pushResult,
       timestamp: new Date().toISOString(),
@@ -79,9 +84,10 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('❌ [TP Hit] Error:', error);
+    console.error('❌ [TP1 Hit] Error:', error);
     return new Response(JSON.stringify({
       error: error.message,
+      tp_number: 1,
       timestamp: new Date().toISOString(),
     }), {
       status: 500,
@@ -89,5 +95,4 @@ serve(async (req) => {
     });
   }
 });
-
 

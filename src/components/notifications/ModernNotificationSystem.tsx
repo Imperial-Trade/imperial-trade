@@ -274,6 +274,14 @@ const ModernNotificationSystem = () => {
           (window as any).lastShownMap = new Map();
         }
         (window as any).lastShownMap.set(key, now);
+        
+        // ✅ CROSS-TAB SYNC: Notify other tabs
+        if ((window as any).notificationBroadcastChannel) {
+          (window as any).notificationBroadcastChannel.postMessage({ 
+            type: 'notification_shown', 
+            eventKey: key 
+          });
+        }
       });
 
       setLastNotificationTime(now);
@@ -367,6 +375,24 @@ const ModernNotificationSystem = () => {
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
       componentMounted: isMountedRef.current
     });
+
+    // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs
+    const bc = new BroadcastChannel('trade-imperial-notifications');
+    (window as any).notificationBroadcastChannel = bc;
+    
+    bc.onmessage = (event) => {
+      const { type, eventKey } = event.data;
+      if (type === 'notification_shown') {
+        const now = Date.now();
+        // Mark this notification as shown in this tab too
+        lastShownRef.current.set(eventKey, now);
+        if (!(window as any).lastShownMap) {
+          (window as any).lastShownMap = new Map();
+        }
+        (window as any).lastShownMap.set(eventKey, now);
+        console.log('📡 [Cross-Tab] Another tab showed notification:', eventKey);
+      }
+    };
 
     const channel = supabase
       .channel('instant-alerts')
@@ -717,6 +743,8 @@ const ModernNotificationSystem = () => {
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
       supabase.removeChannel(channel);
+      bc.close();
+      (window as any).notificationBroadcastChannel = null;
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
   }, []); // ✅ Removed user?.id - subscribe once and stay connected
@@ -809,7 +837,10 @@ const ModernNotificationSystem = () => {
                     <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
                   )}
 
-                  {notification.metadata?.tp_hits && notification.metadata?.total_tps && (
+                  {notification.metadata?.tp_hits && 
+                   notification.metadata?.total_tps && 
+                   notification.metadata.tp_hits.length > 0 && 
+                   !['signal_created', 'pending_limit_created'].includes(notification.type) && (
                     <ProgressIndicator 
                       tpHits={notification.metadata.tp_hits}
                       totalTPs={notification.metadata.total_tps}

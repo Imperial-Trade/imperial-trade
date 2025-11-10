@@ -698,45 +698,13 @@ async function processInBackground(prices: any[]) {
       console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
-    // 🚀 ENHANCED: Send notifications for all significant events
+    // 🚫 DISABLED: Old notification system removed
+    // The new instant_notification_trigger handles all notifications automatically
     if (notificationTriggers.length > 0) {
-      console.log(`📢 NOTIFICATION DISPATCH: Sending ${notificationTriggers.length} trading notifications...`);
+      console.log(`✅ Database trigger will handle ${notificationTriggers.length} notifications automatically`);
       
+      // Old code disabled - notifications now sent via instant_notification_router
       try {
-        const { data: notifyResult, error: notifyError } = await supabaseClient.functions.invoke(
-          'enhanced-signal-notification-dispatcher',
-          {
-            body: {
-              notifications: notificationTriggers.map(trigger => ({
-                signal_id: trigger.signal_id,
-                notification_type: trigger.notification_type,
-                alert_type: trigger.alert_type,
-                triggered_price: trigger.triggered_price,
-                symbol: trigger.symbol,
-                timestamp: trigger.timestamp,
-                priority_level: trigger.priority_level,
-                delivery_channels: ['push', 'in_app'],
-                // Add all required fields
-                user_id: trigger.user_id || '',
-                asset_name: trigger.asset_name || trigger.symbol,
-                trade_type: trigger.trade_type || 'unknown',
-                entry_price: trigger.entry_price || trigger.triggered_price || 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                status: trigger.alert_type === 'stop_loss_hit' ? 'closed' : 'active',
-                author_id: trigger.user_id || '',
-                author_name: 'System' // Safe fallback for automated triggers
-              }))
-            }
-          }
-        );
-        
-        if (notifyError) {
-          console.error('❌ Notification dispatch failed:', notifyError);
-        } else {
-          console.log(`✅ Successfully dispatched ${notificationTriggers.length} trading notifications`);
-        }
-      } catch (error) {
         console.error('❌ Notification dispatch exception:', error);
       }
     }

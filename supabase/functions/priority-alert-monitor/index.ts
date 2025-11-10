@@ -301,19 +301,9 @@ async function processEnhancedAlerts(supabase: any, symbol: string, priceData: P
           }]
         };
 
-        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/enhanced-signal-notification-dispatcher';
-        
-        fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify(notificationPayload)
-        }).catch(err => {
-          console.error('❌ Enhanced notification dispatch failed:', err.message);
-        });
+        // 🚫 DISABLED: Old notification system removed
+        // The new instant_notification_trigger handles all notifications automatically
+        console.log('✅ Notification will be sent automatically by database trigger');
       }
     }
   } catch (error) {

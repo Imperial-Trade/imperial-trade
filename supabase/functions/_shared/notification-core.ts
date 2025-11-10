@@ -178,6 +178,34 @@ export async function sendRealtimeNotification(
       signalData.tp5
     ].filter(tp => tp !== null && tp !== undefined).length;
 
+    // Calculate Stop Loss PIPS (risk) for percentage calculation
+    let stopLossPips = 0;
+    if (signalData.stop_loss && signalData.entry_price) {
+      const isBuy = signalData.trade_type === 'buy' || signalData.trade_type === 'buy_limit';
+      
+      // Determine pip size based on asset
+      const pipSize = signalData.tradermade_symbol?.includes('JPY') ? 0.01 :
+                     signalData.tradermade_symbol?.includes('XAU') || signalData.tradermade_symbol?.includes('GOLD') ? 0.1 :
+                     signalData.tradermade_symbol?.includes('BTC') ? 1.0 :
+                     signalData.tradermade_symbol?.includes('US30') || signalData.tradermade_symbol?.includes('US100') ? 1.0 :
+                     0.0001;
+      
+      if (isBuy) {
+        // BUY: SL is below entry (negative distance)
+        stopLossPips = Math.abs((signalData.stop_loss - signalData.entry_price) / pipSize);
+      } else {
+        // SELL: SL is above entry (negative distance)
+        stopLossPips = Math.abs((signalData.entry_price - signalData.stop_loss) / pipSize);
+      }
+    }
+
+    // Calculate percentage as Risk/Reward ratio
+    // If TP is 50 PIPS and SL is 50 PIPS → 100% (1:1 ratio)
+    // If TP is 100 PIPS and SL is 50 PIPS → 200% (2:1 ratio)
+    const percentage = stopLossPips > 0 
+      ? (Math.abs(pipsValue) / stopLossPips) * 100 
+      : 0;
+
     // Build payload with correct structure for ModernNotificationSystem UI
     const payload = {
       // Spread template fields (title, message, type, badge, color, icon, sound, priority)
@@ -191,14 +219,12 @@ export async function sendRealtimeNotification(
         provider_type: signalData.author_user_type as 'educator' | 'admin' | 'moderator' | 'member',
         asset_name: signalData.asset_name,
         
-        // Convert pips string to pips_data object
+        // Convert pips string to pips_data object with Risk/Reward ratio
         pips_data: {
           value: pipsValue,
           formatted: signalData.pips || '+0.0 PIPS',
           direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
-          percentage: signalData.entry_price 
-            ? Math.abs((pipsValue / signalData.entry_price) * 100)
-            : 0
+          percentage: percentage // Risk/Reward ratio as percentage
         },
         
         // TP progress data

@@ -1782,26 +1782,8 @@ export default function SignalStream() {
         // ✅ Force refresh to bypass all caches
         await refreshAlerts(true);
 
-        // Show notification
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'stop_loss',
-            title: `🚨 Stop Loss Hit!`,
-            message: `${alert.assetName} trade closed at stop loss`,
-            signalId: alert.id,
-            assetName: alert.assetName,
-            timestamp: new Date(),
-            metadata: {
-              signal_id: alert.id,
-              asset_name: alert.assetName,
-              provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-              provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-              provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-              triggered_price: alert.stop_loss,
-              trade_type: alert.trade_type
-            }
-          });
-        }
+        // ✅ Stop Loss notification sent by database trigger
+        console.log(`✅ [Stop Loss Hit] Database trigger will send notification via Realtime`);
       }
     } catch (err) {
       console.error("Failed to update stop loss:", err);

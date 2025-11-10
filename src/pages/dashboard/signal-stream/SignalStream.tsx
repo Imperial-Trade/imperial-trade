@@ -1177,33 +1177,8 @@ export default function SignalStream() {
       });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
-      // 🚀 NEW: Show instant modern notification with sound
-      if ((window as any).addNotification) {
-        const isBuy = newSignal.tradeType === 'buy' || newSignal.tradeType === 'buy_limit';
-        (window as any).addNotification({
-          id: `signal-created-${newSignal.id}-${Date.now()}`,
-          type: 'new_signal',
-          title: '🎯 New Signal Created',
-          message: `${newSignal.assetName} ${isBuy ? 'BUY' : 'SELL'} signal is now live`,
-          metadata: {
-            signal_id: newSignal.id,
-            provider_name: profile?.display_name || user?.email || 'You',
-            provider_type: profile?.access_level || 'educator',
-            asset_name: newSignal.assetName,
-            tp_hits: [],
-            total_tps: [newSignal.tp1, newSignal.tp2, newSignal.tp3, newSignal.tp4, newSignal.tp5].filter(Boolean).length
-          },
-          timestamp: new Date(),
-          priority: 3
-        });
-        console.log('🔔 [INSTANT] Modern notification triggered for new signal');
-        console.log('🔍 [DEBUG] Notification payload:', {
-          id: `signal-created-${newSignal.id}-${Date.now()}`,
-          type: 'new_signal',
-          provider_name: profile?.display_name || user?.email || 'You',
-          has_window_fn: typeof (window as any).addNotification === 'function'
-        });
-      }
+      // ✅ Signal creation notification sent by database trigger
+      console.log('✅ [Signal Created] Database trigger will send notification via Realtime');
 
       // Show toast notification
       if (shouldShowToast(`new-signal:${newSignal.id}`)) {

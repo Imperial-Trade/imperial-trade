@@ -226,20 +226,10 @@ serve(async (req) => {
             }]
           };
 
-          // Call the notification dispatcher
-          try {
-            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enhanced-signal-notification-dispatcher`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-              },
-              body: JSON.stringify(notificationPayload)
-            });
-            console.log(`📬 Notification sent for triggered alert ${alert.alert_type}`);
-          } catch (notifyErr) {
-            console.error('❌ Failed to send notification:', notifyErr);
-          }
+          // 🚫 DISABLED: Old notification system removed
+          // The new instant_notification_trigger handles all notifications automatically
+          // via database trigger → instant_notification_router → notify-* Edge Functions
+          console.log(`✅ Notification will be sent automatically by database trigger for ${alert.alert_type}`);
         }
       }
     }

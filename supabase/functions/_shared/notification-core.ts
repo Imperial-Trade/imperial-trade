@@ -29,6 +29,7 @@ export interface SignalData {
   tp3?: number;
   tp4?: number;
   tp5?: number;
+  tp_hits?: number[]; // Array of hit TPs [1, 2, 3, ...]
   author_name: string;
   author_avatar_url?: string;
   author_user_type?: string;
@@ -83,7 +84,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   tp_hit: (data) => ({
     type: 'tp_hit',
     title: `${data.author_name} (🎯 Take Profit Hit)`,
-    message: `TP (${data.tp_number}) HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'}`,
+    message: `TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'}`,
     badge: '🎯 Take Profit Hit',
     color: 'green',
     icon: '🎯',
@@ -127,11 +128,11 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit - Green
+  // Template 8: all_tps_hit - Green (COMBINED: Shows final TP + completion)
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
     title: `${data.author_name} (🎉 ALL TPs HIT)`,
-    message: `${data.asset_name} completed all Profits successfully | ${data.pips || '+0.0 PIPS'}`,
+    message: `Final TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'} | 🎉 ALL PROFITS SECURED`,
     badge: '🎉 ALL TPs HIT',
     color: 'green',
     icon: '🎉',
@@ -163,8 +164,52 @@ export async function sendRealtimeNotification(
   userIds: string[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Parse PIPS value from string (e.g. "+200.0 PIPS" -> 200.0)
+    const pipsValue = signalData.pips 
+      ? parseFloat(signalData.pips.replace(/[^0-9.-]/g, '')) 
+      : 0;
+
+    // Calculate total TPs from tp1-tp5
+    const totalTps = [
+      signalData.tp1,
+      signalData.tp2,
+      signalData.tp3,
+      signalData.tp4,
+      signalData.tp5
+    ].filter(tp => tp !== null && tp !== undefined).length;
+
+    // Build payload with correct structure for ModernNotificationSystem UI
     const payload = {
+      // Spread template fields (title, message, type, badge, color, icon, sound, priority)
       ...template,
+      
+      // Metadata object (expected by UI)
+      metadata: {
+        signal_id: signalData.id,
+        provider_name: signalData.author_name,
+        provider_avatar_url: signalData.author_avatar_url,
+        provider_type: signalData.author_user_type as 'educator' | 'admin' | 'moderator' | 'member',
+        asset_name: signalData.asset_name,
+        
+        // Convert pips string to pips_data object
+        pips_data: {
+          value: pipsValue,
+          formatted: signalData.pips || '+0.0 PIPS',
+          direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
+          percentage: signalData.entry_price 
+            ? Math.abs((pipsValue / signalData.entry_price) * 100)
+            : 0
+        },
+        
+        // TP progress data
+        tp_hits: signalData.tp_hits || [],
+        total_tps: totalTps,
+        progress_percentage: totalTps > 0 
+          ? ((signalData.tp_hits?.length || 0) / totalTps) * 100 
+          : 0,
+      },
+      
+      // Flat fields for backwards compatibility and other consumers
       signal_id: signalData.id,
       asset_name: signalData.asset_name,
       entry_price: signalData.entry_price,
@@ -176,6 +221,8 @@ export async function sendRealtimeNotification(
       author_user_type: signalData.author_user_type,
       pips: signalData.pips,
       tp_number: signalData.tp_number,
+      
+      // Standard notification fields
       timestamp: new Date().toISOString(),
       event_key: `signal_${signalData.id}_${template.type}_${Date.now()}`,
       notification_type: template.type,
@@ -194,6 +241,11 @@ export async function sendRealtimeNotification(
       type: template.type,
       asset: signalData.asset_name,
       recipients: userIds.length,
+      metadata: {
+        provider: signalData.author_name,
+        pips: signalData.pips,
+        tp_progress: `${signalData.tp_hits?.length || 0}/${totalTps}`
+      }
     });
 
     return { success: true };
@@ -327,4 +379,5 @@ export async function sendPushNotification(
     };
   }
 }
+
 

@@ -54,6 +54,8 @@ BEGIN
     CASE 
       WHEN display_name IS NULL THEN 'Unknown Trader'
       WHEN trim(display_name) = '' THEN 'Unknown Trader'
+      WHEN trim(display_name) ILIKE 'undefined' THEN 'Unknown Trader'
+      WHEN trim(display_name) ILIKE 'null' THEN 'Unknown Trader'
       ELSE trim(display_name)
     END as display_name,
     avatar_url,
@@ -62,8 +64,9 @@ BEGIN
   FROM public.profiles
   WHERE id = NEW.user_id;
 
-  -- Default if author not found
-  IF author_profile.display_name IS NULL THEN
+  -- Default if author not found or contains invalid values
+  IF author_profile.display_name IS NULL OR 
+     author_profile.display_name IN ('undefined', 'null', '') THEN
     author_profile.display_name := 'Unknown Trader';
   END IF;
 

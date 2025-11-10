@@ -831,22 +831,29 @@ const ModernNotificationSystem = () => {
                     {notification.message}
                   </p>
 
-                  {notification.metadata?.pips_data && 
-                   notification.metadata.pips_data.value !== 0 && 
-                   notification.metadata.pips_data.value !== undefined && (
-                    <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
-                  )}
-
-                  {notification.metadata?.tp_hits && 
-                   notification.metadata?.total_tps && 
-                   notification.metadata.tp_hits.length > 0 && 
-                   !['signal_created', 'pending_limit_created'].includes(notification.type) && (
-                    <ProgressIndicator 
-                      tpHits={notification.metadata.tp_hits}
-                      totalTPs={notification.metadata.total_tps}
-                      showPercentage={true}
-                    />
-                  )}
+                  {/* ✅ PIPS and Progress on same line - right aligned */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      {notification.metadata?.pips_data && 
+                       notification.metadata.pips_data.value !== 0 && 
+                       notification.metadata.pips_data.value !== undefined && (
+                        <ProfitLossDisplay pipsData={notification.metadata.pips_data} size="md" />
+                      )}
+                    </div>
+                    
+                    {notification.metadata?.tp_hits && 
+                     notification.metadata?.total_tps && 
+                     notification.metadata.tp_hits.length > 0 && 
+                     !['signal_created', 'pending_limit_created'].includes(notification.type) && (
+                      <div className="flex-shrink-0">
+                        <ProgressIndicator 
+                          tpHits={notification.metadata.tp_hits}
+                          totalTPs={notification.metadata.total_tps}
+                          showPercentage={true}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <span className="text-muted-foreground text-xs">

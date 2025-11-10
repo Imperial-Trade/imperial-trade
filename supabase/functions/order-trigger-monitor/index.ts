@@ -190,23 +190,10 @@ serve(async (req) => {
               }]
             };
 
-            // Log complete payload for debugging
-            console.log(`📦 Sending notification payload:`, JSON.stringify(notificationPayload, null, 2));
-
-            // Verify critical fields are present
-            if (!authorName || authorName === 'Unknown Trader') {
-              console.warn(`⚠️ Missing author profile data for signal ${alert.id}, user ${alert.user_id}`);
-            }
-
-            const { error: notifyError } = await supabase.functions.invoke('enhanced-signal-notification-dispatcher', {
-              body: notificationPayload
-            });
-
-            if (notifyError) {
-              console.error(`⚠️ Failed to send activation notification for ${alert.id}:`, notifyError);
-            } else {
-              console.log(`📡 Sent activation notification for ${alert.asset_name}`);
-            }
+            // 🚫 DISABLED: Old notification system removed
+            // The new instant_notification_trigger handles all notifications automatically
+            // via database trigger → instant_notification_router → notify-limit-activated Edge Function
+            console.log(`✅ Notification will be sent automatically by database trigger for limit activation on ${alert.asset_name}`);
           } catch (notifyException) {
             console.error(`❌ Exception sending activation notification:`, notifyException);
           }

@@ -98,10 +98,8 @@ BEGIN
     
   ELSIF TG_OP = 'UPDATE' THEN
     
-    -- ✅ TP Hit Detection
+    -- ✅ TP Hit Detection (OPTION C: Skip individual TP if it's the LAST one and will trigger all_tps_hit)
     IF OLD.tp_hits IS DISTINCT FROM NEW.tp_hits AND array_length(NEW.tp_hits, 1) > 0 THEN
-      function_url := base_url || '/notify-tp-hit';
-      notification_type := 'tp_hit';
       tp_number := NEW.tp_hits[array_length(NEW.tp_hits, 1)];
       
       -- ✅ FIX: Get ACTUAL TP price (not entry price)
@@ -124,6 +122,13 @@ BEGIN
       END IF;
       
       pips_text := '+' || ROUND(pips_value, 1)::text || ' PIPS';
+      
+      -- 🎯 OPTION C: Only send individual TP notification if NOT closing with all_tps_hit
+      -- If close_reason is 'all_tps_hit', skip this and let the all_tps_hit notification handle it
+      IF NEW.close_reason IS DISTINCT FROM 'all_tps_hit' THEN
+        function_url := base_url || '/notify-tp-hit';
+        notification_type := 'tp_hit';
+      END IF;
       
     -- ✅ Stop Loss Hit
     ELSIF OLD.close_reason IS DISTINCT FROM NEW.close_reason AND NEW.close_reason = 'stop_loss' THEN
@@ -151,10 +156,23 @@ BEGIN
       function_url := base_url || '/notify-signal-closed';
       notification_type := NEW.close_reason;
       
-      -- Calculate final pips for closed signals
+      -- Calculate final pips for closed signals + get final TP details
       IF NEW.close_reason = 'all_tps_hit' THEN
+        -- Get the final TP number (last element in tp_hits array)
+        IF array_length(NEW.tp_hits, 1) > 0 THEN
+          tp_number := NEW.tp_hits[array_length(NEW.tp_hits, 1)];
+        END IF;
+        
         -- Use last TP price
-        tp_price := COALESCE(NEW.tp5, NEW.tp4, NEW.tp3, NEW.tp2, NEW.tp1);
+        tp_price := CASE tp_number
+          WHEN 1 THEN NEW.tp1
+          WHEN 2 THEN NEW.tp2
+          WHEN 3 THEN NEW.tp3
+          WHEN 4 THEN NEW.tp4
+          WHEN 5 THEN NEW.tp5
+          ELSE COALESCE(NEW.tp5, NEW.tp4, NEW.tp3, NEW.tp2, NEW.tp1)
+        END;
+        
         IF NEW.trade_type IN ('buy', 'buy_limit') THEN
           pips_value := (tp_price - NEW.entry_price) / pip_size;
         ELSE

@@ -127,11 +127,11 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit - Green
+  // Template 8: all_tps_hit - Green (COMBINED: Shows final TP + completion)
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
     title: `${data.author_name} (🎉 ALL TPs HIT)`,
-    message: `${data.asset_name} completed all Profits successfully | ${data.pips || '+0.0 PIPS'}`,
+    message: `Final TP (${data.tp_number}) HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'} | 🎉 ALL PROFITS SECURED`,
     badge: '🎉 ALL TPs HIT',
     color: 'green',
     icon: '🎉',
@@ -327,4 +327,5 @@ export async function sendPushNotification(
     };
   }
 }
+
 

@@ -698,15 +698,11 @@ async function processInBackground(prices: any[]) {
       console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
-    // 🚫 DISABLED: Old notification system removed
+    // 🚫 DISABLED: Old notification dispatcher removed
     // The new instant_notification_trigger handles all notifications automatically
+    // via database trigger when alerts are updated in the database
     if (notificationTriggers.length > 0) {
-      console.log(`✅ Database trigger will handle ${notificationTriggers.length} notifications automatically`);
-      
-      // Old code disabled - notifications now sent via instant_notification_router
-      try {
-        console.error('❌ Notification dispatch exception:', error);
-      }
+      console.log(`✅ Database trigger will automatically handle ${notificationTriggers.length} notifications when alerts update`);
     }
 
     totalAlertsTriggered += totalTriggeredAlerts;

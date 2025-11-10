@@ -197,11 +197,25 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       return;
     }
 
-    console.log('🔄 Fetching fresh signals from database...');
+    console.log('🔄 Fetching fresh signals from database (parallel fetch)...');
 
     try {
-      // Fetch educator IDs
-      const educatorUserIds = await fetchEducatorUserIds();
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      const fetchStartTime = Date.now();
+
+      const [educatorUserIds, alertsResponse] = await Promise.all([
+        fetchEducatorUserIds(),
+        supabase
+          .from('trade_alerts')
+          .select('*')
+          .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ]);
+
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.log(`⚡ Parallel educator+alert fetch completed in ${fetchDuration}ms`);
 
       if (educatorUserIds.length === 0) {
         console.warn('⚠️ No educator IDs found - check profiles table');
@@ -210,7 +224,6 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         return;
       }
 
-      // ✅ FIX #3: Log query parameters
       console.log('🔍 [DEBUG] Query parameters:', {
         educatorCount: educatorUserIds.length,
         educatorIdsSample: educatorUserIds.slice(0, 3).map(id => id.substring(0, 8) + '...'),
@@ -218,36 +231,22 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
         filter: 'Active + recently closed (1hr)'
       });
 
-      // Query signals
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-      // ✅ TWO-QUERY APPROACH: Query 1 - Fetch alerts WITHOUT JOIN
-      const { data: alertsData, error: alertsError } = await supabase
-        .from('trade_alerts')
-        .select('*')
-        .in('user_id', educatorUserIds)
-        .or(`status.neq.closed,and(status.eq.closed,updated_at.gte.${oneHourAgo})`)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      console.log('🔍 [Step 1] Fetched alerts:', {
-        success: !alertsError,
-        count: alertsData?.length || 0,
-        error: alertsError?.message
-      });
+      const { data: rawAlerts, error: alertsError } = alertsResponse;
 
       if (alertsError) {
-        console.error('❌ Error fetching alerts:', {
-          message: alertsError.message,
-          details: alertsError.details,
-          hint: alertsError.hint,
-          code: alertsError.code
-        });
-        setError(alertsError.message);
+        console.error('❌ Error fetching alerts:', alertsError);
+        setError(alertsError.message || 'Failed to load signals');
         return;
       }
 
-      if (!alertsData || alertsData.length === 0) {
+      const alertsData = (rawAlerts || []).filter(alert => educatorUserIds.includes(alert.user_id));
+
+      console.log('🔍 [Step 1] Filtered alerts:', {
+        totalFetched: rawAlerts?.length || 0,
+        afterFilter: alertsData.length
+      });
+
+      if (alertsData.length === 0) {
         console.log('ℹ️ No signals found');
         unstable_batchedUpdates(() => {
           setSignals([]);

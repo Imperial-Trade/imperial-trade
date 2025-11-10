@@ -202,9 +202,10 @@ export async function sendRealtimeNotification(
     // Calculate percentage as Risk/Reward ratio
     // If TP is 50 PIPS and SL is 50 PIPS → 100% (1:1 ratio)
     // If TP is 100 PIPS and SL is 50 PIPS → 200% (2:1 ratio)
-    const percentage = stopLossPips > 0 
-      ? (Math.abs(pipsValue) / stopLossPips) * 100 
-      : 0;
+    const shouldShowPercentage = template.type === 'tp_hit' && stopLossPips > 0;
+    const percentage = shouldShowPercentage
+      ? Math.round((Math.abs(pipsValue) / stopLossPips) * 100)
+      : undefined;
 
     // Build payload with correct structure for ModernNotificationSystem UI
     const payload = {
@@ -224,15 +225,15 @@ export async function sendRealtimeNotification(
           value: pipsValue,
           formatted: signalData.pips || '+0.0 PIPS',
           direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
-          percentage: percentage // Risk/Reward ratio as percentage
+          percentage
         },
         
         // TP progress data
         tp_hits: signalData.tp_hits || [],
         total_tps: totalTps,
-        progress_percentage: totalTps > 0 
+        progress_percentage: template.type === 'tp_hit' && totalTps > 0 
           ? ((signalData.tp_hits?.length || 0) / totalTps) * 100 
-          : 0,
+          : undefined,
       },
       
       // Flat fields for backwards compatibility and other consumers

@@ -16,7 +16,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   NotificationEvent,
   subscribeToNotifications,
-  emitNotification,
 } from '@/utils/notificationBus';
 
 const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
@@ -699,29 +698,11 @@ const ModernNotificationSystem = () => {
               }
             : undefined);
 
-        emitNotification(
-          {
-            type,
-            title,
-            message,
-            metadata: {
-              signal_id: data.signal_id,
-              provider_name: data.author_name || data.provider_name || data.display_name || 'Educator',
-              provider_avatar_url: data.author_avatar_url || data.avatar_url,
-              provider_type: data.author_user_type || data.user_type || 'member',
-              asset_name: data.asset_name,
-              tp_hits: data.tp_hits || [],
-              total_tps: data.total_tps || 0,
-              triggered_price: data.triggered_price || data.target_price,
-              pips_data: finalizedPipsData,
-              raw_payload: data,
-            },
-            eventKey: data.event_key,
-            timestamp: new Date(eventTime),
-            deliveryChannel: 'in_app',
-          },
-          { queueIfNoListeners: true }
-        );
+        console.log('✅ [ModernNotificationSystem] Notification prepared:', {
+          type,
+          signal_id: data.signal_id,
+          asset_name: data.asset_name,
+        });
       })
       .subscribe((status) => {
         // Log every subscription status change
@@ -848,10 +829,10 @@ const ModernNotificationSystem = () => {
                       )}
                     </div>
                     
-                    {notification.metadata?.tp_hits && 
-                     notification.metadata?.total_tps && 
-                     notification.metadata.tp_hits.length > 0 && 
-                     !['signal_created', 'pending_limit_created'].includes(notification.type) && (
+                    {notification.type === 'tp_hit' &&
+                     notification.metadata?.tp_hits &&
+                     notification.metadata?.total_tps &&
+                     notification.metadata.tp_hits.length > 0 && (
                       <div className="flex-shrink-0">
                         <ProgressIndicator 
                           tpHits={notification.metadata.tp_hits}

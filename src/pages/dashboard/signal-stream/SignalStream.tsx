@@ -232,12 +232,7 @@ export default function SignalStream() {
       setTimeout(() => {
         backendProcessedRef.current.delete(tpKey);
       }, 10000);
-      if (shouldShowToast(`tp-hit-confirmed:${signalId}:tp${tpLevel}`)) {
-        toast({
-          title: `🎯 TP${tpLevel} Hit!`,
-          description: `${assetName} reached Take Profit ${tpLevel}`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy TP hit toast - ModernNotificationSystem will display notification');
     };
     const handleOrderActivation = (event: CustomEvent) => {
       const {
@@ -245,12 +240,7 @@ export default function SignalStream() {
         assetName
       } = event.detail;
       console.log('🚀 Order activation event received:', event.detail);
-      if (shouldShowToast(`order-activation:${signalId}`)) {
-        toast({
-          title: '🚀 Order Activated!',
-          description: `${assetName} limit order is now active`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy order activation toast');
     };
     const handleSignalCreated = (event: CustomEvent) => {
       const {
@@ -259,12 +249,7 @@ export default function SignalStream() {
         status
       } = event.detail;
       console.log('🆕 New signal created event received:', event.detail);
-      if (shouldShowToast(`signal-created:${signalId}`)) {
-        toast({
-          title: '✅ Signal Created!',
-          description: `${assetName} signal is now ${status}`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy signal created toast');
     };
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
@@ -1054,13 +1039,6 @@ export default function SignalStream() {
             // ✅ ALWAYS show individual TP notification only
             // The "All Targets Hit!" toast will come from the state watcher
             const remainingTPs = totalTPs - updatedTPHits.length;
-            if (shouldShowToast(`instant-tp:${signal.id}:tp${level}`)) {
-              toast({
-                title: `🎯 TP${level} Hit!`,
-                description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
-              });
-            }
-
             // ✅ Notification will be sent automatically by database trigger → edge function → realtime
             // No need to manually call window.addNotification() for TP hits
             console.log(`✅ [TP${level} Hit] Database trigger will send notification via Realtime`);
@@ -1116,14 +1094,7 @@ export default function SignalStream() {
             processingSignalsRef.current.add(slKey);
             instantToastHandledRef.current.add(signal.id);
 
-            // Show Toast
-            if (shouldShowToast(`instant-sl:${signal.id}`)) {
-              toast({
-                title: '🛑 Stop Loss Hit!',
-                description: `${signal.assetName} hit Stop Loss.`,
-                variant: 'destructive'
-              });
-            }
+            console.log('✅ [SignalStream] Skipping legacy stop loss toast');
 
             // Backend Confirmation (non-blocking)
             supabase.rpc('close_trade_alert', {

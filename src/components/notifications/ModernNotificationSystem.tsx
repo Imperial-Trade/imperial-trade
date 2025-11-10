@@ -310,15 +310,17 @@ const ModernNotificationSystem = () => {
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
-      // Use Capacitor notification service for cross-platform notifications
-      await capacitorNotificationService.showNotification({
-        title: notification.title,
-        body: notification.message,
-        data: notification.metadata || {},
-        eventKey: notification.eventKey,
-        type: notification.type,
-        signalId: notification.metadata?.signal_id,
-      });
+      // 🚫 DISABLED: Browser native notifications (creates duplicate simple notifications)
+      // We only want ModernNotificationSystem to show rich in-app notifications
+      // If mobile push notifications are needed, they should come from OneSignal, not here
+      // await capacitorNotificationService.showNotification({
+      //   title: notification.title,
+      //   body: notification.message,
+      //   data: notification.metadata || {},
+      //   eventKey: notification.eventKey,
+      //   type: notification.type,
+      //   signalId: notification.metadata?.signal_id,
+      // });
 
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {

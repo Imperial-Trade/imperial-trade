@@ -703,6 +703,34 @@ const ModernNotificationSystem = () => {
           signal_id: data.signal_id,
           asset_name: data.asset_name,
         });
+
+        // 🚀 CRITICAL FIX: Actually call handleNotification with the prepared data!
+        handleNotification({
+          type,
+          title,
+          message,
+          metadata: {
+            signal_id: data.signal_id,
+            asset_name: data.asset_name,
+            author_name: data.author_name,
+            author_avatar_url: data.author_avatar_url,
+            author_user_type: data.author_user_type,
+            provider_name: data.provider_name || data.author_name,
+            display_name: data.display_name || data.author_name,
+            entry_price: data.entry_price,
+            trade_type: data.trade_type,
+            triggered_price: data.triggered_price,
+            tp_number: data.tp_number,
+            pips_data: finalizedPipsData,
+            tp_hits: data.tp_hits || [],
+            total_tps: [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(Boolean).length,
+            progress_percentage: data.progress_percentage,
+            close_reason: data.close_reason,
+          },
+          timestamp: new Date(eventTime),
+          eventKey: `${data.signal_id}-${data.notification_type}-${eventTime}`,
+          deliveryChannel: 'realtime'
+        });
       })
       .subscribe((status) => {
         // Log every subscription status change
@@ -735,7 +763,7 @@ const ModernNotificationSystem = () => {
       (window as any).notificationBroadcastChannel = null;
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
-  }, []); // ✅ Removed user?.id - subscribe once and stay connected
+  }, [handleNotification]); // ✅ Added handleNotification dependency
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

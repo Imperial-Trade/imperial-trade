@@ -380,7 +380,7 @@ async function processInBackground(prices: any[]) {
     console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
     let totalTriggeredAlerts = 0;
     let limitOrdersActivated = 0;
-    let notificationTriggers: any[] = [];
+    // Notification tracking removed - handled by database trigger automatically
     
     // Initialize global symbolsWithPrices Map for this batch
     symbolsWithPrices = new Map();
@@ -453,19 +453,7 @@ async function processInBackground(prices: any[]) {
             if (!updateError) {
               limitOrdersActivated++;
               console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice}`);
-              
-              // Add to notification triggers with HIGH priority
-              notificationTriggers.push({
-                signal_id: alert.id,
-                user_id: alert.user_id,
-                asset_name: alert.asset_name,
-                trade_type: alert.trade_type,
-                entry_price: alert.entry_price,
-                activation_price: currentPrice,
-                notification_type: 'limit_order_activated',
-                alert_type: 'limit_order_activated',
-                priority_level: 3 // Highest priority for order activations
-              });
+              // Notification sent automatically by database trigger
             }
           }
         }
@@ -594,19 +582,7 @@ async function processInBackground(prices: any[]) {
                       console.error(`❌ [Stop Loss] Failed to close signal ${alert.signal_id}:`, closeError);
                     } else {
                       console.log(`✅ [Stop Loss] Closed signal ${alert.signal_id} (${signalData.asset_name})`);
-                      
-                      // Queue notification
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: 'stop_loss_hit',
-                        notification_type: 'stop_loss_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 4,
-                        user_id: signalData.user_id,
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
+                      // Notification sent automatically by database trigger
                     }
                   } catch (error) {
                     console.error(`❌ [Stop Loss] Unexpected error processing alert ${alert.alert_id}:`, error);
@@ -642,32 +618,10 @@ async function processInBackground(prices: any[]) {
                     // Check for all TPs hit
                     if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
                       console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed`);
-                      
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: 'all_targets_hit',
-                        notification_type: 'all_tps_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 4,
-                        user_id: signalData.user_id || '',
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
+                      // Notification sent automatically by database trigger
                     } else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
                       console.log(`🎯 TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)}`);
-                      
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                        notification_type: 'take_profit_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 3,
-                        user_id: signalData.user_id || '',
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
+                      // Notification sent automatically by database trigger
                     }
                     
                     console.log(`✅ [Take Profit] Processed TP for signal ${alert.signal_id}`);
@@ -698,15 +652,8 @@ async function processInBackground(prices: any[]) {
       console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
     }
 
-    // 🚫 DISABLED: Old notification dispatcher removed
-    // The new instant_notification_trigger handles all notifications automatically
-    // via database trigger when alerts are updated in the database
-    if (notificationTriggers.length > 0) {
-      console.log(`✅ Database trigger will automatically handle ${notificationTriggers.length} notifications when alerts update`);
-    }
-
     totalAlertsTriggered += totalTriggeredAlerts;
-    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
+    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, triggered ${totalTriggeredAlerts} alerts (notifications sent by database trigger)`);
 
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
@@ -777,7 +724,7 @@ async function processInBackground(prices: any[]) {
     if (EMERGENCY_DISABLE_BROADCASTS) {
       const totalTime = Date.now() - startTime;
       console.log('🚨 Emergency broadcast disable active - skipping UI updates');
-      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - emergency disable active
     }
 
@@ -806,7 +753,7 @@ async function processInBackground(prices: any[]) {
     if (!hasActiveUsers) {
       const totalTime = Date.now() - startTime;
       console.log('📡 UI broadcast skipped: no_active_users (this is normal when no one is viewing)');
-      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - no active users
     }
     
@@ -818,7 +765,7 @@ async function processInBackground(prices: any[]) {
       const totalTime = Date.now() - startTime;
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
       console.log('📡 UI broadcast skipped: cooperative locking active');
-      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - another instance has the lock
     }
     
@@ -838,7 +785,7 @@ async function processInBackground(prices: any[]) {
       processed: ${prices.length},
       upserted: ${successfulUpserts},
       alerts_triggered: ${totalTriggeredAlerts},
-      notifications_sent: ${notificationTriggers.length},
+      notifications: auto_by_trigger,
       architecture: 'zero_realtime_polling',
       total_processed: ${totalPricesProcessed},
       total_alerts: ${totalAlertsTriggered},

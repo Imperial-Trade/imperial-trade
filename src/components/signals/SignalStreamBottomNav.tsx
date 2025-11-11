@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, TrendingUp, Users } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users, Bell } from 'lucide-react';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface FilterState {
@@ -17,6 +17,11 @@ interface SignalStreamBottomNavProps {
 }
 
 const navItems = [
+  {
+    name: 'Alerts',
+    icon: Bell,
+    type: 'notifications' as const,
+  },
   {
     name: 'Search',
     icon: Search,
@@ -80,7 +85,14 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
           return (
             <button
               key={item.type}
-              onClick={() => onOpenSheet(item.type)}
+              onClick={() => {
+                if (item.type === 'notifications') {
+                  // TODO: Open notifications panel
+                  console.log('Notifications clicked');
+                } else {
+                  onOpenSheet(item.type);
+                }
+              }}
               className={`flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg ${
                 active
                   ? 'glass-emerald border-emerald-primary/20'

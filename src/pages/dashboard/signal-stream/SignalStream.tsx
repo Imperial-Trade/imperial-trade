@@ -58,6 +58,7 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
@@ -1843,7 +1844,16 @@ export default function SignalStream() {
                 </Button>
 
                 <div className="flex-1">
-                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
+                  <SignalStreamFilters 
+                    filters={filters} 
+                    onFiltersChange={setFilters} 
+                    educatorOptions={educatorMetadata.educatorOptions} 
+                    signalCounts={educatorMetadata.signalCounts} 
+                    canCreateSignals={canCreateSignals} 
+                    onCreateSignal={() => setShowCreateModal(true)}
+                    unreadNotifications={unreadNotifications}
+                    onBellClick={handleBellClick}
+                  />
                 </div>
 
                 {/* Notification Bell - Visible on desktop/tablet, matches filter design */}

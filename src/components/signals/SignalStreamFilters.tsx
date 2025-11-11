@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, X, TrendingUp, TrendingDown, Clock, CheckCircle, Users, Plus } from 'lucide-react';
+import { Search, Filter, X, TrendingUp, TrendingDown, Clock, CheckCircle, Users, Plus, Bell } from 'lucide-react';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { MobileFilterButton } from './MobileFilterButton';
 import { MobileFilterSheet } from './MobileFilterSheet';
@@ -215,6 +215,9 @@ export function SignalStreamFilters({
 
           {/* Filters Section - Icon buttons matching mobile */}
           <div className="flex items-center gap-3">
+            {/* Notification Icon */}
+            <MobileFilterButton icon={<Bell className="w-4 h-4" />} label="Notifications" isActive={false} onClick={() => {/* TODO: Open notifications */}} />
+            
             {/* Status Filter Icon */}
             <MobileFilterButton icon={<Filter className="w-4 h-4" />} label="Status" isActive={filters.status !== 'all' && filters.status !== ''} onClick={() => setActiveSheet('status')} />
             

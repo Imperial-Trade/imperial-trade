@@ -12,7 +12,7 @@ interface FilterState {
 
 interface SignalStreamBottomNavProps {
   filters: FilterState;
-  onOpenSheet: (type: 'search' | 'status' | 'tradeType' | 'educator') => void;
+  onOpenSheet: (type: 'search' | 'status' | 'tradeType' | 'educator' | 'notifications') => void;
   educatorOptions: Array<{ id: string; name: string }>;
 }
 

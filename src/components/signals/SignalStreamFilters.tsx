@@ -50,7 +50,7 @@ export function SignalStreamFilters({
   const {
     colors
   } = useSignalTheme();
-  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | 'notifications' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | null>(null);
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({
       ...filters,

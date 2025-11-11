@@ -1,3 +1,4 @@
+// 🔔 Signal Stream with Notification Bell - Build: 2025-11-11T18:00:00Z
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
@@ -61,6 +62,7 @@ export default function SignalStream() {
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
   const {
@@ -79,6 +81,7 @@ export default function SignalStream() {
 
   const handleBellClick = () => {
     setUnreadNotifications(0);
+    // TODO: Open notification center/panel
   };
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
@@ -1822,6 +1825,24 @@ export default function SignalStream() {
               
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
+                {/* Notification Bell - Hidden on desktop/tablet, matches bottom nav design */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBellClick}
+                  className="relative md:hidden hover:bg-primary/10 group transition-all duration-200 p-2"
+                >
+                  <Bell className="h-5 w-5 transition-colors group-hover:text-primary" />
+                  {unreadNotifications > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
+                    >
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
+
                 <div className="flex-1">
                   <SignalStreamFilters 
                     filters={filters} 
@@ -1834,6 +1855,24 @@ export default function SignalStream() {
                     onBellClick={handleBellClick}
                   />
                 </div>
+
+                {/* Notification Bell - Visible on desktop/tablet, matches filter design */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBellClick}
+                  className="relative hidden md:flex hover:bg-primary/10 group transition-all duration-200 p-2"
+                >
+                  <Bell className="h-5 w-5 transition-colors group-hover:text-primary" />
+                  {unreadNotifications > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
+                    >
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">

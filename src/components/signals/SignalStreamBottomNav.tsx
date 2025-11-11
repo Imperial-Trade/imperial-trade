@@ -13,7 +13,7 @@ interface FilterState {
 
 interface SignalStreamBottomNavProps {
   filters: FilterState;
-  onOpenSheet: (type: 'search' | 'status' | 'tradeType' | 'educator' | 'notifications') => void;
+  onOpenSheet: (type: 'search' | 'filters' | 'notifications') => void;
   educatorOptions: Array<{ id: string; name: string }>;
   unreadNotifications?: number;
   onBellClick?: () => void;
@@ -26,19 +26,9 @@ const navItems = [
     type: 'search' as const,
   },
   {
-    name: 'Status',
+    name: 'Filter',
     icon: Filter,
-    type: 'status' as const,
-  },
-  {
-    name: 'Types',
-    icon: TrendingUp,
-    type: 'tradeType' as const,
-  },
-  {
-    name: 'Educator',
-    icon: Users,
-    type: 'educator' as const,
+    type: 'filters' as const,
   },
 ];
 
@@ -55,12 +45,10 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
     switch (type) {
       case 'search':
         return filters.search !== '';
-      case 'status':
-        return filters.status !== 'all' && filters.status !== '';
-      case 'tradeType':
-        return filters.tradeType !== 'all' && filters.tradeType !== '';
-      case 'educator':
-        return filters.educator !== 'all' && filters.educator !== '';
+      case 'filters':
+        return (filters.status !== 'all' && filters.status !== '') ||
+               (filters.tradeType !== 'all' && filters.tradeType !== '') ||
+               (filters.educator !== 'all' && filters.educator !== '');
       case 'notifications':
         return false;
       default:
@@ -68,10 +56,12 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
     }
   };
 
-  // Filter out educator if only 1 option available
-  const visibleItems = navItems.filter(
-    (item) => item.type !== 'educator' || educatorOptions.length > 1
-  );
+  // Calculate active filter count for badge
+  const activeFilterCount = [
+    filters.status !== 'all' && filters.status !== '',
+    filters.tradeType !== 'all' && filters.tradeType !== '',
+    filters.educator !== 'all' && filters.educator !== '',
+  ].filter(Boolean).length;
 
   return (
     <nav 
@@ -99,13 +89,13 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
           <span className="text-xs font-medium">Alerts</span>
         </button>
 
-        {visibleItems.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(item.type);
           return (
             <button
               key={item.type}
               onClick={() => onOpenSheet(item.type)}
-              className={`flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg ${
+              className={`flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg relative ${
                 active
                   ? 'glass-emerald border-emerald-primary/20'
                   : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
@@ -117,6 +107,18 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
               <item.icon 
                 className={`w-6 h-6 ${active ? 'fill-emerald-primary/20 drop-shadow-lg' : ''}`} 
               />
+              {/* Filter count badge */}
+              {item.type === 'filters' && activeFilterCount > 0 && (
+                <Badge 
+                  className="absolute top-1 right-4 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center border-2 border-background"
+                  style={{
+                    background: colors.accent.primary,
+                    color: 'white'
+                  }}
+                >
+                  {activeFilterCount}
+                </Badge>
+              )}
               <span className={`text-xs ${active ? 'font-bold' : 'font-medium'}`}>
                 {item.name}
               </span>

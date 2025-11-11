@@ -1,9 +1,8 @@
-
-import React from 'react';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ReactNode } from 'react';
 
 export const createTestQueryClient = () => {
   return new QueryClient({
@@ -19,7 +18,7 @@ export const createTestQueryClient = () => {
   });
 };
 
-export const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const TestWrapper = ({ children }: { children: ReactNode }) => {
   const queryClient = createTestQueryClient();
   
   return (
@@ -33,7 +32,7 @@ export const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-export const renderWithProviders = (ui: React.ReactElement) => {
+export const renderWithProviders = (ui: ReactNode) => {
   return render(ui, { wrapper: TestWrapper });
 };
 

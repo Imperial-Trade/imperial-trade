@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { Database } from 'lucide-react';
 
-export const PriceConnectionStatus: React.FC = () => {
+export const PriceConnectionStatus = () => {
   const { connectionStatus, error } = useOptimizedWebSocketPrices();
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);

@@ -12,6 +12,7 @@ import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { SignalStreamBottomNav } from './SignalStreamBottomNav';
 import { SignalSearchSheet } from './SignalSearchSheet';
+import { NotificationSheet } from './NotificationSheet';
 interface FilterState {
   search: string;
   status: string;
@@ -54,7 +55,7 @@ export function SignalStreamFilters({
   const {
     colors
   } = useSignalTheme();
-  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | 'notifications' | null>(null);
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({
       ...filters,
@@ -190,6 +191,12 @@ export function SignalStreamFilters({
           updateFilter('educator', educators[0] || 'all');
         }
       }} />}
+
+      {/* Notification Sheet */}
+      <NotificationSheet 
+        isOpen={activeSheet === 'notifications'} 
+        onClose={() => setActiveSheet(null)} 
+      />
       </>;
   }
 
@@ -227,7 +234,7 @@ export function SignalStreamFilters({
           <div className="flex items-center gap-3">
             {/* Notification Bell */}
             <button
-              onClick={onBellClick}
+              onClick={() => setActiveSheet('notifications')}
               className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
               style={{
                 background: colors.bg.surface,
@@ -313,5 +320,11 @@ export function SignalStreamFilters({
         updateFilter('educator', educators[0] || 'all');
       }
     }} />}
+
+    {/* Notification Sheet */}
+    <NotificationSheet 
+      isOpen={activeSheet === 'notifications'} 
+      onClose={() => setActiveSheet(null)} 
+    />
     </>;
 }

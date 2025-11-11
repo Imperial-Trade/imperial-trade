@@ -62,7 +62,6 @@ export default function SignalStream() {
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
   const {

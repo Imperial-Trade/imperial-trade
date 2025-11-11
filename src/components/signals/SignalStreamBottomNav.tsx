@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, TrendingUp, Users, Bell } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users, Bell, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
@@ -17,6 +17,8 @@ interface SignalStreamBottomNavProps {
   educatorOptions: Array<{ id: string; name: string }>;
   unreadNotifications?: number;
   onBellClick?: () => void;
+  canCreateSignals?: boolean;
+  onCreateClick?: () => void;
 }
 
 const navItems = [
@@ -38,6 +40,8 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
   educatorOptions,
   unreadNotifications = 0,
   onBellClick,
+  canCreateSignals = false,
+  onCreateClick,
 }) => {
   const { colors } = useSignalTheme();
 
@@ -125,6 +129,30 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
             </button>
           );
         })}
+
+        {/* Create Alert Button - Educators/Admins Only */}
+        {canCreateSignals && (
+          <button
+            onClick={onCreateClick}
+            className="flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg relative group hover:scale-105 active:scale-95"
+            style={{
+              background: colors.state.ctaGradient,
+              backdropFilter: 'blur(20px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+              border: `1px solid ${colors.border.active}`,
+            }}
+          >
+            <Plus 
+              className="w-6 h-6 transition-transform duration-300 group-hover:rotate-90"
+              style={{
+                color: colors.text.accent,
+              }}
+            />
+            <span className="text-xs font-bold text-white">
+              Create
+            </span>
+          </button>
+        )}
       </div>
     </nav>
   );

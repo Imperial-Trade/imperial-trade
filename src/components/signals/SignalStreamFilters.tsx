@@ -158,6 +158,8 @@ export function SignalStreamFilters({
           educatorOptions={educatorOptions}
           unreadNotifications={unreadNotifications}
           onBellClick={onBellClick}
+          canCreateSignals={canCreateSignals}
+          onCreateClick={handleCreateSignalClick}
         />
 
         {/* Search Sheet */}

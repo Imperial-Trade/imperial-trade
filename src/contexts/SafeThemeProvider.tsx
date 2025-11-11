@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useMemo, useContext } from 'react';
+import * as React from 'react';
 
 type Theme = 'dark' | 'light';
 
@@ -8,7 +8,7 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
+const ThemeContext = React.createContext<ThemeContextType>({
   theme: 'dark',
   setTheme: () => {},
   toggleTheme: () => {},
@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextType>({
 
 // Theme provider with standardized React imports
 export function SafeThemeProvider({ children }: { children: React.ReactNode }) {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>(() => {
     try {
       const stored = window.localStorage.getItem('theme');
       return stored === 'light' || stored === 'dark' ? (stored as Theme) : 'dark';
@@ -26,7 +26,7 @@ export function SafeThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Apply theme to DOM
-  useEffect(() => {
+  React.useEffect(() => {
     try {
       document.documentElement.classList.toggle('dark', currentTheme === 'dark');
       document.documentElement.classList.toggle('light', currentTheme === 'light');
@@ -35,7 +35,7 @@ export function SafeThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentTheme]);
 
-  const updateTheme = useCallback((newTheme: Theme) => {
+  const updateTheme = React.useCallback((newTheme: Theme) => {
     try {
       window.localStorage.setItem('theme', newTheme);
     } catch (error) {
@@ -44,11 +44,11 @@ export function SafeThemeProvider({ children }: { children: React.ReactNode }) {
     setCurrentTheme(newTheme);
   }, []);
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = React.useCallback(() => {
     updateTheme(currentTheme === 'dark' ? 'light' : 'dark');
   }, [currentTheme, updateTheme]);
 
-  const value = useMemo(() => ({
+  const value = React.useMemo(() => ({
     theme: currentTheme,
     setTheme: updateTheme,
     toggleTheme,
@@ -62,7 +62,7 @@ export function SafeThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSafeTheme() {
-  const context = useContext(ThemeContext);
+  const context = React.useContext(ThemeContext);
   if (!context) {
     throw new Error('useSafeTheme must be used within SafeThemeProvider');
   }

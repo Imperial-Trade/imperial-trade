@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, TrendingUp, Users, Bell } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users } from 'lucide-react';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface FilterState {
@@ -75,15 +75,6 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
       }}
     >
       <div className="flex justify-around items-center py-2">
-        {/* Notification Bell - Standalone */}
-        <button
-          onClick={() => console.log('Notifications clicked')}
-          className="flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg text-gray-400 hover:text-gray-300 hover:bg-white/5"
-        >
-          <Bell className="w-6 h-6" />
-          <span className="text-xs font-medium">Alerts</span>
-        </button>
-        
         {visibleItems.map((item) => {
           const active = isActive(item.type);
           return (

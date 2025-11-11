@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -27,7 +27,7 @@ export class WebSocketErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: any) {
     console.error('WebSocket Error Boundary caught an error:', error, errorInfo);
   }
 

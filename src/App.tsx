@@ -1,5 +1,5 @@
 // 🔔 App Entry Point - Build: 2025-11-11T18:00:00Z (Notification Bell + Cache Fix)
-import React, { useEffect } from 'react';
+import { useEffect, createElement, lazy } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -255,9 +255,9 @@ function App() {
                                     path="realtime-cost-status" 
                                     element={
                                       <ProtectedRoute requiredRoles={['admin']}>
-                                        <div className="p-4">
-                                          {React.createElement(
-                                            React.lazy(() => import("@/pages/debug/RealtimeCostStatus"))
+                                 <div className="p-4">
+                                          {createElement(
+                                            lazy(() => import("@/pages/debug/RealtimeCostStatus"))
                                           )}
                                         </div>
                                       </ProtectedRoute>

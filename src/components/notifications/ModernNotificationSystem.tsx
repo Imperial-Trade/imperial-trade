@@ -857,10 +857,9 @@ const ModernNotificationSystem = () => {
                       )}
                     </div>
                     
-                    {notification.type === 'tp_hit' &&
-                     notification.metadata?.tp_hits &&
+                    {notification.metadata?.tp_hits &&
                      notification.metadata?.total_tps &&
-                     notification.metadata.tp_hits.length > 0 && (
+                     notification.metadata.tp_hits.some(tp => tp && tp > 0) && (
                       <div className="flex-shrink-0">
                         <ProgressIndicator 
                           tpHits={notification.metadata.tp_hits}

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import NotificationSystem from '@/components/notifications/NotificationSystem';
+import ModernNotificationSystem from '@/components/notifications/ModernNotificationSystem';
 import { notificationValidator } from '@/utils/notificationValidation';
 
 // Mock the notification validator
@@ -70,7 +70,7 @@ describe('NotificationAccuracy', () => {
   const renderNotificationSystem = () => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <NotificationSystem />
+        <ModernNotificationSystem />
       </QueryClientProvider>
     );
   };

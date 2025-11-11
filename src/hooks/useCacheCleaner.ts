@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { cleanInvalidPriceCache } from '@/utils/priceGuards';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
@@ -7,7 +7,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
  * Uses price guards to determine validity instead of blanket clearing
  * Also clears all cache on app startup to prevent cross-contamination
  */
-export const CacheCleanerMount: React.FC = () => {
+export const CacheCleanerMount = () => {
   useEffect(() => {
     if (isDevToolsEnabled()) {
       console.log('🧹 CacheCleanerMount: Starting cache management...');

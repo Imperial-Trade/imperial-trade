@@ -12,10 +12,13 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   totalTPs,
   showPercentage = true
 }) => {
-  if (totalTPs === 0) return null;
+  // ✅ Filter out invalid TP numbers (0, null, undefined)
+  const validTpHits = tpHits.filter(tp => tp && tp > 0);
+  
+  if (totalTPs === 0 || validTpHits.length === 0) return null;
 
-  const progress = (tpHits.length / totalTPs) * 100;
-  const completedTPs = tpHits.length;
+  const progress = (validTpHits.length / totalTPs) * 100;
+  const completedTPs = validTpHits.length;
 
   return (
     <div className="space-y-1.5">
@@ -36,7 +39,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors ${
-              tpHits.includes(i + 1)
+              validTpHits.includes(i + 1)
                 ? 'bg-emerald-500'
                 : 'bg-muted/30'
             }`}

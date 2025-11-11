@@ -20,13 +20,17 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Force all React imports to resolve to the same instance
+      'react': path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
     // Dedupe React instances to prevent hook errors
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
   // Optimize dependencies to ensure single React instance
   optimizeDeps: {
     include: ['react', 'react-dom', '@tanstack/react-query'],
+    force: true, // Force re-optimization to clear bad cache
   },
   // Production build optimizations for DigitalOcean deployment
   build: {

@@ -1,4 +1,4 @@
-import React from 'react';
+import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
@@ -7,7 +7,7 @@ import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { AuthorizationError } from './AuthorizationError';
 
 interface AdminRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedRoles?: ('admin' | 'moderator' | 'educator' | 'educator+' | 'user')[];
 }
 
@@ -15,10 +15,10 @@ interface AdminRouteProps {
  * ✅ SECURITY: Secure admin route protection using server-validated roles
  * Uses RPC-based validation to prevent privilege escalation attacks
  */
-export const AdminRoute: React.FC<AdminRouteProps> = ({ 
+export const AdminRoute = ({ 
   children, 
   allowedRoles = ['admin'] 
-}) => {
+}: AdminRouteProps) => {
   const { user, loading: authLoading } = useAuth();
   const { userRoles, isLoading: rolesLoading, error } = useAuthorizationAware();
   const queryClient = useQueryClient();

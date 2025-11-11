@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { memo } from 'react';
 import type { User } from '@supabase/supabase-js';
 
 interface MenuItem {
@@ -18,7 +18,7 @@ interface SidebarProps {
   getAccessLevelDisplay: (level: string) => { label: string; color: string };
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
+const Sidebar = ({
   user,
   sidebarOpen,
   setSidebarOpen,
@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   filteredMenuItems,
   getUserAccessLevel,
   getAccessLevelDisplay
-}) => {
+}: SidebarProps) => {
   return (
     <>
       <aside className={`fixed lg:relative lg:translate-x-0 inset-y-0 left-0 z-40 w-64 bg-surface/95 backdrop-blur-xl border-r border-border/50 transform transition-transform duration-300 ease-in-out pt-16 lg:pt-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>

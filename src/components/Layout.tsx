@@ -1,4 +1,4 @@
-import React from "react";
+import { memo, ReactNode } from 'react';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
@@ -42,7 +42,7 @@ function SidebarOverlay() {
 export default function Layout({
   children
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const location = useLocation();
   const isHomePage = location.pathname === '/';

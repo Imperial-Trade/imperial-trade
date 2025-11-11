@@ -1,12 +1,12 @@
 
-import React from 'react';
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Home, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const NotFound: React.FC = () => {
+const NotFound = () => {
   const { user } = useAuth();
 
   return (

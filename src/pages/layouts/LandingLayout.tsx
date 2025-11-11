@@ -1,9 +1,9 @@
 
-import React from 'react';
+import { memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import AppBar from '@/components/layout/AppBar';
 
-const LandingLayout: React.FC = () => {
+const LandingLayout = () => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === '/account-request';
 

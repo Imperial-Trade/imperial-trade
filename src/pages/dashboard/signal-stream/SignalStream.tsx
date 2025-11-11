@@ -3,7 +3,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell } from 'lucide-react';
 import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
 import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
@@ -57,6 +57,7 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
@@ -65,6 +66,20 @@ export default function SignalStream() {
   const {
     prices
   } = useOptimizedWebSocketPrices();
+
+  // 🔔 Track notification badge
+  useEffect(() => {
+    const handleNotificationReceived = () => {
+      setUnreadNotifications(prev => prev + 1);
+    };
+    
+    window.addEventListener('notification:received', handleNotificationReceived);
+    return () => window.removeEventListener('notification:received', handleNotificationReceived);
+  }, []);
+
+  const handleBellClick = () => {
+    setUnreadNotifications(0);
+  };
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -1807,9 +1822,46 @@ export default function SignalStream() {
               
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
+                {/* Notification Bell - Mobile only (left side) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBellClick}
+                  className="relative md:hidden hover:bg-primary/10 group transition-all duration-200 p-2"
+                >
+                  <Bell className="h-5 w-5 transition-colors group-hover:text-primary" />
+                  {unreadNotifications > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
+                    >
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
+
                 <div className="flex-1">
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
                 </div>
+
+                {/* Notification Bell - Desktop/Tablet (right side) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBellClick}
+                  className="relative hidden md:flex hover:bg-primary/10 group transition-all duration-200 p-2"
+                >
+                  <Bell className="h-5 w-5 transition-colors group-hover:text-primary" />
+                  {unreadNotifications > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
+                    >
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
+
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
                     {isSyncing ? <>

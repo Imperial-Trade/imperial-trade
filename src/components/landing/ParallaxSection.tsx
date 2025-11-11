@@ -1,8 +1,7 @@
-
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ReactNode } from "react";
 
 interface ParallaxSectionProps {
-  children: React.ReactNode;
+  children: ReactNode;
   videoSrc?: string;
   isFirst?: boolean;
 }

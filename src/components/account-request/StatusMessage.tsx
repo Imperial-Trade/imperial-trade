@@ -1,5 +1,3 @@
-
-import React from "react";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
 interface StatusMessageProps {

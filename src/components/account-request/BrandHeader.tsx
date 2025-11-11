@@ -1,5 +1,3 @@
-
-import React from "react";
 import { Crown } from "lucide-react";
 
 export const BrandHeader: React.FC = () => {

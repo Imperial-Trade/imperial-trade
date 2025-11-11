@@ -1,6 +1,6 @@
-import React from 'react';
+import { FC } from 'react';
 
-export const TradingBackground: React.FC = () => {
+export const TradingBackground: FC = () => {
   return (
     <div className="absolute inset-0 overflow-hidden">
       {/* Gradient Background */}

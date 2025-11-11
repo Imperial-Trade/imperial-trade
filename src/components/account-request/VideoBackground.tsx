@@ -1,6 +1,4 @@
 
-import React from "react";
-
 export const VideoBackground: React.FC = () => {
   return (
     <>

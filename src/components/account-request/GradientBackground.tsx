@@ -1,6 +1,6 @@
-import React from 'react';
+import { FC } from 'react';
 
-export const GradientBackground: React.FC = () => {
+export const GradientBackground: FC = () => {
   return (
     <div 
       className="fixed inset-0 -z-10"

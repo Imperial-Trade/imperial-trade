@@ -29,16 +29,17 @@ export default defineConfig(({ mode }) => ({
     // Dedupe React instances to prevent hook errors
     dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
-  // Optimize dependencies to ensure single React instance + force cache clear
+  // Optimize dependencies to ensure single React instance
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
-    force: true, // Force re-optimization on every dev server start
     esbuildOptions: {
       target: 'esnext',
       // Ensure proper JSX handling
       jsx: 'automatic',
     },
   },
+  // Use fresh cache directory to prevent React duplication issues
+  cacheDir: 'node_modules/.vite-fresh',
   // Production build optimizations for DigitalOcean deployment
   build: {
     outDir: 'dist',

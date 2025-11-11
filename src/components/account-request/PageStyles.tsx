@@ -1,6 +1,4 @@
 
-import React from "react";
-
 export const PageStyles: React.FC = () => {
   return (
     <style>{`

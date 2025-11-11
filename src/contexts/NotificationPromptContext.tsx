@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,7 +21,7 @@ export const useNotificationPrompt = () => {
   return context;
 };
 
-export const NotificationPromptProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NotificationPromptProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [hasSeenNotificationPrompt, setHasSeenNotificationPrompt] = useState(true); // Default to true to prevent flash
   const [shouldShowNotificationPrompt, setShouldShowNotificationPrompt] = useState(false);

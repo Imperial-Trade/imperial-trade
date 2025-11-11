@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react';
 
 // Telemetry event types for per-channel tracking
 export type TelemetryEvent = 
@@ -45,10 +45,10 @@ export const useTelemetry = () => {
 };
 
 interface TelemetryProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const TelemetryProvider: React.FC<TelemetryProviderProps> = ({ children }) => {
+export const TelemetryProvider = ({ children }: TelemetryProviderProps) => {
   const sessionInfo = useRef<SessionInfo>({
     sessionId: crypto.randomUUID(),
     buildVersion: import.meta.env.VITE_BUILD_ID || 'dev',

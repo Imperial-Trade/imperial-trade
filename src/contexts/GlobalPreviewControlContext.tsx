@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 // Global Preview Control - Ensures only one live preview across all developers
@@ -30,12 +30,12 @@ export const useGlobalPreviewControl = () => {
 };
 
 interface GlobalPreviewControlProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const GlobalPreviewControlProvider: React.FC<GlobalPreviewControlProviderProps> = ({
+export const GlobalPreviewControlProvider = ({
   children
-}) => {
+}: GlobalPreviewControlProviderProps) => {
   const mountOnlyRef = useRef(false);
   const [state, setState] = useState<PreviewControlState>({
     isGlobalLeader: false,

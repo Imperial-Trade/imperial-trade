@@ -1,7 +1,7 @@
 // 🔥 GLOBAL REALTIME HEALTH MONITOR
 // Prevents multiple contexts from overwhelming the database
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo, ReactNode } from 'react';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 
@@ -41,7 +41,7 @@ export const useRealtimeHealth = () => {
   return context;
 };
 
-export const RealtimeHealthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const RealtimeHealthProvider = ({ children }: { children: ReactNode }) => {
   const { shouldEnableMonitoring, currentRoute } = useMonitoringRouteGate();
   
   const [metrics, setMetrics] = useState<HealthMetrics>({

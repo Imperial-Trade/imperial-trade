@@ -12,6 +12,7 @@ import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { SignalStreamBottomNav } from './SignalStreamBottomNav';
 import { SignalSearchSheet } from './SignalSearchSheet';
+import { NotificationSheet } from './NotificationSheet';
 interface FilterState {
   search: string;
   status: string;
@@ -180,6 +181,9 @@ export function SignalStreamFilters({
           updateFilter('educator', educators[0] || 'all');
         }
       }} />}
+
+        {/* Notification Sheet */}
+        <NotificationSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
       </>;
   }
 
@@ -283,5 +287,8 @@ export function SignalStreamFilters({
         updateFilter('educator', educators[0] || 'all');
       }
     }} />}
+
+      {/* Notification Sheet - Desktop */}
+      <NotificationSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
     </>;
 }

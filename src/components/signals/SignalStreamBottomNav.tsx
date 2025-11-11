@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, TrendingUp, Users } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users, Bell } from 'lucide-react';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
 interface FilterState {
@@ -12,7 +12,7 @@ interface FilterState {
 
 interface SignalStreamBottomNavProps {
   filters: FilterState;
-  onOpenSheet: (type: 'search' | 'status' | 'tradeType' | 'educator') => void;
+  onOpenSheet: (type: 'search' | 'status' | 'tradeType' | 'educator' | 'notifications') => void;
   educatorOptions: Array<{ id: string; name: string }>;
 }
 
@@ -37,6 +37,11 @@ const navItems = [
     icon: Users,
     type: 'educator' as const,
   },
+  {
+    name: 'Alerts',
+    icon: Bell,
+    type: 'notifications' as const,
+  },
 ];
 
 export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
@@ -56,6 +61,8 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
         return filters.tradeType !== 'all' && filters.tradeType !== '';
       case 'educator':
         return filters.educator !== 'all' && filters.educator !== '';
+      case 'notifications':
+        return false; // Always inactive for now
       default:
         return false;
     }

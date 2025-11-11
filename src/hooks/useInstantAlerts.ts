@@ -60,55 +60,19 @@ export const useInstantAlerts = () => {
     const title = `${urgencyEmoji} ${alertTypeDisplay} TRIGGERED!`;
     const message = `${priceDirection} Target: $${target_price.toFixed(2)} | Triggered: $${triggered_price.toFixed(2)}`;
     
-    // Call NotificationSystem.addNotification
-    if ((window as any).addNotification) {
-      (window as any).addNotification({
-        type: urgency === 'critical' ? 'error' : 'success',
-        title,
-        message,
-        eventKey: payload.event_key,
-        timestamp: new Date().toISOString(),
-        metadata: {
-          signal_id: payload.signal_id,
-          alert_type: payload.alert_type,
-          target_price: payload.target_price,
-          triggered_price: payload.triggered_price,
-        },
-      });
-    }
+    // ❌ DISABLED: Legacy notification systems
+    // ModernNotificationSystem handles all notifications via Realtime broadcast
+    // if ((window as any).addNotification) {
+    //   (window as any).addNotification({...});
+    // }
     
     // Dispatch custom event for badge increment
     window.dispatchEvent(new CustomEvent('notification:received', { 
       detail: { event_key: payload.event_key } 
     }));
     
-    // Show toast notification with appropriate styling (unless suppressed)
-    if (!shouldSuppressToast && urgency === 'critical') {
-      toast.error(title, {
-        description: message,
-        duration: 10000, // Show critical alerts for 10 seconds
-        className: 'border-destructive bg-destructive/10 text-destructive',
-        action: {
-          label: 'View Signal',
-          onClick: () => {
-            // Navigate to signal detail - could be enhanced
-            console.log('Navigate to signal:', payload.signal_id);
-          }
-        }
-      });
-    } else if (!shouldSuppressToast) {
-      toast.success(title, {
-        description: message,
-        duration: 7000, // Show other alerts for 7 seconds
-        className: 'border-primary bg-primary/10 text-primary',
-        action: {
-          label: 'View Signal',
-          onClick: () => {
-            console.log('Navigate to signal:', payload.signal_id);
-          }
-        }
-      });
-    }
+    // ❌ DISABLED: Sonner toasts - ModernNotificationSystem shows all notifications
+    console.log('✅ [useInstantAlerts] Alert received - ModernNotificationSystem will handle display');
 
     // Play sound notification (browser permitting)
     if ('Notification' in window && Notification.permission === 'granted') {

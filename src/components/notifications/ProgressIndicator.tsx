@@ -15,7 +15,6 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   // ✅ Filter out invalid TP numbers (0, null, undefined)
   const validTpHits = tpHits.filter(tp => tp && tp > 0);
   
-  // ✅ Early return if no valid TPs or total is 0
   if (totalTPs === 0 || validTpHits.length === 0) return null;
 
   const progress = (validTpHits.length / totalTPs) * 100;

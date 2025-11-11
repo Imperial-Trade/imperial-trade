@@ -1,3 +1,4 @@
+// 🔔 Signal Stream with Notification Bell - Build: 2025-11-11T18:00:00Z
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';

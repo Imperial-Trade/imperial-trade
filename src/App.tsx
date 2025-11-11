@@ -1,4 +1,4 @@
-// 🔔 App Entry Point - Build: 2025-11-11T18:00:00Z (Notification Bell + Cache Fix)
+// 🔔 App Entry Point - Build: 2025-11-11T22:35:00Z (React Import Fix)
 import { useEffect, createElement, lazy } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";

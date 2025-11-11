@@ -20,21 +20,30 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Force single React instance to prevent hook errors
+      'react': path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+      'react/jsx-runtime': path.resolve(__dirname, './node_modules/react/jsx-runtime'),
     },
     // Dedupe React instances to prevent hook errors
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
-  // Optimize dependencies to ensure single React instance
+  // Optimize dependencies to ensure single React instance + force cache clear
   optimizeDeps: {
     include: ['react', 'react-dom', '@tanstack/react-query'],
+    force: true, // Force re-optimization on every dev server start
   },
   // Production build optimizations for DigitalOcean deployment
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Ensure proper SPA build
+    // Force cache busting on every build
     rollupOptions: {
       output: {
+        // Add hash to all asset filenames for cache busting
+        entryFileNames: `assets/[name].[hash].js`,
+        chunkFileNames: `assets/[name].[hash].js`,
+        assetFileNames: `assets/[name].[hash].[ext]`,
         manualChunks: {
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],

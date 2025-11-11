@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import React from "react";
+import { version } from "react";
 import App from "./App.tsx";
 import "./index.css";
 import posthog from "posthog-js";
@@ -109,7 +109,7 @@ if (POSTHOG_KEY && POSTHOG_HOST) {
 }
 
 // Debug React version
-console.log('🔍 React version:', React.version);
+console.log('🔍 React version:', version);
 console.log('🔍 React-DOM loaded:', !!document.getElementById("root"));
 
 // Add comprehensive error handling for app mounting

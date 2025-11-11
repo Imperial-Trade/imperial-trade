@@ -11,7 +11,13 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     // Add history API fallback for SPA routing
     historyApiFallback: true,
+    // Force cache clearing
+    watch: {
+      ignored: ['!**/node_modules/.vite/**'],
+    },
   },
+  // Clear cache on startup
+  cacheDir: '.vite',
   plugins: [
     react(),
     mode === 'development' &&

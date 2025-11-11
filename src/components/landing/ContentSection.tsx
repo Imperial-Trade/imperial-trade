@@ -1,9 +1,10 @@
-import { useEffect, useRef, ReactNode, CSSProperties } from "react";
+
+import React, { useEffect, useRef } from "react";
 
 interface ContentSectionProps {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
 }
 
 export default function ContentSection({ children, className = "", style = {} }: ContentSectionProps) {

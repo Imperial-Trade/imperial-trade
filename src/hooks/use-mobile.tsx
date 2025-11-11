@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react"
+
+import * as React from "react"
 
 const MOBILE_BREAKPOINT = 640
 const TABLET_BREAKPOINT = 1024
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
     
     const onChange = () => {
@@ -23,9 +24,9 @@ export function useIsMobile() {
 }
 
 export function useIsTablet() {
-  const [isTablet, setIsTablet] = useState<boolean | undefined>(undefined)
+  const [isTablet, setIsTablet] = React.useState<boolean | undefined>(undefined)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const mql = window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px) and (max-width: ${TABLET_BREAKPOINT - 1}px)`)
     
     const onChange = () => {
@@ -49,9 +50,9 @@ export function useIsTablet() {
 }
 
 export function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState<boolean | undefined>(undefined)
+  const [isDesktop, setIsDesktop] = React.useState<boolean | undefined>(undefined)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const mql = window.matchMedia(`(min-width: ${TABLET_BREAKPOINT}px)`)
     
     const onChange = () => {

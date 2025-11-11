@@ -1,8 +1,9 @@
+import React from 'react';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff, Loader2, AlertTriangle } from 'lucide-react';
 
-export const LivePriceConnectionStatus = () => {
+export const LivePriceConnectionStatus: React.FC = () => {
   const { connectionStatus, error, prices } = useOptimizedWebSocketPrices();
   
   const getStatusInfo = () => {

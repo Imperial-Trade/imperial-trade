@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, X, TrendingUp, TrendingDown, Clock, CheckCircle, Users, Plus, Bell } from 'lucide-react';
+import { Search, Filter, X, TrendingUp, TrendingDown, Clock, CheckCircle, Users, Plus } from 'lucide-react';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { MobileFilterButton } from './MobileFilterButton';
 import { MobileFilterSheet } from './MobileFilterSheet';
@@ -12,7 +12,6 @@ import { GlassmorphismCreateButton } from './GlassmorphismCreateButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { SignalStreamBottomNav } from './SignalStreamBottomNav';
 import { SignalSearchSheet } from './SignalSearchSheet';
-import { NotificationSheet } from './NotificationSheet';
 interface FilterState {
   search: string;
   status: string;
@@ -51,7 +50,7 @@ export function SignalStreamFilters({
   const {
     colors
   } = useSignalTheme();
-  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | 'notifications' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'search' | 'status' | 'tradeType' | 'educator' | null>(null);
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({
       ...filters,
@@ -181,9 +180,6 @@ export function SignalStreamFilters({
           updateFilter('educator', educators[0] || 'all');
         }
       }} />}
-
-        {/* Notification Sheet */}
-        <NotificationSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
       </>;
   }
 
@@ -227,9 +223,6 @@ export function SignalStreamFilters({
             
             {/* Educator Filter Icon */}
             {educatorOptions.length > 1 && <MobileFilterButton icon={<Users className="w-4 h-4" />} label="Educator" isActive={filters.educator !== 'all' && filters.educator !== ''} onClick={() => setActiveSheet('educator')} />}
-            
-            {/* Notifications Icon */}
-            <MobileFilterButton icon={<Bell className="w-4 h-4" />} label="Alerts" isActive={false} onClick={() => setActiveSheet('notifications')} />
             
             {/* Action Buttons */}
             <div className="flex items-center gap-3 ml-auto">
@@ -287,8 +280,5 @@ export function SignalStreamFilters({
         updateFilter('educator', educators[0] || 'all');
       }
     }} />}
-
-      {/* Notification Sheet - Desktop */}
-      <NotificationSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
     </>;
 }

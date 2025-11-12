@@ -485,33 +485,6 @@ export type Database = {
         }
         Relationships: []
       }
-      cached_educator_profiles: {
-        Row: {
-          avatar_url: string | null
-          display_name: string
-          last_updated: string
-          roles: string[] | null
-          user_id: string
-          user_type: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          display_name: string
-          last_updated?: string
-          roles?: string[] | null
-          user_id: string
-          user_type?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          display_name?: string
-          last_updated?: string
-          roles?: string[] | null
-          user_id?: string
-          user_type?: string
-        }
-        Relationships: []
-      }
       celebration_history: {
         Row: {
           celebration_data: Json | null
@@ -1538,7 +1511,6 @@ export type Database = {
           id: string
           last_notification_at: string
           notification_count: number
-          notification_type: string | null
           signal_id: string
           user_id: string
         }
@@ -1547,7 +1519,6 @@ export type Database = {
           id?: string
           last_notification_at?: string
           notification_count?: number
-          notification_type?: string | null
           signal_id: string
           user_id: string
         }
@@ -1556,7 +1527,6 @@ export type Database = {
           id?: string
           last_notification_at?: string
           notification_count?: number
-          notification_type?: string | null
           signal_id?: string
           user_id?: string
         }
@@ -3215,60 +3185,6 @@ export type Database = {
         }
         Relationships: []
       }
-      trigger_debug_log: {
-        Row: {
-          created_at: string | null
-          data: Json | null
-          id: number
-          message: string | null
-          signal_id: string | null
-          step: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          data?: Json | null
-          id?: number
-          message?: string | null
-          signal_id?: string | null
-          step?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          data?: Json | null
-          id?: number
-          message?: string | null
-          signal_id?: string | null
-          step?: string | null
-        }
-        Relationships: []
-      }
-      trigger_exception_log: {
-        Row: {
-          created_at: string | null
-          error_detail: string | null
-          error_message: string | null
-          id: number
-          signal_id: string | null
-          sql_state: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          error_detail?: string | null
-          error_message?: string | null
-          id?: number
-          signal_id?: string | null
-          sql_state?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          error_detail?: string | null
-          error_message?: string | null
-          id?: number
-          signal_id?: string | null
-          sql_state?: string | null
-        }
-        Relationships: []
-      }
       trigger_execution_log: {
         Row: {
           created_at: string | null
@@ -3293,24 +3209,6 @@ export type Database = {
           signal_id?: string
           trigger_name?: string
           trigger_operation?: string
-        }
-        Relationships: []
-      }
-      trigger_notification_dedup: {
-        Row: {
-          change_hash: string
-          last_fired_at: string
-          signal_id: string
-        }
-        Insert: {
-          change_hash: string
-          last_fired_at?: string
-          signal_id: string
-        }
-        Update: {
-          change_hash?: string
-          last_fired_at?: string
-          signal_id?: string
         }
         Relationships: []
       }
@@ -4455,7 +4353,6 @@ export type Database = {
       cleanup_phantom_notifications: { Args: never; Returns: number }
       cleanup_stale_market_prices: { Args: never; Returns: undefined }
       cleanup_trigger_execution_logs: { Args: never; Returns: undefined }
-      cleanup_trigger_notification_dedup: { Args: never; Returns: undefined }
       cleanup_webhook_debounce: { Args: never; Returns: undefined }
       close_trade_alert: {
         Args: { p_alert_id: string; p_close_reason?: string; p_user_id: string }
@@ -4782,10 +4679,6 @@ export type Database = {
             }
             Returns: boolean
           }
-      update_educator_profile_cache_direct: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
       update_expired_sessions: { Args: never; Returns: undefined }
       update_trade_alert_safe: {
         Args: {

@@ -309,16 +309,25 @@ const ModernNotificationSystem = () => {
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
-      // ✅ Send native push notification to iOS/Android via Capacitor
-      // This works alongside OneSignal for redundancy (OneSignal handles web push)
-      await capacitorNotificationService.showNotification({
-        title: notification.title,
-        body: notification.message,
-        data: notification.metadata || {},
-        eventKey: notification.eventKey,
-        type: notification.type,
-        signalId: notification.metadata?.signal_id,
-      });
+      // ✅ PUSH NOTIFICATIONS:
+      // - PWA users (Add to Home Screen): Use OneSignal (handled by backend)
+      // - Native app users (future): Use Capacitor
+      // - Web users: Use OneSignal (handled by backend)
+      // 
+      // Since you're using PWA (not native app yet), ALL push notifications
+      // come from OneSignal via the backend. No Capacitor notifications needed.
+      // When you build a true native app later, uncomment the code below.
+      
+      // if (capacitorNotificationService.isNativePlatform()) {
+      //   await capacitorNotificationService.showNotification({
+      //     title: notification.title,
+      //     body: notification.message,
+      //     data: notification.metadata || {},
+      //     eventKey: notification.eventKey,
+      //     type: notification.type,
+      //     signalId: notification.metadata?.signal_id,
+      //   });
+      // }
 
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {

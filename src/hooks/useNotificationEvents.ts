@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { calculatePips, PipsData } from '@/utils/pipsCalculator';
+import { calculatePipsForSignal, PipsData } from '@/utils/pipsCalculator';
 
 export interface NotificationEvent {
   id: string;
@@ -101,11 +101,11 @@ export function useNotificationEvents() {
         const tpPrice = signal[`tp${tpNum}` as keyof Signal] as number;
         
         if (tpPrice) {
-          const pipsData = calculatePips(
+          const pipsData = calculatePipsForSignal(
             signal.entry_price,
             tpPrice,
-            signal.trade_type as 'buy' | 'sell',
-            signal.tradermade_symbol
+            signal.tradermade_symbol,
+            signal.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
           );
 
           // Estimate timestamp (spread TP hits evenly between created and updated)
@@ -135,11 +135,11 @@ export function useNotificationEvents() {
 
     // 3. Stop Loss Hit Event
     if (signal.close_reason === 'stop_loss' && signal.status === 'closed') {
-      const pipsData = calculatePips(
+      const pipsData = calculatePipsForSignal(
         signal.entry_price,
         signal.stop_loss,
-        signal.trade_type as 'buy' | 'sell',
-        signal.tradermade_symbol
+        signal.tradermade_symbol,
+        signal.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
       );
 
       events.push({
@@ -166,11 +166,11 @@ export function useNotificationEvents() {
         finalPrice = signal[`tp${lastTp}` as keyof Signal] as number || signal.entry_price;
       }
 
-      const pipsData = calculatePips(
+      const pipsData = calculatePipsForSignal(
         signal.entry_price,
         finalPrice,
-        signal.trade_type as 'buy' | 'sell',
-        signal.tradermade_symbol
+        signal.tradermade_symbol,
+        signal.trade_type as 'buy' | 'sell' | 'buy_limit' | 'sell_limit'
       );
 
       events.push({

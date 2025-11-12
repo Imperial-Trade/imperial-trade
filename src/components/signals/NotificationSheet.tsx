@@ -88,7 +88,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                   {/* Provider Avatar & Name */}
                   <div className="flex items-start gap-3 mb-3">
                     <ProviderAvatar
-                      name={event.metadata.display_name}
+                      displayName={event.metadata.display_name}
                       avatarUrl={event.metadata.provider_avatar_url}
                       userType={event.metadata.provider_type}
                       size="sm"
@@ -128,7 +128,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                     <div className="mt-3">
                       <ProgressIndicator
                         tpHits={event.metadata.tp_hits}
-                        totalTps={event.metadata.total_tps}
+                        totalTPs={event.metadata.total_tps}
                       />
                     </div>
                   )}

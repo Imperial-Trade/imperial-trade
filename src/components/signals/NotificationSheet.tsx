@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Bell, TrendingUp, TrendingDown } from 'lucide-react';
-import { format, isToday, isYesterday, subDays } from 'date-fns';
-import { useSignalRealtime } from '@/hooks/useSignalRealtime';
-import { useAuth } from '@/contexts/AuthContext';
+import { Bell, Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { useNotificationEvents } from '@/hooks/useNotificationEvents';
+import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
+import { NotificationBadge } from '@/components/notifications/NotificationBadge';
+import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
+import { ProgressIndicator } from '@/components/notifications/ProgressIndicator';
+import { cn } from '@/lib/utils';
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -13,51 +15,34 @@ interface NotificationSheetProps {
 }
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
-  const { user } = useAuth();
-  const { alerts } = useSignalRealtime(user?.id || '', true);
+  const { events, loading } = useNotificationEvents();
 
-  // Get signals from last 24 hours with status changes
-  const recentSignals = useMemo(() => {
-    const yesterday = subDays(new Date(), 1);
-    
-    return alerts
-      .filter(signal => {
-        const updatedAt = new Date(signal.updatedAt);
-        return updatedAt >= yesterday;
-      })
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 20); // Limit to 20 most recent
-  }, [alerts]);
-
-  const formatDate = (date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isYesterday(date)) return 'Yesterday';
-    return format(date, 'MMM dd');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'pending':
-        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'closed':
-        return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'partially_profited':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+  // Get border color based on notification type
+  const getBorderColor = (type: string) => {
+    switch (type) {
+      case 'new_signal':
+        return 'border-l-blue-500';
+      case 'tp_hit':
+        return 'border-l-emerald-500';
+      case 'stop_loss':
+        return 'border-l-red-500';
+      case 'trade_closed':
+        return 'border-l-green-500';
+      case 'limit_activated':
+        return 'border-l-purple-500';
+      case 'notes_updated':
+        return 'border-l-yellow-500';
       default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+        return 'border-l-gray-500';
     }
   };
 
-  const getTpHits = (signal: any) => {
-    const hits = [];
-    if (signal.tp1Hit) hits.push('TP1');
-    if (signal.tp2Hit) hits.push('TP2');
-    if (signal.tp3Hit) hits.push('TP3');
-    if (signal.tp4Hit) hits.push('TP4');
-    if (signal.tp5Hit) hits.push('TP5');
-    return hits;
+  const formatTimestamp = (timestamp: Date) => {
+    try {
+      return formatDistanceToNow(timestamp, { addSuffix: true });
+    } catch {
+      return 'just now';
+    }
   };
 
   return (
@@ -74,7 +59,12 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         </SheetHeader>
 
         <ScrollArea className="h-[calc(100vh-8rem)] mt-6">
-          {recentSignals.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground">Loading recent activity...</p>
+            </div>
+          ) : events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-muted-foreground" />
@@ -86,69 +76,69 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
             </div>
           ) : (
             <div className="space-y-3 pr-4">
-              {recentSignals.map((signal) => {
-                const tpHits = getTpHits(signal);
-                const updatedAt = new Date(signal.updatedAt);
-
-                return (
-                  <div
-                    key={signal.id}
-                    className="p-4 rounded-lg bg-card/50 border border-border/50 hover:bg-card/80 transition-colors"
-                  >
-                    {/* Asset & Time */}
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {signal.tradeType.includes('buy') ? (
-                          <TrendingUp className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        )}
-                        <span className="font-semibold text-foreground">
-                          {signal.assetName}
-                        </span>
+              {events.map((event) => (
+                <div
+                  key={event.id}
+                  className={cn(
+                    "p-4 rounded-lg bg-card/50 border-l-4 border-t border-r border-b border-border/50",
+                    "hover:bg-card/80 transition-all duration-200",
+                    getBorderColor(event.type)
+                  )}
+                >
+                  {/* Provider Avatar & Name */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <ProviderAvatar
+                      name={event.metadata.display_name}
+                      avatarUrl={event.metadata.provider_avatar_url}
+                      userType={event.metadata.provider_type}
+                      size="sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-foreground truncate">
+                          {event.metadata.provider_name}
+                        </p>
+                        <NotificationBadge type={event.type} />
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(updatedAt)}
-                      </span>
-                    </div>
-
-                    {/* Status Badge */}
-                    <Badge 
-                      variant="outline" 
-                      className={`mb-2 ${getStatusColor(signal.status)}`}
-                    >
-                      {signal.status.replace('_', ' ')}
-                    </Badge>
-
-                    {/* TP Hits */}
-                    {tpHits.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {tpHits.map((tp) => (
-                          <Badge
-                            key={tp}
-                            variant="secondary"
-                            className="text-xs bg-green-500/10 text-green-400 border-green-500/20"
-                          >
-                            {tp} ✓
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Educator */}
-                    {signal.creator?.display_name && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        by {signal.creator.display_name}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatTimestamp(event.timestamp)}
                       </p>
-                    )}
+                    </div>
+                  </div>
 
-                    {/* Time */}
-                    <p className="text-xs text-muted-foreground/60 mt-1">
-                      {format(updatedAt, 'h:mm a')}
+                  {/* Asset Name */}
+                  <div className="mb-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {event.metadata.asset_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Entry: {event.metadata.entry_price.toFixed(event.metadata.asset_name.includes('JPY') ? 3 : 5)}
                     </p>
                   </div>
-                );
-              })}
+
+                  {/* Pips Display (for TP hits, SL hits, closed trades) */}
+                  {event.metadata.pips_data && (
+                    <div className="mb-3">
+                      <ProfitLossDisplay pipsData={event.metadata.pips_data} />
+                    </div>
+                  )}
+
+                  {/* TP Progress Indicator */}
+                  {event.metadata.tp_hits && event.metadata.total_tps && event.metadata.total_tps > 0 && (
+                    <div className="mt-3">
+                      <ProgressIndicator
+                        tpHits={event.metadata.tp_hits}
+                        totalTps={event.metadata.total_tps}
+                      />
+                    </div>
+                  )}
+
+                  {/* Message */}
+                  <p className="text-xs text-muted-foreground/80 mt-2">
+                    {event.message}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </ScrollArea>

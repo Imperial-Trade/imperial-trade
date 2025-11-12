@@ -1,120 +1,97 @@
-# 🚀 Deploy Edge Functions to Supabase
+# 🚀 EDGE FUNCTION DEPLOYMENT INSTRUCTIONS
 
-## Prerequisites
-✅ Supabase CLI installed (already done via Homebrew)
-✅ Changes merged to main branch (already done)
-
-## Step 1: Login to Supabase
-
-Run this command and follow the browser prompt:
-
-```bash
-supabase login
-```
-
-This will open your browser to authenticate with Supabase.
-
-## Step 2: Deploy Critical Edge Functions
-
-Once logged in, deploy the notification-related Edge Functions:
-
-```bash
-cd "/Users/nthny_11/Trade imperial GITHUB /sidebar/imperial-trade"
-
-# Deploy enhanced signal notification dispatcher
-supabase functions deploy enhanced-signal-notification-dispatcher --project-ref kmuoqkcxguafxulqlbmi
-
-# Deploy price monitoring
-supabase functions deploy price-monitoring --project-ref kmuoqkcxguafxulqlbmi
-
-# Deploy priority alert monitor  
-supabase functions deploy priority-alert-monitor --project-ref kmuoqkcxguafxulqlbmi
-```
-
-## Step 3: Verify Deployment
-
-Check the Supabase dashboard to see the updated versions:
-https://supabase.com/dashboard/project/kmuoqkcxguafxulqlbmi/functions
-
-## Step 4: Apply SQL Trigger Fix (CRITICAL!)
-
-⚠️ **Don't forget this step!** This is the most important fix for duplicate notifications.
-
-1. Open Supabase Dashboard: https://supabase.com/dashboard/project/kmuoqkcxguafxulqlbmi/sql
-2. Click **SQL Editor** in left sidebar
-3. Open `APPLY_THIS_TO_SUPABASE.sql` from your repository
-4. Copy the entire contents
-5. Paste into SQL Editor
-6. Click **RUN** button
-7. Wait for "Success" message
-
-## Step 5: Test
-
-1. Create a new Bitcoin BUY signal
-2. ✅ Should see **ONE** modern notification (upper-right)
-3. ✅ Should see **ONE** toast (lower-right)
-4. Let it hit stop loss
-5. ✅ Should see **ONE** "Stop Loss Hit!" notification
-6. ✅ Signal should **instantly** move to "Closed Alerts"
+**Date:** 2025-11-12  
+**Critical Fix:** UUID parsing error in `notification-core.ts`
 
 ---
 
-## Quick Deploy Script (All at Once)
+## 📦 **WHAT WAS FIXED:**
 
-If you want to deploy all three at once:
+The `notification-core.ts` file now correctly extracts `user_id` from user objects:
+
+```typescript
+// OLD CODE (v47) - FAILED:
+.in('id', pushUserIds)  // Expected ['uuid1', 'uuid2'], got [{user_id: 'uuid1'}, ...]
+
+// NEW CODE (v48) - FIXED:
+const userIds = Array.isArray(pushUserIds) 
+  ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+  : [];
+.in('id', userIds)  // Now correctly handles both strings and objects
+```
+
+---
+
+## 🎯 **FUNCTIONS TO DEPLOY:**
+
+All 6 notification Edge Functions need deployment (they all share `_shared/notification-core.ts`):
+
+1. ✅ `notify-signal-created` (ID: `59c98d7b-01ed-4cb6-8d6b-45ad8d9fb6cc`)
+2. ✅ `notify-tp-hit` (ID: `9d9b9425-5d7b-494b-b9d6-8ffe03f79011`)
+3. ✅ `notify-stop-loss-hit` (ID: `2a2f2223-1767-4014-b4a6-99acf7815ef2`)
+4. ✅ `notify-signal-closed` (ID: `08483cbd-3877-4915-a1c1-a907075b830d`)
+5. ✅ `notify-limit-activated` (ID: `c820e254-ff70-4e90-8601-6cba375bfea1`)
+6. ✅ `notify-notes-updated` (ID: `65412e4c-c9cd-4d9a-85eb-0032f411fd90`)
+
+---
+
+## 🔧 **DEPLOYMENT METHOD:**
+
+### **Option 1: Via Supabase Dashboard (Manual)**
+
+1. Go to: https://supabase.com/dashboard/project/kmuoqkcxguafxulqlbmi/functions
+2. For each function above:
+   - Click "Deploy new version"
+   - Select `supabase/functions/[function-name]`
+   - Click "Deploy"
+
+### **Option 2: Via Supabase CLI (Automated)**
 
 ```bash
 cd "/Users/nthny_11/Trade imperial GITHUB /sidebar/imperial-trade"
 
-for func in enhanced-signal-notification-dispatcher price-monitoring priority-alert-monitor; do
-  echo "🔄 Deploying $func..."
-  supabase functions deploy "$func" --project-ref kmuoqkcxguafxulqlbmi
-  echo "✅ Done!"
-  echo ""
-done
+# Deploy all notification functions
+supabase functions deploy notify-signal-created --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+supabase functions deploy notify-tp-hit --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+supabase functions deploy notify-stop-loss-hit --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+supabase functions deploy notify-signal-closed --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+supabase functions deploy notify-limit-activated --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+supabase functions deploy notify-notes-updated --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
+```
 
-echo "🎉 All Edge Functions deployed!"
-echo ""
-echo "⚠️  Don't forget to apply APPLY_THIS_TO_SUPABASE.sql in Supabase SQL Editor!"
+### **Option 3: Deploy All at Once**
+
+```bash
+supabase functions deploy --project-ref kmuoqkcxguafxulqlbmi --no-verify-jwt
 ```
 
 ---
 
-## Troubleshooting
+## ✅ **EXPECTED RESULT:**
 
-### "Access token not provided"
-Run `supabase login` first to authenticate
+After deployment, each function will be at **version 48** (up from version 47).
 
-### "failed to parse config"
-This is fine - we're deploying directly with `--project-ref`, so local config doesn't matter
-
-### Function deployment fails
-- Check internet connection
-- Verify you're logged in: `supabase projects list`
-- Try re-running the specific function deployment command
+You can verify by checking:
+```bash
+supabase functions list --project-ref kmuoqkcxguafxulqlbmi
+```
 
 ---
 
-## What Was Deployed?
+## 🧪 **TEST AFTER DEPLOYMENT:**
 
-These Edge Functions contain the following fixes:
-
-### `enhanced-signal-notification-dispatcher`
-- Improved deduplication logic with granular signatures
-- Circuit breaker now per-notification-type instead of per-signal
-- Better error handling and logging
-
-### `price-monitoring`
-- Complete metadata in notification payloads
-- All signal fields included (TP1-5, entry, SL, etc.)
-- Synchronized with notification dispatcher
-
-### `priority-alert-monitor`
-- Uses `enhanced-signal-notification-dispatcher` instead of old one
-- Enriched payload with author details
-- Standardized notification types
+1. Create a new test signal (BITCOIN or XAUUSD)
+2. Check Edge Function logs for "✅ [Realtime Broadcast] SUCCESS"
+3. Verify NO UUID parsing errors appear
+4. Confirm in-app notifications display correctly
 
 ---
 
-**Once deployed, your notification system should work perfectly with no duplicates!** 🎉
+## 📊 **FILES MODIFIED:**
 
+- ✅ `supabase/functions/_shared/notification-core.ts` (lines 167-176, 334-342)
+- ✅ Committed to `main` branch (commit `c9ff3341`)
+
+---
+
+**Status:** Ready for deployment - code is correct and committed to GitHub.

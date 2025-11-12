@@ -25,7 +25,13 @@ serve(async (req) => {
   }
 
   try {
-    const { signal, tp_number, triggered_price, pips, users, push_users } = await req.json();
+    const payload = await req.json();
+    const { signal, users, push_users } = payload;
+    
+    // Extract TP data from signal object (database trigger puts them there)
+    const tp_number = payload.tp_number || signal.tp_number;
+    const triggered_price = payload.triggered_price || signal.tp_price;
+    const pips = payload.pips || signal.pips;
 
     console.log('🎯 [TP Hit] Processing notification:', {
       signal_id: signal.id,
@@ -35,6 +41,7 @@ serve(async (req) => {
       pips,
       total_users: users?.length || 0,
       push_users: push_users?.length || 0,
+      raw_payload: payload  // Debug: log full payload structure
     });
 
     const supabase = createClient(

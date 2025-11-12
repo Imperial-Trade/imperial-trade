@@ -277,20 +277,37 @@ export async function sendRealtimeNotification(
     // Create and subscribe to channel first
     const channel = supabase.channel('instant-alerts');
     
-    // Subscribe to the channel before broadcasting
-    await new Promise((resolve) => {
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          resolve(true);
-        }
-      });
-    });
+    // Subscribe with timeout to prevent hanging
+    try {
+      await Promise.race([
+        new Promise((resolve) => {
+          channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ [Realtime] Channel subscribed successfully');
+              resolve(true);
+            }
+          });
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Subscription timeout after 5s')), 5000)
+        )
+      ]);
+    } catch (err: any) {
+      console.error('❌ [Realtime] Subscription failed:', err.message);
+      // Continue anyway - push notifications still work
+    }
 
     // Now broadcast
     const broadcastResult = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload,
+    });
+    
+    console.log(`📡 [Realtime] Broadcast result:`, {
+      status: broadcastResult?.status || 'undefined',
+      type: template.type,
+      signal_id: signalData.id.substring(0, 8)
     });
     
     // Clean up: unsubscribe after sending

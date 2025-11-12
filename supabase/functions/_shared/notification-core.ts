@@ -161,9 +161,18 @@ export async function sendRealtimeNotification(
   supabase: any,
   template: NotificationTemplate,
   signalData: SignalData,
-  userIds: string[]
+  userIds: any[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Extract user IDs from user objects (trigger sends: [{user_id}])
+    const extractedUserIds = Array.isArray(userIds)
+      ? userIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+      : [];
+
+    if (extractedUserIds.length === 0) {
+      console.log('ℹ️ No user IDs provided for realtime notification');
+      return { success: true };
+    }
     // Parse PIPS value from string (e.g. "+200.0 PIPS" -> 200.0)
     const pipsValue = signalData.pips 
       ? parseFloat(signalData.pips.replace(/[^0-9.-]/g, '')) 
@@ -253,7 +262,7 @@ export async function sendRealtimeNotification(
       timestamp: new Date().toISOString(),
       event_key: `signal_${signalData.id}_${template.type}_${Date.now()}`,
       notification_type: template.type,
-      user_ids: userIds,
+      user_ids: extractedUserIds,
     };
 
     // Broadcast via Supabase Realtime
@@ -276,7 +285,7 @@ export async function sendRealtimeNotification(
       console.log(`✅ [Realtime Broadcast] SUCCESS:`, {
         type: template.type,
         asset: signalData.asset_name,
-        recipients: userIds.length,
+        recipients: extractedUserIds.length,
         metadata: {
           provider: signalData.author_name,
           pips: signalData.pips,
@@ -322,11 +331,21 @@ export async function sendPushNotification(
   }
 
   try {
+    // Extract user IDs from push user objects (trigger sends: [{user_id, player_id, display_name}])
+    const userIds = Array.isArray(pushUserIds) 
+      ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+      : [];
+
+    if (userIds.length === 0) {
+      console.log('ℹ️ No push user IDs provided');
+      return { success: true, sent: 0 };
+    }
+
     // Get OneSignal player IDs for these users
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('onesignal_player_id')
-      .in('id', pushUserIds)
+      .in('id', userIds)
       .eq('push_subscription_active', true)
       .not('onesignal_player_id', 'is', null);
 

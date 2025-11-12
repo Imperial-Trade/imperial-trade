@@ -1,8 +1,8 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Bell, Loader2, X } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { useNotificationEvents } from '@/hooks/useNotificationEvents';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
@@ -53,9 +53,9 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
 
   const formatTimestamp = (timestamp: Date) => {
     try {
-      return formatDistanceToNow(timestamp, { addSuffix: true });
+      return timestamp.toLocaleTimeString();
     } catch {
-      return 'just now';
+      return new Date().toLocaleTimeString();
     }
   };
 
@@ -91,20 +91,19 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
           ) : (
             <div className="space-y-3 pr-4">
               {events.map((event) => (
-                <div
+                <Card
                   key={event.id}
                   className={cn(
-                    "p-4 rounded-lg overflow-hidden",
-                    "border-2 border-l-4 shadow-2xl backdrop-blur-md",
+                    "overflow-hidden border-2 border-l-4 shadow-2xl backdrop-blur-md",
                     "bg-gradient-to-br",
                     getGradientClass(event.type),
                     getBorderColor(event.type),
-                    "border-border/50",
-                    "hover:shadow-xl hover:scale-[1.01] transition-all duration-200"
+                    "border-border/50"
                   )}
                 >
-                  {/* Header with Avatar, Name, Badge, and Close Button */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="p-4">
+                    {/* Header with Avatar, Name, Badge, and Close Button */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <ProviderAvatar
                         displayName={event.metadata.display_name}
@@ -118,17 +117,10 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                           <h4 className="font-semibold text-foreground text-sm">
                             {event.metadata.provider_name}
                           </h4>
-                          <NotificationBadge type={event.type} />
+                          <NotificationBadge type={event.type} priority={event.priority} />
                         </div>
                         <p className="text-muted-foreground text-xs">
-                          {event.metadata.asset_name}
-                          {event.metadata.entry_price && (
-                            <span className="ml-2 opacity-70">
-                              • Entry: {event.metadata.entry_price.toFixed(
-                                event.metadata.asset_name.includes('JPY') ? 3 : 5
-                              )}
-                            </span>
-                          )}
+                          {event.metadata.asset_name || event.title}
                         </p>
                       </div>
                     </div>
@@ -157,7 +149,8 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                         {event.metadata.pips_data && 
                          event.metadata.pips_data.value !== 0 && (
                           <ProfitLossDisplay 
-                            pipsData={event.metadata.pips_data} 
+                            pipsData={event.metadata.pips_data}
+                            size="md"
                           />
                         )}
                       </div>
@@ -170,6 +163,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                           <ProgressIndicator
                             tpHits={event.metadata.tp_hits}
                             totalTPs={event.metadata.total_tps}
+                            showPercentage={true}
                           />
                         </div>
                       )}
@@ -195,7 +189,8 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                       )}
                     </div>
                   </div>
-                </div>
+                  </div>
+                </Card>
               ))}
             </div>
           )}

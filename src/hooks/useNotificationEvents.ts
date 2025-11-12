@@ -9,6 +9,7 @@ export interface NotificationEvent {
   title: string;
   message: string;
   timestamp: Date;
+  priority?: number;
   metadata: {
     provider_name: string;
     provider_avatar_url: string | null;
@@ -88,6 +89,7 @@ export function useNotificationEvents() {
       title: 'New Signal',
       message: `New ${signal.trade_type.toUpperCase()} signal on ${signal.asset_name}`,
       timestamp: new Date(signal.created_at),
+      priority: 2,
       metadata: {
         ...baseMetadata,
         tp_hits: [],
@@ -121,6 +123,7 @@ export function useNotificationEvents() {
             title: `TP${tpNum} Hit`,
             message: `TP${tpNum} hit on ${signal.asset_name}`,
             timestamp: estimatedTime,
+            priority: 3,
             metadata: {
               ...baseMetadata,
               pips_data: pipsData,
@@ -149,6 +152,7 @@ export function useNotificationEvents() {
         title: 'Stop Loss Hit',
         message: `Stop loss hit on ${signal.asset_name}`,
         timestamp: new Date(signal.updated_at),
+        priority: 3,
         metadata: {
           ...baseMetadata,
           pips_data: pipsData,
@@ -180,6 +184,7 @@ export function useNotificationEvents() {
         title: 'Signal Closed',
         message: `${signal.asset_name} signal closed`,
         timestamp: new Date(signal.updated_at),
+        priority: 2,
         metadata: {
           ...baseMetadata,
           pips_data: pipsData,
@@ -199,6 +204,7 @@ export function useNotificationEvents() {
         title: 'Limit Activated',
         message: `${signal.trade_type.toUpperCase()} order activated on ${signal.asset_name}`,
         timestamp: new Date(signal.activated_at),
+        priority: 3,
         metadata: baseMetadata,
       });
     }

@@ -123,9 +123,3 @@ verify_jwt = false
 
 [functions.notify-notes-updated]
 verify_jwt = false
-
-[functions.enhanced-signal-notification-dispatcher]
-verify_jwt = false
-
-[functions.create-test-signal]
-verify_jwt = true

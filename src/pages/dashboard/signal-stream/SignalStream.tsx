@@ -31,7 +31,6 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
-import { CreateTestSignalButton } from '@/components/admin/CreateTestSignalButton';
 export default function SignalStream() {
   const {
     colors
@@ -1839,7 +1838,6 @@ export default function SignalStream() {
                         <span>Force Sync</span>
                       </>}
                   </Button>}
-                {isDevToolsEnabled() && <CreateTestSignalButton />}
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">

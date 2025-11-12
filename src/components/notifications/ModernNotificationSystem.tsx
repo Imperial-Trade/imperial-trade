@@ -724,6 +724,8 @@ const ModernNotificationSystem = () => {
             author_avatar_url: data.author_avatar_url,
             author_user_type: data.author_user_type,
             provider_name: data.provider_name || data.author_name,
+            provider_avatar_url: data.metadata?.provider_avatar_url || data.author_avatar_url,
+            provider_type: data.metadata?.provider_type || data.author_user_type,
             display_name: data.display_name || data.author_name,
             entry_price: data.entry_price,
             trade_type: data.trade_type,

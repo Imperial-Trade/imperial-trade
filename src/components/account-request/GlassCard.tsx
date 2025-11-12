@@ -1,7 +1,7 @@
-import React from 'react';
+import { FC, ReactNode } from 'react';
 
 interface GlassCardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }
 

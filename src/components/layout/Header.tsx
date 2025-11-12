@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { memo } from 'react';
 import { Crown, Menu, X, Mic, MicOff, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ interface HeaderProps {
   getAccessLevelDisplay: (level: string) => { label: string; color: string };
 }
 
-const Header: React.FC<HeaderProps> = ({
+const Header = ({
   user,
   sidebarOpen,
   setSidebarOpen,
@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({
   toggleVoiceRecognition,
   getUserAccessLevel,
   getAccessLevelDisplay
-}) => {
+}: HeaderProps) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="flex items-center gap-4">

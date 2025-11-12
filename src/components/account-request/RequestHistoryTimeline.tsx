@@ -1,5 +1,4 @@
-
-import React from 'react';
+import { FC } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, CheckCircle, XCircle, Edit, UserCheck } from "lucide-react";
 import { AccountRequestData, AccountRequestAudit } from '@/api/entities/AccountRequest';

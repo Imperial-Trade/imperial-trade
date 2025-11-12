@@ -380,7 +380,7 @@ async function processInBackground(prices: any[]) {
     console.log('🎯 STEP 1: Processing alerts with STOP LOSS PRIORITY...');
     let totalTriggeredAlerts = 0;
     let limitOrdersActivated = 0;
-    let notificationTriggers: any[] = [];
+    // Notification tracking removed - handled by database trigger automatically
     
     // Initialize global symbolsWithPrices Map for this batch
     symbolsWithPrices = new Map();
@@ -453,19 +453,7 @@ async function processInBackground(prices: any[]) {
             if (!updateError) {
               limitOrdersActivated++;
               console.log(`✅ Activated ${alert.trade_type} order for ${alert.asset_name} at ${currentPrice}`);
-              
-              // Add to notification triggers with HIGH priority
-              notificationTriggers.push({
-                signal_id: alert.id,
-                user_id: alert.user_id,
-                asset_name: alert.asset_name,
-                trade_type: alert.trade_type,
-                entry_price: alert.entry_price,
-                activation_price: currentPrice,
-                notification_type: 'limit_order_activated',
-                alert_type: 'limit_order_activated',
-                priority_level: 3 // Highest priority for order activations
-              });
+              // Notification sent automatically by database trigger
             }
           }
         }
@@ -473,276 +461,192 @@ async function processInBackground(prices: any[]) {
     }
 
     // ============================================================================
-    // PHASE 1: DEADLOCK FIX - Rate-limited batch alert processing with SKIP LOCKED
+    // 🆕 INTEGRATED INSTANT DETECTOR SYSTEM (Phase 2)
+    // ============================================================================
+    // Replaces old alert processing with new detector logic
+    // Detection happens within 500ms-1s of price update!
     // ============================================================================
 
-    // Configuration: Cooldown period per symbol
-    const ALERT_PROCESSING_COOLDOWN_MS = 2000; // 2 seconds
-    const ALERT_PROCESSING_TIMEOUT_MS = 3000;  // 3 seconds max for batch processing
+    console.log('🔍 [Instant Detector] Starting TP/SL detection...');
+    const detectionStartTime = Date.now();
+    let tpHitsDetected = 0;
+    let slHitsDetected = 0;
 
-    // In-memory tracking of last alert processing time per symbol
-    const lastAlertProcessing: Map<string, number> = new Map();
-
-    // ============================================================================
-    // STEP 1: Determine which symbols need alert processing
-    // ============================================================================
-
-    const symbolsToProcess: string[] = [];
-    const priceData: Record<string, { bid: number; ask: number; mid: number }> = {};
-
-    // Use symbolsWithPrices Map (already populated) to build alert processing list
-    for (const [symbol, storedPriceData] of symbolsWithPrices.entries()) {
-      const lastProcessed = lastAlertProcessing.get(symbol) || 0;
-      const timeSinceLastProcess = Date.now() - lastProcessed;
+    try {
+      // Get all active signals (across all symbols in this batch)
+      const symbolsInBatch = Array.from(symbolsWithPrices.keys());
       
-      // Only process if cooldown period has elapsed
-      if (timeSinceLastProcess >= ALERT_PROCESSING_COOLDOWN_MS) {
-        symbolsToProcess.push(symbol);
-        
-        // Use already-calculated price data from symbolsWithPrices
-        priceData[symbol] = {
-          bid: storedPriceData.bid,
-          ask: storedPriceData.ask,
-          mid: storedPriceData.mid
-        };
-        
-        // Update last processed time
-        lastAlertProcessing.set(symbol, Date.now());
-        
-        console.log(`✅ [Alert Processing] ${symbol} eligible (last processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago)`);
-      } else {
-        console.log(`⏭️ [Alert Cooldown] Skipping ${symbol} (processed ${(timeSinceLastProcess/1000).toFixed(1)}s ago, cooldown: ${ALERT_PROCESSING_COOLDOWN_MS/1000}s)`);
-      }
-    }
+      const { data: activeSignals, error: signalsError } = await supabaseClient
+        .from('trade_alerts')
+        .select('*')
+        .eq('status', 'active')
+        .in('tradermade_symbol', symbolsInBatch);
 
-    // Note: Price data already calculated and stored in symbolsWithPrices Map above
-    // No need for additional loops - all prices are ready for alert processing
+      if (signalsError) {
+        console.error('❌ [Instant Detector] Failed to fetch signals:', signalsError);
+      } else if (activeSignals && activeSignals.length > 0) {
+        console.log(`🔍 [Instant Detector] Checking ${activeSignals.length} active signals`);
 
-    // ============================================================================
-    // STEP 2: Batch process alerts with timeout protection (MOVED OUTSIDE LOOP)
-    // ============================================================================
+        // Process each signal for TP/SL hits
+        for (const signal of activeSignals) {
+          const priceData = symbolsWithPrices.get(signal.tradermade_symbol);
+          if (!priceData || !priceData.mid) continue;
 
-    if (symbolsToProcess.length > 0) {
-        console.log(`🎯 [Alert Processing] Processing ${symbolsToProcess.length} symbols: ${symbolsToProcess.join(', ')}`);
-        console.log(`🎯 [Alert Processing] Price data:`, priceData);
-        
-        try {
-          // Race condition: Either get results or timeout after 3 seconds
-          const alertResults = await Promise.race([
-            supabaseClient.rpc('process_price_alerts_batch_v3', {
-              p_symbols: symbolsToProcess,
-              p_prices: priceData
-            }),
-            new Promise<never>((_, reject) => 
-              setTimeout(
-                () => reject(new Error(`Alert processing timeout after ${ALERT_PROCESSING_TIMEOUT_MS}ms`)), 
-                ALERT_PROCESSING_TIMEOUT_MS
-              )
-            )
-          ]);
+          const currentPrice = priceData.mid;
+          const isBuy = signal.trade_type === 'buy' || signal.trade_type === 'buy_limit';
+          const currentTpHits = signal.tp_hits || [];
 
-          if (alertResults.error) {
-            console.error(`❌ [Alert Processing] Batch error:`, {
-              error: alertResults.error,
-              code: alertResults.error.code,
-              message: alertResults.error.message,
-              symbols: symbolsToProcess
-            });
-          } else if (alertResults.data && Array.isArray(alertResults.data)) {
-            const allAlerts = alertResults.data;
-            const triggeredAlerts = allAlerts.filter((alert: any) => alert.triggered);
-            
-            console.log(`✅ [Alert Processing] Processed ${allAlerts.length} total alerts, ${triggeredAlerts.length} triggered`);
-            
-            // ============================================================================
-            // STEP 3: Process triggered alerts (existing notification logic)
-            // ============================================================================
-            
-            if (triggeredAlerts.length > 0) {
-              console.log(`🚨 [Triggered Alerts] Processing ${triggeredAlerts.length} triggered alerts...`);
+          // ============================================================================
+          // CHECK STOP LOSS (Highest Priority)
+          // ============================================================================
+          if (signal.stop_loss && signal.status === 'active') {
+            const slHit = isBuy 
+              ? currentPrice <= signal.stop_loss 
+              : currentPrice >= signal.stop_loss;
+
+            if (slHit) {
+              console.log(`🛑 [SL HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): Entry $${signal.entry_price} → Current $${currentPrice} → SL $${signal.stop_loss}`);
               
-              // Group by type for efficient processing
-              const stopLossAlerts = triggeredAlerts.filter((a: any) => a.alert_type === 'stop_loss');
-              const takeProfitAlerts = triggeredAlerts.filter((a: any) => a.alert_type?.startsWith('take_profit'));
-              
-              // Process stop losses (highest priority)
-              if (stopLossAlerts.length > 0) {
-                console.log(`🛑 [Stop Loss] Processing ${stopLossAlerts.length} stop loss alerts`);
-                
-                for (const alert of stopLossAlerts) {
-                  try {
-                    // Get signal details
-                    const { data: signalData, error: signalError } = await supabaseClient
-                      .from('trade_alerts')
-                      .select('user_id, asset_name, trade_type')
-                      .eq('id', alert.signal_id)
-                      .single();
-                    
-                    if (signalError || !signalData) {
-                      console.error(`❌ [Stop Loss] Failed to fetch signal ${alert.signal_id}:`, signalError);
-                      continue;
-                    }
-                    
-                    // Close the signal
-                    const { error: closeError } = await supabaseClient.rpc('close_trade_alert', {
-                      p_alert_id: alert.signal_id,
-                      p_user_id: signalData.user_id,
-                      p_close_reason: 'stop_loss'
-                    });
-                    
-                    if (closeError) {
-                      console.error(`❌ [Stop Loss] Failed to close signal ${alert.signal_id}:`, closeError);
-                    } else {
-                      console.log(`✅ [Stop Loss] Closed signal ${alert.signal_id} (${signalData.asset_name})`);
-                      
-                      // Queue notification
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: 'stop_loss_hit',
-                        notification_type: 'stop_loss_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 4,
-                        user_id: signalData.user_id,
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
-                    }
-                  } catch (error) {
-                    console.error(`❌ [Stop Loss] Unexpected error processing alert ${alert.alert_id}:`, error);
-                  }
-                }
+              const { error: updateError } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  close_reason: 'stop_loss',
+                  status: 'closed',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id)
+                .eq('status', 'active'); // Safety: only update if still active
+
+              if (!updateError) {
+                slHitsDetected++;
+                console.log(`✅ [SL HIT] Signal ${signal.id.substring(0,8)} closed - notification will be sent by database trigger`);
+              } else {
+                console.error(`❌ [SL HIT] Failed to update signal ${signal.id}:`, updateError);
               }
               
-              // Process take profits
-              if (takeProfitAlerts.length > 0) {
-                console.log(`🎯 [Take Profit] Processing ${takeProfitAlerts.length} TP alerts`);
-                
-                // Process TPs in parallel (they don't conflict)
-                const tpPromises = takeProfitAlerts.map(async (alert: any) => {
-                  try {
-                    const { data: signalData } = await supabaseClient
-                      .from('trade_alerts')
-                      .select('trade_type, asset_name, user_id')
-                      .eq('id', alert.signal_id)
-                      .single();
-                    
-                    if (!signalData) return;
-                    
-                    const isBuy = signalData.trade_type === 'buy' || signalData.trade_type === 'buy_limit';
-                    
-                    const { data: tpResult, error: tpError } = await supabaseClient.rpc('process_tp_hits_sequential', {
-                      p_trade_id: alert.signal_id,
-                      p_current_price: alert.current_price,
-                      p_is_buy: isBuy
-                    });
-                    
-                    if (tpError) throw tpError;
-                    
-                    // Check for all TPs hit
-                    if (tpResult?.all_tps_hit && tpResult.signal_auto_closed) {
-                      console.log(`🎉 ALL TARGETS HIT! Signal ${alert.signal_id.substring(0,8)} auto-closed`);
-                      
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: 'all_targets_hit',
-                        notification_type: 'all_tps_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 4,
-                        user_id: signalData.user_id || '',
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
-                    } else if (tpResult?.tp_hit_this_cycle && tpResult.tp_hit_this_cycle.length > 0) {
-                      console.log(`🎯 TP${tpResult.tp_hit_this_cycle[0]} hit for signal ${alert.signal_id.substring(0,8)}`);
-                      
-                      notificationTriggers.push({
-                        signal_id: alert.signal_id,
-                        alert_type: `take_profit_${tpResult.tp_hit_this_cycle[0]}`,
-                        notification_type: 'take_profit_hit',
-                        triggered_price: alert.current_price,
-                        symbol: alert.symbol,
-                        timestamp: new Date().toISOString(),
-                        priority_level: 3,
-                        user_id: signalData.user_id || '',
-                        asset_name: signalData.asset_name || alert.symbol
-                      });
-                    }
-                    
-                    console.log(`✅ [Take Profit] Processed TP for signal ${alert.signal_id}`);
-                  } catch (error) {
-                    console.error(`❌ [Take Profit] Error processing ${alert.alert_id}:`, error);
-                  }
-                });
-                
-                await Promise.allSettled(tpPromises);
-              }
+              continue; // Skip TP checks if SL hit
             }
-          } else {
-            console.log(`ℹ️ [Alert Processing] No alerts returned from batch processing`);
           }
+
+          // ============================================================================
+          // CHECK TAKE PROFITS (TP1-TP5 Sequential)
+          // ============================================================================
           
-        } catch (error: any) {
-          if (error.message?.includes('timeout')) {
-            console.warn(`⚠️ [Alert Processing] Timeout after ${ALERT_PROCESSING_TIMEOUT_MS}ms - continuing with price broadcast`);
-          } else {
-            console.error(`❌ [Alert Processing] Unexpected error:`, {
-              error: error.message,
-              stack: error.stack,
-              symbols: symbolsToProcess
-            });
-          }
-        }
-    } else {
-      console.log(`⏭️ [Alert Processing] All ${prices.length} symbols on cooldown - skipping this cycle`);
-    }
-
-    // 🚀 ENHANCED: Send notifications for all significant events
-    if (notificationTriggers.length > 0) {
-      console.log(`📢 NOTIFICATION DISPATCH: Sending ${notificationTriggers.length} trading notifications...`);
-      
-      try {
-        const { data: notifyResult, error: notifyError } = await supabaseClient.functions.invoke(
-          'enhanced-signal-notification-dispatcher',
-          {
-            body: {
-              notifications: notificationTriggers.map(trigger => ({
-                signal_id: trigger.signal_id,
-                notification_type: trigger.notification_type,
-                alert_type: trigger.alert_type,
-                triggered_price: trigger.triggered_price,
-                symbol: trigger.symbol,
-                timestamp: trigger.timestamp,
-                priority_level: trigger.priority_level,
-                delivery_channels: ['push', 'in_app'],
-                // Add all required fields
-                user_id: trigger.user_id || '',
-                asset_name: trigger.asset_name || trigger.symbol,
-                trade_type: trigger.trade_type || 'unknown',
-                entry_price: trigger.entry_price || trigger.triggered_price || 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                status: trigger.alert_type === 'stop_loss_hit' ? 'closed' : 'active',
-                author_id: trigger.user_id || '',
-                author_name: 'System' // Safe fallback for automated triggers
-              }))
+          // TP1
+          if (signal.tp1 && !currentTpHits.includes(1)) {
+            const tp1Hit = isBuy ? currentPrice >= signal.tp1 : currentPrice <= signal.tp1;
+            if (tp1Hit) {
+              console.log(`🎯 [TP1 HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): $${currentPrice} crossed TP1 $${signal.tp1}`);
+              const { error } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  tp_hits: [...currentTpHits, 1],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id);
+              
+              if (!error) {
+                tpHitsDetected++;
+                currentTpHits.push(1); // Update local copy for subsequent checks
+              }
             }
           }
-        );
-        
-        if (notifyError) {
-          console.error('❌ Notification dispatch failed:', notifyError);
-        } else {
-          console.log(`✅ Successfully dispatched ${notificationTriggers.length} trading notifications`);
+
+          // TP2
+          if (signal.tp2 && currentTpHits.includes(1) && !currentTpHits.includes(2)) {
+            const tp2Hit = isBuy ? currentPrice >= signal.tp2 : currentPrice <= signal.tp2;
+            if (tp2Hit) {
+              console.log(`🎯 [TP2 HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): $${currentPrice} crossed TP2 $${signal.tp2}`);
+              const { error } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  tp_hits: [...currentTpHits, 2],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id);
+              
+              if (!error) {
+                tpHitsDetected++;
+                currentTpHits.push(2);
+              }
+            }
+          }
+
+          // TP3
+          if (signal.tp3 && currentTpHits.includes(2) && !currentTpHits.includes(3)) {
+            const tp3Hit = isBuy ? currentPrice >= signal.tp3 : currentPrice <= signal.tp3;
+            if (tp3Hit) {
+              console.log(`🎯 [TP3 HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): $${currentPrice} crossed TP3 $${signal.tp3}`);
+              const { error } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  tp_hits: [...currentTpHits, 3],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id);
+              
+              if (!error) {
+                tpHitsDetected++;
+                currentTpHits.push(3);
+              }
+            }
+          }
+
+          // TP4
+          if (signal.tp4 && currentTpHits.includes(3) && !currentTpHits.includes(4)) {
+            const tp4Hit = isBuy ? currentPrice >= signal.tp4 : currentPrice <= signal.tp4;
+            if (tp4Hit) {
+              console.log(`🎯 [TP4 HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): $${currentPrice} crossed TP4 $${signal.tp4}`);
+              const { error } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  tp_hits: [...currentTpHits, 4],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id);
+              
+              if (!error) {
+                tpHitsDetected++;
+                currentTpHits.push(4);
+              }
+            }
+          }
+
+          // TP5 (Special: Can close signal if all TPs hit)
+          if (signal.tp5 && currentTpHits.includes(4) && !currentTpHits.includes(5)) {
+            const tp5Hit = isBuy ? currentPrice >= signal.tp5 : currentPrice <= signal.tp5;
+            if (tp5Hit) {
+              const allTpsHit = signal.tp1 && signal.tp2 && signal.tp3 && signal.tp4 && signal.tp5;
+              console.log(`🎯 [TP5 HIT] Signal ${signal.id.substring(0,8)} (${signal.asset_name}): $${currentPrice} crossed TP5 $${signal.tp5}${allTpsHit ? ' 🎉 ALL TPs HIT!' : ''}`);
+              
+              const { error } = await supabaseClient
+                .from('trade_alerts')
+                .update({ 
+                  tp_hits: [...currentTpHits, 5],
+                  close_reason: allTpsHit ? 'all_tps_hit' : null,
+                  status: allTpsHit ? 'closed' : 'active',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', signal.id);
+              
+              if (!error) {
+                tpHitsDetected++;
+              }
+            }
+          }
         }
-      } catch (error) {
-        console.error('❌ Notification dispatch exception:', error);
+
+        const detectionTime = Date.now() - detectionStartTime;
+        console.log(`✅ [Instant Detector] Complete in ${detectionTime}ms: ${tpHitsDetected} TP hits, ${slHitsDetected} SL hits detected`);
+      } else {
+        console.log('ℹ️ [Instant Detector] No active signals to check');
       }
+    } catch (error) {
+      console.error('❌ [Instant Detector] Error:', error);
     }
 
-    totalAlertsTriggered += totalTriggeredAlerts;
-    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, triggered ${totalTriggeredAlerts} alerts, dispatched ${notificationTriggers.length} notifications`);
+    totalAlertsTriggered += (tpHitsDetected + slHitsDetected);
+    console.log(`✅ STEP 1 COMPLETE: Processed ${prices.length} prices, activated ${limitOrdersActivated} limit orders, detected ${tpHitsDetected + slHitsDetected} TP/SL hits (notifications sent by database trigger)`);
 
     // STEP 2: UNCONDITIONALLY upsert ALL prices to database (THE FACTORY)
     console.log('💾 STEP 2: Unconditionally upserting market prices to database...');
@@ -813,7 +717,7 @@ async function processInBackground(prices: any[]) {
     if (EMERGENCY_DISABLE_BROADCASTS) {
       const totalTime = Date.now() - startTime;
       console.log('🚨 Emergency broadcast disable active - skipping UI updates');
-      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] Emergency mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - emergency disable active
     }
 
@@ -842,7 +746,7 @@ async function processInBackground(prices: any[]) {
     if (!hasActiveUsers) {
       const totalTime = Date.now() - startTime;
       console.log('📡 UI broadcast skipped: no_active_users (this is normal when no one is viewing)');
-      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] No users mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - no active users
     }
     
@@ -854,7 +758,7 @@ async function processInBackground(prices: any[]) {
       const totalTime = Date.now() - startTime;
       console.log('🔒 No broadcast lock acquired - another instance broadcasting');
       console.log('📡 UI broadcast skipped: cooperative locking active');
-      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}, notifications=${notificationTriggers.length}`);
+      console.log(`✅ [BACKGROUND COMPLETE] Lock skipped mode - Time: ${totalTime}ms, processed=${prices.length}, upserted=${successfulUpserts}, alerts=${totalTriggeredAlerts}`);
       return; // Early exit - another instance has the lock
     }
     
@@ -874,7 +778,7 @@ async function processInBackground(prices: any[]) {
       processed: ${prices.length},
       upserted: ${successfulUpserts},
       alerts_triggered: ${totalTriggeredAlerts},
-      notifications_sent: ${notificationTriggers.length},
+      notifications: auto_by_trigger,
       architecture: 'zero_realtime_polling',
       total_processed: ${totalPricesProcessed},
       total_alerts: ${totalAlertsTriggered},

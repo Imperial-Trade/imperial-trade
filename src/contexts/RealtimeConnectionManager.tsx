@@ -3,7 +3,7 @@
  * Central orchestrator to prevent connection explosion
  */
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { emergencyRealtimeBreaker } from '@/services/EmergencyRealtimeBreaker';
 import { costTracker } from '@/services/CostTracker';
 
@@ -34,12 +34,12 @@ export const useRealtimeConnectionManager = () => {
 };
 
 interface RealtimeConnectionManagerProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const RealtimeConnectionManagerProvider: React.FC<RealtimeConnectionManagerProviderProps> = ({
+export const RealtimeConnectionManagerProvider = ({
   children
-}) => {
+}: RealtimeConnectionManagerProviderProps) => {
   // 🚨 EMERGENCY LIMITS: Ultra-restrictive to prevent cost explosion
   const MAX_CONNECTIONS = 2; // Maximum 2 realtime connections total
   const CONNECTION_COOLDOWN = 10000; // 10 seconds between connection attempts

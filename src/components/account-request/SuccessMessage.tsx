@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { CheckAccountRequestButton } from './CheckAccountRequestButton';
 

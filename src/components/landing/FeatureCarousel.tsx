@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, createElement } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -104,7 +104,7 @@ export default function FeatureCarousel() {
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{
                 backgroundColor: features[activeIndex].color + '20'
               }}>
-                  {React.createElement(features[activeIndex].icon, {
+                  {createElement(features[activeIndex].icon, {
                   className: "w-10 h-10",
                   style: {
                     color: features[activeIndex].color

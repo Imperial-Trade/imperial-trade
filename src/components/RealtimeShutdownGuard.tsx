@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
  * 
  * 🔥 ENHANCED: Now includes paired logging verification and comprehensive cleanup
  */
-export const RealtimeShutdownGuard: React.FC = () => {
+export const RealtimeShutdownGuard = () => {
   useEffect(() => {
     const handlePageHide = () => {
       console.log('🚨 RealtimeShutdownGuard: Page hiding, cleaning up all channels');

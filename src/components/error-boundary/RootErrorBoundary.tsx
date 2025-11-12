@@ -1,7 +1,7 @@
-import React from 'react';
+import { Component, ReactNode } from 'react';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
@@ -9,7 +9,7 @@ interface State {
   error?: Error;
 }
 
-export class RootErrorBoundary extends React.Component<Props, State> {
+export class RootErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -19,10 +19,9 @@ export class RootErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: any) {
     console.error('🚨 Root Error Boundary caught an error:', error);
     console.error('Error Info:', errorInfo);
-    console.error('React version:', React.version);
   }
 
   render() {

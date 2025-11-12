@@ -1,5 +1,4 @@
-
-import React from 'react';
+import { FC } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, ArrowLeft } from "lucide-react";

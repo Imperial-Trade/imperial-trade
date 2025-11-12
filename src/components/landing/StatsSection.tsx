@@ -1,4 +1,4 @@
-import React from "react";
+
 import { TrendingUp, Users, Shield, Award } from "lucide-react";
 import ContentSection from "./ContentSection";
 export default function StatsSection() {

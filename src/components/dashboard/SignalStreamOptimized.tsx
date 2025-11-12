@@ -1,10 +1,10 @@
-import React from 'react';
+import { memo } from 'react';
 import SignalStream from '@/pages/dashboard/signal-stream/SignalStream';
 
 /**
  * Direct wrapper for SignalStream
  */
-const SignalStreamOptimized: React.FC = React.memo(() => {
+const SignalStreamOptimized = memo(() => {
   return <SignalStream />;
 });
 

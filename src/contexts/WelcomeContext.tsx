@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
 interface WelcomeContextType {
@@ -17,7 +17,7 @@ export const useWelcome = () => {
   return context;
 };
 
-export const WelcomeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const WelcomeProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [hasSeenWelcome, setHasSeenWelcome] = useState(true); // Default to true to prevent flash
 

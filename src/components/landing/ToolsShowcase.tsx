@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { BarChart3, Brain, Shield, Zap, Target, Smartphone, TrendingUp, DollarSign } from "lucide-react";
 import ContentSection from "./ContentSection";
 

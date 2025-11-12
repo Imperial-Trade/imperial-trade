@@ -151,17 +151,8 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
         }
       }));
 
-      // Add notification for cross-component awareness
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'activation_detected',
-          title: '🎯 Activation in Progress',
-          message: `${alert.assetName} activation conditions met`,
-          priority: 'high',
-          autoRemove: true,
-          duration: 3000
-        });
-      }
+      // ✅ Limit activation notification sent by database trigger
+      console.log('✅ [Limit Activated] Database trigger will send notification via Realtime');
     }
   }, [shouldTrigger(), isPending, alert.id, alert.assetName, alert.tradeType, currentPrice, entryPrice]);
 

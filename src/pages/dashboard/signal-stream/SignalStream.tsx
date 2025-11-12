@@ -1,9 +1,10 @@
+// 🔔 Signal Stream with Notification Bell - Build: 2025-11-11T18:00:00Z
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell } from 'lucide-react';
 import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
 import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
@@ -30,6 +31,7 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { CreateTestSignalButton } from '@/components/admin/CreateTestSignalButton';
 export default function SignalStream() {
   const {
     colors
@@ -57,6 +59,7 @@ export default function SignalStream() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
@@ -65,6 +68,19 @@ export default function SignalStream() {
   const {
     prices
   } = useOptimizedWebSocketPrices();
+
+  // 🔔 Track notification badge
+  useEffect(() => {
+    const handleNotificationReceived = () => {
+      setUnreadNotifications(prev => prev + 1);
+    };
+    window.addEventListener('notification:received', handleNotificationReceived);
+    return () => window.removeEventListener('notification:received', handleNotificationReceived);
+  }, []);
+  const handleBellClick = () => {
+    setUnreadNotifications(0);
+    // TODO: Open notification center/panel
+  };
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -232,12 +248,7 @@ export default function SignalStream() {
       setTimeout(() => {
         backendProcessedRef.current.delete(tpKey);
       }, 10000);
-      if (shouldShowToast(`tp-hit-confirmed:${signalId}:tp${tpLevel}`)) {
-        toast({
-          title: `🎯 TP${tpLevel} Hit!`,
-          description: `${assetName} reached Take Profit ${tpLevel}`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy TP hit toast - ModernNotificationSystem will display notification');
     };
     const handleOrderActivation = (event: CustomEvent) => {
       const {
@@ -245,12 +256,7 @@ export default function SignalStream() {
         assetName
       } = event.detail;
       console.log('🚀 Order activation event received:', event.detail);
-      if (shouldShowToast(`order-activation:${signalId}`)) {
-        toast({
-          title: '🚀 Order Activated!',
-          description: `${assetName} limit order is now active`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy order activation toast');
     };
     const handleSignalCreated = (event: CustomEvent) => {
       const {
@@ -259,12 +265,7 @@ export default function SignalStream() {
         status
       } = event.detail;
       console.log('🆕 New signal created event received:', event.detail);
-      if (shouldShowToast(`signal-created:${signalId}`)) {
-        toast({
-          title: '✅ Signal Created!',
-          description: `${assetName} signal is now ${status}`
-        });
-      }
+      console.log('✅ [SignalStream] Skipping legacy signal created toast');
     };
     window.addEventListener('tp-hit-confirmed', handleTPHit as EventListener);
     window.addEventListener('order-activation-confirmed', handleOrderActivation as EventListener);
@@ -1054,44 +1055,9 @@ export default function SignalStream() {
             // ✅ ALWAYS show individual TP notification only
             // The "All Targets Hit!" toast will come from the state watcher
             const remainingTPs = totalTPs - updatedTPHits.length;
-            if (shouldShowToast(`instant-tp:${signal.id}:tp${level}`)) {
-              toast({
-                title: `🎯 TP${level} Hit!`,
-                description: allTPsHit ? `${signal.assetName} reached final TP${level} - Signal closing` : `${signal.assetName} reached TP${level} - ${remainingTPs} TPs remaining`
-              });
-            }
-
-            // 🚀 NEW: Instant modern notification for TP hits
-            // ⚠️ ONLY show individual TP notification if NOT all TPs are hit
-            if ((window as any).addNotification && !allTPsHit) {
-              // Calculate pips for this specific TP
-              const tpPrice = signal[`tp${level}` as keyof typeof signal] as number;
-              const pipsData = calculatePipsForSignal(signal.entryPrice, tpPrice, signal.tradermadeSymbol, signal.tradeType);
-              (window as any).addNotification({
-                id: `tp-hit-${signal.id}-${level}-${Date.now()}`,
-                type: 'tp_hit',
-                title: `🎯 TP${level} Hit!`,
-                message: `TP${level} HIT on ${signal.assetName} at $${tpPrice.toFixed(2)} | ${pipsData.formatted.toUpperCase()} - ${remainingTPs} TPs remaining`,
-                metadata: {
-                  signal_id: signal.id,
-                  provider_name: signal.creator?.display_name || 'Educator',
-                  provider_avatar_url: signal.creator?.avatar_url,
-                  provider_type: signal.creator?.user_type || 'educator',
-                  asset_name: signal.assetName,
-                  tp_hits: updatedTPHits,
-                  total_tps: totalTPs,
-                  triggered_price: tpPrice,
-                  pips_data: {
-                    value: pipsData.value,
-                    formatted: pipsData.formatted,
-                    direction: pipsData.direction
-                  }
-                },
-                timestamp: new Date(),
-                priority: 4
-              });
-              console.log(`🔔 [INSTANT] Modern notification for TP${level} hit (${pipsData.formatted})`);
-            }
+            // ✅ Notification will be sent automatically by database trigger → edge function → realtime
+            // No need to manually call window.addNotification() for TP hits
+            console.log(`✅ [TP${level} Hit] Database trigger will send notification via Realtime`);
 
             // 🆕 BACKEND CONFIRMATION WITH AUTO-CLOSE
             supabase.from('trade_alerts').update(allTPsHit ? {
@@ -1104,37 +1070,9 @@ export default function SignalStream() {
               // 🔓 UNLOCK: Always remove from processing
               processingSignalsRef.current.delete(tpKey);
 
-              // 🎉 NEW: Celebration notification for all TPs hit
-              if (allTPsHit && (window as any).addNotification) {
-                // Calculate pips for the final TP (highest TP that exists)
-                const finalTpLevel = Math.max(...updatedTPHits);
-                const finalTpPrice = signal[`tp${finalTpLevel}` as keyof typeof signal] as number;
-                const pipsData = calculatePipsForSignal(signal.entryPrice, finalTpPrice, signal.tradermadeSymbol, signal.tradeType);
-                (window as any).addNotification({
-                  id: `all-tps-${signal.id}-${Date.now()}`,
-                  type: 'trade_closed',
-                  title: '🎉 ALL TPs HIT!',
-                  message: `${signal.assetName} completed all ${totalTPs} take profits successfully | ${pipsData.formatted.toUpperCase()}`,
-                  metadata: {
-                    signal_id: signal.id,
-                    provider_name: signal.creator?.display_name || 'Educator',
-                    provider_avatar_url: signal.creator?.avatar_url,
-                    provider_type: signal.creator?.user_type || 'educator',
-                    asset_name: signal.assetName,
-                    tp_hits: updatedTPHits,
-                    total_tps: totalTPs,
-                    progress_percentage: 100,
-                    triggered_price: finalTpPrice,
-                    pips_data: {
-                      value: pipsData.value,
-                      formatted: pipsData.formatted,
-                      direction: pipsData.direction
-                    }
-                  },
-                  timestamp: new Date(),
-                  priority: 5
-                });
-                console.log(`🎉 [CELEBRATION] All TPs hit notification sent with ${pipsData.formatted}`);
+              // ✅ All TPs hit notification sent by database trigger
+              if (allTPsHit) {
+                console.log(`✅ [All TPs Hit] Database trigger will send notification via Realtime`);
               }
             });
           }
@@ -1171,15 +1109,7 @@ export default function SignalStream() {
             // 🔒 IMMEDIATE LOCK: Mark as processing (atomic - no race condition gap)
             processingSignalsRef.current.add(slKey);
             instantToastHandledRef.current.add(signal.id);
-
-            // Show Toast
-            if (shouldShowToast(`instant-sl:${signal.id}`)) {
-              toast({
-                title: '🛑 Stop Loss Hit!',
-                description: `${signal.assetName} hit Stop Loss.`,
-                variant: 'destructive'
-              });
-            }
+            console.log('✅ [SignalStream] Skipping legacy stop loss toast');
 
             // Backend Confirmation (non-blocking)
             supabase.rpc('close_trade_alert', {
@@ -1233,33 +1163,8 @@ export default function SignalStream() {
       });
       console.log('✅ [SignalStream] Scrolled to top for new signal');
 
-      // 🚀 NEW: Show instant modern notification with sound
-      if ((window as any).addNotification) {
-        const isBuy = newSignal.tradeType === 'buy' || newSignal.tradeType === 'buy_limit';
-        (window as any).addNotification({
-          id: `signal-created-${newSignal.id}-${Date.now()}`,
-          type: 'new_signal',
-          title: '🎯 New Signal Created',
-          message: `${newSignal.assetName} ${isBuy ? 'BUY' : 'SELL'} signal is now live`,
-          metadata: {
-            signal_id: newSignal.id,
-            provider_name: profile?.display_name || user?.email || 'You',
-            provider_type: profile?.access_level || 'educator',
-            asset_name: newSignal.assetName,
-            tp_hits: [],
-            total_tps: [newSignal.tp1, newSignal.tp2, newSignal.tp3, newSignal.tp4, newSignal.tp5].filter(Boolean).length
-          },
-          timestamp: new Date(),
-          priority: 3
-        });
-        console.log('🔔 [INSTANT] Modern notification triggered for new signal');
-        console.log('🔍 [DEBUG] Notification payload:', {
-          id: `signal-created-${newSignal.id}-${Date.now()}`,
-          type: 'new_signal',
-          provider_name: profile?.display_name || user?.email || 'You',
-          has_window_fn: typeof (window as any).addNotification === 'function'
-        });
-      }
+      // ✅ Signal creation notification sent by database trigger
+      console.log('✅ [Signal Created] Database trigger will send notification via Realtime');
 
       // Show toast notification
       if (shouldShowToast(`new-signal:${newSignal.id}`)) {
@@ -1779,30 +1684,9 @@ export default function SignalStream() {
           }
         }
 
-        // Show notification
-        if ((window as any).addNotification) {
-          const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-          if (highestTP !== null) {
-            const tpPrice = alert[`tp${highestTP}` as keyof typeof alert] as number | undefined;
-            (window as any).addNotification({
-              type: 'tp_hit',
-              title: `🎯 TP${highestTP} Hit!`,
-              message: `${alert.assetName} reached Take Profit ${highestTP}`,
-              signalId: alert.id,
-              assetName: alert.assetName,
-              timestamp: new Date(),
-              metadata: {
-                signal_id: alert.id,
-                asset_name: alert.assetName,
-                provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-                provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-                provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-                triggered_price: tpPrice,
-                trade_type: alert.trade_type
-              }
-            });
-          }
-        }
+        // ✅ Notification will be sent automatically by database trigger → edge function → realtime
+        // No need to manually call window.addNotification() - the notification system handles this
+        console.log('✅ [TP Hit] Database trigger will send notification via Realtime');
       }
     } catch (err) {
       console.error("Failed to update TP hits:", err);
@@ -1859,26 +1743,8 @@ export default function SignalStream() {
         // ✅ Force refresh to bypass all caches
         await refreshAlerts(true);
 
-        // Show notification
-        if ((window as any).addNotification) {
-          (window as any).addNotification({
-            type: 'stop_loss',
-            title: `🚨 Stop Loss Hit!`,
-            message: `${alert.assetName} trade closed at stop loss`,
-            signalId: alert.id,
-            assetName: alert.assetName,
-            timestamp: new Date(),
-            metadata: {
-              signal_id: alert.id,
-              asset_name: alert.assetName,
-              provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-              provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-              provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-              triggered_price: alert.stop_loss,
-              trade_type: alert.trade_type
-            }
-          });
-        }
+        // ✅ Stop Loss notification sent by database trigger
+        console.log(`✅ [Stop Loss Hit] Database trigger will send notification via Realtime`);
       }
     } catch (err) {
       console.error("Failed to update stop loss:", err);
@@ -1917,24 +1783,9 @@ export default function SignalStream() {
           timestamp: new Date().toISOString()
         }
       }));
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`,
-          signalId: alert.id,
-          assetName: alert.assetName,
-          timestamp: new Date(),
-          metadata: {
-            signal_id: alert.id,
-            asset_name: alert.assetName,
-            provider_name: alert.creator?.display_name || profile?.display_name || 'Educator',
-            provider_avatar_url: alert.creator?.avatar_url || (profile as any)?.avatar_url,
-            provider_type: alert.creator?.user_type || profile?.access_level || 'member',
-            triggered_price: alert.entryPrice,
-            trade_type: alert.tradeType
-          }
-        });
+      // ✅ Limit activation notification sent by database trigger
+      if (result) {
+        console.log(`✅ [Limit Activated] Database trigger will send notification via Realtime`);
       }
     } catch (err) {
       console.error("Failed to activate order:", err);
@@ -1972,8 +1823,12 @@ export default function SignalStream() {
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
                 <div className="flex-1">
-                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} />
+                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} unreadNotifications={unreadNotifications} onBellClick={handleBellClick} />
                 </div>
+
+                {/* Notification Bell - Visible on desktop/tablet, matches filter design */}
+                
+
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
                     {isSyncing ? <>
@@ -1984,6 +1839,7 @@ export default function SignalStream() {
                         <span>Force Sync</span>
                       </>}
                   </Button>}
+                {isDevToolsEnabled() && <CreateTestSignalButton />}
               </div>
               
             {!hasHydratedRef.current && (isLoading || connectionStatus !== 'connected' && allAlerts.length === 0) ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">

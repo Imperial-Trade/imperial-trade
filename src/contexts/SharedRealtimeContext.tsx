@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { isDevToolsEnabled } from '@/utils/featureFlags';

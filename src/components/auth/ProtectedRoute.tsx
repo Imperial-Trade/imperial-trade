@@ -1,5 +1,5 @@
 
-import React from 'react';
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { AuthorizationError } from './AuthorizationError';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requiredRoles?: ('admin' | 'moderator' | 'educator' | 'educator+' | 'user')[];
 }
 
@@ -16,10 +16,10 @@ interface ProtectedRouteProps {
  * ✅ SECURITY FIX: Secure route protection using server-validated roles
  * Replaces insecure client-side metadata checks with RPC-based validation
  */
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+export const ProtectedRoute = ({ 
   children, 
   requiredRoles = ['user']
-}) => {
+}: ProtectedRouteProps) => {
   const { user, loading: authLoading } = useAuth();
   const { userRoles, isLoading: rolesLoading, error } = useAuthorizationAware();
   const location = useLocation();

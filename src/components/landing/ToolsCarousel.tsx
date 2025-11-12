@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Brain, Search, Calculator, BookOpen, BarChart, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import ContentSection from "./ContentSection";

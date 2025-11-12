@@ -1,7 +1,7 @@
-import React from 'react';
+import { memo } from 'react';
 import { Outlet } from 'react-router-dom';
 
-const ResetPasswordLayout: React.FC = () => {
+const ResetPasswordLayout = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Outlet />

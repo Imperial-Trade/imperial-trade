@@ -490,6 +490,7 @@ export type Database = {
           avatar_url: string | null
           display_name: string
           last_updated: string
+          roles: string[] | null
           user_id: string
           user_type: string
         }
@@ -497,6 +498,7 @@ export type Database = {
           avatar_url?: string | null
           display_name: string
           last_updated?: string
+          roles?: string[] | null
           user_id: string
           user_type?: string
         }
@@ -504,6 +506,7 @@ export type Database = {
           avatar_url?: string | null
           display_name?: string
           last_updated?: string
+          roles?: string[] | null
           user_id?: string
           user_type?: string
         }
@@ -4779,6 +4782,10 @@ export type Database = {
             }
             Returns: boolean
           }
+      update_educator_profile_cache_direct: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       update_expired_sessions: { Args: never; Returns: undefined }
       update_trade_alert_safe: {
         Args: {

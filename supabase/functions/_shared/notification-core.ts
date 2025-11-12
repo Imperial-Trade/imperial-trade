@@ -173,10 +173,14 @@ export async function sendRealtimeNotification(
       console.log('ℹ️ No user IDs provided for realtime notification');
       return { success: true };
     }
-    // Parse PIPS value from string (e.g. "+200.0 PIPS" -> 200.0)
-    const pipsValue = signalData.pips 
-      ? parseFloat(signalData.pips.replace(/[^0-9.-]/g, '')) 
-      : 0;
+    // ✅ FIX: Handle pips as both number (from trigger) and string (legacy format)
+    // Database trigger sends: { pips: 10 }
+    // Legacy format might send: { pips: "+10.0 PIPS" }
+    const pipsValue = typeof signalData.pips === 'number'
+      ? signalData.pips
+      : signalData.pips 
+        ? parseFloat(String(signalData.pips).replace(/[^0-9.-]/g, ''))
+        : 0;
 
     // Calculate total TPs from tp1-tp5
     const totalTps = [

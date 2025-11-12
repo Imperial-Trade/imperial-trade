@@ -313,8 +313,10 @@ export async function sendRealtimeNotification(
     // Clean up: unsubscribe after sending
     await channel.unsubscribe();
 
-    if (broadcastResult.status === 'ok') {
+    // ✅ FIX: Treat 'ok' OR undefined status as success (Supabase Realtime API behavior)
+    if (broadcastResult.status === 'ok' || !broadcastResult.status) {
       console.log(`✅ [Realtime Broadcast] SUCCESS:`, {
+        status: broadcastResult.status || 'sent',
         type: template.type,
         asset: signalData.asset_name,
         recipients: extractedUserIds.length,
@@ -325,6 +327,7 @@ export async function sendRealtimeNotification(
         }
       });
     } else {
+      // Only log error if status is explicitly an error (not ok, not undefined)
       console.error(`❌ [Realtime Broadcast] FAILED:`, {
         status: broadcastResult.status,
         type: template.type,

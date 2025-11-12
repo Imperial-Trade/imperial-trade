@@ -131,6 +131,10 @@ RAISE WARNING '✅ [SUCCESS] HTTP request queued (ID: %): Notification sent for 
 ## 🧪 **HOW TO TEST:**
 
 ### **1. Create a Test Signal:**
+
+**⚠️ IMPORTANT: Use only BITCOIN or XAUUSD - these are the only assets with active live prices!**
+
+**Option A: Bitcoin (BTCUSD)**
 ```sql
 INSERT INTO public.trade_alerts (
   user_id,
@@ -139,17 +143,59 @@ INSERT INTO public.trade_alerts (
   entry_price,
   stop_loss,
   tp1,
+  tp2,
+  tp3,
+  tp4,
+  tp5,
   tradermade_symbol,
   status
 )
 SELECT 
   id,
-  'BTCUSD',
+  'BITCOIN',
   'buy',
-  103000,
-  102500,
-  103500,
+  103000.00,
+  102500.00,
+  103500.00,
+  104000.00,
+  104500.00,
+  105000.00,
+  105500.00,
   'BTCUSD',
+  'active'
+FROM profiles
+WHERE user_type = 'educator'
+LIMIT 1;
+```
+
+**Option B: Gold (XAUUSD)**
+```sql
+INSERT INTO public.trade_alerts (
+  user_id,
+  asset_name,
+  trade_type,
+  entry_price,
+  stop_loss,
+  tp1,
+  tp2,
+  tp3,
+  tp4,
+  tp5,
+  tradermade_symbol,
+  status
+)
+SELECT 
+  id,
+  'XAUUSD',
+  'sell',
+  2670.00,
+  2680.00,
+  2660.00,
+  2650.00,
+  2640.00,
+  2630.00,
+  2620.00,
+  'XAUUSD',
   'active'
 FROM profiles
 WHERE user_type = 'educator'

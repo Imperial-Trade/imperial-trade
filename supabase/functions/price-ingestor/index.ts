@@ -199,7 +199,7 @@ function filterSignificantPrices(
   }
   
   // STANDARD MODE: Use filtering logic for background updates
-  const significantUpdates: Array<{symbol: string, price: number, timestamp: string}> = [];
+  const significantUpdates: Array<{symbol: string, price: number, timestamp: string, reason?: string}> = [];
   const now = Date.now();
 
   for (const priceData of incomingPrices) {

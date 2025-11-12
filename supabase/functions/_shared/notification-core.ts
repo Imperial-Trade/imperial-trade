@@ -274,12 +274,27 @@ export async function sendRealtimeNotification(
       payload_size: JSON.stringify(payload).length
     });
 
+    // Create and subscribe to channel first
     const channel = supabase.channel('instant-alerts');
+    
+    // Subscribe to the channel before broadcasting
+    await new Promise((resolve) => {
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          resolve(true);
+        }
+      });
+    });
+
+    // Now broadcast
     const broadcastResult = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload,
     });
+    
+    // Clean up: unsubscribe after sending
+    await channel.unsubscribe();
 
     if (broadcastResult.status === 'ok') {
       console.log(`✅ [Realtime Broadcast] SUCCESS:`, {

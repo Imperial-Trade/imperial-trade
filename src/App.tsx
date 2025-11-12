@@ -1,5 +1,5 @@
-// 🔔 App Entry Point - Build: 2025-11-11T22:35:00Z (React Import Fix)
-import { useEffect, createElement, lazy } from 'react';
+// 🔔 App Entry Point - Build: 2025-11-12T03:30:00Z (React Import Consolidated - Fix Duplicate)
+import { useEffect, createElement, lazy, Suspense } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -84,7 +84,6 @@ const EducatorSignalManagement = lazy(() => import("@/pages/dashboard/educator/E
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
-import { Suspense } from 'react';
 
 const queryClient = new QueryClient({
   defaultOptions: {

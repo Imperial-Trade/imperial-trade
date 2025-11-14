@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Clock, Target, TrendingUp, XCircle } from 'lucide-react';
 
 interface NotificationBadgeProps {
-  type: 'new_signal' | 'pending_limit' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close';
+  type: 'new_signal' | 'pending_limit' | 'tp_hit' | 'stop_loss' | 'trade_closed' | 'limit_activated' | 'notes_updated' | 'manual_close' | 'all_tps_hit';
   priority?: number;
 }
 
@@ -48,6 +48,11 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({ type, prio
       label: 'Closed',
       icon: <XCircle className="h-3 w-3" />,
       className: 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+    },
+    all_tps_hit: {
+      label: 'ALL TPs HIT',
+      icon: <Target className="h-3 w-3" />,
+      className: 'bg-green-500/20 text-green-400 border-green-500/50'
     }
   };
 

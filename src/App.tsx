@@ -277,11 +277,11 @@ function App() {
                                     path="realtime-cost-status" 
                                     element={
                                       <ProtectedRoute requiredRoles={['admin']}>
-                                 <div className="p-4">
-                                          {createElement(
-                                            lazy(() => import("@/pages/debug/RealtimeCostStatus"))
-                                          )}
-                                        </div>
+                          <div className="p-4">
+                                  {createElement(
+                                    lazyWithRetry(() => import("@/pages/debug/RealtimeCostStatus"))
+                                  )}
+                                </div>
                                       </ProtectedRoute>
                                     } 
                                   />

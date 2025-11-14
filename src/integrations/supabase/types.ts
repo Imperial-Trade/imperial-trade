@@ -4758,6 +4758,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      send_notification: {
+        Args: {
+          p_edge_function_url: string
+          p_notification_type: string
+          p_payload: Json
+          p_signal_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       should_show_onesignal_prompt: {
         Args: { p_device_fingerprint: string; p_user_id: string }
         Returns: boolean

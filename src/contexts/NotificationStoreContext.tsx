@@ -51,11 +51,36 @@ interface NotificationStoreContextType {
 
 const NotificationStoreContext = createContext<NotificationStoreContextType | undefined>(undefined);
 
-const MAX_STORED_NOTIFICATIONS = 100; // Keep last 100 notifications
-const NOTIFICATION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+// ✅ UNLIMITED STORAGE - No time limit, no count limit
+const STORAGE_KEY = 'imperial-trade-notifications';
+
+// Helper to serialize Date objects for localStorage
+const serializeNotification = (notification: StoredNotification) => ({
+  ...notification,
+  timestamp: notification.timestamp.toISOString(),
+});
+
+const deserializeNotification = (data: any): StoredNotification => ({
+  ...data,
+  timestamp: new Date(data.timestamp),
+});
 
 export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [notifications, setNotifications] = useState<StoredNotification[]>([]);
+  // ✅ Load from localStorage on mount
+  const [notifications, setNotifications] = useState<StoredNotification[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('✅ [NotificationStore] Loaded from localStorage:', parsed.length, 'notifications');
+        return parsed.map(deserializeNotification);
+      }
+    } catch (error) {
+      console.error('❌ [NotificationStore] Error loading from localStorage:', error);
+    }
+    return [];
+  });
+  
   const { user, loading: authLoading } = useAuth();
   const authReady = !authLoading && !!user?.id;
 
@@ -85,25 +110,17 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         return prev;
       }
 
-      // Add new notification at the beginning
+      // ✅ Add new notification at the beginning - NO LIMITS
       const updated = [notification, ...prev];
-
-      // Keep only the most recent notifications
-      const filtered = updated
-        .slice(0, MAX_STORED_NOTIFICATIONS)
-        .filter((n) => {
-          const age = Date.now() - n.timestamp.getTime();
-          return age < NOTIFICATION_EXPIRY_MS;
-        });
 
       console.log('✅ [NotificationStore] Notification added:', {
         id: notification.id,
         type: notification.type,
         signal_id: notification.metadata?.signal_id,
-        total_stored: filtered.length,
+        total_stored: updated.length,
       });
 
-      return filtered;
+      return updated;
     });
   }, []);
 
@@ -127,19 +144,28 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
     [notifications]
   );
 
-  // Cleanup expired notifications periodically
+  // ✅ Auto-save to localStorage whenever notifications change
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifications((prev) =>
-        prev.filter((n) => {
-          const age = Date.now() - n.timestamp.getTime();
-          return age < NOTIFICATION_EXPIRY_MS;
-        })
-      );
-    }, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, []);
+    try {
+      const serialized = notifications.map(serializeNotification);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+      console.log('💾 [NotificationStore] Saved to localStorage:', notifications.length, 'notifications');
+    } catch (error) {
+      console.error('❌ [NotificationStore] Error saving to localStorage:', error);
+      // If localStorage is full, try to clear old data
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.warn('⚠️ [NotificationStore] localStorage quota exceeded, keeping only last 500 notifications');
+        const trimmed = notifications.slice(0, 500);
+        try {
+          const serialized = trimmed.map(serializeNotification);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+          setNotifications(trimmed);
+        } catch (retryError) {
+          console.error('❌ [NotificationStore] Still failed after trimming:', retryError);
+        }
+      }
+    }
+  }, [notifications]);
 
   const value: NotificationStoreContextType = {
     notifications,

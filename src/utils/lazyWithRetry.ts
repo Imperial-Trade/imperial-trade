@@ -46,7 +46,7 @@ export function lazyWithRetry<T extends ComponentType<any>>(
         window.location.reload();
         
         // Return a dummy component to prevent errors during reload
-        return { default: (() => null) as T };
+        return { default: (() => null) as unknown as T };
       }
       
       // Second failure or non-chunk error - throw to Error Boundary

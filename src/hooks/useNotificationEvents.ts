@@ -229,7 +229,7 @@ export function useNotificationEvents() {
             user_type
           )
         `)
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -268,7 +268,12 @@ export function useNotificationEvents() {
     const channel = supabase
       .channel('instant-alerts')
       .on('broadcast', { event: 'signal_notification' }, (payload: any) => {
-        console.log('🔔 [useNotificationEvents] Received broadcast:', payload);
+        console.log('🔔 [useNotificationEvents] New notification received:', {
+          type: payload?.payload?.type,
+          signal_id: payload?.payload?.signal?.id,
+          asset: payload?.payload?.signal?.asset_name,
+          timestamp: new Date().toISOString()
+        });
         
         // Transform broadcast payload to event format
         const data = payload.payload;

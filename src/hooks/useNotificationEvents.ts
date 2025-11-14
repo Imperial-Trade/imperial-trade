@@ -18,6 +18,7 @@ export interface NotificationEvent {
     asset_name: string;
     trade_type: string;
     entry_price: number;
+    notes?: string | null;
     pips_data?: PipsData;
     tp_hits?: number[];
     total_tps?: number;
@@ -79,6 +80,7 @@ export function useNotificationEvents() {
       trade_type: signal.trade_type,
       entry_price: signal.entry_price,
       total_tps: totalTps,
+      notes: signal.notes,
     };
 
     // 1. Signal Created Event

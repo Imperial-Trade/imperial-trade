@@ -136,9 +136,18 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
 
                   {/* Body with Message, Pips, and Progress */}
                   <div className="space-y-3">
-                    <p className="text-foreground text-sm leading-relaxed">
-                      {event.message}
-                    </p>
+                    <div>
+                      <p className="text-foreground text-sm leading-relaxed">
+                        {event.message}
+                      </p>
+                      
+                      {/* Signal Notes - Styled like EDUCATOR+ badge */}
+                      {event.metadata.notes && (
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1.5 leading-relaxed">
+                          {event.metadata.notes}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Pips and Progress on Same Line */}
                     <div className="flex items-center justify-between gap-3">

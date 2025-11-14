@@ -65,16 +65,16 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50"
+        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 top-20 h-[calc(100vh-5rem)]"
       >
-        <SheetHeader>
+        <SheetHeader className="pt-2">
           <SheetTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-primary" />
             Recent Activity
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-8rem)] mt-6">
+        <ScrollArea className="h-[calc(100vh-12rem)] mt-6">
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
@@ -171,13 +171,13 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                       <span className="text-muted-foreground text-xs">
                         {formatTimestamp(event.timestamp)}
                       </span>
-                      {event.signal_id && (
+                      {event.metadata?.signal_id && (
                         <Button
                           variant="link"
                           size="sm"
                           className="text-primary text-xs p-0 h-auto hover:underline"
                           onClick={() => {
-                            window.location.href = `/dashboard/signal-stream?signal=${event.signal_id}`;
+                            window.location.href = `/dashboard/signal-stream?signal=${event.metadata.signal_id}`;
                             onClose();
                           }}
                         >

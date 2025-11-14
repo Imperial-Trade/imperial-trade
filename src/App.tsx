@@ -1,8 +1,9 @@
-// 🔔 App Entry Point - Build: 2025-11-12T03:30:00Z (React Import Consolidated - Chunk Loading Fix)
+// 🔔 App Entry Point - Build: 2025-11-14 (React Duplication Fix)
 import { useEffect, createElement, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { installGlobalChunkErrorHandler } from '@/utils/globalErrorHandler';
 import { isBuildStale, clearStaleCache, logBuildInfo } from '@/utils/buildInfo';
+import { detectAndFixReactDuplication } from '@/utils/reactDuplicationDetector';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -104,7 +105,14 @@ function App() {
   useEffect(() => {
     console.log('🔧 Initializing app state...');
     try {
-      // Install global chunk error handler FIRST
+      // Detect and fix React duplication FIRST
+      const hasReactIssue = detectAndFixReactDuplication();
+      if (hasReactIssue) {
+        console.warn('⚠️ React duplication detected, reload in progress...');
+        return; // Don't continue initialization if reloading
+      }
+      
+      // Install global chunk error handler
       installGlobalChunkErrorHandler();
       
       // Log build info for debugging

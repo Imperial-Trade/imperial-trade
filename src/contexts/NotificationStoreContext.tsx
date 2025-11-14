@@ -27,6 +27,7 @@ export interface StoredNotification {
     provider_avatar_url?: string;
     provider_type?: 'educator' | 'admin' | 'moderator' | 'member';
     asset_name?: string;
+    notes?: string | null;
     pips_data?: PipsData;
     tp_hits?: number[];
     total_tps?: number;

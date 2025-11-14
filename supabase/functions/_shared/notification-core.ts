@@ -37,6 +37,7 @@ export interface SignalData {
   tp_number?: number;
   tradermade_symbol?: string;
   status?: string;
+  notes?: string | null;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -232,6 +233,7 @@ export async function sendRealtimeNotification(
         provider_avatar_url: signalData.author_avatar_url,
         provider_type: signalData.author_user_type as 'educator' | 'admin' | 'moderator' | 'member',
         asset_name: signalData.asset_name,
+        notes: signalData.notes,
         
         // Convert pips string to pips_data object with Risk/Reward ratio
         pips_data: {

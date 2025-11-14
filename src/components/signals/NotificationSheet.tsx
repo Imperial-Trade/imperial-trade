@@ -17,8 +17,17 @@ interface NotificationSheetProps {
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
-  const { getRecentNotifications } = useNotificationStore();
+  const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(20); // Get last 20 notifications
+  
+  // 🔍 DEBUG: Log notification state when sheet opens
+  console.log('🔍 [NotificationSheet] Rendering:', {
+    isOpen,
+    totalStoredNotifications: allNotifications.length,
+    eventsToDisplay: events.length,
+    firstEvent: events[0],
+    localStorage: localStorage.getItem('imperial-trade-notifications')?.substring(0, 100)
+  });
 
   // Get border color based on notification type
   const getBorderColor = (type: string) => {
@@ -68,9 +77,29 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 top-20 h-[calc(100vh-5rem)]"
       >
         <SheetHeader className="pt-2">
-          <SheetTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
-            Recent Activity
+          <SheetTitle className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              Recent Activity
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const stored = localStorage.getItem('imperial-trade-notifications');
+                console.log('🔍 [DEBUG] localStorage inspection:', {
+                  hasData: !!stored,
+                  dataLength: stored?.length,
+                  parsed: stored ? JSON.parse(stored) : null,
+                  allNotifications: allNotifications.length,
+                  events: events.length
+                });
+                alert(`Stored: ${allNotifications.length} notifications\nShowing: ${events.length} notifications\nLocalStorage: ${stored ? 'Has data' : 'Empty'}`);
+              }}
+              className="text-xs"
+            >
+              Debug
+            </Button>
           </SheetTitle>
         </SheetHeader>
 

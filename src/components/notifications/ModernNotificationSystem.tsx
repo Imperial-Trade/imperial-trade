@@ -312,7 +312,15 @@ const ModernNotificationSystem = () => {
       setNotifications((prev) => [enhancedNotification, ...prev]);
       
       // ✅ Also add to shared store for Recent Activity
+      console.log('📝 [ModernNotificationSystem] Adding to store:', {
+        id: enhancedNotification.id,
+        type: enhancedNotification.type,
+        message: enhancedNotification.message,
+        hasMetadata: !!enhancedNotification.metadata,
+        signal_id: enhancedNotification.metadata?.signal_id
+      });
       addToStore(enhancedNotification);
+      console.log('✅ [ModernNotificationSystem] Added to store successfully');
       
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);

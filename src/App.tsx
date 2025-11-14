@@ -1,5 +1,8 @@
-// 🔔 App Entry Point - Build: 2025-11-12T03:30:00Z (React Import Consolidated - Fix Duplicate)
-import { useEffect, createElement, lazy, Suspense } from 'react';
+// 🔔 App Entry Point - Build: 2025-11-12T03:30:00Z (React Import Consolidated - Chunk Loading Fix)
+import { useEffect, createElement, Suspense } from 'react';
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
+import { installGlobalChunkErrorHandler } from '@/utils/globalErrorHandler';
+import { isBuildStale, clearStaleCache, logBuildInfo } from '@/utils/buildInfo';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -40,45 +43,45 @@ import LandingLayout from "@/pages/layouts/LandingLayout";
 import ResetPasswordLayout from "@/pages/layouts/ResetPasswordLayout";
 import Layout from "@/components/Layout";
 
-// Landing Pages - Lazy Loaded
-const Landing = lazy(() => import("@/pages/landing-page/landing/Landing"));
-const About = lazy(() => import("@/pages/landing-page/about/About"));
-const Features = lazy(() => import("@/pages/landing-page/features/Features"));
-const IBPartnership = lazy(() => import("@/pages/landing-page/ib-partnership/IBPartnership"));
-const AdvancedToolsPage = lazy(() => import("@/pages/landing-page/advanced-tools/AdvancedToolsPage"));
-const SignalsPage = lazy(() => import("@/pages/landing-page/signals/SignalsPage"));
-const EducationPage = lazy(() => import("@/pages/landing-page/education/EducationPage"));
-const LiveSessionsPage = lazy(() => import("@/pages/landing-page/live-sessions/LiveSessionsPage"));
-const CommunityForumPage = lazy(() => import("@/pages/landing-page/community-forum/CommunityForumPage"));
-const IBPartnershipPage = lazy(() => import("@/pages/landing-page/ib-partnership-page/IBPartnershipPage"));
-const ImperialPartnership = lazy(() => import("@/pages/landing-page/imperial-partnership/ImperialPartnership"));
-const Signin = lazy(() => import("@/pages/landing-page/signin/Signin"));
-const ResetPasswordPage = lazy(() => import("@/pages/reset-password/ResetPasswordPage"));
-const DisclaimersPage = lazy(() => import("@/pages/legal/DisclaimersPage"));
-const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
-const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage"));
-const AccountRequest = lazy(() => import("@/pages/landing-page/account-request/AccountRequest"));
-const AccountRequestStatus = lazy(() => import("@/pages/landing-page/account-request-status/AccountRequestStatus"));
+// Landing Pages - Lazy Loaded with Retry
+const Landing = lazyWithRetry(() => import("@/pages/landing-page/landing/Landing"));
+const About = lazyWithRetry(() => import("@/pages/landing-page/about/About"));
+const Features = lazyWithRetry(() => import("@/pages/landing-page/features/Features"));
+const IBPartnership = lazyWithRetry(() => import("@/pages/landing-page/ib-partnership/IBPartnership"));
+const AdvancedToolsPage = lazyWithRetry(() => import("@/pages/landing-page/advanced-tools/AdvancedToolsPage"));
+const SignalsPage = lazyWithRetry(() => import("@/pages/landing-page/signals/SignalsPage"));
+const EducationPage = lazyWithRetry(() => import("@/pages/landing-page/education/EducationPage"));
+const LiveSessionsPage = lazyWithRetry(() => import("@/pages/landing-page/live-sessions/LiveSessionsPage"));
+const CommunityForumPage = lazyWithRetry(() => import("@/pages/landing-page/community-forum/CommunityForumPage"));
+const IBPartnershipPage = lazyWithRetry(() => import("@/pages/landing-page/ib-partnership-page/IBPartnershipPage"));
+const ImperialPartnership = lazyWithRetry(() => import("@/pages/landing-page/imperial-partnership/ImperialPartnership"));
+const Signin = lazyWithRetry(() => import("@/pages/landing-page/signin/Signin"));
+const ResetPasswordPage = lazyWithRetry(() => import("@/pages/reset-password/ResetPasswordPage"));
+const DisclaimersPage = lazyWithRetry(() => import("@/pages/legal/DisclaimersPage"));
+const TermsPage = lazyWithRetry(() => import("@/pages/legal/TermsPage"));
+const PrivacyPage = lazyWithRetry(() => import("@/pages/legal/PrivacyPage"));
+const AccountRequest = lazyWithRetry(() => import("@/pages/landing-page/account-request/AccountRequest"));
+const AccountRequestStatus = lazyWithRetry(() => import("@/pages/landing-page/account-request-status/AccountRequestStatus"));
 
-// Dashboard Pages - Lazy Loaded
-const Home = lazy(() => import("@/pages/dashboard/home/Home"));
-const Live = lazy(() => import("@/pages/dashboard/live/Live"));
-const SignalStreamOptimized = lazy(() => import("@/components/dashboard/SignalStreamOptimized"));
-const NewSignalPage = lazy(() => import("@/pages/dashboard/new-signal/NewSignalPage"));
-const Education = lazy(() => import("@/pages/dashboard/education/Education"));
-const Forum = lazy(() => import("@/pages/dashboard/forum/Forum"));
-const AdvancedTools = lazy(() => import("@/pages/dashboard/advanced-tools/AdvancedTools"));
-const AdminTools = lazy(() => import("@/pages/dashboard/advanced-tools/AdminTools"));
-const MyProgress = lazy(() => import("@/pages/dashboard/my-progress/MyProgress"));
-const Progress = lazy(() => import("@/pages/dashboard/progress/Progress"));
-const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
-const AdminPanel = lazy(() => import("@/pages/dashboard/admin-panel/AdminPanel"));
-const AthenaTest = lazy(() => import("@/pages/dashboard/athena/AthenaTest"));
-const DevTests = lazy(() => import("@/pages/dashboard/dev-tests/DevTests"));
-const PriceTestingPage = lazy(() => import("@/pages/dashboard/dev-tests/PriceTestingPage"));
+// Dashboard Pages - Lazy Loaded with Retry
+const Home = lazyWithRetry(() => import("@/pages/dashboard/home/Home"));
+const Live = lazyWithRetry(() => import("@/pages/dashboard/live/Live"));
+const SignalStreamOptimized = lazyWithRetry(() => import("@/components/dashboard/SignalStreamOptimized"));
+const NewSignalPage = lazyWithRetry(() => import("@/pages/dashboard/new-signal/NewSignalPage"));
+const Education = lazyWithRetry(() => import("@/pages/dashboard/education/Education"));
+const Forum = lazyWithRetry(() => import("@/pages/dashboard/forum/Forum"));
+const AdvancedTools = lazyWithRetry(() => import("@/pages/dashboard/advanced-tools/AdvancedTools"));
+const AdminTools = lazyWithRetry(() => import("@/pages/dashboard/advanced-tools/AdminTools"));
+const MyProgress = lazyWithRetry(() => import("@/pages/dashboard/my-progress/MyProgress"));
+const Progress = lazyWithRetry(() => import("@/pages/dashboard/progress/Progress"));
+const Settings = lazyWithRetry(() => import("@/pages/dashboard/settings/Settings"));
+const AdminPanel = lazyWithRetry(() => import("@/pages/dashboard/admin-panel/AdminPanel"));
+const AthenaTest = lazyWithRetry(() => import("@/pages/dashboard/athena/AthenaTest"));
+const DevTests = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/DevTests"));
+const PriceTestingPage = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/PriceTestingPage"));
 
-// Educator Pages - Lazy Loaded
-const EducatorSignalManagement = lazy(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
+// Educator Pages - Lazy Loaded with Retry
+const EducatorSignalManagement = lazyWithRetry(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
 
 // Other Components - Eager Load (small, always needed)
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
@@ -101,6 +104,20 @@ function App() {
   useEffect(() => {
     console.log('🔧 Initializing app state...');
     try {
+      // Install global chunk error handler FIRST
+      installGlobalChunkErrorHandler();
+      
+      // Log build info for debugging
+      logBuildInfo();
+      
+      // Check for stale build and clear caches if needed
+      if (isBuildStale()) {
+        console.log('🔄 Stale build detected, clearing caches...');
+        clearStaleCache().then(() => {
+          console.log('✅ Cache cleanup complete');
+        });
+      }
+      
       initializeAppState();
       verifyServiceWorkerSafety();
       

@@ -2,8 +2,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Bell, Loader2, X } from 'lucide-react';
-import { useNotificationEvents } from '@/hooks/useNotificationEvents';
+import { Bell, X } from 'lucide-react';
+import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
 import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
@@ -16,7 +16,9 @@ interface NotificationSheetProps {
 }
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
-  const { events, loading } = useNotificationEvents();
+  // ✅ Use shared notification store - receives same data as ModernNotificationSystem
+  const { getRecentNotifications } = useNotificationStore();
+  const events = getRecentNotifications(20); // Get last 20 notifications
 
   // Get border color based on notification type
   const getBorderColor = (type: string) => {
@@ -73,19 +75,14 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         </SheetHeader>
 
         <ScrollArea className="h-[calc(100vh-8rem)] mt-6">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-              <p className="text-muted-foreground">Loading recent activity...</p>
-            </div>
-          ) : events.length === 0 ? (
+          {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">No recent activity</p>
               <p className="text-sm text-muted-foreground/60 mt-1">
-                Signal updates will appear here
+                Signal notifications will appear here
               </p>
             </div>
           ) : (

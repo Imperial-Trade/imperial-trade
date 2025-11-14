@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationStoreProvider } from "@/contexts/NotificationStoreContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { NotificationPromptProvider } from "@/contexts/NotificationPromptContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
@@ -153,8 +154,9 @@ function App() {
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>
-                <ModernNotificationSystem />
-                <WelcomeProvider>
+                <NotificationStoreProvider>
+                  <ModernNotificationSystem />
+                  <WelcomeProvider>
                   <NotificationPromptProvider>
                     <NavigationGuard>
                        <RealtimeHealthProvider>
@@ -384,7 +386,8 @@ function App() {
                 </NotificationPromptProvider>
                 {/* Global Welcome Animation - renders outside all layouts */}
                 <GlobalWelcomeOverlay />
-              </WelcomeProvider>
+                </WelcomeProvider>
+              </NotificationStoreProvider>
             </AuthProvider>
           </BrowserRouter>
       </ThemeProvider>

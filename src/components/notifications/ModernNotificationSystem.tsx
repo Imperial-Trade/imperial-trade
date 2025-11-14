@@ -13,6 +13,7 @@ import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import {
   NotificationEvent,
   subscribeToNotifications,
@@ -58,6 +59,9 @@ const ModernNotificationSystem = () => {
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
   const authReady = !authLoading && !!user?.id;
+  
+  // ✅ Use shared notification store for Recent Activity synchronization
+  const { addNotification: addToStore } = useNotificationStore();
   
   console.log('🔔 [ModernNotificationSystem] Auth state:', {
     hasUser: !!user,
@@ -306,6 +310,10 @@ const ModernNotificationSystem = () => {
       });
       
       setNotifications((prev) => [enhancedNotification, ...prev]);
+      
+      // ✅ Also add to shared store for Recent Activity
+      addToStore(enhancedNotification);
+      
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
@@ -339,7 +347,7 @@ const ModernNotificationSystem = () => {
         });
       }
     },
-    [playNotificationSound, removeNotification, lastNotificationTime]
+    [playNotificationSound, removeNotification, lastNotificationTime, addToStore]
   );
 
   useEffect(() => {

@@ -105,42 +105,46 @@ function App() {
 
   // Initialize app state on startup
   useEffect(() => {
-    console.log('🔧 Initializing app state...');
-    try {
-      // Detect and fix React duplication FIRST
-      const hasReactIssue = detectAndFixReactDuplication();
-      if (hasReactIssue) {
-        console.warn('⚠️ React duplication detected, reload in progress...');
-        return; // Don't continue initialization if reloading
+    const initializeApp = async () => {
+      console.log('🔧 Initializing app state...');
+      try {
+        // Detect and fix React duplication FIRST
+        const hasReactIssue = detectAndFixReactDuplication();
+        if (hasReactIssue) {
+          console.warn('⚠️ React duplication detected, reload in progress...');
+          return; // Don't continue initialization if reloading
+        }
+        
+        // Install global chunk error handler
+        installGlobalChunkErrorHandler();
+        
+        // Log build info for debugging
+        logBuildInfo();
+        
+        // ✅ STEP 1: Smart cache update (PROTECTS NOTIFICATIONS!)
+        console.log('🛡️ Running smart cache update...');
+        await smartCacheUpdate();
+        
+        // Check for stale build and clear caches if needed
+        if (isBuildStale()) {
+          console.log('🔄 Stale build detected, clearing caches...');
+          await clearStaleCache();
+          console.log('✅ Cache cleanup complete');
+        }
+        
+        initializeAppState();
+        verifyServiceWorkerSafety();
+        
+        // Initialize Capacitor notification service
+        capacitorNotificationService.initialize();
+        
+        console.log('✅ App state initialized successfully');
+      } catch (error) {
+        console.error('❌ Error during app state initialization:', error);
       }
-      
-      // Install global chunk error handler
-      installGlobalChunkErrorHandler();
-      
-      // Log build info for debugging
-      logBuildInfo();
-      
-      // ✅ STEP 1: Smart cache update (PROTECTS NOTIFICATIONS!)
-      console.log('🛡️ Running smart cache update...');
-      await smartCacheUpdate();
-      
-      // Check for stale build and clear caches if needed
-      if (isBuildStale()) {
-        console.log('🔄 Stale build detected, clearing caches...');
-        await clearStaleCache();
-        console.log('✅ Cache cleanup complete');
-      }
-      
-      initializeAppState();
-      verifyServiceWorkerSafety();
-      
-      // Initialize Capacitor notification service
-      capacitorNotificationService.initialize();
-      
-      console.log('✅ App state initialized successfully');
-    } catch (error) {
-      console.error('❌ Error during app state initialization:', error);
-    }
+    };
+
+    initializeApp();
   }, []);
 
   console.log('🚀 App: Rendering normal application flow...');

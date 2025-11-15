@@ -43,9 +43,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // ✅ FIX: Format pips correctly
+    // Database trigger sends pips as a number (e.g., 1000)
+    // We need to format it as a string with sign and " PIPS" suffix
+    let formattedPips = '+0.0 PIPS';
+    if (pips !== null && pips !== undefined) {
+      const pipsNumber = typeof pips === 'number' ? pips : parseFloat(pips);
+      if (!isNaN(pipsNumber)) {
+        const sign = pipsNumber >= 0 ? '+' : '';
+        formattedPips = `${sign}${pipsNumber.toFixed(1)} PIPS`;
+      }
+    }
+
+    console.log('🔢 [Pips Formatting]:', {
+      raw_pips: pips,
+      pips_type: typeof pips,
+      formatted_pips: formattedPips
+    });
+
     const signalData: SignalData = {
       ...signal,
-      pips: pips || '+0.0 PIPS',
+      pips: formattedPips,  // ✅ Use formatted pips string
     };
 
     // Determine which template to use based on close reason

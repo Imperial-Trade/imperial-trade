@@ -710,17 +710,17 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [subscribeToRealtime, refreshSignals]);
 
-  // ✅ FIX #2: Add automatic polling every 30 seconds as safety net
+  // ✅ FIX #2: Add automatic polling every 2 minutes as safety net (reduced from 30s to prevent UI glitches)
   useEffect(() => {
     const pollingInterval = setInterval(async () => {
       const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
       
-      // Only poll if >30 seconds since last update
-      if (timeSinceLastUpdate > 30000) {
-        console.log('🔄 Auto-polling for signal freshness (30s since last update)...');
-        await refreshSignals(true); // Force cache bypass
+      // Only poll if >2 minutes since last update (increased from 30s to prevent frequent refreshes)
+      if (timeSinceLastUpdate > 120000) {
+        console.log('🔄 Auto-polling for signal freshness (2min since last update)...');
+        await refreshSignals(false); // ✅ Changed to false: Use throttled refresh to prevent UI disruption
       }
-    }, 30000); // Poll every 30 seconds
+    }, 120000); // Poll every 2 minutes (changed from 30s)
 
     return () => clearInterval(pollingInterval);
   }, [lastUpdated, refreshSignals]);
@@ -729,7 +729,9 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('👀 [SignalRealtimeContext] Tab visible - refreshing signals');
-        refreshSignals(true);
+        // ✅ Use throttled refresh (false) instead of forced (true) to prevent UI disruption
+        // Realtime updates should handle most cases, this is just a safety sync
+        refreshSignals(false);
       }
     };
 

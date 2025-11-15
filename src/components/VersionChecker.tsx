@@ -32,13 +32,9 @@ export function VersionChecker() {
           setNewVersion(versionInfo);
           setNeedsUpdate(true);
           
-          // Auto-reload after 15 seconds
-          setTimeout(() => {
-            if (versionInfo) {
-              localStorage.setItem('app_version', versionInfo.version);
-            }
-            window.location.reload();
-          }, 15000);
+          // ❌ REMOVED AUTO-RELOAD: Let user decide when to refresh to prevent signal stream glitches
+          // Users were experiencing unwanted page reloads during active trading
+          console.log('🆕 [VersionChecker] New version available:', versionInfo.version, '(manual refresh required)');
         } else {
           localStorage.setItem('app_version', versionInfo.version);
         }
@@ -50,8 +46,9 @@ export function VersionChecker() {
     // Check on mount
     checkVersion();
     
-    // Check every 90 seconds for faster update detection (only on dashboard routes)
-    const interval = setInterval(checkVersion, 90 * 1000);
+    // ✅ Increased interval from 90s to 5 minutes to reduce unnecessary checks
+    // This prevents aggressive polling that could cause UI glitches
+    const interval = setInterval(checkVersion, 5 * 60 * 1000); // Check every 5 minutes
     return () => clearInterval(interval);
   }, [shouldEnableMonitoring]);
 

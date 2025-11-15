@@ -73,9 +73,16 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        console.log('✅ [NotificationStore] Loaded from localStorage:', parsed.length, 'notifications');
+        console.log('✅ [NotificationStore] LOADED from localStorage:', {
+          count: parsed.length,
+          oldestDate: parsed.length > 0 ? new Date(parsed[parsed.length - 1].timestamp).toLocaleString() : 'N/A',
+          newestDate: parsed.length > 0 ? new Date(parsed[0].timestamp).toLocaleString() : 'N/A',
+          storageKey: STORAGE_KEY,
+          firstNotification: parsed[0]
+        });
         return parsed.map(deserializeNotification);
       }
+      console.log('ℹ️ [NotificationStore] No stored notifications found');
     } catch (error) {
       console.error('❌ [NotificationStore] Error loading from localStorage:', error);
     }
@@ -150,7 +157,12 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
     try {
       const serialized = notifications.map(serializeNotification);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
-      console.log('💾 [NotificationStore] Saved to localStorage:', notifications.length, 'notifications');
+      console.log('💾 [NotificationStore] SAVED to localStorage:', {
+        count: notifications.length,
+        storageKey: STORAGE_KEY,
+        sizeKB: Math.round(JSON.stringify(serialized).length / 1024),
+        lastNotification: notifications[0]
+      });
     } catch (error) {
       console.error('❌ [NotificationStore] Error saving to localStorage:', error);
       // If localStorage is full, try to clear old data

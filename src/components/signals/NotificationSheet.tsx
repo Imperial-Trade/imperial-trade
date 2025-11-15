@@ -18,7 +18,7 @@ interface NotificationSheetProps {
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
-  const events = getRecentNotifications(20); // Get last 20 notifications
+  const events = getRecentNotifications(1000); // Show up to 1000 notifications
   
   // 🔍 DEBUG: Log notification state when sheet opens
   console.log('🔍 [NotificationSheet] Rendering:', {

@@ -214,11 +214,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false); // ✅ AUTH READY INSTANTLY!
 
-        // Only fetch profile for non-recovery sessions
+        // Fetch profile in BACKGROUND without blocking
         if (session?.user && !hasRecoveryTokens()) {
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          fetchProfile(session.user.id).then(setProfile).catch(console.error);
         }
 
       } catch (error) {
@@ -226,7 +226,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(null);
         setUser(null);
         setProfile(null);
-      } finally {
         setLoading(false);
       }
     };

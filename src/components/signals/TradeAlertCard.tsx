@@ -195,21 +195,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       console.log('✅ Signal closed via RPC:', data);
 
-      // ✅ Reset state
-      setIsPreparingToClose(false);
-      setIsEditingNotes(false);
-      setNotesDraft('');
-
-      toast({
-        title: '✅ Signal Closed',
-        description: `${alert.asset_name} has been closed successfully`
-      });
-
-      // ✅ CRITICAL FIX: Call parent onStatusUpdate FIRST to trigger refresh
-      // This will call refreshAlerts() in SignalStream which updates the context
-      await handleStatusUpdate('closed');
-
-      // ✅ Then dispatch event for other listeners (after refresh completes)
+      // ✅ INSTANT CLOSE FIX: Dispatch event IMMEDIATELY for optimistic UI update
+      console.log('🚀 [INSTANT CLOSE] Dispatching close event immediately for instant UI');
       window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
         detail: {
           signalId: alert.id,
@@ -220,6 +207,27 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           status: 'closed'  // ✅ Include final status
         }
       }));
+
+      // ✅ Reset state immediately for instant UI feedback
+      setIsPreparingToClose(false);
+      setIsEditingNotes(false);
+      setNotesDraft('');
+
+      // ✅ Show success toast immediately
+      toast({
+        title: '✅ Signal Closed',
+        description: `${alert.asset_name} has been closed successfully`
+      });
+
+      // ✅ Background: Trigger context refresh (DON'T await - let it happen in background)
+      // This ensures the signal list updates, but doesn't block the UI
+      if (onStatusUpdate) {
+        // Fire and forget - UI is already updated optimistically
+        onStatusUpdate(alert, 'closed').catch(error => {
+          console.error('⚠️ Background refresh failed (non-critical):', error);
+          // Non-critical error - signal is already closed in DB, just UI refresh failed
+        });
+      }
     } catch (error: any) {
       console.error('💥 [TradeAlertCard] Close with reason failed:', error);
       toast({

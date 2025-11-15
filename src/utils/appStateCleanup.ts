@@ -3,7 +3,7 @@
  */
 
 export const cleanupAppState = () => {
-  // Remove potentially corrupted localStorage entries
+  // ⚠️ IMPORTANT: Only remove specific corrupted entries, NOT notification storage!
   const keysToRemove = [
     'sb-kmuoqkcxguafxulqlbmi-auth-token',
     'imperial_auth_state',
@@ -24,6 +24,8 @@ export const cleanupAppState = () => {
   } catch (error) {
     console.warn('Failed to clear sessionStorage:', error);
   }
+  
+  console.log('✅ App state cleanup complete (notifications preserved)');
 };
 
 export const verifyAuthState = () => {
@@ -49,6 +51,11 @@ export const verifyAuthState = () => {
 };
 
 export const initializeAppState = () => {
+  // ⚠️ PROTECTED KEYS that must NEVER be removed
+  const PROTECTED_KEYS = [
+    'imperial-trade-notifications', // Recent Activity notifications MUST persist
+  ];
+  
   // Run on app startup
   if (!verifyAuthState()) {
     cleanupAppState();
@@ -56,7 +63,8 @@ export const initializeAppState = () => {
 
   // Clean up any debug flags that might interfere
   const debugKeys = Object.keys(localStorage).filter(key => 
-    key.includes('debug') || key.includes('test') || key.includes('dev')
+    !PROTECTED_KEYS.includes(key) && // Don't touch protected keys!
+    (key.includes('debug') || key.includes('test') || key.includes('dev'))
   );
 
   debugKeys.forEach(key => {
@@ -66,4 +74,6 @@ export const initializeAppState = () => {
       console.warn(`Failed to remove debug key: ${key}`, error);
     }
   });
+  
+  console.log('✅ App state initialized (notifications preserved)');
 };

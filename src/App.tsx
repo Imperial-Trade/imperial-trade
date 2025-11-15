@@ -1,4 +1,4 @@
-// 🔔 App Entry Point - Build: 2025-11-15-CACHE-BUST (React Hook Fix)
+// 🔔 App Entry Point - Build: 2025-11-15-AUTH-INSTANT-FIX (Cache Bust v2)
 import { useEffect, createElement, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { installGlobalChunkErrorHandler } from '@/utils/globalErrorHandler';

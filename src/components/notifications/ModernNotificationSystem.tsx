@@ -759,6 +759,7 @@ const ModernNotificationSystem = () => {
             total_tps: [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(Boolean).length,
             progress_percentage: data.progress_percentage,
             close_reason: data.close_reason,
+            notes: data.notes,  // ✅ FIX: Added notes field from broadcast payload
           },
           timestamp: new Date(eventTime),
           eventKey: `${data.signal_id}-${data.notification_type}-${eventTime}`,

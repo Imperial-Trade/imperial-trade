@@ -1,17 +1,17 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 📝 ADD NOTES FIELD TO ALL NOTIFICATION PAYLOADS
+-- 📝 COMPREHENSIVE FIX: ALL NOTIFICATION ISSUES
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Date: 2025-11-15
--- Issue: Signal notes not displaying in Recent Activity panel
--- Root Cause: Database trigger was not including 'notes' field in 
---            notification payloads for 5 out of 6 notification types
--- Fix: Add 'notes', NEW.notes to all signal payload builds
+-- Issues Fixed:
+--   1. ❌ "column status_code does not exist" → Fixed: Use (response).status
+--   2. ❌ "invalid input value for enum close_reason: ''" → Fixed: NULLIF empty strings
+--   3. ❌ Notes not included in 5 notification types → Fixed: Added to all payloads
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- STEP 1: Drop existing trigger
 DROP TRIGGER IF EXISTS instant_notification_trigger ON public.trade_alerts;
 
--- STEP 2: Recreate function WITH notes field in all payloads
+-- STEP 2: Recreate function WITH ALL FIXES
 CREATE OR REPLACE FUNCTION public.instant_notification_router()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -27,7 +27,7 @@ DECLARE
   v_edge_function_url TEXT;
   v_notification_type TEXT;
   v_payload JSONB;
-  v_http_response INTEGER;
+  v_http_response RECORD;  -- ✅ FIX #1: Changed from INTEGER to RECORD
   v_pip_size NUMERIC;
   v_pips NUMERIC;
   v_close_reason TEXT;
@@ -234,11 +234,13 @@ BEGIN
       'push_users', v_push_users
     );
 
-  -- CASE 4: SIGNAL CLOSED (UPDATE with status = 'closed') - ✅ NOTES ADDED
-  ELSIF TG_OP = 'UPDATE' AND NEW.status = 'closed' AND OLD.status::text != 'closed' AND COALESCE(NEW.close_reason, '') != 'stop_loss' THEN
+  -- CASE 4: SIGNAL CLOSED (UPDATE with status = 'closed') - ✅ NOTES ADDED + FIX #2
+  ELSIF TG_OP = 'UPDATE' AND NEW.status = 'closed' AND OLD.status::text != 'closed' AND COALESCE(NEW.close_reason::text, '') != 'stop_loss' THEN
     v_edge_function_url := 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/notify-signal-closed';
     v_notification_type := 'signal_closed';
-    v_close_reason := COALESCE(NEW.close_reason, 'manual');
+    
+    -- ✅ FIX #2: Handle empty string close_reason
+    v_close_reason := COALESCE(NULLIF(NEW.close_reason::text, ''), 'manual');
 
     RAISE WARNING '🔒 [CLOSED] Signal: %, Reason: %', NEW.id, v_close_reason;
 
@@ -323,7 +325,8 @@ BEGIN
       RAISE WARNING '📡 [HTTP] Calling: %, Payload size: % bytes', 
         v_edge_function_url, length(v_payload::text);
 
-      SELECT status_code INTO v_http_response
+      -- ✅ FIX #1: Use (response).status instead of status_code
+      SELECT * INTO v_http_response
       FROM net.http_post(
         url := v_edge_function_url,
         headers := jsonb_build_object(
@@ -333,18 +336,18 @@ BEGIN
         body := v_payload
       );
 
-      IF v_http_response BETWEEN 200 AND 299 THEN
-        RAISE WARNING '✅ [SUCCESS] HTTP %: Notification sent for signal %', v_http_response, NEW.id;
+      IF v_http_response.status BETWEEN 200 AND 299 THEN
+        RAISE WARNING '✅ [SUCCESS] HTTP %: Notification sent for signal %', v_http_response.status, NEW.id;
         
         INSERT INTO public.notification_audit_trail (
           signal_id, user_id, notification_type, delivery_channel, status, metadata
         ) VALUES (
           NEW.id, NEW.user_id, v_notification_type, 'trigger', 'sent',
-          jsonb_build_object('http_status', v_http_response, 'edge_function', v_edge_function_url)
+          jsonb_build_object('http_status', v_http_response.status, 'edge_function', v_edge_function_url)
         );
       ELSE
         RAISE WARNING '⚠️ [HTTP ERROR] Status %: Failed to send notification for signal %', 
-          v_http_response, NEW.id;
+          v_http_response.status, NEW.id;
       END IF;
 
     EXCEPTION WHEN OTHERS THEN
@@ -378,12 +381,26 @@ CREATE TRIGGER instant_notification_trigger
 GRANT EXECUTE ON FUNCTION public.instant_notification_router() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.instant_notification_router() TO service_role;
 
--- Log migration completion
-INSERT INTO public.cron_job_logs (job_name, execution_time, records_affected, status, error_message)
-VALUES (
-  'add_notes_to_all_notification_payloads',
-  NOW(),
-  5,
-  'success',
-  '✅ Added notes field to 5 notification types: signal_created, tp_hit, stop_loss_hit, signal_closed, limit_activated'
-);
+-- ✅ SUCCESS MESSAGE
+DO $$
+BEGIN
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '✅ COMPREHENSIVE FIX APPLIED SUCCESSFULLY!';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  RAISE NOTICE '  ';
+  RAISE NOTICE '🔧 FIXES APPLIED:';
+  RAISE NOTICE '  1. ✅ Fixed HTTP response column access (status instead of status_code)';
+  RAISE NOTICE '  2. ✅ Fixed empty string close_reason enum error (NULLIF)';
+  RAISE NOTICE '  3. ✅ Added notes field to all 6 notification types';
+  RAISE NOTICE '  ';
+  RAISE NOTICE '📝 NOTIFICATION TYPES WITH NOTES:';
+  RAISE NOTICE '  • signal_created ✅';
+  RAISE NOTICE '  • tp_hit ✅';
+  RAISE NOTICE '  • stop_loss_hit ✅';
+  RAISE NOTICE '  • signal_closed ✅';
+  RAISE NOTICE '  • limit_activated ✅';
+  RAISE NOTICE '  • notes_updated ✅';
+  RAISE NOTICE '  ';
+  RAISE NOTICE '🎉 ALL NOTIFICATIONS SHOULD NOW WORK PERFECTLY!';
+  RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+END $$;

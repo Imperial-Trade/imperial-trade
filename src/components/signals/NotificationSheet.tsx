@@ -1,11 +1,14 @@
-import { useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Bell, TrendingUp, TrendingDown } from 'lucide-react';
-import { format, isToday, isYesterday, subDays } from 'date-fns';
-import { useSignalRealtime } from '@/hooks/useSignalRealtime';
-import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Bell, X } from 'lucide-react';
+import { useNotificationStore } from '@/contexts/NotificationStoreContext';
+import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
+import { NotificationBadge } from '@/components/notifications/NotificationBadge';
+import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
+import { ProgressIndicator } from '@/components/notifications/ProgressIndicator';
+import { cn } from '@/lib/utils';
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -13,142 +16,217 @@ interface NotificationSheetProps {
 }
 
 export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
-  const { user } = useAuth();
-  const { alerts } = useSignalRealtime(user?.id || '', true);
+  // ✅ Use shared notification store - receives same data as ModernNotificationSystem
+  const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
+  const events = getRecentNotifications(100); // Show latest 100 notifications
+  
+  // 🔍 DEBUG: Log notification state when sheet opens
+  console.log('🔍 [NotificationSheet] Rendering:', {
+    isOpen,
+    totalStoredNotifications: allNotifications.length,
+    eventsToDisplay: events.length,
+    firstEvent: events[0],
+    localStorage: localStorage.getItem('imperial-trade-notifications')?.substring(0, 100)
+  });
 
-  // Get signals from last 24 hours with status changes
-  const recentSignals = useMemo(() => {
-    const yesterday = subDays(new Date(), 1);
-    
-    return alerts
-      .filter(signal => {
-        const updatedAt = new Date(signal.updatedAt);
-        return updatedAt >= yesterday;
-      })
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 20); // Limit to 20 most recent
-  }, [alerts]);
-
-  const formatDate = (date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isYesterday(date)) return 'Yesterday';
-    return format(date, 'MMM dd');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'pending':
-        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'closed':
-        return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'partially_profited':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+  // Get border color based on notification type
+  const getBorderColor = (type: string) => {
+    switch (type) {
+      case 'new_signal':
+        return 'border-l-blue-500';
+      case 'tp_hit':
+        return 'border-l-emerald-500';
+      case 'stop_loss':
+        return 'border-l-red-500';
+      case 'trade_closed':
+        return 'border-l-green-500';
+      case 'limit_activated':
+        return 'border-l-purple-500';
+      case 'notes_updated':
+        return 'border-l-yellow-500';
       default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+        return 'border-l-gray-500';
     }
   };
 
-  const getTpHits = (signal: any) => {
-    const hits = [];
-    if (signal.tp1Hit) hits.push('TP1');
-    if (signal.tp2Hit) hits.push('TP2');
-    if (signal.tp3Hit) hits.push('TP3');
-    if (signal.tp4Hit) hits.push('TP4');
-    if (signal.tp5Hit) hits.push('TP5');
-    return hits;
+  // Get gradient background based on notification type
+  const getGradientClass = (type: string) => {
+    const gradients: Record<string, string> = {
+      new_signal: 'from-blue-500/10 via-blue-500/5 to-transparent',
+      tp_hit: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
+      stop_loss: 'from-red-500/10 via-red-500/5 to-transparent',
+      trade_closed: 'from-green-500/10 via-green-500/5 to-transparent',
+      limit_activated: 'from-purple-500/10 via-purple-500/5 to-transparent',
+      notes_updated: 'from-yellow-500/10 via-yellow-500/5 to-transparent',
+    };
+    return gradients[type] || 'from-gray-500/10 via-gray-500/5 to-transparent';
+  };
+
+  const formatTimestamp = (timestamp: Date) => {
+    try {
+      return timestamp.toLocaleTimeString();
+    } catch {
+      return new Date().toLocaleTimeString();
+    }
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50"
+        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 top-20 h-[calc(100vh-5rem)]"
       >
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
-            Recent Activity
+        <SheetHeader className="pt-2">
+          <SheetTitle className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              Recent Activity
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const stored = localStorage.getItem('imperial-trade-notifications');
+                console.log('🔍 [DEBUG] localStorage inspection:', {
+                  hasData: !!stored,
+                  dataLength: stored?.length,
+                  parsed: stored ? JSON.parse(stored) : null,
+                  allNotifications: allNotifications.length,
+                  events: events.length
+                });
+                alert(`Stored: ${allNotifications.length} notifications\nShowing: ${events.length} notifications\nLocalStorage: ${stored ? 'Has data' : 'Empty'}`);
+              }}
+              className="text-xs"
+            >
+              Debug
+            </Button>
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-8rem)] mt-6">
-          {recentSignals.length === 0 ? (
+        <ScrollArea className="h-[calc(100vh-12rem)] mt-6">
+          {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">No recent activity</p>
               <p className="text-sm text-muted-foreground/60 mt-1">
-                Signal updates will appear here
+                Signal notifications will appear here
               </p>
             </div>
           ) : (
             <div className="space-y-3 pr-4">
-              {recentSignals.map((signal) => {
-                const tpHits = getTpHits(signal);
-                const updatedAt = new Date(signal.updatedAt);
-
-                return (
-                  <div
-                    key={signal.id}
-                    className="p-4 rounded-lg bg-card/50 border border-border/50 hover:bg-card/80 transition-colors"
-                  >
-                    {/* Asset & Time */}
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {signal.tradeType.includes('buy') ? (
-                          <TrendingUp className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        )}
-                        <span className="font-semibold text-foreground">
-                          {signal.assetName}
-                        </span>
+              {events.map((event) => (
+                <Card
+                  key={event.id}
+                  className={cn(
+                    "overflow-hidden border-2 border-l-4 shadow-2xl backdrop-blur-md",
+                    "bg-gradient-to-br",
+                    getGradientClass(event.type),
+                    getBorderColor(event.type),
+                    "border-border/50"
+                  )}
+                >
+                  <div className="p-4">
+                    {/* Header with Avatar, Name, Badge, and Close Button */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <ProviderAvatar
+                        displayName={event.metadata.display_name}
+                        avatarUrl={event.metadata.provider_avatar_url}
+                        userType={event.metadata.provider_type}
+                        size="md"
+                        showBadge={true}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-foreground text-sm">
+                            {event.metadata.provider_name}
+                          </h4>
+                          <NotificationBadge type={event.type} priority={event.priority} />
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {event.metadata.asset_name || event.title}
+                        </p>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(updatedAt)}
-                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Remove from list (will be filtered on next update)
+                      }}
+                      className="text-muted-foreground hover:text-foreground p-1 h-auto"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Body with Message, Pips, and Progress */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-foreground text-sm leading-relaxed">
+                        {event.message}
+                      </p>
+                      
+                      {/* Signal Notes - Styled like EDUCATOR+ badge */}
+                      {event.metadata.notes && (
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1.5 leading-relaxed">
+                          {event.metadata.notes}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Status Badge */}
-                    <Badge 
-                      variant="outline" 
-                      className={`mb-2 ${getStatusColor(signal.status)}`}
-                    >
-                      {signal.status.replace('_', ' ')}
-                    </Badge>
-
-                    {/* TP Hits */}
-                    {tpHits.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {tpHits.map((tp) => (
-                          <Badge
-                            key={tp}
-                            variant="secondary"
-                            className="text-xs bg-green-500/10 text-green-400 border-green-500/20"
-                          >
-                            {tp} ✓
-                          </Badge>
-                        ))}
+                    {/* Pips and Progress on Same Line */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1">
+                        {event.metadata.pips_data && 
+                         event.metadata.pips_data.value !== 0 && (
+                          <ProfitLossDisplay 
+                            pipsData={event.metadata.pips_data}
+                            size="md"
+                          />
+                        )}
                       </div>
-                    )}
+                      
+                      {event.type === 'tp_hit' &&
+                       event.metadata.tp_hits &&
+                       event.metadata.total_tps &&
+                       event.metadata.tp_hits.some(tp => tp && tp > 0) && (
+                        <div className="flex-shrink-0">
+                          <ProgressIndicator
+                            tpHits={event.metadata.tp_hits}
+                            totalTPs={event.metadata.total_tps}
+                            showPercentage={true}
+                          />
+                        </div>
+                      )}
+                    </div>
 
-                    {/* Educator */}
-                    {signal.creator?.display_name && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        by {signal.creator.display_name}
-                      </p>
-                    )}
-
-                    {/* Time */}
-                    <p className="text-xs text-muted-foreground/60 mt-1">
-                      {format(updatedAt, 'h:mm a')}
-                    </p>
+                    {/* Footer with Timestamp and View Signal Link */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <span className="text-muted-foreground text-xs">
+                        {formatTimestamp(event.timestamp)}
+                      </span>
+                      {event.metadata?.signal_id && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-primary text-xs p-0 h-auto hover:underline"
+                          onClick={() => {
+                            window.location.href = `/dashboard/signal-stream?signal=${event.metadata.signal_id}`;
+                            onClose();
+                          }}
+                        >
+                          View Signal →
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                );
-              })}
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
         </ScrollArea>

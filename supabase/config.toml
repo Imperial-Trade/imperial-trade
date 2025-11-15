@@ -42,31 +42,15 @@ enable_signup = true
 verify_jwt = false
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🔍 DETECTION SYSTEM (Separate Detectors for Robust Monitoring)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Each detector monitors ONE specific event type for better isolation
-# Detectors update trade_alerts → Database trigger → Notification functions
-
-[functions.tp1-detector]
-verify_jwt = false
-
-[functions.tp2-detector]
-verify_jwt = false
-
-[functions.tp3-detector]
-verify_jwt = false
-
-[functions.tp4-detector]
-verify_jwt = false
-
-[functions.tp5-detector]
-verify_jwt = false
-
-[functions.stop-loss-detector]
-verify_jwt = false
-
-[functions.limit-activation-detector]
-verify_jwt = false
+# 🗑️ OLD DETECTION SYSTEM REMOVED
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# The old separate detector functions (tp1-detector, tp2-detector, etc.)
+# have been DELETED and replaced with Phase 2 integrated detection.
+#
+# NEW SYSTEM: Detection is now integrated into price-ingestor for instant
+# detection (~500ms latency instead of cron-based polling).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [functions.admin-user-management]
 verify_jwt = true

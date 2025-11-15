@@ -53,6 +53,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isClosing, setIsClosing] = useState(false);
+  const [isPreparingToClose, setIsPreparingToClose] = useState(false); // Track if user clicked close and needs to enter reason
   
   // PHASE 7: Get signal retrieval function for instant UI updates
   const { getSignalById } = useSignalRealtime();
@@ -154,6 +155,85 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     }
   };
 
+  // ✅ Handle closing signal with closing reason
+  const handleCloseWithReason = async (closingReason: string) => {
+    if (!closingReason.trim()) {
+      toast({
+        title: '⚠️ Closing Reason Required',
+        description: 'Please provide a reason for closing this signal',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    console.log('🔒 [TradeAlertCard] Closing with reason:', {
+      alertId: alert.id,
+      closingReason: closingReason.substring(0, 50) + '...',
+      timestamp: new Date().toISOString()
+    });
+
+    setIsClosing(true);
+    setIsSavingNotes(true);
+    try {
+      // Get current user ID from creator
+      if (!creator?.id) {
+        throw new Error('User information not available');
+      }
+
+      // Call RPC with closing reason as notes
+      const { data, error } = await supabase.rpc('close_trade_alert', {
+        p_alert_id: alert.id,
+        p_user_id: creator.id,
+        p_close_reason: 'manual',
+        p_notes: closingReason  // ✅ Pass closing reason as notes
+      });
+
+      if (error) {
+        console.error('❌ RPC close_trade_alert failed:', error);
+        throw new Error(error.message || 'Failed to close signal');
+      }
+
+      console.log('✅ Signal closed via RPC:', data);
+
+      // ✅ Reset state
+      setIsPreparingToClose(false);
+      setIsEditingNotes(false);
+      setNotesDraft('');
+
+      toast({
+        title: '✅ Signal Closed',
+        description: `${alert.asset_name} has been closed successfully`
+      });
+
+      // ✅ CRITICAL FIX: Call parent onStatusUpdate FIRST to trigger refresh
+      // This will call refreshAlerts() in SignalStream which updates the context
+      await handleStatusUpdate('closed');
+
+      // ✅ Then dispatch event for other listeners (after refresh completes)
+      window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+        detail: {
+          signalId: alert.id,
+          assetName: alert.asset_name,
+          closeReason: 'manual',
+          notes: closingReason,
+          timestamp: new Date().toISOString(),
+          status: 'closed'  // ✅ Include final status
+        }
+      }));
+    } catch (error: any) {
+      console.error('💥 [TradeAlertCard] Close with reason failed:', error);
+      toast({
+        title: '❌ Failed to Close',
+        description: error.message || 'Please try again',
+        variant: 'destructive'
+      });
+      // Don't reset state on error so user can retry
+    } finally {
+      setIsClosing(false);
+      setIsSavingNotes(false);
+    }
+  };
+
   const handleCopyPanelToggle = () => {
     setShowCopyPanel(prev => !prev);
   };
@@ -167,7 +247,33 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     setNotesDraft(localNotes || '');
   };
 
+  // ✅ NEW: Handle entering "close mode" - user clicks close button
+  const handleEnterCloseMode = () => {
+    console.log('🔒 [TradeAlertCard] Entering close mode:', {
+      alertId: alert.id,
+      isPending,
+      timestamp: new Date().toISOString()
+    });
+    
+    setIsPreparingToClose(true);
+    setIsEditingNotes(true); // Open notes editor
+    setNotesDraft(''); // Clear any existing notes for closing reason
+  };
+
+  // ✅ NEW: Handle canceling close mode
+  const handleCancelClose = () => {
+    setIsPreparingToClose(false);
+    setIsEditingNotes(false);
+    setNotesDraft(localNotes || ''); // Restore original notes
+  };
+
   const handleNotesSave = async () => {
+    // ✅ If in closing mode, close the signal instead of just saving notes
+    if (isPreparingToClose) {
+      await handleCloseWithReason(notesDraft.trim());
+      return;
+    }
+
     try {
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
@@ -464,10 +570,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {isPreparingToClose ? 'Closing Reason' : 'Notes'}
+            </span>
             <NotesSyncIndicator status={notesSyncStatus} />
           </div>
-          {canEditNotes && !isEditingNotes && (
+          {canEditNotes && !isEditingNotes && !isPreparingToClose && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -483,13 +591,32 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <Textarea 
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
-              placeholder="Add helpful context for followers..."
+              placeholder={isPreparingToClose 
+                ? (isPending 
+                  ? "Explain why you're cancelling this order..." 
+                  : "Explain why you're closing this signal...")
+                : "Add helpful context for followers..."}
               className="min-h-[60px] text-sm"
+              autoFocus={isPreparingToClose}
             />
             <div className="flex justify-end gap-1.5">
-              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes} className="h-6 px-2 text-xs">Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes} className="h-6 px-2 text-xs">
-                {isSavingNotes ? 'Saving...' : 'Save'}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={isPreparingToClose ? handleCancelClose : handleNotesEditToggle} 
+                disabled={isSavingNotes} 
+                className="h-6 px-2 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handleNotesSave} 
+                disabled={isSavingNotes || (!isPreparingToClose && notesDraft === localNotes) || (isPreparingToClose && !notesDraft.trim())} 
+                className="h-6 px-2 text-xs"
+              >
+                {isSavingNotes ? (isPreparingToClose ? 'Closing...' : 'Saving...') : (isPreparingToClose ? 'Close Alert' : 'Save')}
               </Button>
             </div>
           </div>
@@ -512,41 +639,17 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       )}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && !isPreparingToClose && (
         <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
             <Button 
               size="sm" 
               variant="ghost" 
               className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-              onClick={async () => {
-                console.log('🖱️ [TradeAlertCard] Close button CLICKED:', {
-                  alertId: alert.id,
-                  newStatus: 'closed',
-                  timestamp: new Date().toISOString()
-                });
-                
-                setIsClosing(true);
-                try {
-                  await handleStatusUpdate('closed');
-                } catch (error) {
-                  console.error('💥 [TradeAlertCard] Status update failed:', error);
-                } finally {
-                  setIsClosing(false);
-                }
-              }}
-              disabled={isClosing}
+              onClick={handleEnterCloseMode}
+              disabled={isClosing || isEditingNotes}
             >
-                {isClosing ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    Closing...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3 h-3 mr-1.5" />
-                    {isPending ? 'Cancel Order' : getCloseButtonText()}
-                  </>
-                )}
+              <Lock className="w-3 h-3 mr-1.5" />
+              {isPending ? 'Cancel Order' : 'Close My Signal'}
             </Button>
         </div>
       )}

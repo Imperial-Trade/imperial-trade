@@ -37,6 +37,7 @@ export interface SignalData {
   tp_number?: number;
   tradermade_symbol?: string;
   status?: string;
+  notes?: string | null;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -161,13 +162,26 @@ export async function sendRealtimeNotification(
   supabase: any,
   template: NotificationTemplate,
   signalData: SignalData,
-  userIds: string[]
+  userIds: any[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Parse PIPS value from string (e.g. "+200.0 PIPS" -> 200.0)
-    const pipsValue = signalData.pips 
-      ? parseFloat(signalData.pips.replace(/[^0-9.-]/g, '')) 
-      : 0;
+    // Extract user IDs from user objects (trigger sends: [{user_id}])
+    const extractedUserIds = Array.isArray(userIds)
+      ? userIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+      : [];
+
+    if (extractedUserIds.length === 0) {
+      console.log('ℹ️ No user IDs provided for realtime notification');
+      return { success: true };
+    }
+    // ✅ FIX: Handle pips as both number (from trigger) and string (legacy format)
+    // Database trigger sends: { pips: 10 }
+    // Legacy format might send: { pips: "+10.0 PIPS" }
+    const pipsValue = typeof signalData.pips === 'number'
+      ? signalData.pips
+      : signalData.pips 
+        ? parseFloat(String(signalData.pips).replace(/[^0-9.-]/g, ''))
+        : 0;
 
     // Calculate total TPs from tp1-tp5
     const totalTps = [
@@ -219,6 +233,7 @@ export async function sendRealtimeNotification(
         provider_avatar_url: signalData.author_avatar_url,
         provider_type: signalData.author_user_type as 'educator' | 'admin' | 'moderator' | 'member',
         asset_name: signalData.asset_name,
+        notes: signalData.notes,
         
         // Convert pips string to pips_data object with Risk/Reward ratio
         pips_data: {
@@ -253,7 +268,7 @@ export async function sendRealtimeNotification(
       timestamp: new Date().toISOString(),
       event_key: `signal_${signalData.id}_${template.type}_${Date.now()}`,
       notification_type: template.type,
-      user_ids: userIds,
+      user_ids: extractedUserIds,
     };
 
     // Broadcast via Supabase Realtime
@@ -265,18 +280,52 @@ export async function sendRealtimeNotification(
       payload_size: JSON.stringify(payload).length
     });
 
+    // Create and subscribe to channel first
     const channel = supabase.channel('instant-alerts');
+    
+    // Subscribe with timeout to prevent hanging
+    try {
+      await Promise.race([
+        new Promise((resolve) => {
+          channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ [Realtime] Channel subscribed successfully');
+              resolve(true);
+            }
+          });
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Subscription timeout after 5s')), 5000)
+        )
+      ]);
+    } catch (err: any) {
+      console.error('❌ [Realtime] Subscription failed:', err.message);
+      // Continue anyway - push notifications still work
+    }
+
+    // Now broadcast
     const broadcastResult = await channel.send({
       type: 'broadcast',
       event: 'signal_notification',
       payload,
     });
+    
+    console.log(`📡 [Realtime] Broadcast result:`, {
+      status: broadcastResult?.status || 'undefined',
+      type: template.type,
+      signal_id: signalData.id.substring(0, 8)
+    });
+    
+    // Clean up: unsubscribe after sending
+    await channel.unsubscribe();
 
-    if (broadcastResult.status === 'ok') {
+    // ✅ FIX: Treat 'ok' OR undefined status as success (Supabase Realtime API behavior)
+    if (broadcastResult.status === 'ok' || !broadcastResult.status) {
       console.log(`✅ [Realtime Broadcast] SUCCESS:`, {
+        status: broadcastResult.status || 'sent',
         type: template.type,
         asset: signalData.asset_name,
-        recipients: userIds.length,
+        recipients: extractedUserIds.length,
         metadata: {
           provider: signalData.author_name,
           pips: signalData.pips,
@@ -284,6 +333,7 @@ export async function sendRealtimeNotification(
         }
       });
     } else {
+      // Only log error if status is explicitly an error (not ok, not undefined)
       console.error(`❌ [Realtime Broadcast] FAILED:`, {
         status: broadcastResult.status,
         type: template.type,
@@ -322,11 +372,21 @@ export async function sendPushNotification(
   }
 
   try {
+    // Extract user IDs from push user objects (trigger sends: [{user_id, player_id, display_name}])
+    const userIds = Array.isArray(pushUserIds) 
+      ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+      : [];
+
+    if (userIds.length === 0) {
+      console.log('ℹ️ No push user IDs provided');
+      return { success: true, sent: 0 };
+    }
+
     // Get OneSignal player IDs for these users
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('onesignal_player_id')
-      .in('id', pushUserIds)
+      .in('id', userIds)
       .eq('push_subscription_active', true)
       .not('onesignal_player_id', 'is', null);
 

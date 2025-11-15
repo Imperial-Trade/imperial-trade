@@ -13,6 +13,7 @@ import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { capacitorNotificationService } from '@/services/CapacitorNotificationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import {
   NotificationEvent,
   subscribeToNotifications,
@@ -55,9 +56,14 @@ interface ModernNotification {
 const MODERN_DEDUP_WINDOW_MS = 1500;
 
 const ModernNotificationSystem = () => {
+  console.log('🚀 [ModernNotificationSystem] ===== COMPONENT RENDERING =====');
+  
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
   const authReady = !authLoading && !!user?.id;
+  
+  // ✅ Use shared notification store for Recent Activity synchronization
+  const { addNotification: addToStore } = useNotificationStore();
   
   console.log('🔔 [ModernNotificationSystem] Auth state:', {
     hasUser: !!user,
@@ -72,6 +78,7 @@ const ModernNotificationSystem = () => {
   const isMountedRef = useRef<boolean>(true);
   const pendingEventsRef = useRef<NotificationEvent[]>([]);
   const lastShownRef = useRef<Map<string, number>>(new Map());
+  const handleNotificationRef = useRef<((notification: any) => void) | null>(null);
 
   const playNotificationSound = useCallback((type: string) => {
     try {
@@ -306,20 +313,40 @@ const ModernNotificationSystem = () => {
       });
       
       setNotifications((prev) => [enhancedNotification, ...prev]);
+      
+      // ✅ Also add to shared store for Recent Activity
+      console.log('📝 [ModernNotificationSystem] Adding to store:', {
+        id: enhancedNotification.id,
+        type: enhancedNotification.type,
+        message: enhancedNotification.message,
+        hasMetadata: !!enhancedNotification.metadata,
+        signal_id: enhancedNotification.metadata?.signal_id
+      });
+      addToStore(enhancedNotification);
+      console.log('✅ [ModernNotificationSystem] Added to store successfully');
+      
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
 
-      // 🚫 DISABLED: Browser native notifications (creates duplicate simple notifications)
-      // We only want ModernNotificationSystem to show rich in-app notifications
-      // If mobile push notifications are needed, they should come from OneSignal, not here
-      // await capacitorNotificationService.showNotification({
-      //   title: notification.title,
-      //   body: notification.message,
-      //   data: notification.metadata || {},
-      //   eventKey: notification.eventKey,
-      //   type: notification.type,
-      //   signalId: notification.metadata?.signal_id,
-      // });
+      // ✅ PUSH NOTIFICATIONS:
+      // - PWA users (Add to Home Screen): Use OneSignal (handled by backend)
+      // - Native app users (future): Use Capacitor
+      // - Web users: Use OneSignal (handled by backend)
+      // 
+      // Since you're using PWA (not native app yet), ALL push notifications
+      // come from OneSignal via the backend. No Capacitor notifications needed.
+      // When you build a true native app later, uncomment the code below.
+      
+      // if (capacitorNotificationService.isNativePlatform()) {
+      //   await capacitorNotificationService.showNotification({
+      //     title: notification.title,
+      //     body: notification.message,
+      //     data: notification.metadata || {},
+      //     eventKey: notification.eventKey,
+      //     type: notification.type,
+      //     signalId: notification.metadata?.signal_id,
+      //   });
+      // }
 
       if (notification.eventKey) {
         import('@/services/NotificationService').then(({ notificationService }) => {
@@ -331,8 +358,13 @@ const ModernNotificationSystem = () => {
         });
       }
     },
-    [playNotificationSound, removeNotification, lastNotificationTime]
+    [playNotificationSound, removeNotification, lastNotificationTime, addToStore]
   );
+
+  // ✅ Keep handleNotificationRef up to date
+  useEffect(() => {
+    handleNotificationRef.current = handleNotification;
+  }, [handleNotification]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -363,13 +395,17 @@ const ModernNotificationSystem = () => {
         pendingEventsRef.current.length
       );
       queued.forEach((event) => {
-        handleNotification(event);
+        if (handleNotificationRef.current) {
+          handleNotificationRef.current(event);
+        }
       });
     }
-  }, [authReady, handleNotification]);
+  }, [authReady]); // ✅ Removed handleNotification dependency - use ref instead
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
+    console.log('🚨🚨🚨 [ModernNotificationSystem] useEffect FIRED - Setting up Realtime channel! 🚨🚨🚨');
+    
     // ✅ Subscribe IMMEDIATELY on mount - no auth dependency
     componentMountTimeRef.current = Date.now() - BACKFILL_WINDOW_MS;
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
@@ -379,7 +415,8 @@ const ModernNotificationSystem = () => {
       authLoading,
       authReady,
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
-      componentMounted: isMountedRef.current
+      componentMounted: isMountedRef.current,
+      timestamp: new Date().toISOString()
     });
 
     // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs
@@ -408,7 +445,14 @@ const ModernNotificationSystem = () => {
           return;
         }
 
-        console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
+        console.log('🚨 [ModernNotificationSystem] Received signal notification:', {
+          payload_keys: Object.keys(payload),
+          payload_payload_keys: payload.payload ? Object.keys(payload.payload) : 'none',
+          notification_type: payload.payload?.notification_type,
+          signal_id: payload.payload?.signal_id,
+          asset_name: payload.payload?.asset_name,
+          full_payload: payload
+        });
         
         // ✅ Auth check - only process if auth is ready
         if (!authReady) {
@@ -704,33 +748,38 @@ const ModernNotificationSystem = () => {
           asset_name: data.asset_name,
         });
 
-        // 🚀 CRITICAL FIX: Actually call handleNotification with the prepared data!
-        handleNotification({
-          type,
-          title,
-          message,
-          metadata: {
-            signal_id: data.signal_id,
-            asset_name: data.asset_name,
-            author_name: data.author_name,
-            author_avatar_url: data.author_avatar_url,
-            author_user_type: data.author_user_type,
-            provider_name: data.provider_name || data.author_name,
-            display_name: data.display_name || data.author_name,
-            entry_price: data.entry_price,
-            trade_type: data.trade_type,
-            triggered_price: data.triggered_price,
-            tp_number: data.tp_number,
-            pips_data: finalizedPipsData,
-            tp_hits: data.tp_hits || [],
-            total_tps: [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(Boolean).length,
-            progress_percentage: data.progress_percentage,
-            close_reason: data.close_reason,
-          },
-          timestamp: new Date(eventTime),
-          eventKey: `${data.signal_id}-${data.notification_type}-${eventTime}`,
-          deliveryChannel: 'realtime'
-        });
+        // 🚀 CRITICAL FIX: Use ref to call handleNotification (prevents re-subscription on changes)
+        if (handleNotificationRef.current) {
+          handleNotificationRef.current({
+            type,
+            title,
+            message,
+            metadata: {
+              signal_id: data.signal_id,
+              asset_name: data.asset_name,
+              author_name: data.author_name,
+              author_avatar_url: data.author_avatar_url,
+              author_user_type: data.author_user_type,
+              provider_name: data.provider_name || data.author_name,
+              provider_avatar_url: data.metadata?.provider_avatar_url || data.author_avatar_url,
+              provider_type: data.metadata?.provider_type || data.author_user_type,
+              display_name: data.display_name || data.author_name,
+              entry_price: data.entry_price,
+              trade_type: data.trade_type,
+              triggered_price: data.triggered_price,
+              tp_number: data.tp_number,
+              pips_data: finalizedPipsData,
+              tp_hits: data.tp_hits || [],
+              total_tps: [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(Boolean).length,
+              progress_percentage: data.progress_percentage,
+              close_reason: data.close_reason,
+              notes: data.metadata?.notes || data.notes,  // ✅ FIX: Check metadata.notes first (from edge function), fallback to data.notes
+            },
+            timestamp: new Date(eventTime),
+            eventKey: `${data.signal_id}-${data.notification_type}-${eventTime}`,
+            deliveryChannel: 'realtime'
+          });
+        }
       })
       .subscribe((status) => {
         // Log every subscription status change
@@ -763,7 +812,7 @@ const ModernNotificationSystem = () => {
       (window as any).notificationBroadcastChannel = null;
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
-  }, [handleNotification]); // ✅ Added handleNotification dependency
+  }, []); // ✅ STABLE SUBSCRIPTION: Empty deps - subscribe once on mount and never re-subscribe
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {
@@ -794,7 +843,7 @@ const ModernNotificationSystem = () => {
   };
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-3 max-w-md">
+    <div className="fixed top-24 right-4 z-50 space-y-3 max-w-md">
       <AnimatePresence>
         {notifications.map((notification) => (
           <motion.div

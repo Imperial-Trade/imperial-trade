@@ -28,6 +28,55 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
+    // Detect chunk loading errors
+    const errorMessage = error?.message || '';
+    const isChunkLoadError = 
+      errorMessage.includes('Failed to fetch dynamically imported module') ||
+      errorMessage.includes('Importing a module script failed') ||
+      errorMessage.includes('error loading dynamically imported module') ||
+      errorMessage.includes('ChunkLoadError');
+
+    if (isChunkLoadError) {
+      console.log('🔄 [ErrorBoundary] Detected chunk loading error, attempting recovery...');
+      
+      const hasAlreadyRefreshed = sessionStorage.getItem('error-boundary-chunk-refresh') === 'true';
+      
+      if (!hasAlreadyRefreshed) {
+        // First time - attempt automatic recovery
+        sessionStorage.setItem('error-boundary-chunk-refresh', 'true');
+        
+        // Clear service worker cache if present
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(registration => registration.unregister());
+          });
+        }
+        
+        // Clear all caches
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+        
+        // Clear localStorage caches
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('cache') || key.includes('version') || key.includes('chunk')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Reload after cleanup
+        console.log('🔄 [ErrorBoundary] Reloading page after cache cleanup...');
+        setTimeout(() => window.location.reload(), 1000);
+        return;
+      }
+      
+      // If reload didn't help, clear flag and show error
+      console.error('❌ [ErrorBoundary] Chunk error persists after reload');
+      sessionStorage.removeItem('error-boundary-chunk-refresh');
+    }
+    
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }

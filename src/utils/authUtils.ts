@@ -4,11 +4,22 @@ import { User } from '@supabase/supabase-js';
 export const cleanupAuthState = () => {
   console.log('🧹 Cleaning up all authentication state...');
   
+  // ⚠️ IMPORTANT: DO NOT clear notification storage!
+  const PROTECTED_KEYS = [
+    'imperial-trade-notifications', // Recent Activity notifications MUST persist
+  ];
+  
   // Remove standard auth tokens
   localStorage.removeItem('supabase.auth.token');
   
   // Remove all Supabase auth keys from localStorage
   Object.keys(localStorage).forEach((key) => {
+    // Skip protected keys
+    if (PROTECTED_KEYS.includes(key)) {
+      console.log(`🔒 [PROTECTED] Keeping localStorage key: ${key}`);
+      return;
+    }
+    
     if (key.startsWith('supabase.auth.') || 
         key.includes('sb-') || 
         key.includes('auth') ||
@@ -34,7 +45,7 @@ export const cleanupAuthState = () => {
     console.warn('Failed to clear sessionStorage:', error);
   }
   
-  console.log('✅ Authentication state cleanup complete');
+  console.log('✅ Authentication state cleanup complete (notifications preserved)');
 };
 
 export const handleAuthRedirect = (path: string) => {

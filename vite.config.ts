@@ -1,5 +1,5 @@
 
-// ⚡ VITE CONFIG - React Import Fix Build: 2025-11-11-v2
+// ⚡ VITE CONFIG - Chunk Loading Fix Build: 2025-11-12-v3
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -7,6 +7,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Define build timestamp for version tracking
+  define: {
+    __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
+  },
   server: {
     host: "::",
     port: 8080,

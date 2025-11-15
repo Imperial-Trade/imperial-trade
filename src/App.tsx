@@ -35,6 +35,7 @@ import { isDevToolsEnabled } from "@/utils/featureFlags";
 import { verifyServiceWorkerSafety } from "@/utils/serviceWorkerVerification";
 import ModernNotificationSystem from "@/components/notifications/ModernNotificationSystem";
 import { capacitorNotificationService } from "@/services/CapacitorNotificationService";
+import { smartCacheUpdate } from "@/utils/cacheManager";
 
 // Auth Components
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -119,12 +120,15 @@ function App() {
       // Log build info for debugging
       logBuildInfo();
       
+      // ✅ STEP 1: Smart cache update (PROTECTS NOTIFICATIONS!)
+      console.log('🛡️ Running smart cache update...');
+      await smartCacheUpdate();
+      
       // Check for stale build and clear caches if needed
       if (isBuildStale()) {
         console.log('🔄 Stale build detected, clearing caches...');
-        clearStaleCache().then(() => {
-          console.log('✅ Cache cleanup complete');
-        });
+        await clearStaleCache();
+        console.log('✅ Cache cleanup complete');
       }
       
       initializeAppState();

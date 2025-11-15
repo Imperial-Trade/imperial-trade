@@ -200,24 +200,26 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsEditingNotes(false);
       setNotesDraft('');
 
-      // ✅ Dispatch event for instant UI update
+      toast({
+        title: '✅ Signal Closed',
+        description: `${alert.asset_name} has been closed successfully`
+      });
+
+      // ✅ CRITICAL FIX: Call parent onStatusUpdate FIRST to trigger refresh
+      // This will call refreshAlerts() in SignalStream which updates the context
+      await handleStatusUpdate('closed');
+
+      // ✅ Then dispatch event for other listeners (after refresh completes)
       window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
         detail: {
           signalId: alert.id,
           assetName: alert.asset_name,
           closeReason: 'manual',
           notes: closingReason,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          status: 'closed'  // ✅ Include final status
         }
       }));
-
-      toast({
-        title: '✅ Signal Closed',
-        description: `${alert.asset_name} has been closed successfully`
-      });
-
-      // Trigger the parent's onStatusUpdate to refresh UI
-      await handleStatusUpdate('closed');
     } catch (error: any) {
       console.error('💥 [TradeAlertCard] Close with reason failed:', error);
       toast({

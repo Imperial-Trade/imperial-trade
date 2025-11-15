@@ -56,6 +56,8 @@ interface ModernNotification {
 const MODERN_DEDUP_WINDOW_MS = 1500;
 
 const ModernNotificationSystem = () => {
+  console.log('🚀 [ModernNotificationSystem] ===== COMPONENT RENDERING =====');
+  
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
   const authReady = !authLoading && !!user?.id;
@@ -394,6 +396,8 @@ const ModernNotificationSystem = () => {
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
+    console.log('🚨🚨🚨 [ModernNotificationSystem] useEffect FIRED - Setting up Realtime channel! 🚨🚨🚨');
+    
     // ✅ Subscribe IMMEDIATELY on mount - no auth dependency
     componentMountTimeRef.current = Date.now() - BACKFILL_WINDOW_MS;
     console.log('🔔 [ModernNotificationSystem] Setting up broadcast listeners (no auth required)');
@@ -403,7 +407,8 @@ const ModernNotificationSystem = () => {
       authLoading,
       authReady,
       hasAddNotificationFn: typeof (window as any).addNotification === 'function',
-      componentMounted: isMountedRef.current
+      componentMounted: isMountedRef.current,
+      timestamp: new Date().toISOString()
     });
 
     // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs

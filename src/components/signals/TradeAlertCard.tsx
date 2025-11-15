@@ -22,7 +22,6 @@ import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 import { perfMonitor } from '@/utils/performanceMonitor';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
-import { CloseSignalModal } from './CloseSignalModal';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -54,7 +53,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isClosing, setIsClosing] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [isPreparingToClose, setIsPreparingToClose] = useState(false); // Track if user clicked close and needs to enter reason
   
   // PHASE 7: Get signal retrieval function for instant UI updates
   const { getSignalById } = useSignalRealtime();
@@ -156,8 +155,17 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     }
   };
 
-  // ✅ NEW: Handle closing signal with closing reason
+  // ✅ Handle closing signal with closing reason
   const handleCloseWithReason = async (closingReason: string) => {
+    if (!closingReason.trim()) {
+      toast({
+        title: '⚠️ Closing Reason Required',
+        description: 'Please provide a reason for closing this signal',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     console.log('🔒 [TradeAlertCard] Closing with reason:', {
       alertId: alert.id,
       closingReason: closingReason.substring(0, 50) + '...',
@@ -165,6 +173,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     });
 
     setIsClosing(true);
+    setIsSavingNotes(true);
     try {
       // Get current user ID from creator
       if (!creator?.id) {
@@ -185,6 +194,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       }
 
       console.log('✅ Signal closed via RPC:', data);
+
+      // ✅ Reset state
+      setIsPreparingToClose(false);
+      setIsEditingNotes(false);
+      setNotesDraft('');
 
       // ✅ Dispatch event for instant UI update
       window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
@@ -211,9 +225,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         description: error.message || 'Please try again',
         variant: 'destructive'
       });
-      throw error; // Re-throw to keep modal open
+      // Don't reset state on error so user can retry
     } finally {
       setIsClosing(false);
+      setIsSavingNotes(false);
     }
   };
 
@@ -230,7 +245,33 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     setNotesDraft(localNotes || '');
   };
 
+  // ✅ NEW: Handle entering "close mode" - user clicks close button
+  const handleEnterCloseMode = () => {
+    console.log('🔒 [TradeAlertCard] Entering close mode:', {
+      alertId: alert.id,
+      isPending,
+      timestamp: new Date().toISOString()
+    });
+    
+    setIsPreparingToClose(true);
+    setIsEditingNotes(true); // Open notes editor
+    setNotesDraft(''); // Clear any existing notes for closing reason
+  };
+
+  // ✅ NEW: Handle canceling close mode
+  const handleCancelClose = () => {
+    setIsPreparingToClose(false);
+    setIsEditingNotes(false);
+    setNotesDraft(localNotes || ''); // Restore original notes
+  };
+
   const handleNotesSave = async () => {
+    // ✅ If in closing mode, close the signal instead of just saving notes
+    if (isPreparingToClose) {
+      await handleCloseWithReason(notesDraft.trim());
+      return;
+    }
+
     try {
       setIsSavingNotes(true);
       setNotesSyncStatus('saving');
@@ -527,10 +568,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       <div className="px-3 pb-3">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {isPreparingToClose ? 'Closing Reason' : 'Notes'}
+            </span>
             <NotesSyncIndicator status={notesSyncStatus} />
           </div>
-          {canEditNotes && !isEditingNotes && (
+          {canEditNotes && !isEditingNotes && !isPreparingToClose && (
             <Button 
               variant="ghost" 
               size="sm" 
@@ -546,13 +589,32 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <Textarea 
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
-              placeholder="Add helpful context for followers..."
+              placeholder={isPreparingToClose 
+                ? (isPending 
+                  ? "Explain why you're cancelling this order..." 
+                  : "Explain why you're closing this signal...")
+                : "Add helpful context for followers..."}
               className="min-h-[60px] text-sm"
+              autoFocus={isPreparingToClose}
             />
             <div className="flex justify-end gap-1.5">
-              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes} className="h-6 px-2 text-xs">Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes} className="h-6 px-2 text-xs">
-                {isSavingNotes ? 'Saving...' : 'Save'}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={isPreparingToClose ? handleCancelClose : handleNotesEditToggle} 
+                disabled={isSavingNotes} 
+                className="h-6 px-2 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handleNotesSave} 
+                disabled={isSavingNotes || (!isPreparingToClose && notesDraft === localNotes) || (isPreparingToClose && !notesDraft.trim())} 
+                className="h-6 px-2 text-xs"
+              >
+                {isSavingNotes ? (isPreparingToClose ? 'Closing...' : 'Saving...') : (isPreparingToClose ? 'Close Alert' : 'Save')}
               </Button>
             </div>
           </div>
@@ -575,46 +637,19 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       )}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-        <>
-          <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-                onClick={() => {
-                  console.log('🖱️ [TradeAlertCard] Opening close modal:', {
-                    alertId: alert.id,
-                    isPending,
-                    timestamp: new Date().toISOString()
-                  });
-                  setShowCloseModal(true);
-                }}
-                disabled={isClosing}
-              >
-                  {isClosing ? (
-                    <>
-                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                      {isPending ? 'Cancelling...' : 'Closing...'}
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3 h-3 mr-1.5" />
-                      {isPending ? 'Cancel Order' : 'Close My Signal'}
-                    </>
-                  )}
-              </Button>
-          </div>
-
-          {/* ✅ Closing Reason Modal */}
-          <CloseSignalModal
-            isOpen={showCloseModal}
-            onClose={() => setShowCloseModal(false)}
-            onConfirm={handleCloseWithReason}
-            signalAssetName={alert.asset_name}
-            isPending={isPending}
-          />
-        </>
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && !isPreparingToClose && (
+        <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
+              onClick={handleEnterCloseMode}
+              disabled={isClosing || isEditingNotes}
+            >
+              <Lock className="w-3 h-3 mr-1.5" />
+              {isPending ? 'Cancel Order' : 'Close My Signal'}
+            </Button>
+        </div>
       )}
     </div>
   );

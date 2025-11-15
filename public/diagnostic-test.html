@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 Trade Imperial - Notification System Diagnostic</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 { font-size: 28px; margin-bottom: 8px; }
+    .header p { font-size: 14px; opacity: 0.9; }
+    .content { padding: 30px; }
+    .section {
+      margin-bottom: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .section h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+    .log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+    .log-entry { margin-bottom: 4px; }
+    .log-entry.success { color: #4ec9b0; }
+    .log-entry.error { color: #f48771; }
+    .log-entry.warning { color: #dcdcaa; }
+    .log-entry.info { color: #9cdcfe; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-top: 10px;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .result { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 13px; }
+    .result.success { background: #d4edda; color: #155724; }
+    .result.error { background: #f8d7da; color: #721c24; }
+    code {
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Notification System Diagnostic</h1>
+      <p>Complete system health check for Trade Imperial notifications</p>
+    </div>
+    
+    <div class="content">
+      <!-- 1. Environment Check -->
+      <div class="section">
+        <h2>🌐 1. Environment Detection <span id="env-status" class="status info">Checking...</span></h2>
+        <div id="env-results"></div>
+      </div>
+
+      <!-- 2. Supabase Connection -->
+      <div class="section">
+        <h2>🔗 2. Supabase Connection <span id="supabase-status" class="status info">Checking...</span></h2>
+        <div id="supabase-results"></div>
+        <button onclick="testSupabaseConnection()">Test Connection</button>
+      </div>
+
+      <!-- 3. Realtime Channel -->
+      <div class="section">
+        <h2>📡 3. Realtime Channel Subscription <span id="realtime-status" class="status info">Checking...</span></h2>
+        <div id="realtime-results"></div>
+        <button onclick="testRealtimeChannel()">Subscribe to Channel</button>
+        <button onclick="sendTestBroadcast()">Send Test Broadcast</button>
+      </div>
+
+      <!-- 4. Database Trigger -->
+      <div class="section">
+        <h2>⚙️ 4. Database Trigger Test <span id="trigger-status" class="status info">Pending</span></h2>
+        <div id="trigger-results"></div>
+        <button onclick="testDatabaseTrigger()">Create Test Signal</button>
+      </div>
+
+      <!-- 5. Live Console Logs -->
+      <div class="section">
+        <h2>📋 5. Live Console Logs</h2>
+        <div id="console-log" class="log">
+          <div class="log-entry info">🚀 Diagnostic tool initialized. Click buttons above to run tests.</div>
+        </div>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <button onclick="copyLogs()">Copy Logs</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Configuration
+    const SUPABASE_URL = 'https://kmuoqkcxguafxulqlbmi.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2MDI5NjYsImV4cCI6MjA3MzE3ODk2Nn0.m6vaoaT7X7VvcKaY3W3aVEi5ZjqitAjQAJbyYnps_sc';
+    
+    let supabase;
+    let realtimeChannel;
+    const logs = [];
+
+    // Logging utility
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = `[${timestamp}] ${message}`;
+      logs.push({ time: timestamp, message, type });
+      
+      const logDiv = document.getElementById('console-log');
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${type}`;
+      logEntry.textContent = entry;
+      logDiv.appendChild(logEntry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      
+      console.log(message);
+    }
+
+    function setStatus(elementId, status, text) {
+      const el = document.getElementById(elementId);
+      el.className = `status ${status}`;
+      el.textContent = text;
+    }
+
+    function setResult(elementId, html) {
+      document.getElementById(elementId).innerHTML = html;
+    }
+
+    function clearLogs() {
+      document.getElementById('console-log').innerHTML = '<div class="log-entry info">📋 Logs cleared.</div>';
+      logs.length = 0;
+    }
+
+    function copyLogs() {
+      const text = logs.map(l => `[${l.time}] ${l.message}`).join('\n');
+      navigator.clipboard.writeText(text);
+      log('✅ Logs copied to clipboard!', 'success');
+    }
+
+    // Test 1: Environment Detection
+    function checkEnvironment() {
+      log('🌐 Checking environment...', 'info');
+      
+      const hostname = window.location.hostname;
+      const isProduction = hostname === 'tradeimperial.com' || hostname === 'www.tradeimperial.com';
+      const isLovable = hostname.includes('lovableproject.com');
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+      
+      let envType = 'Unknown';
+      if (isProduction) envType = 'Production';
+      else if (isLovable) envType = 'Lovable Preview';
+      else if (isLocal) envType = 'Local Development';
+      
+      log(`✅ Environment: ${envType} (${hostname})`, 'success');
+      setStatus('env-status', 'success', envType);
+      setResult('env-results', `
+        <div class="result success">
+          <strong>Hostname:</strong> <code>${hostname}</code><br>
+          <strong>Protocol:</strong> <code>${window.location.protocol}</code><br>
+          <strong>Port:</strong> <code>${window.location.port || 'default'}</code><br>
+          <strong>Environment:</strong> <code>${envType}</code>
+        </div>
+      `);
+    }
+
+    // Test 2: Supabase Connection
+    async function testSupabaseConnection() {
+      log('🔗 Testing Supabase connection...', 'info');
+      setStatus('supabase-status', 'info', 'Testing...');
+      
+      try {
+        // Initialize Supabase client
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        log('✅ Supabase client created', 'success');
+        
+        // Test connection with a simple query
+        const { data, error } = await supabase.from('trade_alerts').select('id').limit(1);
+        
+        if (error) {
+          log(`❌ Supabase query failed: ${error.message}`, 'error');
+          setStatus('supabase-status', 'error', 'Failed');
+          setResult('supabase-results', `<div class="result error">❌ ${error.message}</div>`);
+          return false;
+        }
+        
+        log('✅ Supabase connection successful!', 'success');
+        setStatus('supabase-status', 'success', 'Connected');
+        setResult('supabase-results', `
+          <div class="result success">
+            ✅ Successfully connected to Supabase<br>
+            <strong>URL:</strong> <code>${SUPABASE_URL}</code><br>
+            <strong>Project:</strong> <code>kmuoqkcxguafxulqlbmi</code>
+          </div>
+        `);
+        return true;
+      } catch (err) {
+        log(`❌ Connection error: ${err.message}`, 'error');
+        setStatus('supabase-status', 'error', 'Failed');
+        setResult('supabase-results', `<div class="result error">❌ ${err.message}</div>`);
+        return false;
+      }
+    }
+
+    // Test 3: Realtime Channel
+    async function testRealtimeChannel() {
+      log('📡 Testing Realtime channel subscription...', 'info');
+      setStatus('realtime-status', 'info', 'Subscribing...');
+      
+      if (!supabase) {
+        const connected = await testSupabaseConnection();
+        if (!connected) return;
+      }
+      
+      try {
+        // Unsubscribe from existing channel if any
+        if (realtimeChannel) {
+          await supabase.removeChannel(realtimeChannel);
+          log('🔄 Removed existing channel', 'info');
+        }
+        
+        // Subscribe to instant-alerts channel
+        realtimeChannel = supabase
+          .channel('instant-alerts')
+          .on('broadcast', { event: 'signal_notification' }, (payload) => {
+            log('🎉 NOTIFICATION RECEIVED!', 'success');
+            log(`📦 Payload: ${JSON.stringify(payload.payload, null, 2)}`, 'info');
+            setStatus('realtime-status', 'success', 'Receiving!');
+          })
+          .subscribe((status) => {
+            log(`📡 Channel status: ${status}`, status === 'SUBSCRIBED' ? 'success' : 'warning');
+            
+            if (status === 'SUBSCRIBED') {
+              setStatus('realtime-status', 'success', 'Subscribed');
+              setResult('realtime-results', `
+                <div class="result success">
+                  ✅ Successfully subscribed to <code>instant-alerts</code> channel<br>
+                  <strong>Status:</strong> <code>SUBSCRIBED</code><br>
+                  <strong>Channel:</strong> <code>instant-alerts</code><br>
+                  <strong>Event:</strong> <code>signal_notification</code><br><br>
+                  🎧 Listening for broadcasts...
+                </div>
+              `);
+            }
+          });
+        
+        log('✅ Realtime channel setup complete', 'success');
+      } catch (err) {
+        log(`❌ Realtime error: ${err.message}`, 'error');
+        setStatus('realtime-status', 'error', 'Failed');
+        setResult('realtime-results', `<div class="result error">❌ ${err.message}</div>`);
+      }
+    }
+
+    // Test 4: Send Test Broadcast
+    async function sendTestBroadcast() {
+      log('📤 Sending test broadcast...', 'info');
+      
+      if (!realtimeChannel) {
+        log('⚠️ Please subscribe to channel first!', 'warning');
+        return;
+      }
+      
+      try {
+        const testPayload = {
+          type: 'signal_created',
+          title: '🧪 Test Notification',
+          message: 'This is a test broadcast from the diagnostic tool',
+          notification_type: 'signal_created',
+          signal_id: 'test-' + Date.now(),
+          asset_name: 'Test Asset',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            provider_name: 'Diagnostic Tool',
+            notes: 'Test notification'
+          }
+        };
+        
+        await realtimeChannel.send({
+          type: 'broadcast',
+          event: 'signal_notification',
+          payload: testPayload
+        });
+        
+        log('✅ Test broadcast sent!', 'success');
+        log('⏳ Check if you receive it above...', 'info');
+      } catch (err) {
+        log(`❌ Broadcast error: ${err.message}`, 'error');
+      }
+    }
+
+    // Test 5: Database Trigger
+    async function testDatabaseTrigger() {
+      log('⚙️ Testing database trigger...', 'info');
+      setStatus('trigger-status', 'info', 'Testing...');
+      
+      if (!supabase) {
+        const connected = await testSupabaseConnection();
+        if (!connected) return;
+      }
+      
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          log('⚠️ Not logged in! Please log in first.', 'warning');
+          setStatus('trigger-status', 'warning', 'Not logged in');
+          setResult('trigger-results', `
+            <div class="result warning">
+              ⚠️ You need to be logged in to test database triggers.<br>
+              Please log in to Trade Imperial first, then come back here.
+            </div>
+          `);
+          return;
+        }
+        
+        log(`✅ Logged in as: ${user.email}`, 'success');
+        
+        // Subscribe to channel first
+        if (!realtimeChannel) {
+          await testRealtimeChannel();
+        }
+        
+        // Create test signal
+        log('📝 Creating test signal...', 'info');
+        const { data, error } = await supabase
+          .from('trade_alerts')
+          .insert({
+            user_id: user.id,
+            asset_name: 'DIAGNOSTIC_TEST',
+            trade_type: 'buy',
+            entry_price: 99999.99,
+            stop_loss: 99990.00,
+            tp1: 100010.00,
+            status: 'active',
+            tradermade_symbol: 'TEST',
+            notes: '🧪 Diagnostic test signal - ' + new Date().toISOString()
+          })
+          .select();
+        
+        if (error) {
+          log(`❌ Failed to create signal: ${error.message}`, 'error');
+          setStatus('trigger-status', 'error', 'Failed');
+          setResult('trigger-results', `<div class="result error">❌ ${error.message}</div>`);
+          return;
+        }
+        
+        log('✅ Test signal created!', 'success');
+        log(`Signal ID: ${data[0].id}`, 'info');
+        setStatus('trigger-status', 'success', 'Triggered');
+        setResult('trigger-results', `
+          <div class="result success">
+            ✅ Test signal created successfully!<br>
+            <strong>Signal ID:</strong> <code>${data[0].id}</code><br>
+            <strong>Asset:</strong> <code>DIAGNOSTIC_TEST</code><br><br>
+            ⏳ Waiting for notification broadcast...<br>
+            (Check the Realtime section above for incoming broadcast)
+          </div>
+        `);
+        
+        log('⏳ Waiting for trigger to fire...', 'info');
+        log('👀 Watch the Realtime section for incoming notification!', 'warning');
+      } catch (err) {
+        log(`❌ Trigger test error: ${err.message}`, 'error');
+        setStatus('trigger-status', 'error', 'Error');
+        setResult('trigger-results', `<div class="result error">❌ ${err.message}</div>`);
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      log('🚀 Diagnostic tool initialized', 'success');
+      checkEnvironment();
+      testSupabaseConnection();
+    });
+  </script>
+</body>
+</html>
+

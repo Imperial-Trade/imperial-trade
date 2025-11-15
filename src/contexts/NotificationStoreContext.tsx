@@ -52,8 +52,9 @@ interface NotificationStoreContextType {
 
 const NotificationStoreContext = createContext<NotificationStoreContextType | undefined>(undefined);
 
-// ✅ UNLIMITED STORAGE - No time limit, no count limit
+// ✅ STORAGE CONFIGURATION - Store latest 100 notifications
 const STORAGE_KEY = 'imperial-trade-notifications';
+const MAX_STORED_NOTIFICATIONS = 100;
 
 // Helper to serialize Date objects for localStorage
 const serializeNotification = (notification: StoredNotification) => ({
@@ -118,14 +119,15 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         return prev;
       }
 
-      // ✅ Add new notification at the beginning - NO LIMITS
-      const updated = [notification, ...prev];
+      // ✅ Add new notification at the beginning - Keep only latest 100
+      const updated = [notification, ...prev].slice(0, MAX_STORED_NOTIFICATIONS);
 
       console.log('✅ [NotificationStore] Notification added:', {
         id: notification.id,
         type: notification.type,
         signal_id: notification.metadata?.signal_id,
         total_stored: updated.length,
+        limit: MAX_STORED_NOTIFICATIONS
       });
 
       return updated;

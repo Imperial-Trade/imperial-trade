@@ -432,7 +432,14 @@ const ModernNotificationSystem = () => {
           return;
         }
 
-        console.log('🚨 [ModernNotificationSystem] Received signal notification:', payload);
+        console.log('🚨 [ModernNotificationSystem] Received signal notification:', {
+          payload_keys: Object.keys(payload),
+          payload_payload_keys: payload.payload ? Object.keys(payload.payload) : 'none',
+          notification_type: payload.payload?.notification_type,
+          signal_id: payload.payload?.signal_id,
+          asset_name: payload.payload?.asset_name,
+          full_payload: payload
+        });
         
         // ✅ Auth check - only process if auth is ready
         if (!authReady) {
@@ -820,7 +827,7 @@ const ModernNotificationSystem = () => {
   };
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-3 max-w-md">
+    <div className="fixed top-24 right-4 z-50 space-y-3 max-w-md">
       <AnimatePresence>
         {notifications.map((notification) => (
           <motion.div

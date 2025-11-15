@@ -150,7 +150,7 @@ function App() {
           <RealtimeShutdownGuard />
           <VersionChecker />
           <CacheCleanerMount />
-          <Sonner />
+          {/* <Sonner /> ← REMOVED: Using ModernNotificationSystem only */}
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>

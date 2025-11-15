@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Notification Persistence</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #00ff00;
+            background: #000;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .output {
+            white-space: pre-wrap;
+            margin-top: 10px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-left: 3px solid #00ff00;
+        }
+        .error { color: #ff0000; }
+        .success { color: #00ff00; }
+        .warning { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Notification Persistence Debugger</h1>
+    <p>Use this tool to debug localStorage notification persistence issues</p>
+
+    <div class="section">
+        <h2>📊 Current Status</h2>
+        <button onclick="checkStorage()">Check localStorage</button>
+        <button onclick="checkSize()">Check Storage Size</button>
+        <button onclick="listAllKeys()">List All localStorage Keys</button>
+        <div id="status-output" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>🧪 Test Operations</h2>
+        <button onclick="createTestNotification()">Create Test Notification</button>
+        <button onclick="simulateLogout()">Simulate Logout</button>
+        <button onclick="clearNotifications()">Clear Notifications</button>
+        <div id="test-output" class="output"></div>
+    </div>
+
+    <div class="section">
+        <h2>🔧 Repair Operations</h2>
+        <button onclick="repairStorage()">Repair Storage</button>
+        <button onclick="exportData()">Export Data</button>
+        <button onclick="importData()">Import Data</button>
+        <div id="repair-output" class="output"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'imperial-trade-notifications';
+        const PROTECTED_KEYS = ['imperial-trade-notifications'];
+
+        function log(message, type = 'success') {
+            const outputId = event.target.parentElement.querySelector('.output').id;
+            const output = document.getElementById(outputId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+        }
+
+        function checkStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) {
+                    log('⚠️ No notifications found in localStorage', 'warning');
+                    return;
+                }
+
+                const parsed = JSON.parse(stored);
+                log(`✅ Found ${parsed.length} notifications`, 'success');
+                
+                if (parsed.length > 0) {
+                    const newest = new Date(parsed[0].timestamp);
+                    const oldest = new Date(parsed[parsed.length - 1].timestamp);
+                    log(`📅 Newest: ${newest.toLocaleString()}`, 'success');
+                    log(`📅 Oldest: ${oldest.toLocaleString()}`, 'success');
+                    log(`📊 First notification:`, 'success');
+                    log(JSON.stringify(parsed[0], null, 2), 'success');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function checkSize() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) {
+                    log('⚠️ No data to measure', 'warning');
+                    return;
+                }
+
+                const sizeInBytes = new Blob([stored]).size;
+                const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+                const sizeInMB = (sizeInBytes / 1024 / 1024).toFixed(2);
+
+                log(`📏 Storage size: ${sizeInBytes} bytes`, 'success');
+                log(`📏 Storage size: ${sizeInKB} KB`, 'success');
+                log(`📏 Storage size: ${sizeInMB} MB`, 'success');
+
+                // localStorage limit is usually 5-10MB
+                const limitMB = 5;
+                const percentUsed = (parseFloat(sizeInMB) / limitMB * 100).toFixed(2);
+                log(`📊 Using ${percentUsed}% of estimated ${limitMB}MB limit`, percentUsed > 80 ? 'warning' : 'success');
+
+                // Check total localStorage usage
+                let totalSize = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += localStorage[key].length + key.length;
+                    }
+                }
+                const totalKB = (totalSize / 1024).toFixed(2);
+                log(`📊 Total localStorage usage: ${totalKB} KB`, 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function listAllKeys() {
+            try {
+                log('📝 All localStorage keys:', 'success');
+                let protectedCount = 0;
+                let authCount = 0;
+                let otherCount = 0;
+
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const size = localStorage.getItem(key).length;
+                    const sizeKB = (size / 1024).toFixed(2);
+                    
+                    if (PROTECTED_KEYS.includes(key)) {
+                        log(`🔒 ${key} (${sizeKB} KB) - PROTECTED`, 'success');
+                        protectedCount++;
+                    } else if (key.includes('auth') || key.includes('sb-')) {
+                        log(`🔑 ${key} (${sizeKB} KB) - AUTH`, 'warning');
+                        authCount++;
+                    } else {
+                        log(`📄 ${key} (${sizeKB} KB)`, 'success');
+                        otherCount++;
+                    }
+                }
+
+                log(`\n📊 Summary:`, 'success');
+                log(`   Protected: ${protectedCount}`, 'success');
+                log(`   Auth: ${authCount}`, 'warning');
+                log(`   Other: ${otherCount}`, 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function createTestNotification() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                const notifications = stored ? JSON.parse(stored) : [];
+
+                const testNotification = {
+                    id: `test-${Date.now()}`,
+                    type: 'signal_created',
+                    title: 'Test Notification',
+                    message: 'This is a test notification created at ' + new Date().toLocaleString(),
+                    timestamp: new Date().toISOString(),
+                    deliveryChannel: 'realtime',
+                    metadata: {
+                        signal_id: 'test-signal-' + Date.now(),
+                        asset_name: 'TEST',
+                        notes: 'Test notification for debugging persistence'
+                    }
+                };
+
+                notifications.unshift(testNotification);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
+                
+                log(`✅ Test notification created`, 'success');
+                log(`📊 Total notifications: ${notifications.length}`, 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function simulateLogout() {
+            try {
+                log('🔄 Simulating logout...', 'warning');
+                
+                // This simulates what the app does during logout
+                const keysToRemove = [];
+                for (let key in localStorage) {
+                    if (PROTECTED_KEYS.includes(key)) {
+                        log(`🔒 PROTECTED: Keeping ${key}`, 'success');
+                        continue;
+                    }
+                    
+                    if (key.startsWith('supabase.auth.') || 
+                        key.includes('sb-') || 
+                        key.includes('auth') ||
+                        key.includes('imperial_auth') ||
+                        key.includes('session')) {
+                        keysToRemove.push(key);
+                    }
+                }
+
+                log(`🧹 Removing ${keysToRemove.length} auth keys...`, 'warning');
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    log(`   Removed: ${key}`, 'warning');
+                });
+
+                log(`✅ Logout simulation complete`, 'success');
+                log(`🔍 Checking if notifications survived...`, 'success');
+                
+                const survived = localStorage.getItem(STORAGE_KEY);
+                if (survived) {
+                    const count = JSON.parse(survived).length;
+                    log(`✅ SUCCESS! ${count} notifications survived logout`, 'success');
+                } else {
+                    log(`❌ FAILED! Notifications were deleted`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearNotifications() {
+            if (confirm('Are you sure you want to clear all notifications?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                log('✅ Notifications cleared', 'success');
+            }
+        }
+
+        function repairStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) {
+                    log('⚠️ No data to repair', 'warning');
+                    return;
+                }
+
+                const notifications = JSON.parse(stored);
+                log(`🔧 Repairing ${notifications.length} notifications...`, 'warning');
+
+                // Remove duplicates
+                const seen = new Set();
+                const deduplicated = notifications.filter(n => {
+                    const key = n.id || `${n.metadata?.signal_id}-${n.type}`;
+                    if (seen.has(key)) {
+                        return false;
+                    }
+                    seen.add(key);
+                    return true;
+                });
+
+                log(`🗑️ Removed ${notifications.length - deduplicated.length} duplicates`, 'success');
+
+                // Sort by timestamp (newest first)
+                deduplicated.sort((a, b) => {
+                    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+                });
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(deduplicated));
+                log(`✅ Repair complete! ${deduplicated.length} notifications saved`, 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function exportData() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) {
+                    log('⚠️ No data to export', 'warning');
+                    return;
+                }
+
+                const blob = new Blob([stored], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `notifications-backup-${Date.now()}.json`;
+                a.click();
+                
+                log('✅ Data exported successfully', 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                        log(`✅ Imported ${data.length} notifications`, 'success');
+                    } catch (error) {
+                        log(`❌ Error: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', () => {
+            const statusOutput = document.getElementById('status-output');
+            const timestamp = new Date().toLocaleTimeString();
+            statusOutput.innerHTML = `<span class="success">[${timestamp}] 🔍 Page loaded. Click "Check localStorage" to see current state.</span>\n`;
+        });
+    </script>
+</body>
+</html>
+

@@ -23,8 +23,27 @@ export const DevToolsPanel: React.FC = () => {
 
   const handleResetDevState = () => {
     try {
-      // Clear localStorage
-      localStorage.clear();
+      // ⚠️ PROTECTED KEYS - DO NOT DELETE!
+      const PROTECTED_KEYS = [
+        'imperial-trade-notifications', // Recent Activity notifications MUST persist
+      ];
+      
+      // Clear localStorage (except protected keys)
+      console.log('🧹 Clearing localStorage (protecting important data)...');
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !PROTECTED_KEYS.includes(key)) {
+          keysToRemove.push(key);
+        } else if (key) {
+          console.log(`🔒 [PROTECTED] Keeping localStorage key: ${key}`);
+        }
+      }
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🧹 Removed localStorage key: ${key}`);
+      });
       
       // Clear sessionStorage
       sessionStorage.clear();
@@ -188,8 +207,8 @@ export const DevToolsPanel: React.FC = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Reset Developer State</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will clear all localStorage, sessionStorage, browser caches, and IndexedDB data, then reload the page. 
-                    This action cannot be undone and will log you out.
+                    This will clear most localStorage (except notifications), sessionStorage, browser caches, and IndexedDB data, then reload the page. 
+                    Your Recent Activity notifications will be preserved. This action will log you out.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

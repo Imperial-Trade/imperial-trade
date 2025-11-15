@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔔 Realtime Notification Diagnostic Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    h1 {
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #00ff88;
+    }
+    .section h2 {
+      color: #00ff88;
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .log-box {
+      background: #000;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 10px;
+      border: 1px solid #333;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-radius: 3px;
+    }
+    .log-success { color: #00ff88; }
+    .log-error { color: #ff4444; }
+    .log-warn { color: #ffaa00; }
+    .log-info { color: #44aaff; }
+    button {
+      background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      margin: 5px;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .status-connected { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+    .status-disconnected { background: #ff4444; box-shadow: 0 0 10px #ff4444; }
+    .status-connecting { background: #ffaa00; box-shadow: 0 0 10px #ffaa00; }
+    .input-group {
+      margin: 15px 0;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #00ff88;
+      font-weight: bold;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .stat-card {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 6px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #00ff88;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔔 Realtime Notification Diagnostic Test</h1>
+    <p class="subtitle">Test your Supabase Realtime connection and notification system</p>
+
+    <!-- Step 1: Configuration -->
+    <div class="section">
+      <h2>📋 Step 1: Enter Supabase Credentials</h2>
+      <div class="input-group">
+        <label>Supabase URL:</label>
+        <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" value="https://kmuoqkcxguafxulqlbmi.supabase.co">
+      </div>
+      <div class="input-group">
+        <label>Supabase Anon Key:</label>
+        <input type="password" id="supabaseKey" placeholder="Your anon key">
+      </div>
+      <button onclick="initializeSupabase()">Initialize Connection</button>
+    </div>
+
+    <!-- Step 2: Connection Status -->
+    <div class="section">
+      <h2>🔌 Step 2: Realtime Channel Status</h2>
+      <p>
+        <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+        <strong id="statusText">Not Connected</strong>
+      </p>
+      <button onclick="subscribeToChannel()" id="subscribeBtn" disabled>Subscribe to instant-alerts</button>
+      <button onclick="unsubscribeFromChannel()" id="unsubscribeBtn" disabled>Unsubscribe</button>
+      <div class="log-box" id="connectionLog"></div>
+    </div>
+
+    <!-- Step 3: Test Notifications -->
+    <div class="section">
+      <h2>🧪 Step 3: Send Test Notification</h2>
+      <p>Send a test broadcast to the instant-alerts channel:</p>
+      <button onclick="sendTestNotification('tp_hit')" id="testBtn" disabled>🎯 Test TP Hit</button>
+      <button onclick="sendTestNotification('signal_created')" id="testBtn2" disabled>🚀 Test New Signal</button>
+      <button onclick="sendTestNotification('manual_close')" id="testBtn3" disabled>🔒 Test Manual Close</button>
+      <div class="log-box" id="testLog"></div>
+    </div>
+
+    <!-- Step 4: Statistics -->
+    <div class="section">
+      <h2>📊 Step 4: Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="receivedCount">0</div>
+          <div class="stat-label">Notifications Received</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="sentCount">0</div>
+          <div class="stat-label">Test Broadcasts Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="errorCount">0</div>
+          <div class="stat-label">Errors</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="uptime">0s</div>
+          <div class="stat-label">Connection Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Received Notifications -->
+    <div class="section">
+      <h2>📬 Step 5: Received Notifications</h2>
+      <div class="log-box" id="notificationLog">Waiting for notifications...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+
+    let supabase = null;
+    let channel = null;
+    let receivedCount = 0;
+    let sentCount = 0;
+    let errorCount = 0;
+    let connectionStartTime = null;
+
+    function log(elementId, message, type = 'info') {
+      const logBox = document.getElementById(elementId);
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    window.initializeSupabase = function() {
+      const url = document.getElementById('supabaseUrl').value;
+      const key = document.getElementById('supabaseKey').value;
+
+      if (!url || !key) {
+        log('connectionLog', '❌ Please enter both URL and anon key', 'error');
+        errorCount++;
+        updateStats();
+        return;
+      }
+
+      try {
+        supabase = createClient(url, key);
+        log('connectionLog', '✅ Supabase client initialized', 'success');
+        document.getElementById('subscribeBtn').disabled = false;
+        document.getElementById('testBtn').disabled = false;
+        document.getElementById('testBtn2').disabled = false;
+        document.getElementById('testBtn3').disabled = false;
+      } catch (error) {
+        log('connectionLog', `❌ Failed to initialize: ${error.message}`, 'error');
+        errorCount++;
+        updateStats();
+      }
+    };
+
+    window.subscribeToChannel = async function() {
+      if (!supabase) {
+        log('connectionLog', '❌ Initialize Supabase first', 'error');
+        return;
+      }
+
+      try {
+        log('connectionLog', '🔄 Creating channel: instant-alerts...', 'info');
+        
+        channel = supabase.channel('instant-alerts');
+
+        channel.on('broadcast', { event: 'signal_notification' }, (payload) => {
+          receivedCount++;
+          updateStats();
+          
+          log('notificationLog', `📨 RECEIVED NOTIFICATION:`, 'success');
+          log('notificationLog', JSON.stringify(payload, null, 2), 'info');
+          
+          const data = payload.payload || payload;
+          const notifType = data.notification_type || data.type;
+          const assetName = data.asset_name || 'Unknown';
+          const message = data.message || 'No message';
+          
+          log('testLog', `✅ ${notifType.toUpperCase()}: ${assetName} - ${message}`, 'success');
+        });
+
+        const status = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Subscription timeout')), 10000);
+          
+          channel.subscribe((status) => {
+            clearTimeout(timeout);
+            log('connectionLog', `📡 Subscription status: ${status}`, status === 'SUBSCRIBED' ? 'success' : 'warn');
+            
+            if (status === 'SUBSCRIBED') {
+              connectionStartTime = Date.now();
+              startUptimeTimer();
+              updateStatusIndicator('connected');
+              document.getElementById('unsubscribeBtn').disabled = false;
+              resolve(status);
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              errorCount++;
+              updateStats();
+              updateStatusIndicator('disconnected');
+              reject(new Error(`Subscription failed: ${status}`));
+            }
+          });
+        });
+
+        log('connectionLog', '✅ Successfully subscribed to instant-alerts channel', 'success');
+        log('connectionLog', '👂 Listening for signal_notification events...', 'info');
+
+      } catch (error) {
+        log('connectionLog', `❌ Subscription error: ${error.message}`, 'error');
+        errorCount++;
+        updateStats();
+        updateStatusIndicator('disconnected');
+      }
+    };
+
+    window.unsubscribeFromChannel = async function() {
+      if (!channel) {
+        log('connectionLog', '⚠️ No active channel to unsubscribe', 'warn');
+        return;
+      }
+
+      try {
+        await supabase.removeChannel(channel);
+        channel = null;
+        connectionStartTime = null;
+        log('connectionLog', '✅ Unsubscribed from channel', 'success');
+        updateStatusIndicator('disconnected');
+        document.getElementById('unsubscribeBtn').disabled = true;
+      } catch (error) {
+        log('connectionLog', `❌ Unsubscribe error: ${error.message}`, 'error');
+        errorCount++;
+        updateStats();
+      }
+    };
+
+    window.sendTestNotification = async function(type) {
+      if (!channel) {
+        log('testLog', '❌ Subscribe to channel first', 'error');
+        return;
+      }
+
+      const testPayloads = {
+        tp_hit: {
+          notification_type: 'tp_hit',
+          type: 'tp_hit',
+          signal_id: 'test-signal-' + Date.now(),
+          asset_name: 'Gold',
+          author_name: 'Test User',
+          trade_type: 'buy',
+          entry_price: '2650.00',
+          triggered_price: '2660.00',
+          tp_number: 1,
+          pips: '+100.0 PIPS',
+          message: 'TP 1 HIT on Gold at $2660.00 | +100.0 PIPS',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            pips_data: { value: 100, formatted: '+100.0 PIPS', direction: 'profit' },
+            tp_hits: [1],
+            total_tps: 4
+          }
+        },
+        signal_created: {
+          notification_type: 'signal_created',
+          type: 'signal_created',
+          signal_id: 'test-signal-' + Date.now(),
+          asset_name: 'Bitcoin',
+          author_name: 'Test User',
+          trade_type: 'sell',
+          entry_price: '95000.00',
+          message: 'SELL Signal is Posted on Bitcoin at $95000.00',
+          timestamp: new Date().toISOString()
+        },
+        manual_close: {
+          notification_type: 'manual_close',
+          type: 'manual_close',
+          signal_id: 'test-signal-' + Date.now(),
+          asset_name: 'EUR/USD',
+          author_name: 'Test User',
+          message: 'manually closed EUR/USD',
+          timestamp: new Date().toISOString()
+        }
+      };
+
+      const payload = testPayloads[type];
+
+      try {
+        log('testLog', `📤 Sending test ${type} notification...`, 'info');
+        
+        const result = await channel.send({
+          type: 'broadcast',
+          event: 'signal_notification',
+          payload: payload
+        });
+
+        sentCount++;
+        updateStats();
+
+        if (result === 'ok') {
+          log('testLog', `✅ Test notification sent successfully (${type})`, 'success');
+          log('testLog', `📦 Payload: ${JSON.stringify(payload, null, 2)}`, 'info');
+        } else {
+          log('testLog', `⚠️ Broadcast status: ${result}`, 'warn');
+        }
+
+      } catch (error) {
+        log('testLog', `❌ Failed to send: ${error.message}`, 'error');
+        errorCount++;
+        updateStats();
+      }
+    };
+
+    function updateStatusIndicator(status) {
+      const indicator = document.getElementById('statusIndicator');
+      const text = document.getElementById('statusText');
+      
+      indicator.className = 'status-indicator';
+      
+      if (status === 'connected') {
+        indicator.classList.add('status-connected');
+        text.textContent = 'Connected to instant-alerts';
+      } else if (status === 'connecting') {
+        indicator.classList.add('status-connecting');
+        text.textContent = 'Connecting...';
+      } else {
+        indicator.classList.add('status-disconnected');
+        text.textContent = 'Disconnected';
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('receivedCount').textContent = receivedCount;
+      document.getElementById('sentCount').textContent = sentCount;
+      document.getElementById('errorCount').textContent = errorCount;
+    }
+
+    function startUptimeTimer() {
+      setInterval(() => {
+        if (connectionStartTime) {
+          const uptime = Math.floor((Date.now() - connectionStartTime) / 1000);
+          document.getElementById('uptime').textContent = uptime + 's';
+        }
+      }, 1000);
+    }
+
+    // Initialize
+    log('connectionLog', '🚀 Realtime Diagnostic Tool Ready', 'success');
+    log('connectionLog', '📋 Enter your Supabase credentials to begin', 'info');
+  </script>
+</body>
+</html>
+

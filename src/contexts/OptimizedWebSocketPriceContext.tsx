@@ -994,12 +994,12 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return isFresh;
     });
     
-    // 🚀 UPDATED: Constant 500ms polling for fast live prices
-    // - Signal stream: 500ms (always - no transitions)
-    // - Other pages: 30s (minimal background polling)
+    // 🚀 OPTIMIZED: Reduced polling for smoother performance
+    // - Signal stream: 1000ms (1 second - balanced speed + performance)
+    // - Other pages: 60s (minimal background polling)
     const pollingInterval = isSignalStreamPage 
-      ? 500  // ✅ FIX #1D: Always 500ms (no hydration/backup modes)
-      : 30000;
+      ? 1000  // ✅ OPTIMIZED: 1 second polling (reduced from 500ms for smoother UI)
+      : 60000; // ✅ OPTIMIZED: 1 minute for background pages (reduced load)
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
     console.log(`🔄 [Polling] Starting ${modeLabel} mode (${pollingInterval}ms) for ${symbolList.length} symbols`);

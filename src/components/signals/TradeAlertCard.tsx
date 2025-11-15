@@ -22,6 +22,7 @@ import { NotesSyncIndicator } from './NotesSyncIndicator';
 import { useSignalRealtime } from '@/contexts/SignalRealtimeContext';
 import { perfMonitor } from '@/utils/performanceMonitor';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { CloseSignalModal } from './CloseSignalModal';
 
 
 const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
@@ -53,6 +54,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSyncStatus, setNotesSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isClosing, setIsClosing] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
   
   // PHASE 7: Get signal retrieval function for instant UI updates
   const { getSignalById } = useSignalRealtime();
@@ -151,6 +153,67 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       await onStatusUpdate(alert, newStatus);
     } catch (error) {
       console.error('Failed to update status:', error);
+    }
+  };
+
+  // ✅ NEW: Handle closing signal with closing reason
+  const handleCloseWithReason = async (closingReason: string) => {
+    console.log('🔒 [TradeAlertCard] Closing with reason:', {
+      alertId: alert.id,
+      closingReason: closingReason.substring(0, 50) + '...',
+      timestamp: new Date().toISOString()
+    });
+
+    setIsClosing(true);
+    try {
+      // Get current user ID from creator
+      if (!creator?.id) {
+        throw new Error('User information not available');
+      }
+
+      // Call RPC with closing reason as notes
+      const { data, error } = await supabase.rpc('close_trade_alert', {
+        p_alert_id: alert.id,
+        p_user_id: creator.id,
+        p_close_reason: 'manual',
+        p_notes: closingReason  // ✅ Pass closing reason as notes
+      });
+
+      if (error) {
+        console.error('❌ RPC close_trade_alert failed:', error);
+        throw new Error(error.message || 'Failed to close signal');
+      }
+
+      console.log('✅ Signal closed via RPC:', data);
+
+      // ✅ Dispatch event for instant UI update
+      window.dispatchEvent(new CustomEvent('signal-closed-confirmed', {
+        detail: {
+          signalId: alert.id,
+          assetName: alert.asset_name,
+          closeReason: 'manual',
+          notes: closingReason,
+          timestamp: new Date().toISOString()
+        }
+      }));
+
+      toast({
+        title: '✅ Signal Closed',
+        description: `${alert.asset_name} has been closed successfully`
+      });
+
+      // Trigger the parent's onStatusUpdate to refresh UI
+      await handleStatusUpdate('closed');
+    } catch (error: any) {
+      console.error('💥 [TradeAlertCard] Close with reason failed:', error);
+      toast({
+        title: '❌ Failed to Close',
+        description: error.message || 'Please try again',
+        variant: 'destructive'
+      });
+      throw error; // Re-throw to keep modal open
+    } finally {
+      setIsClosing(false);
     }
   };
 
@@ -513,42 +576,45 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
-        <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
-              onClick={async () => {
-                console.log('🖱️ [TradeAlertCard] Close button CLICKED:', {
-                  alertId: alert.id,
-                  newStatus: 'closed',
-                  timestamp: new Date().toISOString()
-                });
-                
-                setIsClosing(true);
-                try {
-                  await handleStatusUpdate('closed');
-                } catch (error) {
-                  console.error('💥 [TradeAlertCard] Status update failed:', error);
-                } finally {
-                  setIsClosing(false);
-                }
-              }}
-              disabled={isClosing}
-            >
-                {isClosing ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    Closing...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3 h-3 mr-1.5" />
-                    {isPending ? 'Cancel Order' : getCloseButtonText()}
-                  </>
-                )}
-            </Button>
-        </div>
+        <>
+          <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
+                onClick={() => {
+                  console.log('🖱️ [TradeAlertCard] Opening close modal:', {
+                    alertId: alert.id,
+                    isPending,
+                    timestamp: new Date().toISOString()
+                  });
+                  setShowCloseModal(true);
+                }}
+                disabled={isClosing}
+              >
+                  {isClosing ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                      {isPending ? 'Cancelling...' : 'Closing...'}
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3 h-3 mr-1.5" />
+                      {isPending ? 'Cancel Order' : 'Close My Signal'}
+                    </>
+                  )}
+              </Button>
+          </div>
+
+          {/* ✅ Closing Reason Modal */}
+          <CloseSignalModal
+            isOpen={showCloseModal}
+            onClose={() => setShowCloseModal(false)}
+            onConfirm={handleCloseWithReason}
+            signalAssetName={alert.asset_name}
+            isPending={isPending}
+          />
+        </>
       )}
     </div>
   );

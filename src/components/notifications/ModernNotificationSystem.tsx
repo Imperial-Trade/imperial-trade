@@ -419,23 +419,35 @@ const ModernNotificationSystem = () => {
       timestamp: new Date().toISOString()
     });
 
-    // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs
-    const bc = new BroadcastChannel('trade-imperial-notifications');
-    (window as any).notificationBroadcastChannel = bc;
-    
-    bc.onmessage = (event) => {
-      const { type, eventKey } = event.data;
-      if (type === 'notification_shown') {
-        const now = Date.now();
-        // Mark this notification as shown in this tab too
-        lastShownRef.current.set(eventKey, now);
-        if (!(window as any).lastShownMap) {
-          (window as any).lastShownMap = new Map();
-        }
-        (window as any).lastShownMap.set(eventKey, now);
-        console.log('📡 [Cross-Tab] Another tab showed notification:', eventKey);
+    // ✅ CROSS-TAB DEDUPLICATION: Use BroadcastChannel to sync across tabs (Safari-safe)
+    let bc: BroadcastChannel | null = null;
+    try {
+      // Check if BroadcastChannel is supported (Safari iOS 15.4+)
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('trade-imperial-notifications');
+        (window as any).notificationBroadcastChannel = bc;
+        
+        bc.onmessage = (event) => {
+          const { type, eventKey } = event.data;
+          if (type === 'notification_shown') {
+            const now = Date.now();
+            // Mark this notification as shown in this tab too
+            lastShownRef.current.set(eventKey, now);
+            if (!(window as any).lastShownMap) {
+              (window as any).lastShownMap = new Map();
+            }
+            (window as any).lastShownMap.set(eventKey, now);
+            console.log('📡 [Cross-Tab] Another tab showed notification:', eventKey);
+          }
+        };
+        console.log('✅ [BroadcastChannel] Cross-tab deduplication enabled');
+      } else {
+        console.warn('⚠️ [BroadcastChannel] Not supported in this browser (Safari iOS <15.4) - single tab mode');
       }
-    };
+    } catch (error) {
+      console.warn('⚠️ [BroadcastChannel] Failed to initialize:', error, '- falling back to single tab mode');
+      bc = null;
+    }
 
     const channel = supabase
       .channel('instant-alerts')
@@ -810,7 +822,13 @@ const ModernNotificationSystem = () => {
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
       supabase.removeChannel(channel);
-      bc.close();
+      if (bc) {
+        try {
+          bc.close();
+        } catch (error) {
+          console.warn('⚠️ [BroadcastChannel] Cleanup error (non-critical):', error);
+        }
+      }
       (window as any).notificationBroadcastChannel = null;
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };

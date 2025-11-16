@@ -1,9 +1,11 @@
+import React from 'react';
 import { createRoot } from "react-dom/client";
 import { version } from "react";
 import App from "./App.tsx";
 import "./index.css";
 import posthog from "posthog-js";
 import { RootErrorBoundary } from "./components/error-boundary/RootErrorBoundary";
+import { detectAndFixReactDuplication } from "@/utils/reactDuplicationDetector";
 
 // Service Worker Registration for PWA (conditionally enabled)
 const enableServiceWorker = import.meta.env.VITE_ENABLE_SW === 'true';
@@ -107,6 +109,10 @@ if (POSTHOG_KEY && POSTHOG_HOST) {
     setTimeout(initPostHog, 2000);
   }
 }
+
+// 🚨 CRITICAL: Detect and fix React duplication BEFORE rendering anything
+console.log('🔍 [main.tsx] Checking for React duplication...');
+detectAndFixReactDuplication();
 
 // Debug React version
 console.log('🔍 React version:', version);

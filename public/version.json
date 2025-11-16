@@ -1,5 +1,5 @@
 {
-  "version": "1.0.4",
-  "timestamp": "2025-11-15T17:30:00Z",
-  "description": "HOTFIX: useState null error - Add React imports to landing pages"
+  "version": "1.0.5",
+  "timestamp": "2025-11-15T19:30:00Z",
+  "description": "HOTFIX: Invalid hook call - Add React imports to SafeThemeProvider + NotificationSheet"
 }

@@ -125,7 +125,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
     entry_price: entryPrice,
     stop_loss: stopLoss,
     tp1, tp2, tp3, tp4, tp5,
-    tp_hits: (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
+    tp_hits: (tpHitsKey && typeof tpHitsKey === 'string' && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [],
     status,
     close_reason: closeReason,
     created_date: new Date().toISOString(),

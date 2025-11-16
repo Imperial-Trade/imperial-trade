@@ -1,5 +1,5 @@
 {
-  "version": "1.0.11",
-  "timestamp": "2025-11-16T11:00:00Z",
-  "description": "CRITICAL PERF FIX: Remove blocking DB queries from notifications"
+  "version": "1.0.12",
+  "timestamp": "2025-11-16T12:00:00Z",
+  "description": "INSTANT ACTIVE ALERTS: 1s cache + 10s auto-reload for real-time display"
 }

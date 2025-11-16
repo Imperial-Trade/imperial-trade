@@ -8,9 +8,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ FIX #5: Stable cache TTL to prevent race conditions
-const LOCAL_CACHE_TTL = 3 * 1000; // 3 seconds for stable caching
+// ✅ INSTANT ACTIVE ALERTS: Ultra-short cache for instant display
+const LOCAL_CACHE_TTL = 1 * 1000; // 1 second - active alerts show instantly
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
+const AUTO_RELOAD_INTERVAL = 10 * 1000; // Auto-reload every 10 seconds for fresh data
 
 // Module-level educator cache
 let educatorUserIdsCache: string[] = [];
@@ -687,17 +688,19 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   // ✅ FIX #4: Clear cache on mount + setup subscription
   useEffect(() => {
     if (mountOnlyRef.current) {
-      console.log('🚀 [Mount] Component mounted - clearing all caches for fresh data');
+      console.log('🚀 [Mount] Component mounted - INSTANT FETCH for active alerts');
       
-      // Clear all caches
+      // Clear all caches for instant display
       localCacheRef.current.expiry = 0;
       educatorCacheExpiry = 0;
       educatorUserIdsCache = [];
       seenIdsRef.current.clear();
       
-      // ✅ FIX #1: Fetch initial data IMMEDIATELY (parallel with subscription)
-      console.log('🔄 [Mount] Fetching initial signals immediately (parallel with subscription setup)');
-      refreshSignals(true);
+      // ✅ INSTANT DISPLAY: Fetch active alerts IMMEDIATELY (no delay, no cache)
+      console.log('🔄 [Mount] FORCE FETCHING active alerts for instant display (bypassing all caches)');
+      refreshSignals(true).then(() => {
+        console.log('✅ [Mount] Initial active alerts loaded and displayed');
+      });
       
       // Subscribe to realtime updates (runs in parallel with fetch)
       const cleanup = subscribeToRealtime();
@@ -710,28 +713,27 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [subscribeToRealtime, refreshSignals]);
 
-  // ✅ FIX #2: Add automatic polling every 2 minutes as safety net (reduced from 30s to prevent UI glitches)
+  // ✅ AGGRESSIVE AUTO-RELOAD: Fetch fresh active alerts every 10 seconds
   useEffect(() => {
+    console.log('🔄 [Auto-Reload] Starting aggressive refresh interval (10s)');
+    
     const pollingInterval = setInterval(async () => {
-      const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
-      
-      // Only poll if >2 minutes since last update (increased from 30s to prevent frequent refreshes)
-      if (timeSinceLastUpdate > 120000) {
-        console.log('🔄 Auto-polling for signal freshness (2min since last update)...');
-        await refreshSignals(false); // ✅ Changed to false: Use throttled refresh to prevent UI disruption
-      }
-    }, 120000); // Poll every 2 minutes (changed from 30s)
+      console.log('🔄 [Auto-Reload] Fetching latest active alerts...');
+      await refreshSignals(true); // Force refresh to get latest data
+    }, AUTO_RELOAD_INTERVAL); // Reload every 10 seconds
 
-    return () => clearInterval(pollingInterval);
-  }, [lastUpdated, refreshSignals]);
+    return () => {
+      console.log('🛑 [Auto-Reload] Stopping refresh interval');
+      clearInterval(pollingInterval);
+    };
+  }, [refreshSignals]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('👀 [SignalRealtimeContext] Tab visible - refreshing signals');
-        // ✅ Use throttled refresh (false) instead of forced (true) to prevent UI disruption
-        // Realtime updates should handle most cases, this is just a safety sync
-        refreshSignals(false);
+        console.log('👀 [SignalRealtimeContext] Tab visible - FORCE refreshing active alerts');
+        // ✅ Force refresh when tab becomes visible to show latest active alerts
+        refreshSignals(true);
       }
     };
 

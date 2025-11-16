@@ -1,10 +1,9 @@
-// 🔔 App Entry Point - Build: 2025-11-15-REACT-FIX-v3 (Cache Bust v3)
+// 🔔 App Entry Point - Build: 2025-11-15-REACT-FIX-FINAL (useMemo fix + Sonner removal)
 import React, { useEffect, createElement, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { installGlobalChunkErrorHandler } from '@/utils/globalErrorHandler';
 import { isBuildStale, clearStaleCache, logBuildInfo } from '@/utils/buildInfo';
 import { detectAndFixReactDuplication } from '@/utils/reactDuplicationDetector';
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";

@@ -133,21 +133,21 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
                     <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <ProviderAvatar
-                        displayName={event.metadata.display_name}
-                        avatarUrl={event.metadata.provider_avatar_url}
-                        userType={event.metadata.provider_type}
+                        displayName={event.metadata?.display_name || event.metadata?.provider_name || event.metadata?.asset_name || 'Unknown'}
+                        avatarUrl={event.metadata?.provider_avatar_url}
+                        userType={event.metadata?.provider_type}
                         size="md"
                         showBadge={true}
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold text-foreground text-sm">
-                            {event.metadata.provider_name}
+                            {event.metadata?.provider_name || event.metadata?.display_name || 'Unknown Provider'}
                           </h4>
                           <NotificationBadge type={event.type} priority={event.priority} />
                         </div>
                         <p className="text-muted-foreground text-xs">
-                          {event.metadata.asset_name || event.title}
+                          {event.metadata?.asset_name || event.title}
                         </p>
                       </div>
                     </div>

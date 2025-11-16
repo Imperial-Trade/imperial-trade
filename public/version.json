@@ -1,5 +1,5 @@
 {
-  "version": "1.0.10",
-  "timestamp": "2025-11-16T10:00:00Z",
-  "description": "HOTFIX: Safari iOS compatibility - BroadcastChannel fallback"
+  "version": "1.0.11",
+  "timestamp": "2025-11-16T11:00:00Z",
+  "description": "CRITICAL PERF FIX: Remove blocking DB queries from notifications"
 }

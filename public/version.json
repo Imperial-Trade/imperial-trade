@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
-  "timestamp": "2025-11-15T16:30:00Z",
-  "description": "HOTFIX: React import + split error fixes"
+  "version": "1.0.3",
+  "timestamp": "2025-11-15T17:00:00Z",
+  "description": "HOTFIX: useMemo null error - Add React imports to all contexts"
 }

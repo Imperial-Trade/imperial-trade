@@ -3556,12 +3556,16 @@ export type Database = {
       user_notifications: {
         Row: {
           created_at: string
+          delivery_channel: string | null
+          event_key: string | null
           id: string
           is_read: boolean
           link_url: string | null
           message: string
           metadata: Json
+          notification_type: string
           priority: string
+          read_at: string | null
           source: string | null
           title: string
           type: string
@@ -3570,12 +3574,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_channel?: string | null
+          event_key?: string | null
           id?: string
           is_read?: boolean
           link_url?: string | null
           message: string
           metadata?: Json
+          notification_type: string
           priority?: string
+          read_at?: string | null
           source?: string | null
           title: string
           type?: string
@@ -3584,12 +3592,16 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_channel?: string | null
+          event_key?: string | null
           id?: string
           is_read?: boolean
           link_url?: string | null
           message?: string
           metadata?: Json
+          notification_type?: string
           priority?: string
+          read_at?: string | null
           source?: string | null
           title?: string
           type?: string
@@ -4457,10 +4469,24 @@ export type Database = {
       cleanup_trigger_execution_logs: { Args: never; Returns: undefined }
       cleanup_trigger_notification_dedup: { Args: never; Returns: undefined }
       cleanup_webhook_debounce: { Args: never; Returns: undefined }
-      close_trade_alert: {
-        Args: { p_alert_id: string; p_close_reason?: string; p_user_id: string }
-        Returns: Json
-      }
+      close_trade_alert:
+        | {
+            Args: {
+              p_alert_id: string
+              p_close_reason?: string
+              p_notes?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_alert_id: string
+              p_close_reason?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       create_smart_notification_batch: {
         Args: {
           p_asset_symbol?: string
@@ -4574,22 +4600,43 @@ export type Database = {
           onesignal_player_id: string
         }[]
       }
-      get_user_notifications: {
-        Args: {
-          p_cursor_created_at?: string
-          p_cursor_event_id?: string
-          p_limit?: number
-        }
-        Returns: {
-          actor_id: string
-          created_at: string
-          event_id: string
-          event_type: string
-          post_id: string
-          post_title: string
-          unread: boolean
-        }[]
-      }
+      get_user_notifications:
+        | {
+            Args: {
+              p_limit?: number
+              p_unread_only?: boolean
+              p_user_id?: string
+            }
+            Returns: {
+              created_at: string
+              delivery_channel: string
+              event_key: string
+              id: string
+              is_read: boolean
+              message: string
+              metadata: Json
+              notification_type: string
+              priority: string
+              read_at: string
+              title: string
+            }[]
+          }
+        | {
+            Args: {
+              p_cursor_created_at?: string
+              p_cursor_event_id?: string
+              p_limit?: number
+            }
+            Returns: {
+              actor_id: string
+              created_at: string
+              event_id: string
+              event_type: string
+              post_id: string
+              post_title: string
+              unread: boolean
+            }[]
+          }
       get_user_role: { Args: { user_id_param?: string }; Returns: string }
       get_user_roles: {
         Args: { p_user_id?: string }

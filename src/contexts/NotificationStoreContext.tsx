@@ -161,17 +161,17 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
             try {
               const { error } = await supabase
                 .from('user_notifications')
-                .insert({
+                .insert([{
                   user_id: user.id,
                   notification_type: notification.type,
                   title: notification.title,
                   message: notification.message,
-                  metadata: notification.metadata || {},
+                  metadata: JSON.parse(JSON.stringify(notification.metadata || {})),
                   event_key: notification.eventKey,
                   delivery_channel: notification.deliveryChannel || 'realtime',
-                  priority: notification.priority || 1,
+                  priority: String(notification.priority || 1),
                   created_at: notification.timestamp.toISOString()
-                });
+                }]);
               
               if (!error || error.code === '23505') {
                 console.log('💾 [NotificationStore] Saved pending notification:', notification.id);
@@ -235,17 +235,17 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
           try {
             const { error } = await supabase
               .from('user_notifications')
-              .insert({
+              .insert([{
                 user_id: user.id,
                 notification_type: notification.type,
                 title: notification.title,
                 message: notification.message,
-                metadata: notification.metadata || {},
+                metadata: JSON.parse(JSON.stringify(notification.metadata || {})),
                 event_key: notification.eventKey,
                 delivery_channel: notification.deliveryChannel || 'realtime',
-                priority: notification.priority || 1,
+                priority: String(notification.priority || 1),
                 created_at: notification.timestamp.toISOString()
-              });
+              }]);
             
             if (error) {
               // Check if it's a duplicate key error (event_key already exists)

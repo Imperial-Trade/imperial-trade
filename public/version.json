@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
-  "timestamp": "2025-11-16T01:00:00Z",
-  "description": "HOTFIX: Notification avatar crash - Add null safety for display_name"
+  "version": "1.0.8",
+  "timestamp": "2025-11-16T09:00:00Z",
+  "description": "COMBINED: React null + Avatar crash + Cache clearer"
 }

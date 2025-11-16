@@ -8,10 +8,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ INSTANT ACTIVE ALERTS: Ultra-short cache for instant display
-const LOCAL_CACHE_TTL = 1 * 1000; // 1 second - active alerts show instantly
+// ✅ INSTANT UPDATES VIA REALTIME: Longer cache since Realtime handles all updates
+const LOCAL_CACHE_TTL = 5 * 1000; // 5 seconds (Realtime provides instant updates)
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
-const AUTO_RELOAD_INTERVAL = 10 * 1000; // Auto-reload every 10 seconds for fresh data
+const SAFETY_POLL_INTERVAL = 30 * 1000; // Safety polling every 30s (only when Realtime down)
 
 // Module-level educator cache
 let educatorUserIdsCache: string[] = [];
@@ -713,27 +713,33 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [subscribeToRealtime, refreshSignals]);
 
-  // ✅ AGGRESSIVE AUTO-RELOAD: Fetch fresh active alerts every 10 seconds
+  // ✅ SMART POLLING: Only poll when Realtime is down (safety net)
   useEffect(() => {
-    console.log('🔄 [Auto-Reload] Starting aggressive refresh interval (10s)');
-    
+    // If Realtime is connected, disable polling (Realtime handles all updates instantly)
+    if (connectionStatus === 'connected') {
+      console.log('✅ [Smart Polling] Realtime connected - polling disabled (instant updates active)');
+      return; // No polling needed - Realtime handles everything
+    }
+
+    // Realtime is down - enable safety polling
+    console.log('⚠️ [Smart Polling] Realtime disconnected - enabling safety polling every 30s');
     const pollingInterval = setInterval(async () => {
-      console.log('🔄 [Auto-Reload] Fetching latest active alerts...');
-      await refreshSignals(true); // Force refresh to get latest data
-    }, AUTO_RELOAD_INTERVAL); // Reload every 10 seconds
+      console.log('🔄 [Safety Poll] Fetching due to Realtime disconnection');
+      await refreshSignals(false); // Throttled refresh (preserves optimistic updates)
+    }, SAFETY_POLL_INTERVAL); // Poll every 30s when disconnected
 
     return () => {
-      console.log('🛑 [Auto-Reload] Stopping refresh interval');
+      console.log('🛑 [Smart Polling] Stopping safety polling');
       clearInterval(pollingInterval);
     };
-  }, [refreshSignals]);
+  }, [connectionStatus, refreshSignals]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('👀 [SignalRealtimeContext] Tab visible - FORCE refreshing active alerts');
-        // ✅ Force refresh when tab becomes visible to show latest active alerts
-        refreshSignals(true);
+        console.log('👀 [SignalRealtimeContext] Tab visible - throttled refresh (preserves optimistic updates)');
+        // ✅ Throttled refresh when tab becomes visible (preserves optimistic updates)
+        refreshSignals(false);
       }
     };
 

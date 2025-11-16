@@ -454,20 +454,22 @@ const ModernNotificationSystem = () => {
           full_payload: payload
         });
         
-        // ✅ Auth check - only process if auth is ready
+        // ✅ REMOVED AUTH BLOCKING - Store notification even if auth isn't ready
+        // The notification will be shown when auth completes
         if (!authReady) {
-          console.log('⏳ [AUTH NOT READY] Notification received while auth loading:', {
+          console.log('⏳ [AUTH NOT READY] Storing notification for later:', {
             hasUser: !!user,
             userId: user?.id,
             authLoading,
-            authReady
+            authReady,
+            notification_type: payload.payload?.notification_type
           });
-          return;
+          // Store it anyway - it will appear in Recent Activity when user logs in
         }
 
+        // ✅ Continue processing even without user ID for public notifications
         if (!user?.id) {
-          console.log('⚠️ [NO USER] Auth ready but no user ID found');
-          return;
+          console.log('ℹ️ [NO USER] Processing notification without user context');
         }
         
         const data = payload.payload;

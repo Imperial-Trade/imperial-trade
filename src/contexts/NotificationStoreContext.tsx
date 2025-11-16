@@ -95,6 +95,7 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
   
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(false);
   const hasLoadedFromDB = useRef(false);
+  const pendingDBSaves = useRef<StoredNotification[]>([]); // Queue for notifications received before auth ready
   
   // ✅ Load from database when user is authenticated
   useEffect(() => {
@@ -150,6 +151,37 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
           console.log('ℹ️ [NotificationStore] No notifications in database');
           hasLoadedFromDB.current = true;
         }
+        
+        // ✅ Process pending notifications that arrived before auth was ready
+        if (pendingDBSaves.current.length > 0) {
+          console.log(`🔄 [NotificationStore] Processing ${pendingDBSaves.current.length} pending notifications...`);
+          const pending = pendingDBSaves.current.splice(0, pendingDBSaves.current.length);
+          
+          for (const notification of pending) {
+            try {
+              const { error } = await supabase
+                .from('user_notifications')
+                .insert({
+                  user_id: user.id,
+                  notification_type: notification.type,
+                  title: notification.title,
+                  message: notification.message,
+                  metadata: notification.metadata || {},
+                  event_key: notification.eventKey,
+                  delivery_channel: notification.deliveryChannel || 'realtime',
+                  priority: notification.priority || 1,
+                  created_at: notification.timestamp.toISOString()
+                });
+              
+              if (!error || error.code === '23505') {
+                console.log('💾 [NotificationStore] Saved pending notification:', notification.id);
+              }
+            } catch (error) {
+              console.error('❌ [NotificationStore] Failed to save pending notification:', error);
+            }
+          }
+        }
+        
       } catch (error) {
         console.error('❌ [NotificationStore] Error loading from database:', error);
       } finally {
@@ -229,6 +261,10 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
             console.error('❌ [NotificationStore] Error saving to database:', error);
           }
         })();
+      } else {
+        // ✅ Queue notification for later if auth not ready (iOS PWA scenario)
+        console.log('📥 [NotificationStore] Queueing notification for later (auth not ready):', notification.id);
+        pendingDBSaves.current.push(notification);
       }
 
       return updated;

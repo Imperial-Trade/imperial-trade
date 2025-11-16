@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
-  "timestamp": "2025-11-15T19:30:00Z",
-  "description": "HOTFIX: Invalid hook call - Add React imports to SafeThemeProvider + NotificationSheet"
+  "version": "1.0.6",
+  "timestamp": "2025-11-15T20:00:00Z",
+  "description": "HOTFIX: React null error - Run duplication detector in main.tsx BEFORE render"
 }

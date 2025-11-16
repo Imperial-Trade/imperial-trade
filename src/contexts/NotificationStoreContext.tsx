@@ -194,6 +194,20 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
 
   // Add notification to store
   const addNotification = useCallback((notification: StoredNotification) => {
+    // ✅ VALIDATION: Ensure display_name is always set
+    if (!notification.metadata?.display_name) {
+      console.warn('⚠️ [NotificationStore] Notification missing display_name, using fallback:', {
+        id: notification.id,
+        type: notification.type,
+        metadata: notification.metadata
+      });
+      notification.metadata = notification.metadata || {};
+      notification.metadata.display_name = 
+        notification.metadata.provider_name || 
+        notification.metadata.asset_name || 
+        'Unknown Trader';
+    }
+    
     setNotifications((prev) => {
       // Check for duplicates (same eventKey or same signal_id + type within 1 second)
       const isDuplicate = prev.some((n) => {

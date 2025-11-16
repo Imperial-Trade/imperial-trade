@@ -137,7 +137,7 @@ const ModernNotificationSystem = () => {
   }, []);
 
   const handleNotification = useCallback(
-    async (notification: any) => {
+    (notification: any) => {
       const now = Date.now();
       const cooldown = 500;
 
@@ -152,7 +152,8 @@ const ModernNotificationSystem = () => {
         timestamp: new Date().toISOString()
       });
 
-      // Enhanced validation for signal-related notifications
+      // ✅ PERFORMANCE FIX: Non-blocking validation (background check)
+      // Don't await validation - let notification show immediately
       if (notification.metadata?.signal_id && notification.metadata?.change_types) {
         const changeData: SignalChangeData = {
           signalId: notification.metadata.signal_id,
@@ -162,17 +163,21 @@ const ModernNotificationSystem = () => {
           timestamp: new Date()
         };
 
-        const validation = await notificationValidator.validateSignalChange(changeData);
-        if (!validation.isValid) {
-          console.log(`🚫 [DIAGNOSTIC] Blocked by validation: ${validation.reason}`);
-          return;
-        }
-
-        const rateLimitPassed = await notificationValidator.checkNotificationRateLimit(notification.metadata.signal_id);
-        if (!rateLimitPassed) {
-          console.log(`🚫 [DIAGNOSTIC] Blocked by rate limit: ${notification.metadata.signal_id}`);
-          return;
-        }
+        // Fire and forget - validation happens in background, doesn't block UI
+        Promise.all([
+          notificationValidator.validateSignalChange(changeData),
+          notificationValidator.checkNotificationRateLimit(notification.metadata.signal_id)
+        ]).then(([validation, rateLimitPassed]) => {
+          if (!validation.isValid) {
+            console.log(`ℹ️ [BACKGROUND] Validation failed (non-blocking): ${validation.reason}`);
+          }
+          if (!rateLimitPassed) {
+            console.log(`ℹ️ [BACKGROUND] Rate limit exceeded (non-blocking): ${notification.metadata.signal_id}`);
+          }
+        }).catch(error => {
+          console.warn('⚠️ [BACKGROUND] Validation check failed (non-critical):', error);
+        });
+        // Continue immediately - don't wait for validation
       }
 
       // ============================================================================

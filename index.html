@@ -129,7 +129,56 @@
 
   <body>
     <div id="root"></div>
+    
+    <!-- 🚨 CRITICAL: Pre-load cache clearer - runs BEFORE main.tsx -->
+    <script>
+      (function() {
+        const CACHE_VERSION = '2025-11-16-REACT-NULL-FIX';
+        const CURRENT_VERSION_KEY = 'imperial-cache-version';
+        const RELOAD_FLAG = 'imperial-hard-reload-done';
+        
+        console.log('🔍 [Pre-load] Checking cache version...');
+        
+        const storedVersion = localStorage.getItem(CURRENT_VERSION_KEY);
+        const hasReloaded = sessionStorage.getItem(RELOAD_FLAG);
+        
+        if (storedVersion !== CACHE_VERSION && !hasReloaded) {
+          console.log('🧹 [Pre-load] Cache version mismatch! Clearing Vite cache...');
+          
+          // Clear ALL caches aggressively
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) {
+                console.log('🗑️ [Pre-load] Deleting cache:', name);
+                caches.delete(name);
+              });
+            });
+          }
+          
+          // Clear Vite-specific localStorage entries
+          Object.keys(localStorage).forEach(function(key) {
+            if (key.includes('vite') || key.includes('react') || key.includes('chunk')) {
+              console.log('🗑️ [Pre-load] Clearing localStorage:', key);
+              localStorage.removeItem(key);
+            }
+          });
+          
+          // Update version and set reload flag
+          localStorage.setItem(CURRENT_VERSION_KEY, CACHE_VERSION);
+          sessionStorage.setItem(RELOAD_FLAG, 'true');
+          
+          console.log('♻️ [Pre-load] Forcing hard reload...');
+          window.location.reload();
+        } else if (hasReloaded) {
+          console.log('✅ [Pre-load] Already reloaded once, proceeding...');
+          sessionStorage.removeItem(RELOAD_FLAG);
+        } else {
+          console.log('✅ [Pre-load] Cache version matches, no reload needed');
+        }
+      })();
+    </script>
+    
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Build: 2025-11-11T18:00:00Z - Notification Bell Update -->
+    <!-- Build: 2025-11-16T08:40:00Z - React Null Error Nuclear Fix -->
   </body>
 </html>

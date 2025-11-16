@@ -68,13 +68,16 @@ const deserializeNotification = (data: any): StoredNotification => ({
 });
 
 export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // ✅ Load from localStorage on mount
+  const { user, loading: authLoading } = useAuth();
+  const authReady = !authLoading && !!user?.id;
+  
+  // ✅ Load from localStorage on mount (instant access while DB loads)
   const [notifications, setNotifications] = useState<StoredNotification[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        console.log('✅ [NotificationStore] LOADED from localStorage:', {
+        console.log('✅ [NotificationStore] LOADED from localStorage (temporary):', {
           count: parsed.length,
           oldestDate: parsed.length > 0 ? new Date(parsed[parsed.length - 1].timestamp).toLocaleString() : 'N/A',
           newestDate: parsed.length > 0 ? new Date(parsed[0].timestamp).toLocaleString() : 'N/A',
@@ -83,15 +86,111 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         });
         return parsed.map(deserializeNotification);
       }
-      console.log('ℹ️ [NotificationStore] No stored notifications found');
+      console.log('ℹ️ [NotificationStore] No stored notifications found in localStorage');
     } catch (error) {
       console.error('❌ [NotificationStore] Error loading from localStorage:', error);
     }
     return [];
   });
   
-  const { user, loading: authLoading } = useAuth();
-  const authReady = !authLoading && !!user?.id;
+  const [isLoadingFromDB, setIsLoadingFromDB] = useState(false);
+  const hasLoadedFromDB = useRef(false);
+  const pendingDBSaves = useRef<StoredNotification[]>([]); // Queue for notifications received before auth ready
+  
+  // ✅ Load from database when user is authenticated
+  useEffect(() => {
+    if (!authReady || !user?.id || hasLoadedFromDB.current) return;
+    
+    const loadFromDatabase = async () => {
+      try {
+        setIsLoadingFromDB(true);
+        console.log('🔄 [NotificationStore] Loading from database for user:', user.id);
+        
+        const { data, error } = await supabase
+          .rpc('get_user_notifications', {
+            p_user_id: user.id,
+            p_limit: MAX_STORED_NOTIFICATIONS
+          });
+        
+        if (error) {
+          console.error('❌ [NotificationStore] Failed to load from database:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          const dbNotifications: StoredNotification[] = data.map((row: any) => ({
+            id: row.id,
+            type: row.notification_type,
+            title: row.title,
+            message: row.message,
+            metadata: row.metadata || {},
+            timestamp: new Date(row.created_at),
+            eventKey: row.event_key,
+            deliveryChannel: row.delivery_channel,
+            priority: row.priority
+          }));
+          
+          console.log('✅ [NotificationStore] LOADED from database:', {
+            count: dbNotifications.length,
+            userId: user.id,
+            oldestDate: dbNotifications.length > 0 ? dbNotifications[dbNotifications.length - 1].timestamp.toLocaleString() : 'N/A',
+            newestDate: dbNotifications.length > 0 ? dbNotifications[0].timestamp.toLocaleString() : 'N/A'
+          });
+          
+          setNotifications(dbNotifications);
+          hasLoadedFromDB.current = true;
+          
+          // Also update localStorage for instant access next time
+          try {
+            const serialized = dbNotifications.map(serializeNotification);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+          } catch (e) {
+            console.error('⚠️ Failed to sync to localStorage:', e);
+          }
+        } else {
+          console.log('ℹ️ [NotificationStore] No notifications in database');
+          hasLoadedFromDB.current = true;
+        }
+        
+        // ✅ Process pending notifications that arrived before auth was ready
+        if (pendingDBSaves.current.length > 0) {
+          console.log(`🔄 [NotificationStore] Processing ${pendingDBSaves.current.length} pending notifications...`);
+          const pending = pendingDBSaves.current.splice(0, pendingDBSaves.current.length);
+          
+          for (const notification of pending) {
+            try {
+              const { error } = await supabase
+                .from('user_notifications')
+                .insert({
+                  user_id: user.id,
+                  notification_type: notification.type,
+                  title: notification.title,
+                  message: notification.message,
+                  metadata: notification.metadata || {},
+                  event_key: notification.eventKey,
+                  delivery_channel: notification.deliveryChannel || 'realtime',
+                  priority: notification.priority || 1,
+                  created_at: notification.timestamp.toISOString()
+                });
+              
+              if (!error || error.code === '23505') {
+                console.log('💾 [NotificationStore] Saved pending notification:', notification.id);
+              }
+            } catch (error) {
+              console.error('❌ [NotificationStore] Failed to save pending notification:', error);
+            }
+          }
+        }
+        
+      } catch (error) {
+        console.error('❌ [NotificationStore] Error loading from database:', error);
+      } finally {
+        setIsLoadingFromDB(false);
+      }
+    };
+    
+    loadFromDatabase();
+  }, [authReady, user?.id]);
 
   // Add notification to store
   const addNotification = useCallback((notification: StoredNotification) => {
@@ -122,7 +221,7 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
       // ✅ Add new notification at the beginning - Keep only latest 100
       const updated = [notification, ...prev].slice(0, MAX_STORED_NOTIFICATIONS);
 
-      console.log('✅ [NotificationStore] Notification added:', {
+      console.log('✅ [NotificationStore] Notification added to memory:', {
         id: notification.id,
         type: notification.type,
         signal_id: notification.metadata?.signal_id,
@@ -130,9 +229,47 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         limit: MAX_STORED_NOTIFICATIONS
       });
 
+      // ✅ ALSO SAVE TO DATABASE (async, non-blocking)
+      if (authReady && user?.id) {
+        (async () => {
+          try {
+            const { error } = await supabase
+              .from('user_notifications')
+              .insert({
+                user_id: user.id,
+                notification_type: notification.type,
+                title: notification.title,
+                message: notification.message,
+                metadata: notification.metadata || {},
+                event_key: notification.eventKey,
+                delivery_channel: notification.deliveryChannel || 'realtime',
+                priority: notification.priority || 1,
+                created_at: notification.timestamp.toISOString()
+              });
+            
+            if (error) {
+              // Check if it's a duplicate key error (event_key already exists)
+              if (error.code === '23505') {
+                console.log('ℹ️ [NotificationStore] Notification already in database (duplicate event_key)');
+              } else {
+                console.error('❌ [NotificationStore] Failed to save to database:', error);
+              }
+            } else {
+              console.log('💾 [NotificationStore] Notification saved to database:', notification.id);
+            }
+          } catch (error) {
+            console.error('❌ [NotificationStore] Error saving to database:', error);
+          }
+        })();
+      } else {
+        // ✅ Queue notification for later if auth not ready (iOS PWA scenario)
+        console.log('📥 [NotificationStore] Queueing notification for later (auth not ready):', notification.id);
+        pendingDBSaves.current.push(notification);
+      }
+
       return updated;
     });
-  }, []);
+  }, [authReady, user?.id]);
 
   // Remove notification from store
   const removeNotification = useCallback((id: string) => {

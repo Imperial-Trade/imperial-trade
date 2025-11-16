@@ -5,7 +5,7 @@ import { Shield, Star, Users } from 'lucide-react';
 
 interface ProviderAvatarProps {
   avatarUrl?: string;
-  displayName: string;
+  displayName?: string; // ✅ Make optional to handle missing data
   userType?: 'educator' | 'educator+' | 'admin' | 'moderator' | 'member';
   size?: 'xs' | 'sm' | 'md' | 'lg';
   showBadge?: boolean;
@@ -13,7 +13,7 @@ interface ProviderAvatarProps {
 
 export const ProviderAvatar: React.FC<ProviderAvatarProps> = ({
   avatarUrl,
-  displayName,
+  displayName = 'Unknown User', // ✅ Provide default value
   userType = 'member',
   size = 'md',
   showBadge = true
@@ -41,13 +41,19 @@ export const ProviderAvatar: React.FC<ProviderAvatarProps> = ({
     member: 'bg-gray-500'
   };
 
-  const getInitials = (name: string) => {
+  // ✅ BULLETPROOF: Handle undefined, null, and empty strings
+  const getInitials = (name?: string) => {
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return 'UN'; // "Unknown"
+    }
     return name
+      .trim()
       .split(' ')
       .map(n => n[0])
+      .filter(Boolean) // Remove empty strings
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'UN'; // Fallback if result is empty
   };
 
   return (

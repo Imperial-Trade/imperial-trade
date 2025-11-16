@@ -7,7 +7,7 @@ export function detectAndFixReactDuplication() {
   
   if (isDuplicate) {
     console.error('🚨 [React Duplication] Multiple React instances detected!');
-    console.error('🔧 [React Duplication] Clearing cache and reloading...');
+    console.error('🔧 [React Duplication] Clearing cache and forcing IMMEDIATE reload...');
     
     // Clear all caches
     clearAllCaches();
@@ -16,9 +16,11 @@ export function detectAndFixReactDuplication() {
     const hasReloaded = sessionStorage.getItem('react-duplication-reload');
     if (!hasReloaded) {
       sessionStorage.setItem('react-duplication-reload', 'true');
-      setTimeout(() => window.location.reload(), 500);
+      // Force IMMEDIATE reload
+      window.location.reload();
     } else {
-      console.error('🚨 [React Duplication] Reload already attempted. Please manually clear browser cache.');
+      console.error('🚨 [React Duplication] Reload already attempted. Cache may be corrupted.');
+      console.error('🔧 [React Duplication] Try: Ctrl+Shift+Delete → Clear cached images and files');
     }
   } else {
     // Clear the reload flag on successful load

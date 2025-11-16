@@ -1,5 +1,5 @@
 {
-  "version": "1.0.5",
-  "timestamp": "2025-11-15T19:30:00Z",
-  "description": "HOTFIX: Invalid hook call - Add React imports to SafeThemeProvider + NotificationSheet"
+  "version": "1.0.8",
+  "timestamp": "2025-11-16T09:00:00Z",
+  "description": "COMBINED: React null + Avatar crash + Cache clearer"
 }

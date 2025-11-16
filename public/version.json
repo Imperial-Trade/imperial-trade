@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
-  "timestamp": "2025-11-15T20:00:00Z",
-  "description": "HOTFIX: React null error - Run duplication detector in main.tsx BEFORE render"
+  "version": "1.0.7",
+  "timestamp": "2025-11-16T08:40:00Z",
+  "description": "NUCLEAR FIX: React null error - Pre-load cache clearer + forced hard reload"
 }

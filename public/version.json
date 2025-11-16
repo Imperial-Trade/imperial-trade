@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
-  "timestamp": "2025-11-16T09:00:00Z",
-  "description": "COMBINED: React null + Avatar crash + Cache clearer"
+  "version": "1.0.9",
+  "timestamp": "2025-11-16T09:15:00Z",
+  "description": "COMPLETE: Avatar fix + Validation layer in NotificationStore"
 }

@@ -1,5 +1,5 @@
-// 🔔 App Entry Point - Build: 2025-11-15-AUTH-INSTANT-FIX (Cache Bust v2)
-import { useEffect, createElement, Suspense } from 'react';
+// 🔔 App Entry Point - Build: 2025-11-15-REACT-FIX-v3 (Cache Bust v3)
+import React, { useEffect, createElement, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { installGlobalChunkErrorHandler } from '@/utils/globalErrorHandler';
 import { isBuildStale, clearStaleCache, logBuildInfo } from '@/utils/buildInfo';
@@ -102,6 +102,12 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🏗️ App component initializing...');
+
+  // 🔍 Safety check: Ensure React is properly loaded
+  if (!React || !useEffect) {
+    console.error('❌ CRITICAL: React not properly loaded!', { React: !!React, useEffect: !!useEffect });
+    throw new Error('React module failed to load - please refresh the page');
+  }
 
   // Initialize app state on startup
   useEffect(() => {

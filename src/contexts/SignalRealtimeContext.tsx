@@ -688,7 +688,8 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
   // ✅ FIX #4: Clear cache on mount + setup subscription
   useEffect(() => {
     if (mountOnlyRef.current) {
-      console.log('🚀 [Mount] Component mounted - INSTANT FETCH for active alerts');
+      console.log('🚀🚀🚀 [Mount] Signal Stream loaded - INSTANT FETCH starting NOW!');
+      console.log('⚡ [Mount Strategy] Parallel execution: Database fetch + Realtime subscription');
       
       // Clear all caches for instant display
       localCacheRef.current.expiry = 0;
@@ -697,17 +698,25 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       seenIdsRef.current.clear();
       
       // ✅ INSTANT DISPLAY: Fetch active alerts IMMEDIATELY (no delay, no cache)
-      console.log('🔄 [Mount] FORCE FETCHING active alerts for instant display (bypassing all caches)');
+      const startTime = performance.now();
+      console.log('🔄 [Instant Fetch] Fetching active alerts RIGHT NOW (bypassing all caches)...');
+      
       refreshSignals(true).then(() => {
-        console.log('✅ [Mount] Initial active alerts loaded and displayed');
+        const elapsed = Math.round(performance.now() - startTime);
+        console.log(`✅ [Instant Fetch] Active alerts loaded and displayed in ${elapsed}ms! 🚀`);
+        console.log('💡 [Tip] Signals should appear within 1 second maximum');
+      }).catch(error => {
+        console.error('❌ [Instant Fetch] Failed to load active alerts:', error);
       });
       
       // Subscribe to realtime updates (runs in parallel with fetch)
+      console.log('📡 [Realtime] Subscribing to instant signal updates...');
       const cleanup = subscribeToRealtime();
       
       mountOnlyRef.current = false;
       
       return () => {
+        console.log('🧹 [Cleanup] Unsubscribing from signals on unmount');
         cleanup.then(fn => fn?.());
       };
     }
@@ -715,21 +724,30 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
 
   // ✅ SMART POLLING: Only poll when Realtime is down (safety net)
   useEffect(() => {
-    // If Realtime is connected, disable polling (Realtime handles all updates instantly)
+    // ✅ CRITICAL: If Realtime is connected, STOP ALL POLLING immediately
     if (connectionStatus === 'connected') {
-      console.log('✅ [Smart Polling] Realtime connected - polling disabled (instant updates active)');
+      console.log('✅ [Smart Polling] Realtime CONNECTED - polling is STOPPED (Realtime handles everything instantly)');
+      console.log('🚀 [Realtime Mode] All signal updates via Realtime broadcast - ZERO polling overhead');
       return; // No polling needed - Realtime handles everything
     }
 
-    // Realtime is down - enable INSTANT 1-SECOND polling
-    console.log('⚡ [INSTANT POLLING] Realtime disconnected - enabling 1-SECOND polling for instant signal display');
+    // ✅ Realtime is down - ACTIVATE 1-SECOND polling backup
+    console.log('⚠️ [INSTANT POLLING] Realtime DISCONNECTED - activating 1-SECOND polling backup');
+    console.log('⚡ [Polling Mode] Signals will appear within 1 second via database polling');
+    
     const pollingInterval = setInterval(async () => {
+      // ✅ SAFEGUARD: Double-check Realtime status before polling
+      if (connectionStatus === 'connected') {
+        console.log('🛑 [Polling Safeguard] Realtime reconnected - stopping this poll');
+        return;
+      }
+      
       console.log('⚡ [1s Poll] Fetching signals for instant display');
       await refreshSignals(true); // Force refresh for instant updates
     }, SIGNAL_POLL_INTERVAL); // ⚡ Poll every 1 SECOND for INSTANT signal display
 
     return () => {
-      console.log('🛑 [Smart Polling] Stopping safety polling');
+      console.log('🛑 [Polling Cleanup] Stopping 1-second polling interval');
       clearInterval(pollingInterval);
     };
   }, [connectionStatus, refreshSignals]);

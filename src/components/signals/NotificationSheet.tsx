@@ -101,10 +101,11 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
             <div className="flex items-center gap-2">
               <NotificationBellIcon 
                 className="w-4 h-4 cursor-pointer" 
-                onClick={() => {
-                  // Show prompt if not subscribed
-                  if (!isPushEnabled && onShowPrompt) {
-                    onShowPrompt();
+                onClick={async () => {
+                  // ✅ Trigger native iOS prompt directly if not subscribed
+                  if (!isPushEnabled) {
+                    console.log('🔔 [Recent Activity] Bell clicked - triggering native prompt');
+                    await subscribeToPush();
                   }
                   // Clear unread count
                   if (onClearUnread) {

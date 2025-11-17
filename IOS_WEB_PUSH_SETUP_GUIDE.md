@@ -68,26 +68,38 @@ Before you can receive push notifications on iOS:
 
 ### Step 4: Enable Notifications
 
-You'll see **TWO prompts** - both are required:
+#### **Method 1: Via Bell Icon (Top Right Corner)**
+1. Look for the **bell icon** 🔔 in the top right corner of Signal Stream
+2. If notifications are **disabled**, the bell will show as 🔕 (gray with slash)
+3. **Tap the bell icon** to trigger the native iOS prompt
+4. A system prompt will appear: "Trade Imperial Would Like to Send You Notifications"
+5. **Tap "Allow"** to enable notifications ✅
 
-#### **First Prompt: Custom Modal (Trade Imperial)**
-- Explains the benefits of notifications
-- Shows what notifications you'll receive
-- Click **"Enable Notifications"** to continue
-
-#### **Second Prompt: iOS Native Prompt**
-- This is the system security confirmation
-- Shows "Trade Imperial Would Like to Send You Notifications"
-- **Tap "Allow"** to enable notifications ✅
+#### **Method 2: Via Recent Activity**
+1. Tap the **notification bell icon** at the bottom navigation
+2. This opens the "Recent Activity" panel
+3. In the top right corner, you'll see:
+   - **Bell Icon** 🔔 - Current notification status
+   - **Toggle Switch** - Quick enable/disable
+4. Tap the **bell icon** or toggle the **switch ON** to trigger the native prompt
+5. **Tap "Allow"** when the iOS prompt appears ✅
 
 ---
 
 ### Step 5: Verify Notifications Are Enabled
 
-Look for the **bell icon** in the top right corner of Signal Stream:
+Check the notification status in **two places**:
 
-- 🔔 **Ringing bell** (animated) = Notifications enabled ✅
+#### **A. Top Right Corner (Signal Stream)**
+- 🔔 **Ringing bell** (animated, green dot) = Notifications enabled ✅
 - 🔕 **Bell with slash** (gray) = Notifications disabled ❌
+
+#### **B. Recent Activity Panel**
+- **Bell Icon + Toggle Switch** (top right of panel)
+- **Toggle ON** (green) + **Animated bell** = Notifications enabled ✅
+- **Toggle OFF** (gray) + **Bell with slash** = Notifications disabled ❌
+
+**Note**: The bell icon and toggle switch are **always in sync** - they reflect the same state.
 
 ---
 
@@ -115,11 +127,14 @@ Once enabled, you'll get instant notifications for:
 
 ### "I don't see the notification prompt"
 
-**Solution**: You must:
+**Solution**: 
 1. Add the app to your home screen (Step 1)
 2. Open from the home screen icon (Step 2)
 3. Navigate to Signal Stream (Step 3)
-4. Wait 2 seconds for the prompt to appear
+4. **Tap the bell icon** 🔔 in the top right corner OR
+5. **Tap the bell icon** in the Recent Activity panel OR
+6. **Toggle the switch ON** in the Recent Activity panel
+7. The native iOS prompt will appear immediately
 
 ### "I tapped 'Don't Allow' by mistake"
 

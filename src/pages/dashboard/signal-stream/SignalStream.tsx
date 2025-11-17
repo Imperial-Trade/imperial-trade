@@ -32,7 +32,7 @@ import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertFor
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
-import { ProfessionalNotificationModal } from '@/components/notifications/ProfessionalNotificationModal';
+// Removed ProfessionalNotificationModal - using native iOS prompt only
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
@@ -61,7 +61,7 @@ export default function SignalStream() {
     setShouldShowNotificationPrompt,
     isSubscribedToPush
   } = useNotificationPrompt();
-  const { isPushEnabled, isInitialized } = useOneSignalPush();
+  const { isPushEnabled, isInitialized, subscribeToPush } = useOneSignalPush();
 
   // State for filtering and modal
   const [filters, setFilters] = useState({
@@ -94,46 +94,17 @@ export default function SignalStream() {
     window.addEventListener('notification:received', handleNotificationReceived);
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
-  const handleBellClick = () => {
-    // If not subscribed, show notification prompt
+  const handleBellClick = async () => {
+    // ✅ Directly trigger native iOS prompt if not subscribed  
     if (!isPushEnabled && !isSubscribedToPush) {
-      setShouldShowNotificationPrompt(true);
+      console.log('🔔 Bell clicked - triggering native iOS prompt');
+      // subscribeToPush will automatically trigger the native browser/iOS permission prompt
+      await subscribeToPush();
     }
     setUnreadNotifications(0);
   };
   
-  // Show notification modal when user visits Signal Stream for the first time
-  useEffect(() => {
-    if (!user || !isInitialized) return;
-
-    // Don't show if user is already subscribed to push notifications
-    if (isSubscribedToPush || isPushEnabled) return;
-    
-    const timer = setTimeout(() => {
-      setShouldShowNotificationPrompt(true);
-    }, 2000); // 2 seconds delay after loading Signal Stream
-
-    return () => clearTimeout(timer);
-  }, [user, isInitialized, isSubscribedToPush, isPushEnabled, setShouldShowNotificationPrompt]);
-  
-  const handleNotificationModalClose = () => {
-    setShouldShowNotificationPrompt(false);
-    // Don't mark as seen here - only mark when actually subscribed in the modal
-  };
-  
-  // Get user's full name for the notification modal
-  const getUserFullName = () => {
-    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
-      return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
-    }
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.user_metadata?.display_name) {
-      return user.user_metadata.display_name;
-    }
-    return user?.email?.split("@")[0] || "Trader";
-  };
+  // ✅ Removed custom modal - bell icon directly triggers native iOS prompt
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -2041,12 +2012,7 @@ export default function SignalStream() {
             </DialogContent>
           </Dialog>
           
-          {/* Professional Notification Modal */}
-          <ProfessionalNotificationModal 
-            isOpen={shouldShowNotificationPrompt} 
-            onClose={handleNotificationModalClose} 
-            userName={getUserFullName()} 
-          />
+          {/* ✅ Removed custom modal - bell icon triggers native iOS prompt directly */}
         </div>
       </div>
     </StreamErrorBoundary>

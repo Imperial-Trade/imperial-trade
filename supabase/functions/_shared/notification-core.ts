@@ -420,19 +420,34 @@ export async function sendPushNotification(
         asset_name: signalData.asset_name,
         deep_link: `/dashboard/signal-stream?signal=${signalData.id}`,
       },
+      // ✅ WEB PUSH (Windows, macOS, Linux - Chrome, Edge, Firefox)
       web_url: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
       chrome_web_icon: 'https://tradeimperial.com/icon-192.png',
+      chrome_web_image: 'https://tradeimperial.com/og-image.jpg', // ✅ ADDED: Large image for Windows
       chrome_web_badge: 'https://tradeimperial.com/badge-icon.png',
       web_buttons: [{
         id: 'view-signal',
         text: 'View Signal →',
         url: `/dashboard/signal-stream?signal=${signalData.id}`,
       }],
+      // ✅ CRITICAL: Force persistent notifications for Windows Notification Center
+      persist: true, // ✅ ADDED: Ensures notifications persist in Windows Notification Center
+      web_push_topic: 'trade_signals', // ✅ ADDED: Groups notifications in Windows
+      
+      // Android settings
       android_accent_color: androidColor,
       android_sound: template.sound ? 'trading_alert' : undefined,
       android_group: 'trading_signals',
+      android_channel_id: 'trading_signals',
+      
+      // iOS settings
       ios_sound: template.sound ? 'trading_alert.wav' : undefined,
-      priority: template.priority,
+      ios_category: 'TRADE_SIGNAL',
+      ios_badgeType: 'Increase',
+      ios_badgeCount: 1,
+      
+      // Universal settings
+      priority: template.priority >= 3 ? 10 : template.priority,  // ✅ Higher priority for TP/SL hits
       ttl: 3600,
       collapse_id: `signal_${signalData.id}_${template.type}`,
       mutable_content: true,

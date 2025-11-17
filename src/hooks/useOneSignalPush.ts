@@ -373,6 +373,41 @@ export const useOneSignalPush = () => {
                   playerId: playerId
                 }));
                 
+                // ✅ Send welcome push notification to verify subscription
+                try {
+                  console.log('📲 Sending welcome push notification...');
+                  
+                  // Add tags to OneSignal user
+                  await OneSignal.User.addTag('subscribed', 'true');
+                  await OneSignal.User.addTag('subscription_date', new Date().toISOString());
+                  
+                  // Call Edge Function to send welcome notification
+                  const userName = user.user_metadata?.first_name 
+                    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+                    : user.user_metadata?.display_name || user.email?.split('@')[0] || 'Trader';
+                  
+                  // Use supabase.functions.invoke for Edge Function call
+                  const { supabase } = await import('@/integrations/supabase/client');
+                  supabase.functions.invoke('send-welcome-notification', {
+                    body: {
+                      player_id: playerId,
+                      user_id: user.id,
+                      user_name: userName
+                    }
+                  }).then(({ data, error }) => {
+                    if (error) {
+                      console.warn('⚠️ Welcome notification failed (non-critical):', error);
+                    } else {
+                      console.log('✅ Welcome notification sent successfully:', data);
+                    }
+                  }).catch(error => {
+                    console.warn('⚠️ Welcome notification error (non-critical):', error);
+                  });
+                } catch (notifError) {
+                  console.warn('⚠️ Failed to send welcome notification (non-critical):', notifError);
+                  // Non-critical error - subscription still successful
+                }
+                
                 toast({
                   title: "Push Notifications Enabled",
                   description: "You'll now receive instant trade alerts!",

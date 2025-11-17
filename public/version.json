@@ -1,5 +1,5 @@
 {
-  "version": "1.0.24",
-  "timestamp": "2025-11-17T12:15:00Z",
-  "description": "CRITICAL FIX: Service Worker registration with error handling and manual fallback"
+  "version": "1.0.25",
+  "timestamp": "2025-11-17T12:30:00Z",
+  "description": "CRITICAL FIX: Removed conflicting Service Worker + Fixed CORS + OneSignal exclusive control"
 }

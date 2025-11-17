@@ -31,6 +31,12 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+import { ProfessionalNotificationModal } from '@/components/notifications/ProfessionalNotificationModal';
+import { useOneSignalPush } from '@/hooks/useOneSignalPush';
+import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
+
 export default function SignalStream() {
   const {
     colors
@@ -47,6 +53,15 @@ export default function SignalStream() {
   const {
     toast
   } = useToast();
+  
+  // Notification prompt hooks
+  const { hasSeenWelcome } = useWelcome();
+  const {
+    shouldShowNotificationPrompt,
+    setShouldShowNotificationPrompt,
+    isSubscribedToPush
+  } = useNotificationPrompt();
+  const { isPushEnabled, isInitialized } = useOneSignalPush();
 
   // State for filtering and modal
   const [filters, setFilters] = useState({
@@ -77,8 +92,44 @@ export default function SignalStream() {
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
   const handleBellClick = () => {
+    // If not subscribed, show notification prompt
+    if (!isPushEnabled && !isSubscribedToPush) {
+      setShouldShowNotificationPrompt(true);
+    }
     setUnreadNotifications(0);
-    // TODO: Open notification center/panel
+  };
+  
+  // Show notification modal when user visits Signal Stream for the first time
+  useEffect(() => {
+    if (!user || !isInitialized) return;
+
+    // Don't show if user is already subscribed to push notifications
+    if (isSubscribedToPush || isPushEnabled) return;
+    
+    const timer = setTimeout(() => {
+      setShouldShowNotificationPrompt(true);
+    }, 2000); // 2 seconds delay after loading Signal Stream
+
+    return () => clearTimeout(timer);
+  }, [user, isInitialized, isSubscribedToPush, isPushEnabled, setShouldShowNotificationPrompt]);
+  
+  const handleNotificationModalClose = () => {
+    setShouldShowNotificationPrompt(false);
+    // Don't mark as seen here - only mark when actually subscribed in the modal
+  };
+  
+  // Get user's full name for the notification modal
+  const getUserFullName = () => {
+    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
+      return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
+    }
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user?.user_metadata?.display_name) {
+      return user.user_metadata.display_name;
+    }
+    return user?.email?.split("@")[0] || "Trader";
   };
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
@@ -1825,8 +1876,11 @@ export default function SignalStream() {
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} unreadNotifications={unreadNotifications} onBellClick={handleBellClick} />
                 </div>
 
-                {/* Notification Bell - Visible on desktop/tablet, matches filter design */}
-                
+                {/* Notification Bell - Visible on all devices in top right corner */}
+                <NotificationBellIcon 
+                  onClick={handleBellClick}
+                  className="shrink-0"
+                />
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
@@ -1961,6 +2015,13 @@ export default function SignalStream() {
               <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
             </DialogContent>
           </Dialog>
+          
+          {/* Professional Notification Modal */}
+          <ProfessionalNotificationModal 
+            isOpen={shouldShowNotificationPrompt} 
+            onClose={handleNotificationModalClose} 
+            userName={getUserFullName()} 
+          />
         </div>
       </div>
     </StreamErrorBoundary>

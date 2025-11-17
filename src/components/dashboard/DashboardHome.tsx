@@ -7,9 +7,6 @@ import { TrendingUp, TrendingDown, DollarSign, BarChart3, Users, Bell, Plus, Arr
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
-import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
-import { ProfessionalNotificationModal } from "@/components/notifications/ProfessionalNotificationModal";
-import { useOneSignalPush } from "@/hooks/useOneSignalPush";
 import { getOrderFlowAppUrl, getAcademyAppUrl } from "@/utils/environment";
 import { AnimatedLinesBackground } from "@/components/dashboard/AnimatedLinesBackground";
 export const DashboardHome: React.FC = () => {
@@ -19,35 +16,8 @@ export const DashboardHome: React.FC = () => {
   const {
     hasSeenWelcome
   } = useWelcome();
-  const {
-    hasSeenNotificationPrompt,
-    shouldShowNotificationPrompt,
-    setShouldShowNotificationPrompt,
-    isSubscribedToPush
-  } = useNotificationPrompt();
-  const {
-    isPushEnabled,
-    isInitialized
-  } = useOneSignalPush();
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
-
-  // Show notification modal after welcome animation completes or after login
-  useEffect(() => {
-    if (!user || !isInitialized) return;
-
-    // Don't show if user is already subscribed to push notifications or welcome animation is showing
-    if (isSubscribedToPush || isPushEnabled || !hasSeenWelcome) return;
-    const timer = setTimeout(() => {
-      setShouldShowNotificationPrompt(true);
-    }, 1500); // 1.5 seconds delay for immediate visibility
-
-    return () => clearTimeout(timer);
-  }, [user, isInitialized, isSubscribedToPush, isPushEnabled, hasSeenWelcome, setShouldShowNotificationPrompt]);
-  const handleNotificationModalClose = () => {
-    setShouldShowNotificationPrompt(false);
-    // Don't mark as seen here - only mark when actually subscribed in the modal
-  };
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
@@ -83,8 +53,5 @@ export const DashboardHome: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Professional Notification Modal */}
-      <ProfessionalNotificationModal isOpen={shouldShowNotificationPrompt} onClose={handleNotificationModalClose} userName={getUserFullName()} />
     </div>;
 };

@@ -103,6 +103,35 @@ Check the notification status in **two places**:
 
 ---
 
+### Step 6: Re-enabling After Unsubscribing
+
+If you previously unsubscribed and want to re-enable notifications:
+
+#### **What Happens When You Unsubscribe:**
+1. Click bell icon (when enabled) or toggle switch OFF
+2. **Confirmation dialog appears**: "Unsubscribe from Notifications?"
+3. Dialog shows what you'll miss:
+   - New trade signals
+   - Take profit hits
+   - Stop loss alerts
+   - Signal updates
+4. **Two options**:
+   - **"Keep Notifications"** - Cancels unsubscribe (no change)
+   - **"Unsubscribe"** - Confirms and disables notifications
+
+#### **Re-enabling Notifications:**
+1. After unsubscribing, bell icon shows 🔕 (gray with slash)
+2. Toggle switch shows OFF (gray)
+3. **Click bell icon** OR **toggle switch ON**
+4. **Native iOS prompt appears again** (just like first time)
+5. Tap **"Allow"** to re-subscribe
+6. Bell icon changes to 🔔 (animated + green dot)
+7. ✅ Notifications enabled again!
+
+**Important**: You can re-enable notifications as many times as you want. The native prompt will always appear when toggling back ON.
+
+---
+
 ## 🔔 What Notifications You'll Receive
 
 Once enabled, you'll get instant notifications for:

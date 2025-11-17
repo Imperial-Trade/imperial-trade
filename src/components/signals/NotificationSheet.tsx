@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Clock, X } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Clock, X, BellOff } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
@@ -27,13 +37,30 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
   const { isPushEnabled, subscribeToPush, unsubscribeFromPush } = useOneSignalPush();
+  
+  // State for unsubscribe confirmation dialog
+  const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
 
   const handleTogglePush = async () => {
     if (isPushEnabled) {
-      await unsubscribeFromPush();
+      // ✅ Show confirmation dialog before unsubscribing
+      setShowUnsubscribeDialog(true);
     } else {
+      // ✅ Re-subscribe: Triggers native prompt again
+      console.log('🔔 Re-subscribing - native prompt will appear');
       await subscribeToPush();
     }
+  };
+  
+  const handleConfirmUnsubscribe = async () => {
+    console.log('🔕 User confirmed unsubscribe');
+    await unsubscribeFromPush();
+    setShowUnsubscribeDialog(false);
+  };
+  
+  const handleCancelUnsubscribe = () => {
+    console.log('✅ User cancelled unsubscribe');
+    setShowUnsubscribeDialog(false);
   };
   
   // 🔍 DEBUG: Log notification state when sheet opens
@@ -102,8 +129,11 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
               <NotificationBellIcon 
                 className="w-4 h-4 cursor-pointer" 
                 onClick={async () => {
-                  // ✅ Trigger native iOS prompt directly if not subscribed
-                  if (!isPushEnabled) {
+                  if (isPushEnabled) {
+                    // ✅ Show confirmation before unsubscribing
+                    setShowUnsubscribeDialog(true);
+                  } else {
+                    // ✅ Re-subscribe: Trigger native iOS prompt
                     console.log('🔔 [Recent Activity] Bell clicked - triggering native prompt');
                     await subscribeToPush();
                   }
@@ -251,5 +281,52 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
         </ScrollArea>
       </SheetContent>
     </Sheet>
+    
+    {/* Unsubscribe Confirmation Dialog */}
+    <AlertDialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <BellOff className="w-6 h-6 text-destructive" />
+            </div>
+            <AlertDialogTitle className="text-xl">
+              Unsubscribe from Notifications?
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogDescription className="text-base leading-relaxed">
+            Are you sure you want to turn off push notifications? You'll no longer receive instant alerts for:
+            <ul className="mt-3 space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <span className="text-blue-500">•</span> New trade signals
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500">•</span> Take profit hits
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-red-500">•</span> Stop loss alerts
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-green-500">•</span> Signal updates
+              </li>
+            </ul>
+            <p className="mt-4 text-muted-foreground">
+              You can always re-enable notifications anytime by clicking the bell icon or toggle switch.
+            </p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleCancelUnsubscribe}>
+            Keep Notifications
+          </AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleConfirmUnsubscribe}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Unsubscribe
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

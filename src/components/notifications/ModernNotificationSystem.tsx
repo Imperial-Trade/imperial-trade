@@ -407,6 +407,11 @@ const ModernNotificationSystem = () => {
     }
   }, [authReady]); // ✅ Removed handleNotification dependency - use ref instead
 
+  // Reconnection state refs
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const channelRef = useRef<any>(null);
+
   // Set up real-time listener for signal notifications
   useEffect(() => {
     console.log('🚨🚨🚨 [ModernNotificationSystem] useEffect FIRED - Setting up Realtime channel! 🚨🚨🚨');
@@ -454,9 +459,18 @@ const ModernNotificationSystem = () => {
       bc = null;
     }
 
-    const channel = supabase
-      .channel('instant-alerts')
-      .on('broadcast', { event: 'signal_notification' }, (payload) => {
+    // ✅ RECONNECTION LOGIC: Function to subscribe with auto-reconnect
+    const subscribeToRealtime = () => {
+      // Unsubscribe from old channel if exists
+      if (channelRef.current) {
+        console.log('🔄 [Reconnect] Cleaning up old channel before reconnecting');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const channel = supabase
+        .channel('instant-alerts')
+        .on('broadcast', { event: 'signal_notification' }, (payload) => {
         if (!isMountedRef.current) {
           console.log('⏭️ [UNMOUNTED] Ignoring broadcast after unmount');
           return;
@@ -799,34 +813,60 @@ const ModernNotificationSystem = () => {
             deliveryChannel: 'realtime'
           });
         }
-      })
-      .subscribe((status) => {
-        // Log every subscription status change
-        console.log('📡 [Channel Status]', status, {
-          channel: 'instant-alerts',
-          event: 'signal_notification',
-          user_id: user?.id,
-          timestamp: new Date().toISOString(),
-          mounted_at: new Date(componentMountTimeRef.current).toISOString()
+        })
+        .subscribe((status) => {
+          // Log every subscription status change
+          console.log('📡 [Channel Status]', status, {
+            channel: 'instant-alerts',
+            event: 'signal_notification',
+            user_id: user?.id,
+            timestamp: new Date().toISOString(),
+            mounted_at: new Date(componentMountTimeRef.current).toISOString(),
+            reconnect_attempt: reconnectAttemptsRef.current
+          });
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ [Channel] Successfully subscribed to instant-alerts');
+            console.log('✅ [Channel] Ready to receive signal notifications');
+            reconnectAttemptsRef.current = 0; // ✅ Reset reconnection counter on success
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            console.error('❌ [Channel] Subscription failed:', status);
+            
+            // ✅ ATTEMPT RECONNECTION with exponential backoff
+            if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+              const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+              console.log(`🔄 [Reconnect] Attempting reconnection in ${delay}ms... (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+              
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  reconnectAttemptsRef.current++;
+                  subscribeToRealtime(); // ✅ Recursive reconnect
+                } else {
+                  console.log('⏭️ [Reconnect] Component unmounted, skipping reconnection');
+                }
+              }, delay);
+            } else {
+              console.error('❌ [Reconnect] Max reconnection attempts reached. Notifications may not work until page refresh.');
+              console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
+            }
+          } else if (status === 'TIMED_OUT') {
+            console.error('❌ [Channel] Subscription timed out - check network connection');
+            console.log('🔄 [Fallback] Continuing with client-side notifications only');
+          }
         });
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [Channel] Successfully subscribed to instant-alerts');
-          console.log('✅ [Channel] Ready to receive signal notifications');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [Channel] Subscription error - will retry on reconnect');
-        } else if (status === 'TIMED_OUT') {
-          console.error('❌ [Channel] Subscription timed out - check network connection');
-          console.log('🔄 [Fallback] Continuing with client-side notifications only');
-        } else if (status === 'CLOSED') {
-          console.warn('⚠️ [Channel] Channel closed - will reconnect on next mount');
-          console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
-        }
-      });
+
+      channelRef.current = channel; // ✅ Store channel ref for cleanup
+    };
+
+    // ✅ Start initial subscription
+    subscribeToRealtime();
 
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       if (bc) {
         try {
           bc.close();

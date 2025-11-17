@@ -94,6 +94,54 @@ export default function SignalStream() {
     window.addEventListener('notification:received', handleNotificationReceived);
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
+
+  // ✅ AUTO-PROMPT: Show native push notification prompt when user visits Signal Stream (once per device)
+  // 🖥️ Desktop: Chrome, Safari (macOS), Edge, Firefox - Native browser prompt
+  // 📱 Mobile: iOS Safari (16.4+), Android Chrome - Native OS prompt
+  useEffect(() => {
+    const promptForPushNotifications = async () => {
+      // Only prompt if ALL conditions met:
+      // 1. User is authenticated
+      // 2. OneSignal is initialized  
+      // 3. Not already subscribed
+      // 4. Haven't prompted before on this device
+      
+      if (!user || !isInitialized || isPushEnabled) {
+        console.log('📱 [Push Prompt] Skipping:', {
+          hasUser: !!user,
+          isInitialized,
+          isPushEnabled
+        });
+        return;
+      }
+      
+      const hasPromptedBefore = localStorage.getItem('trade_imperial_push_prompt_shown');
+      if (hasPromptedBefore) {
+        console.log('📱 [Push Prompt] Already shown before, skipping');
+        return;
+      }
+      
+      // Wait 2 seconds after page load for better UX
+      const timer = setTimeout(async () => {
+        console.log('📱 [Signal Stream] Showing push notification prompt after 2s delay');
+        console.log('🖥️ [Desktop] Native browser prompt will appear');
+        console.log('📱 [Mobile] Native iOS/Android prompt will appear');
+        
+        // Mark as prompted (before showing, so we don't retry on failure)
+        localStorage.setItem('trade_imperial_push_prompt_shown', 'true');
+        
+        // This will trigger the native prompt (desktop or mobile)
+        const result = await subscribeToPush();
+        
+        console.log('📱 [Signal Stream] Push prompt result:', result);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    };
+    
+    promptForPushNotifications();
+  }, [user, isInitialized, isPushEnabled, subscribeToPush]);
+
   const handleBellClick = async () => {
     // ✅ Directly trigger native iOS prompt if not subscribed  
     if (!isPushEnabled && !isSubscribedToPush) {

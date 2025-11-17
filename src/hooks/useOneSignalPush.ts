@@ -58,29 +58,46 @@ export const useOneSignalPush = () => {
           // OneSignal is ready, update our state
           setState(prev => ({ ...prev, isInitialized: true }));
 
-          // Check current permission status
+          // ✅ FIXED: Check BOTH permission AND subscription status
           const permission = await OneSignal.Notifications.permission;
-          console.log('📋 Current OneSignal permission:', permission);
+          const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
+          const playerId = await OneSignal.User.PushSubscription.id;
           
-          if (permission === 'granted') {
-            const playerId = await OneSignal.User.PushSubscription.id;
-            console.log('✅ User already subscribed with Player ID:', playerId);
+          console.log('📋 [OneSignal] Full Status Check:', {
+            permission,
+            isSubscribed,
+            playerId,
+            hasPlayerId: !!playerId
+          });
+          
+          // ✅ User is TRULY subscribed only if:
+          // 1. Permission is granted AND
+          // 2. User is opted in (subscribed) AND
+          // 3. Player ID exists
+          const isTrulySubscribed = permission === 'granted' && isSubscribed && !!playerId;
+          
+          if (isTrulySubscribed) {
+            console.log('✅ [OneSignal] User IS FULLY SUBSCRIBED with Player ID:', playerId);
             
             setState(prev => ({ 
               ...prev, 
               isPushEnabled: true,
-              playerId: playerId || null
+              playerId: playerId
             }));
             
             // Update user profile with OneSignal info
-            if (playerId && user) {
+            if (user) {
               await updateUserProfile(playerId);
             }
           } else if (permission === 'denied') {
-            console.log('❌ [OneSignal] Push notifications denied by user');
+            console.log('❌ [OneSignal] Push notifications DENIED by user');
+            setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+          } else if (permission === 'granted' && !isSubscribed) {
+            console.log('⚠️ [OneSignal] Permission granted but NOT subscribed - treating as unsubscribed');
             setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
           } else {
             console.log('📋 [OneSignal] Permission status:', permission, '- Waiting for user action');
+            setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
           }
 
           // ✅ ENHANCED: Listen for permission changes (user allows/denies via system settings)
@@ -88,19 +105,31 @@ export const useOneSignalPush = () => {
             console.log('📱 [OneSignal] Permission changed:', { from: event.from, to: event.to });
             
             if (event.to === 'granted') {
-              // User granted permission
+              // User granted permission - but check if ACTUALLY subscribed
+              const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
               const playerId = await OneSignal.User.PushSubscription.id;
-              console.log('✅ [OneSignal] Permission granted, Player ID:', playerId);
               
-              setState(prev => ({ 
-                ...prev, 
-                isPushEnabled: true,
-                playerId: playerId || null
-              }));
+              console.log('✅ [OneSignal] Permission granted:', {
+                isSubscribed,
+                playerId,
+                isTrulySubscribed: isSubscribed && !!playerId
+              });
               
-              // Update user profile with OneSignal info
-              if (playerId && user) {
-                await updateUserProfile(playerId);
+              // Only mark as enabled if truly subscribed
+              if (isSubscribed && playerId) {
+                setState(prev => ({ 
+                  ...prev, 
+                  isPushEnabled: true,
+                  playerId: playerId
+                }));
+                
+                // Update user profile with OneSignal info
+                if (user) {
+                  await updateUserProfile(playerId);
+                }
+              } else {
+                console.log('⚠️ [OneSignal] Permission granted but NOT subscribed yet - waiting...');
+                setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
               }
             } else {
               // User denied or revoked permission
@@ -113,19 +142,36 @@ export const useOneSignalPush = () => {
             }
           });
 
-          OneSignal.User.PushSubscription.addEventListener('change', function(event: any) {
-            console.log('🔄 OneSignal subscription changed:', event);
+          OneSignal.User.PushSubscription.addEventListener('change', async function(event: any) {
+            console.log('🔄 [OneSignal] Subscription changed event:', {
+              previous: event.previous,
+              current: event.current
+            });
+            
             const playerId = event.current.id;
-            if (playerId) {
+            const optedIn = event.current.optedIn;
+            
+            // ✅ FIXED: Check if user is TRULY subscribed (opted in + has player ID)
+            const isTrulySubscribed = optedIn && !!playerId;
+            
+            console.log('🔄 [OneSignal] Subscription Status:', {
+              playerId,
+              optedIn,
+              isTrulySubscribed
+            });
+            
+            if (isTrulySubscribed) {
+              console.log('✅ [OneSignal] User SUBSCRIBED with Player ID:', playerId);
               setState(prev => ({ ...prev, playerId, isPushEnabled: true }));
               if (user) {
-                updateUserProfile(playerId);
+                await updateUserProfile(playerId);
               }
             } else {
+              console.log('❌ [OneSignal] User UNSUBSCRIBED or opted out');
               setState(prev => ({ ...prev, playerId: null, isPushEnabled: false }));
               if (user) {
                 // Update profile to remove OneSignal info
-                supabase
+                await supabase
                   .from('profiles')
                   .update({ 
                     onesignal_player_id: null,

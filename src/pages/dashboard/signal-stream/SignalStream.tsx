@@ -1873,7 +1873,18 @@ export default function SignalStream() {
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
                 <div className="flex-1">
-                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} unreadNotifications={unreadNotifications} onBellClick={handleBellClick} />
+                  <SignalStreamFilters 
+                    filters={filters} 
+                    onFiltersChange={setFilters} 
+                    educatorOptions={educatorMetadata.educatorOptions} 
+                    signalCounts={educatorMetadata.signalCounts} 
+                    canCreateSignals={canCreateSignals} 
+                    onCreateSignal={() => setShowCreateModal(true)} 
+                    unreadNotifications={unreadNotifications} 
+                    onBellClick={handleBellClick}
+                    onClearUnread={() => setUnreadNotifications(0)}
+                    onShowPrompt={() => setShouldShowNotificationPrompt(true)}
+                  />
                 </div>
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.21",
-  "timestamp": "2025-11-17T08:00:00Z",
-  "description": "FIXED: Bell icon now refreshes correctly when reopening Recent Activity + Unsubscribe works properly"
+  "version": "1.0.22",
+  "timestamp": "2025-11-17T08:30:00Z",
+  "description": "CRITICAL FIX: OneSignal welcome notification API key corrected - push notifications now work"
 }

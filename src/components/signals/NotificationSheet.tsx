@@ -142,6 +142,7 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   };
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
@@ -356,5 +357,6 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }

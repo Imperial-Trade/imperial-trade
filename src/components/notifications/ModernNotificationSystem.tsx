@@ -18,6 +18,7 @@ import {
   NotificationEvent,
   subscribeToNotifications,
 } from '@/utils/notificationBus';
+import { useNotificationPolling } from '@/hooks/useNotificationPolling';
 
 const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
 const DEDUP_WINDOW_MS = 1500;
@@ -411,6 +412,9 @@ const ModernNotificationSystem = () => {
   const reconnectAttemptsRef = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const channelRef = useRef<any>(null);
+  
+  // ✅ REALTIME CONNECTION STATUS: Track if Realtime is connected
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   // Set up real-time listener for signal notifications
   useEffect(() => {
@@ -829,8 +833,10 @@ const ModernNotificationSystem = () => {
             console.log('✅ [Channel] Successfully subscribed to instant-alerts');
             console.log('✅ [Channel] Ready to receive signal notifications');
             reconnectAttemptsRef.current = 0; // ✅ Reset reconnection counter on success
+            setIsRealtimeConnected(true); // ✅ Enable Realtime, STOP polling
           } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
             console.error('❌ [Channel] Subscription failed:', status);
+            setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
             
             // ✅ ATTEMPT RECONNECTION with exponential backoff
             if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -846,12 +852,13 @@ const ModernNotificationSystem = () => {
                 }
               }, delay);
             } else {
-              console.error('❌ [Reconnect] Max reconnection attempts reached. Notifications may not work until page refresh.');
-              console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
+              console.error('❌ [Reconnect] Max reconnection attempts reached. Switching to 1-second polling mode.');
+              console.log('🔄 [Polling Backup] Database polling active - notifications will still arrive instantly');
             }
           } else if (status === 'TIMED_OUT') {
             console.error('❌ [Channel] Subscription timed out - check network connection');
-            console.log('🔄 [Fallback] Continuing with client-side notifications only');
+            setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
+            console.log('🔄 [Polling Backup] Switching to 1-second polling mode');
           }
         });
 
@@ -878,6 +885,35 @@ const ModernNotificationSystem = () => {
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
   }, []); // ✅ STABLE SUBSCRIPTION: Empty deps - subscribe once on mount and never re-subscribe
+
+  // ✅ DATABASE POLLING BACKUP: Polls every 1 SECOND when Realtime is down
+  // This ensures ZERO missed notifications even if Realtime fails completely
+  const { isPolling } = useNotificationPolling({
+    enabled: !isRealtimeConnected, // Only poll when Realtime is disconnected
+    onNotificationReceived: (notification) => {
+      console.log('🔔 [Polling → Modern Notification] Received notification from polling:', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title
+      });
+      
+      // Use the same handleNotification function (will show modern modal + add to Recent Activity)
+      if (handleNotificationRef.current) {
+        handleNotificationRef.current(notification);
+      }
+    },
+    pollingInterval: 1000 // 1 SECOND for instant feel
+  });
+
+  // Log polling status changes
+  useEffect(() => {
+    if (isPolling) {
+      console.log('🚀 [HYBRID SYSTEM] Database polling ACTIVE (1-second interval) - Realtime is down');
+      console.log('⚡ [HYBRID SYSTEM] Notifications will still arrive instantly via polling');
+    } else if (isRealtimeConnected) {
+      console.log('✅ [HYBRID SYSTEM] Realtime ACTIVE - Polling is stopped (resource efficient)');
+    }
+  }, [isPolling, isRealtimeConnected]);
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

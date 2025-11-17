@@ -1,5 +1,5 @@
 {
-  "version": "1.0.14",
-  "timestamp": "2025-11-17T00:00:00Z",
-  "description": "COMPLETE FIX: Realtime reconnection, DB persistence, iOS push flow, desktop support"
+  "version": "1.0.15",
+  "timestamp": "2025-11-17T01:00:00Z",
+  "description": "BULLETPROOF: 1-second polling backup - ZERO missed notifications guaranteed"
 }

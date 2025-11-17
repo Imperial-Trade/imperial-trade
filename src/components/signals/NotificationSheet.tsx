@@ -3,7 +3,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Clock, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Clock, X, Bell } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
@@ -20,6 +21,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   
   // 🔍 DEBUG: Log notification state when sheet opens
   console.log('🔍 [NotificationSheet] Rendering:', {
@@ -78,29 +80,22 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
       >
         <SheetHeader className="pt-2 lg:pt-20">
-          <SheetTitle className="flex items-center gap-2 justify-between">
+          <SheetTitle className="flex items-center gap-3 justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               Recent Activity
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const stored = localStorage.getItem('imperial-trade-notifications');
-                console.log('🔍 [DEBUG] localStorage inspection:', {
-                  hasData: !!stored,
-                  dataLength: stored?.length,
-                  parsed: stored ? JSON.parse(stored) : null,
-                  allNotifications: allNotifications.length,
-                  events: events.length
-                });
-                alert(`Stored: ${allNotifications.length} notifications\nShowing: ${events.length} notifications\nLocalStorage: ${stored ? 'Has data' : 'Empty'}`);
-              }}
-              className="text-xs"
-            >
-              Debug
-            </Button>
+            <div className="flex items-center gap-2">
+              <Bell className={cn(
+                "w-4 h-4 transition-opacity",
+                notificationsEnabled ? "text-primary opacity-100" : "text-muted-foreground opacity-40"
+              )} />
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={setNotificationsEnabled}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
           </SheetTitle>
         </SheetHeader>
 

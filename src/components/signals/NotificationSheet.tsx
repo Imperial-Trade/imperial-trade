@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -37,10 +37,18 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
-  const { isPushEnabled, subscribeToPush, unsubscribeFromPush } = useOneSignalPush();
+  const { isPushEnabled, subscribeToPush, unsubscribeFromPush, refreshSubscriptionStatus } = useOneSignalPush();
   
   // State for unsubscribe confirmation dialog
   const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
+
+  // ✅ CRITICAL FIX: Refresh subscription status when sheet opens
+  useEffect(() => {
+    if (isOpen && refreshSubscriptionStatus) {
+      console.log('🔄 [Recent Activity] Sheet opened - refreshing subscription status');
+      refreshSubscriptionStatus();
+    }
+  }, [isOpen, refreshSubscriptionStatus]);
 
   const handleTogglePush = async () => {
     if (isPushEnabled) {
@@ -57,11 +65,15 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
         
         if (granted) {
           console.log('✅ [Recent Activity] User granted permission');
-          // State will be updated by useOneSignalPush hook automatically
           toast({
             title: "Push Notifications Enabled",
             description: "You'll now receive instant trade alerts!",
           });
+          
+          // ✅ Force refresh status after subscribe
+          if (refreshSubscriptionStatus) {
+            setTimeout(() => refreshSubscriptionStatus(), 500);
+          }
         } else {
           console.log('❌ [Recent Activity] User denied permission');
           toast({
@@ -82,9 +94,39 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   };
   
   const handleConfirmUnsubscribe = async () => {
-    console.log('🔕 User confirmed unsubscribe');
-    await unsubscribeFromPush();
+    console.log('🔕 [Recent Activity] User confirmed unsubscribe');
     setShowUnsubscribeDialog(false);
+    
+    try {
+      const success = await unsubscribeFromPush();
+      
+      if (success) {
+        console.log('✅ [Recent Activity] Unsubscribed successfully');
+        toast({
+          title: "Push Notifications Disabled",
+          description: "You won't receive push notifications anymore. You can re-enable them anytime.",
+        });
+        
+        // ✅ Force refresh status after unsubscribe
+        if (refreshSubscriptionStatus) {
+          setTimeout(() => refreshSubscriptionStatus(), 500);
+        }
+      } else {
+        console.log('❌ [Recent Activity] Unsubscribe failed');
+        toast({
+          title: "Failed to Unsubscribe",
+          description: "Please try again or check your browser settings.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ [Recent Activity] Error unsubscribing:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unsubscribe from notifications",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleCancelUnsubscribe = () => {

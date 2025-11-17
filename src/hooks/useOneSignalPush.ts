@@ -561,6 +561,42 @@ export const useOneSignalPush = () => {
     initializeOneSignal();
   }, [initializeOneSignal]);
 
+  // ✅ NEW: Function to refresh subscription status on demand
+  const refreshSubscriptionStatus = useCallback(async () => {
+    if (!state.isInitialized || !window.OneSignal) {
+      console.log('⚠️ [OneSignal] Cannot refresh - not initialized');
+      return;
+    }
+
+    try {
+      console.log('🔄 [OneSignal] Refreshing subscription status...');
+      
+      const permission = await window.OneSignal.Notifications.permission;
+      const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
+      const playerId = await window.OneSignal.User.PushSubscription.id;
+      
+      const isTrulySubscribed = permission === 'granted' && isSubscribed && !!playerId;
+      
+      console.log('📋 [OneSignal] Refreshed Status:', {
+        permission,
+        isSubscribed,
+        playerId,
+        isTrulySubscribed
+      });
+      
+      setState(prev => ({
+        ...prev,
+        isPushEnabled: isTrulySubscribed,
+        playerId: playerId || null
+      }));
+      
+      return isTrulySubscribed;
+    } catch (error) {
+      console.error('❌ [OneSignal] Failed to refresh status:', error);
+      return false;
+    }
+  }, [state.isInitialized]);
+
   return {
     isInitialized: state.isInitialized,
     isPushEnabled: state.isPushEnabled,
@@ -570,5 +606,6 @@ export const useOneSignalPush = () => {
     requestPermission,
     subscribeToPush,
     unsubscribeFromPush,
+    refreshSubscriptionStatus, // ✅ NEW: Export refresh function
   };
 };

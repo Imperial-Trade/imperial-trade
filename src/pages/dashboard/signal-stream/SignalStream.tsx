@@ -1876,12 +1876,6 @@ export default function SignalStream() {
                   <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} unreadNotifications={unreadNotifications} onBellClick={handleBellClick} />
                 </div>
 
-                {/* Notification Bell - Visible on all devices in top right corner */}
-                <NotificationBellIcon 
-                  onClick={handleBellClick}
-                  className="shrink-0"
-                />
-
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
                     {isSyncing ? <>

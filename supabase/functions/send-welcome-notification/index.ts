@@ -49,10 +49,13 @@ serve(async (req) => {
 
     // Get OneSignal API key from environment
     const oneSignalAppId = Deno.env.get('ONESIGNAL_APP_ID');
-    const oneSignalApiKey = Deno.env.get('ONESIGNAL_REST_API_KEY');
+    const oneSignalApiKey = Deno.env.get('ONESIGNAL_API_KEY'); // ✅ FIXED: Use correct env var name
 
     if (!oneSignalAppId || !oneSignalApiKey) {
-      console.error('❌ Missing OneSignal credentials');
+      console.error('❌ Missing OneSignal credentials:', {
+        hasAppId: !!oneSignalAppId,
+        hasApiKey: !!oneSignalApiKey
+      });
       return new Response(
         JSON.stringify({ error: 'OneSignal not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

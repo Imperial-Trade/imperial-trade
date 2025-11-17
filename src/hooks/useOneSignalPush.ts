@@ -95,6 +95,42 @@ export const useOneSignalPush = () => {
           } else if (permission === 'granted' && !isSubscribed) {
             console.log('⚠️ [OneSignal] Permission granted but NOT subscribed - treating as unsubscribed');
             setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+          } else if (permission === 'granted' && isSubscribed && !playerId) {
+            // ✅ FIX: Permission granted, user opted in, but NO PLAYER ID (broken state)
+            console.warn('⚠️ [OneSignal] BROKEN STATE DETECTED: Permission granted, opted in, but NO Player ID!');
+            console.log('🔧 [OneSignal] Attempting automatic fix via opt-out → opt-in...');
+            
+            try {
+              // Opt out first
+              await OneSignal.User.PushSubscription.optOut();
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Opt back in
+              await OneSignal.User.PushSubscription.optIn();
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Wait longer for API
+              
+              // Check if we now have a Player ID
+              const newPlayerId = await OneSignal.User.PushSubscription.id;
+              
+              if (newPlayerId) {
+                console.log('✅ [OneSignal Auto-Fix] SUCCESS! Player ID created:', newPlayerId);
+                setState(prev => ({ 
+                  ...prev, 
+                  isPushEnabled: true,
+                  playerId: newPlayerId
+                }));
+                
+                if (user) {
+                  await updateUserProfile(newPlayerId);
+                }
+              } else {
+                console.error('❌ [OneSignal Auto-Fix] FAILED - Player ID still NULL');
+                setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+              }
+            } catch (autoFixError) {
+              console.error('❌ [OneSignal Auto-Fix] Exception:', autoFixError);
+              setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+            }
           } else {
             console.log('📋 [OneSignal] Permission status:', permission, '- Waiting for user action');
             setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
@@ -386,17 +422,48 @@ export const useOneSignalPush = () => {
             }
 
             // Get the player ID after successful subscription
-            const playerId = await OneSignal.User.PushSubscription.id;
+            let playerId = await OneSignal.User.PushSubscription.id;
             
+            // ✅ FIX: If Player ID is NULL, try opt-out → opt-in to force fresh subscription
             if (!playerId) {
-              console.warn('⚠️ No OneSignal Player ID available after subscription');
-              toast({
-                title: "Subscription Failed",
-                description: "Unable to complete push notification setup.",
-                variant: "destructive",
-              });
-              resolve(false);
-              return;
+              console.warn('⚠️ No OneSignal Player ID available after subscription - attempting auto-fix...');
+              
+              try {
+                console.log('🔄 [Auto-Fix] Attempting opt-out → opt-in to generate Player ID...');
+                
+                // Opt out first
+                await OneSignal.User.PushSubscription.optOut();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                
+                // Opt back in
+                await OneSignal.User.PushSubscription.optIn();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for API
+                
+                // Check if we now have a Player ID
+                playerId = await OneSignal.User.PushSubscription.id;
+                
+                if (playerId) {
+                  console.log('✅ [Auto-Fix] SUCCESS! Player ID created:', playerId);
+                } else {
+                  console.error('❌ [Auto-Fix] FAILED - Player ID still NULL after retry');
+                  toast({
+                    title: "Subscription Failed",
+                    description: "Unable to complete push notification setup. Please try again later or contact support.",
+                    variant: "destructive",
+                  });
+                  resolve(false);
+                  return;
+                }
+              } catch (retryError) {
+                console.error('❌ [Auto-Fix] Exception during retry:', retryError);
+                toast({
+                  title: "Subscription Failed",
+                  description: "Unable to complete push notification setup.",
+                  variant: "destructive",
+                });
+                resolve(false);
+                return;
+              }
             }
 
             console.log('✅ Successfully subscribed with Player ID:', playerId);

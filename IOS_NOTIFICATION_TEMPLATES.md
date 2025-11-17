@@ -42,8 +42,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 🚀 Jacob Estayo - New BUY Signal -      │
-│ Gold                                     │
+│ 🚀 Jacob Estayo - New BUY Signal        │
 │ Jacob Estayo posted a new BUY signal on │
 │ Gold at $2,650.00                        │
 └─────────────────────────────────────────┘
@@ -55,8 +54,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ ⏳ Jacob Estayo - Pending BUY LIMIT -   │
-│ EUR/USD                                  │
+│ ⏳ Jacob Estayo - Pending BUY LIMIT     │
 │ Waiting to reach EUR/USD at 1.0900      │
 └─────────────────────────────────────────┘
 ```
@@ -67,8 +65,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ ✅ Jacob Estayo - BUY Limit Activated - │
-│ EUR/USD                                  │
+│ ✅ Jacob Estayo - BUY Limit Activated   │
 │ BUY LIMIT is activated on EUR/USD at    │
 │ 1.0900                                   │
 └─────────────────────────────────────────┘
@@ -80,7 +77,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 💰 Jacob Estayo - TP1 Hit - Gold        │
+│ 💰 Jacob Estayo - TP1 Hit               │
 │ Gold hit Take Profit 1 at $2,650.00     │
 │ +180.5 PIPS                              │
 └─────────────────────────────────────────┘
@@ -92,7 +89,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 💰 Jacob Estayo - TP2 Hit - Bitcoin     │
+│ 💰 Jacob Estayo - TP2 Hit               │
 │ Bitcoin hit Take Profit 2 at $46,500    │
 │ +220.3 PIPS                              │
 └─────────────────────────────────────────┘
@@ -104,7 +101,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 💰 Jacob Estayo - TP3 Hit - EUR/USD     │
+│ 💰 Jacob Estayo - TP3 Hit               │
 │ EUR/USD hit Take Profit 3 at 1.0950     │
 │ +95.0 PIPS                               │
 └─────────────────────────────────────────┘
@@ -116,7 +113,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 💰 Jacob Estayo - TP4 Hit - GBP/USD     │
+│ 💰 Jacob Estayo - TP4 Hit               │
 │ GBP/USD hit Take Profit 4 at 1.2850     │
 │ +130.2 PIPS                              │
 └─────────────────────────────────────────┘
@@ -128,7 +125,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 🎉 Jacob Estayo - ALL TPs HIT - Gold    │
+│ 🎉 Jacob Estayo - ALL TPs HIT           │
 │ Gold hit Final TP5 at $2,700.00          │
 │ +500.0 PIPS 🏆 ALL PROFITS SECURED      │
 └─────────────────────────────────────────┘
@@ -140,8 +137,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ ⚠️ Jacob Estayo - Stop Loss Hit -       │
-│ EUR/USD                                  │
+│ ⚠️ Jacob Estayo - Stop Loss Hit         │
 │ EUR/USD hit Stop Loss at 1.0850         │
 │ -50.2 PIPS                               │
 └─────────────────────────────────────────┘
@@ -153,8 +149,7 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 🔒 Jacob Estayo - Signal Closed -       │
-│ GBP/USD                                  │
+│ 🔒 Jacob Estayo - Signal Closed         │
 │ GBP/USD manually closed                 │
 └─────────────────────────────────────────┘
 ```
@@ -166,7 +161,7 @@ All notifications follow this structure:
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
 │ ✅ Jacob Estayo - Signal Closed in      │
-│ Profit - Gold                            │
+│ Profit                                   │
 │ Gold closed in profit at $2,680.00      │
 │ +300.0 PIPS 🎉                           │
 └─────────────────────────────────────────┘
@@ -178,9 +173,9 @@ All notifications follow this structure:
 ```
 ┌─────────────────────────────────────────┐
 │ Trade Imperial                     now  │
-│ 📝 Jacob Estayo - Notes Updated - Gold  │
-│ Jacob Estayo updated notes: Watch for   │
-│ resistance at $2,700                     │
+│ 📝 Jacob Estayo - Notes Updated         │
+│ Jacob Estayo updated notes for Gold:    │
+│ Watch for resistance at $2,700           │
 └─────────────────────────────────────────┘
 ```
 
@@ -197,7 +192,7 @@ All notifications follow this structure:
 │                                            │
 │  ┌──────────────────────────────────────┐ │
 │  │ 👑 Trade Imperial            now      │ │
-│  │ 💰 Jacob Estayo - TP1 Hit - Gold    │ │
+│  │ 💰 Jacob Estayo - TP1 Hit           │ │
 │  │ Gold hit Take Profit 1 at $2,650     │ │
 │  │ +180.5 PIPS                          │ │
 │  └──────────────────────────────────────┘ │
@@ -212,13 +207,13 @@ All notifications follow this structure:
 │                                            │
 │  Trade Imperial                            │
 │  ┌──────────────────────────────────────┐ │
-│  │ 💰 Jacob Estayo - TP1 Hit - Gold    │ │
-│  │ Gold hit Take Profit 1 at $2,650    now│
+│  │ 💰 Jacob Estayo - TP1 Hit       now  │ │
+│  │ Gold hit Take Profit 1 at $2,650     │ │
 │  │ +180.5 PIPS                          │ │
 │  └──────────────────────────────────────┘ │
 │  ┌──────────────────────────────────────┐ │
-│  │ 🚀 Jacob Estayo - New BUY Signal -  │ │
-│  │ Bitcoin                         2m ago│
+│  │ 🚀 Jacob Estayo - New BUY Signal    │ │
+│  │                                 2m ago│
 │  │ Jacob Estayo posted a new BUY...     │ │
 │  └──────────────────────────────────────┘ │
 │  ┌──────────────────────────────────────┐ │
@@ -234,7 +229,7 @@ All notifications follow this structure:
 ```
 ┌────────────────────────────────────────────┐
 │ 👑 Trade Imperial                     now  │
-│ 💰 Jacob Estayo - TP1 Hit - Gold          │
+│ 💰 Jacob Estayo - TP1 Hit                 │
 │ Gold hit Take Profit 1 at $2,650           │
 │ +180.5 PIPS                                │
 └────────────────────────────────────────────┘
@@ -285,27 +280,27 @@ Here's a typical notification sequence for a Gold signal:
 
 1. **New Signal** 🚀
    ```
-   🚀 Jacob Estayo - New BUY Signal - Gold
+   🚀 Jacob Estayo - New BUY Signal
    Jacob Estayo posted a new BUY signal on Gold at $2,620.00
    ```
 
 2. **TP1 Hit** 💰
    ```
-   💰 Jacob Estayo - TP1 Hit - Gold
+   💰 Jacob Estayo - TP1 Hit
    Gold hit Take Profit 1 at $2,650.00
    +30.0 PIPS
    ```
 
 3. **TP2 Hit** 💰
    ```
-   💰 Jacob Estayo - TP2 Hit - Gold
+   💰 Jacob Estayo - TP2 Hit
    Gold hit Take Profit 2 at $2,670.00
    +50.0 PIPS
    ```
 
 4. **Closed in Profit** ✅
    ```
-   ✅ Jacob Estayo - Signal Closed in Profit - Gold
+   ✅ Jacob Estayo - Signal Closed in Profit
    Gold closed in profit at $2,680.00
    +60.0 PIPS 🎉
    ```

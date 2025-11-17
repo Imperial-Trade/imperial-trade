@@ -221,29 +221,6 @@ export function SignalStreamFilters({
 
           {/* Filters Section - Icon buttons matching mobile */}
           <div className="flex items-center gap-3">
-            {/* Notification Bell */}
-            <button
-              onClick={() => setActiveSheet('notifications')}
-              className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
-              style={{
-                background: colors.bg.surface,
-                backdropFilter: 'blur(20px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-                border: `1px solid ${colors.border.default}`,
-                color: colors.text.secondary
-              }}
-            >
-              <Clock className="w-4 h-4" />
-              {unreadNotifications > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
-                >
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                </Badge>
-              )}
-            </button>
-
             {/* Status Filter Icon */}
             <MobileFilterButton icon={<Filter className="w-4 h-4" />} label="Status" isActive={filters.status !== 'all' && filters.status !== ''} onClick={() => setActiveSheet('status')} />
             

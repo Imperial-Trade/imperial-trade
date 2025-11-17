@@ -4,8 +4,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Clock, X, Bell } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
+import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
 import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
@@ -21,7 +23,15 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const { isPushEnabled, subscribeToPush, unsubscribeFromPush } = useOneSignalPush();
+
+  const handleTogglePush = async () => {
+    if (isPushEnabled) {
+      await unsubscribeFromPush();
+    } else {
+      await subscribeToPush();
+    }
+  };
   
   // 🔍 DEBUG: Log notification state when sheet opens
   console.log('🔍 [NotificationSheet] Rendering:', {
@@ -86,13 +96,10 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
               Recent Activity
             </div>
             <div className="flex items-center gap-2">
-              <Bell className={cn(
-                "w-4 h-4 transition-opacity",
-                notificationsEnabled ? "text-primary opacity-100" : "text-muted-foreground opacity-40"
-              )} />
+              <NotificationBellIcon className="w-4 h-4" />
               <Switch
-                checked={notificationsEnabled}
-                onCheckedChange={setNotificationsEnabled}
+                checked={isPushEnabled}
+                onCheckedChange={handleTogglePush}
                 className="data-[state=checked]:bg-primary"
               />
             </div>

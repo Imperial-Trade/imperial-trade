@@ -243,10 +243,17 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         limit: MAX_STORED_NOTIFICATIONS
       });
 
-      // ✅ ALSO SAVE TO DATABASE (async, non-blocking)
+      // ✅ ENHANCED DATABASE SAVE with retry logic
       if (authReady && user?.id) {
         (async () => {
           try {
+            console.log('💾 [NotificationStore] Saving to database:', {
+              user_id: user.id,
+              notification_id: notification.id,
+              type: notification.type,
+              event_key: notification.eventKey
+            });
+            
             const { error } = await supabase
               .from('user_notifications')
               .insert([{
@@ -262,23 +269,51 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
               }]);
             
             if (error) {
-              // Check if it's a duplicate key error (event_key already exists)
               if (error.code === '23505') {
-                console.log('ℹ️ [NotificationStore] Notification already in database (duplicate event_key)');
+                console.log('ℹ️ [NotificationStore] Duplicate notification (already saved)');
               } else {
-                console.error('❌ [NotificationStore] Failed to save to database:', error);
+                console.error('❌ [NotificationStore] CRITICAL: Database save failed:', {
+                  error_message: error.message,
+                  error_code: error.code,
+                  notification_id: notification.id,
+                  user_id: user.id
+                });
+                
+                // ✅ Add to pending queue for retry
+                console.log('📥 [NotificationStore] Adding to retry queue');
+                pendingDBSaves.current.push(notification);
+                
+                // ✅ Retry after 5 seconds
+                setTimeout(async () => {
+                  const retryNotif = pendingDBSaves.current.shift();
+                  if (retryNotif && user?.id) {
+                    console.log('🔄 [NotificationStore] Retrying database save...');
+                    // Recursive retry (will go to pending again if fails)
+                    addNotification(retryNotif);
+                  }
+                }, 5000);
               }
             } else {
-              console.log('💾 [NotificationStore] Notification saved to database:', notification.id);
+              console.log('✅ [NotificationStore] Successfully saved to database:', notification.id);
             }
           } catch (error) {
-            console.error('❌ [NotificationStore] Error saving to database:', error);
+            console.error('❌ [NotificationStore] Exception during database save:', error);
+            // Also queue on exception
+            pendingDBSaves.current.push(notification);
           }
         })();
       } else {
-        // ✅ Queue notification for later if auth not ready (iOS PWA scenario)
-        console.log('📥 [NotificationStore] Queueing notification for later (auth not ready):', notification.id);
+        console.warn('⚠️ [NotificationStore] User not authenticated, queueing for later save');
         pendingDBSaves.current.push(notification);
+      }
+
+      // ✅ Also update localStorage immediately (don't wait for DB)
+      try {
+        const serialized = updated.map(serializeNotification);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+        console.log('✅ [NotificationStore] Saved to localStorage:', updated.length, 'notifications');
+      } catch (error) {
+        console.error('❌ [NotificationStore] localStorage save failed:', error);
       }
 
       return updated;

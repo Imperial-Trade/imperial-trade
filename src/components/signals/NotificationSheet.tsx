@@ -43,12 +43,40 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
 
   const handleTogglePush = async () => {
     if (isPushEnabled) {
-      // ✅ Show confirmation dialog before unsubscribing
+      // User wants to unsubscribe - show confirmation dialog
+      console.log('🔔 [Recent Activity] User toggling OFF - showing confirmation');
       setShowUnsubscribeDialog(true);
     } else {
-      // ✅ Re-subscribe: Triggers native prompt again
-      console.log('🔔 Re-subscribing - native prompt will appear');
-      await subscribeToPush();
+      // User wants to subscribe - trigger native iOS/Desktop prompt
+      console.log('🔔 [Recent Activity] User toggling ON - triggering native prompt');
+      
+      try {
+        // subscribeToPush will show native prompt
+        const granted = await subscribeToPush();
+        
+        if (granted) {
+          console.log('✅ [Recent Activity] User granted permission');
+          // State will be updated by useOneSignalPush hook automatically
+          toast({
+            title: "Push Notifications Enabled",
+            description: "You'll now receive instant trade alerts!",
+          });
+        } else {
+          console.log('❌ [Recent Activity] User denied permission');
+          toast({
+            title: "Push Notifications Denied",
+            description: "You can enable them later from your device settings.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('❌ [Recent Activity] Error requesting push permission:', error);
+        toast({
+          title: "Error",
+          description: "Failed to request notification permission",
+          variant: "destructive"
+        });
+      }
     }
   };
   
@@ -114,6 +142,7 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   };
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
@@ -328,5 +357,6 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }

@@ -18,6 +18,7 @@ import {
   NotificationEvent,
   subscribeToNotifications,
 } from '@/utils/notificationBus';
+import { useNotificationPolling } from '@/hooks/useNotificationPolling';
 
 const BACKFILL_WINDOW_MS = 5 * 60 * 1000;
 const DEDUP_WINDOW_MS = 1500;
@@ -407,6 +408,15 @@ const ModernNotificationSystem = () => {
     }
   }, [authReady]); // ✅ Removed handleNotification dependency - use ref instead
 
+  // Reconnection state refs
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 10; // ✅ Increased to 10 attempts for reliability
+  const channelRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // ✅ REALTIME CONNECTION STATUS: Track if Realtime is connected
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+
   // Set up real-time listener for signal notifications
   useEffect(() => {
     console.log('🚨🚨🚨 [ModernNotificationSystem] useEffect FIRED - Setting up Realtime channel! 🚨🚨🚨');
@@ -454,9 +464,18 @@ const ModernNotificationSystem = () => {
       bc = null;
     }
 
-    const channel = supabase
-      .channel('instant-alerts')
-      .on('broadcast', { event: 'signal_notification' }, (payload) => {
+    // ✅ RECONNECTION LOGIC: Function to subscribe with auto-reconnect
+    const subscribeToRealtime = () => {
+      // Unsubscribe from old channel if exists
+      if (channelRef.current) {
+        console.log('🔄 [Reconnect] Cleaning up old channel before reconnecting');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
+      const channel = supabase
+        .channel('instant-alerts')
+        .on('broadcast', { event: 'signal_notification' }, (payload) => {
         if (!isMountedRef.current) {
           console.log('⏭️ [UNMOUNTED] Ignoring broadcast after unmount');
           return;
@@ -799,34 +818,87 @@ const ModernNotificationSystem = () => {
             deliveryChannel: 'realtime'
           });
         }
-      })
-      .subscribe((status) => {
-        // Log every subscription status change
-        console.log('📡 [Channel Status]', status, {
-          channel: 'instant-alerts',
-          event: 'signal_notification',
-          user_id: user?.id,
-          timestamp: new Date().toISOString(),
-          mounted_at: new Date(componentMountTimeRef.current).toISOString()
+        })
+        .subscribe((status) => {
+          // Log every subscription status change
+          console.log('📡 [Channel Status]', status, {
+            channel: 'instant-alerts',
+            event: 'signal_notification',
+            user_id: user?.id,
+            timestamp: new Date().toISOString(),
+            mounted_at: new Date(componentMountTimeRef.current).toISOString(),
+            reconnect_attempt: reconnectAttemptsRef.current
+          });
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ [Channel] Successfully subscribed to instant-alerts');
+            console.log('✅ [Channel] Ready to receive signal notifications');
+            reconnectAttemptsRef.current = 0; // ✅ Reset reconnection counter on success
+            setIsRealtimeConnected(true); // ✅ Enable Realtime, STOP polling
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            console.error('❌ [Channel] Subscription failed:', status);
+            setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
+            
+            // ✅ INSTANT RECONNECTION with aggressive retries (no exponential backoff)
+            if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+              // Clear any existing reconnect timeout
+              if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+              }
+              
+              // ✅ AGGRESSIVE SCHEDULE: Always retry after 500ms (instant feel)
+              const delay = 500; // 500ms = Half a second for instant reconnection
+              console.log(`⚡ [INSTANT RECONNECT] Attempting reconnection in ${delay}ms... (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+              
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (isMountedRef.current) {
+                  reconnectAttemptsRef.current++;
+                  subscribeToRealtime(); // ✅ Recursive reconnect
+                } else {
+                  console.log('⏭️ [Reconnect] Component unmounted, skipping reconnection');
+                }
+              }, delay);
+            } else {
+              console.warn('⚠️ [Reconnect] Max reconnection attempts reached after 10 tries.');
+              console.log('🔄 [Polling Backup] Database polling active - notifications will still arrive instantly');
+              console.log('💡 [TIP] Realtime will auto-reconnect on next page load or visibility change');
+            }
+          } else if (status === 'TIMED_OUT') {
+            console.error('❌ [Channel] Subscription timed out - check network connection');
+            setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
+            console.log('🔄 [Polling Backup] Switching to 1-second polling mode');
+            
+            // ✅ Also trigger instant reconnection on timeout
+            if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (isMountedRef.current) {
+                  reconnectAttemptsRef.current++;
+                  subscribeToRealtime();
+                }
+              }, 500);
+            }
+          }
         });
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [Channel] Successfully subscribed to instant-alerts');
-          console.log('✅ [Channel] Ready to receive signal notifications');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [Channel] Subscription error - will retry on reconnect');
-        } else if (status === 'TIMED_OUT') {
-          console.error('❌ [Channel] Subscription timed out - check network connection');
-          console.log('🔄 [Fallback] Continuing with client-side notifications only');
-        } else if (status === 'CLOSED') {
-          console.warn('⚠️ [Channel] Channel closed - will reconnect on next mount');
-          console.log('🔄 [Fallback] window.addNotification() still available for client-side notifications');
-        }
-      });
+
+      channelRef.current = channel; // ✅ Store channel ref for cleanup
+    };
+
+    // ✅ Start initial subscription
+    subscribeToRealtime();
 
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
-      supabase.removeChannel(channel);
+      
+      // Clear reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       if (bc) {
         try {
           bc.close();
@@ -838,6 +910,35 @@ const ModernNotificationSystem = () => {
       console.log('🔔 [ModernNotificationSystem] Cleanup completed');
     };
   }, []); // ✅ STABLE SUBSCRIPTION: Empty deps - subscribe once on mount and never re-subscribe
+
+  // ✅ DATABASE POLLING BACKUP: Polls every 1 SECOND when Realtime is down
+  // This ensures ZERO missed notifications even if Realtime fails completely
+  const { isPolling } = useNotificationPolling({
+    enabled: !isRealtimeConnected, // Only poll when Realtime is disconnected
+    onNotificationReceived: (notification) => {
+      console.log('🔔 [Polling → Modern Notification] Received notification from polling:', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title
+      });
+      
+      // Use the same handleNotification function (will show modern modal + add to Recent Activity)
+      if (handleNotificationRef.current) {
+        handleNotificationRef.current(notification);
+      }
+    },
+    pollingInterval: 1000 // 1 SECOND for instant feel
+  });
+
+  // Log polling status changes
+  useEffect(() => {
+    if (isPolling) {
+      console.log('🚀 [HYBRID SYSTEM] Database polling ACTIVE (1-second interval) - Realtime is down');
+      console.log('⚡ [HYBRID SYSTEM] Notifications will still arrive instantly via polling');
+    } else if (isRealtimeConnected) {
+      console.log('✅ [HYBRID SYSTEM] Realtime ACTIVE - Polling is stopped (resource efficient)');
+    }
+  }, [isPolling, isRealtimeConnected]);
 
   const getGradientClass = (type: string) => {
     const gradients: Record<string, string> = {

@@ -76,47 +76,40 @@ export const useOneSignalPush = () => {
             if (playerId && user) {
               await updateUserProfile(playerId);
             }
-          } else if (permission === 'default' && user) {
-            // ✅ AUTO-SUBSCRIBE: Request permission automatically for authenticated users
-            console.log('🚀 [AUTO-SUBSCRIBE] User logged in, requesting push permission automatically...');
-            
-            // Small delay to avoid blocking the UI
-            setTimeout(async () => {
-              try {
-                const granted = await OneSignal.Notifications.requestPermission();
-                console.log('📋 [AUTO-SUBSCRIBE] Permission request result:', granted);
-                
-                if (granted) {
-                  console.log('✅ [AUTO-SUBSCRIBE] Permission granted! User is now subscribed.');
-                  
-                  // Wait for player ID to be available
-                  setTimeout(async () => {
-                    const newPlayerId = await OneSignal.User.PushSubscription.id;
-                    if (newPlayerId) {
-                      setState(prev => ({ 
-                        ...prev, 
-                        isPushEnabled: true,
-                        playerId: newPlayerId
-                      }));
-                      await updateUserProfile(newPlayerId);
-                      console.log('🎉 [AUTO-SUBSCRIBE] User successfully auto-subscribed to push notifications!');
-                    }
-                  }, 1000);
-                }
-              } catch (error) {
-                console.warn('⚠️ [AUTO-SUBSCRIBE] Failed to auto-request permission:', error);
-                // Don't show error to user - this is a background operation
-              }
-            }, 2000); // 2 second delay after login for smoother UX
+          } else if (permission === 'denied') {
+            console.log('❌ [OneSignal] Push notifications denied by user');
+            setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+          } else {
+            console.log('📋 [OneSignal] Permission status:', permission, '- Waiting for user action');
           }
 
-          // Set up listeners for permission and subscription changes
-          OneSignal.Notifications.addEventListener('permissionChange', function(event: any) {
-            console.log('🔄 OneSignal permission changed:', event);
+          // ✅ ENHANCED: Listen for permission changes (user allows/denies via system settings)
+          OneSignal.Notifications.addEventListener('permissionChange', async function(event: any) {
+            console.log('📱 [OneSignal] Permission changed:', { from: event.from, to: event.to });
+            
             if (event.to === 'granted') {
-              setState(prev => ({ ...prev, isPushEnabled: true }));
+              // User granted permission
+              const playerId = await OneSignal.User.PushSubscription.id;
+              console.log('✅ [OneSignal] Permission granted, Player ID:', playerId);
+              
+              setState(prev => ({ 
+                ...prev, 
+                isPushEnabled: true,
+                playerId: playerId || null
+              }));
+              
+              // Update user profile with OneSignal info
+              if (playerId && user) {
+                await updateUserProfile(playerId);
+              }
             } else {
-              setState(prev => ({ ...prev, isPushEnabled: false, playerId: null }));
+              // User denied or revoked permission
+              console.log('❌ [OneSignal] Permission denied or revoked');
+              setState(prev => ({ 
+                ...prev, 
+                isPushEnabled: false,
+                playerId: null
+              }));
             }
           });
 

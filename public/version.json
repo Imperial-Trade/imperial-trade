@@ -1,5 +1,5 @@
 {
-  "version": "1.0.13",
-  "timestamp": "2025-11-16T13:00:00Z",
-  "description": "CRITICAL FIX: Smart polling - instant signals via Realtime, no overwriting"
+  "version": "1.0.18",
+  "timestamp": "2025-11-17T04:00:00Z",
+  "description": "VERIFIED: Polling stops when Realtime connects + instant fetch on mount + performance logging"
 }

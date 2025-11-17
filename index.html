@@ -115,45 +115,57 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "c6d5466e-9ca7-40b2-90db-57ec42d385ef",
-          safari_web_id: "web.onesignal.auto.c6d5466e-9ca7-40b2-90db-57ec42d385ef",
-          notifyButton: {
-            enable: false,
-          },
-          allowLocalhostAsSecureOrigin: true,
-          // ✅ Windows/Desktop Notification Settings
-          serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: 'OneSignalSDKWorker.js',
-          // ✅ Enable persistent notifications (required for Windows Notification Center)
-          persistNotification: true,
-          // ✅ Notification click behavior
-          notificationClickHandlerMatch: 'origin',
-          notificationClickHandlerAction: 'focus',
-          // ✅ Welcome notification
-          welcomeNotification: {
-            disable: true // We'll send custom welcome via Edge Function
-          },
-          // ✅ Auto-register Service Worker (critical for Windows)
-          autoRegister: true,
-          // ✅ Auto-resubscribe if unsubscribed
-          autoResubscribe: false
-        });
-        
-        console.log('✅ [OneSignal] Initialized with Windows Notification Center support');
-        
-        // ✅ Check Service Worker registration (critical for Windows notifications)
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            console.log('📋 [Service Worker] Active registrations:', registrations.length);
-            registrations.forEach(function(registration, index) {
-              console.log(`   [${index + 1}] Scope: ${registration.scope}, Active: ${!!registration.active}`);
-            });
-            
-            if (registrations.length === 0) {
-              console.warn('⚠️ [Service Worker] No registrations found - Windows notifications may not work!');
-            }
+        try {
+          await OneSignal.init({
+            appId: "c6d5466e-9ca7-40b2-90db-57ec42d385ef",
+            safari_web_id: "web.onesignal.auto.c6d5466e-9ca7-40b2-90db-57ec42d385ef",
+            notifyButton: {
+              enable: false,
+            },
+            allowLocalhostAsSecureOrigin: true,
+            // ✅ Windows/Desktop Notification Settings
+            serviceWorkerParam: { scope: '/' },
+            serviceWorkerPath: '/OneSignalSDKWorker.js',
+            // ✅ Enable persistent notifications (required for Windows Notification Center)
+            persistNotification: true,
+            // ✅ Notification click behavior
+            notificationClickHandlerMatch: 'origin',
+            notificationClickHandlerAction: 'focus',
+            // ✅ Welcome notification
+            welcomeNotification: {
+              disable: true // We'll send custom welcome via Edge Function
+            },
+            // ✅ Auto-register Service Worker (critical for Windows)
+            autoRegister: true,
+            // ✅ Auto-resubscribe if unsubscribed
+            autoResubscribe: false
           });
+        
+          console.log('✅ [OneSignal] Initialized successfully');
+          
+          // ✅ Check Service Worker registration (critical for Windows notifications)
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              console.log('📋 [Service Worker] Active registrations:', registrations.length);
+              registrations.forEach(function(registration, index) {
+                console.log(`   [${index + 1}] Scope: ${registration.scope}, Active: ${!!registration.active}`);
+              });
+              
+              if (registrations.length === 0) {
+                console.warn('⚠️ [Service Worker] No registrations found - trying to register manually...');
+                // Try to register Service Worker manually
+                navigator.serviceWorker.register('/OneSignalSDKWorker.js', { scope: '/' })
+                  .then(function(registration) {
+                    console.log('✅ [Service Worker] Manually registered:', registration.scope);
+                  })
+                  .catch(function(error) {
+                    console.error('❌ [Service Worker] Manual registration failed:', error);
+                  });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('❌ [OneSignal] Initialization error:', error);
         }
       });
     </script>

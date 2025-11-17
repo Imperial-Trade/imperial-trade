@@ -1,5 +1,5 @@
 {
-  "version": "1.0.23",
-  "timestamp": "2025-11-17T12:00:00Z",
-  "description": "SYSTEM-WIDE FIX: Auto-retry logic for NULL Player IDs - all users get push notifications"
+  "version": "1.0.24",
+  "timestamp": "2025-11-17T12:15:00Z",
+  "description": "CRITICAL FIX: Service Worker registration with error handling and manual fallback"
 }

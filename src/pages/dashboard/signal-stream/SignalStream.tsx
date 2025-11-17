@@ -77,6 +77,9 @@ export default function SignalStream() {
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
+  
+  // Initialize selectedEducators with all educator IDs for consistency across devices
+  const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
   const {
@@ -534,6 +537,17 @@ export default function SignalStream() {
       signalCounts: educatorSpecificCounts
     };
   }, [allEducatorsWithSignals, educatorSpecificCounts]);
+
+  // Initialize selectedEducators with all educator IDs when educators load (ensures consistent blue highlights across devices)
+  useEffect(() => {
+    if (!hasInitializedEducators && educatorMetadata.educatorOptions.length > 0 && filters.selectedEducators.length === 0) {
+      setFilters(prev => ({
+        ...prev,
+        selectedEducators: educatorMetadata.educatorOptions.map(e => e.id)
+      }));
+      setHasInitializedEducators(true);
+    }
+  }, [educatorMetadata.educatorOptions, filters.selectedEducators.length, hasInitializedEducators]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {

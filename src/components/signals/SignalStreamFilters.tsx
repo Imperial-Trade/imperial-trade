@@ -39,6 +39,8 @@ interface SignalStreamFiltersProps {
   onCreateSignal?: () => void;
   unreadNotifications?: number;
   onBellClick?: () => void;
+  onClearUnread?: () => void;
+  onShowPrompt?: () => void;
 }
 export function SignalStreamFilters({
   filters,
@@ -48,7 +50,9 @@ export function SignalStreamFilters({
   canCreateSignals,
   onCreateSignal,
   unreadNotifications = 0,
-  onBellClick
+  onBellClick,
+  onClearUnread,
+  onShowPrompt
 }: SignalStreamFiltersProps) {
   const {
     isMobile
@@ -230,6 +234,29 @@ export function SignalStreamFilters({
             {/* Educator Filter Icon */}
             {educatorOptions.length > 1 && <MobileFilterButton icon={<Users className="w-4 h-4" />} label="Educator" isActive={filters.educator !== 'all' && filters.educator !== ''} onClick={() => setActiveSheet('educator')} />}
             
+            {/* Recent Activity / Notification Button */}
+            <button
+              onClick={() => setActiveSheet('notifications')}
+              className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
+              style={{
+                background: colors.bg.surface,
+                backdropFilter: 'blur(20px) saturate(150%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                border: `1px solid ${colors.border.default}`,
+                color: colors.text.secondary
+              }}
+            >
+              <Clock className="w-4 h-4" />
+              {unreadNotifications > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center animate-bounce bg-red-500 border-2 border-background"
+                >
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </Badge>
+              )}
+            </button>
+            
             {/* Action Buttons */}
             <div className="flex items-center gap-3 ml-auto">
               {hasActiveFilters && <button type="button" onClick={handleClearAllClick} className="h-9 px-4 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 min-w-[100px]" style={{
@@ -290,7 +317,10 @@ export function SignalStreamFilters({
     {/* Notification Sheet */}
     <NotificationSheet 
       isOpen={activeSheet === 'notifications'} 
-      onClose={() => setActiveSheet(null)} 
+      onClose={() => setActiveSheet(null)}
+      unreadNotifications={unreadNotifications}
+      onClearUnread={onClearUnread}
+      onShowPrompt={onShowPrompt}
     />
     </>;
 }

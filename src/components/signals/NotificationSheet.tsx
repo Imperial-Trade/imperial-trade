@@ -17,9 +17,12 @@ import { cn } from '@/lib/utils';
 interface NotificationSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  unreadNotifications?: number;
+  onClearUnread?: () => void;
+  onShowPrompt?: () => void;
 }
 
-export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
+export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClearUnread, onShowPrompt }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
@@ -96,7 +99,19 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
               Recent Activity
             </div>
             <div className="flex items-center gap-2">
-              <NotificationBellIcon className="w-4 h-4" />
+              <NotificationBellIcon 
+                className="w-4 h-4 cursor-pointer" 
+                onClick={() => {
+                  // Show prompt if not subscribed
+                  if (!isPushEnabled && onShowPrompt) {
+                    onShowPrompt();
+                  }
+                  // Clear unread count
+                  if (onClearUnread) {
+                    onClearUnread();
+                  }
+                }}
+              />
               <Switch
                 checked={isPushEnabled}
                 onCheckedChange={handleTogglePush}

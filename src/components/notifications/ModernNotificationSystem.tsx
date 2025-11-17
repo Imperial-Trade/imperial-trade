@@ -410,8 +410,9 @@ const ModernNotificationSystem = () => {
 
   // Reconnection state refs
   const reconnectAttemptsRef = useRef(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
+  const MAX_RECONNECT_ATTEMPTS = 10; // ✅ Increased to 10 attempts for reliability
   const channelRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // ✅ REALTIME CONNECTION STATUS: Track if Realtime is connected
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
@@ -838,12 +839,18 @@ const ModernNotificationSystem = () => {
             console.error('❌ [Channel] Subscription failed:', status);
             setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
             
-            // ✅ ATTEMPT RECONNECTION with exponential backoff
+            // ✅ INSTANT RECONNECTION with aggressive retries (no exponential backoff)
             if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-              const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-              console.log(`🔄 [Reconnect] Attempting reconnection in ${delay}ms... (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+              // Clear any existing reconnect timeout
+              if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+              }
               
-              setTimeout(() => {
+              // ✅ AGGRESSIVE SCHEDULE: Always retry after 500ms (instant feel)
+              const delay = 500; // 500ms = Half a second for instant reconnection
+              console.log(`⚡ [INSTANT RECONNECT] Attempting reconnection in ${delay}ms... (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+              
+              reconnectTimeoutRef.current = setTimeout(() => {
                 if (isMountedRef.current) {
                   reconnectAttemptsRef.current++;
                   subscribeToRealtime(); // ✅ Recursive reconnect
@@ -852,13 +859,24 @@ const ModernNotificationSystem = () => {
                 }
               }, delay);
             } else {
-              console.error('❌ [Reconnect] Max reconnection attempts reached. Switching to 1-second polling mode.');
+              console.warn('⚠️ [Reconnect] Max reconnection attempts reached after 10 tries.');
               console.log('🔄 [Polling Backup] Database polling active - notifications will still arrive instantly');
+              console.log('💡 [TIP] Realtime will auto-reconnect on next page load or visibility change');
             }
           } else if (status === 'TIMED_OUT') {
             console.error('❌ [Channel] Subscription timed out - check network connection');
             setIsRealtimeConnected(false); // ✅ Disable Realtime, START polling backup
             console.log('🔄 [Polling Backup] Switching to 1-second polling mode');
+            
+            // ✅ Also trigger instant reconnection on timeout
+            if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (isMountedRef.current) {
+                  reconnectAttemptsRef.current++;
+                  subscribeToRealtime();
+                }
+              }, 500);
+            }
           }
         });
 
@@ -870,6 +888,13 @@ const ModernNotificationSystem = () => {
 
     return () => {
       console.log('🔔 [ModernNotificationSystem] Cleaning up channel subscription');
+      
+      // Clear reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import imperialLogo from '@/assets/imperial-logo.png';
 import { useWelcome } from '@/contexts/WelcomeContext';
-import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
+import { Crown, Clock, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -163,7 +163,7 @@ const DashboardNav: React.FC = () => {
                 className="relative hover:bg-primary/10 group transition-all duration-200"
                 onClick={() => setUnreadCount(0)}
               >
-                <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
+                <Clock className="h-4 w-4 transition-colors group-hover:text-primary" />
                 {unreadCount > 0 && (
                   <Badge 
                     variant="destructive" 

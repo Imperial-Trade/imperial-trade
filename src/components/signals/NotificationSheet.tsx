@@ -1,10 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Bell, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Clock, X, BellOff } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
+import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
 import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
@@ -14,12 +27,41 @@ import { cn } from '@/lib/utils';
 interface NotificationSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  unreadNotifications?: number;
+  onClearUnread?: () => void;
+  onShowPrompt?: () => void;
 }
 
-export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
+export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClearUnread, onShowPrompt }: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
+  const { isPushEnabled, subscribeToPush, unsubscribeFromPush } = useOneSignalPush();
+  
+  // State for unsubscribe confirmation dialog
+  const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
+
+  const handleTogglePush = async () => {
+    if (isPushEnabled) {
+      // ✅ Show confirmation dialog before unsubscribing
+      setShowUnsubscribeDialog(true);
+    } else {
+      // ✅ Re-subscribe: Triggers native prompt again
+      console.log('🔔 Re-subscribing - native prompt will appear');
+      await subscribeToPush();
+    }
+  };
+  
+  const handleConfirmUnsubscribe = async () => {
+    console.log('🔕 User confirmed unsubscribe');
+    await unsubscribeFromPush();
+    setShowUnsubscribeDialog(false);
+  };
+  
+  const handleCancelUnsubscribe = () => {
+    console.log('✅ User cancelled unsubscribe');
+    setShowUnsubscribeDialog(false);
+  };
   
   // 🔍 DEBUG: Log notification state when sheet opens
   console.log('🔍 [NotificationSheet] Rendering:', {
@@ -75,32 +117,38 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 top-20 h-[calc(100vh-5rem)]"
+        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
       >
-        <SheetHeader className="pt-2">
-          <SheetTitle className="flex items-center gap-2 justify-between">
+        <SheetHeader className="pt-2 lg:pt-20">
+          <SheetTitle className="flex items-center gap-3 justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-primary" />
+              <Clock className="w-5 h-5 text-primary" />
               Recent Activity
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const stored = localStorage.getItem('imperial-trade-notifications');
-                console.log('🔍 [DEBUG] localStorage inspection:', {
-                  hasData: !!stored,
-                  dataLength: stored?.length,
-                  parsed: stored ? JSON.parse(stored) : null,
-                  allNotifications: allNotifications.length,
-                  events: events.length
-                });
-                alert(`Stored: ${allNotifications.length} notifications\nShowing: ${events.length} notifications\nLocalStorage: ${stored ? 'Has data' : 'Empty'}`);
-              }}
-              className="text-xs"
-            >
-              Debug
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationBellIcon 
+                className="w-4 h-4 cursor-pointer" 
+                onClick={async () => {
+                  if (isPushEnabled) {
+                    // ✅ Show confirmation before unsubscribing
+                    setShowUnsubscribeDialog(true);
+                  } else {
+                    // ✅ Re-subscribe: Trigger native iOS prompt
+                    console.log('🔔 [Recent Activity] Bell clicked - triggering native prompt');
+                    await subscribeToPush();
+                  }
+                  // Clear unread count
+                  if (onClearUnread) {
+                    onClearUnread();
+                  }
+                }}
+              />
+              <Switch
+                checked={isPushEnabled}
+                onCheckedChange={handleTogglePush}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
           </SheetTitle>
         </SheetHeader>
 
@@ -108,7 +156,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                <Bell className="w-8 h-8 text-muted-foreground" />
+                <Clock className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">No recent activity</p>
               <p className="text-sm text-muted-foreground/60 mt-1">
@@ -233,5 +281,52 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+    
+    {/* Unsubscribe Confirmation Dialog */}
+    <AlertDialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <BellOff className="w-6 h-6 text-destructive" />
+            </div>
+            <AlertDialogTitle className="text-xl">
+              Unsubscribe from Notifications?
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogDescription className="text-base leading-relaxed">
+            Are you sure you want to turn off push notifications? You'll no longer receive instant alerts for:
+            <ul className="mt-3 space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <span className="text-blue-500">•</span> New trade signals
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500">•</span> Take profit hits
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-red-500">•</span> Stop loss alerts
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-green-500">•</span> Signal updates
+              </li>
+            </ul>
+            <p className="mt-4 text-muted-foreground">
+              You can always re-enable notifications anytime by clicking the bell icon or toggle switch.
+            </p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleCancelUnsubscribe}>
+            Keep Notifications
+          </AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleConfirmUnsubscribe}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Unsubscribe
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

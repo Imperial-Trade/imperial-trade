@@ -60,9 +60,11 @@ export function MobileFilterSheet({
   const renderOptions = () => {
     if (type === 'educator' && educatorOptions.length > 0 && onEducatorsChange) {
       const allEducatorIds = educatorOptions.map(e => e.id);
-      const isAllSelected = selectedEducators.length === allEducatorIds.length;
+      const isAllSelected = selectedEducators.length === allEducatorIds.length && selectedEducators.length > 0;
       
-      const toggleAllEducators = () => {
+      const toggleAllEducators = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (isAllSelected) {
           onEducatorsChange([]);
         } else {
@@ -70,7 +72,9 @@ export function MobileFilterSheet({
         }
       };
       
-      const toggleEducator = (educatorId: string) => {
+      const toggleEducator = (e: React.MouseEvent, educatorId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
         const isSelected = selectedEducators.includes(educatorId);
         if (isSelected) {
           onEducatorsChange(selectedEducators.filter(id => id !== educatorId));
@@ -83,10 +87,11 @@ export function MobileFilterSheet({
         <>
           {/* All Educators Checkbox */}
           <button
+            type="button"
             onClick={toggleAllEducators}
             className={cn(
-              "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200",
-              !isAllSelected && "hover:bg-white/5"
+              "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200 touch-manipulation",
+              !isAllSelected && "hover:bg-white/5 active:bg-white/10"
             )}
             style={isAllSelected ? {
               background: colors.state.active,
@@ -97,16 +102,16 @@ export function MobileFilterSheet({
             }}
           >
             <div 
-              className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all"
+              className="w-6 h-6 rounded flex items-center justify-center border-2 transition-all flex-shrink-0"
               style={{
                 borderColor: isAllSelected ? colors.accent.primary : colors.border.default,
                 background: isAllSelected ? colors.accent.primary : 'transparent',
               }}
             >
-              {isAllSelected && <Check className="w-3 h-3 text-white" />}
+              {isAllSelected && <Check className="w-4 h-4 text-white" />}
             </div>
-            <Users className="w-5 h-5" style={{ color: isAllSelected ? colors.accent.primary : colors.text.tertiary }} />
-            <span className="flex-1 text-left font-medium" style={{ color: isAllSelected ? colors.text.accent : colors.text.primary }}>
+            <Users className="w-5 h-5 flex-shrink-0" style={{ color: isAllSelected ? colors.accent.primary : colors.text.tertiary }} />
+            <span className="flex-1 text-left font-medium text-sm md:text-base" style={{ color: isAllSelected ? colors.text.accent : colors.text.primary }}>
               All Educators
             </span>
           </button>
@@ -117,10 +122,11 @@ export function MobileFilterSheet({
             return (
               <button
                 key={educator.id}
-                onClick={() => toggleEducator(educator.id)}
+                type="button"
+                onClick={(e) => toggleEducator(e, educator.id)}
                 className={cn(
-                  "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200",
-                  !isSelected && "hover:bg-white/5"
+                  "w-full min-h-14 px-4 flex items-center gap-3 rounded-lg transition-all duration-200 touch-manipulation",
+                  !isSelected && "hover:bg-white/5 active:bg-white/10"
                 )}
                 style={isSelected ? {
                   background: colors.state.active,
@@ -131,16 +137,16 @@ export function MobileFilterSheet({
                 }}
               >
                 <div 
-                  className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all"
+                  className="w-6 h-6 rounded flex items-center justify-center border-2 transition-all flex-shrink-0"
                   style={{
                     borderColor: isSelected ? colors.accent.primary : colors.border.default,
                     background: isSelected ? colors.accent.primary : 'transparent',
                   }}
                 >
-                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                  {isSelected && <Check className="w-4 h-4 text-white" />}
                 </div>
-                <Users className="w-5 h-5" style={{ color: isSelected ? colors.accent.primary : colors.text.tertiary }} />
-                <span className="flex-1 text-left font-medium" style={{ color: isSelected ? colors.text.accent : colors.text.primary }}>
+                <Users className="w-5 h-5 flex-shrink-0" style={{ color: isSelected ? colors.accent.primary : colors.text.tertiary }} />
+                <span className="flex-1 text-left font-medium text-sm md:text-base" style={{ color: isSelected ? colors.text.accent : colors.text.primary }}>
                   {educator.name}
                 </span>
               </button>

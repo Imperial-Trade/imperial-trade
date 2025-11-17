@@ -1,8 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "name": "Trade Imperial",
   "short_name": "Trade Imperial",
   "description": "Premium trading education and professional mentorship platform offering AI-powered trading signals, live sessions, and comprehensive courses.",
-  "start_url": "/dashboard/home",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -11,6 +12,7 @@
   "categories": ["finance", "education", "business"],
   "lang": "en",
   "dir": "ltr",
+  "id": "?homescreen=1",
   "icons": [
     {
       "src": "/favicon-16x16.png",

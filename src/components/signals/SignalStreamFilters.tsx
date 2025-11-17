@@ -39,6 +39,8 @@ interface SignalStreamFiltersProps {
   onCreateSignal?: () => void;
   unreadNotifications?: number;
   onBellClick?: () => void;
+  onClearUnread?: () => void;
+  onShowPrompt?: () => void;
 }
 export function SignalStreamFilters({
   filters,
@@ -48,7 +50,9 @@ export function SignalStreamFilters({
   canCreateSignals,
   onCreateSignal,
   unreadNotifications = 0,
-  onBellClick
+  onBellClick,
+  onClearUnread,
+  onShowPrompt
 }: SignalStreamFiltersProps) {
   const {
     isMobile
@@ -221,7 +225,16 @@ export function SignalStreamFilters({
 
           {/* Filters Section - Icon buttons matching mobile */}
           <div className="flex items-center gap-3">
-            {/* Notification Bell */}
+            {/* Status Filter Icon */}
+            <MobileFilterButton icon={<Filter className="w-4 h-4" />} label="Status" isActive={filters.status !== 'all' && filters.status !== ''} onClick={() => setActiveSheet('status')} />
+            
+            {/* Trade Type Filter Icon */}
+            <MobileFilterButton icon={<TrendingUp className="w-4 h-4" />} label="Type" isActive={filters.tradeType !== 'all' && filters.tradeType !== ''} onClick={() => setActiveSheet('tradeType')} />
+            
+            {/* Educator Filter Icon */}
+            {educatorOptions.length > 1 && <MobileFilterButton icon={<Users className="w-4 h-4" />} label="Educator" isActive={filters.educator !== 'all' && filters.educator !== ''} onClick={() => setActiveSheet('educator')} />}
+            
+            {/* Recent Activity / Notification Button */}
             <button
               onClick={() => setActiveSheet('notifications')}
               className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
@@ -233,7 +246,7 @@ export function SignalStreamFilters({
                 color: colors.text.secondary
               }}
             >
-              <Bell className="w-4 h-4" />
+              <Clock className="w-4 h-4" />
               {unreadNotifications > 0 && (
                 <Badge 
                   variant="destructive" 
@@ -243,15 +256,6 @@ export function SignalStreamFilters({
                 </Badge>
               )}
             </button>
-
-            {/* Status Filter Icon */}
-            <MobileFilterButton icon={<Filter className="w-4 h-4" />} label="Status" isActive={filters.status !== 'all' && filters.status !== ''} onClick={() => setActiveSheet('status')} />
-            
-            {/* Trade Type Filter Icon */}
-            <MobileFilterButton icon={<TrendingUp className="w-4 h-4" />} label="Type" isActive={filters.tradeType !== 'all' && filters.tradeType !== ''} onClick={() => setActiveSheet('tradeType')} />
-            
-            {/* Educator Filter Icon */}
-            {educatorOptions.length > 1 && <MobileFilterButton icon={<Users className="w-4 h-4" />} label="Educator" isActive={filters.educator !== 'all' && filters.educator !== ''} onClick={() => setActiveSheet('educator')} />}
             
             {/* Action Buttons */}
             <div className="flex items-center gap-3 ml-auto">
@@ -297,23 +301,30 @@ export function SignalStreamFilters({
       updateFilter('educator', value);
       setActiveSheet(null);
     }} educatorOptions={educatorOptions} selectedEducators={filters.selectedEducators || []} onEducatorsChange={educators => {
+      // ✅ FIX: Single state update to prevent race condition
+      let educatorValue = 'all';
+      if (educators.length === 0) {
+        educatorValue = 'all';
+      } else if (educators.length === educatorOptions.length) {
+        educatorValue = 'all';
+      } else {
+        educatorValue = educators[0] || 'all';
+      }
+      
       onFiltersChange({
         ...filters,
-        selectedEducators: educators
+        selectedEducators: educators,
+        educator: educatorValue
       });
-      if (educators.length === 0) {
-        updateFilter('educator', 'all');
-      } else if (educators.length === educatorOptions.length) {
-        updateFilter('educator', 'all');
-      } else {
-        updateFilter('educator', educators[0] || 'all');
-      }
     }} />}
 
     {/* Notification Sheet */}
     <NotificationSheet 
       isOpen={activeSheet === 'notifications'} 
-      onClose={() => setActiveSheet(null)} 
+      onClose={() => setActiveSheet(null)}
+      unreadNotifications={unreadNotifications}
+      onClearUnread={onClearUnread}
+      onShowPrompt={onShowPrompt}
     />
     </>;
 }

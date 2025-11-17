@@ -31,6 +31,12 @@ import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+// Removed ProfessionalNotificationModal - using native iOS prompt only
+import { useOneSignalPush } from '@/hooks/useOneSignalPush';
+import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
+
 export default function SignalStream() {
   const {
     colors
@@ -47,6 +53,15 @@ export default function SignalStream() {
   const {
     toast
   } = useToast();
+  
+  // Notification prompt hooks
+  const { hasSeenWelcome } = useWelcome();
+  const {
+    shouldShowNotificationPrompt,
+    setShouldShowNotificationPrompt,
+    isSubscribedToPush
+  } = useNotificationPrompt();
+  const { isPushEnabled, isInitialized, subscribeToPush } = useOneSignalPush();
 
   // State for filtering and modal
   const [filters, setFilters] = useState({
@@ -62,6 +77,9 @@ export default function SignalStream() {
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
+  
+  // Initialize selectedEducators with all educator IDs for consistency across devices
+  const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
   const {
@@ -76,10 +94,17 @@ export default function SignalStream() {
     window.addEventListener('notification:received', handleNotificationReceived);
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
-  const handleBellClick = () => {
+  const handleBellClick = async () => {
+    // ✅ Directly trigger native iOS prompt if not subscribed  
+    if (!isPushEnabled && !isSubscribedToPush) {
+      console.log('🔔 Bell clicked - triggering native iOS prompt');
+      // subscribeToPush will automatically trigger the native browser/iOS permission prompt
+      await subscribeToPush();
+    }
     setUnreadNotifications(0);
-    // TODO: Open notification center/panel
   };
+  
+  // ✅ Removed custom modal - bell icon directly triggers native iOS prompt
 
   // ✅ FIX: Refs to prevent stale closures in event listeners
   const allAlertsRef = useRef<TradeAlertWithProfile[]>([]);
@@ -483,6 +508,23 @@ export default function SignalStream() {
       signalCounts: educatorSpecificCounts
     };
   }, [allEducatorsWithSignals, educatorSpecificCounts]);
+
+  // Initialize selectedEducators with all educator IDs when educators load (ensures consistent blue highlights across devices)
+  useEffect(() => {
+    if (!hasInitializedEducators && educatorMetadata.educatorOptions.length > 0) {
+      setFilters(prev => {
+        // Only initialize if currently empty (prevents overwriting user selections)
+        if (prev.selectedEducators.length === 0) {
+          return {
+            ...prev,
+            selectedEducators: educatorMetadata.educatorOptions.map(e => e.id)
+          };
+        }
+        return prev;
+      });
+      setHasInitializedEducators(true);
+    }
+  }, [educatorMetadata.educatorOptions, hasInitializedEducators]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {
@@ -1822,11 +1864,19 @@ export default function SignalStream() {
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
                 <div className="flex-1">
-                  <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorMetadata.educatorOptions} signalCounts={educatorMetadata.signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => setShowCreateModal(true)} unreadNotifications={unreadNotifications} onBellClick={handleBellClick} />
+                  <SignalStreamFilters 
+                    filters={filters} 
+                    onFiltersChange={setFilters} 
+                    educatorOptions={educatorMetadata.educatorOptions} 
+                    signalCounts={educatorMetadata.signalCounts} 
+                    canCreateSignals={canCreateSignals} 
+                    onCreateSignal={() => setShowCreateModal(true)} 
+                    unreadNotifications={unreadNotifications} 
+                    onBellClick={handleBellClick}
+                    onClearUnread={() => setUnreadNotifications(0)}
+                    onShowPrompt={() => setShouldShowNotificationPrompt(true)}
+                  />
                 </div>
-
-                {/* Notification Bell - Visible on desktop/tablet, matches filter design */}
-                
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">
@@ -1961,6 +2011,8 @@ export default function SignalStream() {
               <OptimizedNewAlertForm onSubmit={handleCreateSignal} onCancel={() => setShowCreateModal(false)} />
             </DialogContent>
           </Dialog>
+          
+          {/* ✅ Removed custom modal - bell icon triggers native iOS prompt directly */}
         </div>
       </div>
     </StreamErrorBoundary>

@@ -301,17 +301,21 @@ export function SignalStreamFilters({
       updateFilter('educator', value);
       setActiveSheet(null);
     }} educatorOptions={educatorOptions} selectedEducators={filters.selectedEducators || []} onEducatorsChange={educators => {
+      // ✅ FIX: Single state update to prevent race condition
+      let educatorValue = 'all';
+      if (educators.length === 0) {
+        educatorValue = 'all';
+      } else if (educators.length === educatorOptions.length) {
+        educatorValue = 'all';
+      } else {
+        educatorValue = educators[0] || 'all';
+      }
+      
       onFiltersChange({
         ...filters,
-        selectedEducators: educators
+        selectedEducators: educators,
+        educator: educatorValue
       });
-      if (educators.length === 0) {
-        updateFilter('educator', 'all');
-      } else if (educators.length === educatorOptions.length) {
-        updateFilter('educator', 'all');
-      } else {
-        updateFilter('educator', educators[0] || 'all');
-      }
     }} />}
 
     {/* Notification Sheet */}

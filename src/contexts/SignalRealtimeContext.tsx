@@ -8,10 +8,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { unstable_batchedUpdates } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-// ✅ INSTANT UPDATES VIA REALTIME: Longer cache since Realtime handles all updates
-const LOCAL_CACHE_TTL = 5 * 1000; // 5 seconds (Realtime provides instant updates)
+// ✅ INSTANT UPDATES: 1-SECOND POLLING for instant signal display
+const LOCAL_CACHE_TTL = 1 * 1000; // 1 second - INSTANT signal updates
 const EDUCATOR_CACHE_TTL = 30 * 1000; // 30 seconds (educator list doesn't change often)
-const SAFETY_POLL_INTERVAL = 30 * 1000; // Safety polling every 30s (only when Realtime down)
+const SIGNAL_POLL_INTERVAL = 1 * 1000; // ⚡ 1 SECOND polling for INSTANT active alerts display
 
 // Module-level educator cache
 let educatorUserIdsCache: string[] = [];
@@ -721,12 +721,12 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
       return; // No polling needed - Realtime handles everything
     }
 
-    // Realtime is down - enable safety polling
-    console.log('⚠️ [Smart Polling] Realtime disconnected - enabling safety polling every 30s');
+    // Realtime is down - enable INSTANT 1-SECOND polling
+    console.log('⚡ [INSTANT POLLING] Realtime disconnected - enabling 1-SECOND polling for instant signal display');
     const pollingInterval = setInterval(async () => {
-      console.log('🔄 [Safety Poll] Fetching due to Realtime disconnection');
-      await refreshSignals(false); // Throttled refresh (preserves optimistic updates)
-    }, SAFETY_POLL_INTERVAL); // Poll every 30s when disconnected
+      console.log('⚡ [1s Poll] Fetching signals for instant display');
+      await refreshSignals(true); // Force refresh for instant updates
+    }, SIGNAL_POLL_INTERVAL); // ⚡ Poll every 1 SECOND for INSTANT signal display
 
     return () => {
       console.log('🛑 [Smart Polling] Stopping safety polling');

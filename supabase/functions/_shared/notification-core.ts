@@ -48,8 +48,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 1: signal_created (BUY/SELL) - Blue
   signal_created: (data) => ({
     type: 'signal_created',
-    title: `${data.author_name} (🚀 New ${data.trade_type.toUpperCase()} Signal)`,
-    message: `${data.trade_type.toUpperCase()} Signal is Posted on ${data.asset_name} at $${data.entry_price}`,
+    title: `🚀 ${data.author_name} - New ${data.trade_type.toUpperCase()} Signal - ${data.asset_name}`,
+    message: `${data.author_name} posted a new ${data.trade_type.toUpperCase()} signal on ${data.asset_name} at $${data.entry_price}`,
     badge: '🚀 New BUY/SELL Signal',
     color: 'blue',
     icon: '🚀',
@@ -60,8 +60,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 2: pending_limit_created (BUY LIMIT/SELL LIMIT) - Yellow
   pending_limit_created: (data) => ({
     type: 'pending_limit_created',
-    title: `${data.author_name} (⏳ Pending ${data.trade_type.replace('_', ' ').toUpperCase()})`,
-    message: `Waiting to reached ${data.asset_name} at $${data.entry_price}`,
+    title: `⏳ ${data.author_name} - Pending ${data.trade_type.replace('_', ' ').toUpperCase()} - ${data.asset_name}`,
+    message: `Waiting to reach ${data.asset_name} at $${data.entry_price}`,
     badge: '⏳ Pending BUY/SELL Limit',
     color: 'yellow',
     icon: '⏳',
@@ -72,7 +72,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 3: limit_activated - Blue
   limit_activated: (data) => ({
     type: 'limit_activated',
-    title: `${data.author_name} (✅ ${data.trade_type.replace('_limit', '').toUpperCase()} Limit Activated)`,
+    title: `✅ ${data.author_name} - ${data.trade_type.replace('_limit', '').toUpperCase()} Limit Activated - ${data.asset_name}`,
     message: `${data.trade_type.replace('_', ' ').toUpperCase()} is activated on ${data.asset_name} at $${data.triggered_price || data.entry_price}`,
     badge: '✅ BUY/SELL Activated',
     color: 'blue',
@@ -84,8 +84,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 4: tp_hit (TP1-TP5) - Green
   tp_hit: (data) => ({
     type: 'tp_hit',
-    title: `${data.author_name} (🎯 Take Profit Hit)`,
-    message: `TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'}`,
+    title: `💰 ${data.author_name} - TP${data.tp_number} Hit - ${data.asset_name}`,
+    message: `${data.asset_name} hit Take Profit ${data.tp_number} at $${data.triggered_price}\n${data.pips || '+0.0 PIPS'}`,
     badge: '🎯 Take Profit Hit',
     color: 'green',
     icon: '🎯',
@@ -96,8 +96,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 5: stop_loss_hit - Red
   stop_loss_hit: (data) => ({
     type: 'stop_loss_hit',
-    title: `${data.author_name} (🛑 Stop Loss Hit)`,
-    message: `SL HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '-0.0 PIPS'}`,
+    title: `⚠️ ${data.author_name} - Stop Loss Hit - ${data.asset_name}`,
+    message: `${data.asset_name} hit Stop Loss at $${data.triggered_price}\n${data.pips || '-0.0 PIPS'}`,
     badge: '🛑 Stop Loss Hit',
     color: 'red',
     icon: '🛑',
@@ -108,8 +108,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 6: manual_close - Grey
   manual_close: (data) => ({
     type: 'manual_close',
-    title: `${data.author_name} (🔒 Manually Closed)`,
-    message: `manually closed ${data.asset_name}`,
+    title: `🔒 ${data.author_name} - Signal Closed - ${data.asset_name}`,
+    message: `${data.asset_name} manually closed${data.pips ? `\n${data.pips}` : ''}`,
     badge: '🔒 Manually Closed',
     color: 'grey',
     icon: '🔒',
@@ -120,8 +120,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 7: manual_close_with_tp_hit - Grey
   manual_close_with_tp_hit: (data) => ({
     type: 'manual_close_with_tp_hit',
-    title: `${data.author_name} (💰 Closed in Profits)`,
-    message: `Secured Profits on ${data.asset_name} | ${data.pips || '+0.0 PIPS'}`,
+    title: `✅ ${data.author_name} - Signal Closed in Profit - ${data.asset_name}`,
+    message: `${data.asset_name} closed in profit at $${data.triggered_price || data.entry_price}\n${data.pips || '+0.0 PIPS'} 🎉`,
     badge: '💰 Closed in Profits',
     color: 'grey',
     icon: '💰',
@@ -132,8 +132,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 8: all_tps_hit - Green (COMBINED: Shows final TP + completion)
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
-    title: `${data.author_name} (🎉 ALL TPs HIT)`,
-    message: `Final TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${data.pips || '+0.0 PIPS'} | 🎉 ALL PROFITS SECURED`,
+    title: `🎉 ${data.author_name} - ALL TPs HIT - ${data.asset_name}`,
+    message: `${data.asset_name} hit Final TP${data.tp_number} at $${data.triggered_price}\n${data.pips || '+0.0 PIPS'} 🏆 ALL PROFITS SECURED`,
     badge: '🎉 ALL TPs HIT',
     color: 'green',
     icon: '🎉',
@@ -144,8 +144,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 9: notes_updated - Yellow
   notes_updated: (data) => ({
     type: 'notes_updated',
-    title: `${data.author_name} (📝 Notes Updated)`,
-    message: `${data.author_name} updated notes for ${data.asset_name}`,
+    title: `📝 ${data.author_name} - Notes Updated - ${data.asset_name}`,
+    message: `${data.author_name} updated notes: ${data.notes || 'See signal details'}`,
     badge: '📝 Notes Updated',
     color: 'yellow',
     icon: '📝',

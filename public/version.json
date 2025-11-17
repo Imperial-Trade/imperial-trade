@@ -1,5 +1,5 @@
 {
-  "version": "1.0.18",
-  "timestamp": "2025-11-17T04:00:00Z",
-  "description": "VERIFIED: Polling stops when Realtime connects + instant fetch on mount + performance logging"
+  "version": "1.0.19",
+  "timestamp": "2025-11-17T06:30:00Z",
+  "description": "FIXED: Bell icon/toggle state sync + Windows Notification Center support + Accurate subscription status"
 }

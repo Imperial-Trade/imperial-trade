@@ -540,14 +540,20 @@ export default function SignalStream() {
 
   // Initialize selectedEducators with all educator IDs when educators load (ensures consistent blue highlights across devices)
   useEffect(() => {
-    if (!hasInitializedEducators && educatorMetadata.educatorOptions.length > 0 && filters.selectedEducators.length === 0) {
-      setFilters(prev => ({
-        ...prev,
-        selectedEducators: educatorMetadata.educatorOptions.map(e => e.id)
-      }));
+    if (!hasInitializedEducators && educatorMetadata.educatorOptions.length > 0) {
+      setFilters(prev => {
+        // Only initialize if currently empty (prevents overwriting user selections)
+        if (prev.selectedEducators.length === 0) {
+          return {
+            ...prev,
+            selectedEducators: educatorMetadata.educatorOptions.map(e => e.id)
+          };
+        }
+        return prev;
+      });
       setHasInitializedEducators(true);
     }
-  }, [educatorMetadata.educatorOptions, filters.selectedEducators.length, hasInitializedEducators]);
+  }, [educatorMetadata.educatorOptions, hasInitializedEducators]);
 
   // ✅ FIX: Keep refs in sync with state to prevent stale closures
   useEffect(() => {

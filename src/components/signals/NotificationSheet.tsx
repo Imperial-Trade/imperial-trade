@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Bell, X } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
@@ -80,7 +80,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         <SheetHeader className="pt-2">
           <SheetTitle className="flex items-center gap-2 justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-primary" />
+              <Clock className="w-5 h-5 text-primary" />
               Recent Activity
             </div>
             <Button
@@ -108,7 +108,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                <Bell className="w-8 h-8 text-muted-foreground" />
+                <Clock className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">No recent activity</p>
               <p className="text-sm text-muted-foreground/60 mt-1">

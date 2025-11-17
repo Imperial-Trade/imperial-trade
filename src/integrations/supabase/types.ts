@@ -1879,6 +1879,63 @@ export type Database = {
         }
         Relationships: []
       }
+      onesignal_webhook_events: {
+        Row: {
+          app_id: string
+          content: string | null
+          created_at: string | null
+          delivery_status: string | null
+          device_type: string | null
+          event_timestamp: string | null
+          event_type: string
+          heading: string | null
+          icon: string | null
+          id: string
+          notification_id: string
+          platform: string | null
+          player_id: string | null
+          raw_payload: Json | null
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_id: string
+          content?: string | null
+          created_at?: string | null
+          delivery_status?: string | null
+          device_type?: string | null
+          event_timestamp?: string | null
+          event_type: string
+          heading?: string | null
+          icon?: string | null
+          id?: string
+          notification_id: string
+          platform?: string | null
+          player_id?: string | null
+          raw_payload?: Json | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_id?: string
+          content?: string | null
+          created_at?: string | null
+          delivery_status?: string | null
+          device_type?: string | null
+          event_timestamp?: string | null
+          event_type?: string
+          heading?: string | null
+          icon?: string | null
+          id?: string
+          notification_id?: string
+          platform?: string | null
+          player_id?: string | null
+          raw_payload?: Json | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       opportunity_signals: {
         Row: {
           created_at: string

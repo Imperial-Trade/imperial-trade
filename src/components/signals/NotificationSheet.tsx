@@ -75,7 +75,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 top-20 h-[calc(100vh-5rem)]"
+        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
       >
         <SheetHeader className="pt-2">
           <SheetTitle className="flex items-center gap-2 justify-between">

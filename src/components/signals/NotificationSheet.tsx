@@ -77,7 +77,7 @@ export function NotificationSheet({ isOpen, onClose }: NotificationSheetProps) {
         side="right" 
         className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
       >
-        <SheetHeader className="pt-2 md:pt-20">
+        <SheetHeader className="pt-2 lg:pt-20">
           <SheetTitle className="flex items-center gap-2 justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />

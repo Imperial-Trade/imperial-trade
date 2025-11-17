@@ -1,5 +1,5 @@
 {
-  "version": "1.0.19",
-  "timestamp": "2025-11-17T06:30:00Z",
-  "description": "FIXED: Bell icon/toggle state sync + Windows Notification Center support + Accurate subscription status"
+  "version": "1.0.20",
+  "timestamp": "2025-11-17T07:00:00Z",
+  "description": "CRITICAL FIX: Windows Notification Center now receives ALL notifications (persist + web_push_topic added)"
 }

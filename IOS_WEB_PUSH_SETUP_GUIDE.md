@@ -88,13 +88,28 @@ Before you can receive push notifications on iOS:
 
 ### Step 5: Verify Notifications Are Enabled
 
-Check the notification status in **two places**:
+After tapping "Allow", you'll receive **3 confirmations**:
 
-#### **A. Top Right Corner (Signal Stream)**
+#### **A. Welcome Notification in iOS Notification Center** 📱
+Within 1-2 seconds, you'll see:
+```
+┌─────────────────────────────────────────┐
+│ Trade Imperial        now               │
+│ Welcome to Trade Imperial               │
+│ You are now Subscribed to receive       │
+│ alerts                                   │
+└─────────────────────────────────────────┘
+```
+**This proves notifications are working!** Check your:
+- Lock screen
+- Notification Center (swipe down from top)
+- Banner notification (appears briefly at top)
+
+#### **B. Bell Icon Animation (Signal Stream)**
 - 🔔 **Ringing bell** (animated, green dot) = Notifications enabled ✅
 - 🔕 **Bell with slash** (gray) = Notifications disabled ❌
 
-#### **B. Recent Activity Panel**
+#### **C. Recent Activity Panel**
 - **Bell Icon + Toggle Switch** (top right of panel)
 - **Toggle ON** (green) + **Animated bell** = Notifications enabled ✅
 - **Toggle OFF** (gray) + **Bell with slash** = Notifications disabled ❌
@@ -174,6 +189,18 @@ Once enabled, you'll get instant notifications for:
 4. Turn on **Allow Notifications**
 5. Restart the Trade Imperial app
 
+### "I didn't receive the welcome notification"
+
+**Solution**:
+1. **Check Notification Center**: Swipe down from top of screen
+2. **Check Lock Screen**: Notification may be there
+3. **Check iOS Settings**: 
+   - Settings → Trade Imperial → Notifications
+   - Ensure "Allow Notifications" is ON
+   - Ensure at least one alert style is selected (Lock Screen, Notification Center, or Banners)
+4. **Try again**: Unsubscribe, then re-subscribe (native prompt will appear again)
+5. **Check internet**: Welcome notification requires active connection
+
 ### "Notifications stopped working"
 
 **Solution**: Try these steps:
@@ -182,6 +209,7 @@ Once enabled, you'll get instant notifications for:
 3. **Reinstall to home screen**: Remove icon, re-add from Safari/Chrome
 4. **Check iOS version**: Must be 16.4+ (Settings → General → About)
 5. **Check internet connection**: Notifications require active internet
+6. **Test with welcome notification**: Unsubscribe → Re-subscribe → Check if welcome notification appears
 
 ### "I'm on iOS 16.4+ but still not working"
 

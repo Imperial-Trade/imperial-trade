@@ -59,15 +59,15 @@ serve(async (req) => {
       );
     }
 
-    // Prepare welcome notification content
+    // Prepare welcome notification content (matches OneSignal dashboard format)
     const firstName = user_name?.split(' ')[0] || 'Trader';
     
     const notificationPayload = {
       app_id: oneSignalAppId,
       include_player_ids: [player_id],
-      headings: { en: '🎉 Welcome to Trade Imperial!' },
+      headings: { en: 'Welcome to Trade Imperial' },
       contents: { 
-        en: `Hey ${firstName}! 👋 You're all set! You'll now receive instant alerts for trade signals, TP hits, and more.` 
+        en: 'You are now Subscribed to receive alerts' 
       },
       data: {
         type: 'welcome',

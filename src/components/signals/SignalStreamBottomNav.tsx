@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, TrendingUp, Users, Bell, Plus } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users, Clock, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 
@@ -81,7 +81,7 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
           onClick={() => onOpenSheet('notifications')}
           className="flex flex-col items-center gap-1 p-2 min-w-[70px] min-h-[56px] justify-center transition-all rounded-lg text-gray-400 hover:text-gray-300 hover:bg-white/5 relative"
         >
-          <Bell className="w-6 h-6" />
+          <Clock className="w-6 h-6" />
           {unreadNotifications > 0 && (
             <Badge 
               variant="destructive" 
@@ -90,7 +90,7 @@ export const SignalStreamBottomNav: React.FC<SignalStreamBottomNavProps> = ({
               {unreadNotifications > 99 ? '99+' : unreadNotifications}
             </Badge>
           )}
-          <span className="text-xs font-medium">Alerts</span>
+          <span className="text-xs font-medium">Recent</span>
         </button>
 
         {navItems.map((item) => {

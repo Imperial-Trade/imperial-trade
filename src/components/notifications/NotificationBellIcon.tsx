@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { Button } from '@/components/ui/button';
@@ -43,19 +43,19 @@ export const NotificationBellIcon: React.FC<NotificationBellIconProps> = ({
           >
             {isEnabled ? (
               <div className="relative">
-                <Clock className="h-5 w-5" />
+                <Bell className="h-5 w-5 animate-[ring_2s_ease-in-out_infinite]" />
                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               </div>
             ) : (
-              <Clock className="h-5 w-5 opacity-50" />
+              <BellOff className="h-5 w-5 opacity-50" />
             )}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
           <p className="text-sm">
             {isEnabled 
-              ? "Recent activity - Click to view" 
-              : "Recent activity - Click to enable"
+              ? "Notifications enabled - Click to manage" 
+              : "Notifications disabled - Click to enable"
             }
           </p>
         </TooltipContent>

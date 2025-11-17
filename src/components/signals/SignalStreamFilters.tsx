@@ -233,7 +233,7 @@ export function SignalStreamFilters({
                 color: colors.text.secondary
               }}
             >
-              <Bell className="w-4 h-4" />
+              <Clock className="w-4 h-4" />
               {unreadNotifications > 0 && (
                 <Badge 
                   variant="destructive" 

@@ -223,7 +223,7 @@ export const useOneSignalPush = () => {
           
           // ✅ CRITICAL FIX: Force Player ID sync on every page load
           // This ensures the database always has the CORRECT Player ID for this browser
-          if (permission === 'granted' && isSubscribed && playerId && user) {
+          if (isTrulySubscribed && user) {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('🔄 [AUTO-SYNC] Your Current Browser Player ID:', playerId);
             console.log('📧 [AUTO-SYNC] Your Email:', user.email);
@@ -239,7 +239,8 @@ export const useOneSignalPush = () => {
               permission,
               isSubscribed,
               hasPlayerId: !!playerId,
-              hasUser: !!user
+              hasUser: !!user,
+              isTrulySubscribed
             });
           }
         } catch (error) {

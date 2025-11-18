@@ -220,6 +220,28 @@ export const useOneSignalPush = () => {
           });
 
           console.log('✅ OneSignal initialized successfully');
+          
+          // ✅ CRITICAL FIX: Force Player ID sync on every page load
+          // This ensures the database always has the CORRECT Player ID for this browser
+          if (permission === 'granted' && isSubscribed && playerId && user) {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔄 [AUTO-SYNC] Your Current Browser Player ID:', playerId);
+            console.log('📧 [AUTO-SYNC] Your Email:', user.email);
+            console.log('💾 [AUTO-SYNC] Updating database with this Player ID...');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            await updateUserProfile(playerId);
+            
+            console.log('✅ [AUTO-SYNC] Player ID successfully synced to database!');
+            console.log('📱 [AUTO-SYNC] You should now receive push notifications at this Player ID');
+          } else {
+            console.log('⚠️ [AUTO-SYNC] Skipping Player ID sync:', {
+              permission,
+              isSubscribed,
+              hasPlayerId: !!playerId,
+              hasUser: !!user
+            });
+          }
         } catch (error) {
           console.error('❌ OneSignal callback error:', error);
         }

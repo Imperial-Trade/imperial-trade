@@ -1,5 +1,5 @@
 {
-  "version": "1.0.27",
-  "timestamp": "2025-11-17T13:30:00Z",
-  "description": "FIX: Bell icon state persistence - Multiple refreshes to ensure push notification state syncs correctly"
+  "version": "1.0.28",
+  "timestamp": "2025-11-18T01:00:00Z",
+  "description": "CRITICAL FIX: Auto-sync Player ID on every page load to ensure notifications reach the correct browser"
 }

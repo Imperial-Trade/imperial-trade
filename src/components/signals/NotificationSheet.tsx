@@ -3,7 +3,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -50,48 +49,6 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
     }
   }, [isOpen, refreshSubscriptionStatus]);
 
-  const handleTogglePush = async () => {
-    if (isPushEnabled) {
-      // User wants to unsubscribe - show confirmation dialog
-      console.log('🔔 [Recent Activity] User toggling OFF - showing confirmation');
-      setShowUnsubscribeDialog(true);
-    } else {
-      // User wants to subscribe - trigger native iOS/Desktop prompt
-      console.log('🔔 [Recent Activity] User toggling ON - triggering native prompt');
-      
-      try {
-        // subscribeToPush will show native prompt
-        const granted = await subscribeToPush();
-        
-        if (granted) {
-          console.log('✅ [Recent Activity] User granted permission');
-          toast({
-            title: "Push Notifications Enabled",
-            description: "You'll now receive instant trade alerts!",
-          });
-          
-          // ✅ Force refresh status after subscribe
-          if (refreshSubscriptionStatus) {
-            setTimeout(() => refreshSubscriptionStatus(), 500);
-          }
-        } else {
-          console.log('❌ [Recent Activity] User denied permission');
-          toast({
-            title: "Push Notifications Denied",
-            description: "You can enable them later from your device settings.",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error('❌ [Recent Activity] Error requesting push permission:', error);
-        toast({
-          title: "Error",
-          description: "Failed to request notification permission",
-          variant: "destructive"
-        });
-      }
-    }
-  };
   
   const handleConfirmUnsubscribe = async () => {
     console.log('🔕 [Recent Activity] User confirmed unsubscribe');
@@ -197,30 +154,41 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
               <Clock className="w-5 h-5 text-primary" />
               Recent Activity
             </div>
-            <div className="flex items-center gap-2">
-              <NotificationBellIcon 
-                className="w-4 h-4 cursor-pointer" 
-                onClick={async () => {
-                  if (isPushEnabled) {
-                    // ✅ Show confirmation before unsubscribing
-                    setShowUnsubscribeDialog(true);
+            <NotificationBellIcon 
+              className="w-5 h-5 cursor-pointer" 
+              onClick={async () => {
+                if (isPushEnabled) {
+                  // ✅ Show confirmation before unsubscribing
+                  console.log('🔔 [Recent Activity] Bell clicked - user wants to unsubscribe');
+                  setShowUnsubscribeDialog(true);
+                } else {
+                  // ✅ Re-subscribe: Trigger native iOS prompt
+                  console.log('🔔 [Recent Activity] Bell clicked - triggering native prompt to subscribe');
+                  const granted = await subscribeToPush();
+                  
+                  if (granted) {
+                    toast({
+                      title: "Push Notifications Enabled",
+                      description: "You'll now receive instant trade alerts!",
+                    });
+                    // ✅ Force refresh status after subscribe
+                    if (refreshSubscriptionStatus) {
+                      setTimeout(() => refreshSubscriptionStatus(), 500);
+                    }
                   } else {
-                    // ✅ Re-subscribe: Trigger native iOS prompt
-                    console.log('🔔 [Recent Activity] Bell clicked - triggering native prompt');
-                    await subscribeToPush();
+                    toast({
+                      title: "Push Notifications Denied",
+                      description: "You can enable them later from your device settings.",
+                      variant: "destructive"
+                    });
                   }
-                  // Clear unread count
-                  if (onClearUnread) {
-                    onClearUnread();
-                  }
-                }}
-              />
-              <Switch
-                checked={isPushEnabled}
-                onCheckedChange={handleTogglePush}
-                className="data-[state=checked]:bg-primary"
-              />
-            </div>
+                }
+                // Clear unread count
+                if (onClearUnread) {
+                  onClearUnread();
+                }
+              }}
+            />
           </SheetTitle>
         </SheetHeader>
 

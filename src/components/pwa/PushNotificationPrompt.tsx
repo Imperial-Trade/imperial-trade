@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, X, Zap, TrendingUp, Shield, Smartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOneSignalPush } from '@/hooks/useOneSignalPush';
+// TODO: Import usePusherBeams when integrating
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PushNotificationPromptProps {
@@ -19,14 +19,13 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
   delayMs = 10000, // 10 seconds default
 }) => {
   const { user } = useAuth();
-  const { 
-    isInitialized, 
-    isPushEnabled, 
-    hasPrompted, 
-    isSubscriptionLoading,
-    requestPermission,
-    subscribeToPush 
-  } = useOneSignalPush();
+  // TODO: Integrate usePusherBeams
+  const isInitialized = false;
+  const isPushEnabled = false;
+  const hasPrompted = false;
+  const isSubscriptionLoading = false;
+  const requestPermission = async () => 'default';
+  const subscribeToPush = async () => false;
   
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);

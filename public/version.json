@@ -1,5 +1,5 @@
 {
-  "version": "1.0.25",
-  "timestamp": "2025-11-17T12:30:00Z",
-  "description": "CRITICAL FIX: Removed conflicting Service Worker + Fixed CORS + OneSignal exclusive control"
+  "version": "1.0.26",
+  "timestamp": "2025-11-17T13:00:00Z",
+  "description": "UX: Removed toggle switch from Recent Activity - Bell icon only for subscribe/unsubscribe"
 }

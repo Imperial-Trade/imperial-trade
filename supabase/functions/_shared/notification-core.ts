@@ -349,7 +349,7 @@ export async function sendRealtimeNotification(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📱 PUSH NOTIFICATION (OneSignal - Mobile/Desktop)
+// 📱 PUSH NOTIFICATION (Pusher Beams - Mobile/Desktop)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export async function sendPushNotification(
@@ -358,12 +358,12 @@ export async function sendPushNotification(
   signalData: SignalData,
   pushUserIds: string[]
 ): Promise<{ success: boolean; sent: number; error?: string }> {
-  const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
-  const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+  const PUSHER_INSTANCE_ID = Deno.env.get('PUSHER_INSTANCE_ID');
+  const PUSHER_SECRET_KEY = Deno.env.get('PUSHER_SECRET_KEY');
 
-  if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
-    console.warn('⚠️ OneSignal not configured - skipping push');
-    return { success: false, error: 'OneSignal not configured', sent: 0 };
+  if (!PUSHER_INSTANCE_ID || !PUSHER_SECRET_KEY) {
+    console.warn('⚠️ Pusher Beams not configured - skipping push');
+    return { success: false, error: 'Pusher Beams not configured', sent: 0 };
   }
 
   if (pushUserIds.length === 0) {
@@ -372,121 +372,69 @@ export async function sendPushNotification(
   }
 
   try {
-    // Extract user IDs from push user objects (trigger sends: [{user_id, player_id, display_name}])
-    const userIds = Array.isArray(pushUserIds) 
-      ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
-      : [];
+    // Pusher Beams uses "Interests" (Topics) instead of individual player IDs
+    // All authenticated users subscribe to the "trade_alerts" interest
+    const interest = 'trade_alerts';
 
-    if (userIds.length === 0) {
-      console.log('ℹ️ No push user IDs provided');
-      return { success: true, sent: 0 };
-    }
-
-    // Get OneSignal player IDs for these users
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('onesignal_player_id')
-      .in('id', userIds)
-      .eq('push_subscription_active', true)
-      .not('onesignal_player_id', 'is', null);
-
-    if (error || !profiles || profiles.length === 0) {
-      console.log('ℹ️ No valid OneSignal player IDs found');
-      return { success: true, sent: 0 };
-    }
-
-    const playerIds = profiles
-      .map((p: any) => p.onesignal_player_id)
-      .filter((id: string) => id && id !== 'dev_mock_player_id');
-
-    if (playerIds.length === 0) {
-      return { success: true, sent: 0 };
-    }
-
-    // Build OneSignal payload
-    const androidColor = template.color === 'green' ? 'FF10B981' :
-                        template.color === 'red' ? 'FFEF4444' :
-                        template.color === 'blue' ? 'FF3B82F6' :
-                        template.color === 'yellow' ? 'FFF59E0B' : 'FF6B7280';
-
-    const payload = {
-      app_id: ONESIGNAL_APP_ID,
-      include_player_ids: playerIds,
-      headings: { en: template.title },
-      contents: { en: template.message },
-      data: {
-        signal_id: signalData.id,
-        type: template.type,
-        asset_name: signalData.asset_name,
-        deep_link: `/dashboard/signal-stream?signal=${signalData.id}`,
-      },
-      // ✅ WEB PUSH (Windows, macOS, Linux - Chrome, Edge, Firefox)
-      web_url: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
-      chrome_web_icon: 'https://tradeimperial.com/icon-192.png',
-      chrome_web_image: 'https://tradeimperial.com/og-image.jpg', // ✅ ADDED: Large image for Windows
-      chrome_web_badge: 'https://tradeimperial.com/badge-icon.png',
-      web_buttons: [{
-        id: 'view-signal',
-        text: 'View Signal →',
-        url: `/dashboard/signal-stream?signal=${signalData.id}`,
-      }],
-      // ✅ CRITICAL: Force persistent notifications for Windows Notification Center
-      persist: true, // ✅ ADDED: Ensures notifications persist in Windows Notification Center
-      web_push_topic: 'trade_signals', // ✅ ADDED: Groups notifications in Windows
-      
-      // Android settings
-      android_accent_color: androidColor,
-      android_sound: template.sound ? 'trading_alert' : undefined,
-      android_group: 'trading_signals',
-      android_channel_id: 'trading_signals',
-      
-      // iOS settings
-      ios_sound: template.sound ? 'trading_alert.wav' : undefined,
-      ios_category: 'TRADE_SIGNAL',
-      ios_badgeType: 'Increase',
-      ios_badgeCount: 1,
-      
-      // Universal settings
-      priority: template.priority >= 3 ? 10 : template.priority,  // ✅ Higher priority for TP/SL hits
-      ttl: 3600,
-      collapse_id: `signal_${signalData.id}_${template.type}`,
-      mutable_content: true,
-      content_available: true,
-    };
-
-    console.log(`📤 Sending push to ${playerIds.length} devices:`, {
+    console.log(`📤 Broadcasting to interest "${interest}":`, {
       type: template.type,
       asset: signalData.asset_name,
     });
 
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+    // Build Pusher Beams payload
+    const payload = {
+      interests: [interest],
+      web: {
+        notification: {
+          title: template.title,
+          body: template.message,
+          icon: 'https://tradeimperial.com/icon-192.png',
+          deep_link: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
+        },
+        data: {
+          signal_id: signalData.id,
+          type: template.type,
+          asset_name: signalData.asset_name,
+        },
       },
-      body: JSON.stringify(payload),
-    });
+    };
+
+    // Determine Pusher region from instance ID or default to us1
+    const region = PUSHER_INSTANCE_ID.includes('-') 
+      ? PUSHER_INSTANCE_ID.split('-')[0] 
+      : 'us1';
+
+    const response = await fetch(
+      `https://${region}.pushnotifications.pusher.com/publish_api/v1/instances/${PUSHER_INSTANCE_ID}/publishes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${PUSHER_SECRET_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('❌ OneSignal API error:', result);
+      console.error('❌ Pusher Beams API error:', result);
       return {
         success: false,
-        error: result.errors?.[0]?.message || 'OneSignal API failed',
+        error: result.error || 'Pusher Beams API failed',
         sent: 0,
       };
     }
 
-    console.log(`✅ Push sent successfully:`, {
-      recipients: result.recipients,
-      id: result.id,
+    console.log(`✅ Push broadcast successful:`, {
+      publishId: result.publishId,
+      interest,
     });
 
     return {
       success: true,
-      sent: result.recipients || 0,
+      sent: pushUserIds.length, // Estimate based on subscribed users
     };
   } catch (error: any) {
     console.error('❌ Push notification error:', error);

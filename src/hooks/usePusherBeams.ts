@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // Pusher Beams Client - accessed globally from CDN script
 declare global {
@@ -89,6 +90,21 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
         interest: 'trade_alerts'
       });
 
+      // ✅ FIX: Update database to mark user as push-enabled
+      if (user?.id) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ push_subscription_active: true })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('❌ [Database] Failed to update push_subscription_active:', error);
+          // Don't fail the whole operation - user is still subscribed to Pusher Beams
+        } else {
+          console.log('✅ [Database] Updated push_subscription_active to true');
+        }
+      }
+
       setIsPushEnabled(true);
 
       toast({
@@ -108,7 +124,7 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
 
       return false;
     }
-  }, [beamsClient, toast]);
+  }, [beamsClient, toast, user]);
 
   // Unsubscribe from push notifications
   const unsubscribeFromPush = useCallback(async (): Promise<boolean> => {
@@ -127,6 +143,20 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
       await beamsClient.stop();
 
       console.log('✅ [Pusher Beams] Unsubscribed successfully');
+
+      // ✅ FIX: Update database to mark user as not push-enabled
+      if (user?.id) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ push_subscription_active: false })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('❌ [Database] Failed to update push_subscription_active:', error);
+        } else {
+          console.log('✅ [Database] Updated push_subscription_active to false');
+        }
+      }
 
       setIsPushEnabled(false);
 
@@ -147,7 +177,7 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
 
       return false;
     }
-  }, [beamsClient, toast]);
+  }, [beamsClient, toast, user]);
 
   // Get current device ID
   const getDeviceId = useCallback(async (): Promise<string | null> => {

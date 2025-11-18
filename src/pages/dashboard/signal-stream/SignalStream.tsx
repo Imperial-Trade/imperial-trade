@@ -102,12 +102,36 @@ export default function SignalStream() {
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
 
-  // TODO: Re-implement auto-prompt with Pusher Beams
-  // Once usePusherBeams is integrated, add auto-prompt logic here
+  // Auto-prompt for push notifications after welcome screen
+  useEffect(() => {
+    if (!user || !hasSeenWelcome || !isPusherInitialized || isPushEnabled) return;
+
+    // Check if user has been prompted before
+    const hasBeenPrompted = localStorage.getItem('push-notification-prompted');
+    if (hasBeenPrompted) return;
+
+    // Show prompt after 10 seconds
+    const timer = setTimeout(() => {
+      setShouldShowNotificationPrompt(true);
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [user, hasSeenWelcome, isPusherInitialized, isPushEnabled, setShouldShowNotificationPrompt]);
 
   const handleBellClick = async () => {
-    // TODO: Integrate Pusher Beams subscribe logic here
     setUnreadNotifications(0);
+
+    // If not subscribed to push, trigger subscription
+    if (!isPushEnabled && isPusherInitialized) {
+      try {
+        const permissionResult = await Notification.requestPermission();
+        if (permissionResult === 'granted') {
+          await subscribeToPush();
+        }
+      } catch (error) {
+        console.error('Failed to enable push notifications:', error);
+      }
+    }
   };
   
   // ✅ Removed custom modal - bell icon directly triggers native iOS prompt

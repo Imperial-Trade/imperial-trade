@@ -45,7 +45,17 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   useEffect(() => {
     if (isOpen && refreshSubscriptionStatus) {
       console.log('🔄 [Recent Activity] Sheet opened - refreshing subscription status');
+      
+      // Immediate refresh
       refreshSubscriptionStatus();
+      
+      // ✅ CRITICAL: Also refresh after a short delay to catch any async state updates
+      const timer = setTimeout(() => {
+        console.log('🔄 [Recent Activity] Delayed refresh to ensure state is synced');
+        refreshSubscriptionStatus();
+      }, 300); // 300ms delay to ensure OneSignal state is fully updated
+      
+      return () => clearTimeout(timer);
     }
   }, [isOpen, refreshSubscriptionStatus]);
 
@@ -171,9 +181,15 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
                       title: "Push Notifications Enabled",
                       description: "You'll now receive instant trade alerts!",
                     });
-                    // ✅ Force refresh status after subscribe
+                    
+                    // ✅ CRITICAL: Force multiple refreshes to ensure state is captured
                     if (refreshSubscriptionStatus) {
-                      setTimeout(() => refreshSubscriptionStatus(), 500);
+                      // Immediate refresh
+                      refreshSubscriptionStatus();
+                      // Refresh after 300ms (catch OneSignal state update)
+                      setTimeout(() => refreshSubscriptionStatus(), 300);
+                      // Final refresh after 1s (ensure all async operations complete)
+                      setTimeout(() => refreshSubscriptionStatus(), 1000);
                     }
                   } else {
                     toast({

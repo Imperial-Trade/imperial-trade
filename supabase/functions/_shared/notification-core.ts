@@ -399,13 +399,9 @@ export async function sendPushNotification(
       },
     };
 
-    // Determine Pusher region from instance ID or default to us1
-    const region = PUSHER_INSTANCE_ID.includes('-') 
-      ? PUSHER_INSTANCE_ID.split('-')[0] 
-      : 'us1';
-
+    // Pusher Beams URL format (no region prefix needed)
     const response = await fetch(
-      `https://${region}.pushnotifications.pusher.com/publish_api/v1/instances/${PUSHER_INSTANCE_ID}/publishes`,
+      `https://${PUSHER_INSTANCE_ID}.pushnotifications.pusher.com/publish_api/v1/instances/${PUSHER_INSTANCE_ID}/publishes`,
       {
         method: 'POST',
         headers: {

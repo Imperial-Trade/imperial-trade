@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Pusher Beams Notification</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.2);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success {
+      background: rgba(76, 175, 80, 0.3);
+    }
+    .error {
+      background: rgba(244, 67, 54, 0.3);
+    }
+    .info {
+      background: rgba(33, 150, 243, 0.3);
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Test Pusher Beams</h1>
+    
+    <div class="info">
+      ℹ️ <strong>Make sure you're subscribed first!</strong><br>
+      Open the console and verify you see:<br>
+      <code>"Device ID: web-..."</code>
+    </div>
+    
+    <button id="testBtn" onclick="sendTestNotification()">
+      Send Test Notification
+    </button>
+    
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    async function sendTestNotification() {
+      const btn = document.getElementById('testBtn');
+      const result = document.getElementById('result');
+      
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      result.style.display = 'block';
+      result.className = 'result';
+      result.textContent = '📤 Sending notification to trade_alerts interest...';
+
+      try {
+        const response = await fetch('https://de4fb62d-141b-4d1c-98b5-c3ec6e5eec4b.pushnotifications.pusher.com/publish_api/v1/instances/de4fb62d-141b-4d1c-98b5-c3ec6e5eec4b/publishes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer 1685210426218696D020B8E06D7729A719D5E7501F5D228F682914D218891199',
+          },
+          body: JSON.stringify({
+            interests: ['trade_alerts'],
+            web: {
+              notification: {
+                title: '🚀 Test Notification from Browser',
+                body: 'Pusher Beams is working perfectly! 🎉',
+                icon: 'https://tradeimperial.com/icon-192.png',
+                deep_link: 'https://tradeimperial.com/dashboard/signal-stream',
+              },
+              data: {
+                test: true,
+                timestamp: new Date().toISOString(),
+              },
+            },
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          result.className = 'result success';
+          result.textContent = '✅ SUCCESS!\n\n' + JSON.stringify(data, null, 2) + '\n\nCheck your notification center!';
+        } else {
+          result.className = 'result error';
+          result.textContent = '❌ FAILED\n\n' + JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        result.className = 'result error';
+        result.textContent = '❌ ERROR\n\n' + error.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send Test Notification';
+      }
+    }
+  </script>
+</body>
+</html>
+

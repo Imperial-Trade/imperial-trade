@@ -75,7 +75,6 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   };
 
   return (
-    <>
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 

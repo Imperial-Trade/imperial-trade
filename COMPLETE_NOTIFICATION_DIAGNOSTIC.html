@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🔬 Complete Notification Diagnostic</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 { color: #ffff00; }
+    h2 { color: #00ffff; }
+    .section { margin: 20px 0; padding: 15px; background: #2a2a2a; border-left: 4px solid #00ff00; }
+    .error { color: #ff0000; }
+    .success { color: #00ff00; }
+    .warning { color: #ffaa00; }
+    .info { color: #00ffff; }
+    button { 
+      background: #00ff00; 
+      color: #000; 
+      border: none; 
+      padding: 10px 20px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin: 10px 5px;
+      font-weight: bold;
+    }
+    button:hover { background: #00cc00; }
+    #results { margin-top: 20px; }
+    .code { background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>🔬 COMPLETE NOTIFICATION DIAGNOSTIC</h1>
+  <p>This will check EVERYTHING related to push notifications</p>
+
+  <button onclick="runFullDiagnostic()">🚀 RUN FULL DIAGNOSTIC</button>
+  <button onclick="testPushNotification()">📱 TEST PUSH NOTIFICATION</button>
+  <button onclick="clearResults()">🗑️ CLEAR RESULTS</button>
+
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById('results');
+
+    function log(message, type = 'info') {
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+      results.innerHTML += `<p class="${className}">${message}</p>`;
+    }
+
+    function logSection(title) {
+      results.innerHTML += `<div class="section"><h2>${title}</h2><div id="section-${Date.now()}"></div></div>`;
+    }
+
+    function clearResults() {
+      results.innerHTML = '';
+    }
+
+    async function runFullDiagnostic() {
+      clearResults();
+      log('🔍 Starting complete diagnostic...', 'info');
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 1. CHECK ONE SIGNAL STATUS
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      logSection('1️⃣ ONESIGNAL STATUS');
+      
+      if (typeof OneSignal === 'undefined') {
+        log('❌ OneSignal is NOT loaded!', 'error');
+        return;
+      } else {
+        log('✅ OneSignal SDK is loaded', 'success');
+      }
+
+      try {
+        const permission = await OneSignal.Notifications.permission;
+        const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
+        const playerId = await OneSignal.User.PushSubscription.id;
+        const token = await OneSignal.User.PushSubscription.token;
+
+        log(`📋 Permission: ${permission} ${permission === 'granted' ? '✅' : '❌'}`, permission === 'granted' ? 'success' : 'error');
+        log(`📋 Subscribed: ${isSubscribed} ${isSubscribed ? '✅' : '❌'}`, isSubscribed ? 'success' : 'error');
+        log(`📋 Player ID: ${playerId || 'NULL'} ${playerId ? '✅' : '❌'}`, playerId ? 'success' : 'error');
+        log(`📋 Token: ${token ? 'EXISTS' : 'NULL'} ${token ? '✅' : '❌'}`, token ? 'success' : 'error');
+
+        if (playerId) {
+          log(`<div class="code">COPY THIS PLAYER ID: ${playerId}</div>`, 'info');
+        }
+      } catch (error) {
+        log(`❌ Error checking OneSignal: ${error.message}`, 'error');
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 2. CHECK SERVICE WORKER
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      logSection('2️⃣ SERVICE WORKER STATUS');
+      
+      if ('serviceWorker' in navigator) {
+        log('✅ Service Worker API supported', 'success');
+        
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          log(`📋 Active Service Workers: ${registrations.length}`, registrations.length > 0 ? 'success' : 'warning');
+          
+          registrations.forEach((reg, index) => {
+            log(`   [${index + 1}] Scope: ${reg.scope}`, 'info');
+            log(`   [${index + 1}] Active: ${!!reg.active}`, reg.active ? 'success' : 'error');
+          });
+
+          if (registrations.length === 0) {
+            log('⚠️ No Service Workers registered! Push notifications won\'t work!', 'warning');
+          }
+        } catch (error) {
+          log(`❌ Error checking Service Workers: ${error.message}`, 'error');
+        }
+      } else {
+        log('❌ Service Worker API NOT supported', 'error');
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 3. CHECK SUPABASE CONNECTION
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      logSection('3️⃣ SUPABASE CONNECTION');
+      
+      try {
+        const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
+        const supabase = createClient(
+          'https://kmuoqkcxguafxulqlbmi.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.QkFTkUlkQvYdPnPMKU4J7gBKf8RXZ_UjPtjSgvHBRVo'
+        );
+        
+        const { data, error } = await supabase.from('trade_alerts').select('id').limit(1);
+        
+        if (error) {
+          log(`❌ Supabase connection failed: ${error.message}`, 'error');
+        } else {
+          log('✅ Supabase connection working', 'success');
+        }
+      } catch (error) {
+        log(`❌ Error testing Supabase: ${error.message}`, 'error');
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 4. CHECK LOCAL STORAGE
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      logSection('4️⃣ LOCAL STORAGE');
+      
+      try {
+        const notificationKey = 'imperial-trade-notifications';
+        const stored = localStorage.getItem(notificationKey);
+        
+        if (stored) {
+          const notifications = JSON.parse(stored);
+          log(`✅ Found ${notifications.length} stored notifications`, 'success');
+        } else {
+          log('⚠️ No stored notifications found', 'warning');
+        }
+      } catch (error) {
+        log(`❌ Error checking local storage: ${error.message}`, 'error');
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 5. FINAL VERDICT
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      logSection('📊 FINAL VERDICT');
+      
+      try {
+        const permission = await OneSignal.Notifications.permission;
+        const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
+        const playerId = await OneSignal.User.PushSubscription.id;
+        const registrations = await navigator.serviceWorker.getRegistrations();
+
+        const allGood = permission === 'granted' && isSubscribed && playerId && registrations.length > 0;
+
+        if (allGood) {
+          log('🎉 ALL SYSTEMS GO! Notifications should work!', 'success');
+        } else {
+          log('❌ ISSUES FOUND:', 'error');
+          if (permission !== 'granted') log('   - Permission not granted', 'error');
+          if (!isSubscribed) log('   - Not subscribed to OneSignal', 'error');
+          if (!playerId) log('   - No Player ID', 'error');
+          if (registrations.length === 0) log('   - No Service Worker', 'error');
+        }
+      } catch (error) {
+        log(`❌ Error in final verdict: ${error.message}`, 'error');
+      }
+
+      log('✅ Diagnostic complete!', 'success');
+    }
+
+    async function testPushNotification() {
+      log('📱 Testing push notification...', 'info');
+      
+      try {
+        const playerId = await OneSignal.User.PushSubscription.id;
+        
+        if (!playerId) {
+          log('❌ No Player ID! Cannot test.', 'error');
+          return;
+        }
+
+        log(`🔄 Sending test notification to Player ID: ${playerId}`, 'info');
+        
+        // Call the Edge Function
+        const response = await fetch('https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/send-welcome-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.QkFTkUlkQvYdPnPMKU4J7gBKf8RXZ_UjPtjSgvHBRVo'
+          },
+          body: JSON.stringify({
+            player_id: playerId,
+            user_id: 'test-user',
+            user_name: 'Test User'
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          log('✅ Test notification sent successfully!', 'success');
+          log(`📊 Result: ${JSON.stringify(result)}`, 'info');
+          log('👀 Check your notification center!', 'success');
+        } else {
+          log(`❌ Test failed: ${JSON.stringify(result)}`, 'error');
+        }
+      } catch (error) {
+        log(`❌ Error sending test: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
+

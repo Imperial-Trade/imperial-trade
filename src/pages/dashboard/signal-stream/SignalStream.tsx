@@ -35,6 +35,7 @@ import { NotificationBellIcon } from '@/components/notifications/NotificationBel
 // Removed ProfessionalNotificationModal - using native iOS prompt only
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
+import { usePusherBeams } from '@/hooks/usePusherBeams';
 
 export default function SignalStream() {
   const {
@@ -60,7 +61,14 @@ export default function SignalStream() {
     setShouldShowNotificationPrompt,
     isSubscribedToPush
   } = useNotificationPrompt();
-  // TODO: Integrate usePusherBeams hook here when ready
+  
+  // Pusher Beams integration
+  const {
+    isInitialized: isPusherInitialized,
+    isPushEnabled,
+    subscribeToPush,
+    unsubscribeFromPush
+  } = usePusherBeams();
 
   // State for filtering and modal
   const [filters, setFilters] = useState({

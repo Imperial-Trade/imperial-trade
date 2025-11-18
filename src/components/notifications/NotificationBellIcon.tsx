@@ -1,7 +1,6 @@
 import React from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useOneSignalPush } from '@/hooks/useOneSignalPush';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -19,13 +18,8 @@ export const NotificationBellIcon: React.FC<NotificationBellIconProps> = ({
   onClick,
   className
 }) => {
-  const { isPushEnabled, isInitialized } = useOneSignalPush();
-
-  if (!isInitialized) {
-    return null;
-  }
-
-  const isEnabled = isPushEnabled;
+  // TODO: Integrate usePusherBeams hook
+  const isEnabled = false; // Temporarily disabled until Pusher Beams is integrated
 
   return (
     <TooltipProvider>

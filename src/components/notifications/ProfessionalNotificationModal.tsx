@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useOneSignalPush } from '@/hooks/useOneSignalPush';
+// TODO: Import usePusherBeams when integrating
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { supabase } from '@/integrations/supabase/client';
@@ -22,13 +22,12 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
 }) => {
   const { user } = useAuth();
   const { markNotificationPromptAsSeen } = useNotificationPrompt();
-  const { 
-    isInitialized, 
-    isPushEnabled, 
-    isSubscriptionLoading,
-    subscribeToPush,
-    playerId
-  } = useOneSignalPush();
+  // TODO: Integrate usePusherBeams
+  const isInitialized = false;
+  const isPushEnabled = false;
+  const isSubscriptionLoading = false;
+  const subscribeToPush = async () => false;
+  const playerId = null;
 
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');

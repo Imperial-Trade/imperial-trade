@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Bell, Smartphone, Mail, MessageSquare, Shield, AlertTriangle } from 'lucide-react';
-import { useOneSignalPush } from '@/hooks/useOneSignalPush';
+// TODO: Import usePusherBeams when integrating
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -23,14 +23,13 @@ interface NotificationPreferences {
 
 export const NotificationSettings: React.FC = () => {
   const { user } = useAuth();
-  const { 
-    isInitialized, 
-    isPushEnabled, 
-    playerId,
-    isSubscriptionLoading,
-    subscribeToPush, 
-    unsubscribeFromPush 
-  } = useOneSignalPush();
+  // TODO: Integrate usePusherBeams
+  const isInitialized = false;
+  const isPushEnabled = false;
+  const playerId = null;
+  const isSubscriptionLoading = false;
+  const subscribeToPush = async () => false;
+  const unsubscribeFromPush = async () => false;
 
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     push_subscription_active: false,

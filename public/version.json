@@ -1,5 +1,5 @@
 {
-  "version": "1.0.28",
-  "timestamp": "2025-11-18T01:00:00Z",
-  "description": "CRITICAL FIX: Auto-sync Player ID on every page load to ensure notifications reach the correct browser"
+  "version": "1.0.29",
+  "timestamp": "2025-11-18T01:15:00Z",
+  "description": "FIX: Auto-sync Player ID condition corrected to use isTrulySubscribed flag"
 }

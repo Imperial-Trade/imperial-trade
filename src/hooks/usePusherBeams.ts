@@ -48,15 +48,38 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
       setIsInitialized(true);
       console.log('✅ [Pusher Beams] Initialized successfully');
 
-      // Check current registration state
+      // Check current registration state and sync with database
       client.getRegistrationState()
-        .then((state: string) => {
+        .then(async (state: string) => {
           console.log('📊 [Pusher Beams] Current state:', state);
           const states = window.PusherPushNotifications.RegistrationState;
           
           if (state === states.PERMISSION_GRANTED_REGISTERED_WITH_BEAMS) {
             setIsPushEnabled(true);
             console.log('✅ [Pusher Beams] Already registered and enabled');
+            
+            // ✅ SYNC: Ensure database matches client state
+            if (user?.id) {
+              try {
+                const interests = await client.getDeviceInterests();
+                const isSubscribed = interests.includes('trade_alerts');
+                
+                if (isSubscribed) {
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ xeon_stream_subscription: true })
+                    .eq('id', user.id);
+                  
+                  if (error) {
+                    console.error('❌ [Database] Failed to sync xeon_stream_subscription:', error);
+                  } else {
+                    console.log('✅ [Database] Synced xeon_stream_subscription to true');
+                  }
+                }
+              } catch (error) {
+                console.error('❌ [Pusher Beams] Failed to sync with database:', error);
+              }
+            }
           }
         })
         .catch((error: Error) => {
@@ -90,18 +113,18 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
         interest: 'trade_alerts'
       });
 
-      // ✅ FIX: Update database to mark user as push-enabled
+      // ✅ CRITICAL FIX: Update database to mark user as push-enabled
       if (user?.id) {
         const { error } = await supabase
           .from('profiles')
-          .update({ push_subscription_active: true })
+          .update({ xeon_stream_subscription: true })
           .eq('id', user.id);
 
         if (error) {
-          console.error('❌ [Database] Failed to update push_subscription_active:', error);
+          console.error('❌ [Database] Failed to update xeon_stream_subscription:', error);
           // Don't fail the whole operation - user is still subscribed to Pusher Beams
         } else {
-          console.log('✅ [Database] Updated push_subscription_active to true');
+          console.log('✅ [Database] Updated xeon_stream_subscription to true');
         }
       }
 
@@ -144,17 +167,17 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
 
       console.log('✅ [Pusher Beams] Unsubscribed successfully');
 
-      // ✅ FIX: Update database to mark user as not push-enabled
+      // ✅ CRITICAL FIX: Update database to mark user as not push-enabled
       if (user?.id) {
         const { error } = await supabase
           .from('profiles')
-          .update({ push_subscription_active: false })
+          .update({ xeon_stream_subscription: false })
           .eq('id', user.id);
 
         if (error) {
-          console.error('❌ [Database] Failed to update push_subscription_active:', error);
+          console.error('❌ [Database] Failed to update xeon_stream_subscription:', error);
         } else {
-          console.log('✅ [Database] Updated push_subscription_active to false');
+          console.log('✅ [Database] Updated xeon_stream_subscription to false');
         }
       }
 

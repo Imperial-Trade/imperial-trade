@@ -25,3 +25,8 @@ dist-ssr
 
 
 .env
+.git-credentials
+
+# Credentials and secrets
+*.credentials
+*.token

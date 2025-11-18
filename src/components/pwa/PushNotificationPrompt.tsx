@@ -20,20 +20,27 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
 }) => {
   const { user } = useAuth();
   const { isInitialized, isPushEnabled, subscribeToPush } = usePusherBeams();
-
+  
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
 
   // Request browser notification permission
-  const requestPermission = async (): Promise<boolean> => {
-    try {
-      const result = await Notification.requestPermission();
-      return result === 'granted';
-    } catch (error) {
-      console.error('Failed to request notification permission:', error);
-      return false;
+  const requestPermission = async (): Promise<NotificationPermission> => {
+    if (!('Notification' in window)) {
+      return 'denied';
     }
+    
+    if (Notification.permission === 'granted') {
+      return 'granted';
+    }
+    
+    if (Notification.permission === 'denied') {
+      return 'denied';
+    }
+    
+    const permission = await Notification.requestPermission();
+    return permission;
   };
 
   useEffect(() => {
@@ -58,7 +65,7 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
     setIsSubscriptionLoading(true);
     try {
       const permissionGranted = await requestPermission();
-      if (permissionGranted) {
+      if (permissionGranted === 'granted') {
         // Small delay to let permission dialog close
         setTimeout(async () => {
           const subscribed = await subscribeToPush();
@@ -69,9 +76,11 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
         }, 500);
       } else {
         setIsSubscriptionLoading(false);
+        // Permission denied - close prompt
+        handleClose();
       }
     } catch (error) {
-      console.error('Failed to enable push notifications:', error);
+      console.error('❌ [PushNotificationPrompt] Failed to enable notifications:', error);
       setIsSubscriptionLoading(false);
     }
   };

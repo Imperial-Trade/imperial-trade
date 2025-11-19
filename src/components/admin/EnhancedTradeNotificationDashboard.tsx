@@ -281,7 +281,7 @@ export function EnhancedTradeNotificationDashboard() {
       {/* Header with Actions */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Trade Notifications Dashboard</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Trade Notifications</h2>
           <p className="text-muted-foreground">
             Professional monitoring and analytics for OneSignal push notifications
           </p>

@@ -1,6 +1,6 @@
 -- Migration: Fix instant_notification_router trigger for Pusher Beams
 -- This removes all references to OneSignal (onesignal_player_id, onesignal_subscription_status)
--- and updates the trigger to work with Pusher Beams (using push_subscription_active only)
+-- and updates the trigger to work with Pusher Beams (using xeon_stream_subscription column)
 
 CREATE OR REPLACE FUNCTION public.instant_notification_router()
 RETURNS trigger
@@ -50,7 +50,7 @@ BEGIN
   INTO v_push_users
   FROM public.profiles
   WHERE account_status = 'active'
-    AND push_subscription_active = true;
+    AND xeon_stream_subscription = true;
 
   RAISE WARNING '📱 [PUSH] Found % push-enabled users', jsonb_array_length(v_push_users);
 

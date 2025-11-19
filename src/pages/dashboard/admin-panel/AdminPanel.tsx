@@ -16,6 +16,9 @@ const DirectAccountRequestManagement = lazy(() => import("@/components/admin/Dir
 const AdminNotificationSystem = lazy(() => import("@/components/admin/AdminNotificationSystem").then(m => ({
   default: m.AdminNotificationSystem
 })));
+const ProfessionalTradeNotificationDashboard = lazy(() => import("@/components/admin/ProfessionalTradeNotificationDashboard").then(m => ({
+  default: m.ProfessionalTradeNotificationDashboard
+})));
 const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({
   default: m.SystemMonitoring
 })));
@@ -181,9 +184,7 @@ const AdminPanel: React.FC = () => {
 
         {canAccessNotifications && <TabsContent value="notifications" className="space-y-4">
             <Suspense fallback={<LoadingFallback />}>
-              <NotificationTestPanel />
-              <NotificationAnalyticsDashboard />
-              <AdminNotificationSystem />
+              <ProfessionalTradeNotificationDashboard />
             </Suspense>
           </TabsContent>}
 

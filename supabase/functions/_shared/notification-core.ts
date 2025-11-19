@@ -437,6 +437,24 @@ export async function sendPushNotification(
 
     if (!response.ok) {
       console.error('❌ [OneSignal] API error:', result);
+      
+      // 📊 Log failure to analytics for EACH user
+      for (const userId of pushUserIds) {
+        try {
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            profile_id: userId,
+            notification_type: template.type,
+            onesignal_notification_id: result.id || null,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: result.errors?.[0] || 'OneSignal API failed',
+          });
+        } catch (analyticsError) {
+          console.warn('Failed to log analytics:', analyticsError);
+        }
+      }
+      
       return {
         success: false,
         error: result.errors?.[0] || 'OneSignal API failed',
@@ -449,12 +467,45 @@ export async function sendPushNotification(
       recipients: result.recipients || 0,
     });
 
+    // 📊 Log success to analytics for EACH user
+    for (const userId of pushUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          profile_id: userId,
+          notification_type: template.type,
+          onesignal_notification_id: result.id || null,
+          sent_at: new Date().toISOString(),
+          delivered_at: new Date().toISOString(), // OneSignal confirms delivery immediately
+        });
+      } catch (analyticsError) {
+        console.warn('Failed to log analytics:', analyticsError);
+      }
+    }
+
     return {
       success: true,
       sent: result.recipients || pushUserIds.length,
     };
   } catch (error: any) {
     console.error('❌ [OneSignal] Push notification error:', error);
+    
+    // 📊 Log exception to analytics for EACH user
+    for (const userId of pushUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          profile_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: error.message || 'Unknown error',
+        });
+      } catch (analyticsError) {
+        console.warn('Failed to log analytics:', analyticsError);
+      }
+    }
+    
     return {
       success: false,
       error: error.message,

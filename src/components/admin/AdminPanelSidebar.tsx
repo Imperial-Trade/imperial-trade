@@ -47,7 +47,7 @@ export default function AdminPanelSidebar({
     { value: 'requests', label: 'Account Requests', icon: Users, show: canAccessRequests },
     { value: 'users', label: 'User Management', icon: Users, show: canAccessUsers },
     { value: 'signals', label: 'Trading Signals', icon: Signal, show: canAccessSignals },
-    { value: 'notifications', label: 'Notifications', icon: Bell, show: canAccessNotifications },
+    { value: 'notifications', label: 'Trade Notifications', icon: Bell, show: canAccessNotifications },
     { value: 'system', label: 'System Monitor', icon: Settings, show: canAccessSystem },
     { value: 'rate-limits', label: 'Rate Limits', icon: RefreshCw, show: canAccessRateLimits },
     { value: 'diagnostics', label: 'Diagnostics', icon: Activity, show: canAccessDiagnostics },

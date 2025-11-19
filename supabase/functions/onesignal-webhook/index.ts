@@ -115,7 +115,8 @@ async function handleDelivered(supabase: any, notificationId: string, event: any
     .from('notification_analytics')
     .select('sent_at')
     .eq('onesignal_notification_id', notificationId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   let delivery_latency_ms = null;
   if (existing?.sent_at) {
@@ -150,7 +151,8 @@ async function handleOpened(supabase: any, notificationId: string, event: any) {
     .from('notification_analytics')
     .select('delivered_at')
     .eq('onesignal_notification_id', notificationId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   let open_latency_ms = null;
   if (existing?.delivered_at) {

@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import { 
   Bell, TrendingUp, TrendingDown, Activity, AlertTriangle, 
   CheckCircle, XCircle, Clock, Users, Zap, Settings, RefreshCw,
-  BarChart3, PieChart, Target, Download, Calendar
+  BarChart3, PieChart, Target, Download, Calendar, Search, User
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
@@ -54,6 +55,16 @@ interface NotificationMetrics {
     type: string;
     reason: string;
     created_at: string;
+  }[];
+  recent_notifications: {
+    id: string;
+    type: string;
+    user_id: string;
+    sent_at: string;
+    delivered_at: string | null;
+    failed_at: string | null;
+    failure_reason: string | null;
+    onesignal_notification_id: string | null;
   }[];
   hourly_volume: {
     hour: string;
@@ -105,15 +116,16 @@ export function EnhancedTradeNotificationDashboard() {
       if (error) throw error;
 
       if (!analytics || analytics.length === 0) {
-        setMetrics({
-          total_sent: 0,
-          total_delivered: 0,
-          total_failed: 0,
-          delivery_rate: 0,
-          by_type: [],
-          recent_failures: [],
-          hourly_volume: []
-        });
+      setMetrics({
+        total_sent: 0,
+        total_delivered: 0,
+        total_failed: 0,
+        delivery_rate: 0,
+        by_type: [],
+        recent_failures: [],
+        recent_notifications: [],
+        hourly_volume: []
+      });
         return;
       }
 
@@ -174,6 +186,19 @@ export function EnhancedTradeNotificationDashboard() {
             type: a.notification_type,
             reason: a.failure_reason || 'Unknown',
             created_at: a.created_at
+          })),
+        recent_notifications: analytics
+          .slice(-20)
+          .reverse()
+          .map(a => ({
+            id: a.id,
+            type: a.notification_type,
+            user_id: a.user_id,
+            sent_at: a.sent_at,
+            delivered_at: a.delivered_at,
+            failed_at: a.failed_at,
+            failure_reason: a.failure_reason,
+            onesignal_notification_id: a.onesignal_notification_id
           })),
         hourly_volume: hourlyVolume
       });
@@ -464,13 +489,28 @@ export function EnhancedTradeNotificationDashboard() {
 
       {/* Detailed Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">By Type</TabsTrigger>
           <TabsTrigger value="failures">Failures</TabsTrigger>
+          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          {/* Recent Notifications */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Recent Notifications (Last 20)
+              </CardTitle>
+              <CardDescription>Live feed of notification delivery status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecentNotificationsList metrics={metrics} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Notification Types Breakdown</CardTitle>
@@ -521,6 +561,10 @@ export function EnhancedTradeNotificationDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="subscriptions" className="space-y-4">
+          <UserSubscriptionsList />
         </TabsContent>
 
         <TabsContent value="failures" className="space-y-4">
@@ -619,6 +663,357 @@ export function EnhancedTradeNotificationDashboard() {
         </AlertDescription>
       </Alert>
     </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📋 RECENT NOTIFICATIONS LIST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function RecentNotificationsList({ metrics }: { metrics: NotificationMetrics | null }) {
+  if (!metrics || metrics.recent_notifications.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p>No notifications sent yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      {metrics.recent_notifications.map((notif) => {
+        const status = notif.failed_at ? 'failed' : notif.delivered_at ? 'delivered' : 'pending';
+        const statusColor = status === 'delivered' ? 'text-green-500' : 
+                           status === 'failed' ? 'text-red-500' : 
+                           'text-yellow-500';
+        const statusIcon = status === 'delivered' ? <CheckCircle className="w-4 h-4" /> :
+                          status === 'failed' ? <XCircle className="w-4 h-4" /> :
+                          <Clock className="w-4 h-4" />;
+
+        return (
+          <div
+            key={notif.id}
+            className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+          >
+            <div className="flex items-center gap-3 flex-1">
+              <div className={statusColor}>
+                {statusIcon}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {notif.type.replace(/_/g, ' ')}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    User: {notif.user_id.substring(0, 8)}...
+                  </span>
+                </div>
+                {notif.onesignal_notification_id && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    OneSignal ID: {notif.onesignal_notification_id.substring(0, 20)}...
+                  </div>
+                )}
+                {notif.failure_reason && (
+                  <div className="text-xs text-red-500 mt-1">
+                    {notif.failure_reason}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <Badge 
+                variant={status === 'delivered' ? 'default' : status === 'failed' ? 'destructive' : 'secondary'}
+                className={status === 'delivered' ? 'bg-green-500' : ''}
+              >
+                {status === 'delivered' ? '✅ Delivered' : 
+                 status === 'failed' ? '❌ Failed' : 
+                 '⏳ Pending'}
+              </Badge>
+              <div className="text-xs text-muted-foreground mt-1">
+                {new Date(notif.sent_at).toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 👥 USER SUBSCRIPTIONS LIST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface UserSubscription {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  device_token: string | null;
+  xeon_stream_subscription: boolean;
+  created_at: string;
+  last_notification_at: string | null;
+  total_notifications_received: number;
+  total_notifications_failed: number;
+  delivery_rate: number;
+}
+
+function UserSubscriptionsList() {
+  const [users, setUsers] = useState<UserSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'subscribed' | 'unsubscribed'>('all');
+
+  useEffect(() => {
+    loadUserSubscriptions();
+  }, []);
+
+  const loadUserSubscriptions = async () => {
+    try {
+      setLoading(true);
+
+      // Get all users with their profile info
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, device_token, xeon_stream_subscription, created_at')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) throw profilesError;
+
+      if (!profiles) {
+        setUsers([]);
+        return;
+      }
+
+      // Get notification stats for each user
+      const userSubscriptions: UserSubscription[] = await Promise.all(
+        profiles.map(async (profile) => {
+          const { data: notifStats } = await supabase
+            .from('notification_analytics')
+            .select('sent_at, delivered_at, failed_at')
+            .eq('user_id', profile.id)
+            .order('sent_at', { ascending: false })
+            .limit(100);
+
+          const totalReceived = notifStats?.length || 0;
+          const totalFailed = notifStats?.filter(n => n.failed_at).length || 0;
+          const totalDelivered = notifStats?.filter(n => n.delivered_at).length || 0;
+          const deliveryRate = totalReceived > 0 ? (totalDelivered / totalReceived) * 100 : 0;
+          const lastNotificationAt = notifStats?.[0]?.sent_at || null;
+
+          return {
+            id: profile.id,
+            display_name: profile.display_name,
+            email: profile.email,
+            device_token: profile.device_token,
+            xeon_stream_subscription: profile.xeon_stream_subscription || false,
+            created_at: profile.created_at,
+            last_notification_at: lastNotificationAt,
+            total_notifications_received: totalReceived,
+            total_notifications_failed: totalFailed,
+            delivery_rate: Math.round(deliveryRate * 10) / 10,
+          };
+        })
+      );
+
+      setUsers(userSubscriptions);
+    } catch (error: any) {
+      console.error('Failed to load user subscriptions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    // Filter by search term
+    const matchesSearch = !searchTerm || 
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.device_token?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by status
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'subscribed' && user.xeon_stream_subscription) ||
+      (filterStatus === 'unsubscribed' && !user.xeon_stream_subscription);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const subscribedCount = users.filter(u => u.xeon_stream_subscription).length;
+  const unsubscribedCount = users.filter(u => !u.xeon_stream_subscription).length;
+  const withPlayerIdCount = users.filter(u => u.device_token).length;
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-12 flex items-center justify-center">
+          <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          User Subscriptions ({users.length} total)
+        </CardTitle>
+        <CardDescription>
+          All users with their OneSignal Player IDs and subscription status
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm text-muted-foreground">Subscribed</div>
+            <div className="text-2xl font-bold text-green-500">{subscribedCount}</div>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm text-muted-foreground">Unsubscribed</div>
+            <div className="text-2xl font-bold text-red-500">{unsubscribedCount}</div>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <div className="text-sm text-muted-foreground">With Player ID</div>
+            <div className="text-2xl font-bold text-blue-500">{withPlayerIdCount}</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or Player ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={filterStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('all')}
+            >
+              All ({users.length})
+            </Button>
+            <Button
+              variant={filterStatus === 'subscribed' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('subscribed')}
+            >
+              Subscribed ({subscribedCount})
+            </Button>
+            <Button
+              variant={filterStatus === 'unsubscribed' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('unsubscribed')}
+            >
+              Unsubscribed ({unsubscribedCount})
+            </Button>
+          </div>
+        </div>
+
+        {/* User List */}
+        <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    {/* User Info */}
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">
+                          {user.display_name || 'No name'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {user.email || 'No email'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* OneSignal Player ID */}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {user.device_token ? (
+                          <>
+                            <Bell className="w-3 h-3 mr-1" />
+                            {user.device_token.substring(0, 20)}...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3 mr-1" />
+                            No Player ID
+                          </>
+                        )}
+                      </Badge>
+                      {user.xeon_stream_subscription ? (
+                        <Badge variant="default" className="bg-green-500">
+                          ✅ Subscribed
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          🔕 Not Subscribed
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Bell className="w-3 h-3" />
+                        {user.total_notifications_received} received
+                      </div>
+                      {user.total_notifications_failed > 0 && (
+                        <div className="flex items-center gap-1 text-red-500">
+                          <XCircle className="w-3 h-3" />
+                          {user.total_notifications_failed} failed
+                        </div>
+                      )}
+                      {user.total_notifications_received > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          {user.delivery_rate}% delivery rate
+                        </div>
+                      )}
+                      {user.last_notification_at && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Last: {new Date(user.last_notification_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No users found matching your filters</p>
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        <Alert>
+          <Bell className="h-4 w-4" />
+          <AlertDescription>
+            <strong>💡 Note:</strong> "Player ID" is the OneSignal device identifier. 
+            Users must enable push notifications in their browser to get a Player ID. 
+            "Subscribed" means they have xeon_stream_subscription enabled.
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -388,7 +388,7 @@ export async function sendPushNotification(
       const { data: prefs } = await supabase
         .from('notification_preferences')
         .select('*')
-        .eq('profile_id', userId)
+        .eq('user_id', userId)
         .single();
 
       // If no preferences, allow all (default behavior)
@@ -406,7 +406,7 @@ export async function sendPushNotification(
         // Log skip reason to analytics
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,
-          profile_id: userId,
+          user_id: userId,
           notification_type: template.type,
           sent_at: new Date().toISOString(),
           failed_at: new Date().toISOString(),
@@ -443,7 +443,7 @@ export async function sendPushNotification(
           // Log skip reason to analytics
           await supabase.from('notification_analytics').insert({
             signal_id: signalData.id,
-            profile_id: userId,
+            user_id: userId,
             notification_type: template.type,
             sent_at: new Date().toISOString(),
             failed_at: new Date().toISOString(),
@@ -458,9 +458,9 @@ export async function sendPushNotification(
       const { data: recentNotifs, error: countError } = await supabase
         .from('notification_analytics')
         .select('id')
-        .eq('profile_id', userId)
+        .eq('user_id', userId)
         .gte('sent_at', oneHourAgo)
-        .not('failed_at', 'is', null); // Only count successfully sent
+        .is('failed_at', null); // Only count successfully sent
 
       if (countError) {
         console.warn(`Failed to check rate limit for user ${userId}:`, countError);
@@ -477,7 +477,7 @@ export async function sendPushNotification(
         // Log skip reason to analytics
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,
-          profile_id: userId,
+          user_id: userId,
           notification_type: template.type,
           sent_at: new Date().toISOString(),
           failed_at: new Date().toISOString(),
@@ -582,7 +582,7 @@ export async function sendPushNotification(
         try {
           await supabase.from('notification_analytics').insert({
             signal_id: signalData.id,
-            profile_id: userId,
+            user_id: userId,
             notification_type: template.type,
             onesignal_notification_id: result.id || null,
             sent_at: new Date().toISOString(),
@@ -611,7 +611,7 @@ export async function sendPushNotification(
       try {
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,
-          profile_id: userId,
+          user_id: userId,
           notification_type: template.type,
           onesignal_notification_id: result.id || null,
           sent_at: new Date().toISOString(),
@@ -634,7 +634,7 @@ export async function sendPushNotification(
       try {
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,
-          profile_id: userId,
+          user_id: userId,
           notification_type: template.type,
           sent_at: new Date().toISOString(),
           failed_at: new Date().toISOString(),

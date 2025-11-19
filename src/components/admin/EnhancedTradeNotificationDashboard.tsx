@@ -99,7 +99,8 @@ export function EnhancedTradeNotificationDashboard() {
         .from('notification_analytics')
         .select('*')
         .gte('sent_at', startDate.toISOString())
-        .order('sent_at', { ascending: true });
+        .order('sent_at', { ascending: true })
+        .limit(10000); // Limit for performance
 
       if (error) throw error;
 

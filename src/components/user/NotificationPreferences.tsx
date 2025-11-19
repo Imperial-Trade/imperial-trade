@@ -51,7 +51,7 @@ export function NotificationPreferences() {
       const { data, error } = await supabase
         .from('notification_preferences')
         .select('*')
-        .eq('profile_id', user?.id)
+        .eq('user_id', user?.id)
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found is okay
@@ -87,7 +87,7 @@ export function NotificationPreferences() {
       const { error } = await supabase
         .from('notification_preferences')
         .upsert({
-          profile_id: user.id,
+          user_id: user.id,
           ...preferences,
           updated_at: new Date().toISOString(),
         });

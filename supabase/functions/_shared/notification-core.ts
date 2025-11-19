@@ -371,6 +371,145 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  const filteredUserIds: string[] = [];
+  const skipReasons: Record<string, string[]> = {
+    user_disabled: [],
+    quiet_hours: [],
+    rate_limited: []
+  };
+
+  for (const userId of pushUserIds) {
+    try {
+      // Load user preferences
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('profile_id', userId)
+        .single();
+
+      // If no preferences, allow all (default behavior)
+      if (!prefs) {
+        filteredUserIds.push(userId);
+        continue;
+      }
+
+      // Check if notification type is enabled
+      const typeKey = template.type as keyof typeof prefs;
+      if (prefs[typeKey] === false) {
+        console.log(`⏭️ User ${userId.substring(0, 8)} disabled ${template.type}`);
+        skipReasons.user_disabled.push(userId);
+        
+        // Log skip reason to analytics
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          profile_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: 'User disabled this notification type',
+        });
+        continue;
+      }
+
+      // Check quiet hours
+      if (prefs.quiet_hours_enabled && prefs.quiet_hours_start && prefs.quiet_hours_end) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = currentHour * 60 + currentMinute;
+
+        const [startHour, startMinute] = prefs.quiet_hours_start.split(':').map(Number);
+        const [endHour, endMinute] = prefs.quiet_hours_end.split(':').map(Number);
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+
+        let isQuietHours = false;
+        if (startTime <= endTime) {
+          // Same day quiet hours (e.g., 22:00 - 23:59)
+          isQuietHours = currentTime >= startTime && currentTime < endTime;
+        } else {
+          // Overnight quiet hours (e.g., 22:00 - 07:00)
+          isQuietHours = currentTime >= startTime || currentTime < endTime;
+        }
+
+        if (isQuietHours) {
+          console.log(`🔕 User ${userId.substring(0, 8)} in quiet hours`);
+          skipReasons.quiet_hours.push(userId);
+          
+          // Log skip reason to analytics
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            profile_id: userId,
+            notification_type: template.type,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: 'User in quiet hours',
+          });
+          continue;
+        }
+      }
+
+      // Check rate limit (notifications per hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: recentNotifs, error: countError } = await supabase
+        .from('notification_analytics')
+        .select('id')
+        .eq('profile_id', userId)
+        .gte('sent_at', oneHourAgo)
+        .not('failed_at', 'is', null); // Only count successfully sent
+
+      if (countError) {
+        console.warn(`Failed to check rate limit for user ${userId}:`, countError);
+        // Allow on error (don't block user)
+        filteredUserIds.push(userId);
+        continue;
+      }
+
+      const maxPerHour = prefs.max_per_hour || 20;
+      if (recentNotifs && recentNotifs.length >= maxPerHour) {
+        console.log(`🚫 User ${userId.substring(0, 8)} over rate limit (${recentNotifs.length}/${maxPerHour})`);
+        skipReasons.rate_limited.push(userId);
+        
+        // Log skip reason to analytics
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          profile_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: `Rate limit exceeded (${recentNotifs.length}/${maxPerHour})`,
+        });
+        continue;
+      }
+
+      // User passed all checks
+      filteredUserIds.push(userId);
+
+    } catch (prefError: any) {
+      console.warn(`Failed to check preferences for user ${userId}:`, prefError.message);
+      // Allow on error (don't block user)
+      filteredUserIds.push(userId);
+    }
+  }
+
+  console.log(`📊 [Preference Enforcement] Original: ${pushUserIds.length}, Filtered: ${filteredUserIds.length}`, {
+    user_disabled: skipReasons.user_disabled.length,
+    quiet_hours: skipReasons.quiet_hours.length,
+    rate_limited: skipReasons.rate_limited.length
+  });
+
+  if (filteredUserIds.length === 0) {
+    console.log('ℹ️ All users filtered by preferences');
+    return { success: true, sent: 0 };
+  }
+
+  // Update pushUserIds to filtered list
+  pushUserIds = filteredUserIds;
+
   try {
     console.log(`📤 [OneSignal] Sending push notification:`, {
       type: template.type,

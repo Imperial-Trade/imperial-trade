@@ -27,6 +27,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  authReady: boolean;
   profileLoading: boolean;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -297,14 +298,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider 
-      value={{ 
-        user, 
-        session, 
-        profile, 
-        loading, 
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        authReady: !loading,
         profileLoading,
-        signOut, 
-        refreshSession, 
+        signOut,
+        refreshSession,
         refreshProfile
       }}
     >

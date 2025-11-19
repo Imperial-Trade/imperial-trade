@@ -19,7 +19,7 @@ interface UsePusherBeamsReturn {
 }
 
 export const usePusherBeams = (): UsePusherBeamsReturn => {
-  const { user, authReady } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isPushEnabled, setIsPushEnabled] = useState(false);
@@ -27,7 +27,7 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
 
   // Initialize Pusher Beams
   useEffect(() => {
-    if (!authReady || !user) {
+    if (loading || !user) {
       console.log('⏳ [Pusher Beams] Waiting for authentication...');
       return;
     }
@@ -89,7 +89,7 @@ export const usePusherBeams = (): UsePusherBeamsReturn => {
     } catch (error) {
       console.error('❌ [Pusher Beams] Initialization failed:', error);
     }
-  }, [authReady, user]);
+  }, [loading, user]);
 
   // Subscribe to push notifications
   const subscribeToPush = useCallback(async (): Promise<boolean> => {

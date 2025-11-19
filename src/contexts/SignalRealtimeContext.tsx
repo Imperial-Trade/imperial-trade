@@ -736,12 +736,7 @@ export const SignalRealtimeProvider: React.FC<{ children: React.ReactNode }> = (
     console.log('⚡ [Polling Mode] Signals will appear within 1 second via database polling');
     
     const pollingInterval = setInterval(async () => {
-      // ✅ SAFEGUARD: Double-check Realtime status before polling
-      if (connectionStatus === 'connected') {
-        console.log('🛑 [Polling Safeguard] Realtime reconnected - stopping this poll');
-        return;
-      }
-      
+      // No need to re-check - line 728 already guarantees not connected
       console.log('⚡ [1s Poll] Fetching signals for instant display');
       await refreshSignals(true); // Force refresh for instant updates
     }, SIGNAL_POLL_INTERVAL); // ⚡ Poll every 1 SECOND for INSTANT signal display

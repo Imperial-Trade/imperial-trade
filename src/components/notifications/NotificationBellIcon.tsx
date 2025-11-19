@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { usePusherBeams } from '@/hooks/usePusherBeams';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 interface NotificationBellIconProps {
   onClick?: () => void;
@@ -19,7 +19,7 @@ export const NotificationBellIcon: React.FC<NotificationBellIconProps> = ({
   onClick,
   className
 }) => {
-  const { isPushEnabled } = usePusherBeams();
+  const { isPushEnabled } = useOneSignal();
   const isEnabled = isPushEnabled;
 
   return (

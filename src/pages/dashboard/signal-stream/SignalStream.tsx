@@ -35,7 +35,7 @@ import { NotificationBellIcon } from '@/components/notifications/NotificationBel
 // Removed ProfessionalNotificationModal - using native iOS prompt only
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
-import { usePusherBeams } from '@/hooks/usePusherBeams';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 export default function SignalStream() {
   const {
@@ -62,13 +62,13 @@ export default function SignalStream() {
     isSubscribedToPush
   } = useNotificationPrompt();
   
-  // Pusher Beams integration
+  // OneSignal integration
   const {
     isInitialized: isPusherInitialized,
     isPushEnabled,
     subscribeToPush,
     unsubscribeFromPush
-  } = usePusherBeams();
+  } = useOneSignal();
 
   // State for filtering and modal
   const [filters, setFilters] = useState({

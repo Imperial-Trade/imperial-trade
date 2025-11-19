@@ -349,7 +349,7 @@ export async function sendRealtimeNotification(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📱 PUSH NOTIFICATION (Pusher Beams - Mobile/Desktop)
+// 📱 PUSH NOTIFICATION (OneSignal - All Platforms)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export async function sendPushNotification(
@@ -358,12 +358,12 @@ export async function sendPushNotification(
   signalData: SignalData,
   pushUserIds: string[]
 ): Promise<{ success: boolean; sent: number; error?: string }> {
-  const PUSHER_INSTANCE_ID = Deno.env.get('PUSHER_INSTANCE_ID');
-  const PUSHER_SECRET_KEY = Deno.env.get('PUSHER_SECRET_KEY');
+  const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+  const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
-  if (!PUSHER_INSTANCE_ID || !PUSHER_SECRET_KEY) {
-    console.warn('⚠️ Pusher Beams not configured - skipping push');
-    return { success: false, error: 'Pusher Beams not configured', sent: 0 };
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+    console.warn('⚠️ OneSignal not configured - skipping push');
+    return { success: false, error: 'OneSignal not configured', sent: 0 };
   }
 
   if (pushUserIds.length === 0) {
@@ -372,68 +372,89 @@ export async function sendPushNotification(
   }
 
   try {
-    // Pusher Beams uses "Interests" (Topics) instead of individual player IDs
-    // All authenticated users subscribe to the "trade_alerts" interest
-    const interest = 'trade_alerts';
-
-    console.log(`📤 Broadcasting to interest "${interest}":`, {
+    console.log(`📤 [OneSignal] Sending push notification:`, {
       type: template.type,
       asset: signalData.asset_name,
+      recipients: pushUserIds.length,
     });
 
-    // Build Pusher Beams payload
+    // Build OneSignal notification payload
     const payload = {
-      interests: [interest],
-      web: {
-        notification: {
-          title: template.title,
-          body: template.message,
-          icon: 'https://tradeimperial.com/icon-192.png',
-          deep_link: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
-        },
-        data: {
-          signal_id: signalData.id,
-          type: template.type,
-          asset_name: signalData.asset_name,
-        },
+      app_id: ONESIGNAL_APP_ID,
+      
+      // Send to all subscribed users
+      included_segments: ['Subscribed Users'],
+      
+      // Notification content
+      headings: { en: template.title },
+      contents: { en: template.message },
+      
+      // Web-specific settings
+      url: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
+      chrome_web_icon: 'https://tradeimperial.com/icon-192.png',
+      chrome_web_image: signalData.author_avatar_url || undefined,
+      
+      // iOS-specific settings
+      ios_badgeType: 'Increase',
+      ios_badgeCount: 1,
+      ios_sound: template.sound ? 'default' : undefined,
+      
+      // Android-specific settings
+      android_channel_id: template.priority >= 3 ? 'high_priority' : 'default',
+      priority: template.priority >= 3 ? 10 : 5,
+      
+      // Custom data payload
+      data: {
+        signal_id: signalData.id,
+        type: template.type,
+        asset_name: signalData.asset_name,
+        entry_price: signalData.entry_price,
+        trade_type: signalData.trade_type,
+        author_name: signalData.author_name,
+        pips: signalData.pips,
+        tp_number: signalData.tp_number,
       },
+      
+      // Display settings
+      ttl: 86400, // 24 hours
+      android_accent_color: template.color === 'blue' ? '0000FF' : 
+                           template.color === 'green' ? '00FF00' :
+                           template.color === 'red' ? 'FF0000' :
+                           template.color === 'yellow' ? 'FFFF00' : '808080',
     };
 
-    // Pusher Beams URL format (no region prefix needed)
-    const response = await fetch(
-      `https://${PUSHER_INSTANCE_ID}.pushnotifications.pusher.com/publish_api/v1/instances/${PUSHER_INSTANCE_ID}/publishes`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${PUSHER_SECRET_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    // Send to OneSignal API
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Pusher Beams API error:', result);
+      console.error('❌ [OneSignal] API error:', result);
       return {
         success: false,
-        error: result.error || 'Pusher Beams API failed',
+        error: result.errors?.[0] || 'OneSignal API failed',
         sent: 0,
       };
     }
 
-    console.log(`✅ Push broadcast successful:`, {
-      publishId: result.publishId,
-      interest,
+    console.log(`✅ [OneSignal] Push sent successfully:`, {
+      id: result.id,
+      recipients: result.recipients || 0,
     });
 
     return {
       success: true,
-      sent: pushUserIds.length, // Estimate based on subscribed users
+      sent: result.recipients || pushUserIds.length,
     };
   } catch (error: any) {
-    console.error('❌ Push notification error:', error);
+    console.error('❌ [OneSignal] Push notification error:', error);
     return {
       success: false,
       error: error.message,

@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { usePusherBeams } from '@/hooks/usePusherBeams';
+import { useOneSignal } from '@/hooks/useOneSignal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, BellOff, Check, X } from 'lucide-react';
 
 export const PusherBeamsTest: React.FC = () => {
-  const { isInitialized, isPushEnabled, subscribeToPush, unsubscribeFromPush, getDeviceId } = usePusherBeams();
+  const { isInitialized, isPushEnabled, subscribeToPush, unsubscribeFromPush, getUserId } = useOneSignal();
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isInitialized) {
-      getDeviceId().then(setDeviceId);
+      getUserId().then(setDeviceId);
     }
-  }, [isInitialized, getDeviceId, isPushEnabled]);
+  }, [isInitialized, getUserId, isPushEnabled]);
 
   return (
     <Card className="max-w-2xl mx-auto mt-8">

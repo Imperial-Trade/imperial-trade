@@ -517,11 +517,11 @@ export async function sendPushNotification(
       recipients: pushUserIds.length,
     });
 
-    // Build OneSignal notification payload
+    // Build OneSignal notification payload (WEB PUSH ONLY)
     const payload = {
       app_id: ONESIGNAL_APP_ID,
       
-      // Send to all subscribed users
+      // Send to all subscribed users (web push segment)
       included_segments: ['Subscribed Users'],
       
       // Notification content
@@ -533,14 +533,14 @@ export async function sendPushNotification(
       chrome_web_icon: 'https://tradeimperial.com/icon-192.png',
       chrome_web_image: signalData.author_avatar_url || undefined,
       
-      // iOS-specific settings
+      // iOS Web Push settings (for PWA on iOS)
       ios_badgeType: 'Increase',
       ios_badgeCount: 1,
       ios_sound: template.sound ? 'default' : undefined,
       
-      // Android-specific settings
-      android_channel_id: template.priority >= 3 ? 'high_priority' : 'default',
-      priority: template.priority >= 3 ? 10 : 5,
+      // ❌ REMOVED: Android-specific settings (we're web-only, no native Android app)
+      // android_channel_id causes "Could not find android_channel_id" error
+      // android_accent_color is for native Android only
       
       // Custom data payload
       data: {
@@ -556,10 +556,7 @@ export async function sendPushNotification(
       
       // Display settings
       ttl: 86400, // 24 hours
-      android_accent_color: template.color === 'blue' ? '0000FF' : 
-                           template.color === 'green' ? '00FF00' :
-                           template.color === 'red' ? 'FF0000' :
-                           template.color === 'yellow' ? 'FFFF00' : '808080',
+      priority: template.priority >= 3 ? 10 : 5,
     };
 
     // Send to OneSignal API

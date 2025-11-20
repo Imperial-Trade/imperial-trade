@@ -932,7 +932,7 @@ function UserSubscriptionsList() {
                       <User className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <div className="font-medium">
-                          {user.display_name || 'No name'}
+                          {user.display_name || user.email?.split('@')[0] || 'User'}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {user.email || 'No email'}

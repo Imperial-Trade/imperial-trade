@@ -1,6 +1,5 @@
--- Migration: Fix instant_notification_router trigger for Pusher Beams
--- This removes all references to OneSignal (onesignal_player_id, onesignal_subscription_status)
--- and updates the trigger to work with Pusher Beams (using xeon_stream_subscription)
+-- Migration: Critical fix for push notification targeting
+-- This fixes the instant_notification_router trigger to only send to users WITH Player IDs
 
 CREATE OR REPLACE FUNCTION public.instant_notification_router()
 RETURNS trigger
@@ -42,7 +41,7 @@ BEGIN
 
   RAISE WARNING '👥 [USERS] Found % active users', jsonb_array_length(v_active_users);
 
-  -- ✅ FIX: Get push-enabled users for OneSignal (using xeon_stream_subscription AND device_token)
+  -- ✅ CRITICAL FIX: Get push-enabled users for OneSignal (using xeon_stream_subscription AND device_token)
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'user_id', id,
     'display_name', COALESCE(NULLIF(trim(display_name), ''), NULLIF(trim(real_name), ''), 'User')

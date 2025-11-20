@@ -371,6 +371,35 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
+  // ✅ CRITICAL FIX: Fetch Player IDs from database FIRST (before preference filtering)
+  console.log(`📋 [OneSignal] Fetching Player IDs for ${pushUserIds.length} users`);
+  
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, device_token')
+    .in('id', pushUserIds)
+    .not('device_token', 'is', null);
+
+  if (profileError) {
+    console.error('❌ Failed to fetch Player IDs:', profileError);
+    return { success: false, error: 'Failed to fetch Player IDs', sent: 0 };
+  }
+
+  if (!profiles || profiles.length === 0) {
+    console.log('ℹ️ No Player IDs found for push users');
+    return { success: true, sent: 0 };
+  }
+
+  // Create a map of userId -> playerID
+  const userPlayerMap = new Map<string, string>();
+  profiles.forEach((p: any) => {
+    if (p.device_token) {
+      userPlayerMap.set(p.id, p.device_token);
+    }
+  });
+
+  console.log(`📋 [Player IDs] Found ${userPlayerMap.size} Player IDs for ${pushUserIds.length} users`);
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -507,22 +536,30 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
-  // Update pushUserIds to filtered list
-  pushUserIds = filteredUserIds;
+  // ✅ CRITICAL FIX: Get Player IDs for filtered users
+  const finalPlayerIds = filteredUserIds
+    .map(userId => userPlayerMap.get(userId))
+    .filter(Boolean) as string[];
+
+  if (finalPlayerIds.length === 0) {
+    console.log('ℹ️ All users filtered or no Player IDs available');
+    return { success: true, sent: 0 };
+  }
 
   try {
     console.log(`📤 [OneSignal] Sending push notification:`, {
       type: template.type,
       asset: signalData.asset_name,
-      recipients: pushUserIds.length,
+      recipients: finalPlayerIds.length,
+      playerIds: finalPlayerIds.map(id => id.substring(0, 8) + '...'),
     });
 
     // Build OneSignal notification payload (WEB PUSH ONLY)
     const payload = {
       app_id: ONESIGNAL_APP_ID,
       
-      // Send to all subscribed users (web push segment)
-      included_segments: ['Subscribed Users'],
+      // ✅ CRITICAL FIX: Target SPECIFIC Player IDs (not segments)
+      include_player_ids: finalPlayerIds,
       
       // Notification content
       headings: { en: template.title },
@@ -575,7 +612,7 @@ export async function sendPushNotification(
       console.error('❌ [OneSignal] API error:', result);
       
       // 📊 Log failure to analytics for EACH user
-      for (const userId of pushUserIds) {
+      for (const userId of filteredUserIds) {
         try {
           await supabase.from('notification_analytics').insert({
             signal_id: signalData.id,
@@ -598,13 +635,13 @@ export async function sendPushNotification(
       };
     }
 
-    console.log(`✅ [OneSignal] Push sent successfully:`, {
-      id: result.id,
-      recipients: result.recipients || 0,
-    });
+      console.log(`✅ [OneSignal] Push sent successfully:`, {
+        id: result.id,
+        recipients: result.recipients || finalPlayerIds.length,
+      });
 
-    // 📊 Log success to analytics for EACH user
-    for (const userId of pushUserIds) {
+      // 📊 Log success to analytics for EACH user
+      for (const userId of filteredUserIds) {
       try {
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,
@@ -619,15 +656,15 @@ export async function sendPushNotification(
       }
     }
 
-    return {
-      success: true,
-      sent: result.recipients || pushUserIds.length,
-    };
-  } catch (error: any) {
-    console.error('❌ [OneSignal] Push notification error:', error);
-    
-    // 📊 Log exception to analytics for EACH user
-    for (const userId of pushUserIds) {
+      return {
+        success: true,
+        sent: result.recipients || filteredUserIds.length,
+      };
+    } catch (error: any) {
+      console.error('❌ [OneSignal] Push notification error:', error);
+      
+      // 📊 Log exception to analytics for EACH user
+      for (const userId of filteredUserIds) {
       try {
         await supabase.from('notification_analytics').insert({
           signal_id: signalData.id,

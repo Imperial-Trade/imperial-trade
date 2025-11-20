@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './use-toast';
+import { supabase } from '../integrations/supabase/client';
 
 // OneSignal SDK - accessed globally from CDN script
 declare global {

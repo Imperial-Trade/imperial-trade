@@ -36,6 +36,7 @@ import { NotificationBellIcon } from '@/components/notifications/NotificationBel
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
 import { useOneSignal } from '@/hooks/useOneSignal';
+import { AirbnbStyleNotificationModal } from '@/components/notifications/AirbnbStyleNotificationModal';
 
 export default function SignalStream() {
   const {
@@ -84,6 +85,7 @@ export default function SignalStream() {
   const [lastTimestampUpdate, setLastTimestampUpdate] = useState(Date.now());
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
+  const [showAirbnbNotificationModal, setShowAirbnbNotificationModal] = useState(false);
   
   // Initialize selectedEducators with all educator IDs for consistency across devices
   const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
@@ -102,21 +104,21 @@ export default function SignalStream() {
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
 
-  // Auto-prompt for push notifications after welcome screen
+  // ✅ NEW: Auto-show Airbnb-style notification modal for authenticated users
   useEffect(() => {
     if (!user || !hasSeenWelcome || !isPusherInitialized || isPushEnabled) return;
 
-    // Check if user has been prompted before
-    const hasBeenPrompted = localStorage.getItem('push-notification-prompted');
-    if (hasBeenPrompted) return;
+    // Check if user has already seen the modal
+    const hasSeenModal = localStorage.getItem(`notification_permission_shown_${user.id}`);
+    if (hasSeenModal) return;
 
-    // Show prompt after 10 seconds
+    // Show Airbnb-style modal after 2 seconds
     const timer = setTimeout(() => {
-      setShouldShowNotificationPrompt(true);
-    }, 10000);
+      setShowAirbnbNotificationModal(true);
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [user, hasSeenWelcome, isPusherInitialized, isPushEnabled, setShouldShowNotificationPrompt]);
+  }, [user, hasSeenWelcome, isPusherInitialized, isPushEnabled]);
 
   const handleBellClick = async () => {
     setUnreadNotifications(0);
@@ -2064,7 +2066,19 @@ export default function SignalStream() {
             </DialogContent>
           </Dialog>
           
-          {/* ✅ Removed custom modal - bell icon triggers native iOS prompt directly */}
+          {/* ✅ Airbnb-Style Notification Permission Modal */}
+          {showAirbnbNotificationModal && (
+            <AirbnbStyleNotificationModal
+              onClose={() => setShowAirbnbNotificationModal(false)}
+              onSuccess={() => {
+                setShowAirbnbNotificationModal(false);
+                toast({
+                  title: "You're all set! 🎉",
+                  description: "You'll now receive trade notifications",
+                });
+              }}
+            />
+          )}
         </div>
       </div>
     </StreamErrorBoundary>

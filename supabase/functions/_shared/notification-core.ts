@@ -530,7 +530,7 @@ export async function sendPushNotification(
     }
   }
 
-  console.log(`📊 [Preference Enforcement] Original: ${pushUserIds.length}, Filtered: ${filteredUserIds.length}`, {
+  console.log(`📊 [Preference Enforcement] Original: ${extractedUserIds.length}, Filtered: ${filteredUserIds.length}`, {
     user_disabled: skipReasons.user_disabled.length,
     quiet_hours: skipReasons.quiet_hours.length,
     rate_limited: skipReasons.rate_limited.length

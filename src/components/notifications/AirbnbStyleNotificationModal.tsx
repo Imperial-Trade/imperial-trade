@@ -94,29 +94,46 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
       });
 
       // Check if preferences already exist
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('notification_preferences')
-        .select('id')
+        .select('user_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking preferences:', checkError);
+        throw checkError;
+      }
 
       if (existing) {
         // Update existing preferences
-        await supabase
+        const { error: updateError } = await supabase
           .from('notification_preferences')
           .update({
             ...preferences,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
+
+        if (updateError) {
+          console.error('Error updating preferences:', updateError);
+          throw updateError;
+        }
       } else {
         // Create new preferences
-        await supabase
+        const { error: insertError } = await supabase
           .from('notification_preferences')
           .insert({
             user_id: user.id,
             ...preferences,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           });
+
+        if (insertError) {
+          console.error('Error inserting preferences:', insertError);
+          throw insertError;
+        }
       }
 
       // Step 3: Mark that user has seen this modal

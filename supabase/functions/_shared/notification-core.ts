@@ -356,7 +356,7 @@ export async function sendPushNotification(
   supabase: any,
   template: NotificationTemplate,
   signalData: SignalData,
-  pushUserIds: string[]
+  pushUserIds: any[]
 ): Promise<{ success: boolean; sent: number; error?: string }> {
   const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
   const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
@@ -366,18 +366,23 @@ export async function sendPushNotification(
     return { success: false, error: 'OneSignal not configured', sent: 0 };
   }
 
-  if (pushUserIds.length === 0) {
+  // ✅ CRITICAL FIX: Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
+  const extractedUserIds = Array.isArray(pushUserIds) 
+    ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+    : [];
+
+  if (extractedUserIds.length === 0) {
     console.log('ℹ️ No push-enabled users for this notification');
     return { success: true, sent: 0 };
   }
 
   // ✅ CRITICAL FIX: Fetch Player IDs from database FIRST (before preference filtering)
-  console.log(`📋 [OneSignal] Fetching Player IDs for ${pushUserIds.length} users`);
+  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users`);
   
   const { data: profiles, error: profileError } = await supabase
     .from('profiles')
     .select('id, device_token')
-    .in('id', pushUserIds)
+    .in('id', extractedUserIds)
     .not('device_token', 'is', null);
 
   if (profileError) {
@@ -398,7 +403,7 @@ export async function sendPushNotification(
     }
   });
 
-  console.log(`📋 [Player IDs] Found ${userPlayerMap.size} Player IDs for ${pushUserIds.length} users`);
+  console.log(`📋 [Player IDs] Found ${userPlayerMap.size} Player IDs for ${extractedUserIds.length} users`);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
@@ -411,7 +416,7 @@ export async function sendPushNotification(
     rate_limited: []
   };
 
-  for (const userId of pushUserIds) {
+  for (const userId of extractedUserIds) {
     try {
       // Load user preferences
       const { data: prefs } = await supabase

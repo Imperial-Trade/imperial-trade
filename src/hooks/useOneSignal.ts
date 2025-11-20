@@ -32,6 +32,16 @@ export const useOneSignal = (): UseOneSignalReturn => {
       return;
     }
 
+    // iOS PWA Detection
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone;
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || isInStandaloneMode;
+    
+    if (isIOS && !isPWA) {
+      console.warn('⚠️ [iOS] Not running as PWA. Push notifications require "Add to Home Screen"');
+      console.warn('📱 [iOS] Instructions: Safari → Share → Add to Home Screen → Open from Home Screen');
+    }
+
     if (typeof window.OneSignal === 'undefined') {
       console.log('⏳ [OneSignal] SDK not loaded yet, waiting...');
       // Wait for SDK to load
@@ -49,7 +59,11 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
     async function initializeOneSignal() {
       try {
-        console.log('🚀 [OneSignal] Initializing...');
+        console.log('🚀 [OneSignal] Initializing...', {
+          platform: isIOS ? 'iOS' : 'Other',
+          isPWA,
+          userAgent: navigator.userAgent.substring(0, 50)
+        });
         
         // Wait for OneSignal to be ready
         await window.OneSignal.init({
@@ -137,8 +151,23 @@ export const useOneSignal = (): UseOneSignalReturn => {
       return false;
     }
 
+    // iOS PWA Check
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone;
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || isInStandaloneMode;
+    
+    if (isIOS && !isPWA) {
+      console.error('❌ [iOS] Cannot subscribe: Not in PWA mode');
+      toast({
+        title: "iOS Installation Required",
+        description: "Tap Share → Add to Home Screen, then open from your home screen.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     try {
-      console.log('🔔 [OneSignal] Starting subscription...');
+      console.log('🔔 [OneSignal] Starting subscription...', { isIOS, isPWA });
 
       // Request notification permission
       const permission = await window.OneSignal.Notifications.requestPermission();
@@ -147,7 +176,9 @@ export const useOneSignal = (): UseOneSignalReturn => {
         console.warn('⚠️ [OneSignal] Permission denied');
         toast({
           title: "Permission Denied",
-          description: "Please enable notifications in your browser settings.",
+          description: isIOS 
+            ? "Enable notifications in iOS Settings → Trade Imperial → Notifications" 
+            : "Please enable notifications in your browser settings.",
           variant: "destructive",
         });
         return false;

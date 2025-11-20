@@ -68,17 +68,25 @@ export const useOneSignal = (): UseOneSignalReturn => {
         if (isSubscribed) {
           setIsPushEnabled(true);
           
-          // ✅ SYNC: Ensure database matches OneSignal state
+          // ✅ SYNC: Ensure database matches OneSignal state + save Player ID
           if (user?.id) {
+            // Get the OneSignal Player ID
+            const playerId = await window.OneSignal.User.PushSubscription.id;
+            
             const { error } = await supabase
               .from('profiles')
-              .update({ xeon_stream_subscription: true })
+              .update({ 
+                xeon_stream_subscription: true,
+                device_token: playerId || null,
+                device_platform: 'web',
+                device_token_updated_at: new Date().toISOString()
+              })
               .eq('id', user.id);
             
             if (error) {
-              console.error('❌ [Database] Failed to sync xeon_stream_subscription:', error);
+              console.error('❌ [Database] Failed to sync subscription + Player ID:', error);
             } else {
-              console.log('✅ [Database] Synced xeon_stream_subscription to true');
+              console.log('✅ [Database] Synced subscription + Player ID:', playerId);
             }
           }
         } else {
@@ -91,17 +99,27 @@ export const useOneSignal = (): UseOneSignalReturn => {
           const isNowSubscribed = event.current.optedIn;
           setIsPushEnabled(isNowSubscribed);
           
-          // Update database
+          // Update database with subscription status + Player ID
           if (user?.id) {
+            let playerId = null;
+            if (isNowSubscribed) {
+              playerId = await window.OneSignal.User.PushSubscription.id;
+            }
+            
             const { error } = await supabase
               .from('profiles')
-              .update({ xeon_stream_subscription: isNowSubscribed })
+              .update({ 
+                xeon_stream_subscription: isNowSubscribed,
+                device_token: playerId,
+                device_platform: isNowSubscribed ? 'web' : null,
+                device_token_updated_at: new Date().toISOString()
+              })
               .eq('id', user.id);
             
             if (error) {
-              console.error('❌ [Database] Failed to update subscription status:', error);
+              console.error('❌ [Database] Failed to update subscription + Player ID:', error);
             } else {
-              console.log(`✅ [Database] Updated xeon_stream_subscription to ${isNowSubscribed}`);
+              console.log(`✅ [Database] Updated subscription to ${isNowSubscribed} + Player ID:`, playerId);
             }
           }
         });
@@ -138,24 +156,29 @@ export const useOneSignal = (): UseOneSignalReturn => {
       // Opt in to push notifications
       await window.OneSignal.User.PushSubscription.optIn();
       
-      const userId = await window.OneSignal.User.PushSubscription.id;
+      const playerId = await window.OneSignal.User.PushSubscription.id;
       console.log('✅ [OneSignal] Subscribed successfully!', {
-        userId,
+        playerId,
         permission: 'granted'
       });
 
-      // ✅ CRITICAL FIX: Update database to mark user as push-enabled
+      // ✅ CRITICAL FIX: Update database to mark user as push-enabled + save Player ID
       if (user?.id) {
         const { error } = await supabase
           .from('profiles')
-          .update({ xeon_stream_subscription: true })
+          .update({ 
+            xeon_stream_subscription: true,
+            device_token: playerId || null,
+            device_platform: 'web',
+            device_token_updated_at: new Date().toISOString()
+          })
           .eq('id', user.id);
 
         if (error) {
-          console.error('❌ [Database] Failed to update xeon_stream_subscription:', error);
+          console.error('❌ [Database] Failed to update subscription + Player ID:', error);
           // Don't fail the whole operation - user is still subscribed to OneSignal
         } else {
-          console.log('✅ [Database] Updated xeon_stream_subscription to true');
+          console.log('✅ [Database] Updated subscription + Player ID:', playerId);
         }
       }
 
@@ -195,17 +218,22 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
       console.log('✅ [OneSignal] Unsubscribed successfully');
 
-      // ✅ CRITICAL FIX: Update database to mark user as not push-enabled
+      // ✅ CRITICAL FIX: Update database to mark user as not push-enabled + clear Player ID
       if (user?.id) {
         const { error } = await supabase
           .from('profiles')
-          .update({ xeon_stream_subscription: false })
+          .update({ 
+            xeon_stream_subscription: false,
+            device_token: null,
+            device_platform: null,
+            device_token_updated_at: new Date().toISOString()
+          })
           .eq('id', user.id);
 
         if (error) {
-          console.error('❌ [Database] Failed to update xeon_stream_subscription:', error);
+          console.error('❌ [Database] Failed to update subscription:', error);
         } else {
-          console.log('✅ [Database] Updated xeon_stream_subscription to false');
+          console.log('✅ [Database] Updated subscription to false + cleared Player ID');
         }
       }
 

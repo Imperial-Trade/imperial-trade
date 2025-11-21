@@ -105,3 +105,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     heartbeatIntervalMs: 15000
   }
 });
+
+// ✅ Expose Supabase to window for console debugging
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase;
+  console.log('🔧 [Debug] Supabase client exposed to window.supabase');
+}

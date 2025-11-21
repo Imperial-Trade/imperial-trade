@@ -15,9 +15,8 @@ const ResponsiveUserManagementTable = lazy(() => import("@/components/admin/Resp
 const AdminSignalManagement = lazy(() => import("@/components/admin/AdminSignalManagement").then(m => ({
   default: m.AdminSignalManagement
 })));
-const EnhancedTradeNotificationDashboard = lazy(() => import("@/components/admin/EnhancedTradeNotificationDashboard").then(m => ({
-  default: m.EnhancedTradeNotificationDashboard
-})));
+// ✅ FIX: Component is now exported as default, so import directly
+const EnhancedTradeNotificationDashboard = lazy(() => import("@/components/admin/EnhancedTradeNotificationDashboard"));
 const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({
   default: m.SystemMonitoring
 })));

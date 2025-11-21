@@ -132,3 +132,4 @@ The deployment scripts now automatically load environment variables from `.env`:
 3. Update all places where the old token was used
 4. Review access logs for unauthorized activity
 
+

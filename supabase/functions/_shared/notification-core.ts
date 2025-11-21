@@ -373,6 +373,21 @@ export async function sendPushNotification(
 
   if (extractedUserIds.length === 0) {
     console.log('ℹ️ No push-enabled users for this notification');
+    
+    // ✅ FIX: Log to analytics even when no users (for dashboard visibility)
+    try {
+      await supabase.from('notification_analytics').insert({
+        signal_id: signalData.id,
+        user_id: null, // System-level notification attempt
+        notification_type: template.type,
+        sent_at: new Date().toISOString(),
+        failed_at: new Date().toISOString(),
+        failure_reason: 'No push-enabled users available',
+      });
+    } catch (error) {
+      console.warn('Failed to log analytics:', error);
+    }
+    
     return { success: true, sent: 0 };
   }
 
@@ -392,6 +407,23 @@ export async function sendPushNotification(
 
   if (!profiles || profiles.length === 0) {
     console.log('ℹ️ No Player IDs found for push users');
+    
+    // ✅ FIX: Log to analytics for each user without Player ID (for dashboard visibility)
+    for (const userId of extractedUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: 'No Player ID available - User needs to subscribe via Airbnb modal',
+        });
+      } catch (error) {
+        console.warn('Failed to log analytics:', error);
+      }
+    }
+    
     return { success: true, sent: 0 };
   }
 
@@ -538,6 +570,8 @@ export async function sendPushNotification(
 
   if (filteredUserIds.length === 0) {
     console.log('ℹ️ All users filtered by preferences');
+    
+    // Analytics already logged above for each filtered user with reason
     return { success: true, sent: 0 };
   }
 
@@ -547,7 +581,26 @@ export async function sendPushNotification(
     .filter(Boolean) as string[];
 
   if (finalPlayerIds.length === 0) {
-    console.log('ℹ️ All users filtered or no Player IDs available');
+    console.log('ℹ️ All users filtered or no Player IDs available (after preference check)');
+    
+    // ✅ FIX: Log to analytics for users who passed preferences but have no Player ID
+    for (const userId of filteredUserIds) {
+      if (!userPlayerMap.get(userId)) {
+        try {
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            user_id: userId,
+            notification_type: template.type,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: 'No Player ID available after preference check',
+          });
+        } catch (error) {
+          console.warn('Failed to log analytics:', error);
+        }
+      }
+    }
+    
     return { success: true, sent: 0 };
   }
 

@@ -74,7 +74,8 @@ interface NotificationMetrics {
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
-export function EnhancedTradeNotificationDashboard() {
+// ✅ FIX: Export as default to match AdminTools import
+export default function EnhancedTradeNotificationDashboard() {
   const [metrics, setMetrics] = useState<NotificationMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

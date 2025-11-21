@@ -38,7 +38,7 @@ export const NotificationPromptProvider = ({ children }: { children: ReactNode }
     const checkDatabaseSubscription = async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('push_subscription_active, onesignal_player_id')
+        .select('xeon_stream_subscription, device_token')
         .eq('id', user.id)
         .single();
       
@@ -47,7 +47,7 @@ export const NotificationPromptProvider = ({ children }: { children: ReactNode }
         return;
       }
 
-      if (data?.push_subscription_active) {
+      if (data?.xeon_stream_subscription) {
         // User is subscribed in database - sync localStorage
         const promptKey = `imperial_notification_prompt_${user.id}`;
         const subscriptionKey = `imperial_push_subscribed_${user.id}`;
@@ -71,12 +71,12 @@ export const NotificationPromptProvider = ({ children }: { children: ReactNode }
     // Verify database reflects subscription
     const { data } = await supabase
       .from('profiles')
-      .select('push_subscription_active')
+      .select('xeon_stream_subscription')
       .eq('id', user.id)
       .single();
     
     // Only mark as seen if actually subscribed in database
-    if (data?.push_subscription_active) {
+    if (data?.xeon_stream_subscription) {
       const promptKey = `imperial_notification_prompt_${user.id}`;
       const subscriptionKey = `imperial_push_subscribed_${user.id}`;
       localStorage.setItem(promptKey, 'true');

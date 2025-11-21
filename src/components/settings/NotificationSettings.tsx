@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface NotificationPreferences {
-  push_subscription_active: boolean;
+  xeon_stream_subscription: boolean; // ✅ FIX: Changed from push_subscription_active
   email_notifications: boolean;
   signal_notifications: boolean;
   tp_notifications: boolean;
@@ -32,7 +32,7 @@ export const NotificationSettings: React.FC = () => {
   const unsubscribeFromPush = async () => false;
 
   const [preferences, setPreferences] = useState<NotificationPreferences>({
-    push_subscription_active: false,
+    xeon_stream_subscription: false, // ✅ FIX: Changed from push_subscription_active
     email_notifications: true,
     signal_notifications: true,
     tp_notifications: true,
@@ -53,7 +53,7 @@ export const NotificationSettings: React.FC = () => {
         const { data: profile, error } = await supabase
           .from('profiles')
           .select(`
-            push_subscription_active,
+            xeon_stream_subscription,
             email_notifications,
             notification_preferences
           `)
@@ -66,7 +66,7 @@ export const NotificationSettings: React.FC = () => {
           const notificationPrefs = (profile.notification_preferences as Record<string, any>) || {};
           
           setPreferences({
-            push_subscription_active: profile.push_subscription_active || false,
+            xeon_stream_subscription: profile.xeon_stream_subscription || false, // ✅ FIX
             email_notifications: profile.email_notifications ?? true,
             signal_notifications: notificationPrefs.signal_notifications ?? true,
             tp_notifications: notificationPrefs.tp_notifications ?? true,
@@ -78,7 +78,7 @@ export const NotificationSettings: React.FC = () => {
         } else {
           // Set defaults if no profile data exists
           setPreferences({
-            push_subscription_active: false,
+            xeon_stream_subscription: false, // ✅ FIX
             email_notifications: true,
             signal_notifications: true,
             tp_notifications: true,
@@ -111,12 +111,12 @@ export const NotificationSettings: React.FC = () => {
     try {
       const newPreferences = { ...preferences, ...updates };
       
-      const { push_subscription_active, email_notifications, ...notificationPrefs } = newPreferences;
+      const { xeon_stream_subscription, email_notifications, ...notificationPrefs } = newPreferences; // ✅ FIX
       
       const { error } = await supabase
         .from('profiles')
         .update({
-          push_subscription_active,
+          xeon_stream_subscription, // ✅ FIX
           email_notifications,
           notification_preferences: notificationPrefs,
         })
@@ -148,12 +148,12 @@ export const NotificationSettings: React.FC = () => {
     if (enabled && !isPushEnabled) {
       const success = await subscribeToPush();
       if (success) {
-        updatePreferences({ push_subscription_active: true });
+        updatePreferences({ xeon_stream_subscription: true }); // ✅ FIX
       }
     } else if (!enabled && isPushEnabled) {
       const success = await unsubscribeFromPush();
       if (success) {
-        updatePreferences({ push_subscription_active: false });
+        updatePreferences({ xeon_stream_subscription: false }); // ✅ FIX
       }
     }
   };

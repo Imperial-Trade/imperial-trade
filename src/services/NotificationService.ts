@@ -163,7 +163,7 @@ class NotificationService {
       // Get notification preferences from profile (fallback until new tables are available)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('notification_preferences, push_subscription_active')
+        .select('notification_preferences, xeon_stream_subscription')
         .eq('id', userId)
         .single();
 

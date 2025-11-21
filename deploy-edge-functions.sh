@@ -1,58 +1,71 @@
 #!/bin/bash
-# Deploy all critical Edge Functions to Supabase
-# Run this script after merging to main
+# Bash script to deploy all notification edge functions
+# Run this from the imperial-trade directory
 
-set -e
-
-echo "🚀 Deploying Supabase Edge Functions..."
+echo "🚀 Deploying All Notification Edge Functions..."
 echo ""
 
-PROJECT_REF="kmuoqkcxguafxulqlbmi"
-
-# Critical notification-related functions
-FUNCTIONS=(
-  "enhanced-signal-notification-dispatcher"
-  "price-monitoring"
-  "priority-alert-monitor"
-  "signal-notification-dispatcher"
-  "order-trigger-monitor"
-  "notification-cleanup"
-)
-
-echo "📦 Functions to deploy:"
-for func in "${FUNCTIONS[@]}"; do
-  echo "  - $func"
-done
-echo ""
-
-# Check if supabase CLI is installed
+# Check if Supabase CLI is installed
 if ! command -v supabase &> /dev/null; then
     echo "❌ Supabase CLI not found!"
-    echo "📥 Installing Supabase CLI via npm..."
-    npm install -g supabase
+    echo "Please install it first: https://supabase.com/docs/guides/cli"
     echo ""
+    echo "Quick install:"
+    echo "  npm install -g supabase"
+    exit 1
 fi
 
-# Deploy each function
-for func in "${FUNCTIONS[@]}"; do
-  echo "🔄 Deploying $func..."
-  supabase functions deploy "$func" --project-ref "$PROJECT_REF" --no-verify-jwt
-  
-  if [ $? -eq 0 ]; then
-    echo "✅ $func deployed successfully"
-  else
-    echo "❌ Failed to deploy $func"
-    exit 1
-  fi
-  echo ""
+echo "✅ Supabase CLI found"
+echo ""
+
+# Array of functions to deploy
+functions=(
+    "notify-signal-created"
+    "notify-tp-hit"
+    "notify-stop-loss-hit"
+    "notify-signal-closed"
+    "notify-limit-activated"
+    "notify-notes-updated"
+)
+
+deployed=0
+failed=0
+
+for func in "${functions[@]}"; do
+    echo "📤 Deploying: $func..."
+    
+    if supabase functions deploy "$func"; then
+        echo "✅ $func deployed successfully!"
+        ((deployed++))
+    else
+        echo "❌ $func deployment failed"
+        ((failed++))
+    fi
+    
+    echo ""
 done
 
-echo ""
-echo "🎉 All Edge Functions deployed successfully!"
-echo ""
-echo "⚠️  IMPORTANT: Don't forget to apply the SQL trigger function fix!"
-echo "   1. Open Supabase Dashboard > SQL Editor"
-echo "   2. Copy contents of APPLY_THIS_TO_SUPABASE.sql"
-echo "   3. Paste and RUN in SQL Editor"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 DEPLOYMENT SUMMARY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Deployed: $deployed / ${#functions[@]}"
+if [ $failed -gt 0 ]; then
+    echo "❌ Failed: $failed"
+fi
 echo ""
 
+if [ $deployed -eq ${#functions[@]} ]; then
+    echo "🎉 ALL FUNCTIONS DEPLOYED SUCCESSFULLY!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Clear your browser localStorage"
+    echo "  2. Log out and log back in"
+    echo "  3. Airbnb modal should appear after 2 seconds"
+    echo "  4. Click 'Yes, notify me'"
+    echo "  5. Create a test trade alert"
+    echo "  6. Receive push notification! 🎉"
+else
+    echo "⚠️ Some functions failed to deploy. Please check the errors above."
+fi
+
+echo ""

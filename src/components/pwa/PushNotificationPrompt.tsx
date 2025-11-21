@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, X, Zap, TrendingUp, Shield, Smartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-// TODO: Import usePusherBeams when integrating
 import { useAuth } from '@/contexts/AuthContext';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 interface PushNotificationPromptProps {
   onClose?: () => void;
@@ -19,23 +19,36 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
   delayMs = 10000, // 10 seconds default
 }) => {
   const { user } = useAuth();
-  // TODO: Integrate usePusherBeams
-  const isInitialized = false;
-  const isPushEnabled = false;
-  const hasPrompted = false;
-  const isSubscriptionLoading = false;
-  const requestPermission = async () => 'default';
-  const subscribeToPush = async () => false;
+  const { isInitialized, isPushEnabled, subscribeToPush } = useOneSignal();
   
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+
+  // Request browser notification permission
+  const requestPermission = async (): Promise<NotificationPermission> => {
+    if (!('Notification' in window)) {
+      return 'denied';
+    }
+    
+    if (Notification.permission === 'granted') {
+      return 'granted';
+    }
+    
+    if (Notification.permission === 'denied') {
+      return 'denied';
+    }
+    
+    const permission = await Notification.requestPermission();
+    return permission;
+  };
 
   useEffect(() => {
     if (!user) return;
 
     // Check if user has already been prompted or enabled push
     const hasBeenPrompted = localStorage.getItem('push-notification-prompted');
-    if (hasBeenPrompted || isPushEnabled || hasPrompted) return;
+    if (hasBeenPrompted || isPushEnabled) return;
 
     if (showAfterDelay) {
       const timer = setTimeout(() => {
@@ -46,15 +59,29 @@ export const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
     } else {
       setIsVisible(true);
     }
-  }, [user, isPushEnabled, hasPrompted, showAfterDelay, delayMs]);
+  }, [user, isPushEnabled, showAfterDelay, delayMs]);
 
   const handleEnable = async () => {
-    const success = await requestPermission();
-    if (success) {
-      setTimeout(async () => {
-        await subscribeToPush();
+    setIsSubscriptionLoading(true);
+    try {
+      const permissionGranted = await requestPermission();
+      if (permissionGranted === 'granted') {
+        // Small delay to let permission dialog close
+        setTimeout(async () => {
+          const subscribed = await subscribeToPush();
+          if (subscribed) {
+            handleClose();
+          }
+          setIsSubscriptionLoading(false);
+        }, 500);
+      } else {
+        setIsSubscriptionLoading(false);
+        // Permission denied - close prompt
         handleClose();
-      }, 1000);
+      }
+    } catch (error) {
+      console.error('❌ [PushNotificationPrompt] Failed to enable notifications:', error);
+      setIsSubscriptionLoading(false);
     }
   };
 

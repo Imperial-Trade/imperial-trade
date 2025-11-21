@@ -1,6 +1,6 @@
 -- Migration: Fix instant_notification_router trigger for Pusher Beams
 -- This removes all references to OneSignal (onesignal_player_id, onesignal_subscription_status)
--- and updates the trigger to work with Pusher Beams (using push_subscription_active only)
+-- and updates the trigger to work with Pusher Beams (using xeon_stream_subscription)
 
 CREATE OR REPLACE FUNCTION public.instant_notification_router()
 RETURNS trigger
@@ -42,7 +42,7 @@ BEGIN
 
   RAISE WARNING '👥 [USERS] Found % active users', jsonb_array_length(v_active_users);
 
-  -- ✅ FIX: Get push-enabled users for Pusher Beams (removed onesignal_player_id and onesignal_subscription_status)
+  -- ✅ FIX: Get push-enabled users for OneSignal (using xeon_stream_subscription AND device_token)
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'user_id', id,
     'display_name', COALESCE(NULLIF(trim(display_name), ''), NULLIF(trim(real_name), ''), 'User')
@@ -50,9 +50,10 @@ BEGIN
   INTO v_push_users
   FROM public.profiles
   WHERE account_status = 'active'
-    AND push_subscription_active = true;
+    AND COALESCE(xeon_stream_subscription, false) = true
+    AND device_token IS NOT NULL; -- ✅ CRITICAL: Only users with Player IDs
 
-  RAISE WARNING '📱 [PUSH] Found % push-enabled users', jsonb_array_length(v_push_users);
+  RAISE WARNING '📱 [PUSH] Found % push-enabled users WITH Player IDs', jsonb_array_length(v_push_users);
 
   SELECT 
     COALESCE(NULLIF(trim(p.display_name), ''), NULLIF(trim(p.real_name), ''), 'Unknown Trader'),

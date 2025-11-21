@@ -3,8 +3,22 @@
 # Deploy all notification edge functions
 # These functions share the updated notification-core.ts with notes support
 
-export SUPABASE_ACCESS_TOKEN=sbp_b7a054723ccb57908638330e0ea71550d92febc6
-PROJECT_REF=akuddkuqqevbnjpaqnwl
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+  export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# Check if SUPABASE_ACCESS_TOKEN is set
+if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+  echo "❌ ERROR: SUPABASE_ACCESS_TOKEN not set!"
+  echo "Please set it in your .env file or export it:"
+  echo "  export SUPABASE_ACCESS_TOKEN=your-token-here"
+  echo ""
+  echo "Get your token from: https://supabase.com/dashboard/account/tokens"
+  exit 1
+fi
+
+PROJECT_REF=kmuoqkcxguafxulqlbmi
 
 echo "🚀 Deploying Notification Edge Functions with Notes Support..."
 echo ""

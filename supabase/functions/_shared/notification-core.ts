@@ -349,91 +349,394 @@ export async function sendRealtimeNotification(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📱 PUSH NOTIFICATION (Pusher Beams - Mobile/Desktop)
+// 📱 PUSH NOTIFICATION (OneSignal - All Platforms)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export async function sendPushNotification(
   supabase: any,
   template: NotificationTemplate,
   signalData: SignalData,
-  pushUserIds: string[]
+  pushUserIds: any[]
 ): Promise<{ success: boolean; sent: number; error?: string }> {
-  const PUSHER_INSTANCE_ID = Deno.env.get('PUSHER_INSTANCE_ID');
-  const PUSHER_SECRET_KEY = Deno.env.get('PUSHER_SECRET_KEY');
+  const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
+  const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
-  if (!PUSHER_INSTANCE_ID || !PUSHER_SECRET_KEY) {
-    console.warn('⚠️ Pusher Beams not configured - skipping push');
-    return { success: false, error: 'Pusher Beams not configured', sent: 0 };
+  if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+    console.warn('⚠️ OneSignal not configured - skipping push');
+    return { success: false, error: 'OneSignal not configured', sent: 0 };
   }
 
-  if (pushUserIds.length === 0) {
+  // ✅ CRITICAL FIX: Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
+  const extractedUserIds = Array.isArray(pushUserIds) 
+    ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
+    : [];
+
+  if (extractedUserIds.length === 0) {
     console.log('ℹ️ No push-enabled users for this notification');
+    
+    // ✅ FIX: Log to analytics even when no users (for dashboard visibility)
+    try {
+      await supabase.from('notification_analytics').insert({
+        signal_id: signalData.id,
+        user_id: null, // System-level notification attempt
+        notification_type: template.type,
+        sent_at: new Date().toISOString(),
+        failed_at: new Date().toISOString(),
+        failure_reason: 'No push-enabled users available',
+      });
+    } catch (error) {
+      console.warn('Failed to log analytics:', error);
+    }
+    
+    return { success: true, sent: 0 };
+  }
+
+  // ✅ CRITICAL FIX: Fetch Player IDs from database FIRST (before preference filtering)
+  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users`);
+  
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, device_token')
+    .in('id', extractedUserIds)
+    .not('device_token', 'is', null);
+
+  if (profileError) {
+    console.error('❌ Failed to fetch Player IDs:', profileError);
+    return { success: false, error: 'Failed to fetch Player IDs', sent: 0 };
+  }
+
+  if (!profiles || profiles.length === 0) {
+    console.log('ℹ️ No Player IDs found for push users');
+    
+    // ✅ FIX: Log to analytics for each user without Player ID (for dashboard visibility)
+    for (const userId of extractedUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: 'No Player ID available - User needs to subscribe via Airbnb modal',
+        });
+      } catch (error) {
+        console.warn('Failed to log analytics:', error);
+      }
+    }
+    
+    return { success: true, sent: 0 };
+  }
+
+  // Create a map of userId -> playerID
+  const userPlayerMap = new Map<string, string>();
+  profiles.forEach((p: any) => {
+    if (p.device_token) {
+      userPlayerMap.set(p.id, p.device_token);
+    }
+  });
+
+  console.log(`📋 [Player IDs] Found ${userPlayerMap.size} Player IDs for ${extractedUserIds.length} users`);
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  const filteredUserIds: string[] = [];
+  const skipReasons: Record<string, string[]> = {
+    user_disabled: [],
+    quiet_hours: [],
+    rate_limited: []
+  };
+
+  for (const userId of extractedUserIds) {
+    try {
+      // Load user preferences
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      // If no preferences, allow all (default behavior)
+      if (!prefs) {
+        filteredUserIds.push(userId);
+        continue;
+      }
+
+      // Check if notification type is enabled
+      const typeKey = template.type as keyof typeof prefs;
+      if (prefs[typeKey] === false) {
+        console.log(`⏭️ User ${userId.substring(0, 8)} disabled ${template.type}`);
+        skipReasons.user_disabled.push(userId);
+        
+        // Log skip reason to analytics
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: 'User disabled this notification type',
+        });
+        continue;
+      }
+
+      // Check quiet hours
+      if (prefs.quiet_hours_enabled && prefs.quiet_hours_start && prefs.quiet_hours_end) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = currentHour * 60 + currentMinute;
+
+        const [startHour, startMinute] = prefs.quiet_hours_start.split(':').map(Number);
+        const [endHour, endMinute] = prefs.quiet_hours_end.split(':').map(Number);
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+
+        let isQuietHours = false;
+        if (startTime <= endTime) {
+          // Same day quiet hours (e.g., 22:00 - 23:59)
+          isQuietHours = currentTime >= startTime && currentTime < endTime;
+        } else {
+          // Overnight quiet hours (e.g., 22:00 - 07:00)
+          isQuietHours = currentTime >= startTime || currentTime < endTime;
+        }
+
+        if (isQuietHours) {
+          console.log(`🔕 User ${userId.substring(0, 8)} in quiet hours`);
+          skipReasons.quiet_hours.push(userId);
+          
+          // Log skip reason to analytics
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            user_id: userId,
+            notification_type: template.type,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: 'User in quiet hours',
+          });
+          continue;
+        }
+      }
+
+      // Check rate limit (notifications per hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: recentNotifs, error: countError } = await supabase
+        .from('notification_analytics')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('sent_at', oneHourAgo)
+        .is('failed_at', null); // Only count successfully sent
+
+      if (countError) {
+        console.warn(`Failed to check rate limit for user ${userId}:`, countError);
+        // Allow on error (don't block user)
+        filteredUserIds.push(userId);
+        continue;
+      }
+
+      const maxPerHour = prefs.max_per_hour || 20;
+      if (recentNotifs && recentNotifs.length >= maxPerHour) {
+        console.log(`🚫 User ${userId.substring(0, 8)} over rate limit (${recentNotifs.length}/${maxPerHour})`);
+        skipReasons.rate_limited.push(userId);
+        
+        // Log skip reason to analytics
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: `Rate limit exceeded (${recentNotifs.length}/${maxPerHour})`,
+        });
+        continue;
+      }
+
+      // User passed all checks
+      filteredUserIds.push(userId);
+
+    } catch (prefError: any) {
+      console.warn(`Failed to check preferences for user ${userId}:`, prefError.message);
+      // Allow on error (don't block user)
+      filteredUserIds.push(userId);
+    }
+  }
+
+  console.log(`📊 [Preference Enforcement] Original: ${extractedUserIds.length}, Filtered: ${filteredUserIds.length}`, {
+    user_disabled: skipReasons.user_disabled.length,
+    quiet_hours: skipReasons.quiet_hours.length,
+    rate_limited: skipReasons.rate_limited.length
+  });
+
+  if (filteredUserIds.length === 0) {
+    console.log('ℹ️ All users filtered by preferences');
+    
+    // Analytics already logged above for each filtered user with reason
+    return { success: true, sent: 0 };
+  }
+
+  // ✅ CRITICAL FIX: Get Player IDs for filtered users
+  const finalPlayerIds = filteredUserIds
+    .map(userId => userPlayerMap.get(userId))
+    .filter(Boolean) as string[];
+
+  if (finalPlayerIds.length === 0) {
+    console.log('ℹ️ All users filtered or no Player IDs available (after preference check)');
+    
+    // ✅ FIX: Log to analytics for users who passed preferences but have no Player ID
+    for (const userId of filteredUserIds) {
+      if (!userPlayerMap.get(userId)) {
+        try {
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            user_id: userId,
+            notification_type: template.type,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: 'No Player ID available after preference check',
+          });
+        } catch (error) {
+          console.warn('Failed to log analytics:', error);
+        }
+      }
+    }
+    
     return { success: true, sent: 0 };
   }
 
   try {
-    // Pusher Beams uses "Interests" (Topics) instead of individual player IDs
-    // All authenticated users subscribe to the "trade_alerts" interest
-    const interest = 'trade_alerts';
-
-    console.log(`📤 Broadcasting to interest "${interest}":`, {
+    console.log(`📤 [OneSignal] Sending push notification:`, {
       type: template.type,
       asset: signalData.asset_name,
+      recipients: finalPlayerIds.length,
+      playerIds: finalPlayerIds.map(id => id.substring(0, 8) + '...'),
     });
 
-    // Build Pusher Beams payload
+    // Build OneSignal notification payload (WEB PUSH ONLY)
     const payload = {
-      interests: [interest],
-      web: {
-        notification: {
-          title: template.title,
-          body: template.message,
-          icon: 'https://tradeimperial.com/icon-192.png',
-          deep_link: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
-        },
-        data: {
-          signal_id: signalData.id,
-          type: template.type,
-          asset_name: signalData.asset_name,
-        },
+      app_id: ONESIGNAL_APP_ID,
+      
+      // ✅ CRITICAL FIX: Target SPECIFIC Player IDs (not segments)
+      include_player_ids: finalPlayerIds,
+      
+      // Notification content
+      headings: { en: template.title },
+      contents: { en: template.message },
+      
+      // Web-specific settings
+      url: `https://tradeimperial.com/dashboard/signal-stream?signal=${signalData.id}`,
+      chrome_web_icon: 'https://tradeimperial.com/icon-192.png',
+      chrome_web_image: signalData.author_avatar_url || undefined,
+      
+      // iOS Web Push settings (for PWA on iOS)
+      ios_badgeType: 'Increase',
+      ios_badgeCount: 1,
+      ios_sound: template.sound ? 'default' : undefined,
+      
+      // ❌ REMOVED: Android-specific settings (we're web-only, no native Android app)
+      // android_channel_id causes "Could not find android_channel_id" error
+      // android_accent_color is for native Android only
+      
+      // Custom data payload
+      data: {
+        signal_id: signalData.id,
+        type: template.type,
+        asset_name: signalData.asset_name,
+        entry_price: signalData.entry_price,
+        trade_type: signalData.trade_type,
+        author_name: signalData.author_name,
+        pips: signalData.pips,
+        tp_number: signalData.tp_number,
       },
+      
+      // Display settings
+      ttl: 86400, // 24 hours
+      priority: template.priority >= 3 ? 10 : 5,
     };
 
-    // Pusher Beams URL format (no region prefix needed)
-    const response = await fetch(
-      `https://${PUSHER_INSTANCE_ID}.pushnotifications.pusher.com/publish_api/v1/instances/${PUSHER_INSTANCE_ID}/publishes`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${PUSHER_SECRET_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    // Send to OneSignal API
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Pusher Beams API error:', result);
+      console.error('❌ [OneSignal] API error:', result);
+      
+      // 📊 Log failure to analytics for EACH user
+      for (const userId of filteredUserIds) {
+        try {
+          await supabase.from('notification_analytics').insert({
+            signal_id: signalData.id,
+            user_id: userId,
+            notification_type: template.type,
+            onesignal_notification_id: result.id || null,
+            sent_at: new Date().toISOString(),
+            failed_at: new Date().toISOString(),
+            failure_reason: result.errors?.[0] || 'OneSignal API failed',
+          });
+        } catch (analyticsError) {
+          console.warn('Failed to log analytics:', analyticsError);
+        }
+      }
+      
       return {
         success: false,
-        error: result.error || 'Pusher Beams API failed',
+        error: result.errors?.[0] || 'OneSignal API failed',
         sent: 0,
       };
     }
 
-    console.log(`✅ Push broadcast successful:`, {
-      publishId: result.publishId,
-      interest,
-    });
+      console.log(`✅ [OneSignal] Push sent successfully:`, {
+        id: result.id,
+        recipients: result.recipients || finalPlayerIds.length,
+      });
 
-    return {
-      success: true,
-      sent: pushUserIds.length, // Estimate based on subscribed users
-    };
-  } catch (error: any) {
-    console.error('❌ Push notification error:', error);
+      // 📊 Log success to analytics for EACH user
+      for (const userId of filteredUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          onesignal_notification_id: result.id || null,
+          sent_at: new Date().toISOString(),
+          delivered_at: new Date().toISOString(), // OneSignal confirms delivery immediately
+        });
+      } catch (analyticsError) {
+        console.warn('Failed to log analytics:', analyticsError);
+      }
+    }
+
+      return {
+        success: true,
+        sent: result.recipients || filteredUserIds.length,
+      };
+    } catch (error: any) {
+      console.error('❌ [OneSignal] Push notification error:', error);
+      
+      // 📊 Log exception to analytics for EACH user
+      for (const userId of filteredUserIds) {
+      try {
+        await supabase.from('notification_analytics').insert({
+          signal_id: signalData.id,
+          user_id: userId,
+          notification_type: template.type,
+          sent_at: new Date().toISOString(),
+          failed_at: new Date().toISOString(),
+          failure_reason: error.message || 'Unknown error',
+        });
+      } catch (analyticsError) {
+        console.warn('Failed to log analytics:', analyticsError);
+      }
+    }
+    
     return {
       success: false,
       error: error.message,

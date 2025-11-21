@@ -15,14 +15,8 @@ const ResponsiveUserManagementTable = lazy(() => import("@/components/admin/Resp
 const AdminSignalManagement = lazy(() => import("@/components/admin/AdminSignalManagement").then(m => ({
   default: m.AdminSignalManagement
 })));
-const NotificationTestPanel = lazy(() => import("@/components/admin/NotificationTestPanel").then(m => ({
-  default: m.NotificationTestPanel
-})));
-const NotificationAnalyticsDashboard = lazy(() => import("@/components/admin/NotificationAnalyticsDashboard").then(m => ({
-  default: m.NotificationAnalyticsDashboard
-})));
-const AdminNotificationSystem = lazy(() => import("@/components/admin/AdminNotificationSystem").then(m => ({
-  default: m.AdminNotificationSystem
+const EnhancedTradeNotificationDashboard = lazy(() => import("@/components/admin/EnhancedTradeNotificationDashboard").then(m => ({
+  default: m.EnhancedTradeNotificationDashboard
 })));
 const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({
   default: m.SystemMonitoring
@@ -173,11 +167,7 @@ export default function AdminTools() {
           
           {adminSection === 'notifications' && (
             <Suspense fallback={<LoadingFallback />}>
-              <div className="space-y-4">
-                <NotificationTestPanel />
-                <NotificationAnalyticsDashboard />
-                <AdminNotificationSystem />
-              </div>
+              <EnhancedTradeNotificationDashboard />
             </Suspense>
           )}
           

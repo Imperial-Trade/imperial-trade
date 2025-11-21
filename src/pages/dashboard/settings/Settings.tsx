@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { User as UserIcon, Bell, Shield, Palette, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationPreferences } from '@/components/user/NotificationPreferences';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -127,64 +128,8 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Notifications Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Notification Preferences
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Trading Signals</Label>
-                <p className="text-sm text-muted-foreground">Get notified about new trading signals</p>
-              </div>
-              <Switch
-                checked={profile.notifications.signals}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, signals: checked } 
-                  }))
-                }
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Forum Activity</Label>
-                <p className="text-sm text-muted-foreground">Get notified about forum replies and mentions</p>
-              </div>
-              <Switch
-                checked={profile.notifications.forum}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, forum: checked } 
-                  }))
-                }
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Educational Content</Label>
-                <p className="text-sm text-muted-foreground">Get notified about new courses and materials</p>
-              </div>
-              <Switch
-                checked={profile.notifications.education}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, education: checked } 
-                  }))
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Professional Notification Preferences */}
+        <NotificationPreferences />
 
         {/* Privacy Section */}
         <Card>

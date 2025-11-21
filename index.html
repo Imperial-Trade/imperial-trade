@@ -67,51 +67,10 @@
     
     <!-- OneSignal Initialization -->
     <script>
+      // ✅ FIX: Removed OneSignal.init() - useOneSignal.ts hook handles initialization
+      // This prevents double initialization and AppID mismatch errors
       window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        // Detect if running as iOS PWA
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || isInStandaloneMode;
-        
-        console.log('🍎 [iOS Detection]', { isIOS, isPWA, isInStandaloneMode });
-        
-        await OneSignal.init({
-          appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
-          safari_web_id: "web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e",
-          
-          // Explicit service worker paths (critical for iOS)
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          serviceWorkerParam: { scope: '/' },
-          
-          notifyButton: {
-            enable: false, // We use custom bell icon
-          },
-          
-          allowLocalhostAsSecureOrigin: true,
-          autoResubscribe: true,
-          
-          // ✅ CRITICAL FIX: DISABLE auto-prompt - we use custom Airbnb modal instead!
-          promptOptions: {
-            slidedown: {
-              enabled: false, // ← Disable OneSignal's native prompt
-              autoPrompt: false, // ← Disable auto-prompt completely
-            }
-          },
-          
-          // Disable native prompts
-          notifyButton: {
-            enable: false
-          }
-        });
-        
-        console.log('✅ [OneSignal] Initialized successfully');
-        
-        // iOS PWA Installation Guide
-        if (isIOS && !isPWA) {
-          console.warn('⚠️ [iOS] Not running as PWA. Push notifications require "Add to Home Screen"');
-        }
-      });
+      console.log('🔔 [OneSignal] SDK loaded - React hook will initialize');
     </script>
     
     <!-- Structured Data -->

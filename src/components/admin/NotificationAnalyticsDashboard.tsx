@@ -81,7 +81,7 @@ export function NotificationAnalyticsDashboard() {
         supabase
           .from('profiles')
           .select('id', { count: 'exact', head: true })
-          .eq('push_subscription_active', true),
+          .eq('xeon_stream_subscription', true), // ✅ FIX: Changed from push_subscription_active
         supabase
           .from('notification_delivery_log')
           .select('*')

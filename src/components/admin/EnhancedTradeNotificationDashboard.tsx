@@ -11,31 +11,35 @@ import {
   BarChart3, PieChart, Target, Download, Calendar, Search, User
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-// ✅ FIX: Lazy load Chart.js to prevent SSR/hydration errors
-import { lazy, Suspense } from 'react';
+// ✅ FIX: Import Chart.js normally (parent component is already lazy-loaded)
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 
-// Lazy load chart components
-const Line = lazy(() => import('react-chartjs-2').then(mod => ({ default: mod.Line })));
-const Doughnut = lazy(() => import('react-chartjs-2').then(mod => ({ default: mod.Doughnut })));
-const Bar = lazy(() => import('react-chartjs-2').then(mod => ({ default: mod.Bar })));
-
-// Register Chart.js components only on client side
-if (typeof window !== 'undefined') {
-  import('chart.js').then(({ Chart, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler }) => {
-    Chart.register(
-      CategoryScale,
-      LinearScale,
-      PointElement,
-      LineElement,
-      BarElement,
-      ArcElement,
-      Title,
-      Tooltip,
-      Legend,
-      Filler
-    );
-  });
-}
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface NotificationMetrics {
   total_sent: number;
@@ -443,10 +447,9 @@ export default function EnhancedTradeNotificationDashboard() {
             <CardDescription>Notification delivery patterns by hour</CardDescription>
           </CardHeader>
           <CardContent>
-            <Suspense fallback={<div className="h-64 flex items-center justify-center"><RefreshCw className="w-6 h-6 animate-spin" /></div>}>
-              <Line 
-                data={hourlyChartData} 
-                options={{
+            <Line 
+              data={hourlyChartData} 
+              options={{
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: {
@@ -456,9 +459,8 @@ export default function EnhancedTradeNotificationDashboard() {
                 scales: {
                   y: { beginAtZero: true }
                 }
-                }}
-              />
-            </Suspense>
+              }} 
+            />
           </CardContent>
         </Card>
 
@@ -473,18 +475,16 @@ export default function EnhancedTradeNotificationDashboard() {
           </CardHeader>
           <CardContent className="flex items-center justify-center">
             <div className="w-full max-w-sm">
-              <Suspense fallback={<div className="h-64 flex items-center justify-center"><RefreshCw className="w-6 h-6 animate-spin" /></div>}>
-                <Doughnut 
-                  data={typeChartData} 
-                  options={{
+              <Doughnut 
+                data={typeChartData} 
+                options={{
                   responsive: true,
                   maintainAspectRatio: true,
                   plugins: {
                     legend: { position: 'bottom' as const }
                   }
-                }}
+                }} 
               />
-              </Suspense>
             </div>
           </CardContent>
         </Card>

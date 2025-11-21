@@ -65,7 +65,7 @@ export default function SignalStream() {
   
   // OneSignal integration
   const {
-    isInitialized: isPusherInitialized,
+    isInitialized: isOneSignalInitialized, // ✅ FIX: Renamed for clarity
     isPushEnabled,
     subscribeToPush,
     unsubscribeFromPush
@@ -104,9 +104,9 @@ export default function SignalStream() {
     return () => window.removeEventListener('notification:received', handleNotificationReceived);
   }, []);
 
-  // ✅ NEW: Auto-show Airbnb-style notification modal for authenticated users
+  // ✅ FIXED: Auto-show Airbnb-style notification modal for authenticated users
   useEffect(() => {
-    if (!user || !hasSeenWelcome || !isPusherInitialized || isPushEnabled) return;
+    if (!user || !hasSeenWelcome || !isOneSignalInitialized || isPushEnabled) return;
 
     // Check if user has already seen the modal
     const hasSeenModal = localStorage.getItem(`notification_permission_shown_${user.id}`);
@@ -114,17 +114,18 @@ export default function SignalStream() {
 
     // Show Airbnb-style modal after 2 seconds
     const timer = setTimeout(() => {
+      console.log('✨ [Airbnb Modal] Showing modal for user:', user.email);
       setShowAirbnbNotificationModal(true);
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [user, hasSeenWelcome, isPusherInitialized, isPushEnabled]);
+  }, [user, hasSeenWelcome, isOneSignalInitialized, isPushEnabled]);
 
   const handleBellClick = async () => {
     setUnreadNotifications(0);
     
     // If not subscribed, trigger subscription flow
-    if (!isPushEnabled && isPusherInitialized) {
+    if (!isPushEnabled && isOneSignalInitialized) {
       try {
         // Request browser permission first
         if ('Notification' in window && Notification.permission === 'default') {

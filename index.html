@@ -91,14 +91,17 @@
           allowLocalhostAsSecureOrigin: true,
           autoResubscribe: true,
           
-          // iOS-specific: Only auto-prompt if in PWA mode
+          // ✅ CRITICAL FIX: DISABLE auto-prompt - we use custom Airbnb modal instead!
           promptOptions: {
             slidedown: {
-              enabled: true,
-              autoPrompt: isPWA || !isIOS, // Don't auto-prompt on iOS Safari browser
-              timeDelay: isPWA ? 2 : 10, // Longer delay if not PWA
-              pageViews: isPWA ? 1 : 3, // More pageviews required if not PWA
+              enabled: false, // ← Disable OneSignal's native prompt
+              autoPrompt: false, // ← Disable auto-prompt completely
             }
+          },
+          
+          // Disable native prompts
+          notifyButton: {
+            enable: false
           }
         });
         

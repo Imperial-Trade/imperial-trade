@@ -709,12 +709,12 @@ function RecentNotificationsList({ metrics }: { metrics: NotificationMetrics | n
                     {notif.type.replace(/_/g, ' ')}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    User: {notif.user_id.substring(0, 8)}...
+                    User: {notif.user_id?.substring(0, 8) || 'N/A'}...
                   </span>
                 </div>
                 {notif.onesignal_notification_id && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    OneSignal ID: {notif.onesignal_notification_id.substring(0, 20)}...
+                    OneSignal ID: {notif.onesignal_notification_id?.substring(0, 20)}...
                   </div>
                 )}
                 {notif.failure_reason && (
@@ -949,7 +949,7 @@ function UserSubscriptionsList() {
                         {user.device_token ? (
                           <>
                             <Bell className="w-3 h-3 mr-1" />
-                            {user.device_token.substring(0, 20)}...
+                            {user.device_token?.substring(0, 20)}...
                           </>
                         ) : (
                           <>

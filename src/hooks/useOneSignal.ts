@@ -68,6 +68,26 @@ export const useOneSignal = (): UseOneSignalReturn => {
         // Wait for OneSignal to be ready
         await window.OneSignal.init({
           appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
+          safari_web_id: "web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e",
+          
+          // Service worker paths
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/' },
+          
+          // Disable all auto-prompts (we use custom Airbnb modal)
+          promptOptions: {
+            slidedown: {
+              enabled: false,
+              autoPrompt: false,
+            }
+          },
+          
+          notifyButton: {
+            enable: false
+          },
+          
+          allowLocalhostAsSecureOrigin: true,
+          autoResubscribe: true,
         });
 
         setIsInitialized(true);

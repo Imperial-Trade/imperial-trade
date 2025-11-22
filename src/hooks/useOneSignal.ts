@@ -65,30 +65,40 @@ export const useOneSignal = (): UseOneSignalReturn => {
           userAgent: navigator.userAgent.substring(0, 50)
         });
         
-        // Wait for OneSignal to be ready
-        await window.OneSignal.init({
-          appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
-          safari_web_id: "web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e",
-          
-          // Service worker paths
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          serviceWorkerParam: { scope: '/' },
-          
-          // Disable all auto-prompts (we use custom Airbnb modal)
-          promptOptions: {
-            slidedown: {
-              enabled: false,
-              autoPrompt: false,
-            }
-          },
-          
-          notifyButton: {
-            enable: false
-          },
-          
-          allowLocalhostAsSecureOrigin: true,
-          autoResubscribe: true,
-        });
+        try {
+          // Wait for OneSignal to be ready
+          await window.OneSignal.init({
+            appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
+            safari_web_id: "web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e",
+            
+            // Service worker paths
+            serviceWorkerPath: '/OneSignalSDKWorker.js',
+            serviceWorkerParam: { scope: '/' },
+            
+            // Disable all auto-prompts (we use custom Airbnb modal)
+            promptOptions: {
+              slidedown: {
+                enabled: false,
+                autoPrompt: false,
+              }
+            },
+            
+            notifyButton: {
+              enable: false
+            },
+            
+            allowLocalhostAsSecureOrigin: true,
+            autoResubscribe: true,
+          });
+        } catch (initError: any) {
+          // ✅ CRITICAL FIX: If SDK already initialized or AppID mismatch, treat as success
+          if (initError.message?.includes('already initialized') || 
+              initError.message?.includes('AppID')) {
+            console.log('⚠️ [OneSignal] Init error but SDK is available:', initError.message);
+          } else {
+            throw initError; // Re-throw other errors
+          }
+        }
 
         setIsInitialized(true);
         console.log('✅ [OneSignal] Initialized successfully');

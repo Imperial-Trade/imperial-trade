@@ -132,3 +132,4 @@ console.log('device_token:', data.device_token);
 
 **The fix is deployed. Run the script after hard refresh!** 🚀
 
+

@@ -118,3 +118,4 @@ Switch to agent mode and ask me to expose Supabase to window for debugging.
 
 **The modal is the designed way to subscribe - use it!** ✅
 
+

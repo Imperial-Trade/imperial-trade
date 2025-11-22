@@ -106,15 +106,45 @@ export default function SignalStream() {
 
   // ✅ FIXED: Auto-show Airbnb-style notification modal for authenticated users
   useEffect(() => {
-    if (!user || !hasSeenWelcome || !isOneSignalInitialized || isPushEnabled) return;
+    console.log('🔍 [Modal Check] Conditions:', {
+      hasUser: !!user,
+      hasSeenWelcome,
+      isOneSignalInitialized,
+      isPushEnabled,
+      userId: user?.id
+    });
+
+    if (!user) {
+      console.log('⏭️ [Modal] No user - skipping');
+      return;
+    }
+
+    if (!hasSeenWelcome) {
+      console.log('⏭️ [Modal] User hasn\'t seen welcome - skipping');
+      return;
+    }
+
+    if (!isOneSignalInitialized) {
+      console.log('⏭️ [Modal] OneSignal not initialized - skipping');
+      return;
+    }
+
+    if (isPushEnabled) {
+      console.log('⏭️ [Modal] User already subscribed - skipping');
+      return;
+    }
 
     // Check if user has already seen the modal
     const hasSeenModal = localStorage.getItem(`notification_permission_shown_${user.id}`);
-    if (hasSeenModal) return;
+    if (hasSeenModal) {
+      console.log('⏭️ [Modal] User already saw modal - skipping');
+      return;
+    }
 
     // Show Airbnb-style modal after 2 seconds
+    console.log('✅ [Modal] All conditions met - showing modal in 2 seconds...');
     const timer = setTimeout(() => {
-      console.log('✨ [Airbnb Modal] Showing modal for user:', user.email);
+      console.log('✨ [Airbnb Modal] SHOWING NOW for user:', user.email);
       setShowAirbnbNotificationModal(true);
     }, 2000);
 

@@ -1947,8 +1947,8 @@ export default function SignalStream() {
               <div className="mb-6" />
               
               {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true" className="flex items-center gap-3">
-                <div className="flex-1">
+              <div data-prevent-widget-open="true" className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                <div className="w-full md:flex-1">
                   <SignalStreamFilters 
                     filters={filters} 
                     onFiltersChange={setFilters} 
@@ -1961,35 +1961,14 @@ export default function SignalStream() {
                     onClearUnread={() => setUnreadNotifications(0)}
                     onShowPrompt={() => setShouldShowNotificationPrompt(true)}
                   />
-                  {/* ✅ IMMEDIATE FIX: Direct Subscribe Button */}
-                  {!isPushEnabled && (
-                    <Button 
-                      variant="default" 
-                      size="sm" 
-                      className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white md:hidden"
-                      onClick={async () => {
-                        try {
-                          const subscribed = await subscribeToPush();
-                          if (subscribed) {
-                            toast({ title: "Enabled!", description: "You will now receive push notifications." });
-                          }
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                    >
-                      <Bell className="w-4 h-4 mr-2" />
-                      Enable Notifications
-                    </Button>
-                  )}
                 </div>
-                
-                {/* ✅ Desktop Subscribe Button */}
+
+                {/* ✅ Unified Subscribe Button (Visible if not subscribed) */}
                 {!isPushEnabled && (
                   <Button 
                     variant="default" 
                     size="sm" 
-                    className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg animate-pulse"
                     onClick={async () => {
                       try {
                         const subscribed = await subscribeToPush();
@@ -2002,7 +1981,7 @@ export default function SignalStream() {
                     }}
                   >
                     <Bell className="w-4 h-4 mr-2" />
-                    Enable Push
+                    Enable Notifications
                   </Button>
                 )}
 

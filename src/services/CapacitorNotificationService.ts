@@ -172,10 +172,10 @@ class CapacitorNotificationService {
   private async setupWebNotifications() {
     console.log('🌐 Setting up web push notifications...');
 
-    // Keep existing web notification setup
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
-    }
+    // ✅ FIX: Disabled auto-request. We use OneSignal via Airbnb modal instead.
+    // if ('Notification' in window && Notification.permission === 'default') {
+    //   await Notification.requestPermission();
+    // }
   }
 
   async showWebNotification(payload: NotificationPayload) {

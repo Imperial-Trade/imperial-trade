@@ -1961,7 +1961,50 @@ export default function SignalStream() {
                     onClearUnread={() => setUnreadNotifications(0)}
                     onShowPrompt={() => setShouldShowNotificationPrompt(true)}
                   />
+                  {/* ✅ IMMEDIATE FIX: Direct Subscribe Button */}
+                  {!isPushEnabled && (
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white md:hidden"
+                      onClick={async () => {
+                        try {
+                          const subscribed = await subscribeToPush();
+                          if (subscribed) {
+                            toast({ title: "Enabled!", description: "You will now receive push notifications." });
+                          }
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    >
+                      <Bell className="w-4 h-4 mr-2" />
+                      Enable Notifications
+                    </Button>
+                  )}
                 </div>
+                
+                {/* ✅ Desktop Subscribe Button */}
+                {!isPushEnabled && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={async () => {
+                      try {
+                        const subscribed = await subscribeToPush();
+                        if (subscribed) {
+                          toast({ title: "Enabled!", description: "You will now receive push notifications." });
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    Enable Push
+                  </Button>
+                )}
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">

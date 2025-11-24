@@ -233,7 +233,25 @@ export const useOneSignal = (): UseOneSignalReturn => {
       // Opt in to push notifications
       await window.OneSignal.User.PushSubscription.optIn();
       
-      const playerId = await window.OneSignal.User.PushSubscription.id;
+      // Wait for subscription ID to be available
+      let playerId = await window.OneSignal.User.PushSubscription.id;
+      let attempts = 0;
+      while (!playerId && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        playerId = await window.OneSignal.User.PushSubscription.id;
+        attempts++;
+      }
+
+      if (!playerId) {
+        console.error('❌ [OneSignal] Failed to get Player ID after subscription');
+        toast({
+          title: "Subscription Error",
+          description: "Could not get device ID. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
       console.log('✅ [OneSignal] Subscribed successfully!', {
         playerId,
         permission: 'granted'

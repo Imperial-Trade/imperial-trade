@@ -134,14 +134,16 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
         }
       }
 
-      // Step 3: Mark that user has seen this modal
+      // Step 3: Mark that user has seen this modal (CRITICAL - prevents modal from showing again)
       localStorage.setItem(`notification_permission_shown_${user.id}`, 'true');
+      console.log(`✅ [Modal] Marked modal as seen for user ${user.id}`);
 
       toast({
         title: "Notifications Enabled! 🎉",
         description: `You'll receive all types of notifications`,
       });
 
+      // Close modal and call success callback
       onSuccess();
     } catch (error: any) {
       console.error('Failed to enable notifications:', error);
@@ -167,8 +169,7 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
                       pointer-events-auto
                       animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in-0 
                       duration-500 ease-out
-                      max-h-[85vh] overflow-y-auto scrollbar-hide
-                      fixed bottom-0 sm:relative sm:bottom-auto">
+                      max-h-[85vh] overflow-y-auto scrollbar-hide">
         {/* Close Button */}
         <button
           onClick={onClose}

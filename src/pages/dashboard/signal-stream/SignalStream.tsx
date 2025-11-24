@@ -154,38 +154,11 @@ export default function SignalStream() {
   const handleBellClick = async () => {
     setUnreadNotifications(0);
     
-    // If not subscribed, trigger subscription flow
+    // ✅ FIX: If not subscribed, show Airbnb modal instead of native prompt
+    // OneSignal handles permission request internally via subscribeToPush()
     if (!isPushEnabled && isOneSignalInitialized) {
-      try {
-        // Request browser permission first
-        if ('Notification' in window && Notification.permission === 'default') {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            toast({
-              title: "Permission Denied",
-              description: "Please enable notifications in your browser settings.",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-        
-        // Subscribe to push notifications
-        const subscribed = await subscribeToPush();
-        if (subscribed) {
-          toast({
-            title: "Push Notifications Enabled! 🎉",
-            description: "You'll now receive instant trade alerts.",
-          });
-        }
-      } catch (error: any) {
-        console.error('❌ [SignalStream] Failed to subscribe to push:', error);
-        toast({
-          title: "Subscription Failed",
-          description: error.message || "Could not enable push notifications.",
-          variant: "destructive",
-        });
-      }
+      console.log('🔔 [SignalStream] User clicked bell, showing Airbnb modal...');
+      setShowAirbnbNotificationModal(true);
     }
   };
   

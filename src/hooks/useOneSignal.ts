@@ -259,12 +259,11 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
       // ✅ CRITICAL FIX: Update database to mark user as push-enabled + save Player ID
       if (user?.id) {
-        console.log('💾 [OneSignal] Saving Player ID to database...', playerId);
         const { error } = await supabase
           .from('profiles')
           .update({ 
             xeon_stream_subscription: true,
-            device_token: playerId, // Ensure this is not null
+            device_token: playerId || null,
             device_platform: 'web',
             device_token_updated_at: new Date().toISOString()
           })
@@ -272,22 +271,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
         if (error) {
           console.error('❌ [Database] Failed to update subscription + Player ID:', error);
-          // Retry once
-          const { error: retryError } = await supabase
-            .from('profiles')
-            .update({ 
-              xeon_stream_subscription: true,
-              device_token: playerId,
-              device_platform: 'web',
-              device_token_updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-            
-          if (retryError) {
-             console.error('❌ [Database] Retry failed:', retryError);
-          } else {
-             console.log('✅ [Database] Retry successful');
-          }
+          // Don't fail the whole operation - user is still subscribed to OneSignal
         } else {
           console.log('✅ [Database] Updated subscription + Player ID:', playerId);
         }

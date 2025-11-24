@@ -67,11 +67,14 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       });
 
     // Request notification permission on first setup
+    // ❌ DISABLED: Removed auto-request to prevent native prompt on login
+    /*
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then((permission) => {
         console.log('🔔 Notification permission:', permission);
       });
     }
+    */
 
     return () => {
       console.log(`WS-ORDERS: UNSUBSCRIBE [${channelId}]`);

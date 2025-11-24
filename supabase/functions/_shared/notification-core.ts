@@ -45,108 +45,108 @@ export interface SignalData {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => NotificationTemplate> = {
-  // Template 1: signal_created (BUY/SELL) - Blue
+  // Template 1: signal_created (BUY/SELL) - Professional TradingView Style
   signal_created: (data) => ({
     type: 'signal_created',
-    title: `🚀 ${data.author_name} - New ${data.trade_type.toUpperCase()} Signal`,
-    message: `${data.author_name} posted a new ${data.trade_type.toUpperCase()} signal on ${data.asset_name} at $${data.entry_price}`,
-    badge: '🚀 New BUY/SELL Signal',
+    title: `${data.trade_type.toUpperCase()} ${data.asset_name} @ ${data.entry_price}`,
+    message: `New Signal • ${data.author_name}`,
+    badge: 'Signal',
     color: 'blue',
-    icon: '🚀',
+    icon: '📈',
     sound: true,
     priority: 2,
   }),
 
-  // Template 2: pending_limit_created (BUY LIMIT/SELL LIMIT) - Yellow
+  // Template 2: pending_limit_created (BUY LIMIT/SELL LIMIT)
   pending_limit_created: (data) => ({
     type: 'pending_limit_created',
-    title: `⏳ ${data.author_name} - Pending ${data.trade_type.replace('_', ' ').toUpperCase()}`,
-    message: `Waiting to reach ${data.asset_name} at $${data.entry_price}`,
-    badge: '⏳ Pending BUY/SELL Limit',
+    title: `Limit Order: ${data.trade_type.replace('_', ' ').toUpperCase()} ${data.asset_name}`,
+    message: `Entry: ${data.entry_price} • ${data.author_name}`,
+    badge: 'Pending',
     color: 'yellow',
     icon: '⏳',
     sound: true,
     priority: 2,
   }),
 
-  // Template 3: limit_activated - Blue
+  // Template 3: limit_activated
   limit_activated: (data) => ({
     type: 'limit_activated',
-    title: `✅ ${data.author_name} - ${data.trade_type.replace('_limit', '').toUpperCase()} Limit Activated`,
-    message: `${data.trade_type.replace('_', ' ').toUpperCase()} is activated on ${data.asset_name} at $${data.triggered_price || data.entry_price}`,
-    badge: '✅ BUY/SELL Activated',
+    title: `Limit Activated: ${data.asset_name}`,
+    message: `Order triggered at ${data.triggered_price || data.entry_price}`,
+    badge: 'Active',
     color: 'blue',
-    icon: '✅',
+    icon: '⚡',
     sound: true,
     priority: 3,
   }),
 
-  // Template 4: tp_hit (TP1-TP5) - Green
+  // Template 4: tp_hit (TP1-TP5)
   tp_hit: (data) => ({
     type: 'tp_hit',
-    title: `💰 ${data.author_name} - TP${data.tp_number} Hit`,
-    message: `${data.asset_name} hit Take Profit ${data.tp_number} at $${data.triggered_price}\n${data.pips || '+0.0 PIPS'}`,
-    badge: '🎯 Take Profit Hit',
+    title: `TP${data.tp_number} Hit: ${data.asset_name}`,
+    message: `+${data.pips || '0'} Pips • ${data.triggered_price}`,
+    badge: 'Profit',
     color: 'green',
-    icon: '🎯',
+    icon: '💰',
     sound: true,
     priority: 3,
   }),
 
-  // Template 5: stop_loss_hit - Red
+  // Template 5: stop_loss_hit
   stop_loss_hit: (data) => ({
     type: 'stop_loss_hit',
-    title: `⚠️ ${data.author_name} - Stop Loss Hit`,
-    message: `${data.asset_name} hit Stop Loss at $${data.triggered_price}\n${data.pips || '-0.0 PIPS'}`,
-    badge: '🛑 Stop Loss Hit',
+    title: `Stop Loss Hit: ${data.asset_name}`,
+    message: `${data.pips || '0'} Pips • ${data.triggered_price}`,
+    badge: 'Stopped',
     color: 'red',
     icon: '🛑',
     sound: true,
     priority: 3,
   }),
 
-  // Template 6: manual_close - Grey
+  // Template 6: manual_close
   manual_close: (data) => ({
     type: 'manual_close',
-    title: `🔒 ${data.author_name} - Signal Closed`,
-    message: `${data.asset_name} manually closed${data.pips ? `\n${data.pips}` : ''}`,
-    badge: '🔒 Manually Closed',
+    title: `Closed: ${data.asset_name}`,
+    message: `Manual Close • ${data.author_name}`,
+    badge: 'Closed',
     color: 'grey',
     icon: '🔒',
     sound: false,
     priority: 1,
   }),
 
-  // Template 7: manual_close_with_tp_hit - Grey
+  // Template 7: manual_close_with_tp_hit
   manual_close_with_tp_hit: (data) => ({
     type: 'manual_close_with_tp_hit',
-    title: `✅ ${data.author_name} - Signal Closed in Profit`,
-    message: `${data.asset_name} closed in profit at $${data.triggered_price || data.entry_price}\n${data.pips || '+0.0 PIPS'} 🎉`,
-    badge: '💰 Closed in Profits',
+    title: `Closed in Profit: ${data.asset_name}`,
+    message: `+${data.pips || '0'} Pips • Manual Close`,
+    badge: 'Profit',
     color: 'grey',
-    icon: '💰',
+    icon: '💸',
     sound: true,
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit - Green (COMBINED: Shows final TP + completion)
+  // Template 8: all_tps_hit
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
-    title: `🎉 ${data.author_name} - ALL TPs HIT`,
-    message: `${data.asset_name} hit Final TP${data.tp_number} at $${data.triggered_price}\n${data.pips || '+0.0 PIPS'} 🏆 ALL PROFITS SECURED`,
-    badge: '🎉 ALL TPs HIT',
+    title: `All Targets Hit: ${data.asset_name}`,
+    message: `Max Profit Reached • ${data.pips || '0'} Pips`,
+    badge: 'Jackpot',
     color: 'green',
-    icon: '🎉',
+    icon: '🏆',
     sound: true,
     priority: 3,
   }),
 
-  // Template 9: notes_updated - Yellow
+  // Template 9: notes_updated
   notes_updated: (data) => ({
     type: 'notes_updated',
-    title: `📝 ${data.author_name} - Notes Updated`,
-    message: `${data.author_name} updated notes for ${data.asset_name}: ${data.notes || 'See signal details'}`,
-    badge: '📝 Notes Updated',
+    title: `Update: ${data.asset_name}`,
+    message: `${data.notes || 'Signal details updated'}`,
+    badge: 'Update',
     color: 'yellow',
     icon: '📝',
     sound: false,

@@ -199,8 +199,24 @@ export const useOneSignal = (): UseOneSignalReturn => {
     try {
       console.log('🔔 [OneSignal] Starting subscription...', { isIOS, isPWA });
 
-      // Request notification permission
-      const permission = await window.OneSignal.Notifications.requestPermission();
+      // Request notification permission with timeout safety
+      const permissionPromise = window.OneSignal.Notifications.requestPermission();
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('timeout'), 15000)); // 15s timeout
+      
+      const permissionResult = await Promise.race([permissionPromise, timeoutPromise]);
+
+      if (permissionResult === 'timeout') {
+        console.warn('⚠️ [OneSignal] Permission request timed out');
+        // Proceed as if denied or dismissed, don't hang forever
+        toast({
+          title: "Permission Request Timed Out",
+          description: "Please check your browser settings to enable notifications manually.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const permission = permissionResult;
       
       if (!permission) {
         console.warn('⚠️ [OneSignal] Permission denied');

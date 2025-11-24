@@ -160,15 +160,19 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
   const allSelected = selectedTypes.size === NOTIFICATION_TYPES.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 ease-in-out"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300">
+      {/* Modal - Bottom Sheet on Mobile, Center Modal on Desktop */}
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl shadow-2xl 
+                      pointer-events-auto
+                      animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in-0 
+                      duration-500 ease-out
+                      max-h-[85vh] overflow-y-auto scrollbar-hide">
         {/* Close Button */}
         <button
           onClick={onClose}

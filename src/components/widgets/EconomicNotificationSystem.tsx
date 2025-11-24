@@ -97,12 +97,15 @@ export default function EconomicNotificationSystem({
     return () => clearInterval(interval);
   }, [events, enabled, notifyMinutesBefore, notifiedEvents]);
 
-  // Request notification permission on mount
+  // Removed auto-request for notification permission to prevent native prompt on login
+  // Permissions should only be requested via user interaction (e.g. Airbnb modal)
+  /* 
   useEffect(() => {
     if (enabled && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, [enabled]);
+  */
 
   return null; // This component doesn't render anything
 }

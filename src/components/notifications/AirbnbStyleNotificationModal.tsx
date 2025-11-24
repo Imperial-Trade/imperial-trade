@@ -167,7 +167,8 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
                       pointer-events-auto
                       animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in-0 
                       duration-500 ease-out
-                      max-h-[85vh] overflow-y-auto scrollbar-hide">
+                      max-h-[85vh] overflow-y-auto scrollbar-hide
+                      fixed bottom-0 sm:relative sm:bottom-auto">
         {/* Close Button */}
         <button
           onClick={onClose}

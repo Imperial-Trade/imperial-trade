@@ -51,10 +51,15 @@ const AuthenticatedAppBar: React.FC = () => {
 
 
   return (
-    <header className={cn(
-      "fixed top-0 left-0 right-0 z-[200] flex items-center justify-center px-6 nav-glass-effect border-b transition-all duration-300",
-      isCollapsed ? "h-16" : "h-20"
-    )}>
+    <header 
+      className={cn(
+        "fixed top-0 left-0 right-0 z-[200] flex items-end justify-center px-6 nav-glass-effect border-b transition-all duration-300",
+      )}
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        minHeight: isCollapsed ? 'calc(64px + env(safe-area-inset-top))' : 'calc(80px + env(safe-area-inset-top))',
+      }}
+    >
       <div className="w-full max-w-7xl flex items-center justify-between">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-2">

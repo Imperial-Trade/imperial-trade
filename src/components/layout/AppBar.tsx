@@ -151,11 +151,15 @@ const AppBar: React.FC = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${
+      className={`fixed top-0 left-0 right-0 z-50 flex items-end justify-center px-6 ${
         isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
           : "nav-glass-effect border-b"
       }`}
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        minHeight: 'calc(64px + env(safe-area-inset-top))',
+      }}
     >
       <div
         className={`w-full max-w-7xl flex items-center ${

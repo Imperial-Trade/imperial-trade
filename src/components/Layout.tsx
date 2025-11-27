@@ -54,7 +54,7 @@ export default function Layout({
         <ErrorBoundary componentName="AppBar">
           <AppBar />
         </ErrorBoundary>
-        <main className="pt-16">
+        <main style={{ paddingTop: 'calc(64px + env(safe-area-inset-top))' }}>
           <ErrorBoundary componentName="Page Content">
             {children}
           </ErrorBoundary>

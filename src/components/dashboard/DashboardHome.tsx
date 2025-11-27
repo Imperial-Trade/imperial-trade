@@ -39,8 +39,13 @@ export const DashboardHome: React.FC = () => {
       {/* Animated Background with Video & Glassmorphism */}
       <AnimatedLinesBackground />
       
-      {/* Single Page Layout - No Scrolling */}
-      <div className="relative z-20 min-h-screen flex items-center justify-center pt-0 lg:pt-20 pb-20 md:pb-6">
+      {/* Single Page Layout - No Scrolling - Safe area padding for iOS notch */}
+      <div 
+        className="relative z-20 min-h-screen flex items-center justify-center pb-20 md:pb-6"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top), 0px)',
+        }}
+      >
         <div className="container mx-auto max-w-5xl px-4">
           {/* Compact Welcome Header */}
           <div className="text-center space-y-4 mx-0 my-[250px]">

@@ -1006,13 +1006,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "function_deprecation_hits_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       group_journal_entries: {
@@ -1333,43 +1326,52 @@ export type Database = {
       }
       notification_analytics: {
         Row: {
-          avg_delivery_time_seconds: number | null
-          created_at: string
-          date: string
-          error_breakdown: Json | null
+          clicked_at: string | null
+          created_at: string | null
+          delivered_at: string | null
+          delivery_latency_ms: number | null
+          device_type: string | null
+          failed_at: string | null
+          failure_reason: string | null
           id: string
-          platform_breakdown: Json | null
-          total_delivered: number
-          total_failed: number
-          total_opened: number
-          total_sent: number
-          updated_at: string
+          notification_type: string
+          onesignal_notification_id: string | null
+          opened_at: string | null
+          sent_at: string | null
+          signal_id: string | null
+          user_id: string | null
         }
         Insert: {
-          avg_delivery_time_seconds?: number | null
-          created_at?: string
-          date: string
-          error_breakdown?: Json | null
+          clicked_at?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
+          device_type?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
-          platform_breakdown?: Json | null
-          total_delivered?: number
-          total_failed?: number
-          total_opened?: number
-          total_sent?: number
-          updated_at?: string
+          notification_type: string
+          onesignal_notification_id?: string | null
+          opened_at?: string | null
+          sent_at?: string | null
+          signal_id?: string | null
+          user_id?: string | null
         }
         Update: {
-          avg_delivery_time_seconds?: number | null
-          created_at?: string
-          date?: string
-          error_breakdown?: Json | null
+          clicked_at?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
+          device_type?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           id?: string
-          platform_breakdown?: Json | null
-          total_delivered?: number
-          total_failed?: number
-          total_opened?: number
-          total_sent?: number
-          updated_at?: string
+          notification_type?: string
+          onesignal_notification_id?: string | null
+          opened_at?: string | null
+          sent_at?: string | null
+          signal_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1665,50 +1667,47 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
-          batch_notifications: boolean | null
           created_at: string | null
-          delivery_preferences: Json | null
-          id: string
+          limit_activated: boolean | null
+          max_per_hour: number | null
+          notes_updated: boolean | null
+          quiet_hours_enabled: boolean | null
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           signal_closed: boolean | null
           signal_created: boolean | null
-          signal_updated: boolean | null
-          stop_loss_hits: boolean | null
-          timezone: string | null
-          tp_hits: boolean | null
+          stop_loss_hit: boolean | null
+          tp_hit: boolean | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          batch_notifications?: boolean | null
           created_at?: string | null
-          delivery_preferences?: Json | null
-          id?: string
+          limit_activated?: boolean | null
+          max_per_hour?: number | null
+          notes_updated?: boolean | null
+          quiet_hours_enabled?: boolean | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           signal_closed?: boolean | null
           signal_created?: boolean | null
-          signal_updated?: boolean | null
-          stop_loss_hits?: boolean | null
-          timezone?: string | null
-          tp_hits?: boolean | null
+          stop_loss_hit?: boolean | null
+          tp_hit?: boolean | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          batch_notifications?: boolean | null
           created_at?: string | null
-          delivery_preferences?: Json | null
-          id?: string
+          limit_activated?: boolean | null
+          max_per_hour?: number | null
+          notes_updated?: boolean | null
+          quiet_hours_enabled?: boolean | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           signal_closed?: boolean | null
           signal_created?: boolean | null
-          signal_updated?: boolean | null
-          stop_loss_hits?: boolean | null
-          timezone?: string | null
-          tp_hits?: boolean | null
+          stop_loss_hit?: boolean | null
+          tp_hit?: boolean | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1876,63 +1875,6 @@ export type Database = {
           last_cleared_at?: string | null
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      onesignal_webhook_events: {
-        Row: {
-          app_id: string
-          content: string | null
-          created_at: string | null
-          delivery_status: string | null
-          device_type: string | null
-          event_timestamp: string | null
-          event_type: string
-          heading: string | null
-          icon: string | null
-          id: string
-          notification_id: string
-          platform: string | null
-          player_id: string | null
-          raw_payload: Json | null
-          url: string | null
-          user_id: string | null
-        }
-        Insert: {
-          app_id: string
-          content?: string | null
-          created_at?: string | null
-          delivery_status?: string | null
-          device_type?: string | null
-          event_timestamp?: string | null
-          event_type: string
-          heading?: string | null
-          icon?: string | null
-          id?: string
-          notification_id: string
-          platform?: string | null
-          player_id?: string | null
-          raw_payload?: Json | null
-          url?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          app_id?: string
-          content?: string | null
-          created_at?: string | null
-          delivery_status?: string | null
-          device_type?: string | null
-          event_timestamp?: string | null
-          event_type?: string
-          heading?: string | null
-          icon?: string | null
-          id?: string
-          notification_id?: string
-          platform?: string | null
-          player_id?: string | null
-          raw_payload?: Json | null
-          url?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -2186,12 +2128,9 @@ export type Database = {
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
           onesignal_last_sync_at: string | null
-          onesignal_player_id: string | null
-          onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
           progress_hash: string | null
-          push_subscription_active: boolean | null
           real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -2244,12 +2183,9 @@ export type Database = {
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_player_id?: string | null
-          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
           progress_hash?: string | null
-          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -2302,12 +2238,9 @@ export type Database = {
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_player_id?: string | null
-          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
           progress_hash?: string | null
-          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -3491,13 +3424,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_engagement_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_follows: {
@@ -3531,24 +3457,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_follows_following_id_fkey"
-            columns: ["following_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3890,13 +3802,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_saved_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "xeon_subscribers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4428,27 +4333,6 @@ export type Database = {
           like_count: number | null
           video_id: string | null
           view_count: number | null
-        }
-        Relationships: []
-      }
-      xeon_subscribers_public: {
-        Row: {
-          display_name: string | null
-          id: string | null
-          notification_preferences: Json | null
-          onesignal_player_id: string | null
-        }
-        Insert: {
-          display_name?: string | null
-          id?: string | null
-          notification_preferences?: Json | null
-          onesignal_player_id?: string | null
-        }
-        Update: {
-          display_name?: string | null
-          id?: string | null
-          notification_preferences?: Json | null
-          onesignal_player_id?: string | null
         }
         Relationships: []
       }

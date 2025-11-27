@@ -76,11 +76,11 @@ export const useOneSignal = (): UseOneSignalReturn => {
             serviceWorkerPath: '/OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: '/' },
             
-            // Disable all auto-prompts (we use custom Airbnb modal)
+            // Disable ALL auto-prompts - we use custom Airbnb modal ONLY
+            autoResubscribe: false,
             promptOptions: {
               slidedown: {
-                enabled: false,
-                autoPrompt: false,
+                prompts: [] // Empty array = no slidedown prompts at all
               }
             },
             
@@ -89,7 +89,6 @@ export const useOneSignal = (): UseOneSignalReturn => {
             },
             
             allowLocalhostAsSecureOrigin: true,
-            autoResubscribe: true,
           });
         } catch (initError: any) {
           // ✅ CRITICAL FIX: If SDK already initialized or AppID mismatch, treat as success

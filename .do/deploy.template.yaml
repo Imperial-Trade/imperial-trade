@@ -1,0 +1,8 @@
+spec:
+  name: imperial-trade
+  static_sites:
+    - name: web
+      build_command: bun install && bun run build
+      output_dir: dist
+      catchall_document: index.html
+

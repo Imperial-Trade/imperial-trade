@@ -40,10 +40,12 @@ export const NotificationTestPanel: React.FC = () => {
 
   const notificationTypes = [
     { value: 'test', label: 'Test Notification' },
-    { value: 'signal_created', label: 'Signal Created' },
+    { value: 'signal_created', label: '🚀 Signal Created' },
     { value: 'signal_updated', label: 'Signal Updated' },
-    { value: 'tp_hit', label: 'Take Profit Hit' },
-    { value: 'stop_loss_hit', label: 'Stop Loss Hit' },
+    { value: 'tp_hit', label: '💰 Take Profit Hit' },
+    { value: 'stop_loss_hit', label: '🔴 Stop Loss Hit' },
+    { value: 'limit_activated', label: '✅ Limit Order Activated' },
+    { value: 'notes_updated', label: '📝 Notes Updated' },
     { value: 'signal_closed', label: 'Signal Closed' }
   ];
 

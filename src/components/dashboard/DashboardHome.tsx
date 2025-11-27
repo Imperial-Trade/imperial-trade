@@ -19,6 +19,8 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === "admin";
   const isEducator = user?.user_metadata?.user_type === "educator";
 
+  // Auto-prompt removed - notification prompt only shows via "Enable Notifications" button in Signal Stream
+  // Users can manage notifications via iPhone Settings app after enabling
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
     if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {

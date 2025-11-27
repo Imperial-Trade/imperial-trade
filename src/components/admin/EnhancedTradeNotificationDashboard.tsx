@@ -108,17 +108,32 @@ export default function EnhancedTradeNotificationDashboard() {
       setRefreshing(true);
       const startDate = getTimeRangeDate();
       
-      // Get analytics data
-      const { data: analytics, error } = await supabase
+      // Define the expected analytics record type
+      type AnalyticsRecord = {
+        id: string;
+        notification_type: string;
+        user_id: string | null;
+        sent_at: string | null;
+        delivered_at: string | null;
+        failed_at: string | null;
+        failure_reason: string | null;
+        onesignal_notification_id: string | null;
+        created_at: string | null;
+      };
+      
+      // Get analytics data with explicit typing
+      const { data, error } = await supabase
         .from('notification_analytics')
-        .select('*')
-        .gte('sent_at', startDate.toISOString())
-        .order('sent_at', { ascending: true })
-        .limit(10000); // Limit for performance
+        .select('id, notification_type, user_id, sent_at, delivered_at, failed_at, failure_reason, onesignal_notification_id, created_at')
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
 
-      if (!analytics || analytics.length === 0) {
+      const analytics = (data || []) as AnalyticsRecord[];
+
+      if (analytics.length === 0) {
       setMetrics({
         total_sent: 0,
         total_delivered: 0,
@@ -152,12 +167,16 @@ export default function EnhancedTradeNotificationDashboard() {
       // Calculate hourly volume (last 24 hours only)
       const hourly: Record<string, any> = {};
       const last24h = analytics.filter(a => {
-        const sentTime = new Date(a.sent_at);
+        const timeStr = a.sent_at || a.created_at;
+        if (!timeStr) return false;
+        const sentTime = new Date(timeStr);
         return sentTime >= new Date(Date.now() - 24 * 60 * 60 * 1000);
       });
 
       last24h.forEach(a => {
-        const hour = new Date(a.sent_at).getHours();
+        const timeStr = a.sent_at || a.created_at;
+        if (!timeStr) return;
+        const hour = new Date(timeStr).getHours();
         const hourKey = `${hour}:00`;
         if (!hourly[hourKey]) {
           hourly[hourKey] = { hour: hourKey, sent: 0, delivered: 0, failed: 0 };

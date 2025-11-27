@@ -224,19 +224,6 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    /* CRITICAL: Prevent overscroll/bounce effect like native apps (Facebook, Instagram) */
-    overscroll-behavior: none;
-    overscroll-behavior-x: none;
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html {
-    /* Prevent pull-to-refresh and horizontal overscroll */
-    overflow: hidden;
-    height: 100%;
-    position: fixed;
-    width: 100%;
   }
 
   body {
@@ -244,28 +231,13 @@
     background: transparent;
     min-height: 100vh;
     min-height: -webkit-fill-available;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* Prevent overscroll bounce */
-    overscroll-behavior: none;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
     color: hsl(var(--foreground));
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     font-feature-settings: 'liga' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-  
-  /* Prevent horizontal swipe overscroll on the root app container */
-  #root {
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: none;
+    /* Prevent horizontal overscroll bounce */
     overscroll-behavior-x: none;
-    -webkit-overflow-scrolling: touch;
   }
 
   /* Mobile viewport and overflow fixes */

@@ -678,9 +678,16 @@ export function WidgetSidebar({
         ref={sidebarRef} 
         className={`nav-glass-effect fixed left-2 sm:left-4 z-[105] rounded-xl overflow-hidden shadow-2xl ${className}`}
         style={{
-          top: dimensions.top > 0 ? `${dimensions.top}px` : 'max(env(safe-area-inset-top, 8px), 8px)',
+          // Desktop: use calculated top (80px for header)
+          // Mobile/Tablet: position below status bar using CSS env() with fallback
+          top: dimensions.top >= 80 
+            ? `${dimensions.top}px` 
+            : 'calc(env(safe-area-inset-top, 0px) + 8px)',
           width: `${dimensions.width}px`,
-          height: `calc(100vh - max(env(safe-area-inset-top, 8px), 8px) - 8px)`,
+          // Height: full viewport minus top position minus bottom padding
+          height: dimensions.top >= 80
+            ? `calc(100vh - ${dimensions.top}px - 8px)`
+            : 'calc(100vh - env(safe-area-inset-top, 0px) - 16px)',
           touchAction: 'none',
           pointerEvents: 'auto'
         }}

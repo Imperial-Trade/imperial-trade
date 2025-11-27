@@ -79,8 +79,11 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
       <SheetContent 
         side="right" 
         className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', // Safe area for iOS notch
+        }}
       >
-        <SheetHeader className="pt-2 lg:pt-20">
+        <SheetHeader className="pt-2 lg:pt-16">
           <SheetTitle className="flex items-center gap-3 justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />

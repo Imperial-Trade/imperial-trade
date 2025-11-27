@@ -142,6 +142,9 @@ export function WidgetSidebar({
     let bottomNavHeight = 0;
     let top = 0;
     
+    // Get safe area inset for iOS notch
+    const safeAreaTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0') || 0;
+    
     if (isDesktop) {
       // Desktop: Fixed AuthenticatedAppBar at top (80px, or 64px when collapsed)
       // Using 80px as standard since collapsed state is dynamic
@@ -151,12 +154,12 @@ export function WidgetSidebar({
     } else if (isTablet) {
       // Tablet: No fixed header (overlay sidebar instead)
       headerHeight = 0;
-      top = 0;
+      top = safeAreaTop || 8; // Use safe area or small padding
       bottomNavHeight = 0; // No bottom nav on tablet
     } else {
-      // Mobile: No fixed header (Sheet-based sidebar)
+      // Mobile: No fixed header (Sheet-based sidebar) - add safe area for notch
       headerHeight = 0;
-      top = 0;
+      top = safeAreaTop || 8; // Use safe area or small padding for iOS notch
       
       // Bottom nav detection: All pages with mobile bottom navigation bars
       const PAGES_WITH_BOTTOM_NAV = [
@@ -675,9 +678,9 @@ export function WidgetSidebar({
         ref={sidebarRef} 
         className={`nav-glass-effect fixed left-2 sm:left-4 z-[105] rounded-xl overflow-hidden shadow-2xl ${className}`}
         style={{
-          top: `${dimensions.top}px`,
+          top: dimensions.top > 0 ? `${dimensions.top}px` : 'max(env(safe-area-inset-top, 8px), 8px)',
           width: `${dimensions.width}px`,
-          height: `${dimensions.height}px`,
+          height: `calc(100vh - max(env(safe-area-inset-top, 8px), 8px) - 8px)`,
           touchAction: 'none',
           pointerEvents: 'auto'
         }}

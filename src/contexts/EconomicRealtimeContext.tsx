@@ -224,12 +224,13 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
     return () => clearInterval(interval);
   }, [upcomingEvents, getTimeUntilEvent, eventAlerts, notificationsEnabled]);
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [notificationsEnabled]);
+  // ❌ DISABLED: Auto-request removed - use Airbnb modal in Signal Stream instead
+  // Permission is requested only when user clicks "Yes, notify me" in the modal
+  // useEffect(() => {
+  //   if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
+  //     Notification.requestPermission();
+  //   }
+  // }, [notificationsEnabled]);
 
   // Auto-subscribe on mount if enabled
   useEffect(() => {

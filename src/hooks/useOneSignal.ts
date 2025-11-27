@@ -76,11 +76,17 @@ export const useOneSignal = (): UseOneSignalReturn => {
             serviceWorkerPath: '/OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: '/' },
             
-            // Disable ALL auto-prompts - we use custom Airbnb modal ONLY
+            // CRITICAL: Disable ALL auto-prompts - we use custom Airbnb modal ONLY
             autoResubscribe: false,
+            autoRegister: false,
             promptOptions: {
+              autoPrompt: false,
               slidedown: {
-                prompts: [] // Empty array = no slidedown prompts at all
+                prompts: [],
+                autoPrompt: false
+              },
+              native: {
+                autoPrompt: false
               }
             },
             

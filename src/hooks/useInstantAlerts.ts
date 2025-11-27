@@ -157,12 +157,9 @@ export const useInstantAlerts = () => {
         console.log('📡 Instant alerts subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
-          // Request notification permission
-          if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-              console.log('🔔 Notification permission:', permission);
-            });
-          }
+          // ❌ DISABLED: Auto-request removed - use Airbnb modal in Signal Stream instead
+          // Permission is requested only when user clicks "Yes, notify me" in the modal
+          console.log('📡 Instant alerts connected (permission handled by Airbnb modal)');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Failed to subscribe to instant alerts');
           toast.error('Alert notifications unavailable', {

@@ -38,17 +38,23 @@ class CapacitorNotificationService {
   // ============================================
 
   async initialize(userId?: string) {
-    console.log(`🚀 Initializing notifications for platform: ${this.platform}`);
+    console.log(`🚀 [Capacitor] Initializing notifications for platform: ${this.platform}`);
+    
+    // ✅ CRITICAL FIX: Since we're PWA-only (not native app), disable Capacitor notifications
+    // We use OneSignal via Airbnb modal instead. This prevents native prompts from appearing.
+    if (this.isNative) {
+      console.log('⚠️ [Capacitor] Native platform detected, but PWA mode is active. Skipping native notifications.');
+      console.log('📱 [Capacitor] For PWA, OneSignal handles all push notifications via web API.');
+      return; // Don't initialize native notifications - we're using OneSignal web push
+    }
     
     if (userId) {
       this.currentUserId = userId;
     }
 
-    if (this.isNative) {
-      await this.setupMobileNotifications();
-    } else {
-      await this.setupWebNotifications();
-    }
+    // ✅ For web/PWA, we use OneSignal, not Capacitor
+    // Do nothing - OneSignal is initialized via useOneSignal hook
+    console.log('✅ [Capacitor] PWA mode - OneSignal handles notifications, skipping Capacitor setup');
   }
 
   // ============================================
@@ -172,10 +178,10 @@ class CapacitorNotificationService {
   private async setupWebNotifications() {
     console.log('🌐 Setting up web push notifications...');
 
-    // Keep existing web notification setup
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
-    }
+    // ✅ FIX: Disabled auto-request. We use OneSignal via Airbnb modal instead.
+    // if ('Notification' in window && Notification.permission === 'default') {
+    //   await Notification.requestPermission();
+    // }
   }
 
   async showWebNotification(payload: NotificationPayload) {

@@ -67,11 +67,12 @@ export const useOneSignal = (): UseOneSignalReturn => {
         
         try {
           // Wait for OneSignal to be ready
+          // CRITICAL: App ID must match index.html exactly
           await window.OneSignal.init({
-            appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
-            safari_web_id: "web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e",
+            appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
+            safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98",
             
-            // Service worker paths
+            // Service worker paths (required for PWA on all platforms)
             serviceWorkerPath: '/OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: '/' },
             

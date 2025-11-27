@@ -287,7 +287,7 @@ export async function sendRealtimeNotification(
     try {
       await Promise.race([
         new Promise((resolve) => {
-          channel.subscribe((status) => {
+          channel.subscribe((status: string) => {
             if (status === 'SUBSCRIBED') {
               console.log('✅ [Realtime] Channel subscribed successfully');
               resolve(true);

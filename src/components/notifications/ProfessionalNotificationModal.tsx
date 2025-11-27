@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, Shield, Zap, TrendingUp, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// TODO: Import usePusherBeams when integrating
+import { useOneSignal } from '@/hooks/useOneSignal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationPrompt } from "@/contexts/NotificationPromptContext";
 import { supabase } from '@/integrations/supabase/client';
@@ -22,12 +22,9 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
 }) => {
   const { user } = useAuth();
   const { markNotificationPromptAsSeen } = useNotificationPrompt();
-  // TODO: Integrate usePusherBeams
-  const isInitialized = false;
-  const isPushEnabled = false;
-  const isSubscriptionLoading = false;
-  const subscribeToPush = async () => false;
-  const playerId = null;
+  
+  // OneSignal push notification integration
+  const { isInitialized, isPushEnabled, subscribeToPush } = useOneSignal();
 
   const [showMessage, setShowMessage] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -77,7 +74,8 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
     return () => clearTimeout(shakeTimer);
   }, [isOpen]);
 
-  if (!isInitialized) return null;
+  // Don't block modal rendering - isOpen controls visibility
+  // OneSignal initialization happens in background
 
   return createPortal(
     <AnimatePresence>
@@ -163,10 +161,15 @@ export const ProfessionalNotificationModal: React.FC<ProfessionalNotificationMod
                 <div className="space-y-3 pt-2">
                   <Button
                     onClick={handleActivate}
-                    disabled={isSubscriptionLoading || isSubmitting || isPushEnabled}
+                    disabled={!isInitialized || isSubmitting || isPushEnabled}
                     className="w-full bg-gradient-to-r from-imperial-gold to-imperial-bronze hover:from-imperial-gold-light hover:to-imperial-gold text-background font-semibold py-3 rounded-full shadow-lg transition-all duration-300"
                   >
-                    {isSubmitting ? (
+                    {!isInitialized ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                        <span>Loading...</span>
+                      </div>
+                    ) : isSubmitting ? (
                       <div className="flex items-center space-x-2">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                         <span>Activating...</span>

@@ -202,7 +202,7 @@ export function SignalStreamFilters({
     }} data-prevent-widget-open="true" onPointerDown={e => e.stopPropagation()} onPointerMove={e => e.stopPropagation()}>
       <CardContent className="p-4 space-y-4 mx-0">
         {/* Enhanced Uniform Layout */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
           
           {/* Search Section - Consistent sizing */}
           <div className="flex-1 min-w-0">

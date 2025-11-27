@@ -154,38 +154,11 @@ export default function SignalStream() {
   const handleBellClick = async () => {
     setUnreadNotifications(0);
     
-    // If not subscribed, trigger subscription flow
+    // ✅ FIX: If not subscribed, show Airbnb modal instead of native prompt
+    // OneSignal handles permission request internally via subscribeToPush()
     if (!isPushEnabled && isOneSignalInitialized) {
-      try {
-        // Request browser permission first
-        if ('Notification' in window && Notification.permission === 'default') {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            toast({
-              title: "Permission Denied",
-              description: "Please enable notifications in your browser settings.",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-        
-        // Subscribe to push notifications
-        const subscribed = await subscribeToPush();
-        if (subscribed) {
-          toast({
-            title: "Push Notifications Enabled! 🎉",
-            description: "You'll now receive instant trade alerts.",
-          });
-        }
-      } catch (error: any) {
-        console.error('❌ [SignalStream] Failed to subscribe to push:', error);
-        toast({
-          title: "Subscription Failed",
-          description: error.message || "Could not enable push notifications.",
-          variant: "destructive",
-        });
-      }
+      console.log('🔔 [SignalStream] User clicked bell, showing Airbnb modal...');
+      setShowAirbnbNotificationModal(true);
     }
   };
   
@@ -1947,8 +1920,8 @@ export default function SignalStream() {
               <div className="mb-6" />
               
               {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true" className="flex flex-col md:flex-row items-start md:items-center gap-3">
-                <div className="w-full md:flex-1">
+              <div data-prevent-widget-open="true" className="flex items-center gap-3">
+                <div className="flex-1">
                   <SignalStreamFilters 
                     filters={filters} 
                     onFiltersChange={setFilters} 
@@ -1962,28 +1935,6 @@ export default function SignalStream() {
                     onShowPrompt={() => setShouldShowNotificationPrompt(true)}
                   />
                 </div>
-
-                {/* ✅ Unified Subscribe Button (Visible if not subscribed) */}
-                {!isPushEnabled && (
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg animate-pulse"
-                    onClick={async () => {
-                      try {
-                        const subscribed = await subscribeToPush();
-                        if (subscribed) {
-                          toast({ title: "Enabled!", description: "You will now receive push notifications." });
-                        }
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
-                  >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Enable Notifications
-                  </Button>
-                )}
 
                 {isDevToolsEnabled() && <PriceRefreshButton symbols={symbols} className="shrink-0" />}
                 {isDevToolsEnabled() && <Button onClick={handleManualSync} disabled={isSyncing} variant="outline" size="sm" className="gap-2 shrink-0" title="Force refresh all signals from database">

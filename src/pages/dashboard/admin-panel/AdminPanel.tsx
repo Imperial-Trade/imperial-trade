@@ -16,9 +16,7 @@ const DirectAccountRequestManagement = lazy(() => import("@/components/admin/Dir
 const AdminNotificationSystem = lazy(() => import("@/components/admin/AdminNotificationSystem").then(m => ({
   default: m.AdminNotificationSystem
 })));
-const EnhancedTradeNotificationDashboard = lazy(() => import("@/components/admin/EnhancedTradeNotificationDashboard").then(m => ({
-  default: m.EnhancedTradeNotificationDashboard
-})));
+const EnhancedTradeNotificationDashboard = lazy(() => import("@/components/admin/EnhancedTradeNotificationDashboard"));
 const SystemMonitoring = lazy(() => import("@/components/admin/SystemMonitoring").then(m => ({
   default: m.SystemMonitoring
 })));

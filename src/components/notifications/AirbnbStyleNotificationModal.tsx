@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { useState } from 'react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,16 +49,6 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
     new Set(NOTIFICATION_TYPES.map(t => t.id)) // All selected by default
   );
 
-  const handleToggleAll = () => {
-    if (selectedTypes.size === NOTIFICATION_TYPES.length) {
-      // Deselect all
-      setSelectedTypes(new Set());
-    } else {
-      // Select all
-      setSelectedTypes(new Set(NOTIFICATION_TYPES.map(t => t.id)));
-    }
-  };
-
   const handleToggleType = (typeId: string) => {
     const newSelected = new Set(selectedTypes);
     if (newSelected.has(typeId)) {
@@ -87,10 +77,10 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
         return;
       }
 
-      // Step 2: Save user's notification preferences to database (All enabled by default)
+      // Step 2: Save user's notification preferences to database
       const preferences: Record<string, boolean> = {};
       NOTIFICATION_TYPES.forEach(type => {
-        preferences[type.id] = true;
+        preferences[type.id] = selectedTypes.has(type.id);
       });
 
       // Check if preferences already exist
@@ -102,7 +92,6 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking preferences:', checkError);
-        // Continue anyway, not critical blocking
       }
 
       if (existing) {
@@ -134,97 +123,124 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
         }
       }
 
-      // Step 3: Mark that user has seen this modal (CRITICAL - prevents modal from showing again)
+      // Step 3: Mark that user has seen this modal
       localStorage.setItem(`notification_permission_shown_${user.id}`, 'true');
       console.log(`✅ [Modal] Marked modal as seen for user ${user.id}`);
 
+      const enabledCount = selectedTypes.size;
       toast({
         title: "Notifications Enabled! 🎉",
-        description: `You'll receive all types of notifications`,
+        description: `You'll receive ${enabledCount} types of notifications`,
       });
 
-      // Close modal and call success callback
       onSuccess();
     } catch (error: any) {
       console.error('Failed to enable notifications:', error);
-      // Even if preferences fail to save, if push succeeded, we should consider it a success
       onSuccess();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const allSelected = selectedTypes.size === NOTIFICATION_TYPES.length;
+  const enabledCount = selectedTypes.size;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none">
-      {/* Backdrop */}
+      {/* Backdrop - Dark blur */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 ease-in-out"
+        className="absolute inset-0 bg-black/70 backdrop-blur-md pointer-events-auto transition-opacity duration-300 ease-in-out"
         onClick={onClose}
       />
 
-      {/* Modal - Bottom Sheet on Mobile, Center Modal on Desktop */}
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl shadow-2xl 
-                      pointer-events-auto
-                      animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in-0 
-                      duration-500 ease-out
-                      max-h-[85vh] overflow-y-auto scrollbar-hide">
+      {/* Modal - Glassmorphism Dark Theme matching filters */}
+      <div 
+        className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl 
+                   pointer-events-auto
+                   animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in-0 
+                   duration-500 ease-out
+                   max-h-[85vh] overflow-y-auto scrollbar-hide"
+        style={{
+          background: '#1C1C1E',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-full transition-colors z-10"
+          style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+          }}
         >
-          <X className="h-5 w-5 text-gray-500" />
+          <X className="h-5 w-5 text-gray-400" />
         </button>
 
         {/* Content */}
-        <div className="p-8 pb-6">
+        <div className="p-6 pb-8">
           {/* Logo/Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span className="text-4xl">📱</span>
+          <div className="flex justify-center mb-5">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, #5E9FF2 0%, #7C3AED 100%)',
+              }}
+            >
+              <span className="text-3xl">📱</span>
             </div>
           </div>
 
           {/* Title */}
-          <h2 className="text-2xl font-bold text-center mb-3">
+          <h2 className="text-xl font-bold text-center mb-2 text-white">
             Turn on notifications
           </h2>
 
           {/* Description */}
-          <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
+          <p className="text-center text-gray-400 text-sm mb-6">
             Don't miss important trade signals, TP hits, and market updates.
           </p>
 
-          {/* Notification Type Selection */}
-          <div className="space-y-3 mb-6">
-            {/* Individual Types */}
+          {/* Notification Type Selection with iOS Toggles */}
+          <div className="space-y-1 mb-6">
             {NOTIFICATION_TYPES.map((type) => (
               <div
                 key={type.id}
-                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                className="flex items-center justify-between p-3 rounded-xl transition-colors"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                }}
               >
-                <div className="mt-0.5 text-green-500">
-                  <Check className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium">
+                <div className="flex-1 pr-3">
+                  <div className="text-sm font-medium text-white">
                     {type.label}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="text-xs text-gray-500 mt-0.5">
                     {type.description}
                   </div>
                 </div>
+                {/* iOS-style Toggle */}
+                <Switch
+                  checked={selectedTypes.has(type.id)}
+                  onCheckedChange={() => handleToggleType(type.id)}
+                  className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-600"
+                />
               </div>
             ))}
           </div>
 
-          {/* Action Button */}
+          {/* Action Button - Blue like Create Alert */}
           <Button
             onClick={handleEnableNotifications}
-            disabled={isLoading}
-            className="w-full h-14 text-lg font-semibold bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl shadow-lg"
+            disabled={isLoading || enabledCount === 0}
+            className="w-full h-12 text-base font-semibold rounded-xl shadow-lg transition-all duration-200"
+            style={{
+              background: enabledCount === 0 
+                ? 'rgba(94, 159, 242, 0.3)' 
+                : 'rgba(94, 159, 242, 0.9)',
+              color: '#FFFFFF',
+              border: '1px solid rgba(94, 159, 242, 0.5)',
+            }}
           >
             {isLoading ? (
               <div className="flex items-center gap-2">
@@ -232,14 +248,14 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
                 Setting up...
               </div>
             ) : (
-              `Yes, notify me (${NOTIFICATION_TYPES.length} types)`
+              `Yes, notify me (${enabledCount} types)`
             )}
           </Button>
 
           {/* Skip Option */}
           <button
             onClick={onClose}
-            className="w-full mt-4 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+            className="w-full mt-4 text-sm text-gray-500 hover:text-gray-300 transition-colors"
           >
             Maybe later
           </button>
@@ -251,4 +267,3 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
     </div>
   );
 }
-

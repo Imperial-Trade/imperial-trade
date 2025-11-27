@@ -1899,8 +1899,15 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
-        {/* Content wrapper with z-index */}
-        <div className="relative z-[60] h-full overflow-y-auto pt-0 lg:pt-20 pb-20 md:pb-6">
+        {/* Content wrapper with z-index and safe area padding for iOS notch */}
+        <div 
+          className="relative z-[60] h-full overflow-y-auto pb-20 md:pb-6"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top), 0px)',
+            paddingLeft: 'env(safe-area-inset-left)',
+            paddingRight: 'env(safe-area-inset-right)',
+          }}
+        >
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}

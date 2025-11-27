@@ -1,5 +1,13 @@
 /* Mobile Touch Optimizations - Matching Academy behavior */
 
+/* Safe Area CSS Variables */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+}
+
 /* Prevent iOS Auto-Zoom on Input Focus */
 @media (max-width: 768px) {
   input, select, textarea, button {
@@ -27,14 +35,52 @@ body, html {
   max-width: 100vw;
 }
 
-/* Safe Area for Notched Devices */
+/* ============================================
+   SAFE AREA UTILITIES FOR NOTCHED DEVICES
+   ============================================ */
+
+/* Safe padding classes */
 @supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  
   .safe-bottom {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
   
-  .safe-top {
-    padding-top: max(14px, env(safe-area-inset-top));
+  .safe-left {
+    padding-left: max(0px, env(safe-area-inset-left));
+  }
+  
+  .safe-right {
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  /* For headers that need glassmorphism extending to top but content below status bar */
+  .header-safe-area {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* Main content safe area - starts below status bar */
+  .content-safe-area {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Fixed headers with safe area - Glass extends to top, content padded */
+@supports (padding: max(0px)) {
+  .fixed-header-safe {
+    padding-top: env(safe-area-inset-top);
+    /* Height includes safe area */
+    min-height: calc(64px + env(safe-area-inset-top));
+  }
+}
+
+/* Bottom navigation safe area */
+@supports (padding: max(0px)) {
+  .fixed-bottom-safe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

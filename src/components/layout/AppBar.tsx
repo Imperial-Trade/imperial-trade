@@ -283,6 +283,9 @@ const AppBar: React.FC = () => {
             <SheetContent
               side="left"
               className="w-[90vw] max-w-md nav-glass-effect border-r overflow-y-auto"
+              style={{
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)', // Below AppBar + safe area
+              }}
             >
               <SheetHeader className="border-b border-border/50 pb-6">
                 <SheetTitle className="flex items-center gap-2 text-left">

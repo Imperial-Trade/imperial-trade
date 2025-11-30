@@ -53,14 +53,14 @@ const AuthenticatedAppBar: React.FC = () => {
   return (
     <header 
       className={cn(
-        "fixed top-0 left-0 right-0 z-[200] flex items-end justify-center px-6 nav-glass-effect border-b transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-[200] flex items-end lg:items-center lg:justify-center px-6 nav-glass-effect border-b transition-all duration-300",
       )}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         minHeight: isCollapsed ? 'calc(64px + env(safe-area-inset-top))' : 'calc(80px + env(safe-area-inset-top))',
       }}
     >
-      <div className="w-full max-w-7xl flex items-center justify-between">
+      <div className="w-full max-w-7xl h-full lg:h-auto flex items-center justify-between">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-2">
           <Crown className="h-6 w-6 text-primary" />
@@ -69,7 +69,7 @@ const AuthenticatedAppBar: React.FC = () => {
 
         {/* Desktop Navigation - Compact pills */}
         {!isCollapsed && (
-          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {navigationItems.map((item) => {
               const isActive = location.pathname === item.to;
               

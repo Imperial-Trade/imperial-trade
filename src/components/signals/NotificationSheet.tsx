@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,12 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
   
+  // Swipe to close state
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  
   // 🔍 DEBUG: Log notification state when sheet opens
   console.log('🔍 [NotificationSheet] Rendering:', {
     isOpen,
@@ -32,6 +38,31 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
     firstEvent: events[0],
     localStorage: localStorage.getItem('imperial-trade-notifications')?.substring(0, 100)
   });
+
+  // Swipe to close handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    dragStartX.current = e.touches[0].clientX;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - dragStartX.current;
+    // Only allow dragging to the right (positive direction)
+    if (diff > 0) {
+      setDragX(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    // If dragged more than 100px to the right, close the sheet
+    if (dragX > 100) {
+      onClose();
+    }
+    setDragX(0);
+  };
 
   // Get border color based on notification type
   const getBorderColor = (type: string) => {
@@ -78,17 +109,43 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0"
+        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0 [&>button]:hidden"
+        ref={sheetRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
           paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', // Safe area for iOS notch
+          transform: isDragging ? `translateX(${dragX}px)` : undefined,
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out'
         }}
       >
+        {/* Swipe indicator */}
+        {isDragging && dragX > 20 && (
+          <div 
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 text-sm font-medium"
+            style={{ opacity: Math.min(dragX / 100, 1) }}
+          >
+            ← Release to close
+          </div>
+        )}
+        
         <SheetHeader className="pt-2 lg:pt-16">
           <SheetTitle className="flex items-center gap-3 justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               Recent Activity
             </div>
+            {/* Custom close button - level with title */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0 rounded-full hover:bg-muted"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </Button>
           </SheetTitle>
         </SheetHeader>
 

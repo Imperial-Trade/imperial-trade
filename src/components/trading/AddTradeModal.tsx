@@ -112,15 +112,6 @@ const AddTradeModal = memo<AddTradeModalProps>(({
         screenshotFiles
       };
 
-      // Log all available selections from strategy, emotion, and trading session
-      console.log('📋 AddTradeModal: All Available Selections:');
-      console.log('📊 Strategies:', TRADING_STRATEGIES);
-      console.log('😊 Emotions:', EMOTIONS);
-      console.log('🕐 Trading Sessions:', SESSIONS);
-      console.log('✅ Selected Strategy:', formData.strategy || 'None selected');
-      console.log('✅ Selected Emotion:', formData.emotion || 'None selected');
-      console.log('✅ Selected Trading Session:', formData.session || 'None selected');
-
       console.log('📤 AddTradeModal: Calling onSave with data:', tradeData);
       await onSave(tradeData);
       console.log('✅ AddTradeModal: Save completed successfully');

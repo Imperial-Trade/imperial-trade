@@ -263,9 +263,10 @@ export const useOneSignal = (): UseOneSignalReturn => {
         permission: 'granted'
       });
 
-      // ✅ CRITICAL FIX: Update database to mark user as push-enabled + save Player ID
+      // ✅ CRITICAL FIX: Support multiple devices per user (Chrome + iOS)
       if (user?.id) {
-        const { error } = await supabase
+        // Update profiles table to mark user as push-enabled (legacy field)
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({ 
             xeon_stream_subscription: true,
@@ -275,11 +276,49 @@ export const useOneSignal = (): UseOneSignalReturn => {
           })
           .eq('id', user.id);
 
-        if (error) {
-          console.error('❌ [Database] Failed to update subscription + Player ID:', error);
-          // Don't fail the whole operation - user is still subscribed to OneSignal
+        if (profileError) {
+          console.error('❌ [Database] Failed to update profile:', profileError);
         } else {
-          console.log('✅ [Database] Updated subscription + Player ID:', playerId);
+          console.log('✅ [Database] Updated profile subscription');
+        }
+
+        // ✅ NEW: Store this device in device_subscriptions table (supports multiple devices)
+        const deviceInfo = {
+          platform: navigator.platform,
+          userAgent: navigator.userAgent,
+          isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+          browserName: navigator.userAgent.includes('Chrome') ? 'Chrome' : 
+                       navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
+          language: navigator.language,
+          screenResolution: `${window.screen.width}x${window.screen.height}`,
+        };
+
+        const deviceFingerprint = btoa(`${navigator.userAgent}_${navigator.platform}_${user.id}`).substring(0, 50);
+
+        const { error: deviceError } = await supabase
+          .from('device_subscriptions')
+          .upsert({
+            user_id: user.id,
+            device_fingerprint: deviceFingerprint,
+            onesignal_player_id: playerId,
+            device_info: deviceInfo,
+            browser_name: deviceInfo.browserName,
+            platform: navigator.platform,
+            is_mobile: deviceInfo.isMobile,
+            is_active: true,
+            last_seen_at: new Date().toISOString(),
+          }, {
+            onConflict: 'device_fingerprint',
+          });
+
+        if (deviceError) {
+          console.error('❌ [Database] Failed to save device subscription:', deviceError);
+        } else {
+          console.log('✅ [Database] Saved device subscription:', {
+            playerId,
+            platform: navigator.platform,
+            isMobile: deviceInfo.isMobile,
+          });
         }
 
         // ✅ AUTO-SUBSCRIBE: Subscribe user to ALL signal providers

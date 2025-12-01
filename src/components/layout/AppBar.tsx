@@ -151,7 +151,7 @@ const AppBar: React.FC = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 flex items-end justify-center px-6 ${
+      className={`fixed top-0 left-0 right-0 z-50 flex items-end lg:items-center lg:justify-center px-6 ${
         isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
           : "nav-glass-effect border-b"
@@ -162,7 +162,7 @@ const AppBar: React.FC = () => {
       }}
     >
       <div
-        className={`w-full max-w-7xl flex items-center ${
+        className={`w-full max-w-7xl h-full lg:h-auto flex items-center ${
           isSigninPage || isAccountRequestPage || isAccountRequestStatusPage 
             ? "justify-between" 
             : "justify-between"
@@ -189,7 +189,7 @@ const AppBar: React.FC = () => {
 
         {/* Desktop Navigation - Compact with dropdowns for regular pages, simplified for signin/account-request pages */}
         {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage ? (
-          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {navigationItems.map((item) => (
               <div
                 key={item.to}
@@ -242,7 +242,7 @@ const AppBar: React.FC = () => {
             ))}
           </nav>
         ) : (
-          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1">
+          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {navigationItems.map((item) => (
               <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button

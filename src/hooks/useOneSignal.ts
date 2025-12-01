@@ -281,13 +281,48 @@ export const useOneSignal = (): UseOneSignalReturn => {
         } else {
           console.log('✅ [Database] Updated subscription + Player ID:', playerId);
         }
+
+        // ✅ AUTO-SUBSCRIBE: Subscribe user to ALL signal providers
+        try {
+          const { data: providers, error: providersError } = await supabase
+            .from('profiles')
+            .select('id')
+            .or('user_type.eq.educator,user_type.eq.admin');
+
+          if (providersError) {
+            console.error('❌ [Auto-Subscribe] Failed to fetch providers:', providersError);
+          } else if (providers && providers.length > 0) {
+            const subscriptions = providers.map(provider => ({
+              user_id: user.id,
+              provider_id: provider.id,
+              is_active: true,
+              subscribed_at: new Date().toISOString(),
+            }));
+
+            const { error: subscribeError } = await supabase
+              .from('signal_subscriptions')
+              .upsert(subscriptions, {
+                onConflict: 'user_id,provider_id',
+                ignoreDuplicates: false,
+              });
+
+            if (subscribeError) {
+              console.error('❌ [Auto-Subscribe] Failed to create subscriptions:', subscribeError);
+            } else {
+              console.log(`✅ [Auto-Subscribe] Subscribed to ${providers.length} signal providers`);
+            }
+          }
+        } catch (autoSubError) {
+          console.error('❌ [Auto-Subscribe] Error:', autoSubError);
+          // Don't fail the entire subscription if this fails
+        }
       }
 
       setIsPushEnabled(true);
 
       toast({
         title: "Push Notifications Enabled! 🎉",
-        description: "You'll now receive instant trade alerts.",
+        description: "You'll now receive instant trade alerts from all educators.",
       });
 
       return true;

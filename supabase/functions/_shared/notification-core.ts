@@ -391,24 +391,25 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
-  // ✅ CRITICAL FIX: Fetch Player IDs from database FIRST (before preference filtering)
-  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users`);
+  // ✅ MULTI-DEVICE FIX: Fetch ALL active device subscriptions (supports multiple devices per user)
+  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users from device_subscriptions`);
   
-  const { data: profiles, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, device_token')
-    .in('id', extractedUserIds)
-    .not('device_token', 'is', null);
+  const { data: devices, error: deviceError } = await supabase
+    .from('device_subscriptions')
+    .select('user_id, onesignal_player_id, device_info, platform, is_mobile')
+    .in('user_id', extractedUserIds)
+    .eq('is_active', true)
+    .not('onesignal_player_id', 'is', null);
 
-  if (profileError) {
-    console.error('❌ Failed to fetch Player IDs:', profileError);
-    return { success: false, error: 'Failed to fetch Player IDs', sent: 0 };
+  if (deviceError) {
+    console.error('❌ Failed to fetch device subscriptions:', deviceError);
+    return { success: false, error: 'Failed to fetch device subscriptions', sent: 0 };
   }
 
-  if (!profiles || profiles.length === 0) {
-    console.log('ℹ️ No Player IDs found for push users');
+  if (!devices || devices.length === 0) {
+    console.log('ℹ️ No active devices found for push users');
     
-    // ✅ FIX: Log to analytics for each user without Player ID (for dashboard visibility)
+    // ✅ FIX: Log to analytics for each user without devices (for dashboard visibility)
     for (const userId of extractedUserIds) {
       try {
         await supabase.from('notification_analytics').insert({
@@ -417,7 +418,7 @@ export async function sendPushNotification(
           notification_type: template.type,
           sent_at: new Date().toISOString(),
           failed_at: new Date().toISOString(),
-          failure_reason: 'No Player ID available - User needs to subscribe via Airbnb modal',
+          failure_reason: 'No active devices - User needs to subscribe via Airbnb modal',
         });
       } catch (error) {
         console.warn('Failed to log analytics:', error);
@@ -427,15 +428,24 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
-  // Create a map of userId -> playerID
-  const userPlayerMap = new Map<string, string>();
-  profiles.forEach((p: any) => {
-    if (p.device_token) {
-      userPlayerMap.set(p.id, p.device_token);
+  // Create a map of userId -> array of playerIDs (supports multiple devices per user)
+  const userPlayerMap = new Map<string, string[]>();
+  devices.forEach((device: any) => {
+    if (device.onesignal_player_id) {
+      const existing = userPlayerMap.get(device.user_id) || [];
+      existing.push(device.onesignal_player_id);
+      userPlayerMap.set(device.user_id, existing);
     }
   });
 
-  console.log(`📋 [Player IDs] Found ${userPlayerMap.size} Player IDs for ${extractedUserIds.length} users`);
+  const totalDevices = devices.length;
+  const usersWithDevices = userPlayerMap.size;
+  console.log(`📋 [Player IDs] Found ${totalDevices} active devices for ${usersWithDevices} users`, {
+    devicesPerUser: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
+      userId: userId.substring(0, 8),
+      deviceCount: playerIds.length
+    }))
+  });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
@@ -575,17 +585,22 @@ export async function sendPushNotification(
     return { success: true, sent: 0 };
   }
 
-  // ✅ CRITICAL FIX: Get Player IDs for filtered users
-  const finalPlayerIds = filteredUserIds
-    .map(userId => userPlayerMap.get(userId))
-    .filter(Boolean) as string[];
+  // ✅ MULTI-DEVICE FIX: Get ALL Player IDs for filtered users (supports multiple devices per user)
+  const finalPlayerIds: string[] = [];
+  filteredUserIds.forEach(userId => {
+    const playerIds = userPlayerMap.get(userId);
+    if (playerIds && playerIds.length > 0) {
+      finalPlayerIds.push(...playerIds); // Add all devices for this user
+    }
+  });
 
   if (finalPlayerIds.length === 0) {
     console.log('ℹ️ All users filtered or no Player IDs available (after preference check)');
     
     // ✅ FIX: Log to analytics for users who passed preferences but have no Player ID
     for (const userId of filteredUserIds) {
-      if (!userPlayerMap.get(userId)) {
+      const playerIds = userPlayerMap.get(userId);
+      if (!playerIds || playerIds.length === 0) {
         try {
           await supabase.from('notification_analytics').insert({
             signal_id: signalData.id,
@@ -608,8 +623,13 @@ export async function sendPushNotification(
     console.log(`📤 [OneSignal] Sending push notification:`, {
       type: template.type,
       asset: signalData.asset_name,
-      recipients: finalPlayerIds.length,
+      totalDevices: finalPlayerIds.length,
+      uniqueUsers: filteredUserIds.length,
       playerIds: finalPlayerIds.map(id => id.substring(0, 8) + '...'),
+      deviceBreakdown: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
+        user: userId.substring(0, 8),
+        devices: playerIds.length,
+      })),
     });
 
     // Build OneSignal notification payload (WEB PUSH ONLY)

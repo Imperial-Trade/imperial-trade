@@ -96,7 +96,7 @@ async function preInitializeOneSignal(): Promise<boolean> {
       try {
         await window.OneSignal.init({
           appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
-          safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98",
+          safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98", // ✅ Verified from OneSignal Dashboard
           serviceWorkerPath: '/OneSignalSDKWorker.js',
           serviceWorkerParam: { scope: '/' },
           autoResubscribe: false,
@@ -517,13 +517,12 @@ export const useOneSignal = (): UseOneSignalReturn => {
           // Check how many active devices user now has
           const { data: activeDevices, error: countError } = await supabase
             .from('device_subscriptions')
-            .select('id, device_name, onesignal_player_id')
+            .select('id, onesignal_player_id')
             .eq('user_id', user.id)
             .eq('is_active', true);
           
           if (!countError && activeDevices) {
-            console.log(`📱 [Devices] User now has ${activeDevices.length}/2 active devices:`, 
-              activeDevices.map(d => d.device_name));
+            console.log(`📱 [Devices] User now has ${activeDevices.length}/2 active devices`);
           }
         }
 
@@ -632,7 +631,10 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
       console.log('✅ [OneSignal] Unsubscribed successfully');
 
-      // ✅ CRITICAL FIX: Update database to mark user as not push-enabled + clear Player ID
+      // ✅ CRITICAL: Update database to mark user as not push-enabled + clear Player ID
+      // Track if database operations succeed
+      let databaseUpdateSucceeded = true;
+      
       if (user?.id) {
         // Deactivate this specific device
         const fingerprintSource = `${navigator.userAgent}_${navigator.platform}_${window.screen.width}x${window.screen.height}_${user.id}`;
@@ -649,6 +651,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
         if (deviceError) {
           console.error('❌ [Database] Failed to deactivate device:', deviceError);
+          databaseUpdateSucceeded = false;
         } else {
           console.log('✅ [Database] Deactivated device subscription');
         }
@@ -660,9 +663,14 @@ export const useOneSignal = (): UseOneSignalReturn => {
           .eq('user_id', user.id)
           .eq('is_active', true);
 
+        if (countError) {
+          console.error('❌ [Database] Failed to check active devices:', countError);
+          databaseUpdateSucceeded = false;
+        }
+
         // Only clear profile subscription if NO active devices remain
         if (!countError && (!activeDevices || activeDevices.length === 0)) {
-          const { error } = await supabase
+          const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
               xeon_stream_subscription: false,
@@ -672,14 +680,29 @@ export const useOneSignal = (): UseOneSignalReturn => {
             })
             .eq('id', user.id);
 
-          if (error) {
-            console.error('❌ [Database] Failed to update profile subscription:', error);
+          if (profileError) {
+            console.error('❌ [Database] Failed to update profile subscription:', profileError);
+            databaseUpdateSucceeded = false;
           } else {
             console.log('✅ [Database] Updated profile subscription to false (no active devices)');
           }
-        } else {
+        } else if (!countError) {
           console.log(`📱 [Devices] User still has ${activeDevices?.length || 0} active device(s)`);
         }
+      }
+
+      // ✅ FIX: Only mark as successful if both OneSignal AND database operations succeeded
+      if (!databaseUpdateSucceeded) {
+        console.warn('⚠️ [Unsubscribe] OneSignal succeeded but database sync failed');
+        toast({
+          title: "Partial Unsubscribe",
+          description: "Push disabled locally but database sync failed. You may still receive some notifications.",
+          variant: "destructive",
+        });
+        
+        // Still set UI state to disabled since OneSignal unsubscribe worked
+        setIsPushEnabled(false);
+        return false; // Return false because database sync failed
       }
 
       setIsPushEnabled(false);

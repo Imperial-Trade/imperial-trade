@@ -97,7 +97,7 @@ ios_sound: template.sound ? 'default' : undefined,
 3. Go to **Settings** → **Platforms** → **Apple Safari**
 4. Verify:
    - ✅ **"Enable iOS Web Push"** is ON
-   - ✅ **Safari Web ID** matches: `web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e`
+   - ✅ **Safari Web ID** matches: `web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98`
    - ✅ **Site URL** is `https://tradeimperial.com`
 
 **❗ CRITICAL:** If the Safari Web ID is different, copy it and update `index.html` line 74.

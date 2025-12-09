@@ -4,7 +4,7 @@
 
 ### **1. OneSignal Frontend ✅**
 - App ID: `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
-- Safari Web ID: `web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e`
+- Safari Web ID: `web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98`
 - Configured in: index.html, useOneSignal.ts
 
 ### **2. OneSignal Edge Functions ✅**

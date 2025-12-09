@@ -5,7 +5,7 @@
 ### **CRITICAL ISSUE #1: Safari Web ID Configuration**
 **Current State:** Using auto-generated ID
 ```javascript
-safari_web_id: "web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e"
+safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98"
 ```
 
 **THE TRUTH:** This auto-generated ID is a **FALLBACK** and may not work properly for iOS Web Push.
@@ -41,7 +41,7 @@ I found the issue in your OneSignal initialization. It's missing **critical iOS-
 ```javascript
 await OneSignal.init({
   appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
-  safari_web_id: "web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e",
+  safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98",
   notifyButton: { enable: false },
   allowLocalhostAsSecureOrigin: true,
   autoResubscribe: true,

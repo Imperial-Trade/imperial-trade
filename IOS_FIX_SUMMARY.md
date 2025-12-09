@@ -179,7 +179,7 @@ await OneSignal.init({
 3. Verify **"iOS Web Push"** is ENABLED
 4. Verify **Safari Web ID** matches what's in `index.html` line 74:
    ```
-   safari_web_id: "web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e"
+   safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98"
    ```
 5. If it's different, copy the correct one and update `index.html`
 

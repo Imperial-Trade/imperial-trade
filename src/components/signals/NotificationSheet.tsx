@@ -55,12 +55,20 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     setIsDragging(false);
+    
+    // ✅ FIX: Calculate distance directly instead of using stale state
+    // Get the final touch position
+    const finalX = e.changedTouches[0]?.clientX || dragStartX.current;
+    const totalDistance = finalX - dragStartX.current;
+    
     // If dragged more than 100px to the right, close the sheet
-    if (dragX > 100) {
+    if (totalDistance > 100) {
       onClose();
     }
+    
+    // Reset drag position
     setDragX(0);
   };
 

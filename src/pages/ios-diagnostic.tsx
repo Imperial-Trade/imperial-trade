@@ -114,7 +114,7 @@ export default function IOSDiagnostic() {
     // Check 8: OneSignal Player ID
     if (isOneSignalLoaded && window.OneSignal) {
       try {
-        await window.OneSignal.init({ appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e" });
+        await window.OneSignal.init({ appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e" });
         const playerId = await window.OneSignal.User.PushSubscription.id;
         const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
         

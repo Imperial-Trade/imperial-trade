@@ -2,9 +2,9 @@
 
 ## 🎯 **CURRENT OneSignal App ID**
 
-**App ID:** `3ea69bee-8061-4d47-8053-fc95779b6f1e`
+**App ID:** `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
 
-**Safari Web ID:** `web.onesignal.auto.3ea69bee-8061-4d47-8053-fc95779b6f1e`
+**Safari Web ID:** `web.onesignal.auto.3ea69bee-8061-4dd7-8053-fc95779b0f1e`
 
 ---
 
@@ -29,7 +29,7 @@
 
 3. **Add Secret #1:**
    - Name: `ONESIGNAL_APP_ID`
-   - Value: `3ea69bee-8061-4d47-8053-fc95779b6f1e`
+   - Value: `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
    - Click "Add Secret"
 
 4. **Add Secret #2:**
@@ -43,7 +43,7 @@
 
 ```bash
 # Set OneSignal App ID
-npx supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e" --project-ref kmuoqkcxguafxulqlbmi
+npx supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e" --project-ref kmuoqkcxguafxulqlbmi
 
 # Set OneSignal API Key (get from OneSignal dashboard)
 npx supabase secrets set ONESIGNAL_API_KEY="YOUR_REST_API_KEY_HERE" --project-ref kmuoqkcxguafxulqlbmi
@@ -84,8 +84,8 @@ Create a test signal and check edge function logs for:
 ## 📊 **CURRENT STATUS**
 
 **App ID in Code:**
-- ✅ index.html: `3ea69bee-8061-4d47-8053-fc95779b6f1e`
-- ✅ useOneSignal.ts: `3ea69bee-8061-4d47-8053-fc95779b6f1e`
+- ✅ index.html: `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
+- ✅ useOneSignal.ts: `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
 - ✅ Edge functions: Using `Deno.env.get('ONESIGNAL_APP_ID')`
 
 **Secrets Status:**

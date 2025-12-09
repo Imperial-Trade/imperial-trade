@@ -2,7 +2,7 @@
 
 ## 🔐 **SECRETS CONFIRMED**
 
-**OneSignal App ID:** `3ea69bee-8061-4d47-8053-fc95779b6f1e`
+**OneSignal App ID:** `3ea69bee-8061-4dd7-8053-fc95779b0f1e`
 
 **OneSignal API Key:** `os_v2_app_h2tjx3uamfg5pact7skxpgypd36jxjisloxeknfonue3h2vc3yabbgne6ys7dsja5t4wghg6kcgxuk7u6hhks7g4vzkjcjt3d22xs5q`
 
@@ -42,7 +42,7 @@ const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY');
 
 | Component | Status | Value |
 |-----------|--------|-------|
-| **Frontend App ID** | ✅ Set | 3ea69bee-8061-4d47-8053-fc95779b6f1e |
+| **Frontend App ID** | ✅ Set | 3ea69bee-8061-4dd7-8053-fc95779b0f1e |
 | **Safari Web ID** | ✅ Set | web.onesignal.auto.3ea69bee... |
 | **Supabase Secret: APP_ID** | ✅ Set | (from env) |
 | **Supabase Secret: API_KEY** | ✅ Set | os_v2_app_h2tjx3ua... |

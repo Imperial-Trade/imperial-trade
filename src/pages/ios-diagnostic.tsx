@@ -111,10 +111,10 @@ export default function IOSDiagnostic() {
         : undefined,
     });
 
-    // Check 8: OneSignal Player ID
+    // Check 8: OneSignal Player ID (no init needed - useOneSignal hook handles it)
     if (isOneSignalLoaded && window.OneSignal) {
       try {
-        await window.OneSignal.init({ appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e" });
+        // ✅ FIX: Don't call init() here - already initialized by useOneSignal hook
         const playerId = await window.OneSignal.User.PushSubscription.id;
         const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
         

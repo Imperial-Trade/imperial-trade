@@ -12,10 +12,10 @@ import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 import { MobileBottomNav } from "@/components/advanced-tools/MobileBottomNav";
 const coreTools = [{
-  name: "Educational Journal",
+  name: "Trading Journal",
   icon: BookOpen,
   component: TradingJournal,
-  description: "Log and analyze your learning progress with AI-powered educational feedback."
+  description: "Track and analyze your trading performance"
 }, {
   name: "Educational Calculator",
   icon: Calculator,

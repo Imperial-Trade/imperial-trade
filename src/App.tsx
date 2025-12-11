@@ -82,6 +82,9 @@ const AthenaTest = lazyWithRetry(() => import("@/pages/dashboard/athena/AthenaTe
 const DevTests = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/DevTests"));
 const PriceTestingPage = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/PriceTestingPage"));
 
+// Tools Pages - Lazy Loaded with Retry
+const JournalXXPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXX"));
+
 // Educator Pages - Lazy Loaded with Retry
 const EducatorSignalManagement = lazyWithRetry(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
 
@@ -281,6 +284,10 @@ function App() {
             <Route
               path="advanced-tools"
               element={<AdvancedTools />}
+            />
+            <Route
+              path="journal-xx"
+              element={<JournalXXPage />}
             />
             <Route
               path="admin-tools"

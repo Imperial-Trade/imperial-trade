@@ -128,11 +128,11 @@ const AppBar: React.FC = () => {
     }
 
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-1 xl:gap-2">
         <Link to="/account-request">
           <Button
             size="sm"
-            className="glass-button-primary"
+            className="glass-button-primary text-xs lg:text-sm px-2 lg:px-3"
           >
             Get Started
           </Button>
@@ -140,7 +140,7 @@ const AppBar: React.FC = () => {
         <Link to="/signin">
           <Button
             size="sm"
-            className="glass-button-outline"
+            className="glass-button-outline text-xs lg:text-sm px-2 lg:px-3"
           >
             Sign In
           </Button>
@@ -151,7 +151,7 @@ const AppBar: React.FC = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 flex items-end lg:items-center lg:justify-center px-6 ${
+      className={`fixed top-0 left-0 right-0 z-50 flex items-end lg:items-center lg:justify-center px-3 lg:px-4 xl:px-6 overflow-hidden ${
         isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
           : "nav-glass-effect border-b"
@@ -162,17 +162,13 @@ const AppBar: React.FC = () => {
       }}
     >
       <div
-        className={`w-full max-w-7xl h-full lg:h-auto flex items-center ${
-          isSigninPage || isAccountRequestPage || isAccountRequestStatusPage 
-            ? "justify-between" 
-            : "justify-between"
-        }`}
+        className={`w-full h-full lg:h-auto flex items-center justify-between gap-1 lg:gap-2`}
       >
         {/* Go back button for signin, account request, and account request status pages */}
         {(isSigninPage || isAccountRequestPage || isAccountRequestStatusPage) && (
           <Link
             to="/"
-            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors flex-shrink-0"
           >
             <span className="text-lg">←</span>
             <span className="text-sm font-medium">Go back</span>
@@ -181,15 +177,15 @@ const AppBar: React.FC = () => {
 
         {/* Logo - hide on signin, account request, and account request status pages */}
         {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
             <Crown className="h-6 w-6 text-primary" />
-            <span className="text-xl imperial-tech-font">IMPERIAL</span>
+            <span className="text-xl imperial-tech-font hidden sm:inline">IMPERIAL</span>
           </Link>
         )}
 
-        {/* Desktop Navigation - Compact with dropdowns for regular pages, simplified for signin/account-request pages */}
+        {/* Desktop Navigation - Responsive scaling */}
         {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage ? (
-          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
+          <nav className="hidden lg:flex lg:items-center nav-glass-effect rounded-2xl p-1 flex-1 justify-center mx-1 lg:mx-2">
             {navigationItems.map((item) => (
               <div
                 key={item.to}
@@ -200,10 +196,10 @@ const AppBar: React.FC = () => {
                 <Link to={getSafeNavigation(item)}>
                   <Button
                     variant="ghost"
-                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
+                    className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl nav-button-responsive py-2 transition-all duration-200 whitespace-nowrap"
                   >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="nav-label">{item.label}</span>
                   </Button>
                 </Link>
 
@@ -242,15 +238,15 @@ const AppBar: React.FC = () => {
             ))}
           </nav>
         ) : (
-          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
+          <nav className="hidden lg:flex lg:items-center nav-glass-effect rounded-2xl p-1 flex-1 justify-center mx-1 lg:mx-2">
             {navigationItems.map((item) => (
               <Link key={item.to} to={getSafeNavigation(item)}>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200"
+                  className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl nav-button-responsive py-2 transition-all duration-200 whitespace-nowrap"
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="nav-label">{item.label}</span>
                 </Button>
               </Link>
             ))}
@@ -259,12 +255,14 @@ const AppBar: React.FC = () => {
 
         {/* Desktop Auth & Theme Toggle */}
         <div
-          className={`hidden lg:flex items-center gap-2 ${
+          className={`hidden lg:flex items-center gap-1 xl:gap-2 flex-shrink-0 ${
             isSigninPage ? "mr-4" : ""
           }`}
         >
           <ThemeToggle />
+          <div className="auth-buttons">
           {renderAuthButton()}
+          </div>
         </div>
 
         {/* Mobile & Tablet Navigation */}
@@ -422,6 +420,80 @@ const AppBar: React.FC = () => {
 
         .animate-fade-in-up {
           animation: fadeInUp 0.2s ease-out;
+        }
+
+        /* Default nav button styles */
+        .nav-button-responsive {
+          padding-left: 0.75rem;
+          padding-right: 0.75rem;
+        }
+
+        .nav-label {
+          font-size: 0.875rem;
+        }
+
+        /* Large screens (1280px+) - full spacing */
+        @media (min-width: 1280px) {
+          .nav-button-responsive {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+          }
+          .nav-label {
+            font-size: 0.875rem;
+          }
+        }
+
+        /* Medium-large screens (1150px - 1279px) - slightly reduced */
+        @media (min-width: 1150px) and (max-width: 1279px) {
+          .nav-button-responsive {
+            padding-left: 0.625rem;
+            padding-right: 0.625rem;
+          }
+          .nav-label {
+            font-size: 0.8125rem;
+          }
+        }
+
+        /* Medium screens (1100px - 1149px) - compact */
+        @media (min-width: 1100px) and (max-width: 1149px) {
+          .nav-button-responsive {
+            padding-left: 0.375rem;
+            padding-right: 0.375rem;
+          }
+          .nav-label {
+            font-size: 0.75rem;
+          }
+          .auth-buttons button {
+            padding-left: 0.375rem;
+            padding-right: 0.375rem;
+            font-size: 0.75rem;
+          }
+        }
+
+        /* Small-medium screens (1024px - 1099px) - very compact */
+        @media (min-width: 1024px) and (max-width: 1099px) {
+          .nav-button-responsive {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+            gap: 0.25rem;
+          }
+          .nav-label {
+            font-size: 0.6875rem;
+          }
+          .auth-buttons button {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+            font-size: 0.6875rem;
+          }
+        }
+
+        /* Auth buttons responsive */
+        @media (min-width: 1150px) and (max-width: 1279px) {
+          .auth-buttons button {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            font-size: 0.8125rem;
+          }
         }
       `}</style>
     </header>

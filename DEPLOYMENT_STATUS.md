@@ -159,7 +159,7 @@ ONESIGNAL_API_KEY    (set)
 
 **If not set, run:**
 ```bash
-supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e" --project-ref kmuoqkcxguafxulqlbmi
+supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e" --project-ref kmuoqkcxguafxulqlbmi
 supabase secrets set ONESIGNAL_API_KEY="os_v2_app_..." --project-ref kmuoqkcxguafxulqlbmi
 ```
 

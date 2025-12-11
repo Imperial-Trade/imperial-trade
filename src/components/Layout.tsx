@@ -46,6 +46,7 @@ export default function Layout({
 }) {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isJournalXXPage = location.pathname === '/dashboard/journal-xx';
   const isMobile = useIsMobile();
 
   // For home page, use AppBar instead of sidebar
@@ -64,26 +65,30 @@ export default function Layout({
 
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen w-full bg-background">
-        {/* Authenticated Apple-style Navigation Bar - Desktop Only */}
-        <ErrorBoundary componentName="Authenticated Navigation">
-          <div className="hidden lg:block">
-            <AuthenticatedAppBar />
-          </div>
-        </ErrorBoundary>
+      <div className={`min-h-screen w-full ${isJournalXXPage ? '' : 'bg-background'}`}>
+        {/* Authenticated Apple-style Navigation Bar - Desktop Only (Hidden on Journal XX) */}
+        {!isJournalXXPage && (
+          <ErrorBoundary componentName="Authenticated Navigation">
+            <div className="hidden lg:block">
+              <AuthenticatedAppBar />
+            </div>
+          </ErrorBoundary>
+        )}
 
-        {/* Mobile: Use existing Sheet-based sidebar */}
-        {isMobile && <ErrorBoundary componentName="Mobile Sidebar">
+        {/* Mobile: Use existing Sheet-based sidebar - Hidden on Journal XX */}
+        {isMobile && !isJournalXXPage && <ErrorBoundary componentName="Mobile Sidebar">
             <AppSidebar />
           </ErrorBoundary>}
 
-        {/* Tablet & Desktop: Use custom overlay sidebar */}
-        <ErrorBoundary componentName="Sidebar Overlay">
-          <SidebarOverlay />
-        </ErrorBoundary>
+        {/* Tablet & Desktop: Use custom overlay sidebar - Hidden on Journal XX */}
+        {!isJournalXXPage && (
+          <ErrorBoundary componentName="Sidebar Overlay">
+            <SidebarOverlay />
+          </ErrorBoundary>
+        )}
 
         {/* Main content - centered, no left margin */}
-        <main className="w-full min-h-screen pt-0 lg:pt-20 bg-background border-l border-border/10">
+        <main className={`w-full min-h-screen ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>
@@ -99,8 +104,8 @@ export default function Layout({
             <AdminArsenalSidebar />
           </ErrorBoundary>}
         
-        {/* Compliance Footer */}
-        <ComplianceFooter />
+        {/* Compliance Footer - Hidden on Journal XX */}
+        {!isJournalXXPage && <ComplianceFooter />}
       </div>
     </SidebarProvider>;
 }

@@ -145,7 +145,7 @@ Run these commands in PowerShell:
 cd "C:\Users\Jacob Estayo\Trade imperial\imperial-trade"
 
 # Set OneSignal App ID (PUBLIC - goes in frontend code)
-supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e"
+supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e"
 
 # Set OneSignal REST API Key (SECRET - server-side only)
 supabase secrets set ONESIGNAL_API_KEY="os_v2_app_h2tjx3uamfg5pact7skxpgypd36jxjisloxeknfonue3h2vc3yabbgne6ys7dsja5t4wghg6kcgxuk7u6hhks7g4vzkjcjt3d22xs5q"

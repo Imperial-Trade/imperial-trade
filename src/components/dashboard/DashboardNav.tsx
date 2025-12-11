@@ -35,7 +35,7 @@ const DashboardNav: React.FC = () => {
   const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
     { to: getOrderFlowAppUrl(), icon: MessageSquare, label: "Community", external: true },
-    { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
+    { to: "/dashboard/journal-xx", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];
 

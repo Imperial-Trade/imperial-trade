@@ -35,7 +35,7 @@ const DashboardNav: React.FC = () => {
   const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
     { to: getOrderFlowAppUrl(), icon: MessageSquare, label: "Community", external: true },
-    { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
+    { to: "/dashboard/journal-xx", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];
 
@@ -86,10 +86,10 @@ const DashboardNav: React.FC = () => {
     <header 
       className={`hidden lg:flex fixed top-0 left-0 right-0 z-[200] nav-glass-effect ${
         isHeaderCollapsed ? 'h-12' : 'h-20'
-      } items-center justify-center px-6 transition-all duration-300 border-b`}
+      } lg:items-center lg:justify-center px-6 transition-all duration-300 border-b`}
     >
       
-      <div className="w-full max-w-7xl flex items-center justify-between relative">
+      <div className="w-full max-w-7xl h-full lg:h-auto flex items-center justify-between relative">
         {/* Logo */}
         <Link to="/dashboard/home" className="flex items-center gap-3">
           <div className={`flex items-center gap-3 transition-opacity duration-500 ${
@@ -106,7 +106,7 @@ const DashboardNav: React.FC = () => {
 
         {/* Desktop Navigation - Primary Items Only */}
         {!isHeaderCollapsed && (
-          <nav className="hidden lg:flex items-center gap-1 nav-glass-effect rounded-2xl p-1 transition-all duration-300">
+          <nav className="hidden lg:flex lg:items-center gap-1 nav-glass-effect rounded-2xl p-1 transition-all duration-300 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {/* Primary navigation items */}
             {primaryNavItems.map(item => {
               const isActive = location.pathname === item.to;

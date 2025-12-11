@@ -45,7 +45,7 @@ Run these commands in your terminal:
 cd "C:\Users\Jacob Estayo\Trade imperial\imperial-trade"
 
 # Set OneSignal App ID
-supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e"
+supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e"
 
 # Set OneSignal REST API Key
 supabase secrets set ONESIGNAL_API_KEY="os_v2_app_h2tjx3uamfg5pact7skxpgypd36jxjisloxeknfonue3h2vc3yabbgne6ys7dsja5t4wghg6kcgxuk7u6hhks7g4vzkjcjt3d22xs5q"
@@ -268,7 +268,7 @@ ORDER BY updated_at DESC;
 **Fix:**
 ```bash
 # Set the secrets
-supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e"
+supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e"
 supabase secrets set ONESIGNAL_API_KEY="os_v2_app_h2tjx3uamfg5pact7skxpgypd36jxjisloxeknfonue3h2vc3yabbgne6ys7dsja5t4wghg6kcgxuk7u6hhks7g4vzkjcjt3d22xs5q"
 
 # Redeploy functions
@@ -327,7 +327,7 @@ supabase functions deploy
 ```bash
 cd "C:\Users\Jacob Estayo\Trade imperial\imperial-trade"
 
-supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4d47-8053-fc95779b6f1e"
+supabase secrets set ONESIGNAL_APP_ID="3ea69bee-8061-4dd7-8053-fc95779b0f1e"
 supabase secrets set ONESIGNAL_API_KEY="os_v2_app_h2tjx3uamfg5pact7skxpgypd36jxjisloxeknfonue3h2vc3yabbgne6ys7dsja5t4wghg6kcgxuk7u6hhks7g4vzkjcjt3d22xs5q"
 ```
 

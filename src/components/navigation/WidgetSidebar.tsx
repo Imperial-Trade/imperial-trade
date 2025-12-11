@@ -16,35 +16,35 @@ import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 
 // Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [{
-  name: "Trading Journal",
+  name: "Trading Journal XX",
   icon: BookOpen,
-  description: "Log and analyze your trades with AI-powered feedback.",
-  route: "/dashboard/advanced-tools?tool=journal"
+  description: "Advanced AI-powered trading journal with pro analytics.",
+  route: "/dashboard/journal-xx"
 }, {
   name: "Economic Calendar",
   icon: Calendar,
   description: "Stay ahead of market-moving events and news releases.",
-  route: "/dashboard/advanced-tools?tool=calendar"
+  route: "/dashboard/journal-xx"
 }, {
   name: "Risk Calculator",
   icon: Calculator,
   description: "Calculate position size, risk, and potential profit.",
-  route: "/dashboard/advanced-tools?tool=calculator"
+  route: "/dashboard/journal-xx"
 }, {
   name: "Trade Analyst",
   icon: Brain,
   description: "Upload screenshots for deep performance analysis.",
-  route: "/dashboard/advanced-tools?tool=analyst"
+  route: "/dashboard/journal-xx"
 }, {
   name: "Opportunity Scanner",
   icon: Search,
   description: "Scan markets for high-probability trading setups.",
-  route: "/dashboard/advanced-tools?tool=scanner"
+  route: "/dashboard/journal-xx"
 }, {
   name: "Risk Simulator",
   icon: Scale,
   description: "Simulate trade setups to assess risk before you enter.",
-  route: "/dashboard/advanced-tools?tool=simulator"
+  route: "/dashboard/journal-xx"
 }, {
   name: "Pattern Stream",
   icon: Bell,
@@ -65,8 +65,8 @@ const tradingTools = [{
 }, {
   name: "Tools",
   icon: Target,
-  description: "Advanced trading calculators and analyzers.",
-  route: "/dashboard/advanced-tools"
+  description: "Advanced AI-powered trading journal and tools.",
+  route: "/dashboard/journal-xx"
 }];
 interface WidgetSidebarProps {
   className?: string;
@@ -164,7 +164,7 @@ export function WidgetSidebar({
       // Bottom nav detection: All pages with mobile bottom navigation bars
       const PAGES_WITH_BOTTOM_NAV = [
         '/dashboard/signal-stream',    // SignalStreamBottomNav
-        '/dashboard/advanced-tools'     // MobileBottomNav
+        '/dashboard/journal-xx'     // MobileBottomNav
       ];
       
       const hasBottomNav = PAGES_WITH_BOTTOM_NAV.some(

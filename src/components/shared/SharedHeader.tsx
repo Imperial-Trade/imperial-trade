@@ -48,7 +48,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
   };
 
   // Check if we're on the advanced tools/journal page
-  const isJournalSection = location.pathname.includes('/dashboard/advanced-tools');
+  const isJournalSection = location.pathname.includes('/dashboard/journal-xx');
 
   // Journal-specific navigation items
   const journalNavigationItems = [
@@ -108,7 +108,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       external: true
     },
     {
-      to: `${baseUrl}/dashboard/advanced-tools`,
+      to: `${baseUrl}/dashboard/journal-xx`,
       icon: TrendingUp,
       label: "Tools",
       description: "Advanced trading tools and analytics"
@@ -119,7 +119,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
 
   return (
     <>
-      <header className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 bg-background ${isHeaderCollapsed ? 'h-12' : 'h-20'} items-center justify-center px-6 transition-all duration-300`}>
+      <header className={`hidden lg:flex fixed top-0 left-0 right-0 z-50 bg-background ${isHeaderCollapsed ? 'h-12' : 'h-20'} lg:items-center lg:justify-center px-6 transition-all duration-300`}>
       {/* Logo - Fixed to leftmost position */}
       <div className="hidden lg:block fixed top-16 left-6 z-60">
         <Link to={`${baseUrl}/dashboard/home`} className="flex items-center gap-2">
@@ -128,10 +128,10 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
         </Link>
       </div>
 
-        <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
+        <div className={`w-full max-w-7xl h-full lg:h-auto flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
           {/* Desktop Navigation */}
           {!isHeaderCollapsed && (
-            <nav className="hidden lg:flex items-center gap-1 rounded-2xl p-1">
+            <nav className="hidden lg:flex lg:items-center gap-1 rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;
               const ButtonComponent = (

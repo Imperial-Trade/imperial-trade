@@ -403,7 +403,7 @@ export function ProfessionalTradeNotificationDashboard() {
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="font-medium">OneSignal App ID</p>
-                  <p className="text-sm text-muted-foreground">3ea69bee-8061-4d47-8053-fc95779b6f1e</p>
+                  <p className="text-sm text-muted-foreground">3ea69bee-8061-4dd7-8053-fc95779b0f1e</p>
                 </div>
                 <Badge variant="default">✅ Configured</Badge>
               </div>

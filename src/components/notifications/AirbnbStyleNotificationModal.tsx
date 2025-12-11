@@ -124,19 +124,30 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
       }
 
       // Step 3: Mark that user has seen this modal
+      // Note: Auto-subscribe logic is now handled in useOneSignal.subscribeToPush()
+      // to avoid duplicate operations
       localStorage.setItem(`notification_permission_shown_${user.id}`, 'true');
       console.log(`✅ [Modal] Marked modal as seen for user ${user.id}`);
 
       const enabledCount = selectedTypes.size;
       toast({
         title: "Notifications Enabled! 🎉",
-        description: `You'll receive ${enabledCount} types of notifications`,
+        description: `You'll receive ${enabledCount} types of notifications from all educators`,
       });
 
       onSuccess();
     } catch (error: any) {
-      console.error('Failed to enable notifications:', error);
-      onSuccess();
+      console.error('❌ [Modal] Failed to enable notifications:', error);
+      
+      // ✅ FIX: Show error toast instead of calling onSuccess()
+      toast({
+        title: "Subscription Failed",
+        description: error.message || "Could not enable push notifications. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Don't close the modal - let user try again or close manually
+      // onSuccess(); // ❌ REMOVED - Don't mark as success when it failed
     } finally {
       setIsLoading(false);
     }

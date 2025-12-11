@@ -1899,15 +1899,17 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
-        {/* Content wrapper with z-index and safe area padding for iOS notch */}
+        {/* Content wrapper with z-index, safe area padding for iOS notch, and lg:pt-24 to clear desktop header */}
         <div 
           className="relative z-[60] h-full overflow-y-auto pb-20 md:pb-6"
           style={{
-            paddingTop: 'max(env(safe-area-inset-top), 0px)',
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
             paddingLeft: 'env(safe-area-inset-left)',
             paddingRight: 'env(safe-area-inset-right)',
           }}
         >
+          {/* Desktop header clearance spacer - hidden on mobile where safe-area-inset handles spacing */}
+          <div className="hidden lg:block h-24" />
           <GlobalLeadershipBanner />
         
         {/* Header - Mobile Optimized spacing */}
@@ -1915,7 +1917,7 @@ export default function SignalStream() {
 
 
           {/* Main Content - Mobile Optimized grid layout with granular protection */}
-          <div className="w-full px-2 sm:px-4 pt-0">
+          <div className="w-full px-2 sm:px-4">
             <div className="max-w-none w-full">
               <div className="w-full">
               
@@ -1924,8 +1926,6 @@ export default function SignalStream() {
               
 
 
-              <div className="mb-6" />
-              
               {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true" className="flex items-center gap-3">
                 <div className="flex-1">

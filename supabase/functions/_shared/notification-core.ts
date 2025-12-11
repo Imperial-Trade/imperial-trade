@@ -368,8 +368,11 @@ export async function sendRealtimeNotification(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📱 PUSH NOTIFICATION (OneSignal - All Platforms)
+// 📱 PUSH NOTIFICATION (OneSignal - Using External User IDs)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+// We use include_external_user_ids (Supabase User IDs) instead of include_player_ids
+// This is simpler and automatically supports multiple devices per user
 
 export async function sendPushNotification(
   supabase: any,
@@ -385,86 +388,17 @@ export async function sendPushNotification(
     return { success: false, error: 'OneSignal not configured', sent: 0 };
   }
 
-  // ✅ CRITICAL FIX: Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
+  // ✅ Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
   const extractedUserIds = Array.isArray(pushUserIds) 
     ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
     : [];
 
   if (extractedUserIds.length === 0) {
     console.log('ℹ️ No push-enabled users for this notification');
-    
-    // ✅ FIX: Log to analytics even when no users (for dashboard visibility)
-    try {
-      await supabase.from('notification_analytics').insert({
-        signal_id: signalData.id,
-        user_id: null, // System-level notification attempt
-        notification_type: template.type,
-        sent_at: new Date().toISOString(),
-        failed_at: new Date().toISOString(),
-        failure_reason: 'No push-enabled users available',
-      });
-    } catch (error) {
-      console.warn('Failed to log analytics:', error);
-    }
-    
     return { success: true, sent: 0 };
   }
 
-  // ✅ MULTI-DEVICE FIX: Fetch ALL active device subscriptions (supports multiple devices per user)
-  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users from device_subscriptions`);
-  
-  const { data: devices, error: deviceError } = await supabase
-    .from('device_subscriptions')
-    .select('user_id, onesignal_player_id, device_info, platform, is_mobile')
-    .in('user_id', extractedUserIds)
-    .eq('is_active', true)
-    .not('onesignal_player_id', 'is', null);
-
-  if (deviceError) {
-    console.error('❌ Failed to fetch device subscriptions:', deviceError);
-    return { success: false, error: 'Failed to fetch device subscriptions', sent: 0 };
-  }
-
-  if (!devices || devices.length === 0) {
-    console.log('ℹ️ No active devices found for push users');
-    
-    // ✅ FIX: Log to analytics for each user without devices (for dashboard visibility)
-    for (const userId of extractedUserIds) {
-      try {
-        await supabase.from('notification_analytics').insert({
-          signal_id: signalData.id,
-          user_id: userId,
-          notification_type: template.type,
-          sent_at: new Date().toISOString(),
-          failed_at: new Date().toISOString(),
-          failure_reason: 'No active devices - User needs to subscribe via Airbnb modal',
-        });
-      } catch (error) {
-        console.warn('Failed to log analytics:', error);
-      }
-    }
-    
-    return { success: true, sent: 0 };
-  }
-
-  // Create a map of userId -> array of playerIDs (supports multiple devices per user)
-  const userPlayerMap = new Map<string, string[]>();
-  devices.forEach((device: any) => {
-    if (device.onesignal_player_id) {
-      const existing = userPlayerMap.get(device.user_id) || [];
-      existing.push(device.onesignal_player_id);
-      userPlayerMap.set(device.user_id, existing);
-    }
-  });
-
-  const totalDevices = devices.length;
-  const usersWithDevices = userPlayerMap.size;
-  console.log(`📋 [Player IDs] Found ${totalDevices} active devices for ${usersWithDevices} users`, {
-    devicesPerUser: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
-      userId: userId.substring(0, 8),
-      deviceCount: playerIds.length
-    }))
-  });
+  console.log(`📋 [OneSignal] Sending to ${extractedUserIds.length} users via External User IDs (Supabase UIDs)`);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
@@ -599,64 +533,27 @@ export async function sendPushNotification(
 
   if (filteredUserIds.length === 0) {
     console.log('ℹ️ All users filtered by preferences');
-    
-    // Analytics already logged above for each filtered user with reason
-    return { success: true, sent: 0 };
-  }
-
-  // ✅ MULTI-DEVICE FIX: Get ALL Player IDs for filtered users (supports multiple devices per user)
-  const finalPlayerIds: string[] = [];
-  filteredUserIds.forEach(userId => {
-    const playerIds = userPlayerMap.get(userId);
-    if (playerIds && playerIds.length > 0) {
-      finalPlayerIds.push(...playerIds); // Add all devices for this user
-    }
-  });
-
-  if (finalPlayerIds.length === 0) {
-    console.log('ℹ️ All users filtered or no Player IDs available (after preference check)');
-    
-    // ✅ FIX: Log to analytics for users who passed preferences but have no Player ID
-    for (const userId of filteredUserIds) {
-      const playerIds = userPlayerMap.get(userId);
-      if (!playerIds || playerIds.length === 0) {
-        try {
-          await supabase.from('notification_analytics').insert({
-            signal_id: signalData.id,
-            user_id: userId,
-            notification_type: template.type,
-            sent_at: new Date().toISOString(),
-            failed_at: new Date().toISOString(),
-            failure_reason: 'No Player ID available after preference check',
-          });
-        } catch (error) {
-          console.warn('Failed to log analytics:', error);
-        }
-      }
-    }
-    
     return { success: true, sent: 0 };
   }
 
   try {
-    console.log(`📤 [OneSignal] Sending push notification:`, {
+    console.log(`📤 [OneSignal] Sending push notification using External User IDs:`, {
       type: template.type,
       asset: signalData.asset_name,
-      totalDevices: finalPlayerIds.length,
-      uniqueUsers: filteredUserIds.length,
-      playerIds: finalPlayerIds.map(id => id.substring(0, 8) + '...'),
-      deviceBreakdown: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
-        user: userId.substring(0, 8),
-        devices: playerIds.length,
-      })),
+      userCount: filteredUserIds.length,
+      userIds: filteredUserIds.map(id => id.substring(0, 8) + '...'),
     });
 
-    // Build OneSignal notification payload (WEB PUSH ONLY)
+    // ✅ Build OneSignal notification payload using External User IDs (Supabase UIDs)
+    // Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+    // This automatically sends to ALL devices registered under each user
     const payload = {
       app_id: ONESIGNAL_APP_ID,
       
-      // ✅ CRITICAL FIX: Target SPECIFIC Player IDs (not segments)
-      include_player_ids: finalPlayerIds,
+      // ✅ USE EXTERNAL USER IDs (Supabase User IDs) - NOT Player IDs
+      // This is the recommended approach per Supabase + OneSignal integration guide
+      // OneSignal handles multi-device automatically when using OneSignal.login(uid)
+      include_external_user_ids: filteredUserIds,
       
       // Notification content
       headings: { en: template.title },
@@ -671,10 +568,6 @@ export async function sendPushNotification(
       ios_badgeType: 'Increase',
       ios_badgeCount: 1,
       ios_sound: template.sound ? 'default' : undefined,
-      
-      // ❌ REMOVED: Android-specific settings (we're web-only, no native Android app)
-      // android_channel_id causes "Could not find android_channel_id" error
-      // android_accent_color is for native Android only
       
       // Custom data payload
       data: {
@@ -734,7 +627,7 @@ export async function sendPushNotification(
 
       console.log(`✅ [OneSignal] Push sent successfully:`, {
         id: result.id,
-        recipients: result.recipients || finalPlayerIds.length,
+        recipients: result.recipients || filteredUserIds.length,
       });
 
       // 📊 Log success to analytics for EACH user

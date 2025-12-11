@@ -532,23 +532,23 @@ export const useOneSignal = (): UseOneSignalReturn => {
         const fingerprintSource = `${navigator.userAgent}_${navigator.platform}_${window.screen.width}x${window.screen.height}_${user.id}`;
         const deviceFingerprint = btoa(fingerprintSource).substring(0, 50);
 
-        // ✅ FIX: Use a two-step process to handle device subscription correctly
-        // Step 1: Check if user already has an active device subscription
-        const { data: existingDevices, error: checkError } = await supabase
+        // ✅ MULTI-DEVICE SUPPORT: Check for existing device with SAME fingerprint
+        // This allows multiple devices (Mac + iPhone) while preventing duplicates from same device
+        const { data: existingDevice, error: checkError } = await supabase
           .from('device_subscriptions')
-          .select('id, onesignal_player_id, device_fingerprint')
+          .select('id, onesignal_player_id, device_fingerprint, platform')
           .eq('user_id', user.id)
-          .eq('is_active', true);
+          .eq('device_fingerprint', deviceFingerprint)
+          .maybeSingle();
 
         let deviceError: any = null;
         let deviceData: any = null;
 
         if (checkError) {
-          console.error('❌ [Database] Failed to check existing devices:', checkError);
+          console.error('❌ [Database] Failed to check existing device:', checkError);
           deviceError = checkError;
-        } else if (existingDevices && existingDevices.length > 0) {
-          // Step 2a: UPDATE existing device subscription with new Player ID
-          // This is the key fix - update the existing row instead of creating a new one
+        } else if (existingDevice) {
+          // UPDATE: Same device (same fingerprint) - just update the Player ID
           const { data, error } = await supabase
             .from('device_subscriptions')
             .update({
@@ -558,12 +558,11 @@ export const useOneSignal = (): UseOneSignalReturn => {
               browser_name: browserName,
               platform: navigator.platform,
               is_mobile: isMobile,
-              device_fingerprint: deviceFingerprint, // Update fingerprint too
               is_active: true,
               last_seen_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
-            .eq('id', existingDevices[0].id) // Update the first active device
+            .eq('id', existingDevice.id)
             .select('id')
             .single();
           
@@ -571,14 +570,32 @@ export const useOneSignal = (): UseOneSignalReturn => {
           deviceError = error;
           
           if (!error) {
-            console.log('✅ [Database] UPDATED existing device subscription with new Player ID:', {
-              oldPlayerId: existingDevices[0].onesignal_player_id?.substring(0, 12) + '...',
+            console.log('✅ [Database] UPDATED device subscription (same device):', {
+              oldPlayerId: existingDevice.onesignal_player_id?.substring(0, 12) + '...',
               newPlayerId: playerId?.substring(0, 12) + '...',
               deviceName,
+              platform: navigator.platform,
             });
           }
         } else {
-          // Step 2b: INSERT new device subscription (no existing devices)
+          // INSERT: New device (different fingerprint) - this is a DIFFERENT device
+          // Check how many devices user already has
+          const { data: allDevices } = await supabase
+            .from('device_subscriptions')
+            .select('id, platform, updated_at')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: true });
+
+          // If user has 2+ devices, deactivate the oldest one
+          if (allDevices && allDevices.length >= 2) {
+            console.log(`📱 [Devices] User has ${allDevices.length} devices, deactivating oldest`);
+            await supabase
+              .from('device_subscriptions')
+              .update({ is_active: false, updated_at: new Date().toISOString() })
+              .eq('id', allDevices[0].id);
+          }
+
           const { data, error } = await supabase
             .from('device_subscriptions')
             .insert({

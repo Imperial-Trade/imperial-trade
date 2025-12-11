@@ -43,7 +43,7 @@ const AuthenticatedAppBar: React.FC = () => {
       external: true,
     },
     {
-      to: "/dashboard/journal-xx",
+      to: "/dashboard/advanced-tools",
       icon: TrendingUp,
       label: "Tools",
     },

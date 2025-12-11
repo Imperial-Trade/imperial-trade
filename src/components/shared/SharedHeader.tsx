@@ -108,7 +108,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       external: true
     },
     {
-      to: `${baseUrl}/dashboard/journal-xx`,
+      to: `${baseUrl}/dashboard/advanced-tools`,
       icon: TrendingUp,
       label: "Tools",
       description: "Advanced trading tools and analytics"

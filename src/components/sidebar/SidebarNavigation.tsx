@@ -44,7 +44,7 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
-    { to: "/dashboard/journal-xx", icon: Wrench, label: "Advanced Tools" },
+    { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
     { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
   ];
 

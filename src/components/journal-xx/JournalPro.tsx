@@ -790,7 +790,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       setIsAnalysisReady(false);
       let imageBase64 = undefined;
       if (image) { try { imageBase64 = await fileToBase64(image); } catch(e) {} }
-      analyzeTradeWithGemini(asset, Number(pnl), notes, imageBase64, direction, outcome, strategy, emotion, session)
+      analyzeTradeWithGemini(asset, Number(pnl), notes, imageBase64, direction, outcome, strategy, emotion, session, true) // isPro = true for advanced analysis
         .then(res => { setAiFeedback(res); setIsAnalysisReady(true); });
   }, [asset, pnl, notes, image, direction, outcome, strategy, emotion, session]);
 

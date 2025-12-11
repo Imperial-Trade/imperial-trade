@@ -1,6 +1,8 @@
 /**
  * Analyzes a trade using the Gemini AI directly via REST API.
  * Using the Google API key for Journal XX AI analysis.
+ * 
+ * @param isPro - If true, provides advanced PRO-level analysis with more depth
  */
 export const analyzeTradeWithGemini = async (
   asset: string,
@@ -12,16 +14,49 @@ export const analyzeTradeWithGemini = async (
   outcome?: string,
   strategy?: string,
   emotion?: string,
-  session?: string
+  session?: string,
+  isPro: boolean = false
 ): Promise<string> => {
   try {
-    console.log('Starting AI analysis for trade:', { asset, pnl, direction, outcome, strategy });
+    console.log('Starting AI analysis for trade:', { asset, pnl, direction, outcome, strategy, isPro });
     
     // Google Gemini API Key
     const API_KEY = 'AIzaSyCO-7hyeiyJc8iYYqbXZ03jK4qZ1_ICf0Y';
     
-    // Build the prompt text exactly as in the source repository
-    const promptText = `
+    // Different prompts for Standard vs PRO version
+    const promptText = isPro ? `
+You are an ELITE institutional trading mentor with 20+ years experience at top hedge funds.
+Analyze this trade with ADVANCED depth and provide comprehensive institutional-grade feedback.
+
+**Trade Data:**
+- Asset: ${asset}
+- PnL: ${pnl > 0 ? '+' : ''}${pnl}
+- Direction: ${direction || 'N/A'}
+- Outcome: ${outcome || 'N/A'}
+- Strategy: ${strategy || 'N/A'}
+- Session: ${session || 'N/A'}
+- Emotional State: ${emotion || 'N/A'}
+
+**Trader's Notes:** 
+"${notes}"
+
+**PRO Analysis Tasks:**
+If an image is provided, perform detailed chart analysis including key levels, market structure, and entry/exit quality.
+
+Provide comprehensive PRO-level insights:
+1. **Setup Quality Score (1-10):** Deep evaluation of the ${strategy || 'trading'} setup quality, entry timing, and risk-reward.
+2. **Market Structure Analysis:** Assess the broader context - trend, key levels, and if the trade aligned with institutional flow.
+3. **Psychology Deep Dive:** Analyze how "${emotion || 'emotional state'}" affected decision-making. Identify cognitive biases present.
+4. **Risk Management Review:** Evaluate position sizing, stop placement, and overall risk approach.
+5. **Performance Pattern Recognition:** Connect this trade to recurring patterns in trading behavior.
+6. **Actionable Improvement Plan:** Specific, measurable steps to improve this type of setup.
+
+**PRO Constraints:**
+- Provide institutional-grade analysis with specific technical details
+- Reference advanced concepts (order flow, liquidity, market microstructure) when relevant
+- Be direct and data-driven in feedback
+- Maximum 8-10 sentences with dense, actionable insights
+    `.trim() : `
 Analyze this trade deeply as an institutional trading mentor.
 
 **Trade Data:**
@@ -86,7 +121,9 @@ Provide 3 specific insights in Markdown:
           }],
           systemInstruction: {
             parts: [{
-              text: "You are an elite, institutional-grade trading mentor. You value process over pnl."
+              text: isPro 
+                ? "You are an elite hedge fund trading mentor with expertise in market microstructure, order flow, and behavioral psychology. You provide advanced, institutional-grade analysis with specific actionable insights. You identify patterns in trader behavior and provide data-driven feedback."
+                : "You are an elite, institutional-grade trading mentor. You value process over pnl."
             }]
           },
           generationConfig: {

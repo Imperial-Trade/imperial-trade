@@ -154,7 +154,7 @@ export default function JournalXX() {
       }
     }
 
-    // Pass detailed fields if available (Standard mode won't have them, will pass undefined, handled by service)
+    // Pass detailed fields if available (Standard mode - isPro = false for simpler analysis)
     analyzeTradeWithGemini(
         data.asset, 
         Number(data.pnl), 
@@ -164,7 +164,8 @@ export default function JournalXX() {
         data.outcome, 
         data.strategy, 
         data.emotion, 
-        data.session
+        data.session,
+        false // isPro = false for standard Journal XX
     )
       .then(feedback => {
         setCurrentAnalysis(feedback);

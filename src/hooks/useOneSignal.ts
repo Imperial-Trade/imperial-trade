@@ -397,80 +397,32 @@ export const useOneSignal = (): UseOneSignalReturn => {
         }
       }
       
-      // Step 3: Wait for subscription to be confirmed
-      let isSubscribed = false;
-      let attempts = 0;
-      const maxAttempts = 10; // 5 seconds total (10 * 500ms)
+      // Step 3: Check notification permission status
+      const permission = await window.OneSignal.Notifications.permission;
+      console.log('🔍 [OneSignal] Permission status:', permission);
       
-      console.log('⏳ [OneSignal] Waiting for subscription confirmation...');
-      
-      while (!isSubscribed && attempts < maxAttempts) {
-        try {
-          isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
-        } catch (error) {
-          console.warn(`⚠️ [OneSignal] Attempt ${attempts + 1} failed:`, error);
-        }
-        
-        if (!isSubscribed) {
-          attempts++;
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-
-      // Step 4: Verify subscription status
-      if (!isSubscribed) {
-        const permission = await window.OneSignal.Notifications.permission;
-        console.log('🔍 [OneSignal] Permission status:', permission);
-        
-        if (permission === 'denied') {
-          // Platform-specific permission instructions
-          let permissionInstructions = "Please enable notifications in your browser settings.";
-          if (isIOS) {
-            permissionInstructions = "Enable notifications in iOS Settings → Trade Imperial → Notifications";
-          } else if (isAndroid) {
-            permissionInstructions = "Enable notifications in your browser settings → Site settings → Notifications";
-          }
-          
-          toast({
-            title: "Permission Denied",
-            description: permissionInstructions,
-            variant: "destructive",
-          });
-          return false;
-        }
-      }
-
-      // Step 5: If still not subscribed, provide detailed error
-      if (!isSubscribed) {
-        console.error('❌ [OneSignal] Failed to subscribe after all attempts', {
-          attempts,
-          serviceWorkerReady,
-          isSecureContext: window.isSecureContext,
-          protocol: window.location.protocol,
-        });
-        
-        // Check for common issues
-        let errorMessage = "Could not enable notifications. ";
-        
-        if (!window.isSecureContext) {
-          errorMessage += "HTTPS is required for push notifications.";
-        } else if (!serviceWorkerReady) {
-          errorMessage += "Service worker failed to register. Try refreshing the page.";
-        } else if (isIOS && !isPWA) {
-          errorMessage += "On iOS, you must add this app to your home screen first.";
-        } else {
-          errorMessage += "Please try again or check your browser settings.";
+      if (permission === false || permission === 'denied') {
+        // Permission was denied
+        let permissionInstructions = "Please enable notifications in your browser settings.";
+        if (isIOS) {
+          permissionInstructions = "Enable notifications in iOS Settings → Trade Imperial → Notifications";
+        } else if (isAndroid) {
+          permissionInstructions = "Enable notifications in your browser settings → Site settings → Notifications";
         }
         
         toast({
-          title: "Subscription Error",
-          description: errorMessage,
+          title: "Permission Denied",
+          description: permissionInstructions,
           variant: "destructive",
         });
         return false;
       }
+      
+      // Step 4: Brief delay to allow OneSignal to process, then verify
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
+      console.log('🔔 [OneSignal] Subscription status:', isSubscribed);
       
       console.log('✅ [OneSignal] Subscribed successfully!', {
         userId: user?.id?.substring(0, 12),

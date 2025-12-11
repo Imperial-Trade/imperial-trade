@@ -57,17 +57,13 @@ export default function JournalXX() {
   // Computed state for mobile view
   const isMobileAnalysisMode = analysisStatus === AnalysisStatus.ANALYZING || showPostAnalysisReview;
 
-  // Load sample data
+  // Load saved trades from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('tradeMind_trades');
     if (saved) {
       setTrades(JSON.parse(saved));
-    } else {
-        setTrades([
-            { id: '1', date: new Date(Date.now() - 86400000 * 2).toISOString(), asset: 'BTC/USD', pnl: 450, notes: 'Breakout retest of 65k.', aiFeedback: 'Solid execution on the retest.', outcome: 'Win', strategy: 'Breakout', emotion: 'Zen', session: 'NY Open' },
-            { id: '2', date: new Date(Date.now() - 86400000).toISOString(), asset: 'NVDA', pnl: -120, notes: 'Fomo entered at the top.', aiFeedback: 'Classic chase. Wait for pullback next time.', outcome: 'Loss', strategy: 'Trend Follow', emotion: 'FOMO', session: 'London Open' },
-        ]);
     }
+    // Start with empty trades array - no demo data
   }, []);
 
   useEffect(() => {

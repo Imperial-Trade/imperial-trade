@@ -532,35 +532,84 @@ export const useOneSignal = (): UseOneSignalReturn => {
         const fingerprintSource = `${navigator.userAgent}_${navigator.platform}_${window.screen.width}x${window.screen.height}_${user.id}`;
         const deviceFingerprint = btoa(fingerprintSource).substring(0, 50);
 
-        const { data: deviceData, error: deviceError } = await supabase
+        // ✅ FIX: Use a two-step process to handle device subscription correctly
+        // Step 1: Check if user already has an active device subscription
+        const { data: existingDevices, error: checkError } = await supabase
           .from('device_subscriptions')
-          .upsert({
-            user_id: user.id,
-            device_fingerprint: deviceFingerprint,
-            onesignal_player_id: playerId,
-            device_info: deviceInfo,
-            device_name: deviceName,
-            browser_name: browserName,
-            platform: navigator.platform,
-            is_mobile: isMobile,
-            is_active: true,
-            last_seen_at: new Date().toISOString(),
-          }, {
-            onConflict: 'device_fingerprint',
-          })
-          .select('id')
-          .single();
+          .select('id, onesignal_player_id, device_fingerprint')
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+
+        let deviceError: any = null;
+        let deviceData: any = null;
+
+        if (checkError) {
+          console.error('❌ [Database] Failed to check existing devices:', checkError);
+          deviceError = checkError;
+        } else if (existingDevices && existingDevices.length > 0) {
+          // Step 2a: UPDATE existing device subscription with new Player ID
+          // This is the key fix - update the existing row instead of creating a new one
+          const { data, error } = await supabase
+            .from('device_subscriptions')
+            .update({
+              onesignal_player_id: playerId,
+              device_info: deviceInfo,
+              device_name: deviceName,
+              browser_name: browserName,
+              platform: navigator.platform,
+              is_mobile: isMobile,
+              device_fingerprint: deviceFingerprint, // Update fingerprint too
+              is_active: true,
+              last_seen_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingDevices[0].id) // Update the first active device
+            .select('id')
+            .single();
+          
+          deviceData = data;
+          deviceError = error;
+          
+          if (!error) {
+            console.log('✅ [Database] UPDATED existing device subscription with new Player ID:', {
+              oldPlayerId: existingDevices[0].onesignal_player_id?.substring(0, 12) + '...',
+              newPlayerId: playerId?.substring(0, 12) + '...',
+              deviceName,
+            });
+          }
+        } else {
+          // Step 2b: INSERT new device subscription (no existing devices)
+          const { data, error } = await supabase
+            .from('device_subscriptions')
+            .insert({
+              user_id: user.id,
+              device_fingerprint: deviceFingerprint,
+              onesignal_player_id: playerId,
+              device_info: deviceInfo,
+              device_name: deviceName,
+              browser_name: browserName,
+              platform: navigator.platform,
+              is_mobile: isMobile,
+              is_active: true,
+              last_seen_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
+          
+          deviceData = data;
+          deviceError = error;
+          
+          if (!error) {
+            console.log('✅ [Database] INSERTED new device subscription:', {
+              playerId: playerId?.substring(0, 12) + '...',
+              deviceName,
+            });
+          }
+        }
 
         if (deviceError) {
           console.error('❌ [Database] Failed to save device subscription:', deviceError);
         } else {
-          console.log('✅ [Database] Saved device subscription:', {
-            playerId,
-            deviceName,
-            platform: navigator.platform,
-            isMobile,
-          });
-          
           // Check how many active devices user now has
           const { data: activeDevices, error: countError } = await supabase
             .from('device_subscriptions')
@@ -569,7 +618,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
             .eq('is_active', true);
           
           if (!countError && activeDevices) {
-            console.log(`📱 [Devices] User now has ${activeDevices.length}/2 active devices`);
+            console.log(`📱 [Devices] User now has ${activeDevices.length} active device(s)`);
           }
         }
 

@@ -114,25 +114,10 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       external: true
     },
     {
-      to: `${baseUrl}/dashboard/advanced-tools`,
+      to: `${baseUrl}/dashboard/journal-xx`,
       icon: TrendingUp,
       label: "Tools",
-      description: "Advanced trading tools and analytics",
-      hasDropdown: true,
-      dropdownItems: [
-        {
-          to: `${baseUrl}/dashboard/journal-xx`,
-          icon: BookOpen,
-          label: "Journal XX",
-          description: "Standard trading journal"
-        },
-        {
-          to: `${baseUrl}/dashboard/journal-xx?pro=true`,
-          icon: Sparkles,
-          label: "Journal XX PRO",
-          description: "Premium journal with advanced features"
-        }
-      ]
+      description: "Advanced trading tools and analytics"
     }
   ];
 

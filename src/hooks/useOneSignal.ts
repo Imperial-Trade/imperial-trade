@@ -207,6 +207,19 @@ export const useOneSignal = (): UseOneSignalReturn => {
         setIsInitialized(true);
         console.log('✅ [OneSignal] Ready for user:', user.id?.substring(0, 8));
 
+        // ✅ CRITICAL: Login to OneSignal with Supabase User ID
+        // This associates the user with their OneSignal subscription
+        // Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+        try {
+          await window.OneSignal.login(user.id);
+          console.log('✅ [OneSignal] Logged in with Supabase User ID:', user.id?.substring(0, 8));
+        } catch (loginError: any) {
+          // Login may fail if already logged in, which is fine
+          if (!loginError.message?.includes('already logged in')) {
+            console.warn('⚠️ [OneSignal] Login warning:', loginError.message);
+          }
+        }
+
         // Check current subscription status
         const permission = await window.OneSignal.Notifications.permission;
         const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
@@ -216,28 +229,24 @@ export const useOneSignal = (): UseOneSignalReturn => {
         if (isSubscribed) {
           setIsPushEnabled(true);
           
-          // ✅ SYNC: Ensure database matches OneSignal state + save Player ID
-            const playerId = await window.OneSignal.User.PushSubscription.id;
-            
-          if (playerId) {
-            // Detect platform for accurate tracking
-            const platform = detectPlatform();
-            
-            const { error } = await supabase
-              .from('profiles')
-              .update({ 
-                xeon_stream_subscription: true,
-                device_token: playerId,
-                device_platform: platform,
-                device_token_updated_at: new Date().toISOString(),
-              })
-              .eq('id', user.id);
-            
-            if (error) {
-              console.error('❌ [Database] Failed to sync subscription:', error);
-            } else {
-              console.log('✅ [Database] Synced subscription + Player ID:', playerId?.substring(0, 12), 'Platform:', platform);
-            }
+          // Detect platform for accurate tracking
+          const platform = detectPlatform();
+          
+          // Update database - we now use External User ID (Supabase User ID) for notifications
+          // So we just need to mark the user as subscribed
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              xeon_stream_subscription: true,
+              device_platform: platform,
+              device_token_updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+          
+          if (error) {
+            console.error('❌ [Database] Failed to sync subscription:', error);
+          } else {
+            console.log('✅ [Database] Synced subscription, Platform:', platform);
           }
         } else {
           setIsPushEnabled(false);
@@ -249,12 +258,6 @@ export const useOneSignal = (): UseOneSignalReturn => {
           const isNowSubscribed = event.current.optedIn;
           setIsPushEnabled(isNowSubscribed);
           
-          // Update database with subscription status + Player ID
-          let playerId = null;
-          if (isNowSubscribed) {
-            playerId = await window.OneSignal.User.PushSubscription.id;
-          }
-          
           // Detect platform for accurate tracking
           const platform = detectPlatform();
           
@@ -262,7 +265,6 @@ export const useOneSignal = (): UseOneSignalReturn => {
             .from('profiles')
             .update({ 
               xeon_stream_subscription: isNowSubscribed,
-              device_token: playerId,
               device_platform: isNowSubscribed ? platform : null,
               device_token_updated_at: new Date().toISOString(),
             })
@@ -380,70 +382,77 @@ export const useOneSignal = (): UseOneSignalReturn => {
       console.log('🔔 [OneSignal] Calling optIn()...');
       await window.OneSignal.User.PushSubscription.optIn();
       
-      // Step 3: Wait for Player ID with extended retry logic
-      let playerId: string | null = null;
-      let attempts = 0;
-      const maxAttempts = 20; // 10 seconds total (20 * 500ms)
-      
-      console.log('⏳ [OneSignal] Waiting for Player ID...');
-      
-      while (!playerId && attempts < maxAttempts) {
+      // Step 2: Login with Supabase User ID (CRITICAL for External User ID targeting)
+      // Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+      if (user?.id) {
         try {
-          // Method 1: Direct subscription ID
-          playerId = await window.OneSignal.User.PushSubscription.id;
-          
-          // Method 2: If still null, try getting from subscription token
-          if (!playerId) {
-            const subscriptionState = window.OneSignal.User.PushSubscription;
-            if (subscriptionState && subscriptionState.token) {
-              // Some OneSignal versions use token instead of id
-              playerId = subscriptionState.token;
-            }
+          console.log('🔐 [OneSignal] Logging in with Supabase User ID...');
+          await window.OneSignal.login(user.id);
+          console.log('✅ [OneSignal] Logged in with Supabase User ID:', user.id.substring(0, 8));
+        } catch (loginError: any) {
+          // Login may fail if already logged in, which is fine
+          if (!loginError.message?.includes('already logged in')) {
+            console.warn('⚠️ [OneSignal] Login warning (non-blocking):', loginError.message);
           }
-          
-          // Method 3: Try legacy method if available
-          if (!playerId && window.OneSignal.getUserId) {
-            playerId = await window.OneSignal.getUserId();
-          }
-          
-        } catch (idError) {
-          console.warn(`⚠️ [OneSignal] Attempt ${attempts + 1} failed:`, idError);
+        }
+      }
+      
+      // Step 3: Wait for subscription to be confirmed
+      let isSubscribed = false;
+      let attempts = 0;
+      const maxAttempts = 10; // 5 seconds total (10 * 500ms)
+      
+      console.log('⏳ [OneSignal] Waiting for subscription confirmation...');
+      
+      while (!isSubscribed && attempts < maxAttempts) {
+        try {
+          isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
+        } catch (error) {
+          console.warn(`⚠️ [OneSignal] Attempt ${attempts + 1} failed:`, error);
         }
         
-        if (!playerId) {
+        if (!isSubscribed) {
           attempts++;
           if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       }
 
-      // Step 4: Final verification - check if optedIn is true even if ID is missing
-      if (!playerId) {
-        const isOptedIn = await window.OneSignal.User.PushSubscription.optedIn;
-        console.log('🔍 [OneSignal] optedIn status:', isOptedIn);
+      // Step 4: Verify subscription status
+      if (!isSubscribed) {
+        const permission = await window.OneSignal.Notifications.permission;
+        console.log('🔍 [OneSignal] Permission status:', permission);
         
-        if (isOptedIn) {
-          // User is opted in but ID not available yet - this can happen on slow networks
-          // Try one more time after a longer delay
-          console.log('⏳ [OneSignal] Opted in but no ID - waiting 3 more seconds...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        playerId = await window.OneSignal.User.PushSubscription.id;
+        if (permission === 'denied') {
+          // Platform-specific permission instructions
+          let permissionInstructions = "Please enable notifications in your browser settings.";
+          if (isIOS) {
+            permissionInstructions = "Enable notifications in iOS Settings → Trade Imperial → Notifications";
+          } else if (isAndroid) {
+            permissionInstructions = "Enable notifications in your browser settings → Site settings → Notifications";
+          }
+          
+          toast({
+            title: "Permission Denied",
+            description: permissionInstructions,
+            variant: "destructive",
+          });
+          return false;
         }
       }
 
-      // Step 5: If still no Player ID, provide detailed error
-      if (!playerId) {
-        console.error('❌ [OneSignal] Failed to get Player ID after all attempts', {
+      // Step 5: If still not subscribed, provide detailed error
+      if (!isSubscribed) {
+        console.error('❌ [OneSignal] Failed to subscribe after all attempts', {
           attempts,
           serviceWorkerReady,
           isSecureContext: window.isSecureContext,
           protocol: window.location.protocol,
-          userAgent: navigator.userAgent.substring(0, 100),
         });
         
         // Check for common issues
-        let errorMessage = "Could not get device ID. ";
+        let errorMessage = "Could not enable notifications. ";
         
         if (!window.isSecureContext) {
           errorMessage += "HTTPS is required for push notifications.";
@@ -463,217 +472,40 @@ export const useOneSignal = (): UseOneSignalReturn => {
         return false;
       }
       
-      console.log('✅ [OneSignal] Player ID obtained:', {
-        playerId: playerId.substring(0, 12) + '...',
-        attempts: attempts + 1,
-        serviceWorkerReady,
-      });
-
       console.log('✅ [OneSignal] Subscribed successfully!', {
-        playerId,
-        permission: 'granted'
+        userId: user?.id?.substring(0, 12),
+        platform,
+        isPWA,
       });
 
-      // ✅ CRITICAL: Save device FIRST, then update profile
-      // This ensures Player ID is always stored before marking user as subscribed
+      // ✅ Update profile to mark user as subscribed
+      // We use External User IDs (Supabase UIDs) so we don't need to store Player IDs
+      // OneSignal handles device tracking via OneSignal.login(uid)
       if (user?.id) {
-        // ✅ STEP 1: MULTI-DEVICE SUPPORT - Store this device in device_subscriptions table (max 2 devices)
-        // The database trigger will automatically deactivate the oldest device if user has >2
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isMobile = isIOS || isAndroid;
+        const devicePlatform = detectPlatform();
         
-        // Detect browser
-        let browserName = 'Other';
-        if (navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edge')) {
-          browserName = 'Chrome';
-        } else if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
-          browserName = 'Safari';
-        } else if (navigator.userAgent.includes('Firefox')) {
-          browserName = 'Firefox';
-        } else if (navigator.userAgent.includes('Edge')) {
-          browserName = 'Edge';
-        }
+        // Simply mark the user as subscribed in the profile
+        // OneSignal.login(uid) handles the device-to-user association
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            xeon_stream_subscription: true,
+            device_platform: devicePlatform,
+            device_token_updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
 
-        // Generate human-readable device name
-        let deviceName = 'Unknown Device';
-        if (isIOS) {
-          if (navigator.userAgent.includes('iPad')) {
-            deviceName = 'iPad';
-          } else {
-            deviceName = 'iPhone';
-          }
-          deviceName += ` (${browserName} PWA)`;
-        } else if (isAndroid) {
-          deviceName = `Android (${browserName})`;
-        } else if (navigator.platform.includes('Mac')) {
-          deviceName = `Mac (${browserName})`;
-        } else if (navigator.platform.includes('Win')) {
-          deviceName = `Windows (${browserName})`;
-        } else if (navigator.platform.includes('Linux')) {
-          deviceName = `Linux (${browserName})`;
+        if (profileError) {
+          console.error('❌ [Database] Failed to update profile:', profileError);
+          // Don't fail - OneSignal still works via External User ID
         } else {
-          deviceName = `${navigator.platform} (${browserName})`;
-        }
-
-        const deviceInfo = {
-          platform: navigator.platform,
-          userAgent: navigator.userAgent,
-          isMobile,
-          browserName,
-          language: navigator.language,
-          screenResolution: `${window.screen.width}x${window.screen.height}`,
-          isIOS,
-          isAndroid,
-          isPWA,
-        };
-
-        // Create a stable device fingerprint based on browser characteristics
-        const fingerprintSource = `${navigator.userAgent}_${navigator.platform}_${window.screen.width}x${window.screen.height}_${user.id}`;
-        const deviceFingerprint = btoa(fingerprintSource).substring(0, 50);
-
-        // ✅ MULTI-DEVICE SUPPORT: Check for existing device with SAME fingerprint
-        // This allows multiple devices (Mac + iPhone) while preventing duplicates from same device
-        const { data: existingDevice, error: checkError } = await supabase
-          .from('device_subscriptions')
-          .select('id, onesignal_player_id, device_fingerprint, platform')
-          .eq('user_id', user.id)
-          .eq('device_fingerprint', deviceFingerprint)
-          .maybeSingle();
-
-        let deviceError: any = null;
-        let deviceData: any = null;
-
-        if (checkError) {
-          console.error('❌ [Database] Failed to check existing device:', checkError);
-          deviceError = checkError;
-        } else if (existingDevice) {
-          // UPDATE: Same device (same fingerprint) - just update the Player ID
-          const { data, error } = await supabase
-            .from('device_subscriptions')
-            .update({
-              onesignal_player_id: playerId,
-              device_info: deviceInfo,
-              device_name: deviceName,
-              browser_name: browserName,
-              platform: navigator.platform,
-              is_mobile: isMobile,
-              is_active: true,
-              last_seen_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existingDevice.id)
-            .select('id')
-            .single();
-          
-          deviceData = data;
-          deviceError = error;
-          
-          if (!error) {
-            console.log('✅ [Database] UPDATED device subscription (same device):', {
-              oldPlayerId: existingDevice.onesignal_player_id?.substring(0, 12) + '...',
-              newPlayerId: playerId?.substring(0, 12) + '...',
-              deviceName,
-              platform: navigator.platform,
-            });
-          }
-        } else {
-          // INSERT: New device (different fingerprint) - this is a DIFFERENT device
-          // Check how many devices user already has
-          const { data: allDevices } = await supabase
-            .from('device_subscriptions')
-            .select('id, platform, updated_at')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .order('updated_at', { ascending: true });
-
-          // If user has 2+ devices, deactivate the oldest one
-          if (allDevices && allDevices.length >= 2) {
-            console.log(`📱 [Devices] User has ${allDevices.length} devices, deactivating oldest`);
-            await supabase
-              .from('device_subscriptions')
-              .update({ is_active: false, updated_at: new Date().toISOString() })
-              .eq('id', allDevices[0].id);
-          }
-
-          const { data, error } = await supabase
-            .from('device_subscriptions')
-            .insert({
-              user_id: user.id,
-              device_fingerprint: deviceFingerprint,
-              onesignal_player_id: playerId,
-              device_info: deviceInfo,
-              device_name: deviceName,
-              browser_name: browserName,
-              platform: navigator.platform,
-              is_mobile: isMobile,
-              is_active: true,
-              last_seen_at: new Date().toISOString(),
-            })
-            .select('id')
-            .single();
-          
-          deviceData = data;
-          deviceError = error;
-          
-          if (!error) {
-            console.log('✅ [Database] INSERTED new device subscription:', {
-              playerId: playerId?.substring(0, 12) + '...',
-              deviceName,
-            });
-          }
-        }
-
-        if (deviceError) {
-          console.error('❌ [Database] Failed to save device subscription:', deviceError);
-        } else {
-          // Check how many active devices user now has
-          const { data: activeDevices, error: countError } = await supabase
-            .from('device_subscriptions')
-            .select('id, onesignal_player_id')
-            .eq('user_id', user.id)
-            .eq('is_active', true);
-          
-          if (!countError && activeDevices) {
-            console.log(`📱 [Devices] User now has ${activeDevices.length} active device(s)`);
-          }
-        }
-
-        // ✅ STEP 2: Update profile ONLY AFTER device is saved with Player ID
-        // This ensures xeon_stream_subscription is only true when we have a valid Player ID
-        // NOTE: The database trigger uses xeon_stream_subscription + device_token to identify push users
-        // The device_subscriptions table stores the actual OneSignal Player ID for push delivery
-        if (!deviceError) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ 
-              // ✅ CRITICAL: These are the actual columns that exist and are used by the trigger
-              xeon_stream_subscription: true,
-              device_token: playerId,
-              device_platform: 'web',
-              device_token_updated_at: new Date().toISOString(),
-            })
-            .eq('id', user.id);
-
-          if (profileError) {
-            console.error('❌ [Database] Failed to update profile:', profileError);
-          } else {
-            console.log('✅ [Database] Updated profile subscription:', {
-              xeon_stream_subscription: true,
-              device_token: playerId,
-            });
-          }
-        } else {
-          console.error('❌ [Database] Skipping profile update - device save failed');
-          toast({
-            title: "Subscription Incomplete",
-            description: "Device registered but profile update failed. Please try again.",
-            variant: "destructive",
+          console.log('✅ [Database] Updated profile subscription:', {
+            xeon_stream_subscription: true,
+            platform: devicePlatform,
           });
-          return false;
         }
 
-        // ✅ STEP 3: AUTO-SUBSCRIBE to ALL signal providers
+        // ✅ AUTO-SUBSCRIBE to ALL signal providers
         try {
           const { data: providers, error: providersError } = await supabase
             .from('profiles')

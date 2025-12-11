@@ -57,13 +57,28 @@ export default function JournalXX() {
   // Computed state for mobile view
   const isMobileAnalysisMode = analysisStatus === AnalysisStatus.ANALYZING || showPostAnalysisReview;
 
-  // Load saved trades from localStorage
+  // Load saved trades from localStorage - but clear demo data for clean start
   useEffect(() => {
     const saved = localStorage.getItem('tradeMind_trades');
     if (saved) {
-      setTrades(JSON.parse(saved));
+      const parsedTrades = JSON.parse(saved);
+      
+      // Filter out demo trades (check for known demo data patterns)
+      const realTrades = parsedTrades.filter((trade: Trade) => {
+        // Remove demo trades by checking for exact demo content
+        const isDemoBTC = trade.asset === 'BTC/USD' && trade.notes === 'Breakout retest of 65k.' && trade.aiFeedback === 'Solid execution on the retest.';
+        const isDemoNVDA = trade.asset === 'NVDA' && trade.notes === 'Fomo entered at the top.' && trade.aiFeedback === 'Classic chase. Wait for pullback next time.';
+        return !isDemoBTC && !isDemoNVDA;
+      });
+      
+      // If we removed demo trades, update localStorage
+      if (realTrades.length !== parsedTrades.length) {
+        localStorage.setItem('tradeMind_trades', JSON.stringify(realTrades));
+      }
+      
+      setTrades(realTrades);
     }
-    // Start with empty trades array - no demo data
+    // New users start with empty trades array - no demo data
   }, []);
 
   useEffect(() => {

@@ -230,10 +230,6 @@ export const useOneSignal = (): UseOneSignalReturn => {
                 device_token: playerId,
                 device_platform: platform,
                 device_token_updated_at: new Date().toISOString(),
-                // ✅ CRITICAL: These fields are checked by database triggers
-                push_subscription_active: true,
-                onesignal_player_id: playerId,
-                onesignal_subscription_status: 'subscribed',
               })
               .eq('id', user.id);
             
@@ -269,10 +265,6 @@ export const useOneSignal = (): UseOneSignalReturn => {
               device_token: playerId,
               device_platform: isNowSubscribed ? platform : null,
               device_token_updated_at: new Date().toISOString(),
-              // ✅ CRITICAL: These fields are checked by database triggers
-              push_subscription_active: isNowSubscribed,
-              onesignal_player_id: playerId,
-              onesignal_subscription_status: isNowSubscribed ? 'subscribed' : 'unsubscribed',
             })
             .eq('id', user.id);
           
@@ -583,28 +575,27 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
         // ✅ STEP 2: Update profile ONLY AFTER device is saved with Player ID
         // This ensures xeon_stream_subscription is only true when we have a valid Player ID
-        // ⚠️ CRITICAL: Must set push_subscription_active, onesignal_subscription_status, and onesignal_player_id
-        // These columns are checked by database triggers when sending notifications
+        // NOTE: The database trigger uses xeon_stream_subscription + device_token to identify push users
+        // The device_subscriptions table stores the actual OneSignal Player ID for push delivery
         if (!deviceError) {
           const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
-              // Legacy field (for backwards compatibility)
+              // ✅ CRITICAL: These are the actual columns that exist and are used by the trigger
               xeon_stream_subscription: true,
               device_token: playerId,
               device_platform: 'web',
               device_token_updated_at: new Date().toISOString(),
-              // ✅ CRITICAL: These fields are checked by database triggers for notifications
-              push_subscription_active: true,
-              onesignal_player_id: playerId,
-              onesignal_subscription_status: 'subscribed',
             })
             .eq('id', user.id);
 
           if (profileError) {
             console.error('❌ [Database] Failed to update profile:', profileError);
           } else {
-            console.log('✅ [Database] Updated profile subscription with all required fields');
+            console.log('✅ [Database] Updated profile subscription:', {
+              xeon_stream_subscription: true,
+              device_token: playerId,
+            });
           }
         } else {
           console.error('❌ [Database] Skipping profile update - device save failed');
@@ -735,15 +726,10 @@ export const useOneSignal = (): UseOneSignalReturn => {
           const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
-              // Legacy field
               xeon_stream_subscription: false,
               device_token: null,
               device_platform: null,
               device_token_updated_at: new Date().toISOString(),
-              // ✅ CRITICAL: Clear the fields checked by database triggers
-              push_subscription_active: false,
-              onesignal_player_id: null,
-              onesignal_subscription_status: 'unsubscribed',
             })
             .eq('id', user.id);
 

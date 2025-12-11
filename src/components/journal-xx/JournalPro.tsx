@@ -478,12 +478,12 @@ const MacroCalendar: React.FC<{
                      return (
                          <div key={day} onClick={() => { setViewDate(new Date(year, month, day)); setTimeFilter('D'); }} className={`relative group transition-all duration-300 cursor-pointer flex flex-col p-1 border-t pt-1 min-h-[50px] ${containerClass} ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
                              <span className={`text-[10px] font-bold shrink-0 ${hasData ? (isDarkMode ? 'text-white' : 'text-stone-900') : (isDarkMode ? 'text-stone-500' : 'text-stone-400')} group-hover:text-stone-900 dark:group-hover:text-white`}>{day}</span>
-                             {hasData && (
-                                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                     <div className={`text-xs md:text-sm font-bold font-sans tracking-wide leading-none ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{isWin ? '+' : ''}{pnl}</div>
-                                     <div className="text-[8px] opacity-40 font-mono mt-0.5">{tradeCount} Trades</div>
-                                 </div>
-                             )}
+                            {hasData && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                    <div className={`text-xs md:text-sm font-bold font-sans tracking-wide leading-none ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{isWin ? '+' : ''}{pnl}</div>
+                                    <div className="text-[8px] opacity-40 font-mono mt-0.5 whitespace-nowrap">{tradeCount} {tradeCount === 1 ? 'Trade' : 'Trades'}</div>
+                                </div>
+                            )}
                          </div>
                      )
                  })}
@@ -540,7 +540,7 @@ const MacroCalendar: React.FC<{
         const dayTrades = data?.trades || [];
         return (
             <div className="h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between mb-2 px-2"><span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} Trades Found</span>{data && (<span className={`text-xs font-mono font-bold ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>Net: {data.pnl >= 0 ? '+' : ''}{data.pnl}</span>)}</div>
+                <div className="flex items-center justify-between mb-2 px-2"><span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} {dayTrades.length === 1 ? 'Trade' : 'Trades'} Found</span>{data && (<span className={`text-xs font-mono font-bold ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>Net: {data.pnl >= 0 ? '+' : ''}{data.pnl}</span>)}</div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2" style={{ touchAction: 'pan-y' }}>
                     {dayTrades.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center opacity-30"><NotebookIcon className="w-8 h-8 mb-2" /><span className="text-[10px] font-bold uppercase">No Activity</span></div>

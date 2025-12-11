@@ -261,7 +261,7 @@ const AppBar: React.FC = () => {
         >
           <ThemeToggle />
           <div className="auth-buttons">
-            {renderAuthButton()}
+          {renderAuthButton()}
           </div>
         </div>
 

@@ -59,7 +59,7 @@ export default function EconomicSidebar({
     bgColor: 'bg-orange-50/80 dark:bg-orange-950/20',
     iconBgColor: 'bg-orange-100 dark:bg-orange-900/30',
     iconBorderStyle: 'border-2 border-dashed border-orange-400 dark:border-orange-600',
-    path: '/dashboard/advanced-tools',
+    path: '/dashboard/journal-xx',
     delay: 0.45,
     fullWidth: true
   }];

@@ -89,7 +89,7 @@ export default function EconomicCalendarWidget({
               Today's Events
             </CardTitle>
             <Button variant="ghost" size="sm" asChild className="text-xs">
-              <a href="/dashboard/advanced-tools">
+              <a href="/dashboard/journal-xx">
                 <ExternalLink className="w-3 h-3" />
               </a>
             </Button>

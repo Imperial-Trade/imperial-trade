@@ -44,6 +44,25 @@ export interface SignalData {
 // 🎨 NOTIFICATION TEMPLATES (Based on User's 9 Templates)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// Helper function to format pips correctly (avoid "PIPS Pips" redundancy)
+function formatPips(pips: string | number | undefined, addSign: boolean = true): string {
+  if (pips === null || pips === undefined) return '0';
+  
+  const pipsStr = String(pips);
+  
+  // If already formatted with "PIPS" suffix, just return it (cleaned up)
+  if (pipsStr.toUpperCase().includes('PIPS')) {
+    return pipsStr.replace(/\s*PIPS\s*/gi, '').trim();
+  }
+  
+  // Parse as number and format
+  const pipsNum = parseFloat(pipsStr.replace(/[^0-9.-]/g, ''));
+  if (isNaN(pipsNum)) return '0';
+  
+  const sign = addSign && pipsNum >= 0 ? '+' : '';
+  return `${sign}${pipsNum.toFixed(1)}`;
+}
+
 export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => NotificationTemplate> = {
   // Template 1: signal_created (BUY/SELL) - Professional TradingView Style
   signal_created: (data) => ({
@@ -85,7 +104,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   tp_hit: (data) => ({
     type: 'tp_hit',
     title: `TP${data.tp_number} Hit: ${data.asset_name}`,
-    message: `+${data.pips || '0'} Pips • ${data.triggered_price}`,
+    message: `${formatPips(data.pips)} Pips • ${data.triggered_price}`,
     badge: 'Profit',
     color: 'green',
     icon: '💰',
@@ -97,7 +116,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   stop_loss_hit: (data) => ({
     type: 'stop_loss_hit',
     title: `Stop Loss Hit: ${data.asset_name}`,
-    message: `${data.pips || '0'} Pips • ${data.triggered_price}`,
+    message: `${formatPips(data.pips, false)} Pips • ${data.triggered_price}`,
     badge: 'Stopped',
     color: 'red',
     icon: '🛑',
@@ -121,7 +140,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   manual_close_with_tp_hit: (data) => ({
     type: 'manual_close_with_tp_hit',
     title: `Closed in Profit: ${data.asset_name}`,
-    message: `+${data.pips || '0'} Pips • Manual Close`,
+    message: `${formatPips(data.pips)} Pips • Manual Close`,
     badge: 'Profit',
     color: 'grey',
     icon: '💸',
@@ -133,7 +152,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
     title: `All Targets Hit: ${data.asset_name}`,
-    message: `Max Profit Reached • ${data.pips || '0'} Pips`,
+    message: `Max Profit Reached • ${formatPips(data.pips)} Pips`,
     badge: 'Jackpot',
     color: 'green',
     icon: '🏆',
@@ -238,7 +257,7 @@ export async function sendRealtimeNotification(
         // Convert pips string to pips_data object with Risk/Reward ratio
         pips_data: {
           value: pipsValue,
-          formatted: signalData.pips || '+0.0 PIPS',
+          formatted: `${pipsValue >= 0 ? '+' : ''}${pipsValue.toFixed(1)} Pips`,
           direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
           percentage
         },

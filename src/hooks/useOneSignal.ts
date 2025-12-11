@@ -35,6 +35,35 @@ interface UseOneSignalReturn {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📱 PLATFORM DETECTION - iOS, Android, Desktop
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function detectPlatform(): 'ios' | 'android' | 'web' | 'desktop' {
+  const ua = navigator.userAgent.toLowerCase();
+  
+  // iOS detection (iPhone, iPad, iPod)
+  if (/iphone|ipad|ipod/.test(ua)) {
+    return 'ios';
+  }
+  
+  // Android detection
+  if (/android/.test(ua)) {
+    return 'android';
+  }
+  
+  // Check if running as PWA on desktop
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                (window.navigator as any).standalone === true;
+  
+  // Desktop detection
+  if (/windows|macintosh|linux/.test(ua) && !/mobile/.test(ua)) {
+    return isPWA ? 'desktop' : 'web';
+  }
+  
+  // Default to web for other cases (tablets, etc.)
+  return 'web';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 🚀 EARLY INITIALIZATION - Run on page load (before user interaction)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // This ensures Service Worker and OneSignal SDK are ready BEFORE
@@ -188,23 +217,30 @@ export const useOneSignal = (): UseOneSignalReturn => {
           setIsPushEnabled(true);
           
           // ✅ SYNC: Ensure database matches OneSignal state + save Player ID
-          const playerId = await window.OneSignal.User.PushSubscription.id;
-          
+            const playerId = await window.OneSignal.User.PushSubscription.id;
+            
           if (playerId) {
+            // Detect platform for accurate tracking
+            const platform = detectPlatform();
+            
             const { error } = await supabase
               .from('profiles')
               .update({ 
                 xeon_stream_subscription: true,
                 device_token: playerId,
-                device_platform: 'web',
-                device_token_updated_at: new Date().toISOString()
+                device_platform: platform,
+                device_token_updated_at: new Date().toISOString(),
+                // ✅ CRITICAL: These fields are checked by database triggers
+                push_subscription_active: true,
+                onesignal_player_id: playerId,
+                onesignal_subscription_status: 'subscribed',
               })
               .eq('id', user.id);
             
             if (error) {
               console.error('❌ [Database] Failed to sync subscription:', error);
             } else {
-              console.log('✅ [Database] Synced subscription + Player ID:', playerId?.substring(0, 12));
+              console.log('✅ [Database] Synced subscription + Player ID:', playerId?.substring(0, 12), 'Platform:', platform);
             }
           }
         } else {
@@ -223,20 +259,27 @@ export const useOneSignal = (): UseOneSignalReturn => {
             playerId = await window.OneSignal.User.PushSubscription.id;
           }
           
+          // Detect platform for accurate tracking
+          const platform = detectPlatform();
+          
           const { error } = await supabase
             .from('profiles')
             .update({ 
               xeon_stream_subscription: isNowSubscribed,
               device_token: playerId,
-              device_platform: isNowSubscribed ? 'web' : null,
-              device_token_updated_at: new Date().toISOString()
+              device_platform: isNowSubscribed ? platform : null,
+              device_token_updated_at: new Date().toISOString(),
+              // ✅ CRITICAL: These fields are checked by database triggers
+              push_subscription_active: isNowSubscribed,
+              onesignal_player_id: playerId,
+              onesignal_subscription_status: isNowSubscribed ? 'subscribed' : 'unsubscribed',
             })
             .eq('id', user.id);
           
           if (error) {
             console.error('❌ [Database] Failed to update subscription:', error);
           } else {
-            console.log(`✅ [Database] Updated subscription to ${isNowSubscribed}`);
+            console.log(`✅ [Database] Updated subscription to ${isNowSubscribed}, Platform: ${platform}`);
           }
         });
 
@@ -250,11 +293,14 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
   // Subscribe to push notifications
   const subscribeToPush = useCallback(async (): Promise<boolean> => {
-    // iOS PWA Check
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Platform detection
+    const platform = detectPlatform();
+    const isIOS = platform === 'ios';
+    const isAndroid = platform === 'android';
     const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone;
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || isInStandaloneMode;
     
+    // iOS requires PWA installation for push notifications
     if (isIOS && !isPWA) {
       console.error('❌ [iOS] Cannot subscribe: Not in PWA mode');
       toast({
@@ -267,7 +313,9 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
     try {
       console.log('🔔 [OneSignal] Starting subscription...', { 
-        isIOS, 
+        platform,
+        isIOS,
+        isAndroid, 
         isPWA,
         preInitialized: globalOneSignalReady,
         serviceWorkerReady: globalServiceWorkerReady 
@@ -315,11 +363,18 @@ export const useOneSignal = (): UseOneSignalReturn => {
       
       if (!permission) {
         console.warn('⚠️ [OneSignal] Permission denied');
+        
+        // Platform-specific permission instructions
+        let permissionInstructions = "Please enable notifications in your browser settings.";
+        if (isIOS) {
+          permissionInstructions = "Enable notifications in iOS Settings → Trade Imperial → Notifications";
+        } else if (isAndroid) {
+          permissionInstructions = "Enable notifications in Android Settings → Apps → Trade Imperial → Notifications";
+        }
+        
         toast({
           title: "Permission Denied",
-          description: isIOS 
-            ? "Enable notifications in iOS Settings → Trade Imperial → Notifications" 
-            : "Please enable notifications in your browser settings.",
+          description: permissionInstructions,
           variant: "destructive",
         });
         return false;
@@ -366,7 +421,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
         if (!playerId) {
           attempts++;
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       }
@@ -381,7 +436,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
           // Try one more time after a longer delay
           console.log('⏳ [OneSignal] Opted in but no ID - waiting 3 more seconds...');
           await new Promise(resolve => setTimeout(resolve, 3000));
-          playerId = await window.OneSignal.User.PushSubscription.id;
+        playerId = await window.OneSignal.User.PushSubscription.id;
         }
       }
 
@@ -528,21 +583,28 @@ export const useOneSignal = (): UseOneSignalReturn => {
 
         // ✅ STEP 2: Update profile ONLY AFTER device is saved with Player ID
         // This ensures xeon_stream_subscription is only true when we have a valid Player ID
+        // ⚠️ CRITICAL: Must set push_subscription_active, onesignal_subscription_status, and onesignal_player_id
+        // These columns are checked by database triggers when sending notifications
         if (!deviceError) {
           const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
+              // Legacy field (for backwards compatibility)
               xeon_stream_subscription: true,
               device_token: playerId,
               device_platform: 'web',
-              device_token_updated_at: new Date().toISOString()
+              device_token_updated_at: new Date().toISOString(),
+              // ✅ CRITICAL: These fields are checked by database triggers for notifications
+              push_subscription_active: true,
+              onesignal_player_id: playerId,
+              onesignal_subscription_status: 'subscribed',
             })
             .eq('id', user.id);
 
           if (profileError) {
             console.error('❌ [Database] Failed to update profile:', profileError);
           } else {
-            console.log('✅ [Database] Updated profile subscription (Player ID verified)');
+            console.log('✅ [Database] Updated profile subscription with all required fields');
           }
         } else {
           console.error('❌ [Database] Skipping profile update - device save failed');
@@ -673,10 +735,15 @@ export const useOneSignal = (): UseOneSignalReturn => {
           const { error: profileError } = await supabase
             .from('profiles')
             .update({ 
+              // Legacy field
               xeon_stream_subscription: false,
               device_token: null,
               device_platform: null,
-              device_token_updated_at: new Date().toISOString()
+              device_token_updated_at: new Date().toISOString(),
+              // ✅ CRITICAL: Clear the fields checked by database triggers
+              push_subscription_active: false,
+              onesignal_player_id: null,
+              onesignal_subscription_status: 'unsubscribed',
             })
             .eq('id', user.id);
 

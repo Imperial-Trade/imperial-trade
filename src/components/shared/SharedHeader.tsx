@@ -48,7 +48,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
   };
 
   // Check if we're on the advanced tools/journal page
-  const isJournalSection = location.pathname.includes('/dashboard/advanced-tools');
+  const isJournalSection = location.pathname.includes('/dashboard/journal-xx');
 
   // Journal-specific navigation items
   const journalNavigationItems = [
@@ -108,7 +108,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       external: true
     },
     {
-      to: `${baseUrl}/dashboard/advanced-tools`,
+      to: `${baseUrl}/dashboard/journal-xx`,
       icon: TrendingUp,
       label: "Tools",
       description: "Advanced trading tools and analytics"

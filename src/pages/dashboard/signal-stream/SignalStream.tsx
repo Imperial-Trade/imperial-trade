@@ -1618,13 +1618,18 @@ export default function SignalStream() {
       // ============================================
       if (newStatus === 'closed') {
         console.log('🔒 Closing signal via RPC...', alert.id);
+        
+        // Get live price for accurate closing price
+        const livePrice = livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName?.toUpperCase()] || null;
+        
         const {
           data,
           error
         } = await supabase.rpc('close_trade_alert', {
           p_alert_id: alert.id,
           p_user_id: profile?.id || user?.id,
-          p_close_reason: 'manual'
+          p_close_reason: 'manual',
+          p_closing_price: livePrice
         });
         if (error) {
           console.error('❌ RPC close_trade_alert failed:', error);

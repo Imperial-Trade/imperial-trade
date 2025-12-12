@@ -275,18 +275,20 @@ export function AdminSignalManagement() {
     if (!confirm(confirmMsg)) return;
     
     try {
-      const updatePayload = sanitizeDatabasePayload({
-        status: 'closed' as const,
-        close_reason: 'manual' as const,
-        updated_at: new Date().toISOString()
+      // Use RPC for consistent closing with notification trigger
+      const { data, error } = await supabase.rpc('close_trade_alert', {
+        p_alert_id: alertId,
+        p_user_id: user?.id,
+        p_close_reason: 'manual',
+        p_closing_price: null // Admin panel doesn't have live prices
       });
       
-      const { error } = await supabase
-        .from('trade_alerts')
-        .update(updatePayload)
-        .eq('id', alertId);
-      
       if (error) throw error;
+      
+      const response = data as any;
+      if (response && response.success === false) {
+        throw new Error(response.error || 'Failed to close signal');
+      }
       
       toast({
         title: "Success",

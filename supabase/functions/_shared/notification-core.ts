@@ -64,12 +64,25 @@ function formatPips(pips: string | number | undefined, addSign: boolean = true):
   return `${sign}${pipsNum.toFixed(1)}`;
 }
 
+// Helper to get TP price based on tp_number
+function getTpPrice(data: SignalData): number | string {
+  if (data.triggered_price) return data.triggered_price;
+  switch (data.tp_number) {
+    case 1: return data.tp1 || data.entry_price;
+    case 2: return data.tp2 || data.entry_price;
+    case 3: return data.tp3 || data.entry_price;
+    case 4: return data.tp4 || data.entry_price;
+    case 5: return data.tp5 || data.entry_price;
+    default: return data.entry_price;
+  }
+}
+
 export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => NotificationTemplate> = {
   // Template 1: signal_created (BUY/SELL)
   signal_created: (data) => ({
     type: 'signal_created',
     title: `${data.author_name.toUpperCase()} 🚀 NEW ${data.trade_type.toUpperCase()} SIGNAL`,
-    message: `${data.trade_type.toUpperCase()} Signal is Posted on ${data.asset_name} at $${data.entry_price}${data.notes ? `\n(${data.notes})` : ''}`,
+    message: `\n${data.trade_type.toUpperCase()} Signal is Posted on ${data.asset_name} at $${data.entry_price}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Signal',
     color: 'blue',
     icon: '🚀',
@@ -81,7 +94,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   pending_limit_created: (data) => ({
     type: 'pending_limit_created',
     title: `${data.author_name.toUpperCase()} ⏳ PENDING ${data.trade_type.replace('_', ' ').toUpperCase()}`,
-    message: `Waiting to reach ${data.asset_name} at $${data.entry_price}`,
+    message: `\nWaiting to reach ${data.asset_name} at $${data.entry_price}`,
     badge: 'Pending',
     color: 'yellow',
     icon: '⏳',
@@ -93,7 +106,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   limit_activated: (data) => ({
     type: 'limit_activated',
     title: `${data.author_name.toUpperCase()} ✅ ${data.trade_type.replace('_', ' ').toUpperCase()} ACTIVATED`,
-    message: `${data.trade_type.replace('_', ' ').toUpperCase()} is activated on ${data.asset_name} at $${data.triggered_price || data.entry_price}`,
+    message: `\n${data.trade_type.replace('_', ' ').toUpperCase()} activated on ${data.asset_name} at $${data.triggered_price || data.entry_price}`,
     badge: 'Active',
     color: 'blue',
     icon: '✅',
@@ -101,11 +114,11 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     priority: 3,
   }),
 
-  // Template 4: tp_hit (TP1-TP5)
+  // Template 4: tp_hit (TP1-TP5) - Shortened to fit on one line
   tp_hit: (data) => ({
     type: 'tp_hit',
     title: `${data.author_name.toUpperCase()} 🎯 TAKE PROFIT HIT`,
-    message: `TP ${data.tp_number} HIT on ${data.asset_name} at $${data.triggered_price} | ${formatPips(data.pips)} PIPS`,
+    message: `\nTP${data.tp_number} HIT ${data.asset_name} @ $${getTpPrice(data)} | ${formatPips(data.pips)} PIPS`,
     badge: 'Profit',
     color: 'green',
     icon: '🎯',
@@ -117,7 +130,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   stop_loss_hit: (data) => ({
     type: 'stop_loss_hit',
     title: `${data.author_name.toUpperCase()} 🔻 STOP LOSS HIT`,
-    message: `SL HIT on ${data.asset_name} at $${data.stop_loss}`,
+    message: `\nSL HIT on ${data.asset_name} at $${data.stop_loss}`,
     badge: 'Stopped',
     color: 'red',
     icon: '🔻',
@@ -129,7 +142,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   manual_close: (data) => ({
     type: 'manual_close',
     title: `${data.author_name.toUpperCase()} 🧑‍💼 MANUALLY CLOSED`,
-    message: `Manually closed ${data.asset_name} at $${data.closing_price || data.triggered_price || data.entry_price}${data.notes ? `\n(${data.notes})` : ''}`,
+    message: `\nManually closed ${data.asset_name} at $${data.closing_price || data.triggered_price || data.entry_price}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Closed',
     color: 'grey',
     icon: '🧑‍💼',
@@ -141,7 +154,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   manual_close_with_tp_hit: (data) => ({
     type: 'manual_close_with_tp_hit',
     title: `${data.author_name.toUpperCase()} 💰 CLOSED IN PROFITS`,
-    message: `Secured Profits on ${data.asset_name} at $${data.closing_price || data.triggered_price || data.entry_price} | ${formatPips(data.pips)} PIPS${data.notes ? `\n(${data.notes})` : ''}`,
+    message: `\nSecured Profits ${data.asset_name} @ $${data.closing_price || data.triggered_price || data.entry_price} | ${formatPips(data.pips)} PIPS${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Profit',
     color: 'green',
     icon: '💰',
@@ -149,11 +162,11 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit (ALL 5 TPs hit)
+  // Template 8: all_tps_hit (ALL 5 TPs hit) - Shortened
   all_tps_hit: (data) => ({
     type: 'all_tps_hit',
     title: `${data.author_name.toUpperCase()} 🎉 ALL 5 TP HIT!`,
-    message: `${data.asset_name} completed all Profits successfully | ${formatPips(data.pips)} PIPS`,
+    message: `\n${data.asset_name} completed all TPs | ${formatPips(data.pips)} PIPS`,
     badge: 'Jackpot',
     color: 'green',
     icon: '🎉',
@@ -165,7 +178,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   notes_updated: (data) => ({
     type: 'notes_updated',
     title: `${data.author_name.toUpperCase()} 📝 NOTES UPDATED`,
-    message: `Recent notes update for ${data.asset_name}${data.notes ? `\n(${data.notes})` : ''}`,
+    message: `\nRecent notes update for ${data.asset_name}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Update',
     color: 'yellow',
     icon: '📝',

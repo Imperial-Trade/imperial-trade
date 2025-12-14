@@ -77,6 +77,32 @@ function getTpPrice(data: SignalData): number | string {
   }
 }
 
+// Helper to count how many TPs are set (non-null)
+function countSetTPs(data: SignalData): number {
+  let count = 0;
+  if (data.tp1) count++;
+  if (data.tp2) count++;
+  if (data.tp3) count++;
+  if (data.tp4) count++;
+  if (data.tp5) count++;
+  return count;
+}
+
+// Helper to get the last TP number and price
+function getLastTpInfo(data: SignalData): { tpNum: number; price: number | string } {
+  const count = countSetTPs(data);
+  const tpNum = count || (data.tp_hits?.length || 0);
+  let price: number | string = data.entry_price;
+  switch (tpNum) {
+    case 1: price = data.tp1 || data.entry_price; break;
+    case 2: price = data.tp2 || data.entry_price; break;
+    case 3: price = data.tp3 || data.entry_price; break;
+    case 4: price = data.tp4 || data.entry_price; break;
+    case 5: price = data.tp5 || data.entry_price; break;
+  }
+  return { tpNum, price };
+}
+
 export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => NotificationTemplate> = {
   // Template 1: signal_created (BUY/SELL)
   signal_created: (data) => ({
@@ -162,17 +188,21 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit (ALL 5 TPs hit) - Shortened
-  all_tps_hit: (data) => ({
-    type: 'all_tps_hit',
-    title: `${data.author_name.toUpperCase()} 🎉 ALL 5 TP HIT!`,
-    message: `\n${data.asset_name} completed all TPs | ${formatPips(data.pips)} PIPS`,
-    badge: 'Jackpot',
-    color: 'green',
-    icon: '🎉',
-    sound: true,
-    priority: 3,
-  }),
+  // Template 8: all_tps_hit - Dynamic TP count
+  all_tps_hit: (data) => {
+    const lastTp = getLastTpInfo(data);
+    const tpCount = countSetTPs(data) || lastTp.tpNum;
+    return {
+      type: 'all_tps_hit',
+      title: `${data.author_name.toUpperCase()} 🎉 ALL ${tpCount} TP HIT!`,
+      message: `\nTP${lastTp.tpNum} HIT ${data.asset_name} @ $${lastTp.price} | ${formatPips(data.pips)} PIPS\n👑 ${data.asset_name} completed all profits successfully!`,
+      badge: 'Jackpot',
+      color: 'green',
+      icon: '🎉',
+      sound: true,
+      priority: 3,
+    };
+  },
 
   // Template 9: notes_updated
   notes_updated: (data) => ({

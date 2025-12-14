@@ -31,6 +31,7 @@ export interface SignalData {
   tp4?: number;
   tp5?: number;
   tp_hits?: number[]; // Array of hit TPs [1, 2, 3, ...]
+  total_tps_set?: number; // Count of non-null TPs (from trigger)
   author_name: string;
   author_avatar_url?: string;
   author_user_type?: string;
@@ -191,11 +192,14 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 8: all_tps_hit - Dynamic TP count
   all_tps_hit: (data) => {
     const lastTp = getLastTpInfo(data);
-    const tpCount = countSetTPs(data) || lastTp.tpNum;
+    // Use total_tps_set from trigger if available, otherwise count from data
+    const tpCount = data.total_tps_set || countSetTPs(data) || lastTp.tpNum;
+    const tpNumber = data.tp_number || lastTp.tpNum;
+    const tpPrice = data.triggered_price || lastTp.price;
     return {
       type: 'all_tps_hit',
       title: `${data.author_name.toUpperCase()} 🎉 ALL ${tpCount} TP HIT!`,
-      message: `\nTP${lastTp.tpNum} HIT ${data.asset_name} @ $${lastTp.price} | ${formatPips(data.pips)} PIPS\n👑 ${data.asset_name} completed all profits successfully!`,
+      message: `\nTP${tpNumber} HIT ${data.asset_name} @ $${tpPrice} | ${formatPips(data.pips)} PIPS\n👑 ${data.asset_name} completed all profits successfully!`,
       badge: 'Jackpot',
       color: 'green',
       icon: '🎉',

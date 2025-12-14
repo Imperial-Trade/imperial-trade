@@ -27,12 +27,16 @@ serve(async (req) => {
   }
 
   try {
-    const { signal, close_reason, pips, users, push_users } = await req.json();
+    const { signal, close_reason, notification_type, pips, users, push_users } = await req.json();
+
+    // Use notification_type if provided, otherwise fall back to close_reason
+    const effectiveCloseReason = notification_type || close_reason || signal.close_reason || 'manual';
 
     console.log('🔒 [Signal Closed] Processing notification:', {
       signal_id: signal.id,
       asset: signal.asset_name,
-      close_reason,
+      close_reason: effectiveCloseReason,
+      notification_type,
       pips,
       total_users: users?.length || 0,
       push_users: push_users?.length || 0,
@@ -68,9 +72,9 @@ serve(async (req) => {
 
     // Determine which template to use based on close reason
     let templateKey: string;
-    if (close_reason === 'all_tps_hit') {
+    if (effectiveCloseReason === 'all_tps_hit') {
       templateKey = 'all_tps_hit';
-    } else if (close_reason === 'manual' && signal.tp_hits && signal.tp_hits.length > 0) {
+    } else if (effectiveCloseReason === 'manual' && signal.tp_hits && signal.tp_hits.length > 0) {
       templateKey = 'manual_close_with_tp_hit';
     } else {
       templateKey = 'manual_close';
@@ -97,7 +101,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       template_used: templateKey,
-      close_reason,
+      close_reason: effectiveCloseReason,
       realtime: realtimeResult,
       push: pushResult,
       timestamp: new Date().toISOString(),

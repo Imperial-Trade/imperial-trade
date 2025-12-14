@@ -353,9 +353,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
         return false;
       }
 
-      const permission = permissionResult;
-      
-      if (!permission) {
+      if (!permissionResult) {
         console.warn('⚠️ [OneSignal] Permission denied');
         
         // Platform-specific permission instructions
@@ -398,10 +396,10 @@ export const useOneSignal = (): UseOneSignalReturn => {
       }
       
       // Step 3: Check notification permission status
-      const permission = await window.OneSignal.Notifications.permission;
-      console.log('🔍 [OneSignal] Permission status:', permission);
+      const currentPermission = await window.OneSignal.Notifications.permission;
+      console.log('🔍 [OneSignal] Permission status:', currentPermission);
       
-      if (permission === false || permission === 'denied') {
+      if (currentPermission === false || currentPermission === 'denied') {
         // Permission was denied
         let permissionInstructions = "Please enable notifications in your browser settings.";
         if (isIOS) {

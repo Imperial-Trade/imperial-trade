@@ -45,8 +45,10 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
       }
       
 
-      // If we're not loading and there's no user, but we're on a protected route
-      if (!loading && !user && location.pathname.startsWith('/dashboard')) {
+      // ✅ FIX: Only redirect if we're CERTAIN auth has finished loading and user is null
+      // Don't redirect if still loading or if there's a timeout (might be a network issue)
+      // Also, don't redirect if ProtectedRoute will handle it (to avoid double redirects)
+      if (!loading && !hasTimeout && !user && location.pathname.startsWith('/dashboard')) {
         // Save the intended destination
         const from = location.pathname + location.search;
         console.log("🚫 NavigationGuard: Redirecting unauthenticated user to signin");

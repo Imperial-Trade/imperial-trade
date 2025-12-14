@@ -199,7 +199,7 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     return {
       type: 'all_tps_hit',
       title: `${data.author_name.toUpperCase()} 🎉 ALL ${tpCount} TP HIT!`,
-      message: `\nTP${tpNumber} HIT ${data.asset_name} @ $${tpPrice} | ${formatPips(data.pips)} PIPS\n👑 ${data.asset_name} completed all profits successfully!`,
+      message: `\nTP${tpNumber} HIT ${data.asset_name} @ $${tpPrice} | ${formatPips(data.pips)} PIPS\n👑All take profits completed successfully!`,
       badge: 'Jackpot',
       color: 'green',
       icon: '🎉',

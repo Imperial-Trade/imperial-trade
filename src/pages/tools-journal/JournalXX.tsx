@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TradeEntry, TradeFormData, AnalysisStatus } from '@/components/journal-xx/types';
 import { analyzeTradeWithGemini } from '@/components/journal-xx/services/geminiService';
 import { TradeEntryForm } from '@/components/journal-xx/TradeEntryForm';
@@ -9,6 +9,10 @@ import { TradeReview } from '@/components/journal-xx/TradeReview';
 import { JournalPro } from '@/components/journal-xx/JournalPro';
 import { NotebookIcon, SunIcon, MoonIcon, SparklesIcon, NotebookOpenIcon, BarChartIcon, CalculatorIcon, GamepadIcon } from '@/components/journal-xx/ui/Icons';
 import { useTheme } from '@/contexts/SafeThemeProvider';
+import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { TradeJournalEntry as TJEntry } from '@/api/entities';
+import { supabase } from '@/integrations/supabase/client';
 
 // Helper to convert file to Base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -18,6 +22,17 @@ const fileToBase64 = (file: File): Promise<string> => {
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = (error) => reject(error);
   });
+};
+
+/**
+ * Format a date string (YYYY-MM-DD) for display without timezone issues
+ * Creates a local Date object to avoid UTC conversion shifting dates
+ */
+const formatDateForDisplay = (dateStr: string): string => {
+    const datePart = dateStr.split('T')[0];
+    const [year, month, day] = datePart.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    return localDate.toLocaleDateString();
 };
 
 const NAV_ITEMS = [
@@ -31,11 +46,103 @@ export default function JournalXX() {
   // Use the app's global theme system for synchronization
   const { theme, toggleTheme: appToggleTheme } = useTheme();
   const isDarkMode = theme === 'dark';
+  const { user } = useAuth();
   
-  const [trades, setTrades] = useState<TradeEntry[]>([]);
+  // Load trades from Supabase
+  const { entries: journalEntries, isLoading: isLoadingEntries, refreshEntries } = useTradeJournal();
+  
+  // Map Supabase entries to TradeEntry format
+  const trades = useMemo(() => {
+    // Debug: Log raw journal entries from database
+    if (journalEntries.length > 0) {
+      console.log('🔍 JournalXX: Received', journalEntries.length, 'journal entries from database');
+      console.log('🔍 Sample journal entry:', {
+        id: journalEntries[0].id,
+        strategy: journalEntries[0].strategy,
+        session: journalEntries[0].session,
+        emotion: journalEntries[0].emotion,
+        pnl: journalEntries[0].pnl,
+        followed_plan: journalEntries[0].followed_plan,
+        revenge_trade: journalEntries[0].revenge_trade,
+        target_hit_by_market: journalEntries[0].target_hit_by_market,
+        planned_target_price: journalEntries[0].planned_target_price,
+        exit_price: journalEntries[0].exit_price,
+        entry_price: journalEntries[0].entry_price,
+      });
+    }
+    
+    // Deduplicate journal entries by ID before mapping (prevent duplicates from database/real-time subscriptions)
+    const seenIds = new Set<string>();
+    const uniqueEntries = journalEntries.filter(entry => {
+      if (seenIds.has(entry.id)) {
+        console.warn(`⚠️ JournalXX: Duplicate journal entry detected: ${entry.id} - ${entry.asset_ticker}. Skipping duplicate.`);
+        return false;
+      }
+      seenIds.add(entry.id);
+      return true;
+    });
+    
+    if (uniqueEntries.length !== journalEntries.length) {
+      console.warn(`⚠️ JournalXX: Found ${journalEntries.length - uniqueEntries.length} duplicate entry(ies). Original: ${journalEntries.length}, Unique: ${uniqueEntries.length}`);
+    }
+    
+    const mappedTrades = uniqueEntries.map((entry): TradeEntry => ({
+      id: entry.id,
+      // Use trade_date for display, but preserve created_at for proper sorting of same-day trades
+      // Store as YYYY-MM-DD format to avoid timezone issues when displaying
+      date: entry.trade_date || new Date().toISOString().split('T')[0],
+      asset: entry.asset_ticker,
+      pnl: entry.pnl,
+      notes: entry.notes || '',
+      imageUrl: entry.screenshot_url || (entry.screenshot_urls && entry.screenshot_urls.length > 0 ? entry.screenshot_urls[0] : undefined),
+      imageUrls: entry.screenshot_urls && entry.screenshot_urls.length > 0 ? entry.screenshot_urls : (entry.screenshot_url ? [entry.screenshot_url] : []),
+      aiFeedback: entry.ai_positive_feedback || undefined,
+      direction: entry.trade_type === 'Long' ? 'Long' : entry.trade_type === 'Short' ? 'Short' : undefined,
+      outcome: entry.pnl >= 0 ? 'Win' : 'Loss' as 'Win' | 'Loss' | 'Break Even',
+      strategy: entry.strategy || undefined,
+      emotion: entry.emotion || undefined,
+      session: entry.session || undefined,
+      // Store created_at for sorting same-day trades
+      createdAt: entry.created_at,
+      // Trader DNA fields - CRITICAL for calculations
+      followedPlan: entry.followed_plan !== null && entry.followed_plan !== undefined ? entry.followed_plan : undefined,
+      exit_price: entry.exit_price || undefined,
+      entry_price: entry.entry_price || undefined,
+      position_size: entry.position_size || undefined,
+      target_hit_by_market: entry.target_hit_by_market !== null && entry.target_hit_by_market !== undefined ? entry.target_hit_by_market : undefined,
+      planned_target_price: entry.planned_target_price || undefined,
+      planned_stop_loss: entry.planned_stop_loss || undefined,
+      revenge_trade: entry.revenge_trade !== null && entry.revenge_trade !== undefined ? entry.revenge_trade : undefined,
+    }));
+    
+    // Debug: Log mapped trades
+    if (mappedTrades.length > 0) {
+      console.log('✅ JournalXX: Mapped', mappedTrades.length, 'trades');
+      console.log('✅ Sample mapped trade:', {
+        id: mappedTrades[0].id,
+        strategy: mappedTrades[0].strategy,
+        session: mappedTrades[0].session,
+        emotion: mappedTrades[0].emotion,
+        pnl: mappedTrades[0].pnl,
+        followedPlan: mappedTrades[0].followedPlan,
+        revenge_trade: mappedTrades[0].revenge_trade,
+        target_hit_by_market: mappedTrades[0].target_hit_by_market,
+        planned_target_price: mappedTrades[0].planned_target_price,
+        exit_price: mappedTrades[0].exit_price,
+        entry_price: mappedTrades[0].entry_price,
+      });
+    }
+    
+    return mappedTrades;
+  }, [journalEntries]);
+  
   const [currentAnalysis, setCurrentAnalysis] = useState<string>('');
   const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>(AnalysisStatus.IDLE);
   const [isAnalysisReady, setIsAnalysisReady] = useState(false);
+  // Use ref to store feedback immediately (avoids React state timing issues)
+  const analysisRef = React.useRef<string>('');
+  const analyzingStartTimeRef = React.useRef<number | null>(null);
+  const analyzingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Interaction States
   const [activeOverlayId, setActiveOverlayId] = useState<string | null>(null);
@@ -57,33 +164,14 @@ export default function JournalXX() {
   // Computed state for mobile view
   const isMobileAnalysisMode = analysisStatus === AnalysisStatus.ANALYZING || showPostAnalysisReview;
 
-  // Load saved trades from localStorage - but clear demo data for clean start
-  useEffect(() => {
-    const saved = localStorage.getItem('tradeMind_trades');
-    if (saved) {
-      const parsedTrades = JSON.parse(saved);
-      
-      // Filter out demo trades (check for known demo data patterns)
-      const realTrades = parsedTrades.filter((trade: Trade) => {
-        // Remove demo trades by checking for exact demo content
-        const isDemoBTC = trade.asset === 'BTC/USD' && trade.notes === 'Breakout retest of 65k.' && trade.aiFeedback === 'Solid execution on the retest.';
-        const isDemoNVDA = trade.asset === 'NVDA' && trade.notes === 'Fomo entered at the top.' && trade.aiFeedback === 'Classic chase. Wait for pullback next time.';
-        return !isDemoBTC && !isDemoNVDA;
-      });
-      
-      // If we removed demo trades, update localStorage
-      if (realTrades.length !== parsedTrades.length) {
-        localStorage.setItem('tradeMind_trades', JSON.stringify(realTrades));
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+      return () => {
+          if (analyzingTimeoutRef.current) {
+              clearTimeout(analyzingTimeoutRef.current);
       }
-      
-      setTrades(realTrades);
-    }
-    // New users start with empty trades array - no demo data
+      };
   }, []);
-
-  useEffect(() => {
-      localStorage.setItem('tradeMind_trades', JSON.stringify(trades));
-  }, [trades]);
 
   // Use the app's global theme toggle for synchronization with sidebar widget
   const toggleTheme = () => {
@@ -92,8 +180,39 @@ export default function JournalXX() {
 
   const toggleViewMode = () => {
       setIsTransitioning(true);
+      
+      // Clean up timeout when switching views
+      if (analyzingTimeoutRef.current) {
+          clearTimeout(analyzingTimeoutRef.current);
+          analyzingTimeoutRef.current = null;
+      }
+      
       setTimeout(() => {
-          setViewMode(prev => prev === 'journal' ? 'pro' : 'journal');
+          setViewMode(prev => {
+              const newMode = prev === 'journal' ? 'pro' : 'journal';
+              // Reset analysis states when switching back to standard journal
+              if (newMode === 'journal') {
+                  setAnalysisStatus(AnalysisStatus.IDLE);
+                  setCurrentAnalysis('');
+                  analysisRef.current = '';
+                  setIsAnalysisReady(false);
+                  setShowPostAnalysisReview(false);
+                  setReviewTradeId(null);
+                  setEditingTradeId(null);
+                  analyzingStartTimeRef.current = null;
+                  
+                  // CRITICAL: Refresh trade list when switching back to Journal XX
+                  // This ensures any trades saved in JournalPro are visible immediately
+                  if (refreshEntries) {
+                      refreshEntries().then(() => {
+                          console.log('✅ Trade list refreshed after switching from Pro to Journal');
+                      }).catch((err) => {
+                          console.warn('⚠️ Failed to refresh trade list:', err);
+                      });
+                  }
+              }
+              return newMode;
+          });
           setIsTransitioning(false);
       }, 500); // Wait for transition
   };
@@ -132,7 +251,22 @@ export default function JournalXX() {
             session: data.session
         };
 
-        setTrades(prev => prev.map(t => t.id === targetId ? updatedTrade : t));
+        // Update trade in Supabase
+        if (user) {
+            try {
+                await TJEntry.update(targetId, {
+                    asset_ticker: data.asset,
+                    pnl: Number(data.pnl),
+                    notes: data.notes,
+                    trade_date: dateObj.toISOString().split('T')[0],
+                    screenshot_url: imageBase64,
+                    trade_type: data.direction === 'Long' ? 'Long' : data.direction === 'Short' ? 'Short' : undefined,
+                });
+                if (refreshEntries) refreshEntries();
+            } catch (error) {
+                console.error('Failed to update trade:', error);
+            }
+        }
         setEditingTradeId(null);
         setAnalysisStatus(AnalysisStatus.IDLE);
         setCurrentAnalysis('');
@@ -168,37 +302,62 @@ export default function JournalXX() {
         false // isPro = false for standard Journal XX
     )
       .then(feedback => {
+        console.log('✅ JournalXX: Received AI feedback, length:', feedback?.length || 0);
+        console.log('✅ JournalXX: First 200 chars:', feedback?.substring(0, 200) || 'No feedback');
         setCurrentAnalysis(feedback);
+        setIsAnalysisReady(true);
+      })
+      .catch(error => {
+        console.error('❌ JournalXX: Error getting AI feedback:', error);
+        setCurrentAnalysis('');
         setIsAnalysisReady(true);
       });
 
     const [year, month, day] = data.date.split('-').map(Number);
     const dateObj = new Date(year, month - 1, day);
 
-    const newId = Date.now().toString();
-    const newTrade: TradeEntry = {
-      id: newId,
-      date: dateObj.toISOString(),
-      asset: data.asset,
+    // Note: Trade creation is now handled in JournalPro's handleAnalyze
+    // This function is only called from Journal XX standard mode
+    // For now, we'll still create it here for standard mode compatibility
+    if (user) {
+        try {
+            const newEntry = await TJEntry.create({
+                asset_ticker: data.asset,
       pnl: Number(data.pnl),
       notes: data.notes,
-      imageUrl: imageBase64,
-      aiFeedback: '',
-      // Pro Fields mapping
-      direction: data.direction,
-      outcome: data.outcome,
-      strategy: data.strategy,
-      emotion: data.emotion,
-      session: data.session
-    };
-
-    setTrades(prev => [newTrade, ...prev]);
-    setReviewTradeId(newId);
+                trade_date: dateObj.toISOString().split('T')[0],
+                screenshot_url: imageBase64,
+                trade_type: data.direction === 'Long' ? 'Long' : data.direction === 'Short' ? 'Short' : undefined,
+            }, user.id);
+            setReviewTradeId(newEntry.id);
+            
+            // CRITICAL: Force refresh immediately after creating trade
+            if (refreshEntries) {
+                // Add small delay to ensure DB commit is complete
+                setTimeout(() => {
+                    refreshEntries().then(() => {
+                        console.log('✅ Trade list refreshed after creation');
+                    }).catch((err) => {
+                        console.warn('⚠️ Failed to refresh trade list:', err);
+                    });
+                }, 200);
+            }
+        } catch (error) {
+            console.error('Failed to create trade:', error);
+        }
+    }
   };
 
   const handleLoaderComplete = () => {
-      if (reviewTradeId && currentAnalysis) {
-          setTrades(prev => prev.map(t => t.id === reviewTradeId ? { ...t, aiFeedback: currentAnalysis } : t));
+      // Update AI feedback in Supabase
+      if (reviewTradeId && currentAnalysis && user) {
+          supabase
+              .from('trade_journal_entries')
+              .update({ ai_positive_feedback: currentAnalysis })
+              .eq('id', reviewTradeId)
+              .then(() => {
+                  if (refreshEntries) refreshEntries();
+              });
       }
       setAnalysisStatus(AnalysisStatus.COMPLETE);
       setShowPostAnalysisReview(true);
@@ -238,7 +397,16 @@ export default function JournalXX() {
   };
 
   const handleDeleteClick = (id: string) => setDeleteConfirmationId(id);
-  const confirmDelete = (id: string) => { setTrades(prev => prev.filter(t => t.id !== id)); setDeleteConfirmationId(null); setActiveOverlayId(null); };
+  const confirmDelete = async (id: string) => {
+      try {
+          await TJEntry.delete(id);
+          if (refreshEntries) refreshEntries();
+      } catch (error) {
+          console.error('Failed to delete trade:', error);
+      }
+      setDeleteConfirmationId(null);
+      setActiveOverlayId(null);
+  };
   const cancelDelete = () => setDeleteConfirmationId(null);
   const handleCancelEdit = () => { setEditingTradeId(null); setAnalysisStatus(AnalysisStatus.IDLE); setCurrentAnalysis(''); setShowPostAnalysisReview(false); };
   const toggleInsight = (id: string) => { setExpandedInsights(prev => { const newSet = new Set(prev); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); return newSet; }); };
@@ -246,7 +414,41 @@ export default function JournalXX() {
   const totalPnL = trades.reduce((acc, curr) => acc + curr.pnl, 0);
   const editingTradeData = trades.find(t => t.id === editingTradeId);
   const sortedTrades = [...trades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const formattedPnL = (totalPnL >= 0 ? '+' : '') + '$' + totalPnL.toFixed(2);
+  // For Performance Curve: sort chronologically (oldest first) for proper cumulative calculation
+  // Sort by date AND created_at timestamp to handle same-day trades correctly, ensuring latest trade is on the right
+  const chronologicalTrades = useMemo(() => {
+    const sorted = [...trades].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      // If dates are the same (within same day), sort by created_at timestamp (most recent last) to ensure correct order
+      if (Math.abs(dateA - dateB) < 86400000) { // Within same day (24 hours)
+        const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (createdA !== 0 && createdB !== 0) {
+          return createdA - createdB; // Older created_at first (so newest is last)
+        }
+        // Fallback to ID comparison if no created_at (UUIDs sort chronologically)
+        return a.id.localeCompare(b.id);
+      }
+      return dateA - dateB;
+    });
+    
+    // Debug: Log last trade to verify it's the correct one
+    if (sorted.length > 0) {
+      const lastTrade = sorted[sorted.length - 1];
+      console.log('🔍 Last trade in chronological order:', {
+        date: lastTrade.date,
+        pnl: lastTrade.pnl,
+        asset: lastTrade.asset,
+        createdAt: lastTrade.createdAt,
+        id: lastTrade.id
+      });
+    }
+    
+    return sorted;
+  }, [trades]);
+  // Fix Net PnL formatting: -$12783.56 instead of $-12783.56
+  const formattedPnL = (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2);
   const pnlLength = formattedPnL.length;
   // Adjusted font sizes for the more compact fixed header
   const pnlSizeClass = pnlLength > 12 ? 'text-xs md:text-sm' : 'text-sm md:text-base';
@@ -260,7 +462,14 @@ export default function JournalXX() {
                 onExit={toggleViewMode} 
                 onToggleTheme={toggleTheme}
                 onSubmit={handleTradeSubmit}
-                onDelete={(id) => setTrades(prev => prev.filter(t => t.id !== id))}
+                onDelete={async (id) => {
+                    try {
+                        await TJEntry.delete(id);
+                        if (refreshEntries) refreshEntries();
+                    } catch (error) {
+                        console.error('Failed to delete trade:', error);
+                    }
+                }}
                 trades={trades}
             />
         </div>
@@ -278,7 +487,15 @@ export default function JournalXX() {
         </div>
 
         {/* FIXED HEADER */}
-        <header className={`shrink-0 z-50 py-4 border-b transition-all duration-300 ${isDarkMode ? 'bg-black border-slate-800' : 'bg-white border-stone-200'}`}>
+        <header 
+          className={`shrink-0 z-50 py-4 border-b transition-all duration-300 ${
+            isDarkMode ? 'bg-black border-slate-800' : 'bg-white border-stone-200'
+          }`}
+          style={{
+            // Mobile-only: Position below status bar
+            paddingTop: window.innerWidth < 1024 ? `calc(1rem + env(safe-area-inset-top, 0px))` : '1rem',
+          }}
+        >
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
                 {/* Left: View Toggle & Title */}
                 <div className="flex items-center gap-3 md:gap-4">
@@ -399,7 +616,7 @@ export default function JournalXX() {
                     <div className={`lg:col-span-5 xl:col-span-4 space-y-6 ${isMobileAnalysisMode ? 'hidden lg:block' : ''}`}>
                         <div className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#F5F5F0] border-stone-200'} rounded-3xl border p-6 transition-colors duration-300`}>
                             <h3 className={`text-xs font-bold uppercase tracking-widest mb-2 pb-2 border-b ${isDarkMode ? 'text-slate-500 border-slate-800/50' : 'text-stone-500 border-stone-200'}`}>Performance Curve</h3>
-                            <PnLChart data={sortedTrades} isDarkMode={isDarkMode} />
+                            <PnLChart key={chronologicalTrades.length} data={chronologicalTrades} isDarkMode={isDarkMode} />
                         </div>
 
                         <div className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-[#F5F5F0] border-stone-200'} rounded-3xl border p-6 overflow-hidden min-h-[400px] transition-colors duration-300`}>
@@ -409,7 +626,14 @@ export default function JournalXX() {
                             </div>
 
                             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                {sortedTrades.map((trade) => (
+                                {sortedTrades.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center text-center py-20 px-4 min-h-[400px]">
+                                        <NotebookIcon className={`w-20 h-20 mb-6 ${isDarkMode ? 'text-slate-500 opacity-60' : 'text-stone-400 opacity-50'}`} strokeWidth={1.5} />
+                                        <h4 className={`font-bold text-sm uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>NO TRADE LOGS</h4>
+                                        <p className={`text-xs max-w-[220px] leading-relaxed ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Start journaling your trades to see your history here.</p>
+                                    </div>
+                                ) : (
+                                    sortedTrades.map((trade) => (
                                     <div 
                                         key={trade.id} 
                                         onClick={() => handleTradeClick(trade.id)}
@@ -455,10 +679,10 @@ export default function JournalXX() {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-stone-900'}`}>{trade.asset}</span>
-                                                <div className={`text-xs font-mono mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>{new Date(trade.date).toLocaleDateString()}</div>
+                                                <div className={`text-xs font-mono mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>{formatDateForDisplay(trade.date)}</div>
                                             </div>
                                             <div className={`font-bold font-mono ${trade.pnl >= 0 ? (isDarkMode ? 'text-emerald-500' : 'text-emerald-600') : (isDarkMode ? 'text-rose-500' : 'text-rose-600')}`}>
-                                                {trade.pnl >= 0 ? '+' : ''}{trade.pnl}
+                                                {(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}
                                             </div>
                                         </div>
                                         <p className={`text-xs line-clamp-2 mb-3 leading-relaxed opacity-80 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{trade.notes}</p>
@@ -485,14 +709,15 @@ export default function JournalXX() {
                                                             {expandedInsights.has(trade.id) ? 'COLLAPSE' : 'EXPAND'}
                                                         </div>
                                                     </div>
-                                                    <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-4'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
+                                                    <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
                                                         {trade.aiFeedback.replace(/[#*]/g, '')}
                                                     </p>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
@@ -523,7 +748,18 @@ export default function JournalXX() {
         )}
         
         {/* Mobile Bottom Nav - Hidden in Analysis Mode */}
-        <div className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-black via-black/90 to-transparent' : 'from-white via-white/90 to-transparent'} ${isMobileAnalysisMode ? 'hidden' : 'block'}`}>
+        <div 
+            className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-black via-black/90 to-transparent' : 'from-white via-white/90 to-transparent'} ${isMobileAnalysisMode ? 'hidden' : 'block'}`}
+            onTouchStart={(e) => {
+                e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+                e.stopPropagation();
+            }}
+            onClick={(e) => {
+                e.stopPropagation();
+            }}
+        >
             <div className={`flex items-center justify-around p-2 rounded-2xl border ${isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/5'} shadow-2xl`}>
                 {NAV_ITEMS.map((item) => (
                         <button
@@ -560,3 +796,4 @@ export default function JournalXX() {
     </div>
   );
 };
+

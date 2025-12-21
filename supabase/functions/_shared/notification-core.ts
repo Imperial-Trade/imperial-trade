@@ -197,14 +197,14 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
     const tpNumber = data.tp_number || lastTp.tpNum;
     const tpPrice = data.triggered_price || lastTp.price;
     return {
-      type: 'all_tps_hit',
+    type: 'all_tps_hit',
       title: `${data.author_name.toUpperCase()} 🎉 ALL ${tpCount} TP HIT!`,
       message: `\nTP${tpNumber} HIT ${data.asset_name} @ $${tpPrice} | ${formatPips(data.pips)} PIPS\n👑All take profits completed successfully!`,
-      badge: 'Jackpot',
-      color: 'green',
+    badge: 'Jackpot',
+    color: 'green',
       icon: '🎉',
-      sound: true,
-      priority: 3,
+    sound: true,
+    priority: 3,
     };
   },
 

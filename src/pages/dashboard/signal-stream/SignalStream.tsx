@@ -4,7 +4,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell, Filter, Clock, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
 import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
+import { SignalStreamFooterNav } from '@/components/signals/SignalStreamFooterNav';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -32,16 +33,20 @@ import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertFor
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 // Removed ProfessionalNotificationModal - using native iOS prompt only
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { AirbnbStyleNotificationModal } from '@/components/notifications/AirbnbStyleNotificationModal';
+import { ProviderNotificationSettingsModal } from '@/components/notifications/ProviderNotificationSettingsModal';
 
 export default function SignalStream() {
   const {
-    colors
+    colors,
+    isDark
   } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
   const {
     user,
     profile
@@ -86,6 +91,7 @@ export default function SignalStream() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
   const [showAirbnbNotificationModal, setShowAirbnbNotificationModal] = useState(false);
+  const [showProviderNotificationModal, setShowProviderNotificationModal] = useState(false);
   
   // Initialize selectedEducators with all educator IDs for consistency across devices
   const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
@@ -1904,6 +1910,23 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
+        {/* Mobile Status Bar Overlay - covers ONLY iOS status bar area */}
+        {isMobile && (
+          <div 
+            className="fixed top-0 left-0 right-0 pointer-events-none"
+            style={{
+              top: '0',
+              height: 'env(safe-area-inset-top, 0px)',
+              zIndex: 100,
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              background: isDark ? 'rgba(15, 15, 20, 0.3)' : '#FFFFFF',
+              border: 'none',
+              boxShadow: 'none',
+            }}
+          />
+        )}
+        
         {/* Content wrapper with z-index, safe area padding for iOS notch, and lg:pt-24 to clear desktop header */}
         <div 
           className="relative z-[60] h-full overflow-y-auto pb-20 md:pb-6"
@@ -1911,6 +1934,9 @@ export default function SignalStream() {
             paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
             paddingLeft: 'env(safe-area-inset-left)',
             paddingRight: 'env(safe-area-inset-right)',
+            paddingBottom: window.innerWidth < 768
+              ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)'
+              : undefined,
           }}
         >
           {/* Desktop header clearance spacer - hidden on mobile where safe-area-inset handles spacing */}
@@ -1943,6 +1969,7 @@ export default function SignalStream() {
                     onCreateSignal={() => setShowCreateModal(true)} 
                     unreadNotifications={unreadNotifications} 
                     onBellClick={handleBellClick}
+                    onNotificationSettingsClick={() => setShowProviderNotificationModal(true)}
                     onClearUnread={() => setUnreadNotifications(0)}
                     onShowPrompt={() => setShouldShowNotificationPrompt(true)}
                   />
@@ -2095,6 +2122,61 @@ export default function SignalStream() {
               }}
             />
           )}
+
+          {/* ✅ Provider Notification Settings Modal */}
+          <ProviderNotificationSettingsModal
+            isOpen={showProviderNotificationModal}
+            onClose={() => setShowProviderNotificationModal(false)}
+            onSuccess={() => {
+              setShowProviderNotificationModal(false);
+            }}
+            educatorOptions={educatorMetadata.educatorOptions}
+            filters={filters}
+            onFiltersChange={setFilters}
+            statusOptions={[
+              { value: 'all', label: 'All Status', icon: Filter },
+              { value: 'active', label: 'Active', icon: Clock },
+              { value: 'closed', label: 'Closed', icon: CheckCircle }
+            ]}
+            tradeTypeOptions={[
+              { value: 'all', label: 'All Types', icon: Filter },
+              { value: 'buy', label: 'Buy Orders', icon: TrendingUp },
+              { value: 'sell', label: 'Sell Orders', icon: TrendingDown }
+            ]}
+            canCreateSignals={canCreateSignals}
+            onCreateSignal={() => {
+              setShowProviderNotificationModal(false);
+              setShowCreateModal(true);
+            }}
+            onOpenFilterSheet={(type) => {
+              // Open the filter sheet via the global function exposed by SignalStreamFilters
+              if ((window as any).__signalStreamOpenFilterSheet) {
+                (window as any).__signalStreamOpenFilterSheet(type);
+              }
+            }}
+          />
+
+          {/* Footer Navigation Bar - Mobile Only */}
+          <SignalStreamFooterNav
+            filters={filters}
+            onFiltersChange={setFilters}
+            onOpenFilter={() => {
+              // Trigger filter sheet opening via global function (opens with status tab by default)
+              if ((window as any).__signalStreamOpenFilterSheet) {
+                (window as any).__signalStreamOpenFilterSheet('status');
+              }
+            }}
+            onOpenRecent={() => {
+              // Trigger recent sheet opening
+              if ((window as any).__signalStreamOpenNotificationSheet) {
+                (window as any).__signalStreamOpenNotificationSheet();
+              }
+            }}
+            onOpenNotifications={() => setShowProviderNotificationModal(true)}
+            onCreateAlert={() => setShowCreateModal(true)}
+            educatorOptions={educatorMetadata.educatorOptions}
+            canCreateSignals={canCreateSignals}
+          />
         </div>
       </div>
     </StreamErrorBoundary>

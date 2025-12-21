@@ -42,7 +42,11 @@ export default {
         },
         accent: {
           DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))'
+          foreground: 'hsl(var(--accent-foreground))',
+          'green': 'hsl(var(--accent-green))',
+          'blue': 'hsl(var(--accent-blue))',
+          'gold': 'hsl(var(--accent-gold))',
+          'red': 'hsl(var(--accent-red))'
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -126,13 +130,6 @@ export default {
           'light': 'hsl(217, 91%, 65%)',
           'DEFAULT': 'hsl(217, 91%, 60%)',
           'dark': 'hsl(217, 91%, 55%)',
-        },
-        // Trading platform accent colors  
-        accent: {
-          'green': 'hsl(var(--accent-green))',
-          'blue': 'hsl(var(--accent-blue))',
-          'gold': 'hsl(var(--accent-gold))',
-          'red': 'hsl(var(--accent-red))'
         },
         // Journal XX custom colors
         bronze: {
@@ -220,6 +217,22 @@ export default {
 						backgroundColor: 'hsl(var(--destructive) / 0)',
 						color: 'hsl(var(--destructive))'
 					}
+				},
+				'slide-in-from-bottom-above-nav': {
+					from: {
+						transform: 'translateY(calc(100% + 80px))'
+					},
+					to: {
+						transform: 'translateY(0)'
+					}
+				},
+				'slide-out-to-bottom-above-nav': {
+					from: {
+						transform: 'translateY(0)'
+					},
+					to: {
+						transform: 'translateY(calc(100% + 80px))'
+					}
 				}
 			},
 			animation: {
@@ -228,7 +241,9 @@ export default {
 				'flash-green': 'flash-green 0.7s ease-in-out',
 				'flash-red': 'flash-red 0.7s ease-in-out',
 				'flash-green-intense': 'flash-green 0.4s ease-in-out',
-				'flash-red-intense': 'flash-red 0.4s ease-in-out'
+				'flash-red-intense': 'flash-red 0.4s ease-in-out',
+				'slide-in-from-bottom-above-nav': 'slide-in-from-bottom-above-nav 0.3s ease-out',
+				'slide-out-to-bottom-above-nav': 'slide-out-to-bottom-above-nav 0.3s ease-out'
 			}
 		}
 	},

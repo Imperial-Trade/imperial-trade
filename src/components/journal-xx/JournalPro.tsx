@@ -4,13 +4,21 @@ import {
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
   NotebookIcon, CalendarIcon, UploadIcon, ActivityIcon, FolderIcon,
   TrendingUpIcon, TrendingDownIcon, MapIcon, PlayIcon, PauseIcon,
-  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, GamepadIcon
+  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, GamepadIcon, BarChart3Icon
 } from './ui/Icons';
 import { TradeFormData, TradeEntry } from './types';
+import { TraderInsights } from './TraderInsights';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { analyzeTradeWithGemini } from './services/geminiService';
+import { extractTradeDataFromScreenshot } from './services/tradeDataExtractor';
+import { calculateTraderDNA } from './utils/traderDNACalculator';
 import { PhaseLoader } from './PhaseLoader';
 import { Typewriter } from './Typewriter';
+import { useAuth } from '@/contexts/AuthContext';
+import { TradeJournalEntry as TJEntry } from '@/api/entities';
+import { supabase } from '@/integrations/supabase/client';
+import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { compressImage } from '@/utils/imageCompression';
 
 export interface JournalProProps {
   isDarkMode: boolean;
@@ -67,6 +75,35 @@ const NAV_ITEMS = [
 ];
 
 // --- UTILS ---
+
+/**
+ * Parse a date string (YYYY-MM-DD or ISO format) into year, month, day components
+ * This avoids timezone issues where new Date("2025-12-21") creates UTC midnight
+ * which can shift to the previous day in local timezones
+ */
+const parseDateString = (dateStr: string): { year: number; month: number; day: number } => {
+    const datePart = dateStr.split('T')[0]; // Handle ISO format
+    const [year, month, day] = datePart.split('-').map(Number);
+    return { year, month: month - 1, day }; // JS months are 0-indexed
+};
+
+/**
+ * Create a Date object from a date string in local timezone
+ * Unlike new Date("YYYY-MM-DD") which creates UTC midnight,
+ * this creates local midnight
+ */
+const parseLocalDate = (dateStr: string): Date => {
+    const { year, month, day } = parseDateString(dateStr);
+    return new Date(year, month, day);
+};
+
+/**
+ * Format a date string (YYYY-MM-DD) for display without timezone issues
+ */
+const formatDateForDisplay = (dateStr: string): string => {
+    const date = parseLocalDate(dateStr);
+    return date.toLocaleDateString();
+};
 
 const getCalendarDays = (year: number, month: number) => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -324,11 +361,12 @@ const PatternDojo: React.FC<{ isDarkMode: boolean, onOutcome: (win: boolean) => 
 
 const MacroCalendar: React.FC<{ 
     isDarkMode: boolean, 
-    trades: TradeEntry[]
-}> = ({ isDarkMode, trades }) => {
-    // ... [Content of MacroCalendar same as before] ...
-    const [viewDate, setViewDate] = useState(new Date());
-    const [timeFilter, setTimeFilter] = useState<'D'|'W'|'M'|'Y'>('M');
+    trades: TradeEntry[],
+    timeFilter: 'D'|'W'|'M'|'Y',
+    setTimeFilter: (filter: 'D'|'W'|'M'|'Y') => void,
+    viewDate: Date,
+    setViewDate: (date: Date) => void
+}> = ({ isDarkMode, trades, timeFilter, setTimeFilter, viewDate, setViewDate }) => {
     const [viewMode, setViewMode] = useState<'CALENDAR'|'MACRO'>('CALENDAR');
 
     const handleNavigation = (offset: number) => {
@@ -359,14 +397,36 @@ const MacroCalendar: React.FC<{
     // Memoized Lookups
     const dailyPnL = useMemo(() => {
         const map: Record<string, { pnl: number, count: number, trades: TradeEntry[] }> = {};
-        trades.forEach(t => {
-            const date = new Date(t.date);
-            const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        // Deduplicate trades by ID to prevent showing the same trade multiple times
+        const seenTradeIds = new Set<string>();
+        const uniqueTrades = trades.filter(t => {
+            if (seenTradeIds.has(t.id)) {
+                console.warn(`⚠️ Duplicate trade detected: ${t.id} - ${t.asset} - ${t.pnl}. Skipping duplicate.`);
+                return false;
+            }
+            seenTradeIds.add(t.id);
+            return true;
+        });
+        
+        uniqueTrades.forEach(t => {
+            // Parse YYYY-MM-DD string correctly to avoid timezone issues
+            // When new Date("2025-12-21") is called, it creates UTC midnight which can shift to previous day in local timezone
+            const dateParts = t.date.split('T')[0].split('-');
+            const year = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1; // JS months are 0-indexed
+            const day = parseInt(dateParts[2], 10);
+            const key = `${year}-${month}-${day}`;
             if (!map[key]) map[key] = { pnl: 0, count: 0, trades: [] };
             map[key].pnl += t.pnl;
             map[key].count += 1;
             map[key].trades.push(t);
         });
+        
+        // Log if duplicates were found
+        if (uniqueTrades.length !== trades.length) {
+            console.warn(`⚠️ Found ${trades.length - uniqueTrades.length} duplicate trade(s). Original count: ${trades.length}, Unique count: ${uniqueTrades.length}`);
+        }
+        
         return map;
     }, [trades]);
 
@@ -388,11 +448,11 @@ const MacroCalendar: React.FC<{
                     const monthDailyData: Record<number, { pnl: number, hasData: boolean }> = {};
                     
                     trades.forEach(t => {
-                        const d = new Date(t.date);
-                        if(d.getFullYear() === year && d.getMonth() === m) {
+                        const parsed = parseDateString(t.date);
+                        if(parsed.year === year && parsed.month === m) {
                             monthlyPnL += t.pnl;
                             tradeCount++;
-                            const day = d.getDate();
+                            const day = parsed.day;
                             if (!monthDailyData[day]) monthDailyData[day] = { pnl: 0, hasData: false };
                             monthDailyData[day].pnl += t.pnl;
                             monthDailyData[day].hasData = true;
@@ -437,7 +497,7 @@ const MacroCalendar: React.FC<{
                             </div>
                             
                             <div className="shrink-0 self-end flex flex-col items-end">
-                                <div className={`text-xs font-black text-right ${hasMonthData ? (isProfitable ? 'text-emerald-500' : 'text-rose-500') : 'text-emerald-500 opacity-30'}`}>{hasMonthData ? (isProfitable ? '+' : '') + monthlyPnL.toFixed(0) : '+PNL'}</div>
+                                <div className={`text-xs font-black text-right ${hasMonthData ? (isProfitable ? 'text-emerald-500' : 'text-rose-500') : 'text-emerald-500 opacity-30'}`}>{hasMonthData ? (monthlyPnL >= 0 ? '+' : '-') + '$' + Math.abs(monthlyPnL).toFixed(2) : '+PNL'}</div>
                                 <div className="text-[7px] opacity-40 font-mono text-right">{tradeCount} {tradeCount === 0 || tradeCount === 1 ? 'Trade' : 'Trades'}</div>
                             </div>
                         </div>
@@ -452,8 +512,8 @@ const MacroCalendar: React.FC<{
         const firstDayOfWeek = new Date(year, month, 1).getDay();
         const emptySlots = Array.from({ length: firstDayOfWeek }, (_, i) => i);
         return (
-            <div className="grid grid-cols-7 grid-rows-6 h-full gap-x-2 gap-y-1 animate-in fade-in duration-300">
-                 {['S','M','T','W','T','F','S'].map(d => <div key={d} className="flex items-center justify-center text-[8px] opacity-30 font-bold h-4">{d}</div>)}
+            <div className="grid grid-cols-7 grid-rows-6 h-full gap-x-2 gap-y-0.5 animate-in fade-in duration-300" style={{ gridAutoRows: '1fr' }}>
+                 {['S','M','T','W','T','F','S'].map((d, idx) => <div key={`day-header-${idx}`} className="flex items-center justify-center text-[8px] opacity-30 font-bold h-4">{d}</div>)}
                  {emptySlots.map(i => <div key={`empty-${i}`} />)}
                  {days.map((day) => {
                      const key = `${year}-${month}-${day}`;
@@ -476,12 +536,12 @@ const MacroCalendar: React.FC<{
                          : '';
                      
                      return (
-                         <div key={day} onClick={() => { setViewDate(new Date(year, month, day)); setTimeFilter('D'); }} className={`relative group transition-all duration-300 cursor-pointer flex flex-col p-1 border-t pt-1 min-h-[50px] ${containerClass} ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
-                             <span className={`text-[10px] font-bold shrink-0 ${hasData ? (isDarkMode ? 'text-white' : 'text-stone-900') : (isDarkMode ? 'text-stone-500' : 'text-stone-400')} group-hover:text-stone-900 dark:group-hover:text-white`}>{day}</span>
+                         <div key={day} onClick={() => { setViewDate(new Date(year, month, day)); setTimeFilter('D'); }} className={`relative group transition-all duration-300 cursor-pointer flex flex-col p-0.5 sm:p-1 border-t pt-0.5 h-full overflow-hidden ${containerClass} ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
+                             <span className={`text-[8px] sm:text-[10px] font-bold shrink-0 ${hasData ? (isDarkMode ? 'text-white' : 'text-stone-900') : (isDarkMode ? 'text-stone-500' : 'text-stone-400')} group-hover:text-stone-900 dark:group-hover:text-white`}>{day}</span>
                             {hasData && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                    <div className={`text-xs md:text-sm font-bold font-sans tracking-wide leading-none ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{isWin ? '+' : ''}{pnl}</div>
-                                    <div className="text-[8px] opacity-40 font-mono mt-0.5 whitespace-nowrap">{tradeCount} {tradeCount === 1 ? 'Trade' : 'Trades'}</div>
+                                <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0 px-0.5 overflow-hidden">
+                                    <div className={`text-[7px] sm:text-[9px] md:text-xs font-bold font-sans tracking-tight leading-[1.0] break-all ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{(pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(2)}</div>
+                                    <div className="text-[6px] sm:text-[7px] opacity-40 font-mono mt-0.5 whitespace-nowrap">{tradeCount} {tradeCount === 1 ? 'Trade' : 'Trades'}</div>
                                 </div>
                             )}
                          </div>
@@ -518,15 +578,27 @@ const MacroCalendar: React.FC<{
                                         const boxClass = isWin ? (isDarkMode ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-emerald-100/80 border-emerald-200') : (isDarkMode ? 'bg-rose-500/20 border-rose-500/30' : 'bg-rose-100/80 border-rose-200');
                                         const textPnlClass = isWin ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400';
                                         return (
-                                            <div key={trade.id} className={`shrink-0 min-w-[50%] max-w-[50%] p-3 border-r ${isDarkMode ? 'border-white/5' : 'border-black/5'} flex flex-col justify-between h-full ${boxClass}`}>
-                                                <div className="flex justify-between items-start"><span className={`text-[10px] font-black uppercase ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{trade.asset}</span><span className={`text-xs font-mono font-bold ${textPnlClass}`}>{trade.pnl >= 0 ? '+' : ''}{trade.pnl}</span></div>
-                                                <div className={`text-[9px] line-clamp-2 leading-relaxed opacity-80 font-medium ${isDarkMode?'text-stone-300':'text-stone-700'}`}>{trade.notes}</div>
+                                            <div key={trade.id} className={`shrink-0 min-w-[50%] max-w-[50%] p-2 sm:p-3 border-r ${isDarkMode ? 'border-white/5' : 'border-black/5'} flex flex-col justify-between h-full overflow-hidden ${boxClass}`}>
+                                                <div className="flex justify-between items-start min-w-0 gap-1">
+                                                    <span className={`text-[9px] sm:text-[10px] font-black uppercase truncate flex-1 ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{trade.asset}</span>
+                                                    <span className={`text-[9px] sm:text-xs font-mono font-bold shrink-0 ${textPnlClass}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span>
+                                                </div>
+                                                <div className={`text-[8px] sm:text-[9px] line-clamp-2 leading-relaxed opacity-80 font-medium ${isDarkMode?'text-stone-300':'text-stone-700'}`}>{trade.notes}</div>
                                             </div>
                                         );
                                     })
                                 )}
                             </div>
-                            <div className={`w-20 shrink-0 flex flex-col justify-center items-center px-1 gap-1 bg-transparent border-l ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>{data ? (<div className="text-center"><div className={`text-sm font-black font-mono mb-0.5 ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{data.pnl >= 0 ? '+' : ''}{data.pnl}</div><div className="text-[8px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide">{data.count} {data.count === 1 ? 'Trade' : 'Trades'}</div></div>) : (<span className="text-xl font-bold text-stone-800 dark:text-stone-800 opacity-20 select-none">—</span>)}</div>
+                            <div className={`w-16 sm:w-20 shrink-0 flex flex-col justify-center items-center px-0.5 sm:px-1 gap-1 bg-transparent border-l ${isDarkMode ? 'border-white/5' : 'border-black/5'} min-w-0 overflow-hidden`}>
+                                {data ? (
+                                    <div className="text-center w-full min-w-0 px-0.5">
+                                        <div className={`text-[9px] sm:text-xs md:text-sm font-black font-mono mb-0.5 break-all leading-tight ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(data.pnl >= 0 ? '+' : '-') + '$' + Math.abs(data.pnl).toFixed(2)}</div>
+                                        <div className="text-[7px] sm:text-[8px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide whitespace-nowrap">{data.count} {data.count === 1 ? 'Trade' : 'Trades'}</div>
+                                    </div>
+                                ) : (
+                                    <span className="text-xl font-bold text-stone-800 dark:text-stone-800 opacity-20 select-none">—</span>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
@@ -539,14 +611,16 @@ const MacroCalendar: React.FC<{
         const data = dailyPnL[key];
         const dayTrades = data?.trades || [];
         return (
-            <div className="h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between mb-2 px-2"><span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} {dayTrades.length === 1 ? 'Trade' : 'Trades'} Found</span>{data && (<span className={`text-xs font-mono font-bold ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>Net: {data.pnl >= 0 ? '+' : ''}{data.pnl}</span>)}</div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2" style={{ touchAction: 'pan-y' }}>
+            <div className="h-full flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="flex items-center justify-between mb-2 px-2 shrink-0">
+                    <span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} {dayTrades.length === 1 ? 'Trade' : 'Trades'} Found</span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-2 pr-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', maxHeight: '100%' }}>
                     {dayTrades.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center opacity-30"><NotebookIcon className="w-8 h-8 mb-2" /><span className="text-[10px] font-bold uppercase">No Activity</span></div>
                     ) : (
                         dayTrades.map(trade => (
-                            <div key={trade.id} className={`p-3 rounded-xl border flex gap-3 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}><div className={`w-1 rounded-full ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} /><div className="flex-1"><div className="flex justify-between items-center mb-1"><span className="font-bold text-xs">{trade.asset}</span><span className={`font-mono font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{trade.pnl > 0 ? '+' : ''}{trade.pnl}</span></div><div className="flex gap-2 mb-1"><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.strategy || 'Setup'}</span><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.session || 'Session'}</span></div><p className="text-[10px] opacity-60 leading-relaxed line-clamp-2">{trade.notes}</p></div></div>
+                            <div key={trade.id} className={`p-3 rounded-xl border flex gap-3 shrink-0 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}><div className={`w-1 rounded-full shrink-0 ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} /><div className="flex-1 min-w-0"><div className="flex justify-between items-center mb-1"><span className="font-bold text-xs">{trade.asset}</span><span className={`font-mono font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span></div><div className="flex gap-2 mb-1"><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.strategy || 'Setup'}</span><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.session || 'Session'}</span></div><p className="text-[10px] opacity-60 leading-relaxed line-clamp-2">{trade.notes}</p></div></div>
                         ))
                     )}
                 </div>
@@ -590,8 +664,8 @@ const MacroCalendar: React.FC<{
     };
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-2 px-1">
+        <div className="h-full flex flex-col min-h-0">
+            <div className="flex justify-between items-center mb-2 px-1 shrink-0">
                 <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 cursor-pointer hover:text-yellow-500" onClick={() => setViewMode(v => v === 'CALENDAR' ? 'MACRO' : 'CALENDAR')}>
                     {viewMode === 'MACRO' ? 'Market Cycles' : headerDateText}
                 </h3>
@@ -608,7 +682,7 @@ const MacroCalendar: React.FC<{
                    </div>
                 </div>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 {renderCurrentView()}
             </div>
         </div>
@@ -616,20 +690,33 @@ const MacroCalendar: React.FC<{
 };
 
 export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onToggleTheme, onSubmit, onDelete, trades }) => {
+  const { user } = useAuth();
+  const { refreshEntries } = useTradeJournal(); // Get refreshEntries from context
+  const savedTradeIdRef = useRef<string | null>(null); // Track saved trade ID
+  
   // --- STATE & DATA ---
+  // Animation state for Imperial Score
+  const [animatedImperialScore, setAnimatedImperialScore] = useState(0);
   const [activeTab, setActiveTab] = useState('JOURNAL');
   const [tiltMode, setTiltMode] = useState(false);
   const [viewState, setViewState] = useState<'FORM' | 'ANALYZING' | 'REVIEW'>('FORM');
-  const [activeMobileSlide, setActiveMobileSlide] = useState(0); 
+  const [activeMobileSlide, setActiveMobileSlide] = useState(0);
   
   // LOG ENTRY vs HISTORY Toggle
   const [logMode, setLogMode] = useState<'ENTRY' | 'HISTORY'>('ENTRY');
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Right Sidebar View Toggle (Desktop only)
+  const [rightSidebarView, setRightSidebarView] = useState<'TRADER_DNA' | 'LOG_ENTRY' | 'TRADE_LOG' | 'TRADER_INSIGHTS'>('TRADER_DNA');
+  
   // History Interaction States
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
   const [expandedInsights, setExpandedInsights] = useState<Set<string>>(new Set());
+  
+  // Calendar state (lifted from MacroCalendar)
+  const [calendarTimeFilter, setCalendarTimeFilter] = useState<'D'|'W'|'M'|'Y'>('M');
+  const [calendarViewDate, setCalendarViewDate] = useState(new Date());
 
   // ... [Swipe Logic] ...
   const touchStartY = useRef<number | null>(null);
@@ -661,7 +748,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
     if (allowSwipe) {
         if (dy > minSwipeDistance) {
-             if (activeMobileSlide < 2) setActiveMobileSlide(s => s + 1);
+             if (activeMobileSlide < 3) setActiveMobileSlide(s => s + 1);
         } else if (dy < -minSwipeDistance) {
              if (activeMobileSlide > 0) setActiveMobileSlide(s => s - 1);
         }
@@ -718,7 +805,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       
       if (allowSlideChange) {
           if (Math.abs(dy) > 20) {
-              if (dy > 0 && activeMobileSlide < 2) { setActiveMobileSlide(s => s + 1); activateCooldown(); } 
+              if (dy > 0 && activeMobileSlide < 3) { setActiveMobileSlide(s => s + 1); activateCooldown(); } 
               else if (dy < 0 && activeMobileSlide > 0) { setActiveMobileSlide(s => s - 1); activateCooldown(); }
           }
       }
@@ -737,10 +824,14 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const [strategy, setStrategy] = useState(STRATEGIES[0]);
   const [session, setSession] = useState(SESSIONS[0]);
   const [emotion, setEmotion] = useState(EMOTIONS[0]);
+  const [followedPlan, setFollowedPlan] = useState<boolean | null>(null);
+  const [isRevengeTrade, setIsRevengeTrade] = useState(false);
   const [notes, setNotes] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRefDesktop = useRef<HTMLInputElement>(null);
 
   // Analysis State
   const [isAnalysisReady, setIsAnalysisReady] = useState(false);
@@ -755,18 +846,146 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const isMobileAnalysisMode = viewState === 'ANALYZING' || viewState === 'REVIEW';
   
   const prices = useMemo(() => ({ btc: 65430.20, eth: 3450.15, sol: 145.80 }), []);
-  const radarData = [
-      { subject: 'Discipline', A: 80, fullMark: 100 },
-      { subject: 'Win Rate', A: 65, fullMark: 100 },
-      { subject: 'Risk Mgmt', A: 90, fullMark: 100 },
-      { subject: 'Patience', A: 50, fullMark: 100 },
-      { subject: 'Execution', A: 85, fullMark: 100 },
-      { subject: 'Focus', A: 70, fullMark: 100 },
-  ];
+  
+  // Calculate Trader DNA using real data-driven calculations
+  const traderDNA = useMemo(() => {
+    // Debug: Log trades data for troubleshooting
+    if (trades.length > 0) {
+      console.log('🔍 [TRADER DNA] Calculating Trader DNA from', trades.length, 'trades');
+      
+      // Log critical fields for Execution and Risk Management
+      const tradesWithExtractedData = trades.filter(t => 
+        t.entry_price || t.exit_price || t.position_size || t.planned_target_price || t.planned_stop_loss
+      );
+      
+      if (tradesWithExtractedData.length > 0) {
+        console.log('✅ [TRADER DNA] Found', tradesWithExtractedData.length, 'trades with extracted data');
+        tradesWithExtractedData.forEach((t, idx) => {
+          console.log(`  [TRADER DNA] Trade ${idx + 1}:`, {
+            entry_price: t.entry_price || 'MISSING',
+            exit_price: t.exit_price || 'MISSING',
+            position_size: t.position_size || 'MISSING',
+            planned_target_price: t.planned_target_price || 'MISSING',
+            planned_stop_loss: t.planned_stop_loss || 'MISSING',
+            target_hit_by_market: t.target_hit_by_market !== undefined ? t.target_hit_by_market : 'MISSING'
+          });
+        });
+      } else {
+        console.warn('⚠️ [TRADER DNA] No trades have extracted data - Execution & Risk Management will use defaults');
+      }
+    }
+    
+    const result = calculateTraderDNA(trades);
+    
+    // Debug: Log calculated Trader DNA
+    console.log('✅ [TRADER DNA] Calculated scores:', {
+      imperialScore: result.imperialScore,
+      execution: result.metrics.execution,
+      riskManagement: result.metrics.riskManagement,
+      discipline: result.metrics.discipline
+    });
+    
+    return result;
+  }, [trades]);
+
+  const radarData = useMemo(() => [
+    { subject: 'Discipline', A: traderDNA.metrics.discipline, max: 100, fullMark: 100 },
+    { subject: 'Execution', A: traderDNA.metrics.execution, max: 100, fullMark: 100 },
+    { subject: 'Risk Mgmt', A: traderDNA.metrics.riskManagement, max: 100, fullMark: 100 },
+    { subject: 'Patience', A: traderDNA.metrics.patience, max: 100, fullMark: 100 },
+    { subject: 'Focus', A: traderDNA.metrics.focus, max: 100, fullMark: 100 },
+    { subject: 'Win Rate', A: traderDNA.metrics.winRate, max: 100, fullMark: 100 },
+  ], [traderDNA.metrics]);
+
+  // Check if any trades are still being processed (screenshot analysis in progress)
+  const hasProcessingTrades = useMemo(() => {
+    return trades.some(t => 
+      (t as unknown as { processing_status?: string }).processing_status === 'analyzing' || 
+      (t as unknown as { processing_status?: string }).processing_status === 'pending'
+    );
+  }, [trades]);
   
   const sortedTrades = useMemo(() => {
-      return [...trades].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Deduplicate trades by ID before sorting
+      const seenIds = new Set<string>();
+      const uniqueTrades = trades.filter(t => {
+          if (seenIds.has(t.id)) {
+              console.warn(`⚠️ Duplicate trade in sortedTrades: ${t.id} - ${t.asset}`);
+              return false;
+          }
+          seenIds.add(t.id);
+          return true;
+      });
+      
+      return uniqueTrades.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [trades]);
+
+  // Animate Imperial Score with conditional direction based on score
+  // Trigger animation when: score changes OR when switching to TRADER_DNA view
+  useEffect(() => {
+    // Only animate if we're viewing TRADER_DNA (desktop) or on the Trader DNA slide (mobile)
+    const isViewingTraderDNA = rightSidebarView === 'TRADER_DNA' || activeMobileSlide === 2;
+    if (!isViewingTraderDNA) {
+      // If not viewing Trader DNA, just set the score without animation
+      setAnimatedImperialScore(traderDNA.imperialScore);
+      return;
+    }
+
+    const currentScore = traderDNA.imperialScore;
+    const fastDuration = 500; // 0.5s to slide away
+    const slowDuration = 1000; // 1s to slide back to current score
+    const totalDuration = fastDuration + slowDuration;
+    let startTime: number;
+    let animationFrameId: number;
+
+    // Determine animation direction based on score
+    const isHighScore = currentScore > 50;
+    const awayPosition = isHighScore ? 0 : 100; // Slide to 0 if > 50, to 100 if < 50
+
+    // Set initial position to current score
+    setAnimatedImperialScore(currentScore);
+
+    const animate = () => {
+      if (!startTime) startTime = Date.now();
+      const elapsed = Date.now() - startTime;
+      
+      if (elapsed < fastDuration) {
+        // Phase 1: Fast animation from current score to away position (0 or 100) in 0.5s
+        const progress = elapsed / fastDuration;
+        // Ease in for smooth acceleration
+        const easeIn = Math.pow(progress, 2);
+        const newPosition = currentScore + (awayPosition - currentScore) * easeIn;
+        setAnimatedImperialScore(newPosition);
+        animationFrameId = requestAnimationFrame(animate);
+      } else if (elapsed < totalDuration) {
+        // Phase 2: Slow animation from away position back to current score in 1s
+        // Easing slows down as it approaches the current score
+        const phase2Elapsed = elapsed - fastDuration;
+        const progress = phase2Elapsed / slowDuration;
+        // Ease out cubic - slows down significantly near the end
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const newPosition = awayPosition + (currentScore - awayPosition) * easeOut;
+        setAnimatedImperialScore(newPosition);
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        // Ensure we end exactly at current score
+        setAnimatedImperialScore(currentScore);
+      }
+    };
+
+    // Start animation immediately
+    const timeout = setTimeout(() => {
+      startTime = Date.now();
+      animationFrameId = requestAnimationFrame(animate);
+    }, 100); // Small delay to ensure component is mounted
+
+    return () => {
+      clearTimeout(timeout);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [traderDNA.imperialScore, rightSidebarView, activeMobileSlide]);
 
   useEffect(() => {
     const val = parseFloat(pnl);
@@ -777,33 +996,699 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
     }
   }, [pnl]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        setImage(file);
-        setPreviewUrl(URL.createObjectURL(file));
+  const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📸 File input changed - files:', e.target.files?.length || 0);
+    
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).filter(file => {
+        const isImage = file.type.startsWith('image/');
+        if (!isImage) {
+          console.warn('⚠️ Skipping non-image file:', file.name, file.type);
+        }
+        return isImage;
+      });
+      
+      const remainingSlots = 3 - images.length;
+      const filesToAdd = newFiles.slice(0, remainingSlots);
+      
+      if (filesToAdd.length > 0) {
+        const newImages = [...images, ...filesToAdd];
+        const newPreviewUrls = [...previewUrls, ...filesToAdd.map(file => URL.createObjectURL(file))];
+        setImages(newImages);
+        setPreviewUrls(newPreviewUrls);
+        console.log('✅ Images added via file picker:', filesToAdd.length, 'Total:', newImages.length);
+      } else {
+        console.warn('⚠️ No space for more images. Current:', images.length, 'Max: 3');
+      }
+      
+      // Reset input so same file can be selected again
+      if (e.target) {
+        e.target.value = '';
+      }
+    } else {
+      console.warn('⚠️ No files selected');
     }
+  }, [images, previewUrls]);
+
+  const removeImage = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    const newPreviewUrls = previewUrls.filter((_, i) => i !== index);
+    setImages(newImages);
+    setPreviewUrls(newPreviewUrls);
+    console.log('🗑️ Image removed, remaining:', newImages.length);
   };
 
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Don't trigger if clicking on remove button
+    const target = e.target as HTMLElement;
+    if (target.closest('button[type="button"]')) {
+      return;
+    }
+    
+    // Don't trigger if currently dragging
+    if (isDragging) {
+      return;
+    }
+    
+    // Simple approach - just like TradeEntryForm
+    // Find the file input in the clicked container
+    const container = e.currentTarget as HTMLElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    
+    if (fileInput) {
+      fileInput.click();
+    } else if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else if (fileInputRefDesktop.current) {
+      fileInputRefDesktop.current.click();
+    }
+  }, [isDragging]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    console.log('🎯 Drag enter');
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    setIsDragging(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    if (!isDragging) {
+      setIsDragging(true);
+    }
+  }, [isDragging]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check if we're actually leaving the drop zone
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    // Only set to false if mouse is truly outside
+    if (x < rect.left - 5 || x > rect.right + 5 || y < rect.top - 5 || y > rect.bottom + 5) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  // Define addFiles BEFORE handleDrop to avoid initialization order issues
+  const addFiles = useCallback((newFiles: File[]) => {
+    if (!newFiles || newFiles.length === 0) {
+      console.warn('⚠️ No files to add');
+      return;
+    }
+    
+    setImages(prevImages => {
+      const remainingSlots = 3 - prevImages.length;
+      const filesToAdd = newFiles.slice(0, remainingSlots);
+      
+      if (filesToAdd.length > 0) {
+        const newImages = [...prevImages, ...filesToAdd];
+        setPreviewUrls(prevUrls => [...prevUrls, ...filesToAdd.map(file => URL.createObjectURL(file))]);
+        console.log('✅ Files added:', filesToAdd.length, 'Total:', newImages.length);
+        return newImages;
+      } else {
+        console.warn('⚠️ Maximum 3 images allowed. Current:', prevImages.length);
+        return prevImages;
+      }
+    });
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    console.log('🎯 Drop event');
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files: File[] = [];
+    
+    // Get files from dataTransfer.files (most reliable)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      files.push(...Array.from(e.dataTransfer.files));
+      console.log('📁 Got', files.length, 'files from dataTransfer.files');
+    }
+    
+    // Fallback: get from items if files array is empty
+    if (files.length === 0 && e.dataTransfer.items) {
+      console.log('📁 Trying dataTransfer.items');
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        const item = e.dataTransfer.items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      console.log('📁 Got', files.length, 'files from items');
+    }
+
+    // Filter for images only and add them
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    console.log('🖼️ Filtered to', imageFiles.length, 'image files');
+    if (imageFiles.length > 0) {
+      addFiles(imageFiles);
+    } else {
+      console.warn('⚠️ No image files found');
+    }
+  }, [addFiles]);
+
   const handleAnalyze = useCallback(async () => {
+      if (!user) {
+          console.error('❌ No user - cannot save trade');
+          return;
+      }
+
       setViewState('ANALYZING');
       setIsAnalysisReady(false);
-      let imageBase64 = undefined;
-      if (image) { try { imageBase64 = await fileToBase64(image); } catch(e) {} }
-      analyzeTradeWithGemini(asset, Number(pnl), notes, imageBase64, direction, outcome, strategy, emotion, session, true) // isPro = true for advanced analysis
-        .then(res => { setAiFeedback(res); setIsAnalysisReady(true); });
-  }, [asset, pnl, notes, image, direction, outcome, strategy, emotion, session]);
+      
+      // Upload images to Supabase Storage and get URLs
+      let imageUrls: string[] = [];
+      let firstImageUrl: string | undefined = undefined;
+      
+      if (images.length > 0) {
+          try {
+              console.log('📤 Uploading', images.length, 'images to Supabase Storage...');
+              
+              const uploadPromises = images.map(async (file, index) => {
+                  try {
+                      // Compress image before upload
+                      const compressedFile = await compressImage(file, {
+                          maxWidth: 1920,
+                          maxHeight: 1080,
+                          quality: 0.8
+                      });
+                      
+                      const timestamp = Date.now();
+                      const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                      const filePath = `${user.id}/${date}/${timestamp}-${index}-${sanitizedFilename}`;
+                      
+                      const { data, error } = await supabase.storage
+                          .from('journal-charts')
+                          .upload(filePath, compressedFile, {
+                              cacheControl: '3600',
+                              upsert: false
+                          });
+                      
+                      if (error) {
+                          console.error(`❌ Upload failed for ${file.name}:`, error);
+                          // Fallback to base64 if upload fails
+                          const base64 = await fileToBase64(file);
+                          return base64;
+                      }
+                      
+                      // Get public URL
+                      const { data: urlData } = supabase.storage
+                          .from('journal-charts')
+                          .getPublicUrl(filePath);
+                      
+                      console.log(`✅ Image ${index + 1} uploaded:`, urlData.publicUrl);
+                      return urlData.publicUrl;
+                  } catch (error) {
+                      console.error(`❌ Error uploading image ${index + 1}:`, error);
+                      // Fallback to base64
+                      return await fileToBase64(file);
+                  }
+              });
+              
+              imageUrls = await Promise.all(uploadPromises);
+              firstImageUrl = imageUrls[0];
+              console.log('✅ All images uploaded:', imageUrls.length);
+          } catch(e) {
+              console.error('❌ Failed to upload images:', e);
+              // Fallback: convert to base64
+              try {
+                  const base64Promises = images.map(img => fileToBase64(img));
+                  imageUrls = await Promise.all(base64Promises);
+                  firstImageUrl = imageUrls[0];
+                  console.log('📸 Fallback: Converted to base64');
+              } catch(base64Error) {
+                  console.error('❌ Failed to convert to base64:', base64Error);
+              }
+          }
+      }
+
+      // CRITICAL: Save or UPDATE trade to Supabase FIRST before AI analysis
+      // This ensures the trade exists even if user switches views before clicking DONE
+      try {
+          const [year, month, day] = date.split('-').map(Number);
+          const dateObj = new Date(year, month - 1, day);
+
+          // Check if we're editing an existing trade
+          if (editingId) {
+              console.log('💾 JournalPro: Updating existing trade:', editingId);
+              
+              // Update existing trade
+              const updateData: any = {
+                  asset_ticker: asset,
+                  pnl: Number(pnl),
+                  notes: notes,
+                  trade_date: dateObj.toISOString().split('T')[0],
+                  screenshot_url: firstImageUrl, // First image URL for backward compatibility
+                  screenshot_urls: imageUrls.length > 0 ? imageUrls : undefined,
+                  trade_type: direction === 'Long' ? 'Long' : direction === 'Short' ? 'Short' : undefined,
+                  strategy: strategy,
+                  session: session,
+                  emotion: emotion,
+                  followed_plan: followedPlan !== null ? followedPlan : undefined,
+              };
+              
+              // Update via TJEntry first
+              await TJEntry.update(editingId, updateData);
+              
+              // Then update revenge_trade separately if needed (not in TJEntry type)
+              if (isRevengeTrade !== undefined) {
+                  try {
+                      await supabase
+                          .from('trade_journal_entries')
+                          .update({ revenge_trade: isRevengeTrade } as any)
+                          .eq('id', editingId);
+                      console.log('✅ Updated trade with revenge_trade:', isRevengeTrade);
+                  } catch (error) {
+                      console.error('❌ Failed to save revenge_trade:', error);
+                  }
+              }
+              savedTradeIdRef.current = editingId;
+              console.log('✅ JournalPro: Trade updated in Supabase:', editingId);
+          } else {
+              console.log('💾 JournalPro: Creating new trade in Supabase...');
+              
+              // Create new trade
+              const newEntry = await TJEntry.create({
+                  asset_ticker: asset,
+                  pnl: Number(pnl),
+                  notes: notes,
+                  trade_date: dateObj.toISOString().split('T')[0],
+                  screenshot_url: firstImageUrl, // First image URL for backward compatibility
+                  screenshot_urls: imageUrls.length > 0 ? imageUrls : undefined,
+                  trade_type: direction === 'Long' ? 'Long' : direction === 'Short' ? 'Short' : undefined,
+                  strategy: strategy,
+                  session: session,
+                  emotion: emotion,
+                  followed_plan: followedPlan !== null ? followedPlan : undefined,
+              }, user.id);
+
+              savedTradeIdRef.current = newEntry.id;
+              console.log('✅ JournalPro: Trade saved to Supabase:', newEntry.id);
+              
+              // Update trade with revenge_trade if set (for new trades only)
+              // Use supabase directly since revenge_trade is not in TJEntry type
+              if (isRevengeTrade !== undefined) {
+                  try {
+                      await supabase
+                          .from('trade_journal_entries')
+                          .update({ revenge_trade: isRevengeTrade } as any)
+                          .eq('id', newEntry.id);
+                      console.log('✅ Updated trade with revenge_trade:', isRevengeTrade);
+                  } catch (error) {
+                      console.error('❌ Failed to save revenge_trade:', error);
+                  }
+              }
+          }
+          
+          // CRITICAL: Don't call onSubmit - trade is already saved/updated above
+          // onSubmit would trigger handleTradeSubmit which creates ANOTHER trade entry
+          // Only refresh the entries list to show the newly saved/updated trade
+          if (refreshEntries) {
+              setTimeout(() => {
+                  refreshEntries().then(() => {
+                      console.log('✅ JournalPro: Trade list refreshed after', editingId ? 'updating' : 'saving');
+                  }).catch((err) => {
+                      console.warn('⚠️ JournalPro: Failed to refresh trade list:', err);
+                  });
+              }, 300);
+          }
+      } catch (error) {
+          console.error('❌ JournalPro: Failed to', editingId ? 'update' : 'save', 'trade:', error);
+          // Continue with AI analysis even if save fails
+      }
+
+      // CRITICAL: Set processing_status to 'analyzing' and call edge function for background extraction
+      // This allows the UI to show a "processing" indicator while extraction happens in the background
+      if (imageUrls.length > 0 && savedTradeIdRef.current) {
+          try {
+              // Set processing status to 'analyzing' immediately
+              await supabase
+                  .from('trade_journal_entries')
+                  .update({ processing_status: 'analyzing' } as Record<string, unknown>)
+                  .eq('id', savedTradeIdRef.current);
+              
+              console.log('🔄 [TRADER DNA] Set processing_status to "analyzing" for trade:', savedTradeIdRef.current);
+              
+              // Call edge function for background extraction (fire and forget)
+              // Don't await - let it run in background while AI feedback is generated
+              const tradeId = savedTradeIdRef.current;
+              const firstImageUrl = imageUrls[0];
+              
+              supabase.functions.invoke('extract-trade-data', {
+                  body: {
+                      trade_id: tradeId,
+                      image_url: firstImageUrl,
+                      asset: asset,
+                      direction: direction,
+                      pnl: Number(pnl)
+                  }
+              }).then(({ data, error }) => {
+                  if (error) {
+                      console.error('❌ [TRADER DNA] Edge function error:', error);
+                      console.log('🔄 [TRADER DNA] Attempting fallback extraction...');
+                      
+                      // Fallback to frontend extraction if edge function fails
+                      if (images.length > 0 && images[0]) {
+                          fileToBase64(images[0]).then(imageBase64 => {
+                              extractTradeDataFromScreenshot(
+                                  imageBase64,
+                                  asset,
+                                  direction === 'Long' ? 'Long' : direction === 'Short' ? 'Short' : 'Long',
+                                  Number(pnl)
+                              ).then(extractedData => {
+                                  console.log('✅ [TRADER DNA FALLBACK] Extracted:', extractedData);
+                                  
+                                  if (extractedData.confidence === 'medium' || extractedData.confidence === 'high') {
+                                      const updateData: Record<string, unknown> = { processing_status: 'complete' };
+                                      if (extractedData.entry_price != null) updateData.entry_price = extractedData.entry_price;
+                                      if (extractedData.exit_price != null) updateData.exit_price = extractedData.exit_price;
+                                      if (extractedData.position_size != null) updateData.position_size = extractedData.position_size;
+                                      if (extractedData.planned_target_price != null) updateData.planned_target_price = extractedData.planned_target_price;
+                                      if (extractedData.planned_stop_loss != null) updateData.planned_stop_loss = extractedData.planned_stop_loss;
+                                      if (extractedData.target_hit_by_market != null) updateData.target_hit_by_market = extractedData.target_hit_by_market;
+                                      
+                                      supabase
+                                          .from('trade_journal_entries')
+                                          .update(updateData)
+                                          .eq('id', tradeId)
+                                          .then(() => {
+                                              console.log('✅ [TRADER DNA FALLBACK] Trade updated');
+                                              if (refreshEntries) setTimeout(() => refreshEntries(), 500);
+                                          });
+                                  } else {
+                                      supabase
+                                          .from('trade_journal_entries')
+                                          .update({ processing_status: 'complete' } as Record<string, unknown>)
+                                          .eq('id', tradeId);
+                                  }
+                              }).catch(err => {
+                                  console.error('❌ [TRADER DNA FALLBACK] Extraction failed:', err);
+                                  supabase
+                                      .from('trade_journal_entries')
+                                      .update({ processing_status: 'failed' } as Record<string, unknown>)
+                                      .eq('id', tradeId);
+                              });
+                          }).catch(err => {
+                              console.error('❌ [TRADER DNA FALLBACK] Image conversion failed:', err);
+                          });
+                      }
+                  } else {
+                      console.log('✅ [TRADER DNA] Edge function completed:', data);
+                      // Refresh entries to get updated data
+                      if (refreshEntries) {
+                          setTimeout(() => {
+                              refreshEntries().then(() => {
+                                  console.log('✅ [TRADER DNA] Trade list refreshed with extracted data');
+                              }).catch((err) => {
+                                  console.warn('⚠️ [TRADER DNA] Failed to refresh:', err);
+                              });
+                          }, 500);
+                      }
+                  }
+              }).catch(err => {
+                  console.error('❌ [TRADER DNA] Edge function call failed:', err);
+                  // Mark as failed
+                  supabase
+                      .from('trade_journal_entries')
+                      .update({ processing_status: 'failed' } as Record<string, unknown>)
+                      .eq('id', tradeId);
+              });
+              
+          } catch (error) {
+              console.error('❌ [TRADER DNA] Failed to initiate background extraction:', error);
+          }
+      } else {
+          console.log('⚠️ [TRADER DNA] No image uploaded, skipping screenshot extraction');
+      }
+      
+      // Use edge function for AI feedback (handles images better via URLs)
+      // CRITICAL: Call immediately, don't wait for data extraction
+      const feedbackPromise = (async () => {
+          try {
+              console.log('🔄 Calling ai-trade-analysis edge function for feedback (instant call)...');
+              
+              // Build prompt for edge function (aligned with coach-agent prompt structure)
+              const tradeOutcome = Number(pnl) > 0 ? "winning trade" : "losing trade";
+              const pnlAmount = Math.abs(Number(pnl));
+              const tradeNotes = notes || "No notes provided";
+              
+              const prompt = `The user submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+                Number(pnl) > 0 ? "profit" : "loss"
+              }. 
+              Asset: ${asset}
+              Trade Type: ${direction || "Not specified"}
+              ${strategy ? `Strategy: ${strategy}` : ''}
+              ${session ? `Session: ${session}` : ''}
+              ${emotion ? `Emotional State: ${emotion}` : ''}
+              Their notes: "${tradeNotes}"
+              ${imageUrls.length > 0 ? "They also uploaded a screenshot for analysis." : ""}
+              
+              Analyze their notes for specific trading concepts and provide encouraging feedback that acknowledges the sophisticated analysis they demonstrate.`;
+              
+              // Filter imageUrls to only include actual URLs (not base64 data URLs)
+              const imageUrlsForEdge = imageUrls.filter(url => !url.startsWith('data:'));
+              
+              // Prepare image for direct API fallback (if edge function fails)
+              let imageForDirectAPI: string | undefined = undefined;
+              if (images.length > 0 && images[0]) {
+                  try {
+                      imageForDirectAPI = await fileToBase64(images[0]);
+                  } catch (error) {
+                      console.warn('⚠️ Failed to prepare image for fallback:', error);
+                  }
+              }
+              
+              // Try edge function first with timeout
+              let feedback: string | null = null;
+              let edgeFunctionWorked = false;
+              
+              try {
+                  // Create timeout promise (20 seconds)
+                  const timeoutPromise = new Promise<never>((_, reject) =>
+                      setTimeout(() => {
+                          reject(new Error('Edge function timeout after 20 seconds'));
+                      }, 20000)
+                  );
+                  
+                  // Race between edge function and timeout
+                  const result = await Promise.race([
+                      supabase.functions.invoke('ai-trade-analysis', {
+                          body: {
+                              prompt,
+                              file_urls: imageUrlsForEdge.length > 0 ? imageUrlsForEdge : [],
+                              user_id: user.id
+                          }
+                      }),
+                      timeoutPromise
+                  ]) as { data: any; error: any };
+                  
+                  const { data: edgeFeedback, error: edgeError } = result;
+                  
+                  if (edgeError) {
+                      console.warn('⚠️ Edge function error:', edgeError);
+                      throw new Error(`Edge function error: ${edgeError.message || 'Unknown error'}`);
+                  }
+                  
+                  if (edgeFeedback && typeof edgeFeedback === 'string') {
+                      feedback = edgeFeedback;
+                      edgeFunctionWorked = true;
+                      console.log('✅ JournalPro: Received AI feedback from edge function');
+                  } else {
+                      throw new Error('Invalid response from edge function');
+                  }
+              } catch (edgeError: any) {
+                  console.warn('⚠️ Edge function failed, falling back to direct Gemini API:', edgeError.message);
+                  
+                  // FALLBACK: Use direct Gemini API call
+                  console.log('🔄 Falling back to direct Gemini API call...');
+                  try {
+                      const directFeedback = await analyzeTradeWithGemini(
+                          asset, 
+                          Number(pnl), 
+                          tradeNotes, 
+                          imageForDirectAPI, 
+                          direction, 
+                          outcome, 
+                          strategy, 
+                          emotion, 
+                          session, 
+                          true // isPro = true
+                      );
+                      
+                      if (directFeedback && typeof directFeedback === 'string') {
+                          feedback = directFeedback;
+                          console.log('✅ JournalPro: Received AI feedback from direct API (fallback)');
+                      } else {
+                          throw new Error('Direct API also failed');
+                      }
+                  } catch (directError) {
+                      console.error('❌ Both edge function and direct API failed:', directError);
+                      throw new Error(`AI analysis failed. Edge function error: ${edgeError?.message || 'Unknown'}. Direct API error: ${directError instanceof Error ? directError.message : 'Unknown'}`);
+                  }
+              }
+              
+              if (!feedback || feedback.trim().length === 0) {
+                  throw new Error('Empty feedback received from AI');
+              }
+              
+              console.log('✅ JournalPro: AI feedback received, length:', feedback.length);
+              console.log('✅ JournalPro: First 200 chars:', feedback.substring(0, 200));
+              setAiFeedback(feedback);
+              setIsAnalysisReady(true);
+              
+              // Update the saved trade with AI feedback
+              if (savedTradeIdRef.current) {
+                  try {
+                      await supabase
+                          .from('trade_journal_entries')
+                          .update({ ai_positive_feedback: feedback })
+                          .eq('id', savedTradeIdRef.current);
+                      console.log('✅ JournalPro: AI feedback saved to trade:', savedTradeIdRef.current);
+                      
+                      // Refresh trade list after AI feedback is saved
+                      if (refreshEntries) {
+                          setTimeout(() => {
+                              refreshEntries().then(() => {
+                                  console.log('✅ JournalPro: Trade list refreshed after AI feedback - Trader DNA/Insights updated');
+                              }).catch((err) => {
+                                  console.warn('⚠️ JournalPro: Failed to refresh (non-critical):', err);
+                              });
+                          }, 500);
+                      }
+                  } catch (error) {
+                      console.error('❌ JournalPro: Failed to save AI feedback:', error);
+                  }
+              }
+          } catch (error) {
+              console.error('❌ JournalPro: AI analysis failed completely:', error);
+              
+              // Extract and show actual error message
+              let errorMessage = 'AI analysis failed. ';
+              if (error instanceof Error) {
+                  const errorMsg = error.message;
+                  // Clean up common error messages
+                  if (errorMsg.includes('Failed to send a request to the Edge Function') || 
+                      errorMsg.includes('Failed to send')) {
+                      errorMessage = 'The AI service is temporarily unavailable. Please try again in a moment. If the problem persists, check your internet connection.';
+                  } else if (errorMsg.includes('timeout')) {
+                      errorMessage = 'AI analysis is taking longer than expected. Please try again.';
+                  } else {
+                      errorMessage += errorMsg;
+                  }
+              } else if (typeof error === 'string') {
+                  errorMessage += error;
+              } else {
+                  errorMessage += 'Please try again or contact support.';
+              }
+              
+              // Provide helpful error message
+              if (errorMessage.includes('timeout') || errorMessage.includes('Failed to send')) {
+                  // Show a more user-friendly message
+                  errorMessage = 'The AI service is temporarily unavailable. Please try again in a moment.';
+              }
+              
+              setAiFeedback(errorMessage);
+              setIsAnalysisReady(true); // Mark as ready to show error message
+          }
+      })();
+      
+      // Wait for AI feedback to complete
+      // Note: Screenshot data extraction now runs in background via edge function
+      // and will update the trade when complete (no need to await it)
+      await feedbackPromise;
+  }, [user, date, asset, pnl, notes, images, direction, outcome, strategy, emotion, session, editingId, followedPlan, isRevengeTrade, refreshEntries]);
 
   const handleLoaderComplete = useCallback(() => { setViewState('REVIEW'); }, []);
 
   const handleConfirmLog = () => {
-      onSubmit({ date, asset, pnl, notes, image, direction, outcome, strategy, session, emotion }, editingId || undefined);
+      // Don't call onSubmit - trade is already saved/updated in handleAnalyze
+      // Just refresh the entries list and reset the form
+      if (refreshEntries) {
+          refreshEntries().then(() => {
+              console.log('✅ JournalPro: Trade list refreshed after confirming', editingId ? 'update' : 'log');
+          }).catch((err) => {
+              console.warn('⚠️ JournalPro: Failed to refresh trade list:', err);
+          });
+      }
+      
+      // CRITICAL: Clear editingId to prevent duplicate creation on next save
+      const wasEditing = !!editingId;
       setViewState('FORM');
       setEditingId(null);
-      setAsset(''); setPnl(''); setNotes(''); setImage(null); setPreviewUrl(null); setAiFeedback('');
+      setAsset(''); setPnl(''); setNotes(''); setImages([]); setPreviewUrls([]); setAiFeedback(''); setFollowedPlan(null); setIsRevengeTrade(false); setIsDragging(false);
+      
+      // Clean up preview URLs to prevent memory leaks
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      
+      if (wasEditing) {
+          console.log('✅ JournalPro: Edit mode cleared - next save will create new trade');
+      }
   };
 
   const handleDojoOutcome = (win: boolean) => { if (win) setXp(p => p + 50); };
+
+  // Calculate Net PnL based on calendar timeFilter and viewDate
+  const calculateFilteredPnL = useMemo(() => {
+    let filteredTrades: TradeEntry[] = [];
+    const currentYear = calendarViewDate.getFullYear();
+    const currentMonth = calendarViewDate.getMonth();
+    const currentDate = calendarViewDate.getDate();
+    
+    if (calendarTimeFilter === 'D') {
+      // Daily: Get trades for the specific day
+      filteredTrades = trades.filter(t => {
+        const { year, month, day } = parseDateString(t.date);
+        return year === currentYear &&
+               month === currentMonth &&
+               day === currentDate;
+      });
+    } else if (calendarTimeFilter === 'W') {
+      // Weekly: Get trades for the week containing viewDate
+      const startOfWeek = new Date(calendarViewDate);
+      startOfWeek.setDate(calendarViewDate.getDate() - calendarViewDate.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      filteredTrades = trades.filter(t => {
+        const tradeDate = parseLocalDate(t.date);
+        return tradeDate >= startOfWeek && tradeDate <= endOfWeek;
+      });
+    } else if (calendarTimeFilter === 'M') {
+      // Monthly: Get trades for the month
+      filteredTrades = trades.filter(t => {
+        const { year, month } = parseDateString(t.date);
+        return year === currentYear && 
+               month === currentMonth;
+      });
+    } else if (calendarTimeFilter === 'Y') {
+      // Yearly: Get trades for the year
+      filteredTrades = trades.filter(t => {
+        const { year } = parseDateString(t.date);
+        return year === currentYear;
+      });
+    }
+    
+    const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+    return {
+      totalPnL,
+      formattedPnL: (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2)
+    };
+  }, [trades, calendarTimeFilter, calendarViewDate]);
 
   const handleTabChange = (id: string) => {
       setActiveTab(id);
@@ -822,12 +1707,28 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       setAsset(trade.asset);
       setPnl(trade.pnl.toString());
       setNotes(trade.notes);
-      setPreviewUrl(trade.imageUrl || null);
+      
+      // Handle image URLs - prefer array, fallback to single
+      if (trade.imageUrls && trade.imageUrls.length > 0) {
+          setPreviewUrls(trade.imageUrls);
+          // Note: We can't recreate File objects from URLs, so images array stays empty
+          // The preview URLs will be used for display, but new uploads will replace them
+          setImages([]);
+      } else if (trade.imageUrl) {
+          setPreviewUrls([trade.imageUrl]);
+          setImages([]);
+      } else {
+          setPreviewUrls([]);
+          setImages([]);
+      }
+      
       if(trade.direction) setDirection(trade.direction);
       if(trade.outcome) setOutcome(trade.outcome);
       if(trade.strategy) setStrategy(trade.strategy);
       if(trade.session) setSession(trade.session);
       if(trade.emotion) setEmotion(trade.emotion);
+      if(trade.followedPlan !== undefined) setFollowedPlan(trade.followedPlan);
+      if((trade as any).revenge_trade !== undefined) setIsRevengeTrade((trade as any).revenge_trade);
       setLogMode('ENTRY'); // Switch back to form
       setActiveHistoryId(null);
   };
@@ -939,51 +1840,142 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              </select>
                          </div>
 
-                         {/* Row 5: Notes (Swapped) */}
-                         <div className="flex-col flex-1 min-h-[60px] flex mb-1">
-                            <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
-                            <textarea 
-                                value={notes} 
-                                onChange={(e) => setNotes(e.target.value)} 
-                                placeholder="Trade logic..." 
-                                className="w-full flex-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none resize-none placeholder-stone-400 dark:placeholder-slate-600 leading-relaxed" 
-                            />
+                         {/* Row 5: Did I follow my plan? */}
+                         <div className="shrink-0">
+                             <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                 Did I follow my plan?
+                             </label>
+                             <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                 <button 
+                                     onClick={() => setFollowedPlan(true)}
+                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         followedPlan === true 
+                                             ? 'bg-emerald-500 text-white shadow-sm' 
+                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                     }`}
+                                 >
+                                     Yes
+                                 </button>
+                                 <button 
+                                     onClick={() => setFollowedPlan(false)}
+                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         followedPlan === false 
+                                             ? 'bg-rose-500 text-white shadow-sm' 
+                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                     }`}
+                                 >
+                                     No
+                                 </button>
+                             </div>
                          </div>
 
-                         {/* Row 6: Image (Slimmed & Swapped) */}
+                         {/* Row 6: Revenge Trade? (for testing Patience) */}
+                         <div className="shrink-0">
+                             <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                 Revenge Trade? (Test Patience)
+                             </label>
+                             <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                 <button 
+                                     onClick={() => setIsRevengeTrade(true)}
+                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         isRevengeTrade === true 
+                                             ? 'bg-orange-500 text-white shadow-sm' 
+                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                     }`}
+                                 >
+                                     Yes
+                                 </button>
+                                 <button 
+                                     onClick={() => setIsRevengeTrade(false)}
+                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         isRevengeTrade === false 
+                                             ? 'bg-stone-500 text-white shadow-sm' 
+                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                     }`}
+                                 >
+                                     No
+                                 </button>
+                             </div>
+                         </div>
+
+                        {/* Row 7: Notes (Swapped) */}
+                        <div className="flex-col flex-1 min-h-[60px] flex mb-1">
+                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
+                           <textarea 
+                               value={notes} 
+                               onChange={(e) => setNotes(e.target.value)} 
+                               placeholder="Trade logic..." 
+                               className="w-full flex-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none resize-none placeholder-stone-400 dark:placeholder-slate-600 leading-relaxed" 
+                           />
+                        </div>
+
+                         {/* Row 8: Image (Enhanced Drag & Drop like Cursor) */}
                          <div className="shrink-0">
                             <div 
-                                onClick={() => fileInputRef.current?.click()} 
-                                className={`w-full h-12 bg-white dark:bg-slate-900 border border-dashed border-stone-200 dark:border-slate-700 hover:border-yellow-500 dark:hover:border-bronze-500 rounded-xl flex items-center ${previewUrl ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all group overflow-hidden relative ${previewUrl ? 'border-solid border-yellow-500/50 dark:border-bronze-500/50' : ''}`}
+                                onClick={handleClick}
+                                onDragEnter={handleDragEnter}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                className={`relative w-full h-12 bg-white dark:bg-slate-900 border-2 ${isDragging ? 'border-yellow-500 dark:border-bronze-500 bg-yellow-50/50 dark:bg-bronze-950/30 border-dashed scale-[1.02] shadow-lg shadow-yellow-500/20 dark:shadow-bronze-500/20' : 'border-dashed border-stone-300 dark:border-slate-600 hover:border-yellow-400 dark:hover:border-bronze-400 hover:bg-stone-50 dark:hover:bg-slate-800/50'} rounded-xl flex items-center ${previewUrls.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden ${previewUrls.length > 0 ? 'border-solid border-yellow-500/50 dark:border-bronze-500/50 bg-yellow-50/30 dark:bg-bronze-950/10' : ''}`}
                             >
-                                <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                                {/* Animated background gradient on drag */}
+                                {isDragging && (
+                                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-yellow-500/20 to-yellow-400/10 animate-pulse pointer-events-none" />
+                                )}
                                 
-                                {!previewUrl ? (
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    onChange={handleImageChange} 
+                                    className="hidden" 
+                                    accept="image/*" 
+                                    multiple 
+                                />
+                                
+                                {previewUrls.length === 0 ? (
                                     <>
                                         <UploadIcon 
-                                            className="w-4 h-4 text-stone-400 dark:text-bronze-500 animate-bounce" 
-                                            style={{ animationDuration: '3s' }}
+                                            className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
                                         />
-                                        <span className="text-[10px] font-bold text-stone-500 dark:text-bronze-500 uppercase tracking-wide">
-                                            Click to upload chart
+                                        <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                            {isDragging ? '✨ Drop to upload (max 3)' : '📸 Drag & drop or click to upload (max 3)'}
                                         </span>
                                     </>
                                 ) : (
-                                    <>
-                                        <div className="flex items-center gap-2">
-                                            <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
-                                            <span className="text-[9px] font-bold uppercase tracking-wider text-stone-900 dark:text-white">
-                                                Chart Attached
+                                    <div className="flex items-center gap-2 w-full relative z-10">
+                                        <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+                                            {previewUrls.map((url, index) => (
+                                                <div key={index} className="relative shrink-0 group/image">
+                                                    <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-yellow-400 dark:group-hover/image:border-bronze-400 transition-colors shadow-sm">
+                                                        <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            removeImage(index);
+                                                        }}
+                                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                                                        title="Remove image"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {previewUrls.length < 3 && (
+                                            <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                {previewUrls.length}/3
                                             </span>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-8 w-12 rounded bg-stone-100 dark:bg-black/50 overflow-hidden border border-stone-200 dark:border-slate-700">
-                                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover opacity-80" />
-                                            </div>
-                                            <span className="text-[8px] font-bold text-stone-400 uppercase">Change</span>
-                                        </div>
-                                    </>
+                                        )}
+                                        {previewUrls.length >= 3 && (
+                                            <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                MAX 3
+                                            </span>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                          </div>
@@ -1051,10 +2043,10 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-stone-900'}`}>{trade.asset}</span>
-                                            <div className={`text-xs font-mono mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>{new Date(trade.date).toLocaleDateString()}</div>
+                                            <div className={`text-xs font-mono mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>{formatDateForDisplay(trade.date)}</div>
                                         </div>
                                         <div className={`font-bold font-mono ${trade.pnl >= 0 ? (isDarkMode ? 'text-emerald-500' : 'text-emerald-600') : (isDarkMode ? 'text-rose-500' : 'text-rose-600')}`}>
-                                            {trade.pnl >= 0 ? '+' : ''}{trade.pnl}
+                                            {(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}
                                         </div>
                                     </div>
                                     <p className={`text-xs line-clamp-2 mb-3 leading-relaxed opacity-80 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{trade.notes}</p>
@@ -1068,16 +2060,16 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                     <div className="flex items-center gap-2">
                                                         <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
                                                             <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
-                                                        </div>
+                                                 </div>
                                                         <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
                                                     </div>
                                                     <div className={`text-[10px] font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
                                                         {expandedInsights.has(trade.id) ? 'COLLAPSE' : 'EXPAND'}
                                                     </div>
                                                 </div>
-                                                <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-4'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
+                                                <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
                                                     {trade.aiFeedback.replace(/[#*]/g, '')}
-                                                </p>
+                                                 </p>
                                             </div>
                                         </div>
                                     )}
@@ -1155,11 +2147,18 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
         </div>
   );
 
+  // Main component return
   return (
     <div className="w-full h-screen">
-    <div className={`w-full h-full ${isDarkMode ? 'bg-[#050505] text-slate-200' : 'bg-[#F0F0F0] text-stone-800'} font-sans flex flex-col relative overflow-hidden`}>
+      <div className={`w-full h-full ${isDarkMode ? 'bg-[#050505] text-slate-200' : 'bg-[#F0F0F0] text-stone-800'} font-sans flex flex-col relative overflow-hidden`}>
         {/* Header */}
-             <header className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}>
+             <header 
+               className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
+               style={{
+                 // Mobile-only: Position below status bar
+                 paddingTop: window.innerWidth < 1024 ? `calc(1rem + env(safe-area-inset-top, 0px))` : '1rem',
+               }}
+             >
                 <div className="flex items-center gap-3 group cursor-pointer" onClick={onExit}>
                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all group-hover:scale-105 border ${isDarkMode ? 'bg-[#1C1C1E] text-white border-white/10' : 'bg-white text-stone-900 border-black/10'}`}>
                         <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />
@@ -1196,9 +2195,19 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                      >
                         {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
                      </button>
-                     <div className={`px-2 py-1 rounded-full border flex items-center gap-1.5 ${isDarkMode ? 'border-bronze-500/30 bg-bronze-500/10 text-bronze-500' : 'border-yellow-600/30 bg-yellow-100 text-yellow-700'}`}>
-                        <span className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">XX COINS</span>
-                        <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
+                     {/* Net PnL - Matching Journal XX Design */}
+                     <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
+                         <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
+                         <div className="flex flex-col justify-center">
+                             <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
+                             <div className={`text-sm font-bold font-sans tracking-wide leading-none mt-0.5 ${
+                                 calculateFilteredPnL.totalPnL >= 0 
+                                     ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500')
+                                     : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
+                             }`}>
+                                 {calculateFilteredPnL.formattedPnL}
+                             </div>
+                         </div>
                      </div>
                 </div>
              </header>
@@ -1224,42 +2233,273 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              {/* Slide 1: Calendar */}
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false}>
-                                    <MacroCalendar isDarkMode={isDarkMode} trades={trades} />
+                                    <MacroCalendar 
+                                        isDarkMode={isDarkMode} 
+                                        trades={trades}
+                                        timeFilter={calendarTimeFilter}
+                                        setTimeFilter={setCalendarTimeFilter}
+                                        viewDate={calendarViewDate}
+                                        setViewDate={setCalendarViewDate}
+                                    />
                                 </SpotlightCard>
                              </div>
 
-                             {/* Slide 2: Trader DNA */}
-                             <div className="w-full h-full p-4 pb-24">
-                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false}>
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Trader DNA</h3>
-                                        <ActivityIcon className="w-4 h-4 opacity-50" />
-                                    </div>
-                                    <div className="flex-1 -ml-4">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                           <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                                               <PolarGrid stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
-                                               <PolarAngleAxis dataKey="subject" tick={{ fill: isDarkMode ? '#a1a1aa' : '#78716c', fontSize: 10, fontWeight: 'bold' }} />
-                                               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                               <Radar name="Performance" dataKey="A" stroke={isDarkMode ? "#cd7f32" : "#ca8a04"} strokeWidth={2} fill={isDarkMode ? "#cd7f32" : "#ca8a04"} fillOpacity={0.3} />
-                                               <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} itemStyle={{ color: isDarkMode ? '#e4e4e7' : '#27272a', fontSize: '12px', fontWeight: 'bold' }} />
-                                           </RadarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </SpotlightCard>
-                             </div>
-
-                             {/* Slide 3: Log Entry */}
+                             {/* Slide 2: Log Entry */}
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                     {LogEntryContent}
+                                </SpotlightCard>
+                             </div>
+
+                             {/* Slide 3: Trader DNA with Imperial Score */}
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
+                                        {/* Processing Indicator - Mobile */}
+                                        {hasProcessingTrades && (
+                                            <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/20 text-amber-400 animate-pulse shrink-0">
+                                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                </svg>
+                                                <span className="text-xs font-medium">New trade is processing...</span>
+                                            </div>
+                                        )}
+                                        {/* Imperial Score Display - NO CARD, just content */}
+                                        <div className="mb-6 shrink-0 w-full">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
+                                                    IMPERIAL SCORE
+                                                </h3>
+                                                {traderDNA.imperialScore > 80 && (
+                                                    <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">
+                                                        PRO
+                                                    </span>
+                                                )}
+                                            </div>
+                                            
+                                            {/* Horizontal Progress Bar with Gradient - Thicker by 1/2 */}
+                                            <div className="relative w-full h-4 rounded-full mb-3 overflow-visible px-[30px]"
+                                                style={{
+                                                    background: 'linear-gradient(to right, #ef4444 0%, #fbbf24 50%, #10b981 100%)'
+                                                }}
+                                            >
+                                                {/* Gradient line - adjusted to account for oval width */}
+                                                <div 
+                                                    className="absolute inset-y-0 left-[30px] right-[30px] rounded-full"
+                                                    style={{
+                                                        background: 'linear-gradient(to right, #ef4444 0%, #fbbf24 50%, #10b981 100%)'
+                                                    }}
+                                                />
+                                                
+                                                {/* Oval Slider Indicator - Larger */}
+                                                {(() => {
+                                                    // Use animated score for color so it changes during animation
+                                                    const scoreForColor = Math.max(0, Math.min(100, animatedImperialScore));
+                                                    
+                                                    // Calculate position accounting for padding (30px on each side)
+                                                    // Position: 0% = 30px (left padding), 100% = calc(100% - 30px) (right padding)
+                                                    let constrainedPosition: number;
+                                                    if (animatedImperialScore <= 0) {
+                                                        constrainedPosition = 0;
+                                                    } else if (animatedImperialScore >= 100) {
+                                                        constrainedPosition = 100;
+                                                    } else {
+                                                        constrainedPosition = animatedImperialScore;
+                                                    }
+                                                    
+                                                    // Position calculation: padding (30px) + percentage of gradient width
+                                                    // Gradient width = 100% - 60px (30px padding on each side)
+                                                    const padding = 30;
+                                                    // Convert percentage to decimal for calc()
+                                                    const positionDecimal = constrainedPosition / 100;
+                                                    // Corrected calculation: position within the gradient area (0% to 100%)
+                                                    // Formula: padding + (percentage * available width)
+                                                    const actualLeft = `calc(${padding}px + (100% - ${padding * 2}px) * ${positionDecimal})`;
+                                                    
+                                                    // Calculate the color from the gradient based on animated score position
+                                                    // Match the exact gradient: rgb(239, 68, 68) 0% -> rgb(251, 191, 36) 50% -> rgb(16, 185, 129) 100%
+                                                    let borderGradientColor: string;
+                                                    if (scoreForColor <= 50) {
+                                                        // Interpolate between red (0%) and yellow (50%)
+                                                        const ratio = scoreForColor / 50;
+                                                        const r = Math.round(239 + (251 - 239) * ratio);
+                                                        const g = Math.round(68 + (191 - 68) * ratio);
+                                                        const b = Math.round(68 + (36 - 68) * ratio);
+                                                        borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                    } else {
+                                                        // Interpolate between yellow (50%) and green (100%)
+                                                        const ratio = (scoreForColor - 50) / 50;
+                                                        const r = Math.round(251 + (16 - 251) * ratio);
+                                                        const g = Math.round(191 + (185 - 191) * ratio);
+                                                        const b = Math.round(36 + (129 - 36) * ratio);
+                                                        borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                    }
+                                                    
+                                                    // Text color matches border (changes during animation)
+                                                    const textColor = borderGradientColor;
+                                                    
+                                                    return (
+                                                        <div 
+                                                            className="absolute top-1/2 -translate-y-1/2 z-20"
+                                                            style={{ 
+                                                                left: actualLeft,
+                                                                transform: 'translateX(-50%) translateY(-50%)',
+                                                            }}
+                                                        >
+                                                            {/* Border wrapper with solid color matching score position - Thicker glow */}
+                                                            <div
+                                                                className="rounded-full p-[5px]"
+                                                                style={{
+                                                                    background: borderGradientColor,
+                                                                    boxShadow: `0 0 25px ${borderGradientColor}90, 0 0 15px ${borderGradientColor}70, 0 0 8px ${borderGradientColor}50`,
+                                                                    transition: 'background 0ms linear, box-shadow 0ms linear'
+                                                                }}
+                                                            >
+                                                                {/* Black inner card - Smaller */}
+                                                                <div 
+                                                                    className="h-5 rounded-full bg-black dark:bg-black flex items-center justify-center px-2 min-w-[50px]"
+                                                                    style={{ 
+                                                                        transition: 'all 75ms ease-out',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}
+                                                                >
+                                                                    {/* Score Number Inside Indicator - Centered */}
+                                                                    <span 
+                                                                        className="text-[10px] font-black whitespace-nowrap"
+                                                                        style={{ 
+                                                                            color: textColor,
+                                                                            transition: 'color 0ms linear',
+                                                                            textAlign: 'center',
+                                                                            lineHeight: '1'
+                                                                        }}
+                                                                    >
+                                                                        {animatedImperialScore.toFixed(1)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                            
+                                            {/* Labels */}
+                                            <div className="flex justify-between text-[8px] opacity-60">
+                                                <span>Low</span>
+                                                <span>High</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Trader DNA Hexagram - WITH SEPARATE COMPONENT CARD */}
+                                        <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
+                                            <div className="flex justify-between items-center mb-4 shrink-0">
+                                                <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                                <ActivityIcon className="w-4 h-4 opacity-50" />
+                                            </div>
+                                            <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                   <RadarChart 
+                                                     key={`radar-mobile-${activeMobileSlide}`}
+                                                     cx="50%" 
+                                                     cy="50%" 
+                                                     outerRadius="75%" 
+                                                     data={radarData}
+                                                   >
+                                                       <PolarGrid 
+                                                           stroke="rgba(96, 165, 250, 0.2)" 
+                                                           strokeWidth={1}
+                                                       />
+                                                       <PolarAngleAxis 
+                                                           dataKey="subject" 
+                                                           tick={{ 
+                                                               fill: '#a1a1aa', 
+                                                               fontSize: 9, 
+                                                               fontWeight: 'bold' 
+                                                           }} 
+                                                       />
+                                                       <PolarRadiusAxis 
+                                                           angle={30} 
+                                                           domain={[0, 100]} 
+                                                           tick={false} 
+                                                           axisLine={false} 
+                                                       />
+                                                       
+                                                       {/* Outer Hexagon - Light Blue Glow (Max Possible) */}
+                                                       <Radar 
+                                                           name="Max" 
+                                                           dataKey="max" 
+                                                           stroke="#60a5fa" 
+                                                           strokeWidth={2}
+                                                           fill="none"
+                                                           fillOpacity={0}
+                                                           dot={false}
+                                                           style={{
+                                                               filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.5))'
+                                                           }}
+                                                       />
+                                                       
+                                                       {/* Inner Hexagon - Orange-to-Red Gradient (Actual Scores) */}
+                                                       <Radar 
+                                                           name="Performance" 
+                                                           dataKey="A" 
+                                                           stroke="url(#dnaGradientMobile)" 
+                                                           strokeWidth={2.5}
+                                                           fill="url(#dnaGradientMobile)" 
+                                                           fillOpacity={0.6}
+                                                           isAnimationActive={true}
+                                                           animationDuration={1500}
+                                                           animationEasing="ease-out"
+                                                       />
+                                                       
+                                                       <defs>
+                                                           <linearGradient id="dnaGradientMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                               <stop offset="0%" stopColor="#f97316" stopOpacity={0.8} />
+                                                               <stop offset="50%" stopColor="#ea580c" stopOpacity={0.7} />
+                                                               <stop offset="100%" stopColor="#dc2626" stopOpacity={0.6} />
+                                                           </linearGradient>
+                                                       </defs>
+                                                       
+                                                       <Tooltip 
+                                                           contentStyle={{ 
+                                                               backgroundColor: '#18181b', 
+                                                               borderRadius: '8px', 
+                                                               border: '1px solid rgba(96, 165, 250, 0.3)', 
+                                                               boxShadow: '0 4px 12px rgba(96, 165, 250, 0.2)' 
+                                                           }} 
+                                                           itemStyle={{ 
+                                                               color: '#e4e4e7', 
+                                                               fontSize: '11px', 
+                                                               fontWeight: 'bold' 
+                                                           }} 
+                                                           formatter={(value: number) => [`${value}%`, 'Score']} 
+                                                       />
+                                                   </RadarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </SpotlightCard>
+                             </div>
+
+                             {/* Slide 4: Trader Insights */}
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <TraderInsights 
+                                      key={`trader-insights-mobile-${activeMobileSlide}`}
+                                      trades={trades} 
+                                      traderDNA={traderDNA} 
+                                      isDarkMode={isDarkMode}
+                                      hasProcessingTrades={hasProcessingTrades}
+                                    />
                                 </SpotlightCard>
                              </div>
                          </div>
 
                          {/* Vertical Indicators - Right side */}
                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10 pointer-events-none">
-                            {[0, 1, 2].map((i) => (
+                            {[0, 1, 2, 3].map((i) => (
                                 <div 
                                     key={i} 
                                     className={`w-1.5 rounded-full transition-all duration-300 ${
@@ -1295,6 +2535,11 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                  {activeTab === 'GAMES' && (
                      <div className="w-full h-full overflow-y-auto custom-scrollbar">
                         <div className="flex flex-col gap-4 p-4 pb-24">
+                             {/* XX COINS - Only visible in GAMES tab */}
+                             <div className={`px-2 py-1 rounded-full border flex items-center gap-1.5 self-end ${isDarkMode ? 'border-bronze-500/30 bg-bronze-500/10 text-bronze-500' : 'border-yellow-600/30 bg-yellow-100 text-yellow-700'}`}>
+                                 <span className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">XX COINS</span>
+                                 <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
+                             </div>
                              <SpotlightCard className="h-[calc(50vh-4rem)] min-h-[300px] w-full" isDarkMode={isDarkMode} tilt={false}>
                                  <TradeReplayWidget isDarkMode={isDarkMode} trades={trades} />
                              </SpotlightCard>
@@ -1331,31 +2576,19 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              </div>
                              
                              <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
-                                 {/* JOURNAL TAB: Calendar & Radar */}
+                                 {/* JOURNAL TAB: Calendar */}
                                  {activeTab === 'JOURNAL' && (
                                      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-                                         <div className="flex-[3] min-w-0 h-full">
+                                         <div className="flex-1 min-w-0 h-full">
                                              <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                 <MacroCalendar isDarkMode={isDarkMode} trades={trades} />
-                                             </SpotlightCard>
-                                         </div>
-                                         <div className="flex-1 min-w-[200px] h-full">
-                                             <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                 <div className="flex justify-between items-center mb-6">
-                                                     <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Trader DNA</h3>
-                                                     <ActivityIcon className="w-4 h-4 opacity-50" />
-                                                 </div>
-                                                 <div className="flex-1 -ml-4">
-                                                     <ResponsiveContainer width="100%" height="100%">
-                                                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                                                            <PolarGrid stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
-                                                            <PolarAngleAxis dataKey="subject" tick={{ fill: isDarkMode ? '#a1a1aa' : '#78716c', fontSize: 10, fontWeight: 'bold' }} />
-                                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                                            <Radar name="Performance" dataKey="A" stroke={isDarkMode ? "#cd7f32" : "#ca8a04"} strokeWidth={2} fill={isDarkMode ? "#cd7f32" : "#ca8a04"} fillOpacity={0.3} />
-                                                            <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} itemStyle={{ color: isDarkMode ? '#e4e4e7' : '#27272a', fontSize: '12px', fontWeight: 'bold' }} />
-                                                        </RadarChart>
-                                                     </ResponsiveContainer>
-                                                 </div>
+                                                 <MacroCalendar 
+                                                     isDarkMode={isDarkMode} 
+                                                     trades={trades}
+                                                     timeFilter={calendarTimeFilter}
+                                                     setTimeFilter={setCalendarTimeFilter}
+                                                     viewDate={calendarViewDate}
+                                                     setViewDate={setCalendarViewDate}
+                                                 />
                                              </SpotlightCard>
                                          </div>
                                      </div>
@@ -1363,16 +2596,23 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
                                  {/* GAMES TAB: Replay & Dojo */}
                                  {activeTab === 'GAMES' && (
-                                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)] animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                         <div className="flex-[3] min-w-0 h-full">
-                                            <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                <TradeReplayWidget isDarkMode={isDarkMode} trades={trades} />
-                                            </SpotlightCard>
+                                     <div className="flex flex-col gap-6 h-[calc(100vh-10rem)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                         {/* XX COINS - Only visible in GAMES tab */}
+                                         <div className={`px-2 py-1 rounded-full border flex items-center gap-1.5 self-end ${isDarkMode ? 'border-bronze-500/30 bg-bronze-500/10 text-bronze-500' : 'border-yellow-600/30 bg-yellow-100 text-yellow-700'}`}>
+                                             <span className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">XX COINS</span>
+                                             <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
                                          </div>
-                                         <div className="flex-1 min-w-[200px] h-full">
-                                            <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                <PatternDojo isDarkMode={isDarkMode} onOutcome={handleDojoOutcome} />
-                                            </SpotlightCard>
+                                         <div className="flex flex-col lg:flex-row gap-6 flex-1">
+                                             <div className="flex-[3] min-w-0 h-full">
+                                                <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
+                                                    <span className="text-sm font-bold uppercase tracking-widest opacity-30">Trade Replay Coming Soon</span>
+                                                </div>
+                                             </div>
+                                             <div className="flex-1 min-w-[200px] h-full">
+                                                <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
+                                                    <span className="text-sm font-bold uppercase tracking-widest opacity-30">Pattern Dojo Coming Soon</span>
+                                                </div>
+                                             </div>
                                          </div>
                                      </div>
                                  )}
@@ -1387,11 +2627,673 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                          </div>
                      </div>
 
-                     {/* Right Sidebar (Log Trade Form) - Only show on JOURNAL tab */}
+                     {/* Right Sidebar (Trader DNA / Log Entry / Trade Log) - Only show on JOURNAL tab */}
                      {activeTab === 'JOURNAL' && (
                        <div className={`col-span-12 lg:col-span-3 flex flex-col h-[calc(100vh-10rem)] ${isDarkMode ? '' : 'bg-[#F0F0F0]'}`}>
                           <SpotlightCard className={`w-full h-full flex flex-col`} isDarkMode={isDarkMode} noPadding={true}>
-                              {LogEntryContent}
+                              {/* Right Sidebar Header with 4-way Toggle */}
+                              <div className="px-5 pt-5 pb-2 shrink-0">
+                                  <div className="flex items-center gap-2 p-1 rounded-xl border bg-[#1C1C1E] border-white/10 mb-4">
+                                      <button
+                                          onClick={() => setRightSidebarView('TRADER_DNA')}
+                                          className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+                                              rightSidebarView === 'TRADER_DNA'
+                                                  ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500'
+                                                  : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                          }`}
+                                      >
+                                          <ActivityIcon className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                          onClick={() => setRightSidebarView('TRADER_INSIGHTS')}
+                                          className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+                                              rightSidebarView === 'TRADER_INSIGHTS'
+                                                  ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500'
+                                                  : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                          }`}
+                                      >
+                                          <BarChart3Icon className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                          onClick={() => { setRightSidebarView('LOG_ENTRY'); setLogMode('ENTRY'); }}
+                                          className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+                                              rightSidebarView === 'LOG_ENTRY'
+                                                  ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500'
+                                                  : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                          }`}
+                                      >
+                                          <NotebookIcon className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                          onClick={() => { setRightSidebarView('TRADE_LOG'); setLogMode('HISTORY'); }}
+                                          className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+                                              rightSidebarView === 'TRADE_LOG'
+                                                  ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500'
+                                                  : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                          }`}
+                                      >
+                                          <BookIcon className="w-3.5 h-3.5" />
+                                      </button>
+                                  </div>
+                              </div>
+
+                              {/* Conditional Content Based on rightSidebarView */}
+                              {rightSidebarView === 'TRADER_DNA' && (
+                                  <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
+                                      <div className="flex justify-between items-center mb-6 shrink-0">
+                                          <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                          <ActivityIcon className="w-4 h-4 opacity-50" />
+                                      </div>
+
+                                      {/* Processing Indicator */}
+                                      {hasProcessingTrades && (
+                                          <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/20 text-amber-400 animate-pulse shrink-0">
+                                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                              </svg>
+                                              <span className="text-xs font-medium">New trade is processing - Scores will update shortly...</span>
+                                          </div>
+                                      )}
+
+                                      {/* Imperial Score Display */}
+                                      <div className="mb-6 shrink-0 w-full">
+                                          <div className="flex items-center justify-between mb-3">
+                                              <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
+                                                  IMPERIAL SCORE
+                                              </h3>
+                                              {traderDNA.imperialScore > 80 && (
+                                                  <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">
+                                                      PRO
+                                                  </span>
+                                              )}
+                                          </div>
+                                          
+                                          {/* Horizontal Progress Bar with Gradient - Thicker by 1/2 */}
+                                          <div className="relative w-full h-4 rounded-full mb-3 overflow-visible px-[30px]"
+                                              style={{
+                                                  background: 'linear-gradient(to right, #ef4444 0%, #fbbf24 50%, #10b981 100%)'
+                                              }}
+                                          >
+                                              {/* Gradient line - adjusted to account for oval width */}
+                                              <div 
+                                                  className="absolute inset-y-0 left-[30px] right-[30px] rounded-full"
+                                                  style={{
+                                                      background: 'linear-gradient(to right, #ef4444 0%, #fbbf24 50%, #10b981 100%)'
+                                                  }}
+                                              />
+                                              
+                                              {/* Oval Slider Indicator - Larger */}
+                                              {(() => {
+                                                  // Use animated score for color so it changes during animation
+                                                  const scoreForColor = Math.max(0, Math.min(100, animatedImperialScore));
+                                                  
+                                                  // Calculate position accounting for padding (30px on each side)
+                                                  // Position: 0% = 30px (left padding), 100% = calc(100% - 30px) (right padding)
+                                                  let constrainedPosition: number;
+                                                  if (animatedImperialScore <= 0) {
+                                                      constrainedPosition = 0;
+                                                  } else if (animatedImperialScore >= 100) {
+                                                      constrainedPosition = 100;
+                                                  } else {
+                                                      constrainedPosition = animatedImperialScore;
+                                                  }
+                                                  
+                                                  // Position calculation: padding (30px) + percentage of gradient width
+                                                  // Gradient width = 100% - 60px (30px padding on each side)
+                                                  const padding = 30;
+                                                  // Convert percentage to decimal for calc()
+                                                  const positionDecimal = constrainedPosition / 100;
+                                                  // Corrected calculation: position within the gradient area (0% to 100%)
+                                                  // Formula: padding + (percentage * available width)
+                                                  const actualLeft = `calc(${padding}px + (100% - ${padding * 2}px) * ${positionDecimal})`;
+                                                  
+                                                  // Calculate the color from the gradient based on animated score position
+                                                  // Match the exact gradient: rgb(239, 68, 68) 0% -> rgb(251, 191, 36) 50% -> rgb(16, 185, 129) 100%
+                                                  let borderGradientColor: string;
+                                                  if (scoreForColor <= 50) {
+                                                      // Interpolate between red (0%) and yellow (50%)
+                                                      const ratio = scoreForColor / 50;
+                                                      const r = Math.round(239 + (251 - 239) * ratio);
+                                                      const g = Math.round(68 + (191 - 68) * ratio);
+                                                      const b = Math.round(68 + (36 - 68) * ratio);
+                                                      borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                  } else {
+                                                      // Interpolate between yellow (50%) and green (100%)
+                                                      const ratio = (scoreForColor - 50) / 50;
+                                                      const r = Math.round(251 + (16 - 251) * ratio);
+                                                      const g = Math.round(191 + (185 - 191) * ratio);
+                                                      const b = Math.round(36 + (129 - 36) * ratio);
+                                                      borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                  }
+                                                  
+                                                  // Text color matches border (changes during animation)
+                                                  const textColor = borderGradientColor;
+                                                  
+                                                  return (
+                                                      <div 
+                                                          className="absolute top-1/2 -translate-y-1/2 z-20"
+                                                          style={{ 
+                                                              left: actualLeft,
+                                                              transform: 'translateX(-50%) translateY(-50%)',
+                                                          }}
+                                                      >
+                                                          {/* Border wrapper with solid color matching score position - Thicker glow */}
+                                                          <div
+                                                              className="rounded-full p-[5px]"
+                                                              style={{
+                                                                  background: borderGradientColor,
+                                                                  boxShadow: `0 0 25px ${borderGradientColor}90, 0 0 15px ${borderGradientColor}70, 0 0 8px ${borderGradientColor}50`,
+                                                                  transition: 'background 0ms linear, box-shadow 0ms linear'
+                                                              }}
+                                                          >
+                                                              {/* Black inner card - Smaller */}
+                                                              <div 
+                                                                  className="h-5 rounded-full bg-black dark:bg-black flex items-center justify-center px-2 min-w-[50px]"
+                                                                  style={{ 
+                                                                      transition: 'all 75ms ease-out',
+                                                                      display: 'flex',
+                                                                      alignItems: 'center',
+                                                                      justifyContent: 'center'
+                                                                  }}
+                                                              >
+                                                                  {/* Score Number Inside Indicator - Centered */}
+                                                                  <span 
+                                                                      className="text-[10px] font-black whitespace-nowrap"
+                                                                      style={{ 
+                                                                          color: textColor,
+                                                                          transition: 'color 0ms linear',
+                                                                          textAlign: 'center',
+                                                                          lineHeight: '1'
+                                                                      }}
+                                                                  >
+                                                                      {animatedImperialScore.toFixed(1)}
+                                                                  </span>
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  );
+                                              })()}
+                                          </div>
+                                          
+                                          {/* Labels */}
+                                          <div className="flex justify-between text-[8px] opacity-60">
+                                              <span>Low</span>
+                                              <span>High</span>
+                                          </div>
+                                      </div>
+
+                                      {/* Trader DNA Hexagram - WITH SEPARATE COMPONENT CARD */}
+                                      <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
+                                          <div className="flex justify-between items-center mb-4 shrink-0">
+                                              <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                              <ActivityIcon className="w-4 h-4 opacity-50" />
+                                          </div>
+                                          <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
+                                              <ResponsiveContainer width="100%" height="100%">
+                                                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                                 <PolarGrid 
+                                                     stroke="rgba(96, 165, 250, 0.2)" 
+                                                     strokeWidth={1}
+                                                 />
+                                                 <PolarAngleAxis 
+                                                     dataKey="subject" 
+                                                     tick={{ 
+                                                         fill: '#a1a1aa', 
+                                                         fontSize: 9, 
+                                                         fontWeight: 'bold' 
+                                                     }} 
+                                                 />
+                                                 <PolarRadiusAxis 
+                                                     angle={30} 
+                                                     domain={[0, 100]} 
+                                                     tick={false} 
+                                                     axisLine={false} 
+                                                 />
+                                                 
+                                                 {/* Outer Hexagon - Light Blue Glow (Max Possible) */}
+                                                 <Radar 
+                                                     name="Max" 
+                                                     dataKey="max" 
+                                                     stroke="#60a5fa" 
+                                                     strokeWidth={2}
+                                                     fill="none"
+                                                     fillOpacity={0}
+                                                     dot={false}
+                                                     style={{
+                                                         filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.5))'
+                                                     }}
+                                                 />
+                                                 
+                                                 {/* Inner Hexagon - Orange-to-Red Gradient (Actual Scores) */}
+                                                 <Radar 
+                                                     name="Performance" 
+                                                     dataKey="A" 
+                                                     stroke="url(#dnaGradient)" 
+                                                     strokeWidth={2.5}
+                                                     fill="url(#dnaGradient)" 
+                                                     fillOpacity={0.6}
+                                                     isAnimationActive={true}
+                                                     animationDuration={1500}
+                                                     animationEasing="ease-out"
+                                                 />
+                                                 
+                                                 <defs>
+                                                     <linearGradient id="dnaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                         <stop offset="0%" stopColor="#f97316" stopOpacity={0.8} />
+                                                         <stop offset="50%" stopColor="#ea580c" stopOpacity={0.7} />
+                                                         <stop offset="100%" stopColor="#dc2626" stopOpacity={0.6} />
+                                                     </linearGradient>
+                                                 </defs>
+                                                 
+                                                 <Tooltip 
+                                                     contentStyle={{ 
+                                                         backgroundColor: '#18181b', 
+                                                         borderRadius: '8px', 
+                                                         border: '1px solid rgba(96, 165, 250, 0.3)', 
+                                                         boxShadow: '0 4px 12px rgba(96, 165, 250, 0.2)' 
+                                                     }} 
+                                                     itemStyle={{ 
+                                                         color: '#e4e4e7', 
+                                                         fontSize: '11px', 
+                                                         fontWeight: 'bold' 
+                                                     }} 
+                                                     formatter={(value: number) => [`${value}%`, 'Score']} 
+                                                 />
+                                                 </RadarChart>
+                                              </ResponsiveContainer>
+                                          </div>
+                                      </div>
+                                  </div>
+                              )}
+
+                              {rightSidebarView === 'TRADER_INSIGHTS' && (
+                                  <TraderInsights trades={trades} traderDNA={traderDNA} isDarkMode={isDarkMode} hasProcessingTrades={hasProcessingTrades} />
+                              )}
+
+                              {rightSidebarView === 'LOG_ENTRY' && (
+                                  <div className={`flex flex-col relative z-20 ${isMobileAnalysisMode ? 'h-full overflow-hidden' : 'overflow-visible'} transition-all duration-500 ${tiltMode ? 'pointer-events-none opacity-50' : ''} h-full`}>
+                                      {/* --- FORM VIEW --- */}
+                                      {logMode === 'ENTRY' && viewState === 'FORM' && (
+                                          <div className="flex flex-col animate-in fade-in duration-300 h-full min-h-0">
+                                              <div className="px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col pt-2">
+                                                  
+                                                  {/* Row 1: Date & Direction Mixed */}
+                                                  <div className="grid grid-cols-12 gap-2.5 shrink-0">
+                                                      <div className="col-span-7 relative group">
+                                                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 pointer-events-none">
+                                                              <CalendarIcon className="w-3.5 h-3.5" />
+                                                          </div>
+                                                          <input
+                                                              type="date"
+                                                              value={date}
+                                                              onChange={(e) => setDate(e.target.value)}
+                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
+                                                          />
+                                                      </div>
+                                                      <div className="col-span-5 flex bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                                          <button 
+                                                              onClick={() => setDirection('Long')}
+                                                              className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Long' ? 'bg-emerald-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                                          >
+                                                              Long
+                                                          </button>
+                                                          <button 
+                                                              onClick={() => setDirection('Short')}
+                                                              className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Short' ? 'bg-rose-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                                          >
+                                                              Short
+                                                          </button>
+                                                      </div>
+                                                  </div>
+
+                                                   {/* Row 2: Asset & PnL */}
+                                                   <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                                           <input type="text" value={asset} onChange={(e) => setAsset(e.target.value)} placeholder="BTCUSD" className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" />
+                                                       </div>
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">PnL</label>
+                                                           <div className="relative">
+                                                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
+                                                               <input type="number" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} />
+                                                           </div>
+                                                       </div>
+                                                   </div>
+
+                                                   {/* Row 3: Strategy & Session */}
+                                                   <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
+                                                           <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                                              {STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                           </select>
+                                                       </div>
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
+                                                           <select value={session} onChange={(e) => setSession(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                                              {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                           </select>
+                                                       </div>
+                                                   </div>
+                                                   
+                                                   {/* Row 4: Emotion */}
+                                                   <div className="shrink-0">
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
+                                                       <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm">
+                                                          {EMOTIONS.map(e => <option key={e} value={e}>{e}</option>)}
+                                                       </select>
+                                                   </div>
+
+                                                   {/* Row 5: Did I follow my plan? */}
+                                                   <div className="shrink-0">
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                                           Did I follow my plan?
+                                                       </label>
+                                                       <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                                           <button 
+                                                               onClick={() => setFollowedPlan(true)}
+                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                                   followedPlan === true 
+                                                                       ? 'bg-emerald-500 text-white shadow-sm' 
+                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                               }`}
+                                                           >
+                                                               Yes
+                                                           </button>
+                                                           <button 
+                                                               onClick={() => setFollowedPlan(false)}
+                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                                   followedPlan === false 
+                                                                       ? 'bg-rose-500 text-white shadow-sm' 
+                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                               }`}
+                                                           >
+                                                               No
+                                                           </button>
+                                                       </div>
+                                                   </div>
+
+                                                   {/* Row 6: Revenge Trade? (for testing Patience) */}
+                                                   <div className="shrink-0">
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                                           Revenge Trade? (Test Patience)
+                                                       </label>
+                                                       <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                                           <button 
+                                                               onClick={() => setIsRevengeTrade(true)}
+                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                                   isRevengeTrade === true 
+                                                                       ? 'bg-orange-500 text-white shadow-sm' 
+                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                               }`}
+                                                           >
+                                                               Yes
+                                                           </button>
+                                                           <button 
+                                                               onClick={() => setIsRevengeTrade(false)}
+                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                                   isRevengeTrade === false 
+                                                                       ? 'bg-stone-500 text-white shadow-sm' 
+                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                               }`}
+                                                           >
+                                                               No
+                                                           </button>
+                                                       </div>
+                                                   </div>
+
+                                                   {/* Row 7: Notes */}
+                                                   <div className="flex-col flex-1 min-h-[60px] flex mb-1">
+                                                      <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
+                                                      <textarea 
+                                                          value={notes} 
+                                                          onChange={(e) => setNotes(e.target.value)} 
+                                                          placeholder="Trade logic..." 
+                                                          className="w-full flex-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none resize-none placeholder-stone-400 dark:placeholder-slate-600 leading-relaxed" 
+                                                      />
+                                                   </div>
+
+                                                   {/* Row 8: Image (Enhanced Drag & Drop like Cursor) */}
+                                                   <div className="shrink-0">
+                                                      <div 
+                                                          onClick={handleClick}
+                                                          onDragEnter={handleDragEnter}
+                                                          onDragOver={handleDragOver}
+                                                          onDragLeave={handleDragLeave}
+                                                          onDrop={handleDrop}
+                                                          className={`relative w-full h-12 bg-white dark:bg-slate-900 border-2 ${isDragging ? 'border-yellow-500 dark:border-bronze-500 bg-yellow-50/50 dark:bg-bronze-950/30 border-dashed scale-[1.02] shadow-lg shadow-yellow-500/20 dark:shadow-bronze-500/20' : 'border-dashed border-stone-300 dark:border-slate-600 hover:border-yellow-400 dark:hover:border-bronze-400 hover:bg-stone-50 dark:hover:bg-slate-800/50'} rounded-xl flex items-center ${previewUrls.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden ${previewUrls.length > 0 ? 'border-solid border-yellow-500/50 dark:border-bronze-500/50 bg-yellow-50/30 dark:bg-bronze-950/10' : ''}`}
+                                                      >
+                                                          {/* Animated background gradient on drag */}
+                                                          {isDragging && (
+                                                              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-yellow-500/20 to-yellow-400/10 animate-pulse pointer-events-none" />
+                                                          )}
+                                                          
+                                                          <input 
+                                                              type="file" 
+                                                              ref={fileInputRefDesktop} 
+                                                              onChange={handleImageChange} 
+                                                              className="hidden" 
+                                                              accept="image/*" 
+                                                              multiple 
+                                                          />
+                                                          
+                                                          {previewUrls.length === 0 ? (
+                                                              <>
+                                                                  <UploadIcon 
+                                                                      className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
+                                                                  />
+                                                                  <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                                                      {isDragging ? '✨ Drop to upload (max 3)' : '📸 Drag & drop or click to upload (max 3)'}
+                                                                  </span>
+                                                              </>
+                                                          ) : (
+                                                              <div className="flex items-center gap-2 w-full relative z-10">
+                                                                  <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+                                                                      {previewUrls.map((url, index) => (
+                                                                          <div key={index} className="relative shrink-0 group/image">
+                                                                              <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-yellow-400 dark:group-hover/image:border-bronze-400 transition-colors shadow-sm">
+                                                                                  <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                                                                              </div>
+                                                                              <button
+                                                                                  type="button"
+                                                                                  onClick={(e) => {
+                                                                                      e.stopPropagation();
+                                                                                      e.preventDefault();
+                                                                                      removeImage(index);
+                                                                                  }}
+                                                                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                                                                                  title="Remove image"
+                                                                              >
+                                                                                  ×
+                                                                              </button>
+                                                                          </div>
+                                                                      ))}
+                                                                  </div>
+                                                                  {previewUrls.length < 3 && (
+                                                                      <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                                          {previewUrls.length}/3
+                                                                      </span>
+                                                                  )}
+                                                                  {previewUrls.length >= 3 && (
+                                                                      <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                                          MAX 3
+                                                                      </span>
+                                                                  )}
+                                                              </div>
+                                                          )}
+                                                      </div>
+                                                   </div>
+
+                                              </div>
+                                              
+                                              {/* Footer Actions */}
+                                              <div className="mt-auto shrink-0 px-5 pb-5 pt-2 border-t border-transparent">
+                                                  <button
+                                                      onClick={handleAnalyze}
+                                                      disabled={!pnl || !asset || tiltMode}
+                                                      className="w-full py-3.5 rounded-xl font-black text-sm shadow-lg hover:shadow-yellow-500/20 dark:hover:shadow-bronze-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-yellow-500 dark:bg-bronze-500 hover:bg-yellow-400 dark:hover:bg-bronze-400 border border-yellow-600 dark:border-bronze-600 text-black dark:text-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                                                  >
+                                                      <SparklesIcon className="w-4 h-4 text-black" />
+                                                      <span>{editingId ? 'UPDATE' : 'ANALYZE'}</span>
+                                                  </button>
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* --- ANALYZING STATE --- */}
+                                      {viewState === 'ANALYZING' && logMode === 'ENTRY' && (
+                                          <div className="h-full flex flex-col items-center justify-center p-10 animate-in fade-in zoom-in duration-300">
+                                              <div className="scale-125">
+                                                 <PhaseLoader isReady={isAnalysisReady} onComplete={handleLoaderComplete} />
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* --- REVIEW STATE --- */}
+                                      {viewState === 'REVIEW' && logMode === 'ENTRY' && (
+                                          <div className="flex-1 min-h-0 flex flex-col px-6 pt-6 pb-2 animate-in slide-in-from-bottom-8 duration-500">
+                                              <div className="shrink-0 flex items-center gap-3 mb-6">
+                                                 <div className="p-2 rounded-lg bg-yellow-500/10 dark:bg-bronze-500/10 border border-yellow-500/20 dark:border-bronze-500/20">
+                                                     <SparklesIcon className="w-5 h-5 text-yellow-600 dark:text-bronze-500" />
+                                                 </div>
+                                                 <h3 className="text-sm font-bold uppercase tracking-widest text-stone-600 dark:text-stone-300">Analysis Complete</h3>
+                                              </div>
+                                              <div className="flex-1 min-h-0 relative group rounded-3xl p-[2px] bg-gradient-to-r from-yellow-400 via-emerald-500 to-yellow-400 dark:from-bronze-500 dark:via-emerald-500 dark:to-bronze-500">
+                                                 <div className="relative bg-slate-900 rounded-[22px] p-6 shadow-2xl overflow-hidden flex flex-col h-full border border-slate-800/50">
+                                                     <div className="flex-1 overflow-y-auto custom-scrollbar text-slate-300 font-mono text-sm leading-relaxed pr-2 whitespace-pre-wrap" style={{ touchAction: 'pan-y' }}>
+                                                         <Typewriter text={aiFeedback.replace(/(\d+\.)/g, '$1 ')} speed={10} />
+                                                     </div>
+                                                 </div>
+                                              </div>
+                                              
+                                              {/* Footer Actions for Review */}
+                                              <div className="mt-auto shrink-0 px-5 pb-5 pt-2">
+                                                  <div className="flex gap-3">
+                                                      <button 
+                                                          onClick={() => setViewState('FORM')}
+                                                          className="flex-1 py-2 rounded-xl font-bold text-sm tracking-wide uppercase border border-stone-300 dark:border-slate-700 text-stone-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                                                      >
+                                                          EDIT
+                                                      </button>
+                                                      <button 
+                                                          onClick={handleConfirmLog}
+                                                          className="flex-[2] py-2 rounded-xl font-bold text-sm tracking-wide uppercase bg-bronze-500 text-black shadow-lg hover:bg-bronze-400 transition-colors"
+                                                      >
+                                                          DONE
+                                                      </button>
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      )}
+                                  </div>
+                              )}
+
+                              {rightSidebarView === 'TRADE_LOG' && (
+                                  <div className="flex flex-col h-full">
+                                      {logMode === 'HISTORY' && (
+                                          <div className="flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 h-full overflow-hidden">
+                                              {sortedTrades.length === 0 ? (
+                                                  <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
+                                                      <NotebookIcon className="w-12 h-12 mb-3" />
+                                                      <h4 className="font-bold text-sm uppercase tracking-widest">No Trade Logs</h4>
+                                                      <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
+                                                  </div>
+                                              ) : (
+                                                 <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 space-y-3" style={{ touchAction: 'pan-y' }}>
+                                                      {sortedTrades.map(trade => (
+                                                          <div 
+                                                             key={trade.id}
+                                                             onClick={() => handleHistoryClick(trade.id)}
+                                                             className={`group relative bg-white dark:bg-slate-950 hover:bg-stone-50 dark:hover:bg-slate-900 rounded-xl p-4 transition-all border border-stone-200 dark:border-slate-800 hover:border-yellow-500/50 dark:hover:border-bronze-500/50 cursor-pointer shadow-sm dark:shadow-none overflow-hidden select-none ${editingId === trade.id ? 'ring-2 ring-yellow-500 dark:ring-bronze-500' : ''}`}
+                                                          >
+                                                              {/* Edit/Delete Overlay */}
+                                                              {activeHistoryId === trade.id && !deleteConfirmationId && (
+                                                                  <div className="absolute inset-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 animate-in fade-in duration-200">
+                                                                      <button 
+                                                                          onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(trade); }}
+                                                                          className="px-4 py-2 bg-yellow-500 dark:bg-bronze-500 text-black text-xs font-bold rounded-lg shadow-lg hover:bg-yellow-400 dark:hover:bg-bronze-400 transition-colors uppercase tracking-wider"
+                                                                      >
+                                                                          Edit
+                                                                      </button>
+                                                                      <button 
+                                                                          onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(trade.id); }}
+                                                                          className="px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 text-xs font-bold rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors uppercase tracking-wider"
+                                                                      >
+                                                                          Delete
+                                                                      </button>
+                                                                  </div>
+                                                              )}
+
+                                                              {/* Delete Confirmation Overlay */}
+                                                              {deleteConfirmationId === trade.id && (
+                                                                  <div className="absolute inset-0 z-20 bg-rose-50/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-4 text-center animate-in zoom-in duration-200">
+                                                                      <p className="text-stone-900 dark:text-white font-bold text-xs mb-3">Confirm Delete?</p>
+                                                                      <div className="flex gap-2">
+                                                                          <button 
+                                                                              onClick={(e) => { e.stopPropagation(); confirmDelete(trade.id); }}
+                                                                              className="px-3 py-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-lg uppercase"
+                                                                          >
+                                                                              Yes
+                                                                          </button>
+                                                                          <button 
+                                                                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(null); }}
+                                                                              className="px-3 py-1.5 bg-white dark:bg-slate-800 text-stone-900 dark:text-white text-[10px] font-bold rounded-lg border border-stone-200 dark:border-slate-700 hover:bg-stone-50 dark:hover:bg-slate-700 transition-colors uppercase"
+                                                                          >
+                                                                              Cancel
+                                                                          </button>
+                                                                      </div>
+                                                                  </div>
+                                                              )}
+
+                                                              <div className="flex justify-between items-start mb-2">
+                                                                  <div>
+                                                                      <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-stone-900'}`}>{trade.asset}</span>
+                                                                      <div className={`text-xs font-mono mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>{formatDateForDisplay(trade.date)}</div>
+                                                                  </div>
+                                                                  <div className={`font-bold font-mono ${trade.pnl >= 0 ? (isDarkMode ? 'text-emerald-500' : 'text-emerald-600') : (isDarkMode ? 'text-rose-500' : 'text-rose-600')}`}>
+                                                                      {(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}
+                                                                  </div>
+                                                              </div>
+                                                              <p className={`text-xs line-clamp-2 mb-3 leading-relaxed opacity-80 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{trade.notes}</p>
+                                                              
+                                                              {trade.aiFeedback && (
+                                                                  <div className="mt-3">
+                                                                      <div 
+                                                                          onClick={(e) => {
+                                                                              e.stopPropagation();
+                                                                              toggleInsight(trade.id);
+                                                                          }}
+                                                                          className={`relative rounded-xl p-3 border shadow-inner group/insight overflow-hidden cursor-pointer transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-stone-100 border-stone-200 hover:border-stone-300'}`}
+                                                                      >
+                                                                          <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent to-transparent opacity-50 ${isDarkMode ? 'via-bronze-500/50' : 'via-yellow-500/50'}`}></div>
+                                                                          
+                                                                          <div className="flex items-center justify-between mb-2">
+                                                                              <div className="flex items-center gap-2">
+                                                                                  <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
+                                                                                      <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
+                                                                                  </div>
+                                                                                  <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
+                                                                              </div>
+                                                                              <div className={`text-[10px] font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
+                                                                                  {expandedInsights.has(trade.id) ? 'COLLAPSE' : 'EXPAND'}
+                                                                              </div>
+                                                                          </div>
+                                                                          <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
+                                                                              {trade.aiFeedback.replace(/[#*]/g, '')}
+                                                                          </p>
+                                                                      </div>
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      ))}
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+                              )}
                           </SpotlightCard>
                        </div>
                      )}
@@ -1400,7 +3302,18 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
              </div>
 
              {/* Mobile Bottom Nav */}
-             <div className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-[#050505] via-[#050505]/90 to-transparent' : 'from-[#F0F0F0] via-[#F0F0F0]/90 to-transparent'}`}>
+             <div 
+                 className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-[#050505] via-[#050505]/90 to-transparent' : 'from-[#F0F0F0] via-[#F0F0F0]/90 to-transparent'}`}
+                 onTouchStart={(e) => {
+                     e.stopPropagation();
+                 }}
+                 onTouchEnd={(e) => {
+                     e.stopPropagation();
+                 }}
+                 onClick={(e) => {
+                     e.stopPropagation();
+                 }}
+             >
                 <div className={`flex items-center justify-around p-2 rounded-2xl border ${isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/5'} shadow-2xl`}>
                     {NAV_ITEMS.map((item) => (
                          <button
@@ -1415,9 +3328,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                             <item.icon className={`w-5 h-5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-600'}`} />
                          </button>
                      ))}
-                </div>
              </div>
         </div>
+      </div>
     </div>
-    );
+  );
 };

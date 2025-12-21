@@ -82,7 +82,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               <FormLabel className="text-white">Password</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     {...field}
                     type={showPassword ? "text" : "password"}
@@ -93,7 +93,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />

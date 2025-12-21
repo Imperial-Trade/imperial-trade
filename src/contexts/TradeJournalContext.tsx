@@ -15,7 +15,16 @@ interface TradeJournalEntry {
   screenshot_url?: string;
   screenshot_urls?: string[];
   ai_positive_feedback?: string;
+  followed_plan?: boolean;
+  target_hit_by_market?: boolean;
+  planned_target_price?: number;
+  planned_stop_loss?: number;
+  revenge_trade?: boolean;
+  strategy?: string;
+  session?: string;
+  emotion?: string;
   coach_status?: 'pending' | 'ready';
+  processing_status?: 'pending' | 'analyzing' | 'complete' | 'failed';
   created_at: string;
   updated_at: string;
 }

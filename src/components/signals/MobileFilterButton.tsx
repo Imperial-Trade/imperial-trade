@@ -29,8 +29,8 @@ export function MobileFilterButton({
         background: isActive ? colors.state.active : colors.bg.surface,
         backdropFilter: 'blur(20px) saturate(150%)',
         WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-        border: `1px solid ${isActive ? colors.border.active : colors.border.default}`,
-        color: isActive ? colors.text.accent : colors.text.secondary,
+        border: `1px solid ${isActive ? '#D4AF37' : colors.border.default}`,
+        color: isActive ? '#D4AF37' : colors.text.secondary,
       }}
     >
       {icon}

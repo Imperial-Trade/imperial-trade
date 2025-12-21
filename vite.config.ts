@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
   },
   server: {
-    host: "::",
+    host: "0.0.0.0", // Accept connections from all network interfaces (better for iPhone testing)
     port: 8080,
     // Add history API fallback for SPA routing
     historyApiFallback: true,

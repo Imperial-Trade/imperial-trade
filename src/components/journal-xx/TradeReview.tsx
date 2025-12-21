@@ -30,8 +30,12 @@ export const TradeReview: React.FC<TradeReviewProps> = ({ analysis, onEdit, onDo
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar text-slate-300 font-mono text-sm leading-relaxed pr-2 whitespace-pre-wrap">
-                <Typewriter text={analysis.replace(/(\d+\.)/g, '$1 ')} speed={15} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar text-slate-300 font-mono text-sm leading-relaxed pr-2 min-h-0">
+                {analysis && analysis.length > 0 ? (
+                  <Typewriter text={analysis} speed={15} />
+                ) : (
+                  <div className="text-slate-500 italic">Waiting for analysis...</div>
+                )}
             </div>
          </div>
       </div>
@@ -40,15 +44,15 @@ export const TradeReview: React.FC<TradeReviewProps> = ({ analysis, onEdit, onDo
       <div className="flex gap-3 mt-4 shrink-0">
         <button
             onClick={onEdit}
-            className="flex-1 py-2 rounded-xl font-bold text-sm tracking-wide uppercase border border-stone-300 dark:border-slate-700 text-stone-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex-1 py-3 rounded-xl font-bold text-sm tracking-wide uppercase border border-stone-300 dark:border-slate-700 text-stone-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
         >
-            EDIT
+            Edit Trade
         </button>
         <button
             onClick={onDone}
-            className="flex-[2] py-2 rounded-xl font-bold text-sm tracking-wide uppercase bg-bronze-500 text-black shadow-lg hover:bg-bronze-400 transition-colors"
+            className="flex-[2] py-3 rounded-xl font-bold text-sm tracking-wide uppercase bg-bronze-500 text-black shadow-lg hover:bg-bronze-400 transition-colors"
         >
-            DONE
+            Done
         </button>
       </div>
     </div>

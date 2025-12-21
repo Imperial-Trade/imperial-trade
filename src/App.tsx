@@ -27,6 +27,7 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
+import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
@@ -287,7 +288,11 @@ function App() {
             />
             <Route
               path="journal-xx"
-              element={<JournalXXPage />}
+              element={
+                <TradeJournalProvider>
+                  <JournalXXPage />
+                </TradeJournalProvider>
+              }
             />
             <Route
               path="admin-tools"

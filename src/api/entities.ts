@@ -26,6 +26,13 @@ export class TradeJournalEntry {
     public entry_price?: number,
     public exit_price?: number,
     public position_size?: number,
+    public followed_plan?: boolean,
+    public target_hit_by_market?: boolean,
+    public planned_target_price?: number,
+    public planned_stop_loss?: number,
+    public strategy?: string,
+    public session?: string,
+    public emotion?: string,
     public created_at?: string,
     public updated_at?: string
   ) {}
@@ -37,11 +44,19 @@ export class TradeJournalEntry {
       notes?: string;
       trade_date: string;
       screenshot_url?: string;
+      screenshot_urls?: string[];
       ai_positive_feedback?: string;
       trade_type?: "Long" | "Short";
       entry_price?: number;
       exit_price?: number;
       position_size?: number;
+      followed_plan?: boolean;
+      target_hit_by_market?: boolean;
+      planned_target_price?: number;
+      planned_stop_loss?: number;
+      strategy?: string;
+      session?: string;
+      emotion?: string;
     },
     user_id: string
   ): Promise<TradeJournalEntry> {
@@ -54,11 +69,19 @@ export class TradeJournalEntry {
         notes: data.notes,
         trade_date: data.trade_date,
         screenshot_url: data.screenshot_url,
+        screenshot_urls: data.screenshot_urls || (data.screenshot_url ? [data.screenshot_url] : []),
         ai_positive_feedback: data.ai_positive_feedback,
         trade_type: data.trade_type,
         entry_price: data.entry_price,
         exit_price: data.exit_price,
-        position_size: data.position_size
+        position_size: data.position_size,
+        followed_plan: data.followed_plan,
+        target_hit_by_market: data.target_hit_by_market,
+        planned_target_price: data.planned_target_price,
+        planned_stop_loss: data.planned_stop_loss,
+        strategy: data.strategy,
+        session: data.session,
+        emotion: data.emotion
       }])
       .select()
       .single();
@@ -81,6 +104,13 @@ export class TradeJournalEntry {
       result.entry_price,
       result.exit_price,
       result.position_size,
+      result.followed_plan,
+      result.target_hit_by_market,
+      result.planned_target_price,
+      result.planned_stop_loss,
+      result.strategy,
+      result.session,
+      result.emotion,
       result.created_at,
       result.updated_at
     );
@@ -99,6 +129,10 @@ export class TradeJournalEntry {
       entry_price?: number;
       exit_price?: number;
       position_size?: number;
+      followed_plan?: boolean;
+      target_hit_by_market?: boolean;
+      planned_target_price?: number;
+      planned_stop_loss?: number;
     }
   ): Promise<TradeJournalEntry> {
     console.log("TradeJournalEntry.update - Starting update for ID:", id);
@@ -183,6 +217,13 @@ export class TradeJournalEntry {
         result.entry_price,
         result.exit_price,
         result.position_size,
+        result.followed_plan,
+        result.target_hit_by_market,
+        result.planned_target_price,
+        result.planned_stop_loss,
+        result.strategy,
+        result.session,
+        result.emotion,
         result.created_at,
         result.updated_at
       );
@@ -219,6 +260,13 @@ export class TradeJournalEntry {
           entry.entry_price,
           entry.exit_price,
           entry.position_size,
+          entry.followed_plan,
+          entry.target_hit_by_market,
+          entry.planned_target_price,
+          entry.planned_stop_loss,
+          entry.strategy,
+          entry.session,
+          entry.emotion,
           entry.created_at,
           entry.updated_at
         )
@@ -387,3 +435,5 @@ export class AthenaInteraction {
     );
   }
 }
+}
+

@@ -56,6 +56,8 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
   const entry_price = row.entry_price ? toNum(row.entry_price) : undefined;
   const exit_price = row.exit_price ? toNum(row.exit_price) : undefined;
   const position_size = row.position_size ? toNum(row.position_size) : undefined;
+  const planned_target_price = row.planned_target_price ? toNum(row.planned_target_price) : undefined;
+  const planned_stop_loss = row.planned_stop_loss ? toNum(row.planned_stop_loss) : undefined;
 
   // Normalize trade_type with coerceTradeType
   const trade_type = coerceTradeType(row.trade_type);
@@ -87,6 +89,14 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
     screenshot_url: row.screenshot_url || undefined,
     screenshot_urls, // Include normalized screenshot URLs array
     ai_positive_feedback: cleanCoachFeedback(row.ai_positive_feedback),
+    followed_plan: row.followed_plan !== null && row.followed_plan !== undefined ? row.followed_plan : undefined,
+    target_hit_by_market: row.target_hit_by_market !== null && row.target_hit_by_market !== undefined ? row.target_hit_by_market : undefined,
+    planned_target_price,
+    planned_stop_loss,
+    revenge_trade: row.revenge_trade !== null && row.revenge_trade !== undefined ? row.revenge_trade : undefined,
+    strategy: row.strategy || undefined,
+    session: row.session || undefined,
+    emotion: row.emotion || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

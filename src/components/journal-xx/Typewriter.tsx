@@ -11,6 +11,11 @@ export const Typewriter: React.FC<TypewriterProps> = ({ text, speed = 10, onComp
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!text || text.length === 0) {
+      setDisplayedText('');
+      return;
+    }
+    
     setDisplayedText('');
     let i = 0;
     const timer = setInterval(() => {
@@ -24,7 +29,9 @@ export const Typewriter: React.FC<TypewriterProps> = ({ text, speed = 10, onComp
       } else {
         clearInterval(timer);
         // Final scroll to ensure end is visible
-        bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        setTimeout(() => {
+          bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        }, 100);
         if (onComplete) onComplete();
       }
     }, speed);
@@ -33,7 +40,7 @@ export const Typewriter: React.FC<TypewriterProps> = ({ text, speed = 10, onComp
   }, [text, speed, onComplete]);
 
   return (
-    <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
+    <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap break-words">
       {displayedText}
       <span className="animate-pulse text-indigo-500 inline-block w-2 h-4 bg-indigo-500 ml-1 align-middle"></span>
       <div ref={bottomRef} className="h-1" />

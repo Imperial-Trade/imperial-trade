@@ -37,6 +37,7 @@ interface Trade {
   screenshot_urls?: string[];
   ai_feedback?: string;
   ai_positive_feedback?: string; // Add support for AI coach feedback
+  followedPlan?: boolean;
   coach_status?: 'pending' | 'ready';
   created_at: string;
   updated_at: string;
@@ -239,14 +240,19 @@ export const TradingJournalApp: React.FC<TradingJournalAppProps> = ({ showStats:
       entry_price: entry.entry_price,
       exit_price: entry.exit_price,
       position_size: entry.position_size,
-      strategy: undefined,
-      emotion: undefined,
-      session: undefined,
+      strategy: entry.strategy,
+      emotion: entry.emotion,
+      session: entry.session,
       notes: entry.notes,
       screenshot_url: entry.screenshot_url,
       screenshot_urls: entry.screenshot_urls,
       ai_feedback: entry.ai_positive_feedback,
       ai_positive_feedback: entry.ai_positive_feedback,
+      followedPlan: entry.followed_plan, // Map from snake_case to camelCase
+      target_hit_by_market: entry.target_hit_by_market, // AI-analyzed
+      planned_target_price: entry.planned_target_price, // AI-extracted
+      planned_stop_loss: entry.planned_stop_loss, // AI-extracted
+      revenge_trade: entry.revenge_trade, // Testing flag for Patience
       // Also map to ai_positive_feedback property
       coach_status: (entry as any).coach_status,
       created_at: entry.created_at,

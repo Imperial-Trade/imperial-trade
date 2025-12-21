@@ -151,18 +151,45 @@ const AppBar: React.FC = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 flex items-end lg:items-center lg:justify-center px-3 lg:px-4 xl:px-6 overflow-hidden ${
+      className={`fixed left-0 right-0 z-50 flex flex-col overflow-hidden ${
         isSigninPage || isAccountRequestPage || isAccountRequestStatusPage
           ? "bg-transparent"
-          : "nav-glass-effect border-b"
+          : ""
       }`}
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        minHeight: 'calc(64px + env(safe-area-inset-top))',
+        // Extend to cover status bar
+        top: '0',
+        minHeight: window.innerWidth < 1024 
+          ? 'calc(56px + env(safe-area-inset-top, 0px))' 
+          : 'calc(64px + env(safe-area-inset-top))',
       }}
     >
+      {/* Glass effect overlay - covers status bar and header (full width left to right) */}
+      {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
       <div
-        className={`w-full h-full lg:h-auto flex items-center justify-between gap-1 lg:gap-2`}
+          className="nav-glass-effect absolute inset-x-0"
+          style={{
+            top: '0',
+            // Cover status bar + header content area
+            height: window.innerWidth < 1024 
+              ? `calc(env(safe-area-inset-top, 0px) + 56px / 3 + 0.5rem)` 
+              : `calc(env(safe-area-inset-top) + 64px)`,
+            zIndex: 1,
+            borderBottom: '0.5px solid rgba(255, 255, 255, 0.08)',
+          }}
+        />
+      )}
+      
+      {/* Header content - logo and hamburger positioned inside glass effect, centered vertically */}
+      <div
+        className={`w-full flex items-center justify-between gap-1 lg:gap-2 px-3 lg:px-4 xl:px-6 relative`}
+        style={{
+          zIndex: 2,
+          paddingTop: window.innerWidth < 1024 
+            ? `calc(env(safe-area-inset-top, 0px) + 0.25rem)` 
+            : `calc(env(safe-area-inset-top) + 0.25rem)`,
+          paddingBottom: window.innerWidth < 1024 ? '0.5rem' : '0.5rem',
+        }}
       >
         {/* Go back button for signin, account request, and account request status pages */}
         {(isSigninPage || isAccountRequestPage || isAccountRequestStatusPage) && (
@@ -175,17 +202,153 @@ const AppBar: React.FC = () => {
           </Link>
         )}
 
-        {/* Logo - hide on signin, account request, and account request status pages */}
+        {/* Logo and Hamburger Container - constrained to glass area (Mobile/Tablet only) */}
         {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
+          <div
+            className="absolute left-0 right-0 flex items-center justify-between px-3 lg:px-4 xl:px-6 lg:hidden"
+            style={{
+              zIndex: 3,
+              top: window.innerWidth < 1024 
+                ? `env(safe-area-inset-top, 0px)` 
+                : `env(safe-area-inset-top)`,
+              height: window.innerWidth < 1024 
+                ? `calc(56px / 3 + 0.5rem)` 
+                : `calc(64px / 3 + 0.5rem)`,
+            }}
+          >
+            {/* Logo - Mobile/Tablet */}
           <Link to="/" className="flex items-center gap-2 flex-shrink-0">
             <Crown className="h-6 w-6 text-primary" />
             <span className="text-xl imperial-tech-font hidden sm:inline">IMPERIAL</span>
+          </Link>
+
+            {/* Mobile & Tablet Navigation */}
+            <div className="lg:hidden relative">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
+                    aria-label="Open navigation menu"
+                  >
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  className="w-[90vw] max-w-md nav-glass-effect overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                  style={{
+                    paddingTop: '0',
+                    top: window.innerWidth < 1024 ? 'env(safe-area-inset-top)' : '0',
+                    border: 'none',
+                  }}
+                >
+                  <SheetHeader 
+                    className="border-b border-border/50"
+                    style={{
+                      paddingTop: '0',
+                      paddingBottom: '0',
+                      minHeight: window.innerWidth < 1024 
+                        ? `calc(env(safe-area-inset-top, 0px) + 56px / 3 + 0.5rem)` 
+                        : `calc(env(safe-area-inset-top) + 64px / 3 + 0.5rem)`,
+                    }}
+                  >
+                    <div 
+                      className="flex items-center justify-start px-3 lg:px-4 xl:px-6"
+                      style={{
+                        paddingTop: window.innerWidth < 1024 
+                          ? 'env(safe-area-inset-top, 0px)' 
+                          : 'env(safe-area-inset-top)',
+                        height: window.innerWidth < 1024 
+                          ? `calc(56px / 3 + 0.5rem)` 
+                          : `calc(64px / 3 + 0.5rem)`,
+                      }}
+                    >
+                      <SheetTitle className="flex items-center gap-2 text-left">
+                        <Crown className="h-6 w-6 text-primary" />
+                        <span className="text-xl imperial-tech-font">IMPERIAL</span>
+                      </SheetTitle>
+                    </div>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-2 mt-4 pb-4">
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold text-muted-foreground px-2">Platform Features</h3>
+                      {navigationItems.map((item) => (
+                        <Link
+                          key={item.to}
+                          to={getSafeNavigation(item)}
+                          onClick={closeMobileMenu}
+                          className="flex items-center gap-3 p-3 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                          aria-label={`Navigate to ${item.label}`}
+                        >
+                          <item.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                          <div className="flex-1 text-left">
+                            <span className="text-sm font-medium block leading-tight">{item.label}</span>
+                            <span className="text-xs text-muted-foreground leading-tight">{item.description}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-border/50 space-y-3">
+                      <h3 className="text-xs font-semibold text-muted-foreground px-2">Account Access</h3>
+                      {/* Auth Buttons - Mobile Style */}
+                      {user ? (
+                        <Link
+                          to="/dashboard/home"
+                          onClick={closeMobileMenu}
+                          className="flex items-center gap-3 p-3 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                        >
+                          <LayoutDashboard className="h-5 w-5 text-primary flex-shrink-0" />
+                          <div className="flex-1 text-left">
+                            <span className="text-sm font-medium block leading-tight">Go to Dashboard</span>
+                          </div>
+                        </Link>
+                      ) : (
+                        <>
+                          {!isAccountRequestPage && (
+                            <Link
+                              to="/account-request"
+                              onClick={closeMobileMenu}
+                              className="flex items-center justify-center gap-2 p-2.5 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation bg-primary/5"
+                            >
+                              <span className="text-sm font-medium">Get Started</span>
+                            </Link>
+                          )}
+                          {!isSigninPage && !isResetPasswordPage && (
+                            <Link
+                              to="/signin"
+                              onClick={closeMobileMenu}
+                              className="flex items-center justify-center gap-2 p-2.5 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                            >
+                              <span className="text-sm font-medium">Sign In</span>
+                            </Link>
+                          )}
+                        </>
+                      )}
+                      {/* Theme Toggle */}
+                      <div className="flex items-center justify-center px-2 py-2">
+                        <ThemeToggle />
+                      </div>
+                    </div>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Logo - Left Side */}
+        {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage && (
+          <Link to="/" className="hidden lg:flex items-center gap-2 flex-shrink-0 z-10">
+            <Crown className="h-6 w-6 text-primary" />
+            <span className="text-xl imperial-tech-font">IMPERIAL</span>
           </Link>
         )}
 
         {/* Desktop Navigation - Responsive scaling */}
         {!isSigninPage && !isAccountRequestPage && !isAccountRequestStatusPage ? (
-          <nav className="hidden lg:flex lg:items-center nav-glass-effect rounded-2xl p-1 flex-1 justify-center mx-1 lg:mx-2">
+          <nav className="hidden lg:flex lg:items-center nav-glass-effect rounded-2xl p-1 flex-1 justify-center mx-1 lg:mx-2 max-w-4xl">
             {navigationItems.map((item) => (
               <div
                 key={item.to}
@@ -263,129 +426,6 @@ const AppBar: React.FC = () => {
           <div className="auth-buttons">
           {renderAuthButton()}
           </div>
-        </div>
-
-        {/* Mobile & Tablet Navigation */}
-        <div className="lg:hidden">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-[90vw] max-w-md nav-glass-effect border-r overflow-y-auto"
-              style={{
-                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)', // Below AppBar + safe area
-              }}
-            >
-              <SheetHeader className="border-b border-border/50 pb-6">
-                <SheetTitle className="flex items-center gap-2 text-left">
-                  <Crown className="h-6 w-6 text-primary" />
-                  <span className="text-xl imperial-tech-font">IMPERIAL</span>
-                </SheetTitle>
-              </SheetHeader>
-
-              <nav className="flex flex-col gap-3 mt-8 pb-8">
-                {/* Main Navigation Items */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground px-2">
-                    Platform Features
-                  </h3>
-                  {navigationItems.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={getSafeNavigation(item)}
-                      onClick={closeMobileMenu}
-                      className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
-                      aria-label={`Navigate to ${item.label}`}
-                    >
-                      <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
-                      <div className="flex-1 text-left">
-                        <span className="text-base font-medium block leading-tight">
-                          {item.label}
-                        </span>
-                        <span className="text-sm text-muted-foreground leading-tight">
-                          {item.description}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Authentication Section */}
-                <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground px-2">
-                    Account Access
-                  </h3>
-                  
-                   {user && !isResetPasswordPage ? (
-                     <div className="space-y-3">
-                       <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                         <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-                             {user.email?.[0]?.toUpperCase() || 'U'}
-                           </div>
-                           <div>
-                             <p className="font-medium text-sm">{user.email}</p>
-                             <p className="text-xs text-muted-foreground">Welcome back!</p>
-                           </div>
-                         </div>
-                       </div>
-                       <Link to="/dashboard/home" onClick={closeMobileMenu}>
-                         <Button
-                           size="lg"
-                           className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
-                           aria-label="Go to Dashboard"
-                         >
-                           <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-                           Go to Dashboard
-                         </Button>
-                       </Link>
-                     </div>
-                   ) : (
-                      <div className="space-y-3">
-                        {!isAccountRequestPage && (
-                          <Link to="/account-request" onClick={closeMobileMenu}>
-                            <Button
-                              size="lg"
-                              className="w-full min-h-[56px] glass-button-primary font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                              aria-label="Get Started - Request Account"
-                            >
-                              Get Started
-                            </Button>
-                          </Link>
-                        )}
-                        {!isSigninPage && !isResetPasswordPage && (
-                          <Link to="/signin" onClick={closeMobileMenu}>
-                            <Button
-                              size="lg"
-                              className="w-full min-h-[56px] glass-button-outline font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                              aria-label="Sign In to Account"
-                            >
-                              Sign In
-                            </Button>
-                          </Link>
-                       )}
-                     </div>
-                  )}
-                </div>
-
-                {/* Theme Toggle Section */}
-                <div className="mt-6 pt-4 border-t border-border/50">
-                  <div className="flex justify-center">
-                    <ThemeToggle />
-                  </div>
-                </div>
-              </nav>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
 

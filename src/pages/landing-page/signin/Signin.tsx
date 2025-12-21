@@ -71,12 +71,20 @@ export default function SigninPage() {
       });
     }
   };
-  return <div className="min-h-screen relative flex justify-center p-4 sm:p-6 py-6 overflow-y-auto">
+  return <div 
+      className="fixed inset-0 flex justify-center items-center p-4 sm:p-6"
+      style={{
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        position: 'fixed',
+      }}
+    >
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>
 
-      <div className="relative z-20 max-w-md w-full mx-auto">
+      <div className="relative z-20 max-w-md w-full mx-auto" style={{ overflow: 'hidden' }}>
         <ErrorBoundary componentName="Brand Header">
           <BrandHeader />
         </ErrorBoundary>

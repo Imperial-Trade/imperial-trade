@@ -26,8 +26,17 @@ export const ProtectedRoute = ({
   const queryClient = useQueryClient();
 
   // Wait for both auth AND roles to finish loading
-  if (authLoading || rolesLoading) return <LoadingSpinner />;
-  if (!user) return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  if (authLoading || rolesLoading) {
+    console.log('[ProtectedRoute] Waiting for auth/roles to load...', { authLoading, rolesLoading, path: location.pathname });
+    return <LoadingSpinner />;
+  }
+  
+  if (!user) {
+    console.log('[ProtectedRoute] No user found, redirecting to signin', { path: location.pathname });
+    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  }
+  
+  console.log('[ProtectedRoute] User authenticated, allowing access', { userId: user.id, path: location.pathname });
   
   // ✅ FIX: If role fetching failed but user is authenticated, grant default access
   // This prevents blocking users due to temporary network/database issues

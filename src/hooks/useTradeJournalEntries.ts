@@ -21,15 +21,35 @@ export const useTradeJournalEntries = () => {
 
     try {
       setError(null);
+      // Fetch ALL trades - use pagination to bypass Supabase's default 1000 limit
+      // Supabase PostgREST has a default limit of 1000, so we need to fetch in batches
+      let allEntries: any[] = [];
+      let from = 0;
+      const pageSize = 1000; // Max per request
+      let hasMore = true;
+
+      while (hasMore) {
       const { data, error: fetchError } = await supabase
         .from('trade_journal_entries')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
 
       if (fetchError) {
         throw fetchError;
       }
+
+        if (data && data.length > 0) {
+          allEntries = [...allEntries, ...data];
+          from += pageSize;
+          hasMore = data.length === pageSize; // If we got a full page, there might be more
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const data = allEntries;
 
       setEntries((data || []).map(entry => {
         const mappedEntry = mapDbRowToEntry(entry);

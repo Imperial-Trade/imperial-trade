@@ -1,15 +1,10 @@
-import React, { useState } from "react";
-import { 
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose
-} from "@/components/ui/drawer";
-import { Filter, TrendingUp, Users, Check, X, Clock, CheckCircle, TrendingDown } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Filter, TrendingUp, Users, Check, CheckCircle, TrendingDown } from "lucide-react";
 import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+import type { SlideDirection } from "@/hooks/useSheetNavigation";
 
 interface FilterState {
   search: string;
@@ -27,6 +22,8 @@ interface UnifiedFilterSheetProps {
   statusOptions: Array<{ value: string; label: string; icon?: any }>;
   tradeTypeOptions: Array<{ value: string; label: string; icon?: any }>;
   educatorOptions: Array<{ id: string; name: string }>;
+  slideDirection?: SlideDirection;
+  filterType?: 'status' | 'tradeType' | 'educator';
 }
 
 type TabType = 'status' | 'tradeType' | 'educator';
@@ -38,10 +35,33 @@ export function UnifiedFilterSheet({
   onFiltersChange,
   statusOptions,
   tradeTypeOptions,
-  educatorOptions
+  educatorOptions,
+  slideDirection,
+  filterType = 'status'
 }: UnifiedFilterSheetProps) {
-  const { colors } = useSignalTheme();
-  const [activeTab, setActiveTab] = useState<TabType>('status');
+  const { colors, isDark } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
+  
+  // On mobile, use tabs; on desktop/tablet, use filterType prop directly
+  const [mobileActiveTab, setMobileActiveTab] = useState<'status' | 'tradeType' | 'educator'>(filterType);
+  
+  // Sync mobileActiveTab when filterType changes (from parent)
+  useEffect(() => {
+    setMobileActiveTab(filterType);
+  }, [filterType]);
+  
+  // Use mobileActiveTab on mobile, filterType on desktop
+  const activeFilter = isMobile ? mobileActiveTab : filterType;
+  
+  // Get animation class based on slide direction
+  const getSlideAnimationClass = () => {
+    if (!slideDirection || isMobile) return '';
+    switch (slideDirection) {
+      case 'left': return 'sheet-slide-in-left';
+      case 'right': return 'sheet-slide-in-right';
+      default: return '';
+    }
+  };
   
   // Calculate active filter count
   const activeFilterCount = [
@@ -57,11 +77,6 @@ export function UnifiedFilterSheet({
     });
   };
 
-  const tabs = [
-    { type: 'status' as TabType, label: 'Status', icon: Filter },
-    { type: 'tradeType' as TabType, label: 'Types', icon: TrendingUp },
-    ...(educatorOptions.length > 1 ? [{ type: 'educator' as TabType, label: 'Educator', icon: Users }] : [])
-  ];
 
   const renderStatusOptions = () => {
     return statusOptions.map((option) => {
@@ -259,7 +274,7 @@ export function UnifiedFilterSheet({
   };
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (activeFilter) {
       case 'status':
         return renderStatusOptions();
       case 'tradeType':
@@ -271,87 +286,134 @@ export function UnifiedFilterSheet({
     }
   };
 
+  // Get filter header info
+  const getFilterHeader = () => {
+    switch (activeFilter) {
+      case 'status':
+        return { icon: Filter, label: 'Status' };
+      case 'tradeType':
+        return { icon: TrendingUp, label: 'Types' };
+      case 'educator':
+        return { icon: Users, label: 'Educator' };
+      default:
+        return { icon: Filter, label: 'Filter' };
+    }
+  };
+
+  const filterHeader = getFilterHeader();
+
+  // Tabs for mobile view
+  const tabs = [
+    { type: 'status' as const, label: 'Status', icon: Filter },
+    { type: 'tradeType' as const, label: 'Types', icon: TrendingUp },
+    ...(educatorOptions.length > 1 ? [{ type: 'educator' as const, label: 'Educator', icon: Users }] : [])
+  ];
+
   return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
-      <DrawerContent 
-        className="max-h-[75vh] rounded-t-3xl z-[110]"
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent 
+        side={isMobile ? "bottom-mobile" : "right"}
+        className={cn(
+          "w-full border-border/50 [&>button]:hidden flex flex-col",
+          isMobile ? "p-0" : "sm:max-w-md inset-y-0",
+          getSlideAnimationClass()
+        )}
         style={{
-          background: colors.bg.glass,
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          borderTop: `2px solid ${colors.border.default}`,
-          boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.3)`,
+          background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+          backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingBottom: isMobile ? 0 : 'max(env(safe-area-inset-bottom, 0px), 12px)',
+          ...(isMobile && {
+            bottom: '72px', // Position just above bottom nav bar - no gap
+            marginBottom: 0,
+          }),
         }}
       >
-        <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Filter className="w-5 h-5" style={{ color: colors.text.accent }} />
-              <DrawerTitle style={{ color: colors.text.primary }}>
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge 
-                    className="ml-2 h-5 px-2 text-xs"
-                    style={{
-                      background: colors.accent.primary,
-                      color: 'white'
+        {/* Drag Handle Indicator - Instagram style (mobile only) */}
+        {isMobile && (
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
+          </div>
+        )}
+        
+        <div 
+          className={cn("flex flex-col h-full overflow-hidden", isMobile ? "px-4" : "")}
+          style={{
+            background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+          }}
+        >
+        
+        {/* Mobile: Show "Filters" header + Tabs */}
+        {isMobile ? (
+          <>
+            {/* Filters Header */}
+            <div className="px-2 pt-2 pb-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5" style={{ color: '#6B8AFF' }} />
+                <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
+                  Filters
+                </span>
+              </div>
+            </div>
+            
+            {/* Tab Buttons */}
+            <div className="flex gap-2 px-2 pb-4">
+              {tabs.map((tab) => {
+                const isActive = mobileActiveTab === tab.type;
+                const Icon = tab.icon;
+                
+                return (
+                  <button
+                    key={tab.type}
+                    onClick={() => setMobileActiveTab(tab.type)}
+                    className={cn(
+                      "flex-1 h-12 px-4 flex items-center justify-center gap-2 rounded-xl transition-all duration-200",
+                      "text-sm font-medium"
+                    )}
+                    style={isActive ? {
+                      background: 'rgba(107, 138, 255, 0.15)',
+                      color: '#6B8AFF',
+                      border: '1px solid rgba(107, 138, 255, 0.5)',
+                    } : {
+                      background: colors.bg.surface,
+                      color: colors.text.secondary,
+                      border: `1px solid ${colors.border.default}`,
                     }}
                   >
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </DrawerTitle>
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
-            <DrawerClose asChild>
-              <button
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
-                style={{
-                  background: colors.bg.surface,
-                  color: colors.text.secondary,
-                }}
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </DrawerClose>
+          </>
+        ) : (
+          /* Desktop/Tablet: Show simple title header */
+          <div 
+            className="px-6 pt-4 pb-4 border-b border-border/50 sticky top-0 z-10"
+            style={{
+              background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+              backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+              WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              {React.createElement(filterHeader.icon, { className: "w-5 h-5", style: { color: '#D4AF37' } })}
+              <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
+                {filterHeader.label}
+              </span>
+            </div>
           </div>
-
-          {/* Tabs */}
-          <div className="flex gap-2 mt-4">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.type;
-              const Icon = tab.icon;
-              
-              return (
-                <button
-                  key={tab.type}
-                  onClick={() => setActiveTab(tab.type)}
-                  className={cn(
-                    "flex-1 h-10 px-4 flex items-center justify-center gap-2 rounded-lg transition-all duration-200",
-                    "text-sm font-medium"
-                  )}
-                  style={isActive ? {
-                    background: colors.state.active,
-                    color: colors.text.accent,
-                    border: `1px solid ${colors.border.active}`,
-                  } : {
-                    background: colors.bg.surface,
-                    color: colors.text.secondary,
-                    border: `1px solid ${colors.border.default}`,
-                  }}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </DrawerHeader>
+        )}
         
-        <div className="p-4 space-y-2 overflow-y-auto">
-          {renderContent()}
+        <div className={cn("flex-1 overflow-y-auto", isMobile ? "pb-4" : "mt-4")}>
+          <div className="pr-4 space-y-2">
+            {renderContent()}
+          </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
 interface NavigationGuardProps {
@@ -45,13 +46,45 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
       }
       
 
-      // ✅ FIX: Only redirect if we're CERTAIN auth has finished loading and user is null
-      // Don't redirect if still loading or if there's a timeout (might be a network issue)
-      // Also, don't redirect if ProtectedRoute will handle it (to avoid double redirects)
-      if (!loading && !hasTimeout && !user && location.pathname.startsWith('/dashboard')) {
-        // Save the intended destination
+      // ✅ FIX: Don't redirect dashboard routes - let ProtectedRoute handle authentication
+      // NavigationGuard should NOT interfere with ProtectedRoute's authentication checks
+      // ProtectedRoute will properly handle redirects for unauthenticated users
+      // Only handle non-dashboard routes or edge cases here
+      // Dashboard routes are all protected by ProtectedRoute, so they will handle auth checks
+      
+      // List of public routes that don't require authentication
+      const publicRoutes = [
+        '/signin', 
+        '/signup', 
+        '/reset-password', 
+        '/verify', 
+        '/',
+        '/advanced-tools',
+        '/signals',
+        '/education',
+        '/live-sessions',
+        '/community-forum',
+        '/ib-partnership',
+        '/ib-partnership-new',
+        '/imperial-partnership',
+        '/features',
+        '/about',
+        '/legal/disclaimers',
+        '/legal/terms',
+        '/legal/privacy',
+        '/account-request',
+        '/account-request-status'
+      ];
+      const isPublicRoute = publicRoutes.some(route => 
+        location.pathname === route || 
+        location.pathname.startsWith(route + '/')
+      );
+      
+      if (!loading && !hasTimeout && !user && !location.pathname.startsWith('/dashboard') && !isPublicRoute) {
+        // Only redirect non-dashboard routes that aren't protected and aren't public routes
+        // Dashboard routes are handled by ProtectedRoute
         const from = location.pathname + location.search;
-        console.log("🚫 NavigationGuard: Redirecting unauthenticated user to signin");
+        console.log("🚫 NavigationGuard: Redirecting unauthenticated user to signin (non-dashboard route)");
         console.log("📍 NavigationGuard: From location:", from);
         navigate('/signin', { 
           state: { from }, 

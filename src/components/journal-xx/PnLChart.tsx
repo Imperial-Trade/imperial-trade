@@ -8,7 +8,66 @@ interface PnLChartProps {
 }
 
 export const PnLChart: React.FC<PnLChartProps> = ({ data, isDarkMode }) => {
-  if (data.length === 0) return null;
+  // Show placeholder graph with straight line when no data
+  if (data.length === 0) {
+    const placeholderData = [
+      { name: '', total: 0 },
+      { name: '', total: 0 },
+      { name: '', total: 0 },
+      { name: '', total: 0 },
+      { name: '', total: 0 },
+      { name: '', total: 0 },
+    ];
+
+    const strokeColor = isDarkMode ? '#CD7F32' : '#EAB308';
+    const gridColor = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const textColor = isDarkMode ? '#71717a' : '#78716c';
+    const zeroLineColor = isDarkMode ? '#27272a' : '#e7e5e4';
+
+    return (
+      <div className="h-64 w-full mt-6 select-none" style={{ outline: 'none', minHeight: '256px' }}>
+        <ResponsiveContainer width="100%" height="100%" minHeight={256}>
+          <AreaChart 
+            data={placeholderData} 
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              vertical={false} 
+              stroke={gridColor} 
+            />
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={false}
+              hide={true}
+            />
+            <YAxis 
+              hide={false}
+              domain={[-500, 500]}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: textColor }}
+              tickFormatter={(value) => `$${value}`}
+              width={50}
+            />
+            <ReferenceLine y={0} stroke={zeroLineColor} strokeDasharray="3 3" strokeWidth={1.5} />
+            <Area 
+              type="linear" 
+              dataKey="total" 
+              stroke={strokeColor} 
+              strokeWidth={2.5}
+              fillOpacity={0} 
+              fill="none"
+              dot={false}
+              activeDot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
   // Sort chronologically (Oldest first)
   const chronologicalData = data.slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -72,7 +131,7 @@ export const PnLChart: React.FC<PnLChartProps> = ({ data, isDarkMode }) => {
              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                  d.pnl >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
              }`}>
-                {d.pnl >= 0 ? '+' : ''}{d.pnl}
+                {(d.pnl >= 0 ? '+' : '-') + '$' + Math.abs(d.pnl).toFixed(2)}
              </span>
           </div>
           
@@ -81,7 +140,7 @@ export const PnLChart: React.FC<PnLChartProps> = ({ data, isDarkMode }) => {
              <span className={`text-xl font-black font-mono ${
                  d.total >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
              }`}>
-                {d.total >= 0 ? '+' : ''}{d.total.toFixed(2)}
+                {(d.total >= 0 ? '+' : '-') + '$' + Math.abs(d.total).toFixed(2)}
              </span>
           </div>
           
@@ -112,8 +171,8 @@ export const PnLChart: React.FC<PnLChartProps> = ({ data, isDarkMode }) => {
   };
 
   return (
-    <div className="h-64 w-full mt-6 select-none" style={{ outline: 'none' }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-64 w-full mt-6 select-none" style={{ outline: 'none', minHeight: '256px' }}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={256}>
         <AreaChart 
             data={chartData} 
             margin={{ top: 10, right: 0, left: 0, bottom: 0 }}

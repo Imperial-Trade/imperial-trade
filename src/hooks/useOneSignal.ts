@@ -234,18 +234,18 @@ export const useOneSignal = (): UseOneSignalReturn => {
           
           // Update database - we now use External User ID (Supabase User ID) for notifications
           // So we just need to mark the user as subscribed
-          const { error } = await supabase
-            .from('profiles')
-            .update({ 
-              xeon_stream_subscription: true,
+            const { error } = await supabase
+              .from('profiles')
+              .update({ 
+                xeon_stream_subscription: true,
               device_platform: platform,
               device_token_updated_at: new Date().toISOString(),
-            })
-            .eq('id', user.id);
-          
-          if (error) {
+              })
+              .eq('id', user.id);
+            
+            if (error) {
             console.error('❌ [Database] Failed to sync subscription:', error);
-          } else {
+            } else {
             console.log('✅ [Database] Synced subscription, Platform:', platform);
           }
         } else {
@@ -260,19 +260,19 @@ export const useOneSignal = (): UseOneSignalReturn => {
           
           // Detect platform for accurate tracking
           const platform = detectPlatform();
-          
-          const { error } = await supabase
-            .from('profiles')
-            .update({ 
-              xeon_stream_subscription: isNowSubscribed,
+            
+            const { error } = await supabase
+              .from('profiles')
+              .update({ 
+                xeon_stream_subscription: isNowSubscribed,
               device_platform: isNowSubscribed ? platform : null,
               device_token_updated_at: new Date().toISOString(),
-            })
-            .eq('id', user.id);
-          
-          if (error) {
+              })
+              .eq('id', user.id);
+            
+            if (error) {
             console.error('❌ [Database] Failed to update subscription:', error);
-          } else {
+            } else {
             console.log(`✅ [Database] Updated subscription to ${isNowSubscribed}, Platform: ${platform}`);
           }
         });
@@ -421,7 +421,7 @@ export const useOneSignal = (): UseOneSignalReturn => {
       
       const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
       console.log('🔔 [OneSignal] Subscription status:', isSubscribed);
-      
+
       console.log('✅ [OneSignal] Subscribed successfully!', {
         userId: user?.id?.substring(0, 12),
         platform,
@@ -573,18 +573,18 @@ export const useOneSignal = (): UseOneSignalReturn => {
         if (!countError && (!activeDevices || activeDevices.length === 0)) {
           const { error: profileError } = await supabase
             .from('profiles')
-            .update({ 
-              xeon_stream_subscription: false,
-              device_token: null,
-              device_platform: null,
+          .update({ 
+            xeon_stream_subscription: false,
+            device_token: null,
+            device_platform: null,
               device_token_updated_at: new Date().toISOString(),
-            })
-            .eq('id', user.id);
+          })
+          .eq('id', user.id);
 
           if (profileError) {
             console.error('❌ [Database] Failed to update profile subscription:', profileError);
             databaseUpdateSucceeded = false;
-          } else {
+        } else {
             console.log('✅ [Database] Updated profile subscription to false (no active devices)');
           }
         } else if (!countError) {

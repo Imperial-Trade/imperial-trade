@@ -225,11 +225,13 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    /* Set background to theme color to prevent white flash on overscroll */
+    background-color: hsl(var(--background));
   }
 
   body {
     @apply text-foreground;
-    background: transparent;
+    background-color: hsl(var(--background));
     min-height: 100vh;
     min-height: -webkit-fill-available;
     color: hsl(var(--foreground));
@@ -237,8 +239,8 @@
     font-feature-settings: 'liga' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Prevent horizontal overscroll bounce */
-    overscroll-behavior-x: none;
+    /* Prevent both horizontal and vertical overscroll bounce */
+    overscroll-behavior: none;
   }
 
   /* Mobile viewport and overflow fixes */
@@ -1496,6 +1498,87 @@
     opacity: 1; 
     transform: translateY(0);
   }
+}
+
+/* Mobile bottom sheet animation - starts above nav bar */
+@keyframes slide-in-from-bottom-above-nav {
+  from {
+    transform: translateY(calc(100% + 80px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-out-to-bottom-above-nav {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(100% + 80px));
+  }
+}
+
+/* Horizontal sheet slide animations for navigation */
+@keyframes sheet-slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-slide-in-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-slide-out-to-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes sheet-slide-out-to-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* Sheet navigation animation classes */
+.sheet-slide-in-right {
+  animation: sheet-slide-in-from-right 0.25s ease-out forwards;
+}
+
+.sheet-slide-in-left {
+  animation: sheet-slide-in-from-left 0.25s ease-out forwards;
+}
+
+.sheet-slide-out-left {
+  animation: sheet-slide-out-to-left 0.2s ease-in forwards;
+}
+
+.sheet-slide-out-right {
+  animation: sheet-slide-out-to-right 0.2s ease-in forwards;
 }
 
 /* Cross-blur transition from opening to dashboard */

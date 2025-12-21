@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TradeFormData, TradeEntry, AnalysisStatus } from './types';
 import { UploadIcon, SparklesIcon, CalendarIcon } from './ui/Icons';
 import { PhaseLoader } from './PhaseLoader';
@@ -38,6 +38,7 @@ export const TradeEntryForm: React.FC<TradeEntryFormProps> = ({
   const [notes, setNotes] = useState('');
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isAnalyzing = analysisStatus === AnalysisStatus.ANALYZING;
@@ -74,6 +75,81 @@ export const TradeEntryForm: React.FC<TradeEntryFormProps> = ({
       setPreviewUrl(url);
     }
   };
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    setIsDragging(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    if (!isDragging) {
+      setIsDragging(true);
+    }
+  }, [isDragging]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left - 5 || x > rect.right + 5 || y < rect.top - 5 || y > rect.bottom + 5) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (isAnalyzing) return;
+
+    const files: File[] = [];
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      files.push(...Array.from(e.dataTransfer.files));
+    }
+    
+    if (files.length === 0 && e.dataTransfer.items) {
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        const item = e.dataTransfer.items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+    }
+
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length > 0 && imageFiles[0]) {
+      setImage(imageFiles[0]);
+      const url = URL.createObjectURL(imageFiles[0]);
+      setPreviewUrl(url);
+    }
+  }, [isAnalyzing]);
+
+  const handleRemoveImage = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setImage(null);
+    setPreviewUrl(null);
+    // Clear the file input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +266,11 @@ export const TradeEntryForm: React.FC<TradeEntryFormProps> = ({
         <label className="text-xs font-bold text-stone-500 dark:text-dirty-white uppercase tracking-wider">Chart Snapshot</label>
         <div 
           onClick={() => !isAnalyzing && fileInputRef.current?.click()}
-          className={`w-full bg-white dark:bg-slate-900 border-2 border-dashed border-stone-200 ${!isAnalyzing ? 'hover:border-yellow-500 dark:hover:border-bronze-500 cursor-pointer' : 'cursor-not-allowed opacity-60'} dark:border-bronze-500/40 rounded-xl p-6 flex items-center justify-center transition-all group min-h-[100px]`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`w-full bg-white dark:bg-slate-900 border-2 ${isDragging ? 'border-yellow-500 dark:border-bronze-500 border-dashed scale-[1.02] shadow-lg' : 'border-dashed border-stone-200'} ${!isAnalyzing ? 'hover:border-yellow-500 dark:hover:border-bronze-500 cursor-pointer' : 'cursor-not-allowed opacity-60'} dark:border-bronze-500/40 rounded-xl p-6 flex items-center justify-center transition-all group min-h-[100px]`}
         >
           <input 
             type="file" 
@@ -205,18 +285,30 @@ export const TradeEntryForm: React.FC<TradeEntryFormProps> = ({
             <div className="relative w-full h-32 overflow-hidden rounded-xl">
               <img src={previewUrl} alt="Chart preview" className="w-full h-full object-cover" />
               {!isAnalyzing && (
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                   <span className="bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-xl text-xs font-bold shadow-sm text-yellow-600 dark:text-bronze-500 border border-yellow-500/30 dark:border-bronze-500/30">Change Image</span>
-                </div>
+                <>
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <span className="bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-xl text-xs font-bold shadow-sm text-yellow-600 dark:text-bronze-500 border border-yellow-500/30 dark:border-bronze-500/30">Change Image</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                    title="Remove image"
+                  >
+                    ×
+                  </button>
+                </>
               )}
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
               <UploadIcon 
-                className="w-6 h-6 text-stone-400 dark:text-bronze-500 animate-bounce" 
-                style={{ animationDuration: '3s' }}
+                className={`w-6 h-6 ${isDragging ? 'text-yellow-600 dark:text-bronze-500 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all ${isDragging ? 'animate-pulse' : 'animate-bounce'}`}
+                style={{ animationDuration: isDragging ? '1s' : '3s' }}
               />
-              <span className="text-xs font-bold text-stone-500 dark:text-bronze-500 tracking-wide">Click to upload chart</span>
+              <span className={`text-xs font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} tracking-wide transition-colors`}>
+                {isDragging ? '✨ Drop to upload' : 'Click to upload chart'}
+              </span>
             </div>
           )}
         </div>

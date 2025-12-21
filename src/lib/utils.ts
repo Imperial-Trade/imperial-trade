@@ -77,6 +77,25 @@ export function generateId(): string {
   return Math.random().toString(36).substr(2, 9);
 }
 
+/**
+ * Generates a UUID v4. Uses crypto.randomUUID() if available (modern browsers),
+ * otherwise falls back to a manual UUID v4 implementation for iOS Safari compatibility.
+ */
+export function randomUUID(): string {
+  // Use native crypto.randomUUID() if available (Chrome 92+, Safari 15.4+)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback for iOS Safari and older browsers
+  // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function validateEmail(email: string): boolean {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);

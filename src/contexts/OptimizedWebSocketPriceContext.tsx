@@ -1047,7 +1047,10 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
 
     // ✅ PHASE 2: Dynamic polling frequency based on data freshness
-    const isSignalStreamPage = window.location.pathname.includes('/signal-stream');
+    const pathname = window.location.pathname;
+    const isLivePricePage = pathname.includes('/signal-stream') || 
+                            pathname.includes('/journal') || 
+                            pathname.includes('/dashboard');
     
     // 🚨 PHASE 2D FIX (Bug #9): Check ALL subscribed symbols have fresh data (not just ANY symbol)
     const hasRecentData = symbolList.length > 0 && symbolList.every(symbol => {
@@ -1061,11 +1064,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       return isFresh;
     });
     
-    // 🚀 OPTIMIZED: Reduced polling for smoother performance
-    // - Signal stream: 1000ms (1 second - balanced speed + performance)
+    // 🚀 OPTIMIZED: Fast polling for pages with live price displays
+    // - Signal stream/Journal/Dashboard: 1000ms (1 second - balanced speed + performance)
     // - Other pages: 60s (minimal background polling)
-    const pollingInterval = isSignalStreamPage 
-      ? 1000  // ✅ OPTIMIZED: 1 second polling (reduced from 500ms for smoother UI)
+    const pollingInterval = isLivePricePage 
+      ? 1000  // ✅ OPTIMIZED: 1 second polling for live price displays
       : 60000; // ✅ OPTIMIZED: 1 minute for background pages (reduced load)
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';

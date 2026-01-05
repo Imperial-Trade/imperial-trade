@@ -20,6 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { compressImage } from '@/utils/imageCompression';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { BrokerSelection, BrokerType } from './BrokerSelection';
+import { BrokerLoginForm } from './BrokerLoginForm';
+import { AutoJournalView } from './AutoJournalView';
 
 export interface JournalProProps {
   isDarkMode: boolean;
@@ -765,6 +768,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   // LOG ENTRY vs HISTORY Toggle
   const [logMode, setLogMode] = useState<'ENTRY' | 'HISTORY'>('ENTRY');
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // JOURNAL MODE: Manual vs Auto (Broker Sync)
+  const [journalMode, setJournalMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   
   // Right Sidebar View Toggle (Desktop only)
   const [rightSidebarView, setRightSidebarView] = useState<'TRADER_DNA' | 'LOG_ENTRY' | 'TRADE_LOG' | 'TRADER_INSIGHTS'>('TRADER_DNA');
@@ -2634,22 +2640,60 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              </div>
                              
                              <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
-                                 {/* JOURNAL TAB: Calendar */}
+                                 {/* JOURNAL TAB: Manual vs Auto Toggle */}
                                  {activeTab === 'JOURNAL' && (
-                                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-                                         <div className="flex-1 min-w-0 h-full">
-                                             <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                 <MacroCalendar 
-                                                     isDarkMode={isDarkMode} 
-                                                     trades={trades}
-                                                     timeFilter={calendarTimeFilter}
-                                                     setTimeFilter={setCalendarTimeFilter}
-                                                     viewDate={calendarViewDate}
-                                                     setViewDate={setCalendarViewDate}
+                                     <>
+                                         {/* Toggle Switch */}
+                                         <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10">
+                                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                                 <span className={`text-xs sm:text-sm font-medium truncate ${isDarkMode ? 'text-bronze-500' : 'text-yellow-600'}`}>
+                                                     {journalMode === 'MANUAL' ? 'Manual Journaling' : 'Auto Journaling'}
+                                                 </span>
+                                             </div>
+                                             <button
+                                                 onClick={() => setJournalMode(journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL')}
+                                                 className={`
+                                                   relative w-12 h-6 sm:w-14 sm:h-7 rounded-full transition-all duration-300 flex-shrink-0
+                                                   active:scale-95
+                                                   ${journalMode === 'AUTO'
+                                                     ? isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'
+                                                     : 'bg-white/20'
+                                                   }
+                                                 `}
+                                                 aria-label={`Switch to ${journalMode === 'MANUAL' ? 'Auto' : 'Manual'} journaling`}
+                                             >
+                                                 <div
+                                                     className={`
+                                                       absolute top-0.5 sm:top-1 left-0.5 sm:left-1 w-5 h-5 rounded-full bg-white transition-all duration-300 shadow-sm
+                                                       ${journalMode === 'AUTO' ? 'translate-x-6 sm:translate-x-7' : 'translate-x-0'}
+                                                     `}
                                                  />
-                                             </SpotlightCard>
+                                             </button>
                                          </div>
-                                     </div>
+
+                                         {/* Manual Journal Mode */}
+                                         {journalMode === 'MANUAL' && (
+                                             <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
+                                                 <div className="flex-1 min-w-0 h-full">
+                                                     <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
+                                                         <MacroCalendar 
+                                                             isDarkMode={isDarkMode} 
+                                                             trades={trades}
+                                                             timeFilter={calendarTimeFilter}
+                                                             setTimeFilter={setCalendarTimeFilter}
+                                                             viewDate={calendarViewDate}
+                                                             setViewDate={setCalendarViewDate}
+                                                         />
+                                                     </SpotlightCard>
+                                                 </div>
+                                             </div>
+                                         )}
+
+                                         {/* Auto Journal Mode (Broker Sync) */}
+                                         {journalMode === 'AUTO' && (
+                                             <AutoJournalView isDarkMode={isDarkMode} />
+                                         )}
+                                     </>
                                  )}
 
                                  {/* GAMES TAB: Replay & Dojo */}

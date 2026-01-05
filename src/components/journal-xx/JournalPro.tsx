@@ -137,7 +137,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 // --- SUB-COMPONENTS ---
 
-const NewsTicker: React.FC = React.memo(() => {
+const NewsTicker: React.FC = () => {
     const [tickerOffset, setTickerOffset] = useState(0);
     
     // Get live prices for all symbols with real-time updates
@@ -167,12 +167,12 @@ const NewsTicker: React.FC = React.memo(() => {
         const price = priceData.price || 0;
         const prevPrice = prevPricesRef.current[symbol] || price;
         
-        // Update previous price if we have a valid current price
-        if (price > 0) {
+        // Update previous price if we have a valid current price and it's different
+        if (price > 0 && price !== prevPrice) {
             prevPricesRef.current[symbol] = price;
         }
         
-        // Determine direction: up if price increased, down if decreased, neutral if no change
+        // Determine direction: up if price increased, down if decreased
         const isUp = price > prevPrice;
         const isDown = price < prevPrice;
         // Use change from hook as fallback if prices are the same
@@ -212,7 +212,7 @@ const NewsTicker: React.FC = React.memo(() => {
             {tickerItems}
         </div>
     );
-});
+};
 
 const SpotlightCard: React.FC<{ 
   children: React.ReactNode; 

@@ -19,6 +19,7 @@ import { TradeJournalEntry as TJEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { compressImage } from '@/utils/imageCompression';
+import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 
 export interface JournalProProps {
   isDarkMode: boolean;
@@ -136,8 +137,16 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 // --- SUB-COMPONENTS ---
 
-const NewsTicker: React.FC<{ prices: { btc: number, eth: number, sol: number } }> = React.memo(({ prices }) => {
+const NewsTicker: React.FC = React.memo(() => {
     const [tickerOffset, setTickerOffset] = useState(0);
+    
+    // Get live prices for all symbols
+    const goldPrice = useOptimizedLivePrice('XAUUSD', { debounceMs: 100 });
+    const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 100 });
+    const us30Price = useOptimizedLivePrice('U30USD', { debounceMs: 100 });
+    const spxPrice = useOptimizedLivePrice('SPXUSD', { debounceMs: 100 });
+    const ndxPrice = useOptimizedLivePrice('NDXUSD', { debounceMs: 100 });
+    
     useEffect(() => {
         const interval = setInterval(() => {
             setTickerOffset(prev => (prev + 0.05) % 100);
@@ -145,11 +154,42 @@ const NewsTicker: React.FC<{ prices: { btc: number, eth: number, sol: number } }
         return () => clearInterval(interval);
     }, []);
 
+    // Format prices and determine arrow direction
+    const formatTickerItem = (priceData: ReturnType<typeof useOptimizedLivePrice>, label: string) => {
+        const price = priceData.price || 0;
+        const change = priceData.change || 0;
+        const isUp = change >= 0;
+        
+        if (price === 0) {
+            return null; // Don't show if no price data
+        }
+        
+        // Format price based on magnitude
+        let formattedPrice: string;
+        if (price >= 1000) {
+            formattedPrice = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            formattedPrice = price.toFixed(2);
+        }
+        
+        return (
+            <span key={label} className="text-[10px] mono mx-4 font-bold">
+                {label} {formattedPrice} <span className={isUp ? "text-green-500" : "text-red-500"}>{isUp ? "▲" : "▼"}</span>
+            </span>
+        );
+    };
+
+    const tickerItems = [
+        formatTickerItem(goldPrice, 'GOLD'),
+        formatTickerItem(btcPrice, 'BTC'),
+        formatTickerItem(us30Price, 'US30'),
+        formatTickerItem(spxPrice, 'S&P500'),
+        formatTickerItem(ndxPrice, 'NAS100')
+    ].filter(Boolean); // Remove null items
+
     return (
         <div className="absolute inset-0 flex items-center opacity-70 whitespace-nowrap will-change-transform" style={{ transform: `translateX(-${tickerOffset}%)` }}>
-            <span className="text-[10px] mono mx-4 font-bold">BTC {prices.btc.toFixed(2)} <span className="text-green-500">▲</span></span>
-            <span className="text-[10px] mono mx-4 font-bold">ETH {prices.eth.toFixed(2)} <span className="text-red-500">▼</span></span>
-            <span className="text-[10px] mono mx-4 font-bold">SOL {prices.sol.toFixed(2)} <span className="text-green-500">▲</span></span>
+            {tickerItems}
         </div>
     );
 });
@@ -844,8 +884,6 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const coins = 420;
 
   const isMobileAnalysisMode = viewState === 'ANALYZING' || viewState === 'REVIEW';
-  
-  const prices = useMemo(() => ({ btc: 65430.20, eth: 3450.15, sol: 145.80 }), []);
   
   // Calculate Trader DNA using real data-driven calculations
   const traderDNA = useMemo(() => {
@@ -2185,7 +2223,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                 </div>
 
                 <div className={`hidden md:flex items-center gap-6 px-6 py-2 rounded-full border backdrop-blur-md overflow-hidden relative w-[400px] ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
-                     <NewsTicker prices={prices} />
+                     <NewsTicker />
                 </div>
 
                 <div className="flex items-center gap-3">

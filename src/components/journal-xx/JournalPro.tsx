@@ -140,13 +140,17 @@ const fileToBase64 = (file: File): Promise<string> => {
 const NewsTicker: React.FC = React.memo(() => {
     const [tickerOffset, setTickerOffset] = useState(0);
     
-    // Get live prices for all symbols
-    const goldPrice = useOptimizedLivePrice('XAUUSD', { debounceMs: 100 });
-    const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 100 });
-    const us30Price = useOptimizedLivePrice('U30USD', { debounceMs: 100 });
-    const spxPrice = useOptimizedLivePrice('SPXUSD', { debounceMs: 100 });
-    const ndxPrice = useOptimizedLivePrice('NDXUSD', { debounceMs: 100 });
+    // Get live prices for all symbols with real-time updates
+    const goldPrice = useOptimizedLivePrice('XAUUSD', { debounceMs: 50 });
+    const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 50 });
+    const us30Price = useOptimizedLivePrice('U30USD', { debounceMs: 50 });
+    const spxPrice = useOptimizedLivePrice('SPXUSD', { debounceMs: 50 });
+    const ndxPrice = useOptimizedLivePrice('NDXUSD', { debounceMs: 50 });
     
+    // Track previous prices to determine direction
+    const prevPricesRef = useRef<Record<string, number>>({});
+    
+    // Scroll animation - moves from right to left
     useEffect(() => {
         const interval = setInterval(() => {
             setTickerOffset(prev => (prev + 0.05) % 100);
@@ -154,11 +158,25 @@ const NewsTicker: React.FC = React.memo(() => {
         return () => clearInterval(interval);
     }, []);
 
-    // Format prices and determine arrow direction
-    const formatTickerItem = (priceData: ReturnType<typeof useOptimizedLivePrice>, label: string) => {
+    // Format prices and determine arrow direction based on actual price movement
+    const formatTickerItem = (
+        priceData: ReturnType<typeof useOptimizedLivePrice>, 
+        label: string,
+        symbol: string
+    ) => {
         const price = priceData.price || 0;
-        const change = priceData.change || 0;
-        const isUp = change >= 0;
+        const prevPrice = prevPricesRef.current[symbol] || price;
+        
+        // Update previous price if we have a valid current price
+        if (price > 0) {
+            prevPricesRef.current[symbol] = price;
+        }
+        
+        // Determine direction: up if price increased, down if decreased, neutral if no change
+        const isUp = price > prevPrice;
+        const isDown = price < prevPrice;
+        // Use change from hook as fallback if prices are the same
+        const direction = isUp ? 'up' : isDown ? 'down' : (priceData.change >= 0 ? 'up' : 'down');
         
         if (price === 0) {
             return null; // Don't show if no price data
@@ -172,19 +190,21 @@ const NewsTicker: React.FC = React.memo(() => {
             formattedPrice = price.toFixed(2);
         }
         
+        const isPriceUp = direction === 'up';
+        
         return (
-            <span key={label} className="text-[10px] mono mx-4 font-bold">
-                {label} {formattedPrice} <span className={isUp ? "text-green-500" : "text-red-500"}>{isUp ? "▲" : "▼"}</span>
+            <span key={label} className="text-[10px] mono mx-4 font-bold transition-colors duration-300">
+                {label} {formattedPrice} <span className={isPriceUp ? "text-green-500" : "text-red-500"}>{isPriceUp ? "▲" : "▼"}</span>
             </span>
         );
     };
 
     const tickerItems = [
-        formatTickerItem(goldPrice, 'GOLD'),
-        formatTickerItem(btcPrice, 'BTC'),
-        formatTickerItem(us30Price, 'US30'),
-        formatTickerItem(spxPrice, 'S&P500'),
-        formatTickerItem(ndxPrice, 'NAS100')
+        formatTickerItem(goldPrice, 'GOLD', 'XAUUSD'),
+        formatTickerItem(btcPrice, 'BTC', 'BTCUSD'),
+        formatTickerItem(us30Price, 'US30', 'U30USD'),
+        formatTickerItem(spxPrice, 'S&P500', 'SPXUSD'),
+        formatTickerItem(ndxPrice, 'NAS100', 'NDXUSD')
     ].filter(Boolean); // Remove null items
 
     return (

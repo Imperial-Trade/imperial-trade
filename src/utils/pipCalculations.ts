@@ -14,21 +14,24 @@ export const getPipSize = (tradingPairSymbol: string | null | undefined): number
 
   const upperSymbol = tradingPairSymbol.toUpperCase();
   
-  // Indices (points): 1.0 (e.g., US30, US100, SPX)
+  // Indices (points): $1 move = 1 pip (pip size = 1.0)
+  // US 30 (Dow Jones): U30USD, US30, DJI, DOW
+  // NASDAQ 100: NDXUSD, NDX, NAS100, US100
+  // S&P 500: SPXUSD, SPX, SPX500
   if (
-    upperSymbol.includes('US30') ||
     upperSymbol.includes('U30USD') ||
+    upperSymbol.includes('US30') ||
     upperSymbol.includes('DJI') ||
     upperSymbol.includes('DOW') ||
-    upperSymbol.includes('US100') ||
-    upperSymbol.includes('NDX') ||
     upperSymbol.includes('NDXUSD') ||
+    upperSymbol.includes('NDX') ||
     upperSymbol.includes('NAS100') ||
-    upperSymbol.includes('SPX') ||
+    upperSymbol.includes('US100') ||
     upperSymbol.includes('SPXUSD') ||
+    upperSymbol.includes('SPX') ||
     upperSymbol.includes('SPX500')
   ) {
-    return 1.0;
+    return 1.0; // $1 move = 1 pip
   }
   
   // Gold (XAU/USD): 1 pip = $0.10 (10 cents)

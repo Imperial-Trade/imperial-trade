@@ -14,14 +14,19 @@ export const getPipSize = (tradingPairSymbol: string | null | undefined): number
 
   const upperSymbol = tradingPairSymbol.toUpperCase();
   
-  // Indices (points): 1.0 (e.g., US30, US100)
+  // Indices (points): 1.0 (e.g., US30, US100, SPX)
   if (
     upperSymbol.includes('US30') ||
+    upperSymbol.includes('U30USD') ||
     upperSymbol.includes('DJI') ||
     upperSymbol.includes('DOW') ||
     upperSymbol.includes('US100') ||
     upperSymbol.includes('NDX') ||
-    upperSymbol.includes('NAS100')
+    upperSymbol.includes('NDXUSD') ||
+    upperSymbol.includes('NAS100') ||
+    upperSymbol.includes('SPX') ||
+    upperSymbol.includes('SPXUSD') ||
+    upperSymbol.includes('SPX500')
   ) {
     return 1.0;
   }

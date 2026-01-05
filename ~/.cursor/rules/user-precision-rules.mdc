@@ -1,0 +1,102 @@
+# User Rules - Precision Execution (Universal)
+
+## Core Principle
+**Execute EXACTLY what I request. Preserve ALL existing functionality. Never break what works. Work correctly across ANY project or codebase.**
+
+## Understanding Protocol
+
+### Before ANY Action:
+1. **Read my entire prompt** - Every word matters, don't skim
+2. **Identify the core request** - What am I actually asking for?
+3. **Extract constraints** - Any "don't break", "only on X", "except Y", "preserve Z"?
+4. **Identify scope** - Which files? Which modes? Which components?
+5. **Read current code** - Understand what exists before changing
+6. **Check dependencies** - What else might be affected?
+7. **Plan approach** - Think through the solution
+8. **Verify understanding** - If unclear, ask ONE specific question
+
+### Execution Rules:
+- **Minimal changes** - Only modify what's needed to fulfill the request
+- **Preserve everything** - Don't break existing functionality, layouts, or designs
+- **All modes** - Check mobile, tablet, desktop (if applicable)
+- **Exact match** - Do exactly what I said, nothing more, nothing less
+- **Project agnostic** - These rules apply to ANY project, not just one
+
+## Mode Awareness
+- When I mention screen sizes, check ALL of them
+- When I say "don't break X", ensure X remains completely unchanged
+- When I say "only on Y", ensure it ONLY affects Y
+- When I say "all modes", verify mobile, tablet, AND desktop
+
+## Responsive Design Validation (CRITICAL)
+When editing for ANY screen size, MUST check:
+
+### Visibility and Accessibility
+- ✅ All buttons visible and clickable at mobile, tablet, desktop
+- ✅ No buttons hidden when they should be visible
+- ✅ Text fully readable (not cut off like "Complete & Cont..." when should be "Complete & Continue")
+- ✅ All interactive elements accessible across screen sizes
+- ✅ Components fit within their containers
+
+### Screen Size Verification
+- ✅ Mobile (< 768px): Components work correctly
+- ✅ Tablet/iPad (768px - 1023px): Components fit, nothing hidden
+- ✅ Desktop (≥ 1024px): Full layout works
+- ✅ iPad specifically: Check portrait AND landscape
+- ✅ No layout breaks when resizing between breakpoints
+
+### Common Issues to Prevent
+- ❌ Buttons hidden by responsive classes when they should be visible
+- ❌ Text truncated when full text is needed
+- ❌ Components overflowing containers on tablet/iPad
+- ❌ Layout breaking at breakpoint transitions
+- ❌ Elements hidden by overflow or z-index issues
+
+## Preservation Checklist
+Before making changes, identify:
+- What functionality must remain unchanged?
+- What layouts/designs must be preserved?
+- What responsive behavior must stay the same?
+- What components/files should NOT be touched?
+
+## Red Flags - STOP and Ask:
+- Request is ambiguous or has multiple interpretations
+- Might break existing functionality
+- Scope is unclear
+- Conflicts with existing patterns
+- Dependencies aren't clear
+
+## Quality Checklist (Every Change):
+- [ ] Do I understand the EXACT requirement?
+- [ ] Have I read ALL relevant files?
+- [ ] Will this break anything existing?
+- [ ] Does this work on all applicable modes?
+- [ ] Did I preserve existing functionality?
+- [ ] Are changes minimal and focused?
+- [ ] Does this match my exact request?
+
+## Responsive Design Checklist (MANDATORY for UI/Component changes):
+- [ ] All buttons visible at mobile, tablet, AND desktop
+- [ ] Text not cut off or incorrectly truncated
+- [ ] Components fit within containers at ALL screen sizes
+- [ ] iPad/tablet layout verified (portrait + landscape)
+- [ ] No hidden elements that should be visible
+- [ ] No horizontal scrolling from overflow
+- [ ] Layout doesn't break at breakpoint transitions
+
+## Common Mistakes to Avoid:
+1. Changing unrelated code
+2. Breaking existing layouts/designs
+3. Forgetting responsive design
+4. Adding unrequested features
+5. Not reading current implementation
+6. Making assumptions about the codebase
+7. Over-engineering solutions
+
+## Success Criteria:
+✅ Exact requirement fulfilled
+✅ Nothing broken
+✅ All modes work (if applicable)
+✅ Existing designs preserved
+✅ Minimal changes made
+✅ Code follows existing patterns

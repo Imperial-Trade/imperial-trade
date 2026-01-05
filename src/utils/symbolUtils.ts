@@ -3,12 +3,13 @@
  */
 
 /**
- * Normalizes a trading symbol by removing non-alphabetic characters and converting to uppercase
- * @param symbol - The symbol to normalize (e.g., "XAU/USD", "XAU-USD", "xauusd")
- * @returns Normalized symbol (e.g., "XAUUSD")
+ * Normalizes a trading symbol by removing separators (non-alphanumeric) and converting to uppercase
+ * @param symbol - The symbol to normalize (e.g., "XAU/USD", "XAU-USD", "xauusd", "U30USD")
+ * @returns Normalized symbol (e.g., "XAUUSD", "U30USD")
  */
 export const normalizeSymbol = (symbol: string): string => {
-  return symbol?.replace(/[^A-Za-z]/g, '').toUpperCase() || '';
+  // Remove only separators (/, -, _, spaces) but keep letters AND numbers
+  return symbol?.replace(/[/\s\-_]/g, '').toUpperCase() || '';
 };
 
 /**

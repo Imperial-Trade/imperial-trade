@@ -170,10 +170,19 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
 
   // Subscribe to the symbol using the unified context (unless skipSubscribe is true)
   useEffect(() => {
-    if (!symbol || options.skipSubscribe) return;
+    if (!symbol || options.skipSubscribe) {
+      if (isDevToolsEnabled()) {
+        console.log(`⏭️ [useOptimizedLivePrice] Skipping subscription for ${symbol} (skipSubscribe=${options.skipSubscribe})`);
+      }
+      return;
+    }
 
     // Normalize symbol before subscription
     const normalizedSymbol = normalizeSymbol(symbol);
+    
+    if (isDevToolsEnabled()) {
+      console.log(`🔍 [useOptimizedLivePrice] Symbol normalization: ${symbol} -> ${normalizedSymbol}`);
+    }
     
     // 🔥 ANTI-CHURN FIX: Only refresh on first mount OR symbol change
     const symbolChanged = currentSymbolRef.current !== normalizedSymbol;
@@ -191,6 +200,10 @@ export function useOptimizedLivePrice(symbol: string, options: LivePriceOptions 
     }
     
     subscribeRef.current([normalizedSymbol]);
+    
+    if (isDevToolsEnabled()) {
+      console.log(`✅ [useOptimizedLivePrice] Subscription initiated for ${normalizedSymbol}`);
+    }
 
     return () => {
       if (isDevToolsEnabled()) {

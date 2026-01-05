@@ -8,10 +8,13 @@ export interface AssetOption {
   category: 'crypto' | 'commodities' | 'forex' | 'indices';
 }
 
-// Cost optimization: Only support XAUUSD and BTCUSD for streaming
+// Live streaming supported for XAUUSD, BTCUSD, U30USD, SPXUSD, NDXUSD
 const SUPPORTED_ASSETS: AssetOption[] = [
   { symbol: 'XAUUSD', name: 'Gold', category: 'commodities' },
-  { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' }
+  { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' },
+  { symbol: 'U30USD', name: 'US 30', category: 'indices' },
+  { symbol: 'SPXUSD', name: 'S&P 500', category: 'indices' },
+  { symbol: 'NDXUSD', name: 'NASDAQ 100', category: 'indices' }
 ];
 
 interface AssetSelectorProps {

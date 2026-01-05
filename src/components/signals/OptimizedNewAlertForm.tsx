@@ -23,10 +23,13 @@ import {
   getPipSize 
 } from '@/utils/pipCalculations';
 
-// Asset cards for the two allowed symbols
+// Asset cards for all supported symbols
 const ALLOWED_ASSETS = [
   { symbol: 'XAUUSD', name: 'Gold' },
-  { symbol: 'BTCUSD', name: 'Bitcoin' }
+  { symbol: 'BTCUSD', name: 'Bitcoin' },
+  { symbol: 'U30USD', name: 'US 30' },
+  { symbol: 'SPXUSD', name: 'S&P 500' },
+  { symbol: 'NDXUSD', name: 'NASDAQ 100' }
 ];
 
 interface OptimizedNewAlertFormProps {
@@ -148,7 +151,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
     let newStopLoss = '';
     const newTakeProfits = [...currentTakeProfits];
-    const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+    const getDecimalPlaces = (symbol: string) => {
+      const upperSymbol = symbol.toUpperCase();
+      // Indices and crypto: 2 decimal places
+      if (upperSymbol === 'BTCUSD' || upperSymbol === 'XAUUSD' || 
+          upperSymbol === 'U30USD' || upperSymbol === 'SPXUSD' || upperSymbol === 'NDXUSD' ||
+          upperSymbol.includes('US30') || upperSymbol.includes('SPX') || upperSymbol.includes('NDX')) {
+        return 2;
+      }
+      // Forex pairs: 5 decimal places
+      return 5;
+    };
     const decimals = getDecimalPlaces(assetSymbol);
 
     // Recalculate stop loss if stop loss pips exist
@@ -347,7 +360,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       const pipValue = parseFloat(pips);
       
       if (!isNaN(entryPrice) && !isNaN(pipValue) && pipValue > 0) {
-        const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+        const getDecimalPlaces = (symbol: string) => {
+          const upperSymbol = symbol.toUpperCase();
+          // Indices and crypto: 2 decimal places
+          if (upperSymbol === 'BTCUSD' || upperSymbol === 'XAUUSD' || 
+              upperSymbol === 'U30USD' || upperSymbol === 'SPXUSD' || upperSymbol === 'NDXUSD' ||
+              upperSymbol.includes('US30') || upperSymbol.includes('SPX') || upperSymbol.includes('NDX')) {
+            return 2;
+          }
+          // Forex pairs: 5 decimal places
+          return 5;
+        };
         const decimals = getDecimalPlaces(selectedAsset.symbol);
         
         let direction: 'up' | 'down' = 'up';

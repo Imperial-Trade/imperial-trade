@@ -9,7 +9,7 @@ export interface AssetDefinition {
 }
 
 // Centralized asset registry for Tradermade symbols
-// COST OPTIMIZATION: Only XAUUSD and BTCUSD are supported for live streaming
+// Live streaming supported for XAUUSD, BTCUSD, U30USD, SPXUSD, NDXUSD
 export const ASSET_REGISTRY: Record<string, AssetDefinition> = {
   GOLD: {
     symbol: 'XAUUSD',
@@ -24,6 +24,27 @@ export const ASSET_REGISTRY: Record<string, AssetDefinition> = {
     category: 'crypto',
     displaySymbol: 'BTC/USD',
     tradermadeSymbol: 'BTCUSD'
+  },
+  US30: {
+    symbol: 'U30USD',
+    name: 'US 30',
+    category: 'indices',
+    displaySymbol: 'US30/USD',
+    tradermadeSymbol: 'U30USD'
+  },
+  SPX500: {
+    symbol: 'SPXUSD',
+    name: 'S&P 500',
+    category: 'indices',
+    displaySymbol: 'SPX/USD',
+    tradermadeSymbol: 'SPXUSD'
+  },
+  NAS100: {
+    symbol: 'NDXUSD',
+    name: 'NASDAQ 100',
+    category: 'indices',
+    displaySymbol: 'NDX/USD',
+    tradermadeSymbol: 'NDXUSD'
   }
 } as const;
 
@@ -47,6 +68,9 @@ export function validateAssetSymbol(symbol: string): AssetDefinition | null {
   // Legacy alternative name matching (kept for backwards compatibility)
   if (upperSymbol === 'GOLD' || upperSymbol === 'XAUUSD') return ASSET_REGISTRY.GOLD;
   if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTCUSD' || upperSymbol === 'BTC') return ASSET_REGISTRY.BITCOIN;
+  if (upperSymbol === 'US30' || upperSymbol === 'U30USD' || upperSymbol === 'DOW') return ASSET_REGISTRY.US30;
+  if (upperSymbol === 'SPX' || upperSymbol === 'SPXUSD' || upperSymbol === 'SPX500' || upperSymbol === 'S&P500') return ASSET_REGISTRY.SPX500;
+  if (upperSymbol === 'NDX' || upperSymbol === 'NDXUSD' || upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ100') return ASSET_REGISTRY.NAS100;
   
   return null;
 }

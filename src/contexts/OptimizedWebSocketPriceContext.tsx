@@ -23,8 +23,8 @@ import { useMonitoringRouteGate } from '@/hooks/useMonitoringRouteGate';
 import { checkPriceIngestorHealth } from '@/utils/priceIngestorHealthCheck';
 
 // ✅ GLOBAL SYMBOL WHITELIST - Extended for better compatibility
-const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
-const MAX_SUBSCRIPTIONS = 12; // Increased for better coverage
+const ALLOWED_SYMBOLS = ['XAUUSD', 'BTCUSD', 'U30USD', 'SPXUSD', 'NDXUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURJPY'] as const;
+const MAX_SUBSCRIPTIONS = 15; // Increased for better coverage including indices
 
 // 🚀 FRONTEND THROTTLING (SMART TV STATION) CONFIGURATION
 const UI_UPDATE_THROTTLE_MS = 3500; // 3.5 seconds for calm, professional trading experience
@@ -651,7 +651,7 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       const oneMinuteAgo = new Date(cacheBustNonce - 60000).toISOString(); // ✅ Loosened to 60s for fresh data
       
       // ⚡ CRITICAL: Use timestamp in query to bypass HTTP cache
-      const { data } = await supabase
+      const { data, error: queryError } = await supabase
         .from('market_prices')
         .select('symbol, mid, bid, ask, updated_at')
         .in('symbol', targetSymbols)
@@ -659,8 +659,75 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         .limit(50); // ⚡ Force query re-execution
       
       console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${oneMinuteAgo}`);
+      
+      if (queryError) {
+        console.error(`❌ [Database Poll] Query error for ${targetSymbols.join(', ')}:`, queryError);
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        console.warn(`⚠️ [Database Poll] No prices found for symbols: ${targetSymbols.join(', ')} (within 60s window)`);
+        // Try without time filter as fallback
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('market_prices')
+          .select('symbol, mid, bid, ask, updated_at')
+          .in('symbol', targetSymbols)
+          .order('updated_at', { ascending: false })
+          .limit(50);
         
-      if (data) {
+        if (fallbackError) {
+          console.error(`❌ [Database Poll] Fallback query error:`, fallbackError);
+          return;
+        }
+        
+        if (fallbackData && fallbackData.length > 0) {
+          console.log(`✅ [Database Poll] Found ${fallbackData.length} prices in fallback query (no time filter)`);
+          // Use fallback data
+          const hydratedPrices: Record<string, PriceData> = {};
+          const timestampUpdates: Record<string, number> = {};
+          
+          fallbackData.forEach(row => {
+            const hasMidOnly = row.mid && (!row.bid || !row.ask);
+            const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
+            
+            if (price) {
+              const dbTimestamp = new Date(row.updated_at).getTime();
+              hydratedPrices[row.symbol] = {
+                symbol: row.symbol,
+                price,
+                change: 0,
+                changePercent: 0,
+                timestamp: row.updated_at,
+                receivedAt: Date.now(),
+                bid: row.bid,
+                ask: row.ask,
+                mid: row.mid
+              };
+              timestampUpdates[row.symbol] = dbTimestamp;
+              arrivalTimestamps.current.set(row.symbol, Date.now());
+              console.log(`💾 [Database Poll Fallback] ${row.symbol}: $${price} (${Math.round((Date.now() - dbTimestamp) / 1000)}s old)`);
+            }
+          });
+          
+          if (Object.keys(hydratedPrices).length > 0) {
+            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
+            setPrices(prev => ({ ...prev, ...hydratedPrices }));
+            Object.keys(timestampUpdates).forEach(symbol => {
+              lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
+            });
+            setLastUpdated(new Date());
+            if (connectionStatus !== 'connected') {
+              setConnectionStatus('connected');
+            }
+          }
+        } else {
+          console.warn(`⚠️ [Database Poll] No prices found even in fallback query for: ${targetSymbols.join(', ')}`);
+        }
+        return;
+      }
+      
+      // Process the data we got from the main query
+      if (data && data.length > 0) {
         const hydratedPrices: Record<string, PriceData> = {};
         const timestampUpdates: Record<string, number> = {};
         

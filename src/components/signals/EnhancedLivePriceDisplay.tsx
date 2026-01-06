@@ -20,6 +20,7 @@ import {
   Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
+import { normalizeSymbol } from '@/utils/symbolUtils';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface EnhancedLivePriceDisplayProps {
@@ -38,19 +39,30 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
   className = ''
 }) => {
   // Use standardized symbol mapping
-  const apiSymbol = getStandardSymbol(symbol) || symbol;
-  
-  // Debug logging for symbol resolution
-  useEffect(() => {
-    if (isDevToolsEnabled()) {
-      console.log(`🔍 [EnhancedLivePriceDisplay] Symbol resolution: ${symbol} -> ${apiSymbol}`);
+  // Extract symbol from formats like "Gold (XAUUSD)" or "XAUUSD" or "XAU/USD"
+  const extractSymbol = (input: string): string => {
+    // Try to extract from parentheses first: "Gold (XAUUSD)" -> "XAUUSD"
+    const parenMatch = input.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      return parenMatch[1].trim();
     }
-  }, [symbol, apiSymbol]);
+    // Otherwise use the input as-is
+    return input.trim();
+  };
+  
+  const extractedSymbol = extractSymbol(symbol);
+  const apiSymbol = getStandardSymbol(extractedSymbol) || normalizeSymbol(extractedSymbol);
   
   const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(apiSymbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
     enableSmartPausing: false
   });
+  
+  // Debug logging for symbol resolution
+  useEffect(() => {
+    console.log(`🔍 [EnhancedLivePriceDisplay] Symbol resolution: ${symbol} -> ${apiSymbol}`);
+    console.log(`📊 [EnhancedLivePriceDisplay] Price data:`, { price, isLoading, error, connectionStatus, lastUpdated });
+  }, [symbol, apiSymbol, price, isLoading, error, connectionStatus, lastUpdated]);
 
   // Defensive check: Prevent showing implausible prices for closed markets
   const displayPrice = useMemo(() => {

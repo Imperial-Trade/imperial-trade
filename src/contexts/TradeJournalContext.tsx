@@ -25,6 +25,10 @@ interface TradeJournalEntry {
   emotion?: string;
   coach_status?: 'pending' | 'ready';
   processing_status?: 'pending' | 'analyzing' | 'complete' | 'failed';
+  is_synced?: boolean; // Whether trade was synced from broker
+  broker_connection_id?: string; // ID of broker connection if synced
+  entry_time?: string; // ISO string for entry time (for auto journal trades)
+  exit_time?: string; // ISO string for exit time (for auto journal trades)
   created_at: string;
   updated_at: string;
 }

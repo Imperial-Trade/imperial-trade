@@ -85,7 +85,7 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
       }
 
       // Trigger connection test via Edge Function
-      const { error: testError } = await supabase.functions.invoke('test-broker-connection', {
+      const { data: testResult, error: testError } = await supabase.functions.invoke('test-broker-connection', {
         body: {
           broker_type: broker,
           encrypted_login: encryptedLogin,
@@ -96,6 +96,11 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
 
       if (testError) {
         throw new Error('Failed to connect to broker. Please check your credentials.');
+      }
+
+      // Verify connection actually succeeded
+      if (!testResult || !testResult.connected) {
+        throw new Error(testResult?.message || 'Failed to connect to broker. Please check your credentials.');
       }
 
       // Success animation
@@ -308,4 +313,3 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
     </div>
   );
 };
-

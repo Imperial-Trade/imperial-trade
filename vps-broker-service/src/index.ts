@@ -122,3 +122,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Imperial Trade Broker Service running on port ${PORT}`);
   console.log(`📝 API Key required: ${API_KEY ? 'Set' : 'NOT SET - Please configure VPS_API_KEY'}`);
 });
+
+

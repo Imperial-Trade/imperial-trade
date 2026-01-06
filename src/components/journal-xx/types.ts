@@ -24,6 +24,10 @@ export interface TradeEntry {
   planned_target_price?: number; // AI-extracted: Take profit price from trading screenshot
   planned_stop_loss?: number; // AI-extracted: Stop loss price from trading screenshot
   revenge_trade?: boolean; // Testing flag: Marks trade as revenge trade for Patience calculation
+  is_synced?: boolean; // Whether trade was synced from broker (true) or manually entered (false)
+  broker_connection_id?: string; // ID of broker connection if synced
+  entry_time?: string; // ISO string for entry time (for auto journal trades)
+  exit_time?: string; // ISO string for exit time (for auto journal trades)
 }
 
 export interface ExtractedTradeDetails {
@@ -55,6 +59,14 @@ export enum AnalysisStatus {
   IDLE = 'IDLE',
   ANALYZING = 'ANALYZING',
   COMPLETE = 'COMPLETE',
+  ERROR = 'ERROR'
+}
+
+
+  ERROR = 'ERROR'
+}
+
+
   ERROR = 'ERROR'
 }
 

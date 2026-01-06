@@ -311,3 +311,6 @@ Body:
 2. **Python errors**: Make sure `MetaTrader5` library is installed: `pip3 install MetaTrader5`
 3. **Port conflicts**: Change `PORT` in `.env` if 3000 is already in use
 
+
+
+

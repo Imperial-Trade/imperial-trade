@@ -4,11 +4,12 @@ import {
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
   NotebookIcon, CalendarIcon, UploadIcon, ActivityIcon, FolderIcon,
   TrendingUpIcon, TrendingDownIcon, MapIcon, PlayIcon, PauseIcon,
-  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, GamepadIcon, BarChart3Icon
+  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, GamepadIcon, BarChart3Icon,
+  ChevronLeftIcon, ChevronRightIcon
 } from './ui/Icons';
 import { TradeFormData, TradeEntry } from './types';
 import { TraderInsights } from './TraderInsights';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
 import { analyzeTradeWithGemini } from './services/geminiService';
 import { extractTradeDataFromScreenshot } from './services/tradeDataExtractor';
 import { calculateTraderDNA } from './utils/traderDNACalculator';
@@ -24,7 +25,7 @@ import { BrokerSelection, BrokerType } from './BrokerSelection';
 import { BrokerLoginForm } from './BrokerLoginForm';
 import { AutoJournalView } from './AutoJournalView';
 
-export interface JournalProProps {
+export interface JournalXXProps {
   isDarkMode: boolean;
   onExit: () => void;
   onToggleTheme: () => void;
@@ -752,7 +753,7 @@ const MacroCalendar: React.FC<{
     );
 };
 
-export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onToggleTheme, onSubmit, onDelete, trades }) => {
+export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onToggleTheme, onSubmit, onDelete, trades }) => {
   const { user } = useAuth();
   const { refreshEntries } = useTradeJournal(); // Get refreshEntries from context
   const savedTradeIdRef = useRef<string | null>(null); // Track saved trade ID
@@ -765,12 +766,54 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const [viewState, setViewState] = useState<'FORM' | 'ANALYZING' | 'REVIEW'>('FORM');
   const [activeMobileSlide, setActiveMobileSlide] = useState(0);
   
+  // Desktop slide state (Calendar vs Performance Curve)
+  const [activeDesktopSlide, setActiveDesktopSlide] = useState<0 | 1>(0); // 0 = Calendar, 1 = Performance Curve
+  
   // LOG ENTRY vs HISTORY Toggle
   const [logMode, setLogMode] = useState<'ENTRY' | 'HISTORY'>('ENTRY');
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Simple vs Advanced Log Entry Toggle
+  const [entryMode, setEntryMode] = useState<'SIMPLE' | 'ADVANCED'>('SIMPLE');
+  
   // JOURNAL MODE: Manual vs Auto (Broker Sync)
   const [journalMode, setJournalMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
+  
+  // Filter trades based on journal mode - COMPLETELY SEPARATE
+  const filteredTrades = useMemo(() => {
+    if (journalMode === 'MANUAL') {
+      // MANUAL mode: Only show trades that are EXPLICITLY NOT synced
+      // Must be false or undefined/null (legacy manual trades) AND no broker_connection_id
+      const manualTrades = trades.filter(trade => 
+        (trade.is_synced === false || 
+         trade.is_synced === undefined || 
+         trade.is_synced === null ||
+         !trade.is_synced) && // Handle any falsy value
+        (!trade.broker_connection_id || trade.broker_connection_id === null || trade.broker_connection_id === '') // No broker connection = manual
+      );
+      console.log(`🔍 [FILTER] MANUAL mode: ${trades.length} total trades → ${manualTrades.length} manual trades`);
+      if (manualTrades.length < trades.length) {
+        const syncedInManual = trades.filter(t => t.is_synced === true);
+        console.warn(`⚠️ [FILTER] Found ${syncedInManual.length} synced trades in MANUAL mode - filtering them out`);
+      }
+      return manualTrades;
+    } else {
+      // AUTO mode: Only show trades that are EXPLICITLY synced
+      // Must be true AND have broker_connection_id
+      const autoTrades = trades.filter(trade => 
+        trade.is_synced === true && 
+        trade.broker_connection_id !== undefined &&
+        trade.broker_connection_id !== null &&
+        trade.broker_connection_id !== ''
+      );
+      console.log(`🔍 [FILTER] AUTO mode: ${trades.length} total trades → ${autoTrades.length} auto trades`);
+      if (autoTrades.length < trades.length) {
+        const manualInAuto = trades.filter(t => !t.is_synced || t.is_synced === false);
+        console.warn(`⚠️ [FILTER] Found ${manualInAuto.length} manual trades in AUTO mode - filtering them out`);
+      }
+      return autoTrades;
+    }
+  }, [trades, journalMode]);
   
   // Right Sidebar View Toggle (Desktop only)
   const [rightSidebarView, setRightSidebarView] = useState<'TRADER_DNA' | 'LOG_ENTRY' | 'TRADE_LOG' | 'TRADER_INSIGHTS'>('TRADER_DNA');
@@ -783,6 +826,38 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   // Calendar state (lifted from MacroCalendar)
   const [calendarTimeFilter, setCalendarTimeFilter] = useState<'D'|'W'|'M'|'Y'>('M');
   const [calendarViewDate, setCalendarViewDate] = useState(new Date());
+  
+  // Performance Curve state (same as calendar)
+  const [perfCurveTimeFilter, setPerfCurveTimeFilter] = useState<'D'|'W'|'M'|'Y'>('M');
+  const [perfCurveViewDate, setPerfCurveViewDate] = useState(new Date());
+  
+  // Performance Curve navigation handler
+  const handlePerfCurveNavigation = (offset: number) => {
+    const newDate = new Date(perfCurveViewDate);
+    if (perfCurveTimeFilter === 'Y') newDate.setFullYear(newDate.getFullYear() + offset);
+    else if (perfCurveTimeFilter === 'M') newDate.setMonth(newDate.getMonth() + offset);
+    else if (perfCurveTimeFilter === 'W') newDate.setDate(newDate.getDate() + (offset * 7));
+    else newDate.setDate(newDate.getDate() + offset);
+    setPerfCurveViewDate(newDate);
+  };
+  
+  // Performance Curve header date text
+  const perfCurveHeaderDateText = useMemo(() => {
+    const date = perfCurveViewDate;
+    if (perfCurveTimeFilter === 'D') {
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    } else if (perfCurveTimeFilter === 'W') {
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      return `${weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    } else if (perfCurveTimeFilter === 'M') {
+      return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    } else {
+      return date.getFullYear().toString();
+    }
+  }, [perfCurveViewDate, perfCurveTimeFilter]);
 
   // ... [Swipe Logic] ...
   const touchStartY = useRef<number | null>(null);
@@ -814,7 +889,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
     if (allowSwipe) {
         if (dy > minSwipeDistance) {
-             if (activeMobileSlide < 3) setActiveMobileSlide(s => s + 1);
+             // Max slides: 3 in MANUAL mode (Calendar, Log Entry, Trade Log, Trader DNA), 2 in AUTO mode (Calendar, Trader DNA)
+             const maxSlides = journalMode === 'MANUAL' ? 5 : 1;
+             if (activeMobileSlide < maxSlides) setActiveMobileSlide(s => s + 1);
         } else if (dy < -minSwipeDistance) {
              if (activeMobileSlide > 0) setActiveMobileSlide(s => s - 1);
         }
@@ -871,7 +948,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       
       if (allowSlideChange) {
           if (Math.abs(dy) > 20) {
-              if (dy > 0 && activeMobileSlide < 3) { setActiveMobileSlide(s => s + 1); activateCooldown(); } 
+              // Max slides: 3 in MANUAL mode (Calendar, Log Entry, Trade Log, Trader DNA), 1 in AUTO mode (Calendar, Trader DNA)
+              const maxSlides = journalMode === 'MANUAL' ? 5 : 1;
+              if (dy > 0 && activeMobileSlide < maxSlides) { setActiveMobileSlide(s => s + 1); activateCooldown(); } 
               else if (dy < 0 && activeMobileSlide > 0) { setActiveMobileSlide(s => s - 1); activateCooldown(); }
           }
       }
@@ -912,13 +991,14 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const isMobileAnalysisMode = viewState === 'ANALYZING' || viewState === 'REVIEW';
   
   // Calculate Trader DNA using real data-driven calculations
+  // IMPORTANT: Use filteredTrades so DNA is calculated separately for manual vs auto
   const traderDNA = useMemo(() => {
     // Debug: Log trades data for troubleshooting
-    if (trades.length > 0) {
-      console.log('🔍 [TRADER DNA] Calculating Trader DNA from', trades.length, 'trades');
+    if (filteredTrades.length > 0) {
+      console.log(`🔍 [TRADER DNA] Calculating Trader DNA from ${filteredTrades.length} ${journalMode} trades`);
       
       // Log critical fields for Execution and Risk Management
-      const tradesWithExtractedData = trades.filter(t => 
+      const tradesWithExtractedData = filteredTrades.filter(t => 
         t.entry_price || t.exit_price || t.position_size || t.planned_target_price || t.planned_stop_loss
       );
       
@@ -939,10 +1019,12 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       }
     }
     
-    const result = calculateTraderDNA(trades);
+    const result = calculateTraderDNA(filteredTrades);
     
     // Debug: Log calculated Trader DNA
     console.log('✅ [TRADER DNA] Calculated scores:', {
+      mode: journalMode,
+      tradesCount: filteredTrades.length,
       imperialScore: result.imperialScore,
       execution: result.metrics.execution,
       riskManagement: result.metrics.riskManagement,
@@ -950,7 +1032,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
     });
     
     return result;
-  }, [trades]);
+  }, [filteredTrades, journalMode]);
 
   const radarData = useMemo(() => [
     { subject: 'Discipline', A: traderDNA.metrics.discipline, max: 100, fullMark: 100 },
@@ -971,8 +1053,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   
   const sortedTrades = useMemo(() => {
       // Deduplicate trades by ID before sorting
+      // Use filteredTrades to separate manual vs auto trades
       const seenIds = new Set<string>();
-      const uniqueTrades = trades.filter(t => {
+      const uniqueTrades = filteredTrades.filter(t => {
           if (seenIds.has(t.id)) {
               console.warn(`⚠️ Duplicate trade in sortedTrades: ${t.id} - ${t.asset}`);
               return false;
@@ -982,13 +1065,15 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       });
       
       return uniqueTrades.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [trades]);
+  }, [filteredTrades]);
 
   // Animate Imperial Score with conditional direction based on score
   // Trigger animation when: score changes OR when switching to TRADER_DNA view
   useEffect(() => {
     // Only animate if we're viewing TRADER_DNA (desktop) or on the Trader DNA slide (mobile)
-    const isViewingTraderDNA = rightSidebarView === 'TRADER_DNA' || activeMobileSlide === 2;
+    // Trader DNA is on slide 4 in MANUAL mode, slide 1 in AUTO mode
+    const traderDNASlide = journalMode === 'MANUAL' ? 4 : 1;
+    const isViewingTraderDNA = rightSidebarView === 'TRADER_DNA' || activeMobileSlide === traderDNASlide;
     if (!isViewingTraderDNA) {
       // If not viewing Trader DNA, just set the score without animation
       setAnimatedImperialScore(traderDNA.imperialScore);
@@ -1362,18 +1447,25 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
               savedTradeIdRef.current = newEntry.id;
               console.log('✅ JournalPro: Trade saved to Supabase:', newEntry.id);
               
-              // Update trade with revenge_trade if set (for new trades only)
-              // Use supabase directly since revenge_trade is not in TJEntry type
+              // CRITICAL: Mark as MANUAL trade (not synced) - ensures complete separation from auto journaling
+              // Also update revenge_trade if set
+              const manualTradeUpdate: any = {
+                  is_synced: false,
+                  sync_source: 'manual'
+              };
+              
               if (isRevengeTrade !== undefined) {
+                  manualTradeUpdate.revenge_trade = isRevengeTrade;
+              }
+              
                   try {
                       await supabase
                           .from('trade_journal_entries')
-                          .update({ revenge_trade: isRevengeTrade } as any)
+                      .update(manualTradeUpdate)
                           .eq('id', newEntry.id);
-                      console.log('✅ Updated trade with revenge_trade:', isRevengeTrade);
+                  console.log('✅ Marked trade as MANUAL (is_synced=false, sync_source=manual)');
                   } catch (error) {
-                      console.error('❌ Failed to save revenge_trade:', error);
-                  }
+                  console.error('❌ Failed to mark trade as manual:', error);
               }
           }
           
@@ -1706,14 +1798,17 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
   // Calculate Net PnL based on calendar timeFilter and viewDate
   const calculateFilteredPnL = useMemo(() => {
-    let filteredTrades: TradeEntry[] = [];
+    // CRITICAL: Use filteredTrades (already filtered by journalMode) instead of raw trades
+    // This ensures PnL is calculated separately for manual vs auto journaling
+    let dateFilteredTrades: TradeEntry[] = [];
     const currentYear = calendarViewDate.getFullYear();
     const currentMonth = calendarViewDate.getMonth();
     const currentDate = calendarViewDate.getDate();
     
+    // Filter by date/time using filteredTrades (which is already filtered by journalMode)
     if (calendarTimeFilter === 'D') {
       // Daily: Get trades for the specific day
-      filteredTrades = trades.filter(t => {
+      dateFilteredTrades = filteredTrades.filter(t => {
         const { year, month, day } = parseDateString(t.date);
         return year === currentYear &&
                month === currentMonth &&
@@ -1728,31 +1823,34 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       endOfWeek.setHours(23, 59, 59, 999);
       
-      filteredTrades = trades.filter(t => {
+      dateFilteredTrades = filteredTrades.filter(t => {
         const tradeDate = parseLocalDate(t.date);
         return tradeDate >= startOfWeek && tradeDate <= endOfWeek;
       });
     } else if (calendarTimeFilter === 'M') {
       // Monthly: Get trades for the month
-      filteredTrades = trades.filter(t => {
+      dateFilteredTrades = filteredTrades.filter(t => {
         const { year, month } = parseDateString(t.date);
         return year === currentYear && 
                month === currentMonth;
       });
     } else if (calendarTimeFilter === 'Y') {
       // Yearly: Get trades for the year
-      filteredTrades = trades.filter(t => {
+      dateFilteredTrades = filteredTrades.filter(t => {
         const { year } = parseDateString(t.date);
         return year === currentYear;
       });
+    } else {
+      // Default: Use all filteredTrades (already filtered by journalMode)
+      dateFilteredTrades = filteredTrades;
     }
     
-    const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+    const totalPnL = dateFilteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
     return {
       totalPnL,
       formattedPnL: (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2)
     };
-  }, [trades, calendarTimeFilter, calendarViewDate]);
+  }, [filteredTrades, calendarTimeFilter, calendarViewDate]);
 
   const handleTabChange = (id: string) => {
       setActiveTab(id);
@@ -1807,33 +1905,172 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
   const LogEntryContent = (
       <div className={`flex flex-col relative z-20 ${isMobileAnalysisMode ? 'h-full overflow-hidden' : 'overflow-visible'} transition-all duration-500 ${tiltMode ? 'pointer-events-none opacity-50' : ''} h-full`}>
              
-             {/* --- HEADER WITH TOGGLE --- */}
-             <div className="px-5 pt-5 pb-2 shrink-0">
-                <div className="flex justify-between items-center mb-1">
-                    <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-yellow-500 dark:bg-bronze-500 rotate-45 rounded-[1px]"></span>
-                        {logMode === 'ENTRY' ? (editingId ? 'Edit Entry' : 'Log Entry') : 'Trade Log'}
+            {/* --- HEADER --- */}
+             <div className="px-5 pt-2 pb-4 shrink-0">
+               <div className="flex justify-between items-center">
+                    <h3 className="text-[9px] font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
+                        <span className="w-0.5 h-0.5 bg-yellow-500 dark:bg-bronze-500 rotate-45 rounded-[1px]"></span>
+                        {editingId ? 'Edit Entry' : 'Log Entry'}
                     </h3>
-                    <div className="flex items-center gap-1 bg-stone-100 dark:bg-white/5 p-1 rounded-lg">
+                    {/* Simple/Advanced Toggle - Only show in ENTRY mode - Slim pill toggle */}
+                    {logMode === 'ENTRY' && (
+                        <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-5 overflow-hidden">
                         <button 
-                            onClick={() => setLogMode('ENTRY')}
-                            className={`p-1.5 rounded-md transition-all ${logMode === 'ENTRY' ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500' : 'text-stone-400 hover:text-stone-600'}`}
-                        >
-                            <NotebookIcon className="w-3.5 h-3.5" />
+                                onClick={() => setEntryMode('SIMPLE')}
+                                className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
+                                    entryMode === 'SIMPLE'
+                                        ? 'bg-stone-700 text-bronze-500'
+                                        : 'text-slate-600 hover:text-slate-400'
+                                }`}
+                            >
+                                Simple
                         </button>
                         <button 
-                            onClick={() => setLogMode('HISTORY')}
-                            className={`p-1.5 rounded-md transition-all ${logMode === 'HISTORY' ? 'bg-white dark:bg-stone-700 shadow text-yellow-500 dark:text-bronze-500' : 'text-stone-400 hover:text-stone-600'}`}
-                        >
-                            <BookIcon className="w-3.5 h-3.5" />
+                                onClick={() => setEntryMode('ADVANCED')}
+                                className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
+                                    entryMode === 'ADVANCED'
+                                        ? 'bg-stone-700 text-bronze-500'
+                                        : 'text-slate-600 hover:text-slate-400'
+                                }`}
+                            >
+                                Advanced
                         </button>
                     </div>
+                    )}
                 </div>
              </div>
 
              {/* --- FORM VIEW --- */}
              {logMode === 'ENTRY' && viewState === 'FORM' && (
                  <div className="flex flex-col animate-in fade-in duration-300 h-full min-h-0">
+                     {/* SIMPLE MODE - Basic fields only */}
+                     {entryMode === 'SIMPLE' ? (
+                         <div className="px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                             {/* Date */}
+                             <div className="relative group shrink-0">
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
+                                 <div className="absolute left-3 top-[28px] text-stone-500 dark:text-slate-500 pointer-events-none">
+                                     <CalendarIcon className="w-3.5 h-3.5" />
+                                 </div>
+                                 <input
+                                     type="date"
+                                     value={date}
+                                     onChange={(e) => setDate(e.target.value)}
+                                     className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
+                                 />
+                             </div>
+
+                             {/* Asset & PnL */}
+                             <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                 <div>
+                                     <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                     <input 
+                                         type="text" 
+                                         value={asset} 
+                                         onChange={(e) => setAsset(e.target.value)} 
+                                         placeholder="BTCUSD" 
+                                         className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
+                                     />
+                                 </div>
+                                 <div>
+                                     <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
+                                     <div className="relative">
+                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
+                                         <input 
+                                             type="number" 
+                                             value={pnl} 
+                                             onChange={(e) => setPnl(e.target.value)} 
+                                             placeholder="0.00" 
+                                             className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} 
+                                         />
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {/* Notes */}
+                             <div className="flex-col flex-1 min-h-[100px] flex shrink-0">
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
+                                 <textarea 
+                                     value={notes} 
+                                     onChange={(e) => setNotes(e.target.value)} 
+                                     placeholder="Why did you take this trade? How did you feel?" 
+                                     className="w-full flex-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none resize-none placeholder-stone-400 dark:placeholder-slate-600 leading-relaxed" 
+                                 />
+                             </div>
+
+                             {/* Image Upload */}
+                             <div className="shrink-0">
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
+                                 <div 
+                                     onClick={handleClick}
+                                     onDragEnter={handleDragEnter}
+                                     onDragOver={handleDragOver}
+                                     onDragLeave={handleDragLeave}
+                                     onDrop={handleDrop}
+                                     className={`relative w-full h-12 bg-white dark:bg-slate-900 border-2 ${isDragging ? 'border-yellow-500 dark:border-bronze-500 bg-yellow-50/50 dark:bg-bronze-950/30 border-dashed scale-[1.02] shadow-lg shadow-yellow-500/20 dark:shadow-bronze-500/20' : 'border-dashed border-stone-300 dark:border-slate-600 hover:border-yellow-400 dark:hover:border-bronze-400 hover:bg-stone-50 dark:hover:bg-slate-800/50'} rounded-xl flex items-center ${previewUrls.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden ${previewUrls.length > 0 ? 'border-solid border-yellow-500/50 dark:border-bronze-500/50 bg-yellow-50/30 dark:bg-bronze-950/10' : ''}`}
+                                 >
+                                     {isDragging && (
+                                         <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-yellow-500/20 to-yellow-400/10 animate-pulse pointer-events-none" />
+                                     )}
+                                     
+                                     <input 
+                                         type="file" 
+                                         ref={fileInputRef} 
+                                         onChange={handleImageChange} 
+                                         className="hidden" 
+                                         accept="image/*" 
+                                         multiple 
+                                     />
+                                     
+                                     {previewUrls.length === 0 ? (
+                                         <>
+                                             <UploadIcon 
+                                                 className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
+                                             />
+                                             <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                                 {isDragging ? '✨ Drop to upload (max 3)' : 'Click to upload chart'}
+                                             </span>
+                                         </>
+                                     ) : (
+                                         <div className="flex items-center gap-2 w-full relative z-10">
+                                             <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+                                                 {previewUrls.map((url, index) => (
+                                                     <div key={index} className="relative shrink-0 group/image">
+                                                         <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-yellow-400 dark:group-hover/image:border-bronze-400 transition-colors shadow-sm">
+                                                             <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                                                         </div>
+                                                         <button
+                                                             type="button"
+                                                             onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 e.preventDefault();
+                                                                 removeImage(index);
+                                                             }}
+                                                             className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                                                             title="Remove image"
+                                                         >
+                                                             ×
+                                                         </button>
+                                                     </div>
+                                                 ))}
+                                             </div>
+                                             {previewUrls.length < 3 && (
+                                                 <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                     {previewUrls.length}/3
+                                                 </span>
+                                             )}
+                                             {previewUrls.length >= 3 && (
+                                                 <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                     MAX 3
+                                                 </span>
+                                             )}
+                                         </div>
+                                     )}
+                                 </div>
+                             </div>
+                         </div>
+                     ) : (
+                         /* ADVANCED MODE - All fields */
                      <div className="px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                         
                         {/* Row 1: Date & Direction Mixed */}
@@ -1884,13 +2121,13 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                          <div className="grid grid-cols-2 gap-2.5 shrink-0">
                              <div>
                                  <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
-                                 <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                     <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                     {STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
                                  </select>
                              </div>
                              <div>
                                  <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
-                                 <select value={session} onChange={(e) => setSession(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                     <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                     {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                  </select>
                              </div>
@@ -1899,7 +2136,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                          {/* Row 4: Emotion */}
                          <div className="shrink-0">
                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
-                             <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm">
+                                 <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                 {EMOTIONS.map(e => <option key={e} value={e}>{e}</option>)}
                              </select>
                          </div>
@@ -1909,23 +2146,23 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                  Did I follow my plan?
                              </label>
-                             <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                 <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                  <button 
                                      onClick={() => setFollowedPlan(true)}
-                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          followedPlan === true 
-                                             ? 'bg-emerald-500 text-white shadow-sm' 
-                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                 ? 'bg-emerald-500 text-white' 
+                                                 : 'text-slate-600 hover:text-slate-400'
                                      }`}
                                  >
                                      Yes
                                  </button>
                                  <button 
                                      onClick={() => setFollowedPlan(false)}
-                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          followedPlan === false 
-                                             ? 'bg-rose-500 text-white shadow-sm' 
-                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                 ? 'bg-rose-500 text-white' 
+                                                 : 'text-slate-600 hover:text-slate-400'
                                      }`}
                                  >
                                      No
@@ -1938,23 +2175,23 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                  Revenge Trade? (Test Patience)
                              </label>
-                             <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                 <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                  <button 
                                      onClick={() => setIsRevengeTrade(true)}
-                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          isRevengeTrade === true 
-                                             ? 'bg-orange-500 text-white shadow-sm' 
-                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                 ? 'bg-orange-500 text-white' 
+                                                 : 'text-slate-600 hover:text-slate-400'
                                      }`}
                                  >
                                      Yes
                                  </button>
                                  <button 
                                      onClick={() => setIsRevengeTrade(false)}
-                                     className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          isRevengeTrade === false 
-                                             ? 'bg-stone-500 text-white shadow-sm' 
-                                             : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                 ? 'bg-stone-600 text-white' 
+                                                 : 'text-slate-600 hover:text-slate-400'
                                      }`}
                                  >
                                      No
@@ -2045,12 +2282,19 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                          </div>
 
                      </div>
+                     )}
                  </div>
              )}
 
             {/* --- HISTORY VIEW --- */}
             {logMode === 'HISTORY' && (
                 <div className="flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 h-full overflow-hidden">
+                    {/* Header with Trade Log title and count badge */}
+                    <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                        <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>TRADE LOG</h3>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-bronze-500/10 text-dirty-white border-bronze-500/20' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{sortedTrades.length}</span>
+                    </div>
+                    
                     {sortedTrades.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
                             <NotebookIcon className="w-12 h-12 mb-3" />
@@ -2058,7 +2302,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                             <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
                         </div>
                     ) : (
-                       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 space-y-3" style={{ touchAction: 'pan-y' }}>
+                       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
                              {sortedTrades.map(trade => (
                                  <div 
                                     key={trade.id}
@@ -2213,38 +2457,61 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
   // Main component return
   return (
-    <div className="w-full h-screen">
-      <div className={`w-full h-full ${isDarkMode ? 'bg-[#050505] text-slate-200' : 'bg-[#F0F0F0] text-stone-800'} font-sans flex flex-col relative overflow-hidden`}>
+    <div 
+      className={`w-full ${isDarkMode ? 'bg-[#050505]' : 'bg-[#F0F0F0]'}`}
+      style={{
+        // Full screen including safe areas - background covers everything
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+    >
+      <div 
+        className={`w-full h-full ${isDarkMode ? 'text-slate-200' : 'text-stone-800'} font-sans flex flex-col relative overflow-hidden`}
+        style={{
+          // Content area respects safe areas
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+        }}
+      >
         {/* Header */}
              <header 
                className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
-               style={{
-                 // Mobile-only: Position below status bar
-                 paddingTop: window.innerWidth < 1024 ? `calc(1rem + env(safe-area-inset-top, 0px))` : '1rem',
-               }}
              >
-                <div className="flex items-center gap-3 group cursor-pointer" onClick={onExit}>
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all group-hover:scale-105 border ${isDarkMode ? 'bg-[#1C1C1E] text-white border-white/10' : 'bg-white text-stone-900 border-black/10'}`}>
+                <div className="flex items-center gap-3">
+                    {/* Animated Logo - Click to toggle between Manual and Auto */}
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const newMode = journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL';
+                            setJournalMode(newMode);
+                        }}
+                        className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-3 border cursor-pointer ${
+                            journalMode === 'AUTO' 
+                                ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30' 
+                                : isDarkMode ? 'bg-[#1C1C1E] border-white/10 hover:border-white/20' : 'bg-white border-black/10 shadow-sm hover:shadow-md'
+                        }`}
+                        title={journalMode === 'MANUAL' ? 'Switch to Auto Journaling (Pro)' : 'Switch to Manual Journaling'}
+                    >
                         <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />
                     </div>
-                    <div className="flex flex-col justify-center">
-                        <h1 className="font-bold text-sm md:text-lg tracking-tight flex items-center gap-1 leading-none">
-                            Journal
-                            <span className="text-bronze-500">XX</span>
-                            <span className={`text-base md:text-xl font-black italic ml-0.5 px-1 rounded bg-clip-text text-transparent ${proTextGradient}`}>
-                                PRO
-                            </span>
+                    {/* Text Logo */}
+                    <div className="flex flex-col">
+                        <h1 className="font-light text-xl md:text-2xl tracking-[0.2em] uppercase flex items-center leading-none">
+                            <span className={isDarkMode ? 'text-white' : 'text-stone-900'}>JOURNAL</span>
+                            <span className="ml-2 font-bold bg-gradient-to-br from-emerald-400 via-yellow-400 to-emerald-500 bg-clip-text text-transparent">XX</span>
+                            {journalMode === 'AUTO' && (
+                                <span className="ml-1 font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 bg-clip-text text-transparent">PRO</span>
+                            )}
                         </h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[8px] font-bold tracking-wider whitespace-nowrap ${isDarkMode ? 'text-stone-500' : 'text-stone-400'}`}>LVL {currentLevel}</span>
-                            <div className={`w-12 md:w-16 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-stone-800' : 'bg-stone-200'}`}>
-                                <div 
-                                    className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" 
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
-                            <span className={`text-[8px] font-bold tracking-wider whitespace-nowrap ${isDarkMode ? 'text-stone-500' : 'text-stone-400'}`}>{xp} XP</span>
-                       </div>
+                        {/* Mode indicator */}
+                        <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                            {journalMode === 'AUTO' ? 'AUTO SYNC' : 'MANUAL'}
+                        </span>
                     </div>
                 </div>
 
@@ -2259,20 +2526,28 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                      >
                         {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
                      </button>
-                     {/* Net PnL - Matching Journal XX Design */}
+                     {/* Net PnL - Matching Journal XX Design - Total of all filtered trades (manual/auto) */}
+                     {(() => {
+                         const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+                         const formattedPnL = (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2);
+                         const pnlLength = formattedPnL.length;
+                         const pnlSizeClass = pnlLength > 12 ? 'text-xs md:text-sm' : 'text-sm md:text-base';
+                         return (
                      <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
                          <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
                          <div className="flex flex-col justify-center">
                              <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
-                             <div className={`text-sm font-bold font-sans tracking-wide leading-none mt-0.5 ${
-                                 calculateFilteredPnL.totalPnL >= 0 
+                                     <div className={`${pnlSizeClass} font-bold font-sans tracking-wide leading-none mt-0.5 ${
+                                         totalPnL >= 0 
                                      ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500')
                                      : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
                              }`}>
-                                 {calculateFilteredPnL.formattedPnL}
+                                         {formattedPnL}
                              </div>
                          </div>
                      </div>
+                         );
+                     })()}
                 </div>
              </header>
 
@@ -2294,12 +2569,12 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                             className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
                             style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
                          >
-                             {/* Slide 1: Calendar */}
+                             {/* Slide 0: Calendar */}
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false}>
                                     <MacroCalendar 
                                         isDarkMode={isDarkMode} 
-                                        trades={trades}
+                                        trades={filteredTrades}
                                         timeFilter={calendarTimeFilter}
                                         setTimeFilter={setCalendarTimeFilter}
                                         viewDate={calendarViewDate}
@@ -2308,14 +2583,370 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                 </SpotlightCard>
                              </div>
 
-                             {/* Slide 2: Log Entry */}
+                             {/* Slide 1: Performance Curve */}
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto">
+                                        {/* Header - Same as Calendar */}
+                                        <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
+                                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
+                                                {(() => {
+                                                    if (perfCurveTimeFilter === 'Y') return perfCurveViewDate.getFullYear().toString();
+                                                    if (perfCurveTimeFilter === 'W') {
+                                                        const startOfWeek = new Date(perfCurveViewDate);
+                                                        startOfWeek.setDate(perfCurveViewDate.getDate() - perfCurveViewDate.getDay());
+                                                        const endOfWeek = new Date(startOfWeek);
+                                                        endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                                        return `${startOfWeek.toLocaleDateString(undefined, {month:'short', day:'numeric'})} - ${endOfWeek.toLocaleDateString(undefined, {month:'short', day:'numeric'})} ${endOfWeek.getFullYear()}`;
+                                                    }
+                                                    if (perfCurveTimeFilter === 'D') return perfCurveViewDate.toLocaleDateString(undefined, { weekday:'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+                                                    return perfCurveViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase();
+                                                })()}
+                                            </h3>
+                                            <div className="flex gap-1">
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => {
+                                                        const newDate = new Date(perfCurveViewDate);
+                                                        if (perfCurveTimeFilter === 'Y') newDate.setFullYear(newDate.getFullYear() - 1);
+                                                        else if (perfCurveTimeFilter === 'M') newDate.setMonth(newDate.getMonth() - 1);
+                                                        else if (perfCurveTimeFilter === 'W') newDate.setDate(newDate.getDate() - 7);
+                                                        else newDate.setDate(newDate.getDate() - 1);
+                                                        setPerfCurveViewDate(newDate);
+                                                    }} className="p-1 hover:bg-white/10 rounded"><ArrowRightIcon className="w-3 h-3 rotate-180" /></button>
+                                                    <button onClick={() => {
+                                                        const newDate = new Date(perfCurveViewDate);
+                                                        if (perfCurveTimeFilter === 'Y') newDate.setFullYear(newDate.getFullYear() + 1);
+                                                        else if (perfCurveTimeFilter === 'M') newDate.setMonth(newDate.getMonth() + 1);
+                                                        else if (perfCurveTimeFilter === 'W') newDate.setDate(newDate.getDate() + 7);
+                                                        else newDate.setDate(newDate.getDate() + 1);
+                                                        setPerfCurveViewDate(newDate);
+                                                    }} className="p-1 hover:bg-white/10 rounded"><ArrowRightIcon className="w-3 h-3" /></button>
+                                                </div>
+                                                <div className="w-[1px] bg-white/10 mx-1"></div>
+                                                <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
+                                                    {['D','W','M','Y'].map(t => (
+                                                        <button key={t} onClick={() => setPerfCurveTimeFilter(t as any)} className={`px-2 py-0.5 text-[8px] font-bold rounded ${perfCurveTimeFilter === t ? 'bg-white dark:bg-stone-700 shadow-sm' : 'opacity-50'}`}>{t}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Performance Chart */}
+                                        {(() => {
+                                            // Filter trades based on perfCurveTimeFilter and perfCurveViewDate
+                                            const perfFilteredTrades = filteredTrades.filter(trade => {
+                                                const tradeDate = new Date(trade.date);
+                                                const viewYear = perfCurveViewDate.getFullYear();
+                                                const viewMonth = perfCurveViewDate.getMonth();
+                                                const viewDay = perfCurveViewDate.getDate();
+                                                
+                                                if (perfCurveTimeFilter === 'Y') {
+                                                    return tradeDate.getFullYear() === viewYear;
+                                                } else if (perfCurveTimeFilter === 'M') {
+                                                    return tradeDate.getFullYear() === viewYear && tradeDate.getMonth() === viewMonth;
+                                                } else if (perfCurveTimeFilter === 'W') {
+                                                    const startOfWeek = new Date(perfCurveViewDate);
+                                                    startOfWeek.setDate(perfCurveViewDate.getDate() - perfCurveViewDate.getDay());
+                                                    startOfWeek.setHours(0, 0, 0, 0);
+                                                    const endOfWeek = new Date(startOfWeek);
+                                                    endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                                    endOfWeek.setHours(23, 59, 59, 999);
+                                                    return tradeDate >= startOfWeek && tradeDate <= endOfWeek;
+                                                } else { // 'D'
+                                                    return tradeDate.getFullYear() === viewYear && 
+                                                           tradeDate.getMonth() === viewMonth && 
+                                                           tradeDate.getDate() === viewDay;
+                                                }
+                                            });
+                                            
+                                            const totalPnL = perfFilteredTrades.reduce((sum, t) => sum + t.pnl, 0);
+                                            
+                                            return (
+                                                <div className="flex-1 min-h-0">
+                                                    {perfFilteredTrades.length === 0 ? (
+                                                        <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                                            <TrendingUpIcon className="w-12 h-12 mb-3" />
+                                                            <h4 className="font-bold text-sm uppercase tracking-widest">No Performance Data</h4>
+                                                            <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">No trades for this period.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <AreaChart
+                                                                data={(() => {
+                                                                    const sortedTrades = [...perfFilteredTrades].sort((a, b) => 
+                                                                        new Date(a.date).getTime() - new Date(b.date).getTime()
+                                                                    );
+                                                                    let cumulative = 0;
+                                                                    return sortedTrades.map((trade, index) => {
+                                                                        cumulative += trade.pnl;
+                                                                        return {
+                                                                            index: index + 1,
+                                                                            pnl: cumulative,
+                                                                            tradePnl: trade.pnl,
+                                                                            asset: trade.asset,
+                                                                            date: trade.date
+                                                                        };
+                                                                    });
+                                                                })()}
+                                                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                                            >
+                                                                <defs>
+                                                                    <linearGradient id="performanceGradientMobile" x1="0" y1="0" x2="0" y2="1">
+                                                                        <stop offset="5%" stopColor={totalPnL >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0.4}/>
+                                                                        <stop offset="95%" stopColor={totalPnL >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0}/>
+                                                                    </linearGradient>
+                                                                </defs>
+                                                                <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
+                                                                <XAxis 
+                                                                    dataKey="index" 
+                                                                    tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                    axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                                                                    tickLine={false}
+                                                                />
+                                                                <YAxis 
+                                                                    tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                    axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                                                                    tickLine={false}
+                                                                    tickFormatter={(value) => `$${value}`}
+                                                                />
+                                                                <ReferenceLine y={0} stroke={isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"} strokeDasharray="3 3" />
+                                                                <Tooltip
+                                                                    contentStyle={{
+                                                                        backgroundColor: isDarkMode ? '#18181b' : '#ffffff',
+                                                                        borderRadius: '12px',
+                                                                        border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                                                        padding: '8px 12px'
+                                                                    }}
+                                                                    labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: '11px', fontWeight: 'bold' }}
+                                                                    formatter={(value: number, name: string, props: any) => {
+                                                                        if (name === 'pnl') {
+                                                                            return [`$${value.toFixed(2)}`, 'Cumulative P&L'];
+                                                                        }
+                                                                        return [value, name];
+                                                                    }}
+                                                                    labelFormatter={(label, payload) => {
+                                                                        if (payload && payload[0]) {
+                                                                            const data = payload[0].payload;
+                                                                            return `Trade #${label} • ${data.asset}`;
+                                                                        }
+                                                                        return `Trade #${label}`;
+                                                                    }}
+                                                                />
+                                                                <Area
+                                                                    type="monotone"
+                                                                    dataKey="pnl"
+                                                                    stroke={totalPnL >= 0 ? "#10b981" : "#ef4444"}
+                                                                    strokeWidth={2}
+                                                                    fill="url(#performanceGradientMobile)"
+                                                                    dot={{ r: 3, fill: isDarkMode ? '#18181b' : '#ffffff', strokeWidth: 2 }}
+                                                                    activeDot={{ r: 5, strokeWidth: 2 }}
+                                                                />
+                                                            </AreaChart>
+                                                        </ResponsiveContainer>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                        
+                                        {/* Stats Row */}
+                                        {(() => {
+                                            // Filter trades based on perfCurveTimeFilter and perfCurveViewDate for stats
+                                            const perfFilteredTrades = filteredTrades.filter(trade => {
+                                                const tradeDate = new Date(trade.date);
+                                                const viewYear = perfCurveViewDate.getFullYear();
+                                                const viewMonth = perfCurveViewDate.getMonth();
+                                                const viewDay = perfCurveViewDate.getDate();
+                                                
+                                                if (perfCurveTimeFilter === 'Y') {
+                                                    return tradeDate.getFullYear() === viewYear;
+                                                } else if (perfCurveTimeFilter === 'M') {
+                                                    return tradeDate.getFullYear() === viewYear && tradeDate.getMonth() === viewMonth;
+                                                } else if (perfCurveTimeFilter === 'W') {
+                                                    const startOfWeek = new Date(perfCurveViewDate);
+                                                    startOfWeek.setDate(perfCurveViewDate.getDate() - perfCurveViewDate.getDay());
+                                                    startOfWeek.setHours(0, 0, 0, 0);
+                                                    const endOfWeek = new Date(startOfWeek);
+                                                    endOfWeek.setDate(startOfWeek.getDate() + 6);
+                                                    endOfWeek.setHours(23, 59, 59, 999);
+                                                    return tradeDate >= startOfWeek && tradeDate <= endOfWeek;
+                                                } else { // 'D'
+                                                    return tradeDate.getFullYear() === viewYear && 
+                                                           tradeDate.getMonth() === viewMonth && 
+                                                           tradeDate.getDate() === viewDay;
+                                                }
+                                            });
+                                            
+                                            if (perfFilteredTrades.length === 0) return null;
+                                            
+                                            return (
+                                                <div className={`grid grid-cols-4 gap-2 pt-4 mt-auto shrink-0 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                    <div className="text-center">
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
+                                                        <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{perfFilteredTrades.length}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
+                                                        <p className={`text-sm font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                            {((perfFilteredTrades.filter(t => t.pnl > 0).length / perfFilteredTrades.length) * 100).toFixed(0)}%
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
+                                                        <p className="text-sm font-bold text-emerald-500">
+                                                            +${Math.max(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
+                                                        <p className="text-sm font-bold text-rose-500">
+                                                            ${Math.min(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </SpotlightCard>
+                             </div>
+
+                             {/* Slide 2: Log Entry - Only show in MANUAL mode */}
+                             {journalMode === 'MANUAL' ? (
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                     {LogEntryContent}
                                 </SpotlightCard>
                              </div>
+                             ) : (
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                                            <p className="text-lg font-semibold mb-2 text-foreground">Auto Journaling Active</p>
+                                            <p className="text-sm text-foreground/70">Trades are synced automatically from your broker</p>
+                                        </div>
+                                    </SpotlightCard>
+                                 </div>
+                             )}
 
-                             {/* Slide 3: Trader DNA with Imperial Score */}
+                             {/* Slide 3: Trade Log - Only show in MANUAL mode */}
+                             {journalMode === 'MANUAL' ? (
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                        <div className="flex flex-col h-full overflow-hidden">
+                                            {/* Header with Trade Log title and count badge */}
+                                            <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>TRADE LOG</h3>
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-bronze-500/10 text-dirty-white border-bronze-500/20' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{sortedTrades.length}</span>
+                                            </div>
+                                            
+                                            {sortedTrades.length === 0 ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
+                                                    <NotebookIcon className="w-12 h-12 mb-3" />
+                                                    <h4 className="font-bold text-sm uppercase tracking-widest">No Trade Logs</h4>
+                                                    <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
+                                                </div>
+                                            ) : (
+                                               <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
+                                                    {sortedTrades.map(trade => (
+                                                        <div 
+                                                           key={trade.id}
+                                                           onClick={() => handleHistoryClick(trade.id)}
+                                                           className={`group relative bg-white dark:bg-slate-950 hover:bg-stone-50 dark:hover:bg-slate-900 rounded-xl p-4 transition-all border border-stone-200 dark:border-slate-800 hover:border-yellow-500/50 dark:hover:border-bronze-500/50 cursor-pointer shadow-sm dark:shadow-none overflow-hidden select-none ${editingId === trade.id ? 'ring-2 ring-yellow-500 dark:ring-bronze-500' : ''}`}
+                                                        >
+                                                            {/* Edit/Delete Overlay */}
+                                                            {activeHistoryId === trade.id && !deleteConfirmationId && (
+                                                                <div className="absolute inset-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 animate-in fade-in duration-200">
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(trade); }}
+                                                                        className="px-4 py-2 bg-yellow-500 dark:bg-bronze-500 text-black text-xs font-bold rounded-lg shadow-lg hover:bg-yellow-400 dark:hover:bg-bronze-400 transition-colors uppercase tracking-wider"
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(trade.id); }}
+                                                                        className="px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 text-xs font-bold rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors uppercase tracking-wider"
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            {/* Trade Card Content */}
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <span className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-stone-600'}`}>{trade.asset}</span>
+                                                                            <span className={`text-sm font-mono font-bold ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                                {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-[10px] text-stone-400 dark:text-slate-600">
+                                                                            {new Date(trade.date).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                {trade.notes && (
+                                                                    <p className="text-[11px] text-stone-500 dark:text-slate-500 line-clamp-2 leading-relaxed">{trade.notes}</p>
+                                                                )}
+                                                                
+                                                                {/* AI Mentor Insight - Mobile Trade Log */}
+                                                                {trade.aiFeedback && (
+                                                                    <div className="mt-2" onClick={(e) => { e.stopPropagation(); toggleInsight(trade.id); }}>
+                                                                        <div className={`relative rounded-xl p-3 border shadow-inner group/insight overflow-hidden cursor-pointer transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-stone-100 border-stone-200 hover:border-stone-300'}`}>
+                                                                            <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent to-transparent opacity-50 ${isDarkMode ? 'via-bronze-500/50' : 'via-yellow-500/50'}`}></div>
+                                                                            
+                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
+                                                                                    <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
+                                                                                </div>
+                                                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
+                                                                            </div>
+                                                                            <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
+                                                                                {trade.aiFeedback.replace(/[#*]/g, '')}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {/* Delete Confirmation */}
+                                                            {deleteConfirmationId === trade.id && (
+                                                                <div className="absolute inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center gap-3 rounded-xl">
+                                                                    <p className="text-xs font-bold text-white mb-2 absolute top-4">Delete this trade?</p>
+                                                                    <div className="flex gap-3">
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); confirmDelete(trade.id); }}
+                                                                            className="px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-rose-600 transition-colors"
+                                                                        >
+                                                                            Yes
+                                                                        </button>
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(null); }}
+                                                                            className="px-4 py-2 bg-stone-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-stone-600 transition-colors"
+                                                                        >
+                                                                            No
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </SpotlightCard>
+                                 </div>
+                             ) : (
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                                            <p className="text-lg font-semibold mb-2 text-foreground">Auto Journaling Active</p>
+                                            <p className="text-sm text-foreground/70">Trades are synced automatically from your broker</p>
+                                        </div>
+                                    </SpotlightCard>
+                                 </div>
+                             )}
+
+                             {/* Slide 4: Trader DNA with Imperial Score */}
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                     <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
@@ -2547,12 +3178,12 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                 </SpotlightCard>
                              </div>
 
-                             {/* Slide 4: Trader Insights */}
+                             {/* Slide 5: Trader Insights */}
                              <div className="w-full h-full p-4 pb-24">
                                 <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                     <TraderInsights 
                                       key={`trader-insights-mobile-${activeMobileSlide}`}
-                                      trades={trades} 
+                                                             trades={filteredTrades}
                                       traderDNA={traderDNA} 
                                       isDarkMode={isDarkMode}
                                       hasProcessingTrades={hasProcessingTrades}
@@ -2563,7 +3194,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
 
                          {/* Vertical Indicators - Right side */}
                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10 pointer-events-none">
-                            {[0, 1, 2, 3].map((i) => (
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
                                 <div 
                                     key={i} 
                                     className={`w-1.5 rounded-full transition-all duration-300 ${
@@ -2605,7 +3236,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                  <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
                              </div>
                              <SpotlightCard className="h-[calc(50vh-4rem)] min-h-[300px] w-full" isDarkMode={isDarkMode} tilt={false}>
-                                 <TradeReplayWidget isDarkMode={isDarkMode} trades={trades} />
+                                 <TradeReplayWidget isDarkMode={isDarkMode} trades={filteredTrades} />
                              </SpotlightCard>
                              <SpotlightCard className="h-[calc(50vh-4rem)] min-h-[300px] w-full" isDarkMode={isDarkMode} tilt={false}>
                                  <PatternDojo isDarkMode={isDarkMode} onOutcome={handleDojoOutcome} />
@@ -2640,45 +3271,39 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                              </div>
                              
                              <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
-                                 {/* JOURNAL TAB: Manual vs Auto Toggle */}
+                                 {/* JOURNAL TAB: Manual vs Auto Mode Content */}
                                  {activeTab === 'JOURNAL' && (
                                      <>
-                                         {/* Toggle Switch */}
-                                         <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10">
-                                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                                 <span className={`text-xs sm:text-sm font-medium truncate ${isDarkMode ? 'text-bronze-500' : 'text-yellow-600'}`}>
-                                                     {journalMode === 'MANUAL' ? 'Manual Journaling' : 'Auto Journaling'}
-                                                 </span>
-                                             </div>
-                                             <button
-                                                 onClick={() => setJournalMode(journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL')}
-                                                 className={`
-                                                   relative w-12 h-6 sm:w-14 sm:h-7 rounded-full transition-all duration-300 flex-shrink-0
-                                                   active:scale-95
-                                                   ${journalMode === 'AUTO'
-                                                     ? isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'
-                                                     : 'bg-white/20'
-                                                   }
-                                                 `}
-                                                 aria-label={`Switch to ${journalMode === 'MANUAL' ? 'Auto' : 'Manual'} journaling`}
-                                             >
-                                                 <div
-                                                     className={`
-                                                       absolute top-0.5 sm:top-1 left-0.5 sm:left-1 w-5 h-5 rounded-full bg-white transition-all duration-300 shadow-sm
-                                                       ${journalMode === 'AUTO' ? 'translate-x-6 sm:translate-x-7' : 'translate-x-0'}
-                                                     `}
-                                                 />
-                                             </button>
-                                         </div>
-
                                          {/* Manual Journal Mode */}
                                          {journalMode === 'MANUAL' && (
-                                             <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-                                                 <div className="flex-1 min-w-0 h-full">
+                                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
+                                         {/* Left side: Calendar / Performance Curve with swipe */}
+                                         <div className="flex-1 min-w-0 h-full flex flex-row gap-3">
+                                             {/* Slide Content - with wheel/swipe handler */}
+                                             <div 
+                                                 className="flex-1 min-h-0 relative overflow-hidden"
+                                                 onWheel={(e) => {
+                                                     if (Math.abs(e.deltaY) > 30) {
+                                                         if (e.deltaY > 0 && activeDesktopSlide === 0) {
+                                                             setActiveDesktopSlide(1);
+                                                         } else if (e.deltaY < 0 && activeDesktopSlide === 1) {
+                                                             setActiveDesktopSlide(0);
+                                                         }
+                                                     }
+                                                 }}
+                                             >
+                                                 {/* Calendar Slide */}
+                                                 <div 
+                                                     className={`absolute inset-0 transition-all duration-300 ease-out ${
+                                                         activeDesktopSlide === 0 
+                                                             ? 'opacity-100 translate-y-0' 
+                                                             : 'opacity-0 -translate-y-full pointer-events-none'
+                                                     }`}
+                                                 >
                                                      <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
                                                          <MacroCalendar 
                                                              isDarkMode={isDarkMode} 
-                                                             trades={trades}
+                                                             trades={filteredTrades}
                                                              timeFilter={calendarTimeFilter}
                                                              setTimeFilter={setCalendarTimeFilter}
                                                              viewDate={calendarViewDate}
@@ -2686,7 +3311,238 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                          />
                                                      </SpotlightCard>
                                                  </div>
+                                                 
+                                                 {/* Performance Curve Slide */}
+                                                 <div 
+                                                     className={`absolute inset-0 transition-all duration-300 ease-out ${
+                                                         activeDesktopSlide === 1 
+                                                             ? 'opacity-100 translate-y-0' 
+                                                             : 'opacity-0 translate-y-full pointer-events-none'
+                                                     }`}
+                                                 >
+                                                     <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={tiltMode} noPadding={true}>
+                                                         <div className="flex flex-col h-full px-5 pb-5 overflow-hidden">
+                                                             {/* Performance Curve Header - Same as Mobile */}
+                                                             <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
+                                                                 <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
+                                                                     {perfCurveHeaderDateText}
+                                                                 </h3>
+                                                                 <div className="flex gap-1">
+                                                                     <div className="flex gap-1">
+                                                                         <button 
+                                                                             onClick={() => handlePerfCurveNavigation(-1)} 
+                                                                             className="p-1 hover:bg-white/10 rounded"
+                                                                         >
+                                                                             <ArrowRightIcon className="w-3 h-3 rotate-180" />
+                                                                         </button>
+                                                                         <button 
+                                                                             onClick={() => handlePerfCurveNavigation(1)} 
+                                                                             className="p-1 hover:bg-white/10 rounded"
+                                                                         >
+                                                                             <ArrowRightIcon className="w-3 h-3" />
+                                                                         </button>
+                                                                     </div>
+                                                                     <div className="w-[1px] bg-white/10 mx-1"></div>
+                                                                     <div className={`flex rounded-lg p-0.5 ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                                                                         {(['D', 'W', 'M', 'Y'] as const).map((filter) => (
+                                                                             <button
+                                                                                 key={filter}
+                                                                                 onClick={() => setPerfCurveTimeFilter(filter)}
+                                                                                 className={`px-2 py-0.5 text-[8px] font-bold rounded ${
+                                                                                     perfCurveTimeFilter === filter 
+                                                                                         ? isDarkMode ? 'bg-stone-700 shadow-sm' : 'bg-white shadow-sm'
+                                                                                         : 'opacity-50'
+                                                                                 }`}
+                                                                             >
+                                                                                 {filter}
+                                                                             </button>
+                                                                         ))}
+                                                                     </div>
+                                                                 </div>
+                                                             </div>
+                                                             
+                                                             {/* Performance Chart */}
+                                                             <div className="flex-1 min-h-0">
+                                                                 {(() => {
+                                                                     // Filter trades based on perfCurveTimeFilter and perfCurveViewDate
+                                                                     const perfFilteredTrades = filteredTrades.filter(trade => {
+                                                                         const tradeDate = new Date(trade.date);
+                                                                         const viewDate = perfCurveViewDate;
+                                                                         
+                                                                         if (perfCurveTimeFilter === 'D') {
+                                                                             return tradeDate.toDateString() === viewDate.toDateString();
+                                                                         } else if (perfCurveTimeFilter === 'W') {
+                                                                             const weekStart = new Date(viewDate);
+                                                                             weekStart.setDate(viewDate.getDate() - viewDate.getDay());
+                                                                             const weekEnd = new Date(weekStart);
+                                                                             weekEnd.setDate(weekStart.getDate() + 6);
+                                                                             return tradeDate >= weekStart && tradeDate <= weekEnd;
+                                                                         } else if (perfCurveTimeFilter === 'M') {
+                                                                             return tradeDate.getMonth() === viewDate.getMonth() && tradeDate.getFullYear() === viewDate.getFullYear();
+                                                                         } else {
+                                                                             return tradeDate.getFullYear() === viewDate.getFullYear();
+                                                                         }
+                                                                     });
+                                                                     
+                                                                     const totalPnL = perfFilteredTrades.reduce((sum, t) => sum + t.pnl, 0);
+                                                                     
+                                                                     // Build chart data
+                                                                     let cumulativePnL = 0;
+                                                                     const chartData = perfFilteredTrades
+                                                                         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                                                         .map((trade, idx) => {
+                                                                             cumulativePnL += trade.pnl;
+                                                                             return {
+                                                                                 index: idx + 1,
+                                                                                 pnl: cumulativePnL,
+                                                                                 asset: trade.asset,
+                                                                             };
+                                                                         });
+                                                                     
+                                                                     return (
+                                                                         <>
+                                                                             {perfFilteredTrades.length === 0 ? (
+                                                                                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                                                                     <TrendingUpIcon className="w-12 h-12 mb-3" />
+                                                                                     <h4 className="font-bold text-sm uppercase tracking-widest">No Trades</h4>
+                                                                                     <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">No trades found for this period.</p>
+                                                                                 </div>
+                                                                             ) : (
+                                                                                 <ResponsiveContainer width="100%" height="100%">
+                                                                                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                                                         <defs>
+                                                                                             <linearGradient id="performanceGradientDesktop" x1="0" y1="0" x2="0" y2="1">
+                                                                                                 <stop offset="5%" stopColor={totalPnL >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0.4}/>
+                                                                                                 <stop offset="95%" stopColor={totalPnL >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0}/>
+                                                                                             </linearGradient>
+                                                                                         </defs>
+                                                                                         <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
+                                                                                         <XAxis 
+                                                                                             dataKey="index" 
+                                                                                             tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                                             axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                                                                                             tickLine={false}
+                                                                                         />
+                                                                                         <YAxis 
+                                                                                             tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                                             axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                                                                                             tickLine={false}
+                                                                                             tickFormatter={(value) => `$${value}`}
+                                                                                         />
+                                                                                         <ReferenceLine y={0} stroke={isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"} strokeDasharray="3 3" />
+                                                                                         <Tooltip
+                                                                                             contentStyle={{
+                                                                                                 backgroundColor: isDarkMode ? '#18181b' : '#ffffff',
+                                                                                                 borderRadius: '12px',
+                                                                                                 border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                                                                                                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                                                                                 padding: '8px 12px'
+                                                                                             }}
+                                                                                             labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: '11px', fontWeight: 'bold' }}
+                                                                                             formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cumulative P&L']}
+                                                                                             labelFormatter={(label, payload) => {
+                                                                                                 if (payload && payload[0]) {
+                                                                                                     const data = payload[0].payload;
+                                                                                                     return `Trade #${label} • ${data.asset}`;
+                                                                                                 }
+                                                                                                 return `Trade #${label}`;
+                                                                                             }}
+                                                                                         />
+                                                                                         <Area
+                                                                                             type="monotone"
+                                                                                             dataKey="pnl"
+                                                                                             stroke={totalPnL >= 0 ? "#10b981" : "#ef4444"}
+                                                                                             strokeWidth={2}
+                                                                                             fill="url(#performanceGradientDesktop)"
+                                                                                             dot={{ r: 3, fill: isDarkMode ? '#18181b' : '#ffffff', strokeWidth: 2 }}
+                                                                                             activeDot={{ r: 5, strokeWidth: 2 }}
+                                                                                         />
+                                                                                     </AreaChart>
+                                                                                 </ResponsiveContainer>
+                                                                             )}
+                                                                         </>
+                                                                     );
+                                                                 })()}
+                                                             </div>
+                                                             
+                                                             {/* Stats Footer - Same as Mobile */}
+                                                             {(() => {
+                                                                 const perfFilteredTrades = filteredTrades.filter(trade => {
+                                                                     const tradeDate = new Date(trade.date);
+                                                                     const viewDate = perfCurveViewDate;
+                                                                     
+                                                                     if (perfCurveTimeFilter === 'D') {
+                                                                         return tradeDate.toDateString() === viewDate.toDateString();
+                                                                     } else if (perfCurveTimeFilter === 'W') {
+                                                                         const weekStart = new Date(viewDate);
+                                                                         weekStart.setDate(viewDate.getDate() - viewDate.getDay());
+                                                                         const weekEnd = new Date(weekStart);
+                                                                         weekEnd.setDate(weekStart.getDate() + 6);
+                                                                         return tradeDate >= weekStart && tradeDate <= weekEnd;
+                                                                     } else if (perfCurveTimeFilter === 'M') {
+                                                                         return tradeDate.getMonth() === viewDate.getMonth() && tradeDate.getFullYear() === viewDate.getFullYear();
+                                                                     } else {
+                                                                         return tradeDate.getFullYear() === viewDate.getFullYear();
+                                                                     }
+                                                                 });
+                                                                 
+                                                                 if (perfFilteredTrades.length === 0) return null;
+                                                                 
+                                                                 return (
+                                                                     <div className={`grid grid-cols-4 gap-2 pt-4 mt-auto shrink-0 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                                         <div className="text-center">
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
+                                                                             <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{perfFilteredTrades.length}</p>
+                                                                         </div>
+                                                                         <div className="text-center">
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
+                                                                             <p className={`text-sm font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                                                 {((perfFilteredTrades.filter(t => t.pnl > 0).length / perfFilteredTrades.length) * 100).toFixed(0)}%
+                                                                             </p>
+                                                                         </div>
+                                                                         <div className="text-center">
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
+                                                                             <p className="text-sm font-bold text-emerald-500">
+                                                                                 +${Math.max(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
+                                                                             </p>
+                                                                         </div>
+                                                                         <div className="text-center">
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
+                                                                             <p className="text-sm font-bold text-rose-500">
+                                                                                 ${Math.min(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
+                                                                             </p>
+                                                                         </div>
+                                                                     </div>
+                                                                 );
+                                                             })()}
+                                                         </div>
+                                                     </SpotlightCard>
+                                                 </div>
                                              </div>
+                                             
+                                             {/* Orange Slide Indicators - Vertical on right side */}
+                                             <div className="flex flex-col justify-center items-center gap-2 px-1">
+                                                 <button
+                                                     onClick={() => setActiveDesktopSlide(0)}
+                                                     className={`w-2 rounded-full transition-all duration-300 ${
+                                                         activeDesktopSlide === 0
+                                                             ? 'h-6 bg-gradient-to-b from-yellow-400 to-amber-500'
+                                                             : 'h-2 ' + (isDarkMode ? 'bg-white/20 hover:bg-white/40' : 'bg-black/20 hover:bg-black/40')
+                                                     }`}
+                                                     title="Calendar"
+                                                 />
+                                                 <button
+                                                     onClick={() => setActiveDesktopSlide(1)}
+                                                     className={`w-2 rounded-full transition-all duration-300 ${
+                                                         activeDesktopSlide === 1
+                                                             ? 'h-6 bg-gradient-to-b from-yellow-400 to-amber-500'
+                                                             : 'h-2 ' + (isDarkMode ? 'bg-white/20 hover:bg-white/40' : 'bg-black/20 hover:bg-black/40')
+                                                     }`}
+                                                     title="Performance Curve"
+                                                 />
+                                             </div>
+                                         </div>
+                                     </div>
                                          )}
 
                                          {/* Auto Journal Mode (Broker Sync) */}
@@ -2735,7 +3591,11 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                           <SpotlightCard className={`w-full h-full flex flex-col`} isDarkMode={isDarkMode} noPadding={true}>
                               {/* Right Sidebar Header with 4-way Toggle */}
                               <div className="px-5 pt-5 pb-2 shrink-0">
-                                  <div className="flex items-center gap-2 p-1 rounded-xl border bg-[#1C1C1E] border-white/10 mb-4">
+                                  <div className={`flex items-center gap-2 p-1 rounded-xl border bg-[#1C1C1E] border-white/10 mb-2 ${
+                                      // In AUTO mode, only show 2 buttons (TRADER_DNA and TRADER_INSIGHTS)
+                                      // In MANUAL mode, show all 4 buttons
+                                      journalMode === 'AUTO' ? 'justify-center' : ''
+                                  }`}>
                                       <button
                                           onClick={() => setRightSidebarView('TRADER_DNA')}
                                           className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
@@ -2756,6 +3616,9 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                       >
                                           <BarChart3Icon className="w-3.5 h-3.5" />
                                       </button>
+                                      {/* Hide LOG_ENTRY and TRADE_LOG buttons in AUTO mode - trades are synced automatically */}
+                                      {journalMode === 'MANUAL' && (
+                                          <>
                                       <button
                                           onClick={() => { setRightSidebarView('LOG_ENTRY'); setLogMode('ENTRY'); }}
                                           className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
@@ -2776,7 +3639,41 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                       >
                                           <BookIcon className="w-3.5 h-3.5" />
                                       </button>
+                                          </>
+                                      )}
                                   </div>
+                                  {/* Simple/Advanced Toggle - Only show when LOG_ENTRY is active */}
+                                  {rightSidebarView === 'LOG_ENTRY' && journalMode === 'MANUAL' && logMode === 'ENTRY' && (
+                                      <div className="flex justify-between items-center mb-0.5">
+                                          <h3 className="text-[9px] font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
+                                              <span className="w-0.5 h-0.5 bg-yellow-500 dark:bg-bronze-500 rotate-45 rounded-[1px]"></span>
+                                              {editingId ? 'Edit Entry' : 'Log Entry'}
+                                          </h3>
+                                          {/* Simple/Advanced Toggle - Slim pill toggle */}
+                                          <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-5 overflow-hidden">
+                                              <button
+                                                  onClick={() => setEntryMode('SIMPLE')}
+                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
+                                                      entryMode === 'SIMPLE'
+                                                          ? 'bg-stone-700 text-bronze-500'
+                                                          : 'text-slate-600 hover:text-slate-400'
+                                                  }`}
+                                              >
+                                                  Simple
+                                              </button>
+                                              <button
+                                                  onClick={() => setEntryMode('ADVANCED')}
+                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
+                                                      entryMode === 'ADVANCED'
+                                                          ? 'bg-stone-700 text-bronze-500'
+                                                          : 'text-slate-600 hover:text-slate-400'
+                                                  }`}
+                                              >
+                                                  Advanced
+                                              </button>
+                                          </div>
+                                      </div>
+                                  )}
                               </div>
 
                               {/* Conditional Content Based on rightSidebarView */}
@@ -3010,14 +3907,144 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                               )}
 
                               {rightSidebarView === 'TRADER_INSIGHTS' && (
-                                  <TraderInsights trades={trades} traderDNA={traderDNA} isDarkMode={isDarkMode} hasProcessingTrades={hasProcessingTrades} />
+                                  <TraderInsights trades={filteredTrades} traderDNA={traderDNA} isDarkMode={isDarkMode} hasProcessingTrades={hasProcessingTrades} />
                               )}
 
-                              {rightSidebarView === 'LOG_ENTRY' && (
+                              {/* LOG_ENTRY view - Only show in MANUAL mode */}
+                              {rightSidebarView === 'LOG_ENTRY' && journalMode === 'MANUAL' && (
                                   <div className={`flex flex-col relative z-20 ${isMobileAnalysisMode ? 'h-full overflow-hidden' : 'overflow-visible'} transition-all duration-500 ${tiltMode ? 'pointer-events-none opacity-50' : ''} h-full`}>
+                                      
                                       {/* --- FORM VIEW --- */}
                                       {logMode === 'ENTRY' && viewState === 'FORM' && (
                                           <div className="flex flex-col animate-in fade-in duration-300 h-full min-h-0">
+                                              {/* SIMPLE MODE - Basic fields only */}
+                                              {entryMode === 'SIMPLE' ? (
+                                                  <div className="px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                                                      {/* Date */}
+                                                      <div className="relative group shrink-0">
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
+                                                          <div className="absolute left-3 top-[28px] text-stone-500 dark:text-slate-500 pointer-events-none">
+                                                              <CalendarIcon className="w-3.5 h-3.5" />
+                                                          </div>
+                                                          <input
+                                                              type="date"
+                                                              value={date}
+                                                              onChange={(e) => setDate(e.target.value)}
+                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
+                                                          />
+                                                      </div>
+
+                                                      {/* Asset & PnL */}
+                                                      <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                          <div>
+                                                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                                              <input 
+                                                                  type="text" 
+                                                                  value={asset} 
+                                                                  onChange={(e) => setAsset(e.target.value)} 
+                                                                  placeholder="BTCUSD" 
+                                                                  className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
+                                                              />
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
+                                                              <div className="relative">
+                                                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
+                                                                  <input 
+                                                                      type="number" 
+                                                                      value={pnl} 
+                                                                      onChange={(e) => setPnl(e.target.value)} 
+                                                                      placeholder="0.00" 
+                                                                      className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} 
+                                                                  />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+
+                                                      {/* Notes */}
+                                                      <div className="flex-col flex-1 min-h-[100px] flex shrink-0">
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
+                                                          <textarea 
+                                                              value={notes} 
+                                                              onChange={(e) => setNotes(e.target.value)} 
+                                                              placeholder="Why did you take this trade? How did you feel?" 
+                                                              className="w-full flex-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none resize-none placeholder-stone-400 dark:placeholder-slate-600 leading-relaxed" 
+                                                          />
+                                                      </div>
+
+                                                      {/* Image Upload */}
+                                                      <div className="shrink-0">
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
+                                                          <div 
+                                                              onClick={handleClick}
+                                                              onDragEnter={handleDragEnter}
+                                                              onDragOver={handleDragOver}
+                                                              onDragLeave={handleDragLeave}
+                                                              onDrop={handleDrop}
+                                                              className={`relative w-full h-12 bg-white dark:bg-slate-900 border-2 ${isDragging ? 'border-yellow-500 dark:border-bronze-500 bg-yellow-50/50 dark:bg-bronze-950/30 border-dashed scale-[1.02] shadow-lg shadow-yellow-500/20 dark:shadow-bronze-500/20' : 'border-dashed border-stone-300 dark:border-slate-600 hover:border-yellow-400 dark:hover:border-bronze-400 hover:bg-stone-50 dark:hover:bg-slate-800/50'} rounded-xl flex items-center ${previewUrls.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden ${previewUrls.length > 0 ? 'border-solid border-yellow-500/50 dark:border-bronze-500/50 bg-yellow-50/30 dark:bg-bronze-950/10' : ''}`}
+                                                          >
+                                                              {isDragging && (
+                                                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/10 via-yellow-500/20 to-yellow-400/10 animate-pulse pointer-events-none" />
+                                                              )}
+                                                              
+                                                              <input 
+                                                                  type="file" 
+                                                                  ref={fileInputRefDesktop} 
+                                                                  onChange={handleImageChange} 
+                                                                  className="hidden" 
+                                                                  accept="image/*" 
+                                                                  multiple 
+                                                              />
+                                                              
+                                                              {previewUrls.length === 0 ? (
+                                                                  <>
+                                                                      <UploadIcon 
+                                                                          className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
+                                                                      />
+                                                                      <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                                                          {isDragging ? '✨ Drop to upload (max 3)' : 'Click to upload chart'}
+                                                                      </span>
+                                                                  </>
+                                                              ) : (
+                                                                  <div className="flex items-center gap-2 w-full relative z-10">
+                                                                      <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+                                                                          {previewUrls.map((url, index) => (
+                                                                              <div key={index} className="relative shrink-0 group/image">
+                                                                                  <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-yellow-400 dark:group-hover/image:border-bronze-400 transition-colors shadow-sm">
+                                                                                      <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                                                                                  </div>
+                                                                                  <button
+                                                                                      type="button"
+                                                                                      onClick={(e) => {
+                                                                                          e.stopPropagation();
+                                                                                          e.preventDefault();
+                                                                                          removeImage(index);
+                                                                                      }}
+                                                                                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                                                                                      title="Remove image"
+                                                                                  >
+                                                                                      ×
+                                                                                  </button>
+                                                                              </div>
+                                                                          ))}
+                                                                      </div>
+                                                                      {previewUrls.length < 3 && (
+                                                                          <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                                              {previewUrls.length}/3
+                                                                          </span>
+                                                                      )}
+                                                                      {previewUrls.length >= 3 && (
+                                                                          <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                                              MAX 3
+                                                                          </span>
+                                                                      )}
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              ) : (
+                                                  /* ADVANCED MODE - All fields */
                                               <div className="px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col pt-2">
                                                   
                                                   {/* Row 1: Date & Direction Mixed */}
@@ -3068,13 +4095,13 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                    <div className="grid grid-cols-2 gap-2.5 shrink-0">
                                                        <div>
                                                            <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
-                                                           <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                                           <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                               {STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
                                                            </select>
                                                        </div>
                                                        <div>
                                                            <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
-                                                           <select value={session} onChange={(e) => setSession(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm">
+                                                           <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                               {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                                            </select>
                                                        </div>
@@ -3083,7 +4110,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                    {/* Row 4: Emotion */}
                                                    <div className="shrink-0">
                                                        <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
-                                                       <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm">
+                                                       <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                           {EMOTIONS.map(e => <option key={e} value={e}>{e}</option>)}
                                                        </select>
                                                    </div>
@@ -3093,23 +4120,23 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                        <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                                            Did I follow my plan?
                                                        </label>
-                                                       <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                                       <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                                            <button 
                                                                onClick={() => setFollowedPlan(true)}
-                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    followedPlan === true 
-                                                                       ? 'bg-emerald-500 text-white shadow-sm' 
-                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                                       ? 'bg-emerald-500 text-white' 
+                                                                       : 'text-slate-600 hover:text-slate-400'
                                                                }`}
                                                            >
                                                                Yes
                                                            </button>
                                                            <button 
                                                                onClick={() => setFollowedPlan(false)}
-                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    followedPlan === false 
-                                                                       ? 'bg-rose-500 text-white shadow-sm' 
-                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                                       ? 'bg-rose-500 text-white' 
+                                                                       : 'text-slate-600 hover:text-slate-400'
                                                                }`}
                                                            >
                                                                No
@@ -3122,23 +4149,23 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                        <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                                            Revenge Trade? (Test Patience)
                                                        </label>
-                                                       <div className="flex items-center gap-3 bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
+                                                       <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                                            <button 
                                                                onClick={() => setIsRevengeTrade(true)}
-                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    isRevengeTrade === true 
-                                                                       ? 'bg-orange-500 text-white shadow-sm' 
-                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                                       ? 'bg-orange-500 text-white' 
+                                                                       : 'text-slate-600 hover:text-slate-400'
                                                                }`}
                                                            >
                                                                Yes
                                                            </button>
                                                            <button 
                                                                onClick={() => setIsRevengeTrade(false)}
-                                                               className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all py-2 ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    isRevengeTrade === false 
-                                                                       ? 'bg-stone-500 text-white shadow-sm' 
-                                                                       : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'
+                                                                       ? 'bg-stone-600 text-white' 
+                                                                       : 'text-slate-600 hover:text-slate-400'
                                                                }`}
                                                            >
                                                                No
@@ -3229,8 +4256,10 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                    </div>
 
                                               </div>
+                                          )}
                                               
-                                              {/* Footer Actions */}
+                                              {/* Footer Actions - Same for both Simple and Advanced */}
+                                              {viewState === 'FORM' && (
                                               <div className="mt-auto shrink-0 px-5 pb-5 pt-2 border-t border-transparent">
                                                   <button
                                                       onClick={handleAnalyze}
@@ -3241,6 +4270,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                       <span>{editingId ? 'UPDATE' : 'ANALYZE'}</span>
                                                   </button>
                                               </div>
+                                              )}
                                           </div>
                                       )}
 
@@ -3292,10 +4322,17 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                   </div>
                               )}
 
-                              {rightSidebarView === 'TRADE_LOG' && (
+                              {/* TRADE_LOG view - Only show in MANUAL mode */}
+                              {rightSidebarView === 'TRADE_LOG' && journalMode === 'MANUAL' && (
                                   <div className="flex flex-col h-full">
                                       {logMode === 'HISTORY' && (
                                           <div className="flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 h-full overflow-hidden">
+                                              {/* Header with Trade Log title and count badge */}
+                                              <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>TRADE LOG</h3>
+                                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-bronze-500/10 text-dirty-white border-bronze-500/20' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{sortedTrades.length}</span>
+                                              </div>
+                                              
                                               {sortedTrades.length === 0 ? (
                                                   <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
                                                       <NotebookIcon className="w-12 h-12 mb-3" />
@@ -3303,7 +4340,7 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
                                                       <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
                                                   </div>
                                               ) : (
-                                                 <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 space-y-3" style={{ touchAction: 'pan-y' }}>
+                                                 <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
                                                       {sortedTrades.map(trade => (
                                                           <div 
                                                              key={trade.id}
@@ -3436,3 +4473,5 @@ export const JournalPro: React.FC<JournalProProps> = ({ isDarkMode, onExit, onTo
     </div>
   );
 };
+
+export default JournalXX;

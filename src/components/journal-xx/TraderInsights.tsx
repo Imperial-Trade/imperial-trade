@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { TradeEntry } from './types';
 import { calculateGreedyMeter, calculateMonthlyGoalProgress } from './utils/traderDNACalculator';
+import { classifyTradeDuration, TradeStyle } from './utils/tradeDurationClassifier';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -43,28 +44,49 @@ export const TraderInsights: React.FC<TraderInsightsProps> = ({ trades, traderDN
   const [isSavingGoal, setIsSavingGoal] = useState(false);
   const { user } = useAuth();
 
-  // Calculate Top 3 Strategies - Always return 3 items
+  // Calculate Top 3 Strategies - Use time-based classification for AUTO trades
   const topStrategies = React.useMemo(() => {
     const strategyMap = new Map<string, { netPnL: number; wins: number; total: number }>();
     
     // Debug: Log trades to see what data we're receiving
     if (trades.length > 0) {
       console.log('🔍 TraderInsights: Calculating Top Strategies from', trades.length, 'trades');
-      console.log('🔍 Sample trade strategies:', trades.slice(0, 3).map(t => ({ id: t.id, strategy: t.strategy, pnl: t.pnl })));
+      console.log('🔍 Sample trade data:', trades.slice(0, 3).map(t => ({ 
+        id: t.id, 
+        is_synced: t.is_synced, 
+        strategy: t.strategy, 
+        entry_time: t.entry_time,
+        exit_time: t.exit_time,
+        pnl: t.pnl 
+      })));
     }
     
     trades.forEach(trade => {
-      // Only process trades with actual strategy names (not empty/null/undefined)
-      const strategy = trade.strategy?.trim();
-      if (!strategy || strategy === '') {
-        return; // Skip trades without strategy
+      let strategyKey: string;
+      
+      // For AUTO journal trades (is_synced === true), use time-based classification
+      if (trade.is_synced === true && trade.entry_time && trade.exit_time) {
+        const durationInfo = classifyTradeDuration(trade.entry_time, trade.exit_time);
+        strategyKey = `${durationInfo.style} (${durationInfo.label})`;
+        console.log(`✅ Auto trade classified: ${strategyKey}`, {
+          entry_time: trade.entry_time,
+          exit_time: trade.exit_time,
+          duration: durationInfo.durationMinutes + ' mins'
+        });
+      } else {
+        // For MANUAL trades, use the strategy field
+        const strategy = trade.strategy?.trim();
+        if (!strategy || strategy === '') {
+          return; // Skip trades without strategy
+        }
+        strategyKey = strategy;
       }
       
-      const existing = strategyMap.get(strategy) || { netPnL: 0, wins: 0, total: 0 };
+      const existing = strategyMap.get(strategyKey) || { netPnL: 0, wins: 0, total: 0 };
       existing.netPnL += trade.pnl || 0;
       existing.total += 1;
       if ((trade.pnl || 0) > 0) existing.wins += 1;
-      strategyMap.set(strategy, existing);
+      strategyMap.set(strategyKey, existing);
     });
 
     const strategies = Array.from(strategyMap.entries())
@@ -636,4 +658,3 @@ export const TraderInsights: React.FC<TraderInsightsProps> = ({ trades, traderDN
     </div>
   );
 };
-

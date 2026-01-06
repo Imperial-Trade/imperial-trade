@@ -137,3 +137,4 @@ New-NetFirewallRule -DisplayName "Broker Service" -Direction Inbound -Port 3001 
 ### Verify MT5 Terminal is Running
 The Python MT5 library requires an MT5 Terminal to be running. Your EC Markets MT5 (for price feeder) serves this purpose.
 
+

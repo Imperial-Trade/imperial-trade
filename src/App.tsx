@@ -85,6 +85,7 @@ const PriceTestingPage = lazyWithRetry(() => import("@/pages/dashboard/dev-tests
 
 // Tools Pages - Lazy Loaded with Retry
 const JournalXXPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXX"));
+const JournalXXProPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXXPro"));
 
 // Educator Pages - Lazy Loaded with Retry
 const EducatorSignalManagement = lazyWithRetry(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
@@ -290,7 +291,19 @@ function App() {
               path="journal-xx"
               element={
                 <TradeJournalProvider>
-                  <JournalXXPage />
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+                    <JournalXXPage />
+                  </Suspense>
+                </TradeJournalProvider>
+              }
+            />
+            <Route
+              path="journal-xx-pro"
+              element={
+                <TradeJournalProvider>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+                    <JournalXXProPage />
+                  </Suspense>
                 </TradeJournalProvider>
               }
             />

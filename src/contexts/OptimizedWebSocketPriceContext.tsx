@@ -531,20 +531,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           
           if (!newRow || !newRow.symbol) return;
 
-          const symbol = newRow.symbol as string;
+          // Normalize symbol to match subscription format
+          const symbol = normalizeSymbol(newRow.symbol as string);
+          console.log(`📥 [Realtime] Received update for symbol: ${newRow.symbol} -> normalized: ${symbol}`);
           const dbTimestamp = new Date(newRow.updated_at).getTime();
           const lastUpdate = lastRealtimeUpdateRef.current[symbol] || 0;
           const hydratedTimestamp = lastDatabaseTimestampRef.current[symbol] || 0;
 
-          // ✅ PHASE 2: Make realtime SECONDARY to instant hydration
-          if (dbTimestamp <= hydratedTimestamp) {
-            console.log(`⏭️ [Realtime] Skipped - hydrated data is fresher for ${symbol} (db: ${dbTimestamp}, hydrated: ${hydratedTimestamp})`);
+          // ✅ PHASE 2: Make realtime SECONDARY to instant hydration (but allow if within 1 second)
+          const timeDiff = dbTimestamp - hydratedTimestamp;
+          if (timeDiff < -1000) { // Only skip if hydrated data is more than 1 second newer
+            console.log(`⏭️ [Realtime] Skipped - hydrated data is fresher for ${symbol} (db: ${dbTimestamp}, hydrated: ${hydratedTimestamp}, diff: ${timeDiff}ms)`);
             return;
           }
 
-          // 🔥 DEDUPLICATION: Only process if timestamp is newer than last realtime update
-          if (dbTimestamp <= lastUpdate) {
-            console.log(`⏭️ [Realtime] Skipped duplicate update for ${symbol} (timestamp: ${dbTimestamp})`);
+          // 🔥 DEDUPLICATION: Only process if timestamp is newer than last realtime update (allow same timestamp within 100ms)
+          if (dbTimestamp <= lastUpdate - 100) { // Allow updates within 100ms window
+            console.log(`⏭️ [Realtime] Skipped duplicate update for ${symbol} (timestamp: ${dbTimestamp}, last: ${lastUpdate})`);
             return;
           }
 
@@ -568,15 +571,23 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
 
             console.log(`⚡ [Realtime ${eventType}] ${symbol}: $${price} (instant update from postgres_changes)`);
 
-            // Update state instantly
-            setInternalPrices(prev => ({ ...prev, [symbol]: priceData }));
-            setPrices(prev => ({ ...prev, [symbol]: priceData }));
+            // Update state instantly - force re-render
+            setInternalPrices(prev => {
+              const updated = { ...prev, [symbol]: priceData };
+              console.log(`🔄 [Realtime] Updated internalPrices for ${symbol}:`, updated[symbol]);
+              return updated;
+            });
+            setPrices(prev => {
+              const updated = { ...prev, [symbol]: priceData };
+              console.log(`🔄 [Realtime] Updated prices for ${symbol}:`, updated[symbol]);
+              return updated;
+            });
             // 🚨 PHASE 2A FIX: Update ref directly
             lastDatabaseTimestampRef.current[symbol] = dbTimestamp;
             arrivalTimestamps.current.set(symbol, Date.now());
             setLastUpdated(new Date());
             
-            console.log(`✅ [Realtime] Applied instant update for ${symbol}`);
+            console.log(`✅ [Realtime] Applied instant update for ${symbol} at ${new Date().toISOString()}`);
           }
         }
       )
@@ -646,207 +657,147 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     try {
       console.log(`📡 [Database Poll] Fetching prices for: ${targetSymbols.join(', ')}`);
       
-      // ✅ PHASE 1: Restored 60-second window for instant hydration
+      // ✅ PHASE 1: Get latest prices for each symbol (realtime will handle freshness)
       const cacheBustNonce = Date.now();
-      const oneMinuteAgo = new Date(cacheBustNonce - 60000).toISOString(); // ✅ Loosened to 60s for fresh data
       
-      // ⚡ CRITICAL: Use timestamp in query to bypass HTTP cache
-      const { data, error: queryError } = await supabase
-        .from('market_prices')
-        .select('symbol, mid, bid, ask, updated_at')
-        .in('symbol', targetSymbols)
-        .gte('updated_at', oneMinuteAgo) // ✅ Accept recent fresh data (60s window)
-        .limit(50); // ⚡ Force query re-execution
-      
-      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, filter: ${oneMinuteAgo}`);
-      
-      if (queryError) {
-        console.error(`❌ [Database Poll] Query error for ${targetSymbols.join(', ')}:`, queryError);
-        return;
-      }
-      
-      if (!data || data.length === 0) {
-        console.warn(`⚠️ [Database Poll] No prices found for symbols: ${targetSymbols.join(', ')} (within 60s window)`);
-        // Try without time filter as fallback
-        const { data: fallbackData, error: fallbackError } = await supabase
+      // ⚡ CRITICAL: Get the latest price for each symbol (no time filter - realtime handles freshness)
+      // Query each symbol separately to get the most recent price for each
+      const pricePromises = targetSymbols.map(async (symbol) => {
+        const { data, error } = await supabase
           .from('market_prices')
           .select('symbol, mid, bid, ask, updated_at')
-          .in('symbol', targetSymbols)
+          .eq('symbol', symbol)
           .order('updated_at', { ascending: false })
-          .limit(50);
+          .limit(1); // Get only the most recent price for this symbol
         
-        if (fallbackError) {
-          console.error(`❌ [Database Poll] Fallback query error:`, fallbackError);
-          return;
+        if (error) {
+          console.error(`❌ [Database Poll] Query error for ${symbol}:`, error);
+          return null;
         }
         
-        if (fallbackData && fallbackData.length > 0) {
-          console.log(`✅ [Database Poll] Found ${fallbackData.length} prices in fallback query (no time filter)`);
-          // Use fallback data
-          const hydratedPrices: Record<string, PriceData> = {};
-          const timestampUpdates: Record<string, number> = {};
-          
-          fallbackData.forEach(row => {
-            const hasMidOnly = row.mid && (!row.bid || !row.ask);
-            const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
-            
-            if (price) {
-              const dbTimestamp = new Date(row.updated_at).getTime();
-              hydratedPrices[row.symbol] = {
-                symbol: row.symbol,
-                price,
-                change: 0,
-                changePercent: 0,
-                timestamp: row.updated_at,
-                receivedAt: Date.now(),
-                bid: row.bid,
-                ask: row.ask,
-                mid: row.mid
-              };
-              timestampUpdates[row.symbol] = dbTimestamp;
-              arrivalTimestamps.current.set(row.symbol, Date.now());
-              console.log(`💾 [Database Poll Fallback] ${row.symbol}: $${price} (${Math.round((Date.now() - dbTimestamp) / 1000)}s old)`);
-            }
-          });
-          
-          if (Object.keys(hydratedPrices).length > 0) {
-            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
-            setPrices(prev => ({ ...prev, ...hydratedPrices }));
-            Object.keys(timestampUpdates).forEach(symbol => {
-              lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
-            });
-            setLastUpdated(new Date());
-            if (connectionStatus !== 'connected') {
-              setConnectionStatus('connected');
-            }
-          }
-        } else {
-          console.warn(`⚠️ [Database Poll] No prices found even in fallback query for: ${targetSymbols.join(', ')}`);
-        }
+        return data && data.length > 0 ? data[0] : null;
+      });
+      
+      const priceResults = await Promise.all(pricePromises);
+      const validPrices = priceResults.filter(p => p !== null) as any[];
+      
+      console.log(`🔥 [Cache-Bust] Query with nonce ${cacheBustNonce}, found ${validPrices.length} prices for ${targetSymbols.length} symbols`);
+      
+      if (validPrices.length === 0) {
+        console.warn(`⚠️ [Database Poll] No prices found for symbols: ${targetSymbols.join(', ')}`);
         return;
       }
       
-      // Process the data we got from the main query
-      if (data && data.length > 0) {
-        const hydratedPrices: Record<string, PriceData> = {};
-        const timestampUpdates: Record<string, number> = {};
+      // Process the prices we found
+      const latestPricesBySymbol = new Map<string, any>();
+      validPrices.forEach(row => {
+        const normalizedSymbol = normalizeSymbol(row.symbol);
+        latestPricesBySymbol.set(normalizedSymbol, row);
+      });
+      
+      if (latestPricesBySymbol.size === 0) {
+        console.warn(`⚠️ [Database Poll] No valid prices after normalization`);
+        return;
+      }
+      
+      // Process the prices we found
+      const hydratedPrices: Record<string, PriceData> = {};
+      const timestampUpdates: Record<string, number> = {};
+      
+      latestPricesBySymbol.forEach((row, normalizedSymbol) => {
+        // 🔥 MID-ONLY SUPPORT: Prioritize mid, then calculate from bid/ask, then fallback
+        const hasMidOnly = row.mid && (!row.bid || !row.ask);
+        const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
         
-        data.forEach(row => {
-          // 🔥 MID-ONLY SUPPORT: Prioritize mid, then calculate from bid/ask, then fallback
-          const hasMidOnly = row.mid && (!row.bid || !row.ask);
-          const price = row.mid || (row.bid && row.ask ? (row.bid + row.ask) / 2 : row.bid || row.ask);
+        // 🚀 Enhanced logging for mid-only prices
+        if (hasMidOnly) {
+          console.log(`🎯 [Mid-Only Price] ${row.symbol} -> ${normalizedSymbol}: mid=${row.mid}, bid=${row.bid}, ask=${row.ask}`);
+        }
+        
+        if (price) {
+          const dbTimestamp = new Date(row.updated_at).getTime();
+          hydratedPrices[normalizedSymbol] = {
+            symbol: normalizedSymbol,
+            price,
+            change: 0,
+            changePercent: 0,
+            timestamp: row.updated_at,
+            receivedAt: Date.now(),
+            bid: row.bid,
+            ask: row.ask,
+            mid: row.mid
+          };
           
-          // 🚀 Enhanced logging for mid-only prices
-          if (hasMidOnly) {
-            console.log(`🎯 [Mid-Only Price] ${row.symbol}: mid=${row.mid}, bid=${row.bid}, ask=${row.ask}`);
+          timestampUpdates[normalizedSymbol] = dbTimestamp;
+          const ageSeconds = Math.round((Date.now() - dbTimestamp) / 1000);
+          
+          // 🚀 STEP 3: Aggressive logging to debug price ingestor
+          const priceSource = hasMidOnly ? '[MID-ONLY]' : row.bid && row.ask ? '[BID/ASK]' : '[PARTIAL]';
+          console.log(`💾 [Database Poll] ${row.symbol} -> ${normalizedSymbol}: $${price} ${priceSource} (${ageSeconds}s old) [RAW updated_at: ${row.updated_at}]`);
+          const oldPrice = internalPrices[normalizedSymbol]?.price;
+          if (oldPrice) {
+            const priceDiff = Math.abs(oldPrice - price);
+            console.log(`🔍 [Price Comparison] ${normalizedSymbol} - Old: $${oldPrice.toFixed(4)}, New: $${price.toFixed(4)}, Diff: $${priceDiff.toFixed(6)} (${((priceDiff / oldPrice) * 100).toFixed(4)}%)`);
+          }
+        }
+      });
+      
+      if (Object.keys(hydratedPrices).length > 0) {
+        // Check for ANY changes: price OR timestamp updates
+        const hasChanges = Object.keys(hydratedPrices).some(symbol => {
+          const oldPrice = internalPrices[symbol]?.price;
+          const newPrice = hydratedPrices[symbol]?.price;
+          const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
+          const newTimestamp = timestampUpdates[symbol];
+          
+          // Update if: price changed meaningfully OR timestamp changed (database was written to)
+          const MINIMUM_CHANGE_THRESHOLD = 0.0001; // 0.01% minimum change
+          const priceChanged = !oldPrice || (Math.abs(newPrice - oldPrice) / oldPrice > MINIMUM_CHANGE_THRESHOLD);
+          const timestampChanged = oldTimestamp !== newTimestamp;
+          
+          if (timestampChanged && !priceChanged) {
+            console.log(`⏰ [Timestamp Update] ${symbol} - Database updated but price unchanged`);
           }
           
-          if (price) {
-            const dbTimestamp = new Date(row.updated_at).getTime();
-            hydratedPrices[row.symbol] = {
-              symbol: row.symbol,
-              price,
-              change: 0,
-              changePercent: 0,
-              timestamp: row.updated_at,
-              receivedAt: Date.now(),
-              bid: row.bid,
-              ask: row.ask,
-              mid: row.mid
-            };
-            
-            timestampUpdates[row.symbol] = dbTimestamp;
-            const ageSeconds = Math.round((Date.now() - dbTimestamp) / 1000);
-            
-            // 🚀 STEP 3: Aggressive logging to debug price ingestor
-            const priceSource = hasMidOnly ? '[MID-ONLY]' : row.bid && row.ask ? '[BID/ASK]' : '[PARTIAL]';
-            console.log(`💾 [Database Poll] ${row.symbol}: $${price} ${priceSource} (${ageSeconds}s old) [RAW updated_at: ${row.updated_at}]`);
-            const oldPrice = internalPrices[row.symbol]?.price;
-            if (oldPrice) {
-              const priceDiff = Math.abs(oldPrice - price);
-              console.log(`🔍 [Price Comparison] ${row.symbol} - Old: $${oldPrice.toFixed(4)}, New: $${price.toFixed(4)}, Diff: $${priceDiff.toFixed(6)} (${((priceDiff / oldPrice) * 100).toFixed(4)}%)`);
-            }
+          return priceChanged || timestampChanged;
+        });
+
+        // ✅ PHASE 1: Conditional timestamp updates - only update if ACTUALLY newer
+        const now = Date.now();
+        Object.keys(hydratedPrices).forEach(symbol => {
+          const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
+          const newTimestamp = timestampUpdates[symbol];
+          if (!oldTimestamp || newTimestamp > oldTimestamp) {
+            arrivalTimestamps.current.set(symbol, now);
+            console.log(`🟢 [Timestamp] ${symbol} → ${now} (genuinely newer)`);
           } else {
-            // 🚨 Log when price extraction fails completely
-            console.error(`❌ [Database Poll] Failed to extract price for ${row.symbol} - mid=${row.mid}, bid=${row.bid}, ask=${row.ask}`);
+            console.log(`⏭️ [Timestamp] ${symbol} skipped (same data)`);
           }
         });
-        
-        // 🚀 STEP 2 & 4: Smart State Updates with enhanced sensitivity + debug mode
-        if (Object.keys(hydratedPrices).length > 0) {
-          // 🔥 AGGRESSIVE CACHE-BUSTING: Force updates on every poll
-          const FORCE_UPDATE_MODE = true; // Enabled to force UI updates with fresh data
-          const MINIMUM_CHANGE_THRESHOLD = 0.0001; // 0.01% minimum price change
-          
-          // Check for ANY changes: price OR timestamp updates
-          const hasChanges = Object.keys(hydratedPrices).some(symbol => {
-            const oldPrice = internalPrices[symbol]?.price;
-            const newPrice = hydratedPrices[symbol]?.price;
-            const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
-            const newTimestamp = timestampUpdates[symbol];
-            
-            // Update if: price changed meaningfully OR timestamp changed (database was written to)
-            const priceChanged = !oldPrice || (Math.abs(newPrice - oldPrice) / oldPrice > MINIMUM_CHANGE_THRESHOLD);
-            const timestampChanged = oldTimestamp !== newTimestamp;
-            
-            if (timestampChanged && !priceChanged) {
-              console.log(`⏰ [Timestamp Update] ${symbol} - Database updated but price unchanged`);
-            }
-            
-            return priceChanged || timestampChanged;
-          });
 
-  // ✅ PHASE 1: Conditional timestamp updates - only update if ACTUALLY newer
-          const now = Date.now();
-          Object.keys(hydratedPrices).forEach(symbol => {
-            const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
-            const newTimestamp = timestampUpdates[symbol];
-            if (!oldTimestamp || newTimestamp > oldTimestamp) {
-              arrivalTimestamps.current.set(symbol, now);
-              console.log(`🟢 [Timestamp] ${symbol} → ${now} (genuinely newer)`);
-            } else {
-              console.log(`⏭️ [Timestamp] ${symbol} skipped (same data)`);
-            }
-          });
-
-          // 🔥 REACTIVE FIX: Always trigger re-renders after timestamp updates
-          if (FORCE_UPDATE_MODE || hasChanges) {
-            if (FORCE_UPDATE_MODE && !hasChanges) {
-              console.log(`🚀 [Force Update] Forcing UI refresh despite no changes (every 2s)`);
-            }
-            setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
-            setPrices(prev => ({ ...prev, ...hydratedPrices }));
-            // 🚨 PHASE 2A FIX: Update ref directly
-            Object.keys(timestampUpdates).forEach(symbol => {
-              lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
-            });
-            console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices + arrivalTimestamps`);
-          } else {
-            console.log(`⏭️  [Database Poll] Skipped price update but refreshed arrivalTimestamps for ${Object.keys(hydratedPrices).length} symbols`);
-          }
-          
-          // 🔥 CRITICAL: Always update lastUpdated to force component re-renders
-          setLastUpdated(new Date());
-          
-          // ✅ FIX #1C: Set connection status to 'connected' when database polling returns data
-          if (connectionStatus !== 'connected' && Object.keys(hydratedPrices).length > 0) {
-            console.log('✅ [Database Polling] Fresh data received - setting status to "connected"');
-            setConnectionStatus('connected');
-          }
-          
-          console.log(`♻️ [Reactive Update] Triggered component re-renders at ${new Date().toISOString()}`);
-
+        // 🔥 REACTIVE FIX: Always update prices to trigger re-renders
+        setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
+        setPrices(prev => ({ ...prev, ...hydratedPrices }));
+        // 🚨 PHASE 2A FIX: Update ref directly
+        Object.keys(timestampUpdates).forEach(symbol => {
+          lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
+          console.log(`📝 [Database Poll] Updated timestamp for ${symbol}: ${timestampUpdates[symbol]}`);
+        });
+        setLastUpdated(new Date());
+        if (connectionStatus !== 'connected') {
+          setConnectionStatus('connected');
         }
+        console.log(`✅ [Database Poll] Updated ${Object.keys(hydratedPrices).length} prices`);
+      } else {
+        console.warn(`⚠️ [Database Poll] No valid prices to hydrate`);
       }
     } catch (error) {
-      console.warn('⚠️ Database polling error:', error);
+      console.error(`❌ [Database Poll] Unexpected error:`, error);
     }
-  }, []);
+  }, [internalPrices, connectionStatus]);
 
   // SYMBOL SUBSCRIPTION MANAGEMENT: Reference counting system with instant hydration
   const subscribe = useCallback((symbols: string[], bypassRouteGate: boolean = false) => {
-    if (!symbols?.length) return;
-
     console.log(`⚡ HYDRATE & SUBSCRIBE called for: ${symbols.join(', ')}`);
     console.log(`📊 Current subscriptions: ${Array.from(subscriptionsRef.current.keys()).join(', ')}`);
     

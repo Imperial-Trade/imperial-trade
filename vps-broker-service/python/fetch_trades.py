@@ -63,7 +63,7 @@ def fetch_trades(login, password, server):
                 processed_tickets.add(ticket)
                 
                 # Get entry deal for this position
-                entry_deals = mt5.history_deals_get(ticket=ticket)
+                entry_deals = mt5.history_deals_get(position=ticket)
                 entry_deal = None
                 if entry_deals:
                     for d in entry_deals:
@@ -78,7 +78,7 @@ def fetch_trades(login, password, server):
                 trade = {
                     "ticket": ticket,
                     "symbol": deal.symbol,
-                    "type": 0 if deal.type == mt5.DEAL_TYPE_BUY else 1,
+                    "type": 0 if entry_deal.type == mt5.DEAL_TYPE_BUY else 1,
                     "volume": deal.volume,
                     "price_open": entry_deal.price,
                     "price_current": deal.price,
@@ -88,8 +88,8 @@ def fetch_trades(login, password, server):
                     "profit": deal.profit,
                     "swap": deal.swap,
                     "commission": deal.commission,
-                    "time": int(entry_deal.time.timestamp()),
-                    "time_close": int(deal.time.timestamp()),
+                    "time": int(entry_deal.time),
+                    "time_close": int(deal.time),
                     "comment": deal.comment
                 }
                 
@@ -119,4 +119,3 @@ if __name__ == "__main__":
     )
     
     print(json.dumps(result))
-

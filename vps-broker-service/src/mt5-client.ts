@@ -1,13 +1,15 @@
 /**
  * MT5 Client Wrapper
  * 
- * Handles MT5 connections and trade fetching
- * Note: This requires MetaTrader5 Python library
- * For Node.js, we'll use a Python subprocess approach
+ * Handles MT5 connections and trade fetching via Python subprocess.
+ * 
+ * IMPORTANT: This service does NOT interfere with the live price feeder!
+ * - It uses mt5.login() to temporarily connect to the user's broker
+ * - The EC Markets MT5 Terminal remains open for price feeding
+ * - Python MT5 library can connect to ANY broker server through the terminal
  */
 
 import { spawn } from 'child_process';
-import { promisify } from 'util';
 import path from 'path';
 
 interface MT5Credentials {
@@ -35,27 +37,43 @@ interface MT5Trade {
 }
 
 interface MT5AccountInfo {
+  login: number;
+  name: string;
+  server: string;
   balance: number;
   equity: number;
-  margin: number;
-  free_margin: number;
-  margin_level: number;
+  currency: string;
+  leverage: number;
 }
 
 /**
- * Test MT5 connection
+ * Test MT5 connection to user's broker
+ * Note: Uses mt5.login() which temporarily logs into the user's account
+ * without closing the MT5 terminal or affecting price feeder
  */
 export async function testMT5Connection(credentials: MT5Credentials): Promise<{
   connected: boolean;
   account_info?: MT5AccountInfo;
   error?: string;
 }> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const pythonScript = path.join(__dirname, '../python/test_connection.py');
-    const pythonProcess = spawn('python3', [pythonScript, JSON.stringify(credentials)]);
+    
+    // Use 'python' on Windows, 'python3' on Unix
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonProcess = spawn(pythonCmd, [pythonScript, JSON.stringify(credentials)]);
     
     let stdout = '';
     let stderr = '';
+    
+    // Set timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      pythonProcess.kill();
+      resolve({
+        connected: false,
+        error: 'Connection timeout (30s)'
+      });
+    }, 30000);
     
     pythonProcess.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -66,6 +84,8 @@ export async function testMT5Connection(credentials: MT5Credentials): Promise<{
     });
     
     pythonProcess.on('close', (code) => {
+      clearTimeout(timeout);
+      
       if (code !== 0) {
         resolve({
           connected: false,
@@ -88,18 +108,30 @@ export async function testMT5Connection(credentials: MT5Credentials): Promise<{
 }
 
 /**
- * Fetch trades from MT5
+ * Fetch trades from user's MT5 broker
+ * Note: Uses mt5.login() which temporarily logs into the user's account
+ * without closing the MT5 terminal or affecting price feeder
  */
 export async function fetchMT5Trades(credentials: MT5Credentials): Promise<{
   trades: MT5Trade[];
   account_balance: number;
+  error?: string;
 }> {
   return new Promise((resolve, reject) => {
     const pythonScript = path.join(__dirname, '../python/fetch_trades.py');
-    const pythonProcess = spawn('python3', [pythonScript, JSON.stringify(credentials)]);
+    
+    // Use 'python' on Windows, 'python3' on Unix
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonProcess = spawn(pythonCmd, [pythonScript, JSON.stringify(credentials)]);
     
     let stdout = '';
     let stderr = '';
+    
+    // Set timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      pythonProcess.kill();
+      reject(new Error('Trade fetch timeout (60s)'));
+    }, 60000);
     
     pythonProcess.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -110,6 +142,8 @@ export async function fetchMT5Trades(credentials: MT5Credentials): Promise<{
     });
     
     pythonProcess.on('close', (code) => {
+      clearTimeout(timeout);
+      
       if (code !== 0) {
         reject(new Error(stderr || 'Failed to fetch trades'));
         return;
@@ -117,6 +151,12 @@ export async function fetchMT5Trades(credentials: MT5Credentials): Promise<{
       
       try {
         const result = JSON.parse(stdout);
+        
+        if (result.error) {
+          reject(new Error(result.error));
+          return;
+        }
+        
         resolve(result);
       } catch (error) {
         reject(new Error('Invalid response from MT5 service'));
@@ -124,4 +164,3 @@ export async function fetchMT5Trades(credentials: MT5Credentials): Promise<{
     });
   });
 }
-

@@ -16,7 +16,7 @@ import { testMT5Connection, fetchMT5Trades } from './mt5-client';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001; // Use 3001 to avoid conflict with price feeder
 const API_KEY = process.env.VPS_API_KEY || '';
 
 // Middleware
@@ -122,4 +122,3 @@ app.listen(PORT, () => {
   console.log(`🚀 Imperial Trade Broker Service running on port ${PORT}`);
   console.log(`📝 API Key required: ${API_KEY ? 'Set' : 'NOT SET - Please configure VPS_API_KEY'}`);
 });
-

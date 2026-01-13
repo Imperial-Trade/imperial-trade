@@ -24,7 +24,9 @@ export interface SignalUpdateEvent {
     status?: string;
     tpHits?: number[];
     closeReason?: string;
-    [key: string]: any;
+    notes?: string;
+    updatedAt?: string;
+    [key: string]: string | number | number[] | undefined;
   };
 }
 

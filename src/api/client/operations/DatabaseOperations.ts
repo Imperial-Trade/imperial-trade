@@ -14,7 +14,7 @@ export class DatabaseOperations {
     table: T,
     options?: {
       select?: string;
-      eq?: { column: string; value: any };
+      eq?: { column: string; value: string | number | boolean };
       order?: { column: string; ascending?: boolean };
       limit?: number;
     },
@@ -48,7 +48,7 @@ export class DatabaseOperations {
           executeQuery(),
           config.timeout || this.defaultTimeout,
           config.abortSignal
-        ) as { data: any; error: any };
+        ) as { data: unknown; error: { message: string } | null };
 
         if (response.error) {
           throw new Error(response.error.message);
@@ -113,7 +113,7 @@ export class DatabaseOperations {
           executeQuery(),
           config.timeout || this.defaultTimeout,
           config.abortSignal
-        ) as { data: any; error: any };
+        ) as { data: unknown; error: { message: string } | null };
 
         if (response.error) {
           throw new Error(response.error.message);
@@ -179,7 +179,7 @@ export class DatabaseOperations {
           executeQuery(),
           config.timeout || this.defaultTimeout,
           config.abortSignal
-        ) as { data: any; error: any };
+        ) as { data: unknown; error: { message: string } | null };
 
         if (response.error) {
           throw new Error(response.error.message);
@@ -238,7 +238,7 @@ export class DatabaseOperations {
           executeQuery(),
           config.timeout || this.defaultTimeout,
           config.abortSignal
-        ) as { data: any; error: any };
+        ) as { data: unknown; error: { message: string } | null };
 
         if (response.error) {
           throw new Error(response.error.message);

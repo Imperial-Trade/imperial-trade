@@ -32,7 +32,7 @@ export class MarketAlert {
     return data;
   }
 
-  static async create(alertData: any, userId: string) {
+  static async create(alertData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('market_alerts')
       .insert([{ ...alertData, user_id: userId }])
@@ -56,7 +56,7 @@ export class OpportunitySignal {
     return data;
   }
 
-  static async create(signalData: any, userId: string) {
+  static async create(signalData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('opportunity_signals')
       .insert([{ ...signalData, user_id: userId }])
@@ -80,7 +80,7 @@ export class RiskSimulation {
     return data;
   }
 
-  static async create(simulationData: any, userId: string) {
+  static async create(simulationData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('risk_simulations')
       .insert([{ ...simulationData, user_id: userId }])
@@ -104,7 +104,7 @@ export class TradeJournalEntry {
     return data;
   }
 
-  static async create(entryData: any, userId: string) {
+  static async create(entryData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('trade_journal_entries')
       .insert([{ ...entryData, user_id: userId }])
@@ -124,7 +124,7 @@ export class TradeJournalEntry {
     if (error) throw error;
   }
 
-  static async update(entryId: string, entryData: any) {
+  static async update(entryId: string, entryData: Record<string, unknown>) {
     const { data, error } = await supabase
       .from('trade_journal_entries')
       .update(entryData)
@@ -149,7 +149,7 @@ export class TradingStrategy {
     return data;
   }
 
-  static async create(strategyData: any, userId: string) {
+  static async create(strategyData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('trading_strategies')
       .insert([{ ...strategyData, user_id: userId }])
@@ -173,7 +173,7 @@ export class TradingGroup {
     return data;
   }
 
-  static async create(groupData: any, userId: string) {
+  static async create(groupData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('trading_groups')
       .insert([{ ...groupData, created_by: userId }])
@@ -197,7 +197,7 @@ export class GroupJournalEntry {
     return data;
   }
 
-  static async create(entryData: any, userId: string) {
+  static async create(entryData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('group_journal_entries')
       .insert([{ ...entryData, user_id: userId }])
@@ -220,7 +220,7 @@ export class VerifiedTrader {
     return data;
   }
 
-  static async create(traderData: any, userId: string) {
+  static async create(traderData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('verified_traders')
       .insert([{ ...traderData, user_id: userId }])
@@ -244,7 +244,7 @@ export class TradeHistory {
     return data;
   }
 
-  static async create(historyData: any, userId: string) {
+  static async create(historyData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('trade_history')
       .insert([{ ...historyData, user_id: userId }])
@@ -292,7 +292,7 @@ export class QuizAttempt {
     return data;
   }
 
-  static async create(attemptData: any, userId: string) {
+  static async create(attemptData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('quiz_attempts')
       .insert([{ ...attemptData, user_id: userId }])
@@ -316,7 +316,7 @@ export class UserProgress {
     return data;
   }
 
-  static async create(progressData: any, userId: string) {
+  static async create(progressData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('user_progress')
       .insert([{ ...progressData, user_id: userId }])
@@ -363,7 +363,7 @@ export class UserPathwayProgress {
     return data;
   }
 
-  static async create(progressData: any, userId: string) {
+  static async create(progressData: Record<string, unknown>, userId: string) {
     const { data, error } = await supabase
       .from('user_pathway_progress')
       .insert([{ ...progressData, user_id: userId }])

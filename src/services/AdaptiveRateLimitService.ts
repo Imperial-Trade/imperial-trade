@@ -1,3 +1,14 @@
+interface SecurityAnalysis {
+  score: number;
+  isSuspicious: boolean;
+  reasons: string[];
+}
+
+interface BehavioralAnalysis {
+  suspiciousScore: number;
+  reasons: string[];
+}
+
 interface AdaptiveRateLimitProfile {
   userId?: string;
   email: string;
@@ -103,8 +114,8 @@ export class AdaptiveRateLimitService {
   async getAdaptiveRateLimit(
     identifier: string,
     email: string,
-    securityAnalysis: any,
-    behavioralAnalysis: any
+    securityAnalysis: SecurityAnalysis,
+    behavioralAnalysis: BehavioralAnalysis
   ): Promise<AdaptedLimits> {
     console.log('🧠 Calculating adaptive rate limits for:', identifier);
 
@@ -153,8 +164,8 @@ export class AdaptiveRateLimitService {
 
   private async updateProfile(
     profile: AdaptiveRateLimitProfile,
-    securityAnalysis: any,
-    behavioralAnalysis: any
+    securityAnalysis: SecurityAnalysis,
+    behavioralAnalysis: BehavioralAnalysis
   ): Promise<AdaptiveRateLimitProfile> {
     const now = Date.now();
     
@@ -297,7 +308,7 @@ export class AdaptiveRateLimitService {
     };
   }
 
-  private classifySubmissionSource(securityAnalysis: any, behavioralAnalysis: any): 'manual' | 'automated' | 'suspicious' {
+  private classifySubmissionSource(securityAnalysis: SecurityAnalysis, behavioralAnalysis: BehavioralAnalysis): 'manual' | 'automated' | 'suspicious' {
     if (securityAnalysis?.score > 60 || behavioralAnalysis?.suspiciousScore > 70) {
       return 'suspicious';
     }
@@ -307,7 +318,7 @@ export class AdaptiveRateLimitService {
     return 'manual';
   }
 
-  private identifyRiskFactors(securityAnalysis: any, behavioralAnalysis: any): RiskFactor[] {
+  private identifyRiskFactors(securityAnalysis: SecurityAnalysis, behavioralAnalysis: BehavioralAnalysis): RiskFactor[] {
     const factors: RiskFactor[] = [];
     const now = Date.now();
     

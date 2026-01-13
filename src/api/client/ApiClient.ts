@@ -24,7 +24,7 @@ export class ApiClient {
     table: T,
     options?: {
       select?: string;
-      eq?: { column: string; value: any };
+      eq?: { column: string; value: string | number | boolean };
       order?: { column: string; ascending?: boolean };
       limit?: number;
     }

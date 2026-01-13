@@ -11,6 +11,10 @@ interface CacheConfig {
   enableCompression: boolean;
 }
 
+interface RedisClient {
+  quit: () => void;
+}
+
 /**
  * High-Performance Hybrid Cache with Redis Pub/Sub Integration
  * L1: In-Memory Cache (ultra-fast local access)
@@ -19,15 +23,15 @@ interface CacheConfig {
  */
 class RedisCache {
   private static instance: RedisCache;
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private config: CacheConfig;
   private cleanupInterval: NodeJS.Timeout;
   private hitCount = 0;
   private missCount = 0;
-  
+
   // Redis integration
-  private redisClient: any = null;
-  private subscriberClient: any = null;
+  private redisClient: RedisClient | null = null;
+  private subscriberClient: RedisClient | null = null;
   private isRedisConnected = false;
   private pubSubSubscriptions: Set<string> = new Set();
 
@@ -59,12 +63,12 @@ class RedisCache {
     return RedisCache.instance;
   }
 
-  getSignal(key: string): any | null {
-    return this.get(`signal:${key}`);
+  getSignal<T = unknown>(key: string): T | null {
+    return this.get<T>(`signal:${key}`);
   }
 
   getPrice(symbol: string): { price: number; timestamp: number } | null {
-    return this.get(`price:${symbol}`);
+    return this.get<{ price: number; timestamp: number }>(`price:${symbol}`);
   }
 
   // User subscription caching (5min TTL)
@@ -73,18 +77,18 @@ class RedisCache {
   }
 
   getUserSubscriptions(userId: string): string[] | null {
-    return this.get(`subs:${userId}`);
+    return this.get<string[]>(`subs:${userId}`);
   }
 
   // API response caching (1min TTL)
-  setApiResponse(endpoint: string, params: string, data: any, ttl = 60000): void {
+  setApiResponse<T = unknown>(endpoint: string, params: string, data: T, ttl = 60000): void {
     const key = `api:${endpoint}:${this.hashParams(params)}`;
     this.set(key, data, ttl);
   }
 
-  getApiResponse(endpoint: string, params: string): any | null {
+  getApiResponse<T = unknown>(endpoint: string, params: string): T | null {
     const key = `api:${endpoint}:${this.hashParams(params)}`;
-    return this.get(key);
+    return this.get<T>(key);
   }
 
   // PUBLIC generic cache helpers (wrap private get/set)
@@ -132,10 +136,10 @@ class RedisCache {
   }
 
   // Batch operations for performance
-  multiGet(keys: string[]): Record<string, any> {
-    const result: Record<string, any> = {};
+  multiGet<T = unknown>(keys: string[]): Record<string, T> {
+    const result: Record<string, T> = {};
     for (const key of keys) {
-      const value = this.get(key);
+      const value = this.get<T>(key);
       if (value !== null) {
         result[key] = value;
       }
@@ -143,7 +147,7 @@ class RedisCache {
     return result;
   }
 
-  multiSet(entries: Record<string, { data: any; ttl?: number }>): void {
+  multiSet<T = unknown>(entries: Record<string, { data: T; ttl?: number }>): void {
     for (const [key, { data, ttl }] of Object.entries(entries)) {
       this.set(key, data, ttl);
     }
@@ -218,11 +222,11 @@ class RedisCache {
   }
 
   // Subscribe to Redis pub/sub channel for real-time price updates
-  public subscribeToChannel(channel: string, callback: (data: any) => void): void {
+  public subscribeToChannel<T = unknown>(channel: string, callback: (data: T) => void): void {
     if (!this.pubSubSubscriptions.has(channel)) {
       this.pubSubSubscriptions.add(channel);
       console.log(`📡 Subscribed to channel: ${channel}`);
-      
+
       // In browser environment, we rely on WebSocket connection to price-ingestor
       // which handles Redis pub/sub internally and sends updates via WebSocket
     }
@@ -252,14 +256,14 @@ class RedisCache {
   }
 
   // Enhanced signal caching with distributed awareness
-  setSignal(key: string, data: any, ttl = 30000): void {
+  setSignal<T extends Record<string, unknown>>(key: string, data: T, ttl = 30000): void {
     // Add source metadata for tracking
     const enhancedData = {
       ...data,
       cached_at: Date.now(),
       source: 'hybrid_cache'
     };
-    
+
     this.set(`signal:${key}`, enhancedData, ttl);
   }
 

@@ -5,7 +5,7 @@ export interface RouteParams {
 
 export interface AppRoute {
   path: string;
-  component: React.ComponentType<any>;
+  component: React.ComponentType<Record<string, unknown>>;
   title: string;
   description?: string;
   requireAuth?: boolean;
@@ -138,7 +138,7 @@ export function buildRoute(route: string, params: RouteParams = {}): string {
 
 // Navigation hook types
 export interface UseNavigationReturn {
-  navigate: (to: string, options?: { replace?: boolean; state?: any }) => void;
+  navigate: (to: string, options?: { replace?: boolean; state?: Record<string, unknown> }) => void;
   goBack: () => void;
   goForward: () => void;
   currentRoute: string;

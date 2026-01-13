@@ -1,9 +1,25 @@
 
 // Global type definitions for the Imperial Trading application
 
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
 interface Window {
-  SpeechRecognition: any;
-  webkitSpeechRecognition: any;
+  SpeechRecognition: SpeechRecognitionConstructor | undefined;
+  webkitSpeechRecognition: SpeechRecognitionConstructor | undefined;
   AudioContext: typeof AudioContext;
   webkitAudioContext: typeof AudioContext;
   addNotification?: (notification: import('@/utils/notificationBus').NotificationEvent) => void;
@@ -39,7 +55,7 @@ interface SpeechRecognitionAlternative {
 interface NavigationItem {
   title: string;
   url: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
   accessLevel: string;
   adminOnly?: boolean;
 }

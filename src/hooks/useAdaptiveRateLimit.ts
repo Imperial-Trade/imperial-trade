@@ -3,24 +3,52 @@ import { useLocation } from 'react-router-dom';
 import { adaptiveRateLimitService } from '@/services/AdaptiveRateLimitService';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
 
+interface SecurityAnalysis {
+  score: number;
+  isSuspicious: boolean;
+  reasons: string[];
+}
+
+interface BehavioralAnalysis {
+  suspiciousScore: number;
+  reasons: string[];
+}
+
+interface AdaptedLimits {
+  maxAttempts: number;
+  windowMs: number;
+  progressiveDelays: number[];
+  recoveryRate: number;
+  requiresCaptcha: boolean;
+  additionalVerification: boolean;
+}
+
+interface SystemLoad {
+  cpuUsage: number;
+  memoryUsage: number;
+  activeConnections: number;
+  requestRate: number;
+  errorRate: number;
+}
+
 interface AdaptiveRateLimitConfig {
   identifier: string;
   email: string;
-  securityAnalysis?: any;
-  behavioralAnalysis?: any;
+  securityAnalysis?: SecurityAnalysis;
+  behavioralAnalysis?: BehavioralAnalysis;
 }
 
 interface AdaptiveRateLimitState {
   canSubmit: boolean;
   attemptsLeft: number;
   nextAttemptDelay: number;
-  adaptedLimits: any;
+  adaptedLimits: AdaptedLimits | null;
   trustScore: number;
   riskCategory: string;
   requiresCaptcha: boolean;
   additionalVerification: boolean;
   threatLevel: string;
-  systemLoad: any;
+  systemLoad: SystemLoad | null;
   isAdapting: boolean;
 }
 

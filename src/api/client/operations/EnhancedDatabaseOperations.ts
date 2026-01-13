@@ -18,7 +18,7 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     table: T,
     options?: {
       select?: string;
-      eq?: { column: string; value: any };
+      eq?: { column: string; value: string | number | boolean };
       order?: { column: string; ascending?: boolean };
       limit?: number;
     },
@@ -185,7 +185,8 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
       result.data.forEach((price: TableRow<'market_prices'>) => {
         if (price.symbol && allowedSymbols.includes(price.symbol)) {
           ultraCostOptimizer.trackApiCall('redis');
-          redisCache.setPrice(price.symbol, (price as any).bid || 0, cacheTTL);
+          const bid = typeof price === 'object' && price !== null && 'bid' in price ? (price.bid as number) : 0;
+          redisCache.setPrice(price.symbol, bid || 0, cacheTTL);
         }
       });
       
@@ -197,8 +198,13 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
 
   // Cache key generation
   private generateCacheKey<T extends DatabaseTable>(
-    table: T, 
-    options?: any
+    table: T,
+    options?: {
+      select?: string;
+      eq?: { column: string; value: string | number | boolean };
+      order?: { column: string; ascending?: boolean };
+      limit?: number;
+    }
   ): string {
     const optionsHash = options ? JSON.stringify(options) : 'all';
     return `query:${table}:${this.hashString(optionsHash)}`;

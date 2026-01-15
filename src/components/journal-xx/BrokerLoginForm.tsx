@@ -56,11 +56,21 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
         formData.server
       );
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (!user) {
-        throw new Error('User not authenticated');
+      if (userError || !user) {
+        console.error('❌ User authentication error:', userError);
+        throw new Error('User not authenticated. Please refresh the page and try again.');
       }
+
+      // Verify session is valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('❌ Session error:', sessionError);
+        throw new Error('Session expired. Please refresh the page and try again.');
+      }
+      
+      console.log('✅ User authenticated:', { userId: user.id, hasSession: !!session });
 
       // Store encrypted credentials in Supabase
       const { error: dbError } = await supabase
@@ -73,6 +83,7 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
           encrypted_server: encryptedServer,
           credentials_hash: credentialsHash, // For detecting changes
           is_active: true,
+          connection_status: 'pending', // Set status to pending - Go Brain will update this
           last_sync_at: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -84,24 +95,8 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
         throw dbError;
       }
 
-      // Trigger connection test via Edge Function
-      const { data: testResult, error: testError } = await supabase.functions.invoke('test-broker-connection', {
-        body: {
-          broker_type: broker,
-          encrypted_login: encryptedLogin,
-          encrypted_password: encryptedPassword,
-          encrypted_server: encryptedServer
-        }
-      });
-
-      if (testError) {
-        throw new Error('Failed to connect to broker. Please check your credentials.');
-      }
-
-      // Verify connection actually succeeded
-      if (!testResult || !testResult.connected) {
-        throw new Error(testResult?.message || 'Failed to connect to broker. Please check your credentials.');
-      }
+      // Credentials saved to database - Go Brain will handle connection testing
+      // The Go Brain service on VPS reads broker_connections table and manages MT5 connections
 
       // Success animation
       setTimeout(() => {
@@ -120,7 +115,6 @@ export const BrokerLoginForm: React.FC<BrokerLoginFormProps> = ({
     switch (type) {
       case 'XS': return 'XS.com';
       case 'EC_MARKETS': return 'EC Markets';
-      case 'PU_PRIME': return 'PU Prime';
       default: return 'Broker';
     }
   };

@@ -1,0 +1,26 @@
+# Commands to test the fixed Docker image after build completes
+
+# Step 1: Verify the image was built successfully
+docker images | grep imperial-mt5-worker
+
+# Step 2: Clean up any old test container (if exists)
+docker rm -f test-mt5-worker 2>/dev/null
+
+# Step 3: Make sure you have a test launch.ini file
+# (You should already have this, but if not, create one with your MT5 credentials)
+
+# Step 4: Run test container with the fixed image
+docker run -d --name test-mt5-worker \
+  -v /root/imperial-factory/config/test_launch.ini:/mt5/config/launch.ini:ro \
+  imperial-mt5-worker
+
+# Step 5: Wait a moment for initialization
+sleep 10
+
+# Step 6: Check logs (should be CLEAN - no error spam!)
+docker logs test-mt5-worker
+
+# Step 7: Check for any errors (should be minimal/empty)
+docker logs test-mt5-worker 2>&1 | grep -i "error\|warn\|fail" | head -20
+
+# If logs look good (no ToolbarWindowProc spam, no OLE errors), SUCCESS! 🎉

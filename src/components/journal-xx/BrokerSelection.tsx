@@ -1,12 +1,12 @@
 /**
  * Broker Selection Component
- * Allows users to choose from XS.com, EC Markets, or PU Prime
+ * Allows users to choose from XS.com or EC Markets
  */
 
 import React from 'react';
 import { CheckIcon } from './ui/Icons';
 
-export type BrokerType = 'XS' | 'EC_MARKETS' | 'PU_PRIME';
+export type BrokerType = 'XS' | 'EC_MARKETS';
 
 interface Broker {
   id: BrokerType;
@@ -21,19 +21,13 @@ const BROKERS: Broker[] = [
     id: 'XS',
     name: 'XS.com',
     description: 'Global multi-asset broker with competitive spreads',
-    serverExamples: ['XS.com-Demo', 'XS.com-Live']
+    serverExamples: ['XSFintech-REAL-1 (Live)', 'XSFintech-DEMO']
   },
   {
     id: 'EC_MARKETS',
     name: 'EC Markets',
     description: 'Premium forex and CFD broker',
-    serverExamples: ['ECMarkets-MT5-Demo', 'ECMarkets-MT5-Live01']
-  },
-  {
-    id: 'PU_PRIME',
-    name: 'PU Prime',
-    description: 'Professional trading platform with advanced tools',
-    serverExamples: ['PUPrime-Demo', 'PUPrime-Live']
+    serverExamples: ['ECMarkets-MT5-Live01 (Live)', 'ECMarketsLtd-Demo']
   }
 ];
 
@@ -53,7 +47,7 @@ export const BrokerSelection: React.FC<BrokerSelectionProps> = ({
       <h3 className="text-lg font-semibold mb-4 text-foreground">
         Select Your Broker
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto">
         {BROKERS.map((broker) => {
           const isSelected = selectedBroker === broker.id;
           return (

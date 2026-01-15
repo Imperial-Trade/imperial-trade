@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════════════════════════════════
+  COPY & PASTE TO WINDOWS VPS - DEPLOYMENT COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Open PowerShell as Administrator
+  Right-click PowerShell → "Run as Administrator"
+
+STEP 2: Copy and paste these commands one by one:
+
+───────────────────────────────────────────────────────────────────────────────
+# Navigate to broker service
+cd C:\vps-broker-service
+
+# Run deployment script
+.\vps-setup\DEPLOY_NOW_SAFE.ps1
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 3: Wait for completion (1-2 minutes)
+
+STEP 4: Verify deployment:
+
+───────────────────────────────────────────────────────────────────────────────
+# Check services
+pm2 list
+
+# Test health endpoint
+$apiKey = "bfa602cd4a12c93cd6a0f6cab9d93ff7b0fcd4dd2392f94e48db2013d679990d"
+Invoke-WebRequest -Uri "http://localhost:3001/health" -Headers @{"X-API-Key"=$apiKey}
+───────────────────────────────────────────────────────────────────────────────
+
+EXPECTED RESULTS:
+  ✅ Both services show "online" in pm2 list
+  ✅ Health endpoint returns {"status":"ok",...}
+  ✅ Price Feeder still running (was never stopped)
+
+═══════════════════════════════════════════════════════════════════════════════
+  IF YOU GET ERRORS:
+═══════════════════════════════════════════════════════════════════════════════
+
+Error: "Cannot run script"
+  Fix: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+Error: "Script not found"
+  Fix: Check path: Test-Path C:\vps-broker-service\vps-setup\DEPLOY_NOW_SAFE.ps1
+
+Error: "Build failed"
+  Fix: cd C:\vps-broker-service && npm install && npm run build
+
+Error: "Service not starting"
+  Fix: pm2 logs imperial-trade-broker-service --lines 50
+
+═══════════════════════════════════════════════════════════════════════════════

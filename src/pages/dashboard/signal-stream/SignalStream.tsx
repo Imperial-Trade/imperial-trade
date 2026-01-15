@@ -14,6 +14,7 @@ import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 // PHASE 2: Error boundary for signal stream
 import SignalStreamErrorBoundary from '@/components/errors/SignalStreamErrorBoundary';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { normalizeSymbol } from '@/utils/symbolUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -1313,22 +1314,32 @@ export default function SignalStream() {
     // Subscribe to symbols from both active AND pending alerts (normalized)
     [...filteredSignals.active, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
+        // ✅ CRITICAL: Normalize symbol (handles BTC -> BTCUSD, US30 -> U30USD, SPX -> SPXUSD, NAS100 -> NDXUSD)
+        const normalizedSymbol = normalizeSymbol(alert.tradermadeSymbol.trim());
+        if (normalizedSymbol) {
+          symbolSet.add(normalizedSymbol);
+          if (isDevToolsEnabled()) {
+            console.log(`🔍 [SignalStream] Normalized symbol: ${alert.tradermadeSymbol.trim()} -> ${normalizedSymbol}`);
+          }
+        } else {
+          console.warn(`⚠️ [SignalStream] Failed to normalize symbol: ${alert.tradermadeSymbol.trim()}`);
+        }
       }
     });
 
     // If no symbols found, subscribe to essential symbols for warm-start
     if (symbolSet.size === 0) {
-      ['XAUUSD', 'BTCUSD'].forEach(symbol => {
+      ['XAUUSD', 'BTCUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].forEach(symbol => {
         symbolSet.add(symbol);
       });
       if (isDevToolsEnabled()) {
-        console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD');
+        console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD, U30USD, SPXUSD, NDXUSD');
       }
     }
 
-    // Limit to top 2 symbols for efficient connection management
-    const symbolList = Array.from(symbolSet).sort().slice(0, 2);
+    // ✅ FIX: Subscribe to ALL symbols from alerts (removed 2-symbol limit)
+    // This ensures all signals get live prices, especially for BTCUSD, XAUUSD, US30, SPX, NAS100
+    const symbolList = Array.from(symbolSet).sort();
 
     // 🎯 DEEP EQUALITY CHECK: Return same reference if content identical
     const prev = prevSymbolsRef.current;
@@ -1362,6 +1373,7 @@ export default function SignalStream() {
   } = useOptimizedWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
+  // ✅ CRITICAL: Keys are normalized symbols (BTCUSD, XAUUSD, U30USD, SPXUSD, NDXUSD)
   const livePrices = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(livePricesData).forEach(([symbol, priceData]) => {
@@ -1371,6 +1383,13 @@ export default function SignalStream() {
     });
     return result;
   }, [livePricesData]);
+
+  // ✅ Helper function to get live price with proper symbol normalization
+  const getLivePrice = useCallback((tradermadeSymbol: string | undefined, assetName?: string): number | null => {
+    if (!tradermadeSymbol && !assetName) return null;
+    const normalizedSymbol = normalizeSymbol(tradermadeSymbol || assetName || '');
+    return normalizedSymbol ? (livePrices[normalizedSymbol] || null) : null;
+  }, [livePrices]);
 
   // 🎯 FIXED: Update subscriptions when symbols change (subscribe is stable now)
   useEffect(() => {
@@ -1625,8 +1644,8 @@ export default function SignalStream() {
       if (newStatus === 'closed') {
         console.log('🔒 Closing signal via RPC...', alert.id);
         
-        // Get live price for accurate closing price
-        const livePrice = livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName?.toUpperCase()] || null;
+        // Get live price for accurate closing price - normalize symbol for lookup
+        const livePrice = getLivePrice(alert.tradermadeSymbol, alert.assetName);
         
         const {
           data,
@@ -2024,7 +2043,7 @@ export default function SignalStream() {
                         close_reason: alert.closeReason,
                         created_date: alert.createdAt,
                         updated_date: alert.updatedAt
-                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />)}
+                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={getLivePrice(alert.tradermadeSymbol, alert.assetName)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />)}
                       </div> : <div className="text-center py-8">
                         <TrendlineEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>

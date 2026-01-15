@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════════════════════════
+  DEPLOY VPS SERVICE - COPY & PASTE
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Open PowerShell as Administrator
+  Right-click PowerShell → "Run as Administrator"
+
+STEP 2: Copy and paste this command:
+───────────────────────────────────────────────────────────────────────────────
+cd C:\vps-broker-service
+.\vps-setup\DEPLOY_NOW_SAFE.ps1
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 3: Wait for completion (about 1-2 minutes)
+
+STEP 4: Verify deployment:
+───────────────────────────────────────────────────────────────────────────────
+pm2 list
+───────────────────────────────────────────────────────────────────────────────
+
+Both services should show "online":
+  ✅ Imperial Price Feeder
+  ✅ imperial-trade-broker-service
+
+STEP 5: Test health endpoint:
+───────────────────────────────────────────────────────────────────────────────
+$apiKey = "bfa602cd4a12c93cd6a0f6cab9d93ff7b0fcd4dd2392f94e48db2013d679990d"
+Invoke-WebRequest -Uri "http://localhost:3001/health" -Headers @{"X-API-Key"=$apiKey}
+───────────────────────────────────────────────────────────────────────────────
+
+Expected: {"status":"ok",...}
+
+═══════════════════════════════════════════════════════════════════════════════
+  TEST FRONTEND CONNECTION
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Open browser: http://localhost:5173/dashboard/journal-xx-pro
+2. Select: "EC Markets"
+3. Enter:
+   - Login: 800107112
+   - Password: Demo@123
+   - Server: ECMarketsLtd-Demo
+4. Click: "Connect Broker"
+5. Monitor browser console (F12) for connection status
+
+Expected Status Message:
+  ✅ Connected to MT5 Account 800107112 on ECMarketsLtd-Demo. Balance: 1,129.46 USD
+
+═══════════════════════════════════════════════════════════════════════════════

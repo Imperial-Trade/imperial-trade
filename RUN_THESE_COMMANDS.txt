@@ -1,0 +1,52 @@
+# Copy and paste these commands into your VPS terminal
+
+# Step 1: Stop current container
+docker stop test-mt5-worker
+docker rm test-mt5-worker
+
+# Step 2: Create launch.ini with broker credentials
+cat > /root/imperial-factory/config/test_launch.ini << 'EOF'
+[Common]
+Login=800107112
+Password=Demo@123
+Server=ECMarkets-MT5-Demo
+ProxyEnable=0
+CertConfirm=1
+
+[Experts]
+AllowLiveTrading=1
+AllowDllImport=0
+Enabled=1
+AccountAndConsole=1
+WebRequestEnable=1
+WebRequestUrl=https://kmuoqkcxguafxulqlbmi.supabase.co
+
+[Chart1]
+Symbol=EURUSD
+Period=M1
+Expert=ImperialSync
+EOF
+
+# Step 3: Start container with broker credentials
+docker run -d --name test-mt5-worker \
+  -v /root/imperial-factory/config/test_launch.ini:/mt5/config/launch.ini:ro \
+  imperial-mt5-worker
+
+# Step 4: Wait for initialization
+sleep 15
+
+# Step 5: Check status and logs
+echo "=== Container Status ==="
+docker ps -a | grep test-mt5-worker
+
+echo ""
+echo "=== MT5 Process ==="
+docker exec test-mt5-worker ps aux | grep terminal64
+
+echo ""
+echo "=== Recent Logs ==="
+docker logs --tail 50 test-mt5-worker
+
+echo ""
+echo "=== Connection/Error Messages ==="
+docker logs test-mt5-worker 2>&1 | grep -i "connected\|login\|authenticate\|error\|fail" | tail -30

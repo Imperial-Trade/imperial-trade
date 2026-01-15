@@ -19,11 +19,31 @@ function getEncryptionKey(userId: string): Buffer {
 
 /**
  * Decrypt credentials encrypted by client-side AES-256-GCM
+ * Also handles plain credentials (for testing/development)
  */
 export function decryptCredentials(encryptedData: string, userId: string): string {
   try {
-    // Decode base64
-    const combined = Buffer.from(encryptedData, 'base64');
+    if (!encryptedData || !userId) {
+      throw new Error('Missing encryptedData or userId');
+    }
+
+    // Check if data looks like plain text (not base64 encrypted)
+    // Encrypted data is base64 and should be at least 28 bytes when decoded
+    // Plain text is typically shorter and not valid base64
+    let combined: Buffer;
+    try {
+      combined = Buffer.from(encryptedData, 'base64');
+      
+      // If decoded length is too short, it's likely plain text
+      if (combined.length < 28) {
+        console.log('📝 Detected plain text credentials (length < 28), using as-is');
+        return encryptedData; // Return as plain text
+      }
+    } catch (e) {
+      // Not valid base64, assume plain text
+      console.log('📝 Detected plain text credentials (invalid base64), using as-is');
+      return encryptedData; // Return as plain text
+    }
     
     // Extract IV (first 12 bytes) and encrypted data (rest includes auth tag)
     const iv = combined.slice(0, 12);
@@ -31,6 +51,8 @@ export function decryptCredentials(encryptedData: string, userId: string): strin
     
     // Get encryption key
     const key = getEncryptionKey(userId);
+    const encryptionSecret = process.env.ENCRYPTION_SECRET || 'ImperialTrade_BrokerEncryption_2025_v1';
+    console.log(`🔑 Using encryption secret: ${encryptionSecret.substring(0, 10)}... (length: ${encryptionSecret.length})`);
     
     // Decrypt using AES-256-GCM
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
@@ -45,9 +67,15 @@ export function decryptCredentials(encryptedData: string, userId: string): strin
     decrypted += decipher.final('utf8');
     
     return decrypted;
-  } catch (error) {
-    console.error('❌ Decryption failed:', error);
-    throw new Error('Failed to decrypt credentials');
+  } catch (error: any) {
+    console.error('❌ Decryption failed:', {
+      error: error?.message || error,
+      stack: error?.stack,
+      encryptedDataLength: encryptedData?.length,
+      userIdLength: userId?.length,
+      encryptionSecret: process.env.ENCRYPTION_SECRET ? 'SET' : 'NOT SET'
+    });
+    throw new Error(`Failed to decrypt credentials: ${error?.message || 'Unknown error'}`);
   }
 }
 

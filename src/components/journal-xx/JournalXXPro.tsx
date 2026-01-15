@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { 
   NotebookIcon, SunIcon, MoonIcon, ArrowRightIcon, XIcon, SparklesIcon,
   TrendingUpIcon, TrendingDownIcon, MapIcon, PlayIcon, PauseIcon,
-  BarChartIcon, CalculatorIcon, GamepadIcon, TargetIcon, CheckIcon
+  BarChartIcon, CalculatorIcon, GamepadIcon, TargetIcon, CheckIcon, TreeIcon
 } from './ui/Icons';
 import { TradeFormData, TradeEntry } from './types';
 import { TraderInsights } from './TraderInsights';
@@ -13,6 +13,9 @@ import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { BrokerSelection, BrokerType } from './BrokerSelection';
 import { BrokerLoginForm } from './BrokerLoginForm';
 import { AutoJournalView } from './AutoJournalView';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface JournalXXProProps {
   isDarkMode: boolean;
@@ -61,8 +64,73 @@ const SpotlightCard: React.FC<{
     );
 };
 
+// News Ticker Component
+const NewsTicker: React.FC = () => {
+  const [tickerOffset, setTickerOffset] = useState(0);
+  
+  const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 50 });
+  const us30Price = useOptimizedLivePrice('U30USD', { debounceMs: 50 });
+  const spxPrice = useOptimizedLivePrice('SPXUSD', { debounceMs: 50 });
+  const ndxPrice = useOptimizedLivePrice('NDXUSD', { debounceMs: 50 });
+  
+  const prevPricesRef = useRef<Record<string, number>>({});
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTickerOffset(prev => (prev + 0.05) % 100);
+    }, 20);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTickerItem = (
+    priceData: ReturnType<typeof useOptimizedLivePrice>, 
+    label: string,
+    symbol: string
+  ) => {
+    const price = priceData.price || 0;
+    const prevPrice = prevPricesRef.current[symbol] || price;
+    
+    if (price > 0 && price !== prevPrice) {
+      prevPricesRef.current[symbol] = price;
+    }
+    
+    const isUp = price > prevPrice;
+    const isDown = price < prevPrice;
+    const direction = isUp ? 'up' : isDown ? 'down' : (priceData.change >= 0 ? 'up' : 'down');
+    
+    if (price === 0) return null;
+    
+    const formattedPrice = price >= 1000 
+      ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : price.toFixed(2);
+    
+    const isPriceUp = direction === 'up';
+    
+    return (
+      <span key={label} className="text-[10px] mono mx-4 font-bold transition-colors duration-300">
+        {label} {formattedPrice} <span className={isPriceUp ? "text-green-500" : "text-red-500"}>{isPriceUp ? "▲" : "▼"}</span>
+      </span>
+    );
+  };
+
+  const tickerItems = [
+    formatTickerItem(btcPrice, 'BTC', 'BTCUSD'),
+    formatTickerItem(us30Price, 'US30', 'U30USD'),
+    formatTickerItem(spxPrice, 'S&P500', 'SPXUSD'),
+    formatTickerItem(ndxPrice, 'NAS100', 'NDXUSD')
+  ].filter(Boolean);
+
+  return (
+    <div className="absolute inset-0 flex items-center opacity-70 whitespace-nowrap will-change-transform" style={{ transform: `translateX(-${tickerOffset}%)` }}>
+      {tickerItems}
+        </div>
+    );
+};
+
 export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, onToggleTheme }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Animation state for Imperial Score
   const [animatedImperialScore, setAnimatedImperialScore] = useState(0);
@@ -71,6 +139,7 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
   // Broker connection state
   const [brokerConnectionStep, setBrokerConnectionStep] = useState<'SELECT' | 'LOGIN' | 'CONNECTED'>('SELECT');
   const [selectedBroker, setSelectedBroker] = useState<BrokerType | null>(null);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(true);
   
   // Mobile swipe state
   const [activeMobileSlide, setActiveMobileSlide] = useState(0);
@@ -110,6 +179,22 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
   
   // Calculate Trader DNA from auto trades
   const traderDNA = useMemo(() => calculateTraderDNA(autoTrades), [autoTrades]);
+  
+  // Calculate Net PnL
+  const netPnL = useMemo(() => {
+    return autoTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+  }, [autoTrades]);
+  
+  const formattedPnL = (netPnL >= 0 ? '+' : '-') + '$' + Math.abs(netPnL).toFixed(2);
+  
+  // Handle logo click to switch between journal-xx and journal-xx-pro
+  const handleLogoClick = () => {
+    if (location.pathname.includes('journal-xx-pro')) {
+      navigate('/dashboard/journal-xx');
+    } else {
+      navigate('/dashboard/journal-xx-pro');
+    }
+  };
   
   // Swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
@@ -179,10 +264,88 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
   const handleBrokerLoginSuccess = () => {
     setBrokerConnectionStep('CONNECTED');
   };
+
+  // Check for existing broker connection on mount and when user changes
+  useEffect(() => {
+    const checkExistingConnection = async () => {
+      if (!user) {
+        setIsCheckingConnection(false);
+        setBrokerConnectionStep('SELECT');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('broker_connections')
+          .select('id, broker_type, is_active')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 = no rows returned (expected if no connection)
+          console.error('Error checking broker connection:', error);
+          setBrokerConnectionStep('SELECT');
+          setIsCheckingConnection(false);
+          return;
+        }
+
+        if (data && data.is_active) {
+          // User has an active broker connection, show the connected view
+          setBrokerConnectionStep('CONNECTED');
+        } else {
+          // No active connection, show broker selection
+          setBrokerConnectionStep('SELECT');
+        }
+      } catch (err) {
+        console.error('Error checking broker connection:', err);
+        setBrokerConnectionStep('SELECT');
+      } finally {
+        setIsCheckingConnection(false);
+      }
+    };
+
+    checkExistingConnection();
+  }, [user]);
+  
+  // Re-check connection when brokerConnectionStep changes (after disconnect/connect)
+  useEffect(() => {
+    if (brokerConnectionStep === 'SELECT' && user) {
+      // When reset to SELECT, verify no active connection exists
+      const verifyNoConnection = async () => {
+        try {
+          const { data } = await supabase
+            .from('broker_connections')
+            .select('id, is_active')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single();
+          
+          // If we find an active connection, switch back to CONNECTED
+          if (data && data.is_active) {
+            setBrokerConnectionStep('CONNECTED');
+          }
+        } catch (err) {
+          // No connection found, stay on SELECT
+        }
+      };
+      
+      verifyNoConnection();
+    }
+  }, [brokerConnectionStep, user]);
   
   const handleBrokerLoginBack = () => {
     setBrokerConnectionStep('SELECT');
     setSelectedBroker(null);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
   
   // Render Imperial Score indicator
@@ -259,7 +422,14 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          {brokerConnectionStep !== 'CONNECTED' ? (
+          {isCheckingConnection ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className={`w-8 h-8 border-2 ${isDarkMode ? 'border-bronze-500' : 'border-yellow-600'} border-t-transparent rounded-full animate-spin mx-auto mb-4`}></div>
+                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Loading...</p>
+              </div>
+            </div>
+          ) : brokerConnectionStep !== 'CONNECTED' ? (
             <div className="h-full p-4">
               <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false}>
                 {brokerConnectionStep === 'SELECT' && (
@@ -283,7 +453,13 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
               {/* Slide 0: Auto Journal View */}
               <div className="w-full h-full p-4 pb-24">
                 <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
-                  <AutoJournalView isDarkMode={isDarkMode} />
+                  <AutoJournalView 
+                    isDarkMode={isDarkMode} 
+                    onDisconnect={() => {
+                      setBrokerConnectionStep('SELECT');
+                      setSelectedBroker(null);
+                    }}
+                  />
                 </SpotlightCard>
               </div>
               
@@ -384,7 +560,68 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
       </div>
       
       {/* Desktop Layout */}
-      <div className="hidden lg:flex h-full">
+      <div className="hidden lg:flex h-full flex-col">
+        {/* Top Header - Matching JournalXXComponent */}
+        <header 
+          className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
+        >
+          <div className="flex items-center gap-3">
+            {/* Logo - Clickable to switch between journal-xx and journal-xx-pro */}
+            <div 
+              onClick={handleLogoClick}
+              className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-3 border cursor-pointer ${
+                'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30'
+              }`}
+              title="Switch to Manual Journaling"
+            >
+              <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />
+            </div>
+            {/* Text Logo */}
+            <div className="flex flex-col">
+              <h1 className="font-light text-xl md:text-2xl tracking-[0.2em] uppercase flex items-center leading-none">
+                <span className={isDarkMode ? 'text-white' : 'text-stone-900'}>JOURNAL</span>
+                <span className="ml-2 font-bold bg-gradient-to-br from-emerald-400 via-yellow-400 to-emerald-500 bg-clip-text text-transparent">XX</span>
+                <span className="ml-1 font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 bg-clip-text text-transparent">PRO</span>
+              </h1>
+              {/* Mode indicator */}
+              <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                AUTO SYNC
+              </span>
+            </div>
+          </div>
+
+          {/* Market Data Ticker */}
+          <div className={`hidden md:flex items-center gap-6 px-6 py-2 rounded-full border backdrop-blur-md overflow-hidden relative w-[400px] ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
+            <NewsTicker />
+          </div>
+
+          {/* Right Side - Theme Toggle and Net PnL */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onToggleTheme}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDarkMode ? 'bg-white/10 text-yellow-400 hover:bg-white/20' : 'bg-black/5 text-stone-600 hover:bg-black/10'}`}
+            >
+              {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+            </button>
+            {/* Net PnL */}
+            <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
+              <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
+              <div className="flex flex-col justify-center">
+                <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
+                <div className={`text-sm md:text-base font-bold font-sans tracking-wide leading-none mt-0.5 ${
+                  netPnL >= 0 
+                    ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500')
+                    : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
+                }`}>
+                  {formattedPnL}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* Main Content Area */}
+        <div className="flex-1 flex min-h-0">
         {/* Left Sidebar - Navigation */}
         <div className={`w-16 shrink-0 flex flex-col items-center py-6 border-r ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}>
           <button onClick={onExit} className="p-3 hover:bg-white/10 rounded-xl transition-colors mb-6">
@@ -398,24 +635,21 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
               <NotebookIcon className="w-5 h-5" />
             </button>
           </div>
-          <button onClick={onToggleTheme} className="p-3 hover:bg-white/10 rounded-xl transition-colors mt-auto">
-            {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-          </button>
         </div>
         
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 p-6">
-          {/* Header */}
-          <div className="shrink-0 flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-black uppercase tracking-wider">Journal XX Pro</h1>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full ${isDarkMode ? 'bg-bronze-500/20 text-bronze-500' : 'bg-yellow-500/20 text-yellow-600'}`}>
-              AUTO SYNC
-            </span>
-          </div>
           
           {/* Content Area */}
           <div className="flex-1 min-h-0">
-            {brokerConnectionStep !== 'CONNECTED' ? (
+            {isCheckingConnection ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className={`w-8 h-8 border-2 ${isDarkMode ? 'border-bronze-500' : 'border-yellow-600'} border-t-transparent rounded-full animate-spin mx-auto mb-4`}></div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Loading...</p>
+                </div>
+              </div>
+            ) : brokerConnectionStep !== 'CONNECTED' ? (
               <SpotlightCard className="h-full" isDarkMode={isDarkMode} tilt={false}>
                 {brokerConnectionStep === 'SELECT' && (
                   <BrokerSelection onSelect={handleBrokerSelect} isDarkMode={isDarkMode} />
@@ -431,14 +665,19 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
               </SpotlightCard>
             ) : (
               <SpotlightCard className="h-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
-                <AutoJournalView isDarkMode={isDarkMode} />
+                <AutoJournalView 
+                  isDarkMode={isDarkMode} 
+                  onDisconnect={() => {
+                    setBrokerConnectionStep('SELECT');
+                    setSelectedBroker(null);
+                  }}
+                />
               </SpotlightCard>
             )}
           </div>
         </div>
         
-        {/* Right Sidebar - Trader DNA & Insights */}
-        {brokerConnectionStep === 'CONNECTED' && (
+        {/* Right Sidebar - Trader DNA & Insights - Always Visible */}
           <div className={`w-80 shrink-0 flex flex-col border-l ${isDarkMode ? 'border-white/10' : 'border-black/10'} p-4 gap-4`}>
             {/* Toggle */}
             <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-1">
@@ -527,7 +766,7 @@ export const JournalXXPro: React.FC<JournalXXProProps> = ({ isDarkMode, onExit, 
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

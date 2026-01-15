@@ -1,0 +1,14 @@
+CRITICAL PM2 SAFETY RULES
+=========================
+
+RULE 1: NEVER use "pm2 delete all"
+RULE 2: NEVER use "pm2 stop all"  
+RULE 3: ALWAYS use specific service names
+RULE 4: ALWAYS verify Price Feeder is still running after broker service operations
+
+BROKER SERVICE NAME: imperial-trade-broker-service
+PRICE FEEDER NAME: Imperial Price Feeder
+
+SAFE COMMAND: pm2 restart imperial-trade-broker-service
+UNSAFE COMMAND: pm2 delete all
+

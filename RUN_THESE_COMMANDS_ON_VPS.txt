@@ -1,0 +1,112 @@
+========================================
+COMPLETE FIX - Copy and Paste These Commands
+========================================
+
+Connect to your VPS first (SSH or RDP):
+- IP: 45.32.89.134
+- User: Administrator  
+- Password: 2#bWj}tv=}5d}u5}
+
+Then open PowerShell on the VPS and run these commands:
+
+----------------------------------------------------------
+STEP 1: Navigate to Service Directory
+----------------------------------------------------------
+cd C:\vps-broker-service
+
+----------------------------------------------------------
+STEP 2: Fix Express Server Binding
+----------------------------------------------------------
+# Fix index.ts to listen on 0.0.0.0
+$content = Get-Content "src\index.ts" -Raw
+$content = $content -replace "app\.listen\(PORT,\s*\(\)\s*=>", "app.listen(PORT, '0.0.0.0', () =>"
+$content = $content -replace "running on port \$\{PORT\}", "running on 0.0.0.0:${PORT}"
+Set-Content "src\index.ts" -Value $content -NoNewline
+Write-Host "✅ Fixed Express server binding" -ForegroundColor Green
+
+----------------------------------------------------------
+STEP 3: Rebuild Service
+----------------------------------------------------------
+npm run build
+
+----------------------------------------------------------
+STEP 4: Configure Windows Firewall
+----------------------------------------------------------
+# Run PowerShell as Administrator for this step
+New-NetFirewallRule -DisplayName "JournalAPI-Port3001" -Direction Inbound -Protocol TCP -LocalPort 3001 -Action Allow -ErrorAction SilentlyContinue
+Write-Host "✅ Firewall configured" -ForegroundColor Green
+
+----------------------------------------------------------
+STEP 5: Restart PM2 Service
+----------------------------------------------------------
+pm2 stop imperial-trade-broker-service
+pm2 delete imperial-trade-broker-service
+Start-Sleep -Seconds 2
+pm2 start "dist\index.js" --name imperial-trade-broker-service --cwd "C:\vps-broker-service"
+pm2 save
+Write-Host "✅ Service restarted" -ForegroundColor Green
+
+----------------------------------------------------------
+STEP 6: Verify Everything Works
+----------------------------------------------------------
+Start-Sleep -Seconds 3
+
+# Check listening ports
+Write-Host "`nChecking listening ports..." -ForegroundColor Yellow
+netstat -an | Select-String "3001.*LISTENING"
+
+# Test health endpoint
+Write-Host "`nTesting health endpoint..." -ForegroundColor Yellow
+try {
+    $response = Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing -TimeoutSec 5
+    Write-Host "✅ Health check PASSED (HTTP $($response.StatusCode))" -ForegroundColor Green
+    Write-Host $response.Content
+} catch {
+    Write-Host "❌ Health check FAILED: $_" -ForegroundColor Red
+}
+
+# Check PM2 status
+Write-Host "`nPM2 Status:" -ForegroundColor Yellow
+pm2 status
+
+# Get external IP
+Write-Host "`nExternal IP:" -ForegroundColor Yellow
+try {
+    $externalIP = (Invoke-WebRequest -Uri "https://api.ipify.org" -UseBasicParsing).Content
+    Write-Host "Your VPS IP: $externalIP" -ForegroundColor Cyan
+    Write-Host "Update Supabase secret: VPS_MT5_SERVICE_URL = http://$externalIP:3001" -ForegroundColor Yellow
+} catch {
+    Write-Host "Could not get external IP" -ForegroundColor Yellow
+}
+
+Write-Host "`n========================================" -ForegroundColor Green
+Write-Host "✅ All fixes applied!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+
+========================================
+OR USE THE AUTOMATED SCRIPT:
+========================================
+
+If the APPLY_FIXES_NOW.ps1 file is already on the VPS, just run:
+
+cd C:\vps-broker-service
+powershell -ExecutionPolicy Bypass -File .\APPLY_FIXES_NOW.ps1
+
+========================================
+VERIFICATION CHECKLIST:
+========================================
+
+After running, verify:
+[ ] netstat shows: TCP    0.0.0.0:3001    LISTENING (NOT 127.0.0.1:3001)
+[ ] curl http://localhost:3001/health returns JSON
+[ ] pm2 status shows service as "online"
+[ ] External test works: curl http://45.32.89.134:3001/health (from your machine)
+
+========================================
+
+
+
+
+
+
+

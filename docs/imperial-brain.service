@@ -1,0 +1,15 @@
+[Unit]
+Description=Imperial Brain - MT5 Container Orchestrator
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/imperial-factory/brain
+ExecStart=/root/imperial-factory/brain/imperial-brain
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

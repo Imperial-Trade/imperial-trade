@@ -1,0 +1,3 @@
+# MT5 Data Retrieval - What Details Can We Get?
+
+Checking what information can be retrieved from MT5 connection...

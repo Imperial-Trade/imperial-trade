@@ -1,0 +1,17 @@
+{
+  "name": "imperial-ingress-worker",
+  "version": "2.0.0",
+  "description": "High-frequency MetaApi to Supabase price ingestor (2 updates/second)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "metaapi.cloud-sdk": "^21.0.0",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

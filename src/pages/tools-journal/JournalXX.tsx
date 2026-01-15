@@ -100,6 +100,10 @@ export default function JournalXXPage() {
         entry_price: data.entryPrice !== undefined ? data.entryPrice : null,
         exit_price: data.exitPrice !== undefined ? data.exitPrice : null,
         position_size: data.positionSize !== undefined ? data.positionSize : null,
+        // CRITICAL: Mark as MANUAL trade (separate from auto journal)
+        is_synced: false,
+        sync_source: 'manual',
+        broker_connection_id: null,
       };
 
       if (existingId) {

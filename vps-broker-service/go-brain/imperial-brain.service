@@ -1,0 +1,23 @@
+[Unit]
+Description=Imperial Brain - MT5 Container Orchestrator
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/imperial-factory/broker-service/go-brain
+ExecStart=/root/imperial-factory/broker-service/go-brain/imperial-brain
+Restart=always
+RestartSec=10
+Environment="DATABASE_URL=postgres://postgres.kmuoqkcxguafxulqlbmi:Tradeimperial%%40315@aws-0-us-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
+Environment="LISTENER_DATABASE_URL=postgres://postgres.kmuoqkcxguafxulqlbmi:Tradeimperial%%40315@db.kmuoqkcxguafxulqlbmi.supabase.co:5432/postgres?sslmode=require"
+Environment="ENCRYPTION_SECRET=ImperialTrade_BrokerEncryption_2025_v1"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=imperial-brain
+
+[Install]
+WantedBy=multi-user.target

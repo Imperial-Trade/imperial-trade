@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Test MT5 Connection
+Tests login to MT5 broker and returns account info
+"""
+
+import sys
+import json
+import MetaTrader5 as mt5
+import signal
+import time
+import io
+from mt5_error_handler import get_last_error, get_error_message, check_error, format_error_response
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# Redirect all print statements to stderr so stdout only contains JSON
+# This allows Node.js to parse the JSON output correctly
+def print_debug(*args, **kwargs):
+    """Print to stderr instead of stdout for debugging"""
+    print(*args, file=sys.stderr, **kwargs)
+
+def test_connection(login, password, server, terminal_id=None, terminal_path=None, terminal_data_path=None, portable_mode=False):
+    """Test MT5 connection and return account info
+    
+    Args:
+        login: MT5 account login ID
+        password: MT5 account password
+        server: MT5 server name
+        terminal_id: Terminal instance ID (for multi-terminal support)
+        terminal_path: Path to terminal executable (for portable mode)
+        terminal_data_path: Path to terminal data directory (for portable mode)
+        portable_mode: Whether to use portable mode (isolated terminal instance)
+    
+    CRITICAL: Uses ONLY Generic MT5 (NOT EC Markets MT5) to avoid interfering with price feeder
+    """
+    initialized_by_us = False
+    try:
+        # Determine terminal path
+        if portable_mode and terminal_path:
+            # Use assigned terminal instance in portable mode
+            generic_mt5_path = terminal_path
+            print_debug(f"Using portable mode terminal {terminal_id} at: {generic_mt5_path}")
+            print_debug(f"Terminal data path: {terminal_data_path}")
+        else:
+            # Fallback to default Generic MT5 path
+            generic_mt5_path = r"C:\Program Files\MetaTrader 5\terminal64.exe"
+            print_debug(f"Using default Generic MT5 path: {generic_mt5_path}")
+        
+        # Convert login to integer (MT5 requires integer login IDs)
+        try:
+            login_int = int(login)
+        except (ValueError, TypeError):
+            return {
+                "connected": False,
+                "error": f"Invalid login ID format: '{login}'. Login ID must be a number."
+            }
+        
+        # OPTIMIZED: Use initialize() with login credentials (per official MT5 Python API)
+        # Reference: https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py
+        # This initializes AND logs in in one call - more efficient!
+        print_debug(f"Initializing MT5 and connecting to account {login_int} on server {server}...")
+        print_debug(f"  Using official MT5 Python API: initialize() with login parameters")
+        print_debug(f"  Timeout: 30 seconds (30000ms)")
+        
+        start_time = time.time()
+        
+        # Retry initialization with login credentials (exponential backoff)
+        max_retries = 3
+        initialized = False
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                # Use initialize() with login, password, server, and timeout
+                # This is more efficient than initialize() + login() separately
+                # If portable_mode is True, the terminal will use the data_path for isolated storage
+                if portable_mode and terminal_data_path:
+                    # Portable mode: terminal uses isolated data directory
+                    initialized = mt5.initialize(
+                        path=generic_mt5_path,
+                        login=login_int,
+                        password=password,
+                        server=server,
+                        timeout=30000,  # 30 seconds in milliseconds
+                        portable=True  # Enable portable mode
+                    )
+                else:
+                    # Standard mode: use default terminal
+                    initialized = mt5.initialize(
+                        path=generic_mt5_path,
+                        login=login_int,
+                        password=password,
+                        server=server,
+                        timeout=30000  # 30 seconds in milliseconds
+                    )
+                if initialized:
+                    break
+            except Exception as e:
+                last_error = str(e)
+                print(f"  Initialize attempt {attempt + 1} failed: {e}")
+            
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                time.sleep(wait_time)
+        
+        elapsed = time.time() - start_time
+        
+        if not initialized:
+            # Use comprehensive error handling (per official MT5 Python API)
+            # Reference: https://www.mql5.com/en/docs/python_metatrader5/mt5lasterror_py
+            error = get_last_error()
+            if error:
+                error_code, error_msg = error
+                error_response = format_error_response(error_code, error_msg, "MT5 initialization/login")
+                error_response["error"] = f"MT5 initialization/login failed after {max_retries} attempts ({elapsed:.2f}s). {error_response['error']} Generic MT5 must be running at '{generic_mt5_path}'. Try: 1) Restart Generic MT5, 2) Log in manually once, 3) Keep terminal open, 4) Verify credentials are correct."
+                return {
+                    "connected": False,
+                    **error_response
+                }
+            else:
+                return {
+                    "connected": False,
+                    "error": f"MT5 initialization/login failed after {max_retries} attempts ({elapsed:.2f}s). Generic MT5 must be running at '{generic_mt5_path}'."
+                }
+        
+        initialized_by_us = True
+        print(f"✅ MT5 initialized and logged in successfully ({elapsed:.2f}s)")
+        
+        # Get MT5 version (per official MT5 Python API)
+        # Reference: https://www.mql5.com/en/docs/python_metatrader5/mt5version_py
+        mt5_version = mt5.version()
+        if mt5_version:
+            version_major, build, release_date = mt5_version
+            print(f"MT5 Version: {version_major}, Build: {build}, Release: {release_date}")
+        else:
+            # Check for errors when getting version
+            has_error, error_code, error_msg = check_error("get MT5 version")
+            if has_error:
+                print(f"WARNING: Could not get MT5 version: {error_msg}")
+            else:
+                print("WARNING: Could not get MT5 version info")
+        
+        # CRITICAL: Add delay after initialization to let IPC pipe fully open
+        # This prevents "IPC timeout" errors on Windows VPS
+        print("Waiting 1 second for MT5 IPC pipe to fully initialize...")
+        time.sleep(1)
+        
+        # Verify MT5 is actually ready using terminal_info() (per official MT5 Python API)
+        # Reference: https://www.mql5.com/en/docs/python_metatrader5/mt5terminalinfo_py
+        terminal_info = mt5.terminal_info()
+        if not terminal_info:
+            if initialized_by_us:
+                mt5.shutdown()
+            return {
+                "connected": False,
+                "error": "MT5 terminal_info() returned None. This usually means: 1) MT5 is not fully initialized, 2) Permission issue (run as Administrator), 3) Ghost MT5 process running. Try: Close all MT5 windows, kill terminal64.exe processes, restart MT5 as Administrator."
+            }
+        
+        # Display comprehensive terminal info (per official API documentation)
+        print(f"MT5 Terminal Info:")
+        print(f"  Name: {terminal_info.name}")
+        print(f"  Company: {terminal_info.company}")
+        print(f"  Build: {terminal_info.build}")
+        print(f"  Path: {terminal_info.path}")
+        print(f"  Connected: {terminal_info.connected}")
+        print(f"  Trade Allowed: {terminal_info.trade_allowed}")
+        print(f"  DLLs Allowed: {terminal_info.dlls_allowed}")
+        
+        # Verify terminal is connected
+        if not terminal_info.connected:
+            if initialized_by_us:
+                mt5.shutdown()
+            return {
+                "connected": False,
+                "error": f"MT5 terminal is not connected. Terminal status: connected={terminal_info.connected}. Please verify MT5 is running and accessible."
+            }
+        
+        # Check if algorithmic trading is enabled (CRITICAL for trade fetching)
+        if not terminal_info.trade_allowed:
+            print("⚠️  WARNING: Algorithmic Trading is NOT enabled in MT5 terminal")
+            print("   This will cause issues with trade fetching and API operations.")
+            print("   Please enable it in: Tools -> Options -> Expert Advisors -> Allow Algorithmic Trading")
+            print("   Or run: C:\\vps-broker-service\\ENABLE_ALGORITHMIC_TRADING_REGISTRY.ps1")
+            # Note: We continue anyway as the user may have enabled it manually, but warn them
+        
+        # Verify we're logged into the correct account
+        account_info = mt5.account_info()
+        if not account_info:
+            if initialized_by_us:
+                mt5.shutdown()
+            return {
+                "connected": False,
+                "error": "Failed to get account info after login"
+            }
+        
+        # Check if we're on the correct account
+        if account_info.login != login_int or account_info.server != server:
+            print(f"WARNING: Logged into account {account_info.login} on {account_info.server}, but expected {login_int} on {server}")
+            # Continue anyway - might be a server name variation
+        
+        authorized = True
+        
+        # Get account info (already retrieved above, but get fresh copy)
+        account_info = mt5.account_info()
+        if account_info:
+            try:
+                # Enable algorithmic trading if not already enabled
+                if not account_info.trade_allowed:
+                    print("WARNING: Algorithmic trading is disabled, attempting to enable...")
+                    # Note: account_info.trade_allowed is read-only, but we can check terminal settings
+                    terminal_info = mt5.terminal_info()
+                    if terminal_info and not terminal_info.trade_allowed:
+                        print("WARNING: Cannot enable algorithmic trading programmatically.")
+                        print("   Please enable it manually: Tools -> Options -> Expert Advisors -> Allow Algorithmic Trading")
+                    else:
+                        print("OK: Algorithmic trading should be enabled now")
+                else:
+                    print("OK: Algorithmic trading is already enabled")
+            except Exception as e:
+                print(f"WARNING: Could not check/enable algorithmic trading: {e}")
+        
+        if account_info is None:
+            # Check for errors when getting account info
+            error = get_last_error()
+            if error:
+                error_code, error_msg = error
+                error_response = format_error_response(error_code, error_msg, "get account info")
+            else:
+                error_response = {
+                    "error": "Failed to get account info after successful login",
+                    "error_code": None,
+                    "error_details": "account_info() returned None"
+                }
+            
+            if initialized_by_us:
+                mt5.shutdown()
+            return {
+                "connected": False,
+                **error_response
+            }
+        
+        # Note: MT5 Python API doesn't have set_timeout() method
+        # Timeout is handled in initialize() and login() calls
+        
+        # Get MT5 version for response (per official API)
+        mt5_version = mt5.version()
+        version_info = None
+        if mt5_version:
+            version_major, build, release_date = mt5_version
+            version_info = {
+                "version": version_major,
+                "build": build,
+                "release_date": release_date
+            }
+        
+        # Get comprehensive account info (per official MT5 Python API)
+        # Reference: https://www.mql5.com/en/docs/python_metatrader5/mt5accountinfo_py
+        # Convert to dictionary for easy access (per official API example)
+        account_dict = account_info._asdict()
+        
+        # Display account info for diagnostics
+        print(f"Account Info Retrieved:")
+        print(f"  Login: {account_info.login}")
+        print(f"  Name: {account_info.name}")
+        print(f"  Server: {account_info.server}")
+        print(f"  Balance: {account_info.balance} {account_info.currency}")
+        print(f"  Equity: {account_info.equity} {account_info.currency}")
+        print(f"  Leverage: 1:{account_info.leverage}")
+        print(f"  Trade Allowed: {account_info.trade_allowed}")
+        print(f"  Trade Expert: {account_info.trade_expert}")
+        
+        # Return comprehensive account info (per official API)
+        result = {
+            "connected": True,
+            "mt5_version": version_info,  # Include MT5 version info
+            "account_info": {
+                # Basic account info
+                "login": account_info.login,
+                "name": account_info.name,
+                "server": account_info.server,
+                "company": account_info.company,
+                "currency": account_info.currency,
+                
+                # Trading settings
+                "leverage": account_info.leverage,
+                "trade_mode": account_info.trade_mode,
+                "margin_mode": account_info.margin_mode,
+                "trade_allowed": account_info.trade_allowed,
+                "trade_expert": account_info.trade_expert,
+                "fifo_close": account_info.fifo_close,
+                
+                # Account balance info
+                "balance": account_info.balance,
+                "equity": account_info.equity,
+                "profit": account_info.profit,
+                "credit": account_info.credit,
+                "margin": account_info.margin,
+                "margin_free": account_info.margin_free,
+                "margin_level": account_info.margin_level,
+                
+                # Additional info
+                "limit_orders": account_info.limit_orders,
+                "currency_digits": account_info.currency_digits
+            },
+            "server_used": account_info.server,  # Use actual server from account_info
+            "connection_time_ms": int(elapsed * 1000)  # Convert to milliseconds
+        }
+        
+        if initialized_by_us:
+            mt5.shutdown()
+        return result
+        
+    except Exception as e:
+        # Check for MT5 errors even in exception handler
+        error = get_last_error()
+        error_response = {
+            "connected": False,
+            "error": str(e),
+            "error_type": "Python exception"
+        }
+        
+        if error:
+            error_code, error_msg = error
+            error_response.update(format_error_response(error_code, error_msg, "exception handler"))
+            error_response["error"] = f"{str(e)}. MT5 error: {error_response.get('error', error_msg)}"
+        
+        if initialized_by_us:
+            try:
+                mt5.shutdown()
+            except:
+                pass
+        
+        return error_response
+
+if __name__ == "__main__":
+    # Get credentials from command line
+    credentials = json.loads(sys.argv[1])
+    
+    result = test_connection(
+        credentials["login"],
+        credentials["password"],
+        credentials["server"],
+        terminal_id=credentials.get("terminal_id"),
+        terminal_path=credentials.get("terminal_path"),
+        terminal_data_path=credentials.get("terminal_data_path"),
+        portable_mode=credentials.get("portable_mode", False)
+    )
+    
+    print(json.dumps(result))
+
+

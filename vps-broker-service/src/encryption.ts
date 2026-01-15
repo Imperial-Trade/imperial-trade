@@ -50,5 +50,3 @@ export function decryptCredentials(encryptedData: string, userId: string): strin
     throw new Error('Failed to decrypt credentials');
   }
 }
-
-

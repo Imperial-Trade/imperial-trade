@@ -164,5 +164,3 @@ export async function fetchMT5Trades(credentials: MT5Credentials): Promise<{
     });
   });
 }
-
-

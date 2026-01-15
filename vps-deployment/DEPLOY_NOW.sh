@@ -51,8 +51,8 @@ setup_system() {
     echo "Installing nginx..."
     apt-get install -y nginx
 
-    # Install git
-    apt-get install -y git
+    # Install git and unzip
+    apt-get install -y git unzip curl
 
     echo "✓ System setup complete"
 }
@@ -69,10 +69,28 @@ clone_repo() {
     if [ -d "imperial-trade/.git" ]; then
         echo "Repository already exists, pulling latest changes..."
         cd imperial-trade
-        git pull origin claude/vultr-vps-setup-EiwkZ
+        git pull origin claude/vultr-vps-setup-EiwkZ || {
+            echo "⚠ Git pull failed. Trying to reset and pull again..."
+            git fetch origin
+            git reset --hard origin/claude/vultr-vps-setup-EiwkZ
+        }
     else
         echo "Cloning repository..."
-        git clone -b claude/vultr-vps-setup-EiwkZ https://github.com/Imperial-Trade/imperial-trade.git
+        if ! git clone -b claude/vultr-vps-setup-EiwkZ https://github.com/Imperial-Trade/imperial-trade.git 2>&1; then
+            echo ""
+            echo "════════════════════════════════════════"
+            echo "⚠ Repository clone failed!"
+            echo "════════════════════════════════════════"
+            echo "The repository might be private."
+            echo ""
+            echo "Please set up authentication:"
+            echo "1. Generate a GitHub Personal Access Token:"
+            echo "   https://github.com/settings/tokens"
+            echo "2. Run this command:"
+            echo "   git clone -b claude/vultr-vps-setup-EiwkZ https://YOUR_TOKEN@github.com/Imperial-Trade/imperial-trade.git"
+            echo "════════════════════════════════════════"
+            exit 1
+        fi
         cd imperial-trade
     fi
 
@@ -89,8 +107,15 @@ extract_service() {
     if [ -f "vps-broker-service.zip" ]; then
         unzip -o vps-broker-service.zip
         echo "✓ Service extracted"
+    elif [ -d "vps-broker-service" ]; then
+        echo "✓ Service directory already exists"
     else
-        echo "✓ Service already extracted"
+        echo "⚠ Warning: vps-broker-service.zip not found and directory doesn't exist"
+        echo "Checking if vps-broker-service directory exists in repo..."
+        if [ ! -d "vps-broker-service" ]; then
+            echo "ERROR: vps-broker-service not found!"
+            exit 1
+        fi
     fi
 }
 
@@ -152,10 +177,26 @@ build_service() {
     cd /opt/imperial-trade/imperial-trade/vps-broker-service
 
     # Install dependencies
-    npm install
+    echo "Installing npm dependencies..."
+    if ! npm install; then
+        echo "ERROR: npm install failed!"
+        echo "Check if package.json exists and Node.js is properly installed"
+        exit 1
+    fi
 
     # Build TypeScript
-    npm run build
+    echo "Building TypeScript..."
+    if ! npm run build; then
+        echo "ERROR: Build failed!"
+        echo "Check TypeScript configuration and source files"
+        exit 1
+    fi
+
+    # Verify dist directory was created
+    if [ ! -d "dist" ] || [ ! -f "dist/index.js" ]; then
+        echo "ERROR: Build did not produce dist/index.js"
+        exit 1
+    fi
 
     echo "✓ Service built successfully"
 }
@@ -175,8 +216,11 @@ deploy_pm2() {
     pm2 start dist/index.js --name "imperial-broker-service"
     pm2 save
 
-    # Configure startup
-    pm2 startup systemd -u root --hp /root
+    # Configure startup (run the generated command)
+    STARTUP_CMD=$(pm2 startup systemd -u root --hp /root | grep "sudo env")
+    if [ -n "$STARTUP_CMD" ]; then
+        eval "$STARTUP_CMD"
+    fi
 
     echo "✓ Service deployed with PM2"
 }

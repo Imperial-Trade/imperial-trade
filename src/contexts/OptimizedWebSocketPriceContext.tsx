@@ -696,9 +696,11 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         if (data && data.length > 0) {
           const priceData = data[0];
           const ageSeconds = Math.round((Date.now() - new Date(priceData.updated_at).getTime()) / 1000);
-          // Log only if price is fresh (helps verify it's working)
-          if (ageSeconds < 2 && isDevToolsEnabled()) {
-            console.log(`✅ [Live Price] ${normalizedSymbol}: $${priceData.mid || 'N/A'} (age: ${ageSeconds}s)`);
+          // ✅ Always log fresh prices to verify frontend is receiving updates
+          if (ageSeconds < 5) {
+            console.log(`✅ [Live Price] ${normalizedSymbol}: $${priceData.mid || 'N/A'} (age: ${ageSeconds}s, updated: ${new Date(priceData.updated_at).toLocaleTimeString()})`);
+          } else if (ageSeconds < 60) {
+            console.warn(`⚠️ [Live Price] ${normalizedSymbol}: Price is ${ageSeconds}s old (may indicate worker delay)`);
           }
           return priceData;
         }
@@ -846,12 +848,21 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         // ✅ FIX: Always set to 'polling' when prices are successfully fetched
         setConnectionStatus('polling');
         
-        // Log successful price fetch (helps verify it's working)
-        if (isDevToolsEnabled() && validPrices.length > 0) {
+        // ✅ Always log successful price fetch to verify frontend is working
+        if (validPrices.length > 0) {
           const symbolList = Object.keys(hydratedPrices);
           const latestAge = Math.max(...Object.values(timestampUpdates).map(ts => Math.round((Date.now() - ts) / 1000)));
-          if (latestAge < 2) {
-            console.log(`✅ [Live Price Sync] Fetched ${validPrices.length} prices (age: ${latestAge}s) - Symbols: ${symbolList.join(', ')}`);
+          const avgAge = Math.round(
+            Object.values(timestampUpdates)
+              .map(ts => (Date.now() - ts) / 1000)
+              .reduce((a, b) => a + b, 0) / Object.keys(timestampUpdates).length
+          );
+          
+          // Log every fetch to verify polling is working
+          if (latestAge < 10) {
+            console.log(`✅ [Live Price Sync] Fetched ${validPrices.length} prices (avg age: ${avgAge}s, latest: ${latestAge}s) - Symbols: ${symbolList.join(', ')}`);
+          } else {
+            console.warn(`⚠️ [Live Price Sync] Prices are stale (avg age: ${avgAge}s, latest: ${latestAge}s) - Check DigitalOcean worker`);
           }
         }
       } else {
@@ -1089,7 +1100,9 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       : 60000; // ✅ OPTIMIZED: 1 minute for background pages (reduced load)
     
     const modeLabel = hasRecentData ? 'BACKUP' : 'HYDRATION';
-    // Silent: Normal polling start (no console log)
+    
+    // ✅ Log polling start to verify it's working
+    console.log(`🚀 [Polling] Starting ${modeLabel} mode for ${symbolList.length} symbols (interval: ${pollingInterval}ms, page: ${pathname})`);
     
     // ⚠️ Only log inactivity warnings
     if (!hasRecentData && symbolList.length > 0) {
@@ -1097,25 +1110,24 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
     }
     
     // Immediate fetch
-    // Silent: Normal immediate fetch (no console log)
+    console.log(`⚡ [Polling] Immediate fetch for: ${symbolList.join(', ')}`);
     fetchPricesFromDatabase(symbolList);
 
     // Set up polling interval
     const intervalId = setInterval(() => {
-      // Silent: Normal interval tick (no console log)
-      
       // Pause polling if tab is hidden
       if (document.hidden) {
-        // Silent: Tab hidden (no console log)
         return;
       }
 
       const currentSymbols = Array.from(subscriptionsRef.current.keys());
       if (currentSymbols.length > 0) {
-        // Silent: Normal fetch (no console log)
+        // Log periodic fetches to verify polling is active
+        if (isDevToolsEnabled()) {
+          console.log(`🔄 [Polling] Periodic fetch (${currentSymbols.length} symbols)`);
+        }
         fetchPricesFromDatabase(currentSymbols);
       }
-      // Silent: No symbols (no console log)
     }, pollingInterval);
 
     return () => {

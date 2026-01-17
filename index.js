@@ -298,8 +298,12 @@ async function start() {
       const bufferSymbols = updates.map(p => p.symbol);
       const missingSymbols = targetSymbols.filter(s => !bufferSymbols.includes(s));
       
+      // ✅ ALWAYS log which symbols are being synced and which are missing
       if (missingSymbols.length > 0) {
-        log(`⚠️ Missing prices in buffer for: ${missingSymbols.join(', ')} (${updates.length}/${targetSymbols.length} symbols)`, 'warning');
+        log(`⚠️ Only ${updates.length}/${targetSymbols.length} symbols in buffer - Missing: ${missingSymbols.join(', ')}`, 'warning');
+        log(`📊 Syncing: ${bufferSymbols.join(', ')}`, 'info');
+      } else {
+        log(`✅ All ${targetSymbols.length} symbols in buffer - Ready to sync`, 'info');
       }
       
       if (updates.length === 0) {
@@ -348,7 +352,18 @@ async function start() {
         
         // ✅ FIX: Log detailed sync status to understand why 4/4 instead of 5/5
         if (successful > 0) {
-          log(`✅ Synced ${successful}/${updates.length} prices to Supabase (target: ${targetSymbols.length} symbols)`, 'success');
+          // Show which symbols were synced
+          const syncedSymbols = updates.filter((_, i) => {
+            const result = results[i];
+            return result.status === 'fulfilled' && result.value.success;
+          }).map(p => p.symbol);
+          
+          if (updates.length === targetSymbols.length) {
+            log(`✅ Synced ${successful}/${targetSymbols.length} prices to Supabase: ${syncedSymbols.join(', ')}`, 'success');
+          } else {
+            log(`✅ Synced ${successful}/${updates.length} prices to Supabase (${updates.length}/${targetSymbols.length} total) - Symbols: ${syncedSymbols.join(', ')}`, 'success');
+            log(`⚠️ Missing from sync: ${missingSymbols.join(', ')} (no price ticks received yet)`, 'warning');
+          }
         }
         
         if (failed.length > 0) {
@@ -356,12 +371,7 @@ async function start() {
             if (r.status === 'rejected') return 'unknown';
             return r.value?.symbol || 'unknown';
           });
-          log(`⚠️ Failed to sync ${failed.length} prices: ${failedSymbols.join(', ')}`, 'warning');
-        }
-        
-        // ✅ Log if we're not syncing all 5 symbols
-        if (updates.length < targetSymbols.length) {
-          log(`⚠️ Only syncing ${updates.length}/${targetSymbols.length} symbols - missing: ${missingSymbols.join(', ')}`, 'warning');
+          log(`❌ Failed to sync ${failed.length} prices: ${failedSymbols.join(', ')}`, 'error');
         }
 
         // Note: We don't clear the buffer so stale symbols keep their last price

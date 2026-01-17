@@ -693,7 +693,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
           return null;
         }
         
-        return data && data.length > 0 ? data[0] : null;
+        if (data && data.length > 0) {
+          const priceData = data[0];
+          const ageSeconds = Math.round((Date.now() - new Date(priceData.updated_at).getTime()) / 1000);
+          // Log only if price is fresh (helps verify it's working)
+          if (ageSeconds < 2 && isDevToolsEnabled()) {
+            console.log(`✅ [Live Price] ${normalizedSymbol}: $${priceData.mid || 'N/A'} (age: ${ageSeconds}s)`);
+          }
+          return priceData;
+        }
+        
+        return null;
       });
       
       const priceResults = await Promise.all(pricePromises);
@@ -761,25 +771,34 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
       });
       
       if (Object.keys(hydratedPrices).length > 0) {
-        // Check for ANY changes: price OR timestamp updates
+        // ✅ CRITICAL: Always update prices when fetched (DigitalOcean worker writes every 500ms)
+        // This ensures UI always reflects the latest database state
         const hasChanges = Object.keys(hydratedPrices).some(symbol => {
           const oldPrice = internalPrices[symbol]?.price;
           const newPrice = hydratedPrices[symbol]?.price;
           const oldTimestamp = lastDatabaseTimestampRef.current[symbol];
           const newTimestamp = timestampUpdates[symbol];
           
-          // Update if: price changed meaningfully OR timestamp changed (database was written to)
+          // ✅ FIX: Always update if timestamp changed (DigitalOcean worker updates every 500ms)
+          // This ensures UI reflects the latest database state even if price is identical
           const MINIMUM_CHANGE_THRESHOLD = 0.0001; // 0.01% minimum change
           const priceChanged = !oldPrice || (Math.abs(newPrice - oldPrice) / oldPrice > MINIMUM_CHANGE_THRESHOLD);
           const timestampChanged = oldTimestamp !== newTimestamp;
           
-          // Silent: Normal timestamp update (no console log)
-          // if (timestampChanged && !priceChanged) {
-          //   console.log(`⏰ [Timestamp Update] ${symbol} - Database updated but price unchanged`);
-          // }
+          // ✅ CRITICAL: Always update if timestamp changed (worker wrote new data)
+          // This ensures frontend reflects DigitalOcean worker updates every 500ms
+          if (timestampChanged) {
+            if (isDevToolsEnabled()) {
+              console.log(`⏰ [Live Price Update] ${symbol} - Database updated (timestamp changed, price: $${newPrice?.toFixed(4) || 'N/A'})`);
+            }
+            return true; // Always update if timestamp changed
+          }
           
-          return priceChanged || timestampChanged;
+          return priceChanged; // Also update if price changed meaningfully
         });
+        
+        // ✅ ALWAYS UPDATE: Even if no changes detected, update to ensure latest state
+        // DigitalOcean worker writes every 500ms, so we should always see updates
 
         // ✅ PHASE 1: Conditional timestamp updates - only update if ACTUALLY newer
         const now = Date.now();
@@ -794,8 +813,28 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         });
 
         // 🔥 REACTIVE FIX: Always update prices to trigger re-renders
-        setInternalPrices(prev => ({ ...prev, ...hydratedPrices }));
-        setPrices(prev => ({ ...prev, ...hydratedPrices }));
+        // ✅ CRITICAL: Always update prices when fetched from database (DigitalOcean writes every 500ms)
+        // This ensures UI always reflects the latest database state
+        setInternalPrices(prev => {
+          const updated = { ...prev, ...hydratedPrices };
+          // Log update for debugging (only for fresh prices)
+          if (isDevToolsEnabled() && Object.keys(hydratedPrices).length > 0) {
+            const symbolList = Object.keys(hydratedPrices);
+            const avgAge = Math.round(
+              Object.values(timestampUpdates)
+                .map(ts => (Date.now() - ts) / 1000)
+                .reduce((a, b) => a + b, 0) / Object.keys(timestampUpdates).length
+            );
+            if (avgAge < 2) {
+              console.log(`✅ [Price State Update] Updated ${symbolList.length} symbols (avg age: ${avgAge}s)`);
+            }
+          }
+          return updated;
+        });
+        setPrices(prev => {
+          const updated = { ...prev, ...hydratedPrices };
+          return updated;
+        });
         // 🚨 PHASE 2A FIX: Update ref directly
         Object.keys(timestampUpdates).forEach(symbol => {
           lastDatabaseTimestampRef.current[symbol] = timestampUpdates[symbol];
@@ -804,13 +843,17 @@ export const OptimizedWebSocketPriceProvider: React.FC<OptimizedWebSocketPricePr
         setLastUpdated(new Date());
         // ✅ DigitalOcean Worker Architecture: Set status to 'polling' for database polling mode
         // The worker writes to market_prices table every 500ms via upsert_market_price_enhanced RPC
-        if (connectionStatus !== 'polling' && connectionStatus !== 'connected') {
-          setConnectionStatus('polling');
-        } else if (connectionStatus === 'connected') {
-          // Prefer 'polling' status for database polling architecture
-          setConnectionStatus('polling');
+        // ✅ FIX: Always set to 'polling' when prices are successfully fetched
+        setConnectionStatus('polling');
+        
+        // Log successful price fetch (helps verify it's working)
+        if (isDevToolsEnabled() && validPrices.length > 0) {
+          const symbolList = Object.keys(hydratedPrices);
+          const latestAge = Math.max(...Object.values(timestampUpdates).map(ts => Math.round((Date.now() - ts) / 1000)));
+          if (latestAge < 2) {
+            console.log(`✅ [Live Price Sync] Fetched ${validPrices.length} prices (age: ${latestAge}s) - Symbols: ${symbolList.join(', ')}`);
+          }
         }
-        // Silent: Normal price update (no console log)
       } else {
         console.warn(`⚠️ [Database Poll] No valid prices to hydrate`);
       }

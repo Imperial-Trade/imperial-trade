@@ -53,20 +53,21 @@ export interface TradeFormData {
   emotion?: string;
   session?: string;
   followedPlan?: boolean;
+  // Extended / form-passed
+  imageUrls?: string[];
+  entryPrice?: number;
+  exitPrice?: number;
+  positionSize?: number;
+  plannedTargetPrice?: number;
+  plannedStopLoss?: number;
+  revengeTrade?: boolean;
+  targetHitByMarket?: boolean;
 }
 
 export enum AnalysisStatus {
   IDLE = 'IDLE',
   ANALYZING = 'ANALYZING',
   COMPLETE = 'COMPLETE',
-  ERROR = 'ERROR'
-}
-
-
-  ERROR = 'ERROR'
-}
-
-
   ERROR = 'ERROR'
 }
 

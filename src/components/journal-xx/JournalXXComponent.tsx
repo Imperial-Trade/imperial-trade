@@ -24,6 +24,27 @@ import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { BrokerSelection, BrokerType } from './BrokerSelection';
 import { BrokerLoginForm } from './BrokerLoginForm';
 import { AutoJournalView } from './AutoJournalView';
+import RiskCalculator from '@/components/tools/RiskCalculator';
+import { GeminiSetupAnalyzer } from '@/components/charts/GeminiSetupAnalyzer';
+import { MeccaHeader } from '@/components/charts/mecca';
+
+// Broker options for mobile AUTO mode
+const BROKERS = [
+  {
+    id: 'xs',
+    name: 'XS.com',
+    description: 'Global multi-asset broker with competitive spreads',
+    defaultServer: 'XSFintech-REAL-1',
+    servers: ['XSFintech-REAL-1', 'XSFintech-REAL-2', 'XSFintech-REAL-3', 'XSMarkets-REAL-1', 'XSFintech-DEMO', 'XSMarkets-DEMO'],
+  },
+  {
+    id: 'ecmarkets',
+    name: 'EC Markets',
+    description: 'Premium forex and CFD broker',
+    defaultServer: 'ECMarketsLtd-Demo',
+    servers: ['ECMarketsLtd-Demo', 'ECMarkets-MT5-Live01', 'ECMarketsLtd-MT5-Live02', 'ECMarketsLtd-MT5-Live03', 'ECMarketsNZ-MT5-Live04'],
+  },
+];
 
 export interface JournalXXProps {
   isDarkMode: boolean;
@@ -142,8 +163,6 @@ const fileToBase64 = (file: File): Promise<string> => {
 // --- SUB-COMPONENTS ---
 
 const NewsTicker: React.FC = () => {
-    const [tickerOffset, setTickerOffset] = useState(0);
-    
     // Get live prices for all symbols with real-time updates
     const goldPrice = useOptimizedLivePrice('XAUUSD', { debounceMs: 50 });
     const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 50 });
@@ -153,14 +172,6 @@ const NewsTicker: React.FC = () => {
     
     // Track previous prices to determine direction
     const prevPricesRef = useRef<Record<string, number>>({});
-    
-    // Scroll animation - moves from right to left
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTickerOffset(prev => (prev + 0.05) % 100);
-        }, 20);
-        return () => clearInterval(interval);
-    }, []);
 
     // Format prices and determine arrow direction based on actual price movement
     const formatTickerItem = (
@@ -197,8 +208,10 @@ const NewsTicker: React.FC = () => {
         const isPriceUp = direction === 'up';
         
         return (
-            <span key={label} className="text-[10px] mono mx-4 font-bold transition-colors duration-300">
-                {label} {formattedPrice} <span className={isPriceUp ? "text-green-500" : "text-red-500"}>{isPriceUp ? "▲" : "▼"}</span>
+            <span key={label} className="text-[10px] md:text-[11px] font-medium transition-colors duration-300 flex items-center gap-1">
+                <span className="text-slate-400">{label}</span>
+                <span className="text-white/90">{formattedPrice}</span>
+                <span className={isPriceUp ? "text-emerald-400" : "text-red-400"}>{isPriceUp ? "▲" : "▼"}</span>
             </span>
         );
     };
@@ -212,8 +225,27 @@ const NewsTicker: React.FC = () => {
     ].filter(Boolean); // Remove null items
 
     return (
-        <div className="absolute inset-0 flex items-center opacity-70 whitespace-nowrap will-change-transform" style={{ transform: `translateX(-${tickerOffset}%)` }}>
-            {tickerItems}
+        <div className="relative w-full overflow-hidden py-1">
+            <div 
+                className="inline-flex items-center gap-8 md:gap-12 whitespace-nowrap will-change-transform animate-ticker-scroll"
+            >
+                {/* Duplicate items for seamless loop */}
+                <div className="inline-flex items-center gap-8 md:gap-12 shrink-0">
+                    {tickerItems}
+                </div>
+                <div className="inline-flex items-center gap-8 md:gap-12 shrink-0">
+                    {tickerItems}
+                </div>
+            </div>
+            <style>{`
+                @keyframes tickerScrollAnim {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .animate-ticker-scroll {
+                    animation: tickerScrollAnim 25s linear infinite;
+                }
+            `}</style>
         </div>
     );
 };
@@ -757,7 +789,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
   const { user } = useAuth();
   const { refreshEntries } = useTradeJournal(); // Get refreshEntries from context
   const savedTradeIdRef = useRef<string | null>(null); // Track saved trade ID
-  
+  const { isConnected: meccaConnected } = useOptimizedLivePrice('XAUUSD', { debounceMs: 50 });
+
   // --- STATE & DATA ---
   // Animation state for Imperial Score
   const [animatedImperialScore, setAnimatedImperialScore] = useState(0);
@@ -778,6 +811,19 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
   
   // JOURNAL MODE: Manual vs Auto (Broker Sync)
   const [journalMode, setJournalMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
+  
+  // AUTO MODE: Broker connection state for mobile
+  const [brokerConnected, setBrokerConnected] = useState(false);
+  const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
+  const [brokerConnectionStep, setBrokerConnectionStep] = useState<'SELECT' | 'LOGIN' | 'CONNECTED'>('SELECT');
+  const [brokerLoginId, setBrokerLoginId] = useState('');
+  const [brokerPassword, setBrokerPassword] = useState('');
+  const [brokerServer, setBrokerServer] = useState('');
+  const [isConnectingBroker, setIsConnectingBroker] = useState(false);
+  const [brokerConnectError, setBrokerConnectError] = useState<string | null>(null);
+  
+  // Mobile Trader DNA/Insights toggle (for the combined slide in AUTO mode)
+  const [mobileDnaView, setMobileDnaView] = useState<'DNA' | 'INSIGHTS'>('DNA');
   
   // Filter trades based on journal mode - COMPLETELY SEPARATE
   const filteredTrades = useMemo(() => {
@@ -889,8 +935,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
     if (allowSwipe) {
         if (dy > minSwipeDistance) {
-             // Max slides: 3 in MANUAL mode (Calendar, Log Entry, Trade Log, Trader DNA), 2 in AUTO mode (Calendar, Trader DNA)
-             const maxSlides = journalMode === 'MANUAL' ? 5 : 1;
+             // Max slides: 
+             // MANUAL mode: 5 (Calendar, Performance, Log Entry, Trade Log, Trader DNA, Insights)
+             // AUTO mode when connected: 3 (Trade Sync, Calendar, Performance, DNA+Insights toggle)
+             // AUTO mode when not connected: 0 (full screen broker connection, no swiping)
+             const maxSlides = journalMode === 'MANUAL' ? 5 : (brokerConnected ? 3 : 0);
              if (activeMobileSlide < maxSlides) setActiveMobileSlide(s => s + 1);
         } else if (dy < -minSwipeDistance) {
              if (activeMobileSlide > 0) setActiveMobileSlide(s => s - 1);
@@ -1135,6 +1184,50 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
       }
     };
   }, [traderDNA.imperialScore, rightSidebarView, activeMobileSlide]);
+
+  // Check broker connection status on mount and when journalMode changes to AUTO
+  useEffect(() => {
+    const checkBrokerConnection = async () => {
+      if (!user || journalMode !== 'AUTO') return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('broker_connections')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error checking broker connection:', error);
+          return;
+        }
+        
+        if (data) {
+          setBrokerConnected(true);
+          setBrokerConnectionStep('CONNECTED');
+          setActiveMobileSlide(0); // Start at Trade Sync slide when connected
+        } else {
+          setBrokerConnected(false);
+          setBrokerConnectionStep('SELECT');
+        }
+      } catch (err) {
+        console.error('Error checking broker connection:', err);
+      }
+    };
+    
+    checkBrokerConnection();
+  }, [user, journalMode]);
+
+  // Set default server when broker is selected
+  useEffect(() => {
+    if (selectedBroker && !brokerServer) {
+      const broker = BROKERS.find(b => b.id === selectedBroker);
+      if (broker?.defaultServer) {
+        setBrokerServer(broker.defaultServer);
+      }
+    }
+  }, [selectedBroker, brokerServer]);
 
   useEffect(() => {
     const val = parseFloat(pnl);
@@ -2423,7 +2516,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         <button
                             onClick={handleAnalyze}
                             disabled={!pnl || !asset || tiltMode}
-                            className="w-full py-3.5 rounded-xl font-black text-sm shadow-lg hover:shadow-yellow-500/20 dark:hover:shadow-bronze-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-yellow-500 dark:bg-bronze-500 hover:bg-yellow-400 dark:hover:bg-bronze-400 border border-yellow-600 dark:border-bronze-600 text-black dark:text-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3.5 rounded-xl font-black text-sm shadow-lg hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-emerald-400 hover:from-yellow-300 hover:to-emerald-300 border border-emerald-500/50 text-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <SparklesIcon className="w-4 h-4 text-black" />
                             <span>{editingId ? 'UPDATE' : 'ANALYZE'}</span>
@@ -2478,78 +2571,91 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
           paddingRight: 'env(safe-area-inset-right, 0px)',
         }}
       >
-        {/* Header */}
-             <header 
-               className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
-             >
-                <div className="flex items-center gap-3">
-                    {/* Animated Logo - Click to toggle between Manual and Auto */}
-                    <div 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            const newMode = journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL';
-                            setJournalMode(newMode);
-                        }}
-                        className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-3 border cursor-pointer ${
-                            journalMode === 'AUTO' 
-                                ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30' 
-                                : isDarkMode ? 'bg-[#1C1C1E] border-white/10 hover:border-white/20' : 'bg-white border-black/10 shadow-sm hover:shadow-md'
-                        }`}
-                        title={journalMode === 'MANUAL' ? 'Switch to Auto Journaling (Pro)' : 'Switch to Manual Journaling'}
-                    >
-                        <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />
-                    </div>
-                    {/* Text Logo */}
-                    <div className="flex flex-col">
-                        <h1 className="font-light text-xl md:text-2xl tracking-[0.2em] uppercase flex items-center leading-none">
-                            <span className={isDarkMode ? 'text-white' : 'text-stone-900'}>JOURNAL</span>
-                            <span className="ml-2 font-bold bg-gradient-to-br from-emerald-400 via-yellow-400 to-emerald-500 bg-clip-text text-transparent">XX</span>
-                            {journalMode === 'AUTO' && (
-                                <span className="ml-1 font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 bg-clip-text text-transparent">PRO</span>
-                            )}
-                        </h1>
-                        {/* Mode indicator */}
-                        <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
-                            {journalMode === 'AUTO' ? 'AUTO SYNC' : 'MANUAL'}
-                        </span>
-                    </div>
-                </div>
+        {/* Header - MeccaHeader when MECCA tab; otherwise Journal/Calcu/Games header */}
+        {activeTab === 'MECCA' ? (
+          <div className="shrink-0 z-50 w-full">
+            <MeccaHeader isConnected={meccaConnected} />
+          </div>
+        ) : (
+          <header 
+            className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
+          >
+            <div className="flex items-center gap-3">
+              {/* Animated Logo - Click to toggle between Manual and Auto (only on JOURNAL tab) */}
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (activeTab === 'JOURNAL') {
+                    const newMode = journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL';
+                    setJournalMode(newMode);
+                  }
+                }}
+                className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 border ${
+                  activeTab === 'JOURNAL' 
+                    ? `hover:scale-110 hover:rotate-3 cursor-pointer ${
+                        journalMode === 'AUTO' 
+                          ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30' 
+                          : isDarkMode ? 'bg-[#1C1C1E] border-white/10 hover:border-white/20' : 'bg-white border-black/10 shadow-sm hover:shadow-md'
+                      }`
+                    : isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/10 shadow-sm'
+                }`}
+                title={activeTab === 'JOURNAL' ? (journalMode === 'MANUAL' ? 'Switch to Auto Journaling (Pro)' : 'Switch to Manual Journaling') : ''}
+              >
+                {activeTab === 'JOURNAL' && <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />}
+                {activeTab === 'CALCU' && <CalculatorIcon className="w-6 h-6 md:w-8 md:h-8" />}
+                {activeTab === 'GAMES' && <GamepadIcon className="w-6 h-6 md:w-8 md:h-8" />}
+              </div>
+              <div className="flex flex-col">
+                <h1 className="font-light text-xl md:text-2xl tracking-[0.2em] uppercase flex items-center leading-none">
+                  <span className={isDarkMode ? 'text-white' : 'text-stone-900'}>
+                    {activeTab === 'JOURNAL' ? 'JOURNAL' : activeTab === 'CALCU' ? 'CALCU' : 'GAMES'}
+                  </span>
+                  <span className="ml-2 font-bold bg-gradient-to-br from-emerald-400 via-yellow-400 to-emerald-500 bg-clip-text text-transparent">XX</span>
+                  {activeTab === 'JOURNAL' && journalMode === 'AUTO' && (
+                    <span className="ml-1 font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 bg-clip-text text-transparent">PRO</span>
+                  )}
+                </h1>
+                {activeTab === 'JOURNAL' && (
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                    {journalMode === 'AUTO' ? 'AUTO SYNC' : 'MANUAL'}
+                  </span>
+                )}
+                {activeTab === 'CALCU' && (
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                    RISK CALCULATOR
+                  </span>
+                )}
+                {activeTab === 'GAMES' && (
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                    TRAINING
+                  </span>
+                )}
+              </div>
+            </div>
 
-                <div className={`hidden md:flex items-center gap-6 px-6 py-2 rounded-full border backdrop-blur-md overflow-hidden relative w-[400px] ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
-                     <NewsTicker />
-                </div>
-
-                <div className="flex items-center gap-3">
-                     <button 
-                        onClick={onToggleTheme}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDarkMode ? 'bg-white/10 text-yellow-400 hover:bg-white/20' : 'bg-black/5 text-stone-600 hover:bg-black/10'}`}
-                     >
-                        {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
-                     </button>
-                     {/* Net PnL - Matching Journal XX Design - Total of all filtered trades (manual/auto) */}
-                     {(() => {
-                         const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
-                         const formattedPnL = (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2);
-                         const pnlLength = formattedPnL.length;
-                         const pnlSizeClass = pnlLength > 12 ? 'text-xs md:text-sm' : 'text-sm md:text-base';
-                         return (
-                     <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
-                         <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
-                         <div className="flex flex-col justify-center">
-                             <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
-                                     <div className={`${pnlSizeClass} font-bold font-sans tracking-wide leading-none mt-0.5 ${
-                                         totalPnL >= 0 
-                                     ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500')
-                                     : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
-                             }`}>
-                                         {formattedPnL}
-                             </div>
-                         </div>
-                     </div>
-                         );
-                     })()}
-                </div>
-             </header>
+            <div className="flex items-center gap-3">
+              {activeTab === 'JOURNAL' && (() => {
+                const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+                const formattedPnL = (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2);
+                const pnlLength = formattedPnL.length;
+                const pnlSizeClass = pnlLength > 12 ? 'text-xs md:text-sm' : 'text-sm md:text-base';
+                return (
+                  <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
+                    <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
+                    <div className="flex flex-col justify-center">
+                      <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
+                      <div className={`${pnlSizeClass} font-bold font-sans tracking-wide leading-none mt-0.5 ${
+                        totalPnL >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500') : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
+                      }`}>
+                        {formattedPnL}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </header>
+        )}
 
              {/* === MOBILE SWIPEABLE VIEW (Visible on Mobile) === */}
              <div className="lg:hidden flex-1 relative overflow-hidden" 
@@ -2562,16 +2668,20 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                   onWheel={onWheel}
                   style={{ touchAction: 'none' }}
              >
-                 {/* The vertical slider track for JOURNAL tab content */}
-                 {activeTab === 'JOURNAL' && (
-                     <>
-                         <div 
-                            className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                            style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
-                         >
-                             {/* Slide 0: Calendar */}
-                             <div className="w-full h-full p-4 pb-24">
-                                <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false}>
+                {/* The vertical slider track for JOURNAL tab content */}
+                {activeTab === 'JOURNAL' && journalMode === 'MANUAL' && (
+                    <>
+                        <div 
+                           className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                           style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
+                        >
+                            {/* Slide 0: Calendar */}
+                             <div className="w-full h-full p-4 pb-24 flex flex-col">
+                                {/* Price Ticker above Calendar */}
+                                <div className="shrink-0 mb-2">
+                                    <NewsTicker />
+                                </div>
+                                <SpotlightCard className="flex-1 w-full" isDarkMode={isDarkMode} tilt={false}>
                                     <MacroCalendar 
                                         isDarkMode={isDarkMode} 
                                         trades={filteredTrades}
@@ -2677,7 +2787,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                         new Date(a.date).getTime() - new Date(b.date).getTime()
                                                                     );
                                                                     let cumulative = 0;
-                                                                    return sortedTrades.map((trade, index) => {
+                                                                    const tradeData = sortedTrades.map((trade, index) => {
                                                                         cumulative += trade.pnl;
                                                                         return {
                                                                             index: index + 1,
@@ -2687,6 +2797,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                             date: trade.date
                                                                         };
                                                                     });
+                                                                    // Start from zero
+                                                                    return [{ index: 0, pnl: 0, tradePnl: 0, asset: 'Start', date: '' }, ...tradeData];
                                                                 })()}
                                                                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                                                             >
@@ -3192,7 +3304,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              </div>
                          </div>
 
-                         {/* Vertical Indicators - Right side */}
+                        {/* Vertical Indicators - Right side (MANUAL mode: 6 slides) */}
                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10 pointer-events-none">
                             {[0, 1, 2, 3, 4, 5].map((i) => (
                                 <div 
@@ -3205,24 +3317,497 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                 />
                             ))}
                          </div>
-                     </>
-                 )}
+                    </>
+                )}
 
-                 {/* MECCA TAB - Static view */}
+                {/* AUTO MODE: Mobile slides for broker sync */}
+                {activeTab === 'JOURNAL' && journalMode === 'AUTO' && (
+                    <>
+                        {/* If NOT connected: Full screen broker connection UI (no swiping) */}
+                        {!brokerConnected && (
+                            <div className="w-full h-full p-4 pb-24 overflow-y-auto">
+                                <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <div className="flex flex-col h-full p-6">
+                                        {/* Header */}
+                                        <div className="text-center mb-8">
+                                            <h2 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                                                Connect Your Broker
+                                            </h2>
+                                            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                Sync your trades automatically from your MT5 broker account
+                                            </p>
+                                        </div>
+
+                                        {/* Broker Selection Step */}
+                                        {brokerConnectionStep === 'SELECT' && (
+                                            <div className="flex-1 flex flex-col">
+                                                <h3 className={`text-sm font-bold uppercase tracking-widest mb-4 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                    Select Your Broker
+                                                </h3>
+                                                <div className="space-y-3 flex-1">
+                                                    {BROKERS.map((broker) => (
+                                                        <button
+                                                            key={broker.id}
+                                                            onClick={() => {
+                                                                setSelectedBroker(broker.id);
+                                                                setBrokerServer(broker.defaultServer);
+                                                                setBrokerConnectionStep('LOGIN');
+                                                            }}
+                                                            className={`w-full p-4 rounded-xl border text-left transition-all ${
+                                                                isDarkMode 
+                                                                    ? 'bg-slate-900/50 border-slate-700 hover:border-emerald-500/50 hover:bg-slate-800/50' 
+                                                                    : 'bg-white border-stone-200 hover:border-emerald-500/50 hover:bg-stone-50'
+                                                            }`}
+                                                        >
+                                                            <div className={`font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                                                                {broker.name}
+                                                            </div>
+                                                            <div className={`text-xs mt-1 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                                                                {broker.description}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Login Form Step */}
+                                        {brokerConnectionStep === 'LOGIN' && selectedBroker && (
+                                            <div className="flex-1 flex flex-col">
+                                                <button
+                                                    onClick={() => {
+                                                        setBrokerConnectionStep('SELECT');
+                                                        setSelectedBroker(null);
+                                                        setBrokerLoginId('');
+                                                        setBrokerPassword('');
+                                                        setBrokerConnectError(null);
+                                                    }}
+                                                    className={`text-xs mb-4 flex items-center gap-1 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-stone-500 hover:text-stone-900'}`}
+                                                >
+                                                    <ChevronLeftIcon className="w-4 h-4" />
+                                                    Back to broker selection
+                                                </button>
+
+                                                <h3 className={`text-sm font-bold uppercase tracking-widest mb-4 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                    {BROKERS.find(b => b.id === selectedBroker)?.name} Login
+                                                </h3>
+
+                                                {brokerConnectError && (
+                                                    <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+                                                        {brokerConnectError}
+                                                    </div>
+                                                )}
+
+                                                <div className="space-y-4 flex-1">
+                                                    <div>
+                                                        <label className={`block text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                            Login ID
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={brokerLoginId}
+                                                            onChange={(e) => setBrokerLoginId(e.target.value)}
+                                                            placeholder="Enter your MT5 login ID"
+                                                            className={`w-full px-4 py-3 rounded-xl border ${
+                                                                isDarkMode 
+                                                                    ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' 
+                                                                    : 'bg-white border-stone-200 text-stone-900 placeholder-stone-400'
+                                                            }`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className={`block text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                            Password
+                                                        </label>
+                                                        <input
+                                                            type="password"
+                                                            value={brokerPassword}
+                                                            onChange={(e) => setBrokerPassword(e.target.value)}
+                                                            placeholder="Enter your MT5 password"
+                                                            className={`w-full px-4 py-3 rounded-xl border ${
+                                                                isDarkMode 
+                                                                    ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' 
+                                                                    : 'bg-white border-stone-200 text-stone-900 placeholder-stone-400'
+                                                            }`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className={`block text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
+                                                            Server
+                                                        </label>
+                                                        <select
+                                                            value={brokerServer}
+                                                            onChange={(e) => setBrokerServer(e.target.value)}
+                                                            className={`w-full px-4 py-3 rounded-xl border ${
+                                                                isDarkMode 
+                                                                    ? 'bg-slate-900 border-slate-700 text-white' 
+                                                                    : 'bg-white border-stone-200 text-stone-900'
+                                                            }`}
+                                                        >
+                                                            {BROKERS.find(b => b.id === selectedBroker)?.servers.map((s) => (
+                                                                <option key={s} value={s}>{s}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!user || !selectedBroker || !brokerLoginId || !brokerPassword || !brokerServer) return;
+                                                        
+                                                        setIsConnectingBroker(true);
+                                                        setBrokerConnectError(null);
+                                                        
+                                                        try {
+                                                            // Call the connect-broker edge function
+                                                            const { data: { session } } = await supabase.auth.getSession();
+                                                            if (!session) throw new Error('Session expired');
+                                                            
+                                                            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-broker`, {
+                                                                method: 'POST',
+                                                                headers: {
+                                                                    'Content-Type': 'application/json',
+                                                                    'Authorization': `Bearer ${session.access_token}`,
+                                                                },
+                                                                body: JSON.stringify({
+                                                                    broker_type: selectedBroker,
+                                                                    login_id: brokerLoginId,
+                                                                    password: brokerPassword,
+                                                                    server: brokerServer,
+                                                                }),
+                                                            });
+                                                            
+                                                            const result = await response.json();
+                                                            
+                                                            if (!response.ok) {
+                                                                throw new Error(result.error || 'Failed to connect broker');
+                                                            }
+                                                            
+                                                            // Success - update state
+                                                            setBrokerConnected(true);
+                                                            setBrokerConnectionStep('CONNECTED');
+                                                            setActiveMobileSlide(0);
+                                                        } catch (err: any) {
+                                                            setBrokerConnectError(err.message || 'Failed to connect broker');
+                                                        } finally {
+                                                            setIsConnectingBroker(false);
+                                                        }
+                                                    }}
+                                                    disabled={isConnectingBroker || !brokerLoginId || !brokerPassword}
+                                                    className={`w-full mt-6 py-4 rounded-xl font-bold text-sm uppercase tracking-widest transition-all ${
+                                                        isConnectingBroker || !brokerLoginId || !brokerPassword
+                                                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                                            : 'bg-gradient-to-r from-emerald-500 to-yellow-500 text-black hover:from-emerald-400 hover:to-yellow-400'
+                                                    }`}
+                                                >
+                                                    {isConnectingBroker ? 'Connecting...' : 'Connect Broker'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SpotlightCard>
+                            </div>
+                        )}
+
+                        {/* If connected: Swipeable slides */}
+                        {brokerConnected && (
+                            <>
+                                <div 
+                                   className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                                   style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
+                                >
+                                    {/* AUTO Slide 0: Trade Sync (synced trades list) */}
+                                    <div className="w-full h-full p-4 pb-24">
+                                        <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                            <div className="flex flex-col h-full overflow-hidden">
+                                                <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>SYNCED TRADES</h3>
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>{filteredTrades.length}</span>
+                                                </div>
+                                                
+                                                {filteredTrades.length === 0 ? (
+                                                    <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
+                                                        <NotebookIcon className="w-12 h-12 mb-3" />
+                                                        <h4 className="font-bold text-sm uppercase tracking-widest">No Synced Trades</h4>
+                                                        <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Trades will appear here once synced from your broker.</p>
+                                                    </div>
+                                                ) : (
+                                                   <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
+                                                        {filteredTrades.slice().reverse().map(trade => (
+                                                            <div 
+                                                               key={trade.id}
+                                                               className={`group relative bg-white dark:bg-slate-950 rounded-xl p-4 transition-all border border-stone-200 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden select-none`}
+                                                            >
+                                                                <div className="flex flex-col gap-2">
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                <span className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-stone-600'}`}>{trade.asset}</span>
+                                                                                <span className={`text-sm font-mono font-bold ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                                    {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className="text-[10px] text-stone-400 dark:text-slate-600">
+                                                                                {new Date(trade.date).toLocaleDateString()}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                                            SYNCED
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </SpotlightCard>
+                                    </div>
+
+                                    {/* AUTO Slide 1: Calendar */}
+                                    <div className="w-full h-full p-4 pb-24 flex flex-col">
+                                       {/* Price Ticker above Calendar */}
+                                       <div className="shrink-0 mb-2">
+                                           <NewsTicker />
+                                       </div>
+                                       <SpotlightCard className="flex-1 w-full" isDarkMode={isDarkMode} tilt={false}>
+                                           <MacroCalendar 
+                                               isDarkMode={isDarkMode} 
+                                               trades={filteredTrades}
+                                               timeFilter={calendarTimeFilter}
+                                               setTimeFilter={setCalendarTimeFilter}
+                                               viewDate={calendarViewDate}
+                                               setViewDate={setCalendarViewDate}
+                                           />
+                                       </SpotlightCard>
+                                    </div>
+
+                                    {/* AUTO Slide 2: Performance Curve */}
+                                    <div className="w-full h-full p-4 pb-24">
+                                       <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                           <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto">
+                                               <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
+                                                   <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
+                                                       {perfCurveTimeFilter === 'M' 
+                                                           ? perfCurveViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase()
+                                                           : perfCurveViewDate.getFullYear().toString()
+                                                       }
+                                                   </h3>
+                                                   <div className="flex gap-1">
+                                                       {(['D','W','M','Y'] as const).map(f => (
+                                                           <button 
+                                                               key={f} 
+                                                               onClick={() => setPerfCurveTimeFilter(f)}
+                                                               className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors ${perfCurveTimeFilter === f ? (isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black') : 'opacity-50 hover:opacity-80'}`}
+                                                           >
+                                                               {f}
+                                                           </button>
+                                                       ))}
+                                                   </div>
+                                               </div>
+                                               
+                                               {/* Performance Chart Area */}
+                                               <div className="flex-1 min-h-[200px] -mx-2">
+                                                   <ResponsiveContainer width="100%" height="100%">
+                                                       <AreaChart data={(() => {
+                                                           const perfFilteredTrades = filteredTrades.filter(trade => {
+                                                               const tradeDate = new Date(trade.date);
+                                                               const viewYear = perfCurveViewDate.getFullYear();
+                                                               const viewMonth = perfCurveViewDate.getMonth();
+                                                               if (perfCurveTimeFilter === 'Y') return tradeDate.getFullYear() === viewYear;
+                                                               if (perfCurveTimeFilter === 'M') return tradeDate.getFullYear() === viewYear && tradeDate.getMonth() === viewMonth;
+                                                               return true;
+                                                           });
+                                                           const sorted = [...perfFilteredTrades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                                                           let cumulative = 0;
+                                                           const tradeData = sorted.map((trade, i) => {
+                                                               cumulative += trade.pnl;
+                                                               return { name: i + 1, pnl: cumulative, date: trade.date };
+                                                           });
+                                                           // Start from zero
+                                                           return [{ name: 0, pnl: 0, date: '' }, ...tradeData];
+                                                       })()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                           <defs>
+                                                               <linearGradient id="perfGradientAutoMobile" x1="0" y1="0" x2="0" y2="1">
+                                                                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                                                                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                                               </linearGradient>
+                                                           </defs>
+                                                           <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} />
+                                                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: isDarkMode ? '#64748b' : '#78716c' }} axisLine={false} tickLine={false} />
+                                                           <YAxis tick={{ fontSize: 10, fill: isDarkMode ? '#64748b' : '#78716c' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                                                           <ReferenceLine y={0} stroke={isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'} strokeDasharray="3 3" />
+                                                           <Tooltip 
+                                                               contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#fff', borderRadius: '8px', border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}
+                                                               formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cumulative PnL']}
+                                                           />
+                                                           <Area type="monotone" dataKey="pnl" stroke="#10b981" strokeWidth={2} fill="url(#perfGradientAutoMobile)" />
+                                                       </AreaChart>
+                                                   </ResponsiveContainer>
+                                               </div>
+                                           </div>
+                                       </SpotlightCard>
+                                    </div>
+
+                                    {/* AUTO Slide 3: Trader DNA + Insights Toggle */}
+                                    <div className="w-full h-full p-4 pb-24">
+                                       <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                           <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
+                                               {/* Toggle Tabs - DNA vs Insights */}
+                                               <div className={`shrink-0 flex rounded-xl p-1 mb-4 mt-4 ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                                                   <button 
+                                                       onClick={() => setMobileDnaView('DNA')}
+                                                       className={`flex-1 py-2.5 flex items-center justify-center rounded-lg transition-all ${
+                                                           mobileDnaView === 'DNA' 
+                                                               ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-stone-900 shadow-sm') 
+                                                               : (isDarkMode ? 'text-slate-400' : 'text-stone-500')
+                                                       }`}
+                                                   >
+                                                       <TreeIcon className="w-5 h-5" />
+                                                   </button>
+                                                   <button 
+                                                       onClick={() => setMobileDnaView('INSIGHTS')}
+                                                       className={`flex-1 py-2.5 flex items-center justify-center rounded-lg transition-all ${
+                                                           mobileDnaView === 'INSIGHTS' 
+                                                               ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-stone-900 shadow-sm') 
+                                                               : (isDarkMode ? 'text-slate-400' : 'text-stone-500')
+                                                       }`}
+                                                   >
+                                                       <BarChartIcon className="w-5 h-5" />
+                                                   </button>
+                                               </div>
+                                               
+                                               {mobileDnaView === 'DNA' ? (
+                                               <>
+                                               {/* TRADER DNA Label */}
+                                               <div className="flex items-center justify-between mb-2 shrink-0">
+                                                   <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                                   <ActivityIcon className="w-4 h-4 opacity-50" />
+                                               </div>
+                                               
+                                               {/* Imperial Score Display */}
+                                               <div className="mb-4 shrink-0 w-full">
+                                                   <div className="flex items-center justify-between mb-2">
+                                                       <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">IMPERIAL SCORE</h3>
+                                                       {traderDNA.imperialScore > 80 && (
+                                                           <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">PRO</span>
+                                                       )}
+                                                   </div>
+                                                   
+                                                   {/* Progress Bar */}
+                                                   <div className="relative w-full h-4 rounded-full mb-2 overflow-visible px-[30px]"
+                                                       style={{ background: 'linear-gradient(to right, #ef4444 0%, #fbbf24 50%, #10b981 100%)' }}
+                                                   >
+                                                       {(() => {
+                                                           const scoreForColor = Math.max(0, Math.min(100, animatedImperialScore));
+                                                           let constrainedPosition = animatedImperialScore <= 0 ? 0 : animatedImperialScore >= 100 ? 100 : animatedImperialScore;
+                                                           const padding = 30;
+                                                           const positionDecimal = constrainedPosition / 100;
+                                                           const actualLeft = `calc(${padding}px + (100% - ${padding * 2}px) * ${positionDecimal})`;
+                                                           
+                                                           let borderGradientColor: string;
+                                                           if (scoreForColor <= 50) {
+                                                               const ratio = scoreForColor / 50;
+                                                               const r = Math.round(239 + (251 - 239) * ratio);
+                                                               const g = Math.round(68 + (191 - 68) * ratio);
+                                                               const b = Math.round(68 + (36 - 68) * ratio);
+                                                               borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                           } else {
+                                                               const ratio = (scoreForColor - 50) / 50;
+                                                               const r = Math.round(251 + (16 - 251) * ratio);
+                                                               const g = Math.round(191 + (185 - 191) * ratio);
+                                                               const b = Math.round(36 + (129 - 36) * ratio);
+                                                               borderGradientColor = `rgb(${r}, ${g}, ${b})`;
+                                                           }
+                                                           
+                                                           return (
+                                                               <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: actualLeft, transform: 'translateX(-50%) translateY(-50%)' }}>
+                                                                   <div className="rounded-full p-[5px]" style={{ background: borderGradientColor, boxShadow: `0 0 25px ${borderGradientColor}90, 0 0 15px ${borderGradientColor}70` }}>
+                                                                       <div className="h-5 rounded-full bg-black flex items-center justify-center px-2 min-w-[50px]">
+                                                                           <span className="text-[10px] font-black whitespace-nowrap" style={{ color: borderGradientColor }}>{animatedImperialScore.toFixed(1)}</span>
+                                                                       </div>
+                                                                   </div>
+                                                               </div>
+                                                           );
+                                                       })()}
+                                                   </div>
+                                                   <div className="flex justify-between text-[8px] opacity-60">
+                                                       <span>Low</span>
+                                                       <span>High</span>
+                                                   </div>
+                                               </div>
+
+                                               {/* Trader DNA Hexagram */}
+                                               <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
+                                                   <div className="flex justify-between items-center mb-2 shrink-0">
+                                                       <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                                       <ActivityIcon className="w-4 h-4 opacity-50" />
+                                                   </div>
+                                                   <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
+                                                       <ResponsiveContainer width="100%" height="100%">
+                                                          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                                              <PolarGrid stroke="rgba(96, 165, 250, 0.2)" strokeWidth={1} />
+                                                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 9, fontWeight: 'bold' }} />
+                                                              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                                              <Radar name="Performance" dataKey="A" stroke="url(#dnaGradientMobileAuto)" strokeWidth={2.5} fill="url(#dnaGradientMobileAuto)" fillOpacity={0.6} />
+                                                              <defs>
+                                                                  <linearGradient id="dnaGradientMobileAuto" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.8} />
+                                                                      <stop offset="50%" stopColor="#ea580c" stopOpacity={0.7} />
+                                                                      <stop offset="100%" stopColor="#dc2626" stopOpacity={0.6} />
+                                                                  </linearGradient>
+                                                              </defs>
+                                                              <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.3)' }} formatter={(value: number) => [`${value}%`, 'Score']} />
+                                                          </RadarChart>
+                                                       </ResponsiveContainer>
+                                                   </div>
+                                               </div>
+                                               </>
+                                               ) : (
+                                               /* Insights View */
+                                               <div className="flex-1 min-h-0 overflow-y-auto">
+                                                   <TraderInsights 
+                                                     trades={filteredTrades}
+                                                     traderDNA={traderDNA} 
+                                                     isDarkMode={isDarkMode}
+                                                     hasProcessingTrades={hasProcessingTrades}
+                                                   />
+                                               </div>
+                                               )}
+                                           </div>
+                                       </SpotlightCard>
+                                    </div>
+                                </div>
+
+                                {/* Vertical Indicators - Right side (AUTO mode: 4 slides when connected) */}
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10 pointer-events-none">
+                                   {[0, 1, 2, 3].map((i) => (
+                                       <div 
+                                           key={i} 
+                                           className={`w-1.5 rounded-full transition-all duration-300 ${
+                                               activeMobileSlide === i 
+                                               ? `h-8 ${isDarkMode ? 'bg-emerald-500' : 'bg-emerald-500'}` 
+                                               : `h-1.5 ${isDarkMode ? 'bg-white/20' : 'bg-black/20'}`
+                                           }`}
+                                       />
+                                   ))}
+                                </div>
+                            </>
+                        )}
+                    </>
+                )}
+
+                 {/* MECCA TAB - Full Screen Trading Dashboard */}
                  {activeTab === 'MECCA' && (
-                     <div className="w-full h-full p-4 pb-24">
-                         <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
-                             <span className="text-sm font-bold uppercase tracking-widest opacity-30">MECCA Coming Soon</span>
-                         </div>
+                     <div className="w-full h-full overflow-hidden">
+                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} />
                      </div>
                  )}
 
-                 {/* CALCU TAB - Static view */}
-                 {activeTab === 'CALCU' && (
-                     <div className="w-full h-full p-4 pb-24">
-                         <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
-                             <span className="text-sm font-bold uppercase tracking-widest opacity-30">CALCU Coming Soon</span>
-                         </div>
+                {/* CALCU TAB - Risk Calculator */}
+                {activeTab === 'CALCU' && (
+                     <div className="w-full h-full p-4 pb-24 overflow-y-auto custom-scrollbar">
+                         <RiskCalculator />
                      </div>
                  )}
 
@@ -3261,11 +3846,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                         onClick={() => handleTabChange(item.id)}
                                         className={`aspect-square rounded-2xl flex items-center justify-center transition-all duration-300 ${
                                             activeTab === item.id 
-                                            ? `border ${isDarkMode ? 'border-bronze-500/50 bg-bronze-500/10 shadow-[0_0_15px_rgba(205,127,50,0.15)]' : 'border-yellow-500/50 bg-yellow-500/10'}`
+                                            ? `border ${isDarkMode ? 'border-emerald-400/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10 shadow-[0_0_15px_rgba(52,211,153,0.15)]' : 'border-emerald-500/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10'}`
                                             : 'opacity-60 hover:opacity-100 hover:bg-white/5 border border-transparent'
                                         }`}
                                      >
-                                        <item.icon className={`w-5 h-5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-600'}`} />
+                                        <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-emerald-400' : (isDarkMode ? 'text-slate-400' : 'text-stone-500')}`} />
                                      </button>
                                  ))}
                              </div>
@@ -3274,43 +3859,50 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  {/* JOURNAL TAB: Manual vs Auto Mode Content */}
                                  {activeTab === 'JOURNAL' && (
                                      <>
-                                         {/* Manual Journal Mode */}
+                                        {/* Manual Journal Mode */}
                                          {journalMode === 'MANUAL' && (
-                                     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-                                         {/* Left side: Calendar / Performance Curve with swipe */}
-                                         <div className="flex-1 min-w-0 h-full flex flex-row gap-3">
-                                             {/* Slide Content - with wheel/swipe handler */}
-                                             <div 
-                                                 className="flex-1 min-h-0 relative overflow-hidden"
-                                                 onWheel={(e) => {
-                                                     if (Math.abs(e.deltaY) > 30) {
-                                                         if (e.deltaY > 0 && activeDesktopSlide === 0) {
-                                                             setActiveDesktopSlide(1);
-                                                         } else if (e.deltaY < 0 && activeDesktopSlide === 1) {
-                                                             setActiveDesktopSlide(0);
-                                                         }
-                                                     }
-                                                 }}
-                                             >
-                                                 {/* Calendar Slide */}
-                                                 <div 
-                                                     className={`absolute inset-0 transition-all duration-300 ease-out ${
-                                                         activeDesktopSlide === 0 
-                                                             ? 'opacity-100 translate-y-0' 
-                                                             : 'opacity-0 -translate-y-full pointer-events-none'
-                                                     }`}
-                                                 >
-                                                     <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
-                                                         <MacroCalendar 
-                                                             isDarkMode={isDarkMode} 
-                                                             trades={filteredTrades}
-                                                             timeFilter={calendarTimeFilter}
-                                                             setTimeFilter={setCalendarTimeFilter}
-                                                             viewDate={calendarViewDate}
-                                                             setViewDate={setCalendarViewDate}
-                                                         />
-                                                     </SpotlightCard>
-                                                 </div>
+                                    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
+                                        {/* Left side: Calendar / Performance Curve with swipe */}
+                                        <div className="flex-1 min-w-0 h-full flex flex-row gap-3">
+                                            {/* Slide Content - with wheel/swipe handler */}
+                                            <div 
+                                                className="flex-1 min-h-0 relative overflow-hidden flex flex-col gap-2"
+                                                onWheel={(e) => {
+                                                    if (Math.abs(e.deltaY) > 30) {
+                                                        if (e.deltaY > 0 && activeDesktopSlide === 0) {
+                                                            setActiveDesktopSlide(1);
+                                                        } else if (e.deltaY < 0 && activeDesktopSlide === 1) {
+                                                            setActiveDesktopSlide(0);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {/* Price Ticker above Calendar - Desktop (same width as calendar) */}
+                                                <div className="shrink-0">
+                                                    <NewsTicker />
+                                                </div>
+                                                
+                                                {/* Slides Container */}
+                                                <div className="flex-1 relative">
+                                                {/* Calendar Slide */}
+                                                <div 
+                                                    className={`absolute inset-0 transition-all duration-300 ease-out ${
+                                                        activeDesktopSlide === 0 
+                                                            ? 'opacity-100 translate-y-0' 
+                                                            : 'opacity-0 -translate-y-full pointer-events-none'
+                                                    }`}
+                                                >
+                                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={tiltMode}>
+                                                        <MacroCalendar 
+                                                            isDarkMode={isDarkMode} 
+                                                            trades={filteredTrades}
+                                                            timeFilter={calendarTimeFilter}
+                                                            setTimeFilter={setCalendarTimeFilter}
+                                                            viewDate={calendarViewDate}
+                                                            setViewDate={setCalendarViewDate}
+                                                        />
+                                                    </SpotlightCard>
+                                                </div>
                                                  
                                                  {/* Performance Curve Slide */}
                                                  <div 
@@ -3386,9 +3978,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                      
                                                                      const totalPnL = perfFilteredTrades.reduce((sum, t) => sum + t.pnl, 0);
                                                                      
-                                                                     // Build chart data
+                                                                     // Build chart data - start from zero
                                                                      let cumulativePnL = 0;
-                                                                     const chartData = perfFilteredTrades
+                                                                     const tradeData = perfFilteredTrades
                                                                          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                                                                          .map((trade, idx) => {
                                                                              cumulativePnL += trade.pnl;
@@ -3398,6 +3990,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                  asset: trade.asset,
                                                                              };
                                                                          });
+                                                                     // Add starting point at zero
+                                                                     const chartData = [{ index: 0, pnl: 0, asset: 'Start' }, ...tradeData];
                                                                      
                                                                      return (
                                                                          <>
@@ -3515,13 +4109,14 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                      </div>
                                                                  );
                                                              })()}
-                                                         </div>
-                                                     </SpotlightCard>
-                                                 </div>
-                                             </div>
-                                             
-                                             {/* Orange Slide Indicators - Vertical on right side */}
-                                             <div className="flex flex-col justify-center items-center gap-2 px-1">
+                                                        </div>
+                                                    </SpotlightCard>
+                                                </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Orange Slide Indicators - Vertical on right side */}
+                                            <div className="flex flex-col justify-center items-center gap-2 px-1">
                                                  <button
                                                      onClick={() => setActiveDesktopSlide(0)}
                                                      className={`w-2 rounded-full transition-all duration-300 ${
@@ -3540,12 +4135,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                      }`}
                                                      title="Performance Curve"
                                                  />
-                                             </div>
-                                         </div>
-                                     </div>
-                                         )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                        )}
 
-                                         {/* Auto Journal Mode (Broker Sync) */}
+                                        {/* Auto Journal Mode (Broker Sync) */}
                                          {journalMode === 'AUTO' && (
                                              <AutoJournalView isDarkMode={isDarkMode} />
                                          )}
@@ -3575,10 +4170,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      </div>
                                  )}
 
-                                 {/* PLACEHOLDERS for other tabs */}
-                                 {(activeTab === 'MECCA' || activeTab === 'CALCU') && (
-                                     <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl animate-in fade-in duration-300">
-                                         <span className="text-sm font-bold uppercase tracking-widest opacity-30">Module Coming Soon</span>
+                                 {/* MECCA - Full Screen Trading Dashboard */}
+                                 {activeTab === 'MECCA' && (
+                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
+                                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} />
+                                     </div>
+                                 )}
+                                 
+                                 {/* CALCU TAB - Risk Calculator */}
+                                 {activeTab === 'CALCU' && (
+                                     <div className="h-full w-full overflow-y-auto custom-scrollbar animate-in fade-in duration-300">
+                                         <RiskCalculator />
                                      </div>
                                  )}
                              </div>
@@ -4264,7 +4866,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                   <button
                                                       onClick={handleAnalyze}
                                                       disabled={!pnl || !asset || tiltMode}
-                                                      className="w-full py-3.5 rounded-xl font-black text-sm shadow-lg hover:shadow-yellow-500/20 dark:hover:shadow-bronze-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-yellow-500 dark:bg-bronze-500 hover:bg-yellow-400 dark:hover:bg-bronze-400 border border-yellow-600 dark:border-bronze-600 text-black dark:text-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                                                      className="w-full py-3.5 rounded-xl font-black text-sm shadow-lg hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-emerald-400 hover:from-yellow-300 hover:to-emerald-300 border border-emerald-500/50 text-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                                                   >
                                                       <SparklesIcon className="w-4 h-4 text-black" />
                                                       <span>{editingId ? 'UPDATE' : 'ANALYZE'}</span>
@@ -4460,11 +5062,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                             onClick={() => handleTabChange(item.id)}
                             className={`p-3 rounded-xl flex items-center justify-center transition-all duration-300 ${
                                 activeTab === item.id 
-                                ? `border ${isDarkMode ? 'border-bronze-500/50 bg-bronze-500/10 shadow-[0_0_15px_rgba(205,127,50,0.15)]' : 'border-yellow-500/50 bg-yellow-500/10'}`
+                                ? `border ${isDarkMode ? 'border-emerald-400/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10 shadow-[0_0_15px_rgba(52,211,153,0.15)]' : 'border-emerald-500/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10'}`
                                 : 'opacity-60 hover:opacity-100 border border-transparent'
                             }`}
                          >
-                            <item.icon className={`w-5 h-5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-600'}`} />
+                            <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-emerald-400' : (isDarkMode ? 'text-slate-400' : 'text-stone-500')}`} />
                          </button>
                      ))}
              </div>

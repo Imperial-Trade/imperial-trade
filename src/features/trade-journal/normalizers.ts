@@ -99,5 +99,11 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
     emotion: row.emotion || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    // Manual vs auto separation (Journal XX vs Journal XX Pro)
+    is_synced: row.is_synced === true,
+    broker_connection_id: row.broker_connection_id ?? undefined,
+    broker_trade_id: row.broker_trade_id ?? undefined,
+    entry_time: row.entry_time ?? undefined,
+    exit_time: row.exit_time ?? undefined,
   };
 }

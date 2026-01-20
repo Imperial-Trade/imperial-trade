@@ -9,18 +9,40 @@ import {
   Users,
   ChevronUp,
   ChevronDown,
+  Shield,
+  UserCheck,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
 import { cn } from "@/lib/utils";
 import { useSignalTheme } from "@/hooks/useSignalTheme";
+import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 
 const AuthenticatedAppBar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isDark } = useSignalTheme();
+  
+  // Admin access check
+  const { isAdmin, isModerator, isEducatorPlus, isEducator, userRoles } = useAuthorizationAware();
+  const canAccessAdmin = isAdmin || isEducatorPlus || isEducator || isModerator;
+  
+  // Define which admin tools each role can access
+  const canAccessRequests = userRoles?.some(r => ['admin', 'moderator', 'educator+'].includes(r));
+  const canAccessUsers = isAdmin;
+  const canAccessSignals = userRoles?.some(r => ['admin', 'educator', 'educator+'].includes(r));
+  const canAccessNotifications = isAdmin;
 
   const navigationItems = [
     {
@@ -72,21 +94,6 @@ const AuthenticatedAppBar: React.FC = () => {
         e.stopPropagation();
       }}
     >
-      {/* Glass effect overlay - covers status bar and entire header */}
-      <div 
-        className="absolute inset-x-0"
-        style={{
-          top: '0',
-          height: isCollapsed ? 'calc(64px + env(safe-area-inset-top))' : 'calc(80px + env(safe-area-inset-top))',
-          zIndex: 1,
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          background: isDark ? 'rgba(15, 15, 20, 0.3)' : 'rgba(255, 255, 255, 0.3)',
-          border: 'none',
-          borderBottom: 'none',
-          boxShadow: 'none',
-        }}
-      />
       
       {/* Header content */}
       <div 
@@ -153,9 +160,65 @@ const AuthenticatedAppBar: React.FC = () => {
           </nav>
         )}
 
-        {/* Desktop Theme Toggle & Collapse Button - Right side */}
+        {/* Desktop Theme Toggle, Admin & Collapse Button - Right side */}
         <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
           <ThemeToggle />
+          
+          {/* Admin Dropdown - Only show on admin-tools page and for admins */}
+          {isAdmin && location.pathname.includes('/admin-tools') && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                  aria-label="Admin Tools"
+                >
+                  <Shield className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Admin Tools
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem 
+                  onClick={() => navigate('/dashboard/admin-tools?admin=requests')}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  Account Requests
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => navigate('/dashboard/admin-tools?admin=users')}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <UserCog className="w-4 h-4" />
+                  User Management
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => navigate('/dashboard/admin-tools?admin=signals')}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Trading Signals
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => navigate('/dashboard/admin-tools?admin=notifications')}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Bell className="w-4 h-4" />
+                  Notifications
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
           <Button
             variant="ghost"
             size="icon"

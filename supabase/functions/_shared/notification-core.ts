@@ -449,14 +449,14 @@ export async function sendPushNotification(
   console.log(`📋 [OneSignal] Sending to ${extractedUserIds.length} users via External User IDs (Supabase UIDs)`);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
+  // 🔒 ENFORCE USER PREFERENCES (Quiet Hours, Type Toggles)
+  // Note: Rate limits removed - trading notifications are time-sensitive
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
   const filteredUserIds: string[] = [];
   const skipReasons: Record<string, string[]> = {
     user_disabled: [],
     quiet_hours: [],
-    rate_limited: []
   };
 
   for (const userId of extractedUserIds) {
@@ -530,38 +530,8 @@ export async function sendPushNotification(
         }
       }
 
-      // Check rate limit (notifications per hour)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { data: recentNotifs, error: countError } = await supabase
-        .from('notification_analytics')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('sent_at', oneHourAgo)
-        .is('failed_at', null); // Only count successfully sent
-
-      if (countError) {
-        console.warn(`Failed to check rate limit for user ${userId}:`, countError);
-        // Allow on error (don't block user)
-        filteredUserIds.push(userId);
-        continue;
-      }
-
-      const maxPerHour = prefs.max_per_hour || 20;
-      if (recentNotifs && recentNotifs.length >= maxPerHour) {
-        console.log(`🚫 User ${userId.substring(0, 8)} over rate limit (${recentNotifs.length}/${maxPerHour})`);
-        skipReasons.rate_limited.push(userId);
-        
-        // Log skip reason to analytics
-        await supabase.from('notification_analytics').insert({
-          signal_id: signalData.id,
-          user_id: userId,
-          notification_type: template.type,
-          sent_at: new Date().toISOString(),
-          failed_at: new Date().toISOString(),
-          failure_reason: `Rate limit exceeded (${recentNotifs.length}/${maxPerHour})`,
-        });
-        continue;
-      }
+      // 🔧 REMOVED: Rate limit check - trading notifications are time-sensitive and should never be blocked
+      // Users can control notification preferences via quiet hours and type toggles instead
 
       // User passed all checks
       filteredUserIds.push(userId);
@@ -575,8 +545,7 @@ export async function sendPushNotification(
 
   console.log(`📊 [Preference Enforcement] Original: ${extractedUserIds.length}, Filtered: ${filteredUserIds.length}`, {
     user_disabled: skipReasons.user_disabled.length,
-    quiet_hours: skipReasons.quiet_hours.length,
-    rate_limited: skipReasons.rate_limited.length
+    quiet_hours: skipReasons.quiet_hours.length
   });
 
   if (filteredUserIds.length === 0) {

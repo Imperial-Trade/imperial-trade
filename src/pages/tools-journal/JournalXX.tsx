@@ -68,6 +68,8 @@ export default function JournalXXPage() {
       exitPrice: entry.exit_price !== null && entry.exit_price !== undefined ? entry.exit_price : undefined,
       positionSize: entry.position_size !== null && entry.position_size !== undefined ? entry.position_size : undefined,
       createdAt: entry.created_at,
+      is_synced: entry.is_synced,
+      broker_connection_id: entry.broker_connection_id,
     }));
     
     return mappedTrades;

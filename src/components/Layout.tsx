@@ -46,7 +46,7 @@ export default function Layout({
 }) {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
-  const isJournalXXPage = location.pathname === '/dashboard/journal-xx';
+  const isJournalXXPage = location.pathname === '/dashboard/journal-xx' || location.pathname === '/dashboard/journal-xx-pro';
   const isMobile = useIsMobile();
 
   // For home page, use AppBar instead of sidebar

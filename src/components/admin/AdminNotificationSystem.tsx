@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Bell, Mail, Users, Clock, CheckCircle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { AdminBottomNav } from './AdminBottomNav';
 
 interface NotificationSettings {
   newRequests: boolean;
@@ -138,7 +139,7 @@ export const AdminNotificationSystem: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 lg:pb-6">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">Notification Settings</h3>
@@ -282,6 +283,9 @@ export const AdminNotificationSystem: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Admin Panel Bottom Navigation */}
+      <AdminBottomNav />
     </div>
   );
 };

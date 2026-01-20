@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Bell, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, Check } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const NOTIFICATION_TYPES = [
   {
@@ -81,10 +80,8 @@ export function ProviderNotificationSettingsModal({
 }: Props) {
   const { user } = useAuth();
   const { subscribeToPush, isPushEnabled } = useOneSignal();
-  const { toast } = useToast();
   const { colors, isDark } = useSignalTheme();
   const { isMobile } = useDeviceDetection();
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
     new Set(NOTIFICATION_TYPES.map(t => t.id)) // All selected by default
@@ -142,51 +139,24 @@ export function ProviderNotificationSettingsModal({
     loadPreferences();
   }, [user, educatorOptions]);
 
-  const handleToggleType = (typeId: string) => {
-    const newSelected = new Set(selectedTypes);
-    if (newSelected.has(typeId)) {
-      newSelected.delete(typeId);
-    } else {
-      newSelected.add(typeId);
-    }
-    setSelectedTypes(newSelected);
-  };
+  // Show success toast with custom checkmark icon
+  const showSuccessToast = useCallback(() => {
+    toast('Notification settings saved', {
+      icon: (
+        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white">
+          <Check className="w-3 h-3 text-black" strokeWidth={3} />
+        </div>
+      ),
+      position: isMobile ? 'bottom-center' : 'bottom-right',
+      duration: 2000,
+    });
+  }, [isMobile]);
 
-  const handleToggleProvider = (providerId: string) => {
-    const newSelected = new Set(selectedProviders);
-    if (newSelected.has(providerId)) {
-      newSelected.delete(providerId);
-    } else {
-      newSelected.add(providerId);
-    }
-    setSelectedProviders(newSelected);
-  };
-
-  const handleSavePreferences = async () => {
+  // Save notification type preference to database
+  const saveNotificationType = useCallback(async (typeId: string, isEnabled: boolean) => {
     if (!user) return;
-
-    setIsLoading(true);
+    
     try {
-      // Step 1: Ensure user is subscribed to push notifications
-      if (!isPushEnabled) {
-        const subscribed = await subscribeToPush();
-        if (!subscribed) {
-          toast({
-            title: "Permission Denied",
-            description: "Please enable notifications in your device settings.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Step 2: Save notification type preferences
-      const preferences: Record<string, boolean> = {};
-      NOTIFICATION_TYPES.forEach(type => {
-        preferences[type.id] = selectedTypes.has(type.id);
-      });
-
       const { data: existing } = await supabase
         .from('notification_preferences')
         .select('user_id')
@@ -197,7 +167,7 @@ export function ProviderNotificationSettingsModal({
         await supabase
           .from('notification_preferences')
           .update({
-            ...preferences,
+            [typeId]: isEnabled,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
@@ -206,138 +176,171 @@ export function ProviderNotificationSettingsModal({
           .from('notification_preferences')
           .insert({
             user_id: user.id,
-            ...preferences,
+            [typeId]: isEnabled,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
       }
-
-      // Step 3: Save provider subscriptions
-      const providerIds = educatorOptions.map(p => p.id);
       
-      // Process all providers: upsert selected, deactivate unselected
-      for (const providerId of providerIds) {
-        const isSelected = selectedProviders.has(providerId);
-        
-        if (isSelected) {
-          // Upsert selected providers (is_active = true)
-          await supabase
-            .from('signal_subscriptions')
-            .upsert({
-              user_id: user.id,
-              provider_id: providerId,
-              is_active: true,
-              subscribed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'user_id,provider_id',
-            });
-        } else {
-          // Deactivate unselected providers
-          await supabase
-            .from('signal_subscriptions')
-            .update({
-              is_active: false,
-              unsubscribed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', user.id)
-            .eq('provider_id', providerId);
-        }
-      }
-
-      const enabledCount = selectedTypes.size;
-      const providerCount = selectedProviders.size;
-      toast({
-        title: "Settings Saved! 🎉",
-        description: `You'll receive ${enabledCount} types of notifications from ${providerCount} provider${providerCount !== 1 ? 's' : ''}`,
-      });
-
-      onSuccess?.();
-      onClose();
-    } catch (error: any) {
-      console.error('❌ [Modal] Failed to save preferences:', error);
-      toast({
-        title: "Save Failed",
-        description: error.message || "Could not save notification preferences. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      showSuccessToast();
+    } catch (error) {
+      console.error('Failed to save notification type:', error);
     }
+  }, [user, showSuccessToast]);
+
+  // Save provider subscription to database
+  const saveProviderSubscription = useCallback(async (providerId: string, isActive: boolean) => {
+    if (!user) return;
+    
+    try {
+      if (isActive) {
+        await supabase
+          .from('signal_subscriptions')
+          .upsert({
+            user_id: user.id,
+            provider_id: providerId,
+            is_active: true,
+            subscribed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,provider_id',
+          });
+      } else {
+        await supabase
+          .from('signal_subscriptions')
+          .update({
+            is_active: false,
+            unsubscribed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .eq('provider_id', providerId);
+      }
+      
+      showSuccessToast();
+    } catch (error) {
+      console.error('Failed to save provider subscription:', error);
+    }
+  }, [user, showSuccessToast]);
+
+  const handleToggleType = (typeId: string) => {
+    const newSelected = new Set(selectedTypes);
+    const isNowEnabled = !newSelected.has(typeId);
+    
+    if (isNowEnabled) {
+      newSelected.add(typeId);
+    } else {
+      newSelected.delete(typeId);
+    }
+    setSelectedTypes(newSelected);
+    
+    // Auto-save to database
+    saveNotificationType(typeId, isNowEnabled);
   };
 
-  const enabledCount = selectedTypes.size;
-  const providerCount = selectedProviders.size;
+  const handleToggleProvider = (providerId: string) => {
+    const newSelected = new Set(selectedProviders);
+    const isNowActive = !newSelected.has(providerId);
+    
+    if (isNowActive) {
+      newSelected.add(providerId);
+    } else {
+      newSelected.delete(providerId);
+    }
+    setSelectedProviders(newSelected);
+    
+    // Auto-save to database
+    saveProviderSubscription(providerId, isNowActive);
+  };
 
-  return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent 
-        side={isMobile ? "bottom-mobile" : "right"}
+
+  // Shared content for both mobile bottom sheet and desktop side panel
+  const modalContent = (
+    <>
+      {/* Drag Handle Indicator - Instagram style (mobile only) */}
+      {isMobile && (
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
+        </div>
+      )}
+      
+      {/* Header */}
+      <div 
         className={cn(
-          "w-full border-border/50 [&>button]:hidden flex flex-col",
-          isMobile ? "p-0 rounded-none border-0 !z-[9998]" : "sm:max-w-md inset-y-0"
+          "flex flex-col",
+          isMobile ? "px-4" : ""
         )}
         style={{
-          background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
-          backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
-          WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
-          paddingTop: isMobile ? 'env(safe-area-inset-top, 0px)' : 'max(env(safe-area-inset-top, 0px), 12px)',
-          paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
-          ...(isMobile && {
-            zIndex: 9998, // Behind bottom nav bar (9999) on mobile
-            maxHeight: 'calc(100vh - 72px)',
-            height: 'calc(100vh - 72px)',
-            bottom: '72px', // Position just above bottom nav bar - no gap
-            marginBottom: 0,
-            paddingBottom: 0,
-          }),
+          background: isDark ? 'rgba(15, 15, 20, 0.98)' : '#FFFFFF',
         }}
       >
-        <div className={cn("flex flex-col h-full overflow-hidden", isMobile ? "px-4" : "")}>
-        {/* Title Header - Desktop/Tablet only */}
-        {!isMobile && (
+        <div className={cn(
+          "px-2 pb-3",
+          isMobile ? "pt-2" : "pt-4 px-6"
+        )}>
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5" style={{ color: '#D4AF37' }} />
+            <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
+              Notifications
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {isLoadingPreferences ? (
+        <div className="flex items-center justify-center min-h-[200px]">
           <div 
-            className="px-6 pt-4 pb-4 border-b border-border/50 sticky top-0 z-10"
+            className="h-8 w-8 border-2 rounded-full animate-spin" 
             style={{
-              background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
-              backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
-              WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+              borderTopColor: isDark ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)',
             }}
-          >
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5" style={{ color: '#D4AF37' }} />
-              <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
-                Notification
-              </span>
+          />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="space-y-5">
+            {/* Description */}
+            <p className="text-center text-sm" style={{ color: colors.text.secondary }}>
+              Choose notification types and select which providers you want to follow.
+            </p>
+
+            {/* Notification Type Selection with iOS Toggles */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold mb-2" style={{ color: colors.text.primary }}>Notification Types</h3>
+              {NOTIFICATION_TYPES.map((type) => (
+                <div
+                  key={type.id}
+                  className="flex items-center justify-between p-3 rounded-xl transition-colors"
+                  style={{
+                    background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                  }}
+                >
+                  <div className="flex-1 pr-3">
+                    <div className="text-sm font-medium" style={{ color: colors.text.primary }}>
+                      {type.label}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: colors.text.secondary }}>
+                      {type.description}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={selectedTypes.has(type.id)}
+                    onCheckedChange={() => handleToggleType(type.id)}
+                    className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-600"
+                  />
+                </div>
+              ))}
             </div>
-          </div>
-        )}
 
-        {isLoadingPreferences ? (
-          <div className="flex items-center justify-center min-h-[200px]">
-            <div 
-              className="h-8 w-8 border-2 rounded-full animate-spin" 
-              style={{
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
-                borderTopColor: isDark ? 'rgba(255, 255, 255, 1)' : 'rgba(0, 0, 0, 1)',
-              }}
-            />
-          </div>
-        ) : (
-          <div className={cn("flex-1 overflow-y-auto", isMobile ? "mt-4 pb-4 min-h-0" : "mt-4")}>
-            <div className="pr-4 space-y-6">
-              {/* Description */}
-              <p className="text-center text-sm" style={{ color: colors.text.secondary }}>
-                Choose notification types and select which providers you want to follow.
-              </p>
-
-              {/* Notification Type Selection with iOS Toggles */}
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold mb-3" style={{ color: colors.text.primary }}>Notification Types</h3>
-                {NOTIFICATION_TYPES.map((type) => (
+            {/* Provider Subscriptions Section */}
+            {educatorOptions.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold mb-2" style={{ color: colors.text.primary }}>Provider Subscriptions</h3>
+                {educatorOptions.map((provider) => (
                   <div
-                    key={type.id}
+                    key={provider.id}
                     className="flex items-center justify-between p-3 rounded-xl transition-colors"
                     style={{
                       background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
@@ -346,101 +349,48 @@ export function ProviderNotificationSettingsModal({
                   >
                     <div className="flex-1 pr-3">
                       <div className="text-sm font-medium" style={{ color: colors.text.primary }}>
-                        {type.label}
+                        {provider.name}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: colors.text.secondary }}>
-                        {type.description}
+                        Receive notifications from this provider
                       </div>
                     </div>
-                    {/* iOS-style Toggle */}
                     <Switch
-                      checked={selectedTypes.has(type.id)}
-                      onCheckedChange={() => handleToggleType(type.id)}
+                      checked={selectedProviders.has(provider.id)}
+                      onCheckedChange={() => handleToggleProvider(provider.id)}
                       className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-600"
                     />
                   </div>
                 ))}
               </div>
+            )}
 
-              {/* Provider Subscriptions Section */}
-              {educatorOptions.length > 0 && (
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold mb-3" style={{ color: colors.text.primary }}>Provider Subscriptions</h3>
-                  {educatorOptions.map((provider) => (
-                    <div
-                      key={provider.id}
-                      className="flex items-center justify-between p-3 rounded-xl transition-colors"
-                      style={{
-                        background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                        border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                      }}
-                    >
-                      <div className="flex-1 pr-3">
-                        <div className="text-sm font-medium" style={{ color: colors.text.primary }}>
-                          {provider.name}
-                        </div>
-                        <div className="text-xs mt-0.5" style={{ color: colors.text.secondary }}>
-                          Receive notifications from this provider
-                        </div>
-                      </div>
-                      {/* iOS-style Toggle */}
-                      <Switch
-                        checked={selectedProviders.has(provider.id)}
-                        onCheckedChange={() => handleToggleProvider(provider.id)}
-                        className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-600"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Action Button - Blue like Create Alert */}
-              <div className="pt-4 pb-8">
-                <Button
-                  onClick={handleSavePreferences}
-                  disabled={isLoading || enabledCount === 0 || providerCount === 0}
-                  className="w-full h-12 text-base font-semibold rounded-xl shadow-lg transition-all duration-200"
-                  style={{
-                    background: (enabledCount === 0 || providerCount === 0)
-                      ? 'rgba(94, 159, 242, 0.3)' 
-                      : 'rgba(94, 159, 242, 0.9)',
-                    color: '#FFFFFF',
-                    border: '1px solid rgba(94, 159, 242, 0.5)',
-                  }}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="h-5 w-5 border-2 rounded-full animate-spin" 
-                        style={{
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                          borderTopColor: 'rgba(255, 255, 255, 1)',
-                        }}
-                      />
-                      Saving...
-                    </div>
-                  ) : (
-                    `Save Settings (${enabledCount} types, ${providerCount} provider${providerCount !== 1 ? 's' : ''})`
-                  )}
-                </Button>
-
-                {/* Cancel Option */}
-                <button
-                  onClick={onClose}
-                  className="w-full mt-4 text-sm transition-colors"
-                  style={{ 
-                    color: colors.text.secondary 
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = colors.text.primary}
-                  onMouseLeave={(e) => e.currentTarget.style.color = colors.text.secondary}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            {/* Auto-saves on toggle - no button needed */}
+            <div className="pt-2 pb-4" />
           </div>
-        )}
         </div>
+      )}
+    </>
+  );
+
+  // Both mobile and desktop use Sheet - mobile as bottom sheet, desktop as right panel
+  return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent 
+        side={isMobile ? "bottom-mobile" : "right"}
+        className={cn(
+          "w-full border-border/50 [&>button]:hidden flex flex-col p-0",
+          isMobile ? "" : "sm:max-w-md inset-y-0"
+        )}
+        style={{
+          background: isDark ? 'rgba(15, 15, 20, 0.98)' : '#FFFFFF',
+          backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
+        }}
+      >
+        {modalContent}
       </SheetContent>
     </Sheet>
   );

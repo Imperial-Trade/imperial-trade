@@ -24,13 +24,12 @@ const SheetOverlay = React.forwardRef<
   return (
   <SheetPrimitive.Overlay
     className={cn(
-        "fixed data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      "inset-x-0 top-0 md:bottom-0 bottom-[72px]",
+        "fixed inset-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     style={{
       ...props.style,
-      zIndex: 50,
+      zIndex: 10000, // Above everything including nav bar (9999)
         background: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)',
     }}
     {...props}
@@ -49,7 +48,7 @@ const sheetVariants = cva(
         bottom:
           "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         "bottom-mobile":
-          "inset-x-0 bottom-[72px] border-t rounded-t-3xl max-h-[calc(100vh-72px)] overflow-hidden data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "inset-x-0 bottom-0 rounded-t-3xl max-h-[calc(100vh-env(safe-area-inset-top,0px)-44px)] overflow-hidden data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         right:
           "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
@@ -76,7 +75,7 @@ const SheetContent = React.forwardRef<
         ref={ref}
         className={cn(sheetVariants({ side }), className)}
         style={{
-          zIndex: 60, // Below nav bar (9999) but above overlay (50)
+          zIndex: 10001, // Above overlay (10000) and nav bar (9999)
           ...style, // Merge style prop last to ensure background takes precedence
         }}
         {...props}

@@ -28,6 +28,7 @@ import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBounda
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
+import { Toaster } from "@/components/ui/sonner";
 
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
@@ -168,7 +169,8 @@ function App() {
           <RealtimeShutdownGuard />
           <VersionChecker />
           <CacheCleanerMount />
-          {/* <Sonner /> ← REMOVED: Using ModernNotificationSystem only */}
+          {/* Sonner Toaster for admin actions - glassmorphism style, bottom-right on desktop, bottom-center on mobile */}
+          <Toaster position="bottom-right" />
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>

@@ -1077,6 +1077,14 @@ export default function SignalStream() {
       activeSignals.forEach(signal => {
         const priceData = prices[signal.tradermadeSymbol];
         if (!priceData) return;
+        
+        // 🔧 FIX: Validate price data before detection - prevent premature SL/TP hits
+        // Skip if price is 0, undefined, or clearly invalid
+        const rawPrice = priceData.price || priceData.bid || priceData.ask;
+        if (!rawPrice || rawPrice <= 0 || !isFinite(rawPrice)) {
+          return; // Invalid price data - skip detection
+        }
+        
         const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
 
         // --- TP DETECTION ---
@@ -1102,6 +1110,18 @@ export default function SignalStream() {
         }) => {
           if (!price || price <= 0) return;
           const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
+          
+          // 🔧 FIX: Validate price is moving in profitable direction before checking TP
+          // For BUY: price must be >= entry to even consider TP hits
+          // For SELL: price must be <= entry to even consider TP hits
+          const isPriceInProfitDirection = isBuy 
+            ? currentPrice >= signal.entryPrice 
+            : currentPrice <= signal.entryPrice;
+          
+          if (!isPriceInProfitDirection) {
+            return; // Price is not in profit direction, skip TP check
+          }
+          
           const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
           if (tpHit) {
             // 🔒 TIER 1: Atomic guard - combine all checks in one operation
@@ -1130,8 +1150,10 @@ export default function SignalStream() {
             processingSignalsRef.current.add(tpKey);
             instantToastHandledRef.current.add(tpKey);
 
-            // Optimistic UI Update
-            const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
+            // 🔧 FIX: Fill-down logic - when TP level is hit, mark ALL lower TPs as hit too
+            // This ensures if price jumps to TP5, we correctly mark TP1,2,3,4,5 as hit
+            const allLevelsUpToHit = Array.from({ length: level }, (_, i) => i + 1); // [1] for TP1, [1,2] for TP2, etc.
+            const updatedTPHits = [...new Set([...(signal.tpHits || []), ...allLevelsUpToHit])].sort((a, b) => a - b);
 
             // 🆕 COUNT TOTAL DEFINED TPs
             const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5].filter(tp => tp && tp > 0).length;
@@ -1180,6 +1202,8 @@ export default function SignalStream() {
               if (allTPsHit) {
                 console.log(`✅ [All TPs Hit] Database trigger will send notification via Realtime`);
               }
+            }).catch(() => {
+              processingSignalsRef.current.delete(tpKey);
             });
           }
         });
@@ -1237,6 +1261,8 @@ export default function SignalStream() {
               }
 
               // 🔓 UNLOCK: Always remove from processing
+              processingSignalsRef.current.delete(slKey);
+            }).catch(() => {
               processingSignalsRef.current.delete(slKey);
             });
           }

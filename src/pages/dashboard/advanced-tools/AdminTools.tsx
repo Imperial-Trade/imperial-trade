@@ -4,6 +4,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
+import { AdminBottomNav } from '@/components/admin/AdminBottomNav';
 
 // Lazy load admin components for performance
 const DirectAccountRequestManagement = lazy(() => import("@/components/admin/DirectAccountRequestManagement").then(m => ({
@@ -142,10 +143,11 @@ export default function AdminTools() {
   }
 
   return (
-    <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8 pt-0 lg:pt-20 pb-20 md:pb-6 overflow-y-auto" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Dynamic content based on selected admin section */}
-        <div className="space-y-4">
+    <>
+      <div className="admin-tools-container min-h-screen w-full bg-background p-4 sm:p-6 lg:p-8 pt-0 lg:pt-20 pb-28 lg:pb-6 overflow-y-auto" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
+        <div className="max-w-7xl mx-auto">
+          {/* Dynamic content based on selected admin section */}
+          <div className="space-y-4">
           {adminSection === 'requests' && (
             <Suspense fallback={<LoadingFallback />}>
               <DirectAccountRequestManagement />
@@ -240,17 +242,23 @@ export default function AdminTools() {
             </Suspense>
           )}
           
-          {adminSection === 'settings' && (
-            <div className="glass-container rounded-3xl p-8 border border-border">
-              <div className="text-center py-12">
-                <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
-                <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
+            {adminSection === 'settings' && (
+              <div className="glass-container rounded-3xl p-8 border border-border">
+                <div className="text-center py-12">
+                  <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
+                  <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      
+      {/* Mobile Admin Panel Bottom Navigation - Show only for the 4 main admin sections */}
+      {['requests', 'users', 'signals', 'notifications'].includes(adminSection || '') && (
+        <AdminBottomNav />
+      )}
+    </>
   );
 }

@@ -323,11 +323,7 @@ export function UnifiedFilterSheet({
           backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
           WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
           paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
-          paddingBottom: isMobile ? 0 : 'max(env(safe-area-inset-bottom, 0px), 12px)',
-          ...(isMobile && {
-            bottom: '72px', // Position just above bottom nav bar - no gap
-            marginBottom: 0,
-          }),
+          paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
         }}
       >
         {/* Drag Handle Indicator - Instagram style (mobile only) */}

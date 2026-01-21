@@ -172,7 +172,7 @@ const AppBar: React.FC = () => {
             top: '0',
             // Cover status bar + header content area
             height: window.innerWidth < 1024 
-              ? `calc(env(safe-area-inset-top, 0px) + 56px / 3 + 0.5rem)` 
+              ? `calc(env(safe-area-inset-top, 0px) + 56px)` 
               : `calc(env(safe-area-inset-top) + 64px)`,
             zIndex: 1,
             borderBottom: '0.5px solid rgba(255, 255, 255, 0.08)',

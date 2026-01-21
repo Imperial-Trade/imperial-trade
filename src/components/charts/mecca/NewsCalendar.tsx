@@ -53,14 +53,14 @@ const NewsCalendar: React.FC<NewsCalendarProps> = ({ className = '' }) => {
       className={`h-full flex flex-col rounded-2xl overflow-hidden relative ${className}`}
       style={{
         border: `1px solid ${neonColors.neonGreen}20`,
-        boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 20px ${neonColors.neonGreenGlow}`,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
       }}
     >
       <div className="absolute inset-0 z-0" style={{ backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.4 }} />
       <div className="absolute inset-0 z-[1]" style={{ background: 'rgba(10, 15, 13, 0.7)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }} />
       <div className="px-3 py-2.5 flex items-center justify-between shrink-0 relative z-[2]" style={{ borderBottom: `1px solid ${neonColors.neonGreen}15`, background: 'rgba(0, 0, 0, 0.3)' }}>
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg" style={{ background: `linear-gradient(135deg, ${neonColors.neonGreen} 0%, ${neonColors.neonGreenDark} 100%)`, boxShadow: `0 0 10px ${neonColors.neonGreenGlow}` }}>
+          <div className="p-1.5 rounded-lg" style={{ background: `linear-gradient(135deg, ${neonColors.neonGreen} 0%, ${neonColors.neonGreenDark} 100%)` }}>
             <Calendar className="w-3.5 h-3.5 text-black" />
           </div>
           <div>

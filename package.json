@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=60 -R 80:localhost:8081 nokey@localhost.run",
+    "dev:mobile": "concurrently -n v,t \"vite\" \"wait-on -t 60000 http://localhost:8081 && ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=60 -R 80:localhost:8081 nokey@localhost.run\"",
     "build": "vite build",
     "do-build": "bun install && bun run build",
     "build:dev": "vite build --mode development",
@@ -106,6 +108,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^20.19.6",

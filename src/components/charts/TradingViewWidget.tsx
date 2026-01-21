@@ -78,30 +78,36 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
         interval: tvInterval,
         timezone: 'Etc/UTC',
         theme: isDarkMode ? 'dark' : 'light',
-        style: '1',
+        style: '2', // Line chart
         locale: 'en',
-        toolbar_bg: isDarkMode ? '#1e293b' : '#f1f5f9',
+        toolbar_bg: '#131722',
         enable_publishing: false,
         hide_top_toolbar: false,
         hide_legend: false,
         hide_side_toolbar: false,
         save_image: false,
         container_id: widgetIdRef.current,
-        width: '100%',
-        height: height,
         allow_symbol_change: true,
         details: false,
         hotlist: false,
         calendar: false,
         withdateranges: true,
         studies: ['Volume@tv-basicstudies'],
+        overrides: {
+          'paneProperties.background': '#131722',
+          'paneProperties.backgroundType': 'solid',
+          'paneProperties.vertGridProperties.color': '#1e222d',
+          'paneProperties.horzGridProperties.color': '#1e222d',
+          'scalesProperties.backgroundColor': '#131722',
+          'scalesProperties.lineColor': '#1e222d',
+        },
       });
       widgetInitializedRef.current = true;
       console.log('TradingView: Widget initialized successfully');
     } catch (e) {
       console.error('TradingView: Widget init error:', e);
     }
-  }, [tvSymbol, tvInterval, isDarkMode, height]);
+  }, [tvSymbol, tvInterval, isDarkMode]);
 
   // Load script and initialize widget
   useEffect(() => {
@@ -188,20 +194,18 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
     <div
       className={'relative rounded-2xl overflow-hidden ' + className}
       style={{
-        background: isDarkMode
-          ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%)'
-          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.95) 100%)',
+        background: '#131722', // TradingView dark theme background color
         border: isDarkMode ? '1px solid rgba(148, 163, 184, 0.12)' : '1px solid rgba(148, 163, 184, 0.2)',
         boxShadow: isDarkMode
           ? '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04)'
           : '0 25px 50px -12px rgba(0, 0, 0, 0.12)',
-        minHeight: height + 'px',
+        height: '100%',
       }}
     >
       <div 
         id={widgetIdRef.current}
         ref={containerRef}
-        style={{ height: height + 'px', width: '100%' }} 
+        style={{ height: '100%', width: '100%' }} 
       />
     </div>
   );

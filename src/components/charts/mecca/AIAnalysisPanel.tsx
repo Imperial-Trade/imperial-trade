@@ -13,7 +13,7 @@ const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = (
     className={`relative rounded-2xl overflow-hidden ${className}`}
     style={{
       border: `1px solid ${neonColors.neonGreen}20`,
-      boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 20px ${neonColors.neonGreenGlow}`,
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
     }}
   >
     {/* Background Image Layer */}
@@ -212,8 +212,8 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
           <div
             className="p-3 rounded-xl"
             style={{
-              background: 'rgba(34, 197, 94, 0.05)',
-              border: `1px solid rgba(34, 197, 94, 0.2)`,
+              background: 'rgba(99, 102, 241, 0.05)',
+              border: `1px solid rgba(99, 102, 241, 0.2)`,
             }}
           >
             <div className="flex items-center gap-2 mb-2">

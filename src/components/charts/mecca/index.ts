@@ -9,6 +9,15 @@ export { default as BiasGauge } from './BiasGauge';
 export { default as ConfidenceRing } from './ConfidenceRing';
 export { default as SessionTimeline } from './SessionTimeline';
 export { default as TimeframeSelector } from './TimeframeSelector';
+export { default as ProAnalysisModal } from './ProAnalysisModal';
+
+// Premium UI Components
+export * from './MeccaSpotlightCard';
 
 // Theme exports
 export * from './neonTheme';
+
+// Pro Analysis exports
+export * from './proAnalysisTypes';
+export * from './proAnalysisService';
+export * from './technicalIndicators';

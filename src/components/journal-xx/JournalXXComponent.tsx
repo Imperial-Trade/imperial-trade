@@ -27,6 +27,7 @@ import { AutoJournalView } from './AutoJournalView';
 import RiskCalculator from '@/components/tools/RiskCalculator';
 import { GeminiSetupAnalyzer } from '@/components/charts/GeminiSetupAnalyzer';
 import { MeccaHeader } from '@/components/charts/mecca';
+import NewsTicker from '@/components/shared/NewsTicker';
 
 // Broker options for mobile AUTO mode
 const BROKERS = [
@@ -161,94 +162,6 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 // --- SUB-COMPONENTS ---
-
-const NewsTicker: React.FC = () => {
-    // Get live prices for all symbols with real-time updates
-    const goldPrice = useOptimizedLivePrice('XAUUSD', { debounceMs: 50 });
-    const btcPrice = useOptimizedLivePrice('BTCUSD', { debounceMs: 50 });
-    const us30Price = useOptimizedLivePrice('U30USD', { debounceMs: 50 });
-    const spxPrice = useOptimizedLivePrice('SPXUSD', { debounceMs: 50 });
-    const ndxPrice = useOptimizedLivePrice('NDXUSD', { debounceMs: 50 });
-    
-    // Track previous prices to determine direction
-    const prevPricesRef = useRef<Record<string, number>>({});
-
-    // Format prices and determine arrow direction based on actual price movement
-    const formatTickerItem = (
-        priceData: ReturnType<typeof useOptimizedLivePrice>, 
-        label: string,
-        symbol: string
-    ) => {
-        const price = priceData.price || 0;
-        const prevPrice = prevPricesRef.current[symbol] || price;
-        
-        // Update previous price if we have a valid current price and it's different
-        if (price > 0 && price !== prevPrice) {
-            prevPricesRef.current[symbol] = price;
-        }
-        
-        // Determine direction: up if price increased, down if decreased
-        const isUp = price > prevPrice;
-        const isDown = price < prevPrice;
-        // Use change from hook as fallback if prices are the same
-        const direction = isUp ? 'up' : isDown ? 'down' : (priceData.change >= 0 ? 'up' : 'down');
-        
-        if (price === 0) {
-            return null; // Don't show if no price data
-        }
-        
-        // Format price based on magnitude
-        let formattedPrice: string;
-        if (price >= 1000) {
-            formattedPrice = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        } else {
-            formattedPrice = price.toFixed(2);
-        }
-        
-        const isPriceUp = direction === 'up';
-        
-        return (
-            <span key={label} className="text-[10px] md:text-[11px] font-medium transition-colors duration-300 flex items-center gap-1">
-                <span className="text-slate-400">{label}</span>
-                <span className="text-white/90">{formattedPrice}</span>
-                <span className={isPriceUp ? "text-emerald-400" : "text-red-400"}>{isPriceUp ? "▲" : "▼"}</span>
-            </span>
-        );
-    };
-
-    const tickerItems = [
-        formatTickerItem(goldPrice, 'GOLD', 'XAUUSD'),
-        formatTickerItem(btcPrice, 'BTC', 'BTCUSD'),
-        formatTickerItem(us30Price, 'US30', 'U30USD'),
-        formatTickerItem(spxPrice, 'S&P500', 'SPXUSD'),
-        formatTickerItem(ndxPrice, 'NAS100', 'NDXUSD')
-    ].filter(Boolean); // Remove null items
-
-    return (
-        <div className="relative w-full overflow-hidden py-1">
-            <div 
-                className="inline-flex items-center gap-8 md:gap-12 whitespace-nowrap will-change-transform animate-ticker-scroll"
-            >
-                {/* Duplicate items for seamless loop */}
-                <div className="inline-flex items-center gap-8 md:gap-12 shrink-0">
-                    {tickerItems}
-                </div>
-                <div className="inline-flex items-center gap-8 md:gap-12 shrink-0">
-                    {tickerItems}
-                </div>
-            </div>
-            <style>{`
-                @keyframes tickerScrollAnim {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-50%); }
-                }
-                .animate-ticker-scroll {
-                    animation: tickerScrollAnim 25s linear infinite;
-                }
-            `}</style>
-        </div>
-    );
-};
 
 const SpotlightCard: React.FC<{ 
   children: React.ReactNode; 
@@ -795,6 +708,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
   // Animation state for Imperial Score
   const [animatedImperialScore, setAnimatedImperialScore] = useState(0);
   const [activeTab, setActiveTab] = useState('JOURNAL');
+  const [meccaMobileTab, setMeccaMobileTab] = useState<'chart' | 'economic' | 'analyze'>('chart');
   const [tiltMode, setTiltMode] = useState(false);
   const [viewState, setViewState] = useState<'FORM' | 'ANALYZING' | 'REVIEW'>('FORM');
   const [activeMobileSlide, setActiveMobileSlide] = useState(0);
@@ -2553,34 +2467,31 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
     <div 
       className={`w-full ${isDarkMode ? 'bg-[#050505]' : 'bg-[#F0F0F0]'}`}
       style={{
-        // Full screen including safe areas - background covers everything
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
       }}
     >
       <div 
-        className={`w-full h-full ${isDarkMode ? 'text-slate-200' : 'text-stone-800'} font-sans flex flex-col relative overflow-hidden`}
-        style={{
-          // Content area respects safe areas
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          paddingLeft: 'env(safe-area-inset-left, 0px)',
-          paddingRight: 'env(safe-area-inset-right, 0px)',
-        }}
+        className={`journal-xx-safe-area w-full h-full ${isDarkMode ? 'text-slate-200' : 'text-stone-800'} font-sans flex flex-col relative overflow-hidden`}
       >
         {/* Header - MeccaHeader when MECCA tab; otherwise Journal/Calcu/Games header */}
         {activeTab === 'MECCA' ? (
           <div className="shrink-0 z-50 w-full">
-            <MeccaHeader isConnected={meccaConnected} />
+            <MeccaHeader 
+              isConnected={meccaConnected} 
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              showMobileTabs={false}
+              mobileActiveTab={meccaMobileTab}
+              onMobileTabChange={setMeccaMobileTab}
+            />
           </div>
         ) : (
           <header 
-            className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
+            className={`shrink-0 flex justify-between items-center z-50 py-4 px-6 border-b transition-all duration-300 relative ${isDarkMode ? 'bg-[#050505] border-white/5' : 'bg-white border-black/5'}`}
           >
-            <div className="flex items-center gap-3">
+            {/* Left: Logo & Title */}
+            <div className="flex items-center gap-3 flex-shrink-0">
               {/* Animated Logo - Click to toggle between Manual and Auto (only on JOURNAL tab) */}
               <div 
                 onClick={(e) => {
@@ -2633,7 +2544,45 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Center: Desktop Navigation with Glassmorphism */}
+            <nav 
+              className="hidden lg:flex lg:items-center gap-1 rounded-2xl p-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+              style={{
+                background: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.03)' 
+                  : 'rgba(0, 0, 0, 0.02)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: isDarkMode 
+                  ? '1px solid rgba(255, 255, 255, 0.08)' 
+                  : '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: isDarkMode 
+                  ? '0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)' 
+                  : '0 4px 24px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    activeTab === item.id
+                      ? isDarkMode
+                        ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.15)]'
+                        : 'bg-gradient-to-br from-emerald-500/15 to-yellow-500/10 text-emerald-600 border border-emerald-500/30'
+                      : isDarkMode
+                        ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                        : 'text-stone-500 hover:text-stone-900 hover:bg-black/5'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            {/* Right: PnL Display */}
+            <div className="flex items-center gap-3 flex-shrink-0">
               {activeTab === 'JOURNAL' && (() => {
                 const totalPnL = filteredTrades.reduce((acc, curr) => acc + curr.pnl, 0);
                 const formattedPnL = (totalPnL >= 0 ? '+' : '-') + '$' + Math.abs(totalPnL).toFixed(2);
@@ -3800,7 +3749,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  {/* MECCA TAB - Full Screen Trading Dashboard */}
                  {activeTab === 'MECCA' && (
                      <div className="w-full h-full overflow-hidden">
-                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} />
+                         <GeminiSetupAnalyzer 
+                           isDarkMode={isDarkMode} 
+                           mobileActiveTab={meccaMobileTab}
+                           onMobileTabChange={setMeccaMobileTab}
+                           isMobileInstance={true}
+                         />
                      </div>
                  )}
 
@@ -3833,29 +3787,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
 
              {/* === DESKTOP GRID VIEW (Hidden on Mobile) === */}
-             <div className="hidden lg:block flex-1 overflow-y-auto custom-scrollbar p-6">
-                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+             <div className={`hidden lg:block flex-1 overflow-y-auto custom-scrollbar ${activeTab === 'MECCA' ? 'p-0' : 'p-6'}`}>
+                 <div className={`grid grid-cols-1 lg:grid-cols-12 ${activeTab === 'MECCA' ? 'gap-0 h-full' : 'gap-6'}`}>
                      
-                     {/* Main Content Area (Center) */}
-                     <div className={`col-span-12 ${activeTab === 'JOURNAL' ? 'lg:col-span-9' : 'lg:col-span-12'} flex flex-col gap-6`}>
-                         <div className="flex gap-6 h-full"> 
-                             <div className="hidden lg:flex flex-col gap-3 w-12 shrink-0"> 
-                                 {NAV_ITEMS.map((item) => (
-                                     <button
-                                        key={item.id} 
-                                        onClick={() => handleTabChange(item.id)}
-                                        className={`aspect-square rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                                            activeTab === item.id 
-                                            ? `border ${isDarkMode ? 'border-emerald-400/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10 shadow-[0_0_15px_rgba(52,211,153,0.15)]' : 'border-emerald-500/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10'}`
-                                            : 'opacity-60 hover:opacity-100 hover:bg-white/5 border border-transparent'
-                                        }`}
-                                     >
-                                        <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-emerald-400' : (isDarkMode ? 'text-slate-400' : 'text-stone-500')}`} />
-                                     </button>
-                                 ))}
-                             </div>
-                             
-                             <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
+                     {/* Main Content Area (Center) - Navigation moved to header */}
+                     <div className={`col-span-12 ${activeTab === 'JOURNAL' ? 'lg:col-span-9' : 'lg:col-span-12'} flex flex-col ${activeTab === 'MECCA' ? 'gap-0 h-full' : 'gap-6'}`}>
+                         <div className={`flex ${activeTab === 'MECCA' ? 'gap-0' : 'gap-6'} h-full`}> 
+                             <div className={`flex-1 flex flex-col ${activeTab === 'MECCA' ? 'gap-0' : 'gap-6'} h-full min-w-0`}>
                                  {/* JOURNAL TAB: Manual vs Auto Mode Content */}
                                  {activeTab === 'JOURNAL' && (
                                      <>
@@ -4173,7 +4111,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  {/* MECCA - Full Screen Trading Dashboard */}
                                  {activeTab === 'MECCA' && (
                                      <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
-                                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} />
+                                         <GeminiSetupAnalyzer 
+                                           isDarkMode={isDarkMode} 
+                                           mobileActiveTab={meccaMobileTab}
+                                           onMobileTabChange={setMeccaMobileTab}
+                                           isMobileInstance={false}
+                                         />
                                      </div>
                                  )}
                                  
@@ -5044,7 +4987,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
              {/* Mobile Bottom Nav */}
              <div 
-                 className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-[#050505] via-[#050505]/90 to-transparent' : 'from-[#F0F0F0] via-[#F0F0F0]/90 to-transparent'}`}
+                 className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-[#050505] via-[#050505]/90 to-transparent' : 'from-[#F0F0F0] via-[#F0F0F0]/90 to-transparent'}`}
+                 style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}
                  onTouchStart={(e) => {
                      e.stopPropagation();
                  }}

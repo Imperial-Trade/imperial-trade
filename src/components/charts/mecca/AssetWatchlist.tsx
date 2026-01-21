@@ -51,7 +51,7 @@ const AssetRow: React.FC<AssetRowProps> = ({ symbol, name, isSelected, onSelect 
         border: isSelected 
           ? `1px solid ${neonColors.borderActive}` 
           : '1px solid transparent',
-        boxShadow: isSelected ? `0 0 15px ${neonColors.neonGreenGlow}` : 'none',
+        boxShadow: 'none',
       }}
     >
       {/* Asset Icon */}

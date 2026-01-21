@@ -12,8 +12,10 @@ export default defineConfig(({ mode }) => ({
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
   },
   server: {
-    host: "0.0.0.0", // Accept connections from all network interfaces (better for iPhone testing)
-    port: 8080,
+    host: "0.0.0.0", // Accept connections from all interfaces so mobile can reach via your PC's IP (e.g. http://192.168.1.x:8081)
+    port: 8081,
+    strictPort: true, // Fail if 8081 is in use (required for dev:mobile tunnel)
+    allowedHosts: true, // Allow tunnel hosts (e.g. *.lhr.life) so mobile can load via dev:mobile
     // Add history API fallback for SPA routing
     historyApiFallback: true,
   },

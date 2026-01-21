@@ -94,7 +94,6 @@ const AuthenticatedAppBar: React.FC = () => {
         e.stopPropagation();
       }}
     >
-      
       {/* Header content */}
       <div 
         className="w-full max-w-7xl mx-auto h-full flex items-center justify-between px-6 relative"

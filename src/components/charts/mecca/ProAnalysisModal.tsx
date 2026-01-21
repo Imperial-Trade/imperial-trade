@@ -23,6 +23,8 @@ interface ProAnalysisModalProps {
   analysis: ProAnalysisResult | null;
   isLoading: boolean;
   error: string | null;
+  /** Override for symbol in header (e.g. US30 instead of U30USD). Falls back to analysis.symbol */
+  displaySymbol?: string;
 }
 
 // Conviction Gauge Component (Semi-circle) - Mobile responsive
@@ -294,6 +296,7 @@ const ProAnalysisModal: React.FC<ProAnalysisModalProps> = ({
   analysis,
   isLoading,
   error,
+  displaySymbol,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -370,7 +373,7 @@ const ProAnalysisModal: React.FC<ProAnalysisModalProps> = ({
               </h2>
               {analysis && (
                 <p className="text-[10px] md:text-xs" style={{ color: neonColors.textDim }}>
-                  {analysis.symbol} • {analysis.timeframe} • {new Date(analysis.analyzedAt).toLocaleTimeString()}
+                  {displaySymbol ?? analysis.symbol} • {analysis.timeframe} • {new Date(analysis.analyzedAt).toLocaleTimeString()}
                 </p>
               )}
             </div>

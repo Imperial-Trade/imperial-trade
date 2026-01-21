@@ -4,7 +4,7 @@ import {
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
   NotebookIcon, CalendarIcon, UploadIcon, ActivityIcon, FolderIcon,
   TrendingUpIcon, TrendingDownIcon, MapIcon, PlayIcon, PauseIcon,
-  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, GamepadIcon, BarChart3Icon,
+  LayersIcon, TreeIcon, SparklesIcon, SunIcon, MoonIcon, CalculatorIcon, UserIcon, CheckIcon, BarChart3Icon,
   ChevronLeftIcon, ChevronRightIcon
 } from './ui/Icons';
 import { TradeFormData, TradeEntry } from './types';
@@ -98,7 +98,7 @@ const NAV_ITEMS = [
   { id: 'JOURNAL', icon: NotebookIcon, label: 'Journal' },
   { id: 'MECCA', icon: BarChartIcon, label: 'Mecca' }, // Analysis
   { id: 'CALCU', icon: CalculatorIcon, label: 'Calcu' },
-  { id: 'GAMES', icon: GamepadIcon, label: 'Games' }, // Replaced Profile
+  { id: 'INSIGHT', icon: SparklesIcon, label: 'Insight' }, // AI / Gemini setup (replaced Games)
 ];
 
 // --- UTILS ---
@@ -2492,34 +2492,39 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
           >
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-3 flex-shrink-0">
-              {/* Animated Logo - Click to toggle between Manual and Auto (only on JOURNAL tab) */}
-              <div 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (activeTab === 'JOURNAL') {
-                    const newMode = journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL';
-                    setJournalMode(newMode);
-                  }
-                }}
-                className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 border ${
-                  activeTab === 'JOURNAL' 
-                    ? `hover:scale-110 hover:rotate-3 cursor-pointer ${
-                        journalMode === 'AUTO' 
-                          ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30' 
-                          : isDarkMode ? 'bg-[#1C1C1E] border-white/10 hover:border-white/20' : 'bg-white border-black/10 shadow-sm hover:shadow-md'
-                      }`
-                    : isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/10 shadow-sm'
-                }`}
-                title={activeTab === 'JOURNAL' ? (journalMode === 'MANUAL' ? 'Switch to Auto Journaling (Pro)' : 'Switch to Manual Journaling') : ''}
-              >
-                {activeTab === 'JOURNAL' && <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />}
-                {activeTab === 'CALCU' && <CalculatorIcon className="w-6 h-6 md:w-8 md:h-8" />}
-                {activeTab === 'GAMES' && <GamepadIcon className="w-6 h-6 md:w-8 md:h-8" />}
-              </div>
+              {/* INSIGHT: logo only, no card; yellow + animate-brain-think. JOURNAL/CALCU: card with icon. */}
+              {activeTab === 'INSIGHT' ? (
+                <span className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center flex-shrink-0">
+                  <SparklesIcon className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 animate-brain-think" />
+                </span>
+              ) : (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (activeTab === 'JOURNAL') {
+                      const newMode = journalMode === 'MANUAL' ? 'AUTO' : 'MANUAL';
+                      setJournalMode(newMode);
+                    }
+                  }}
+                  className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 border ${
+                    activeTab === 'JOURNAL' 
+                      ? `hover:scale-110 hover:rotate-3 cursor-pointer ${
+                          journalMode === 'AUTO' 
+                            ? 'bg-gradient-to-br from-emerald-500/20 to-yellow-500/20 border-emerald-500/30 ring-2 ring-emerald-500/30' 
+                            : isDarkMode ? 'bg-[#1C1C1E] border-white/10 hover:border-white/20' : 'bg-white border-black/10 shadow-sm hover:shadow-md'
+                        }`
+                      : isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/10 shadow-sm'
+                  }`}
+                  title={activeTab === 'JOURNAL' ? (journalMode === 'MANUAL' ? 'Switch to Auto Journaling (Pro)' : 'Switch to Manual Journaling') : ''}
+                >
+                  {activeTab === 'JOURNAL' && <TreeIcon className="w-6 h-6 md:w-8 md:h-8" />}
+                  {activeTab === 'CALCU' && <CalculatorIcon className="w-6 h-6 md:w-8 md:h-8" />}
+                </div>
+              )}
               <div className="flex flex-col">
                 <h1 className="font-light text-xl md:text-2xl tracking-[0.2em] uppercase flex items-center leading-none">
                   <span className={isDarkMode ? 'text-white' : 'text-stone-900'}>
-                    {activeTab === 'JOURNAL' ? 'JOURNAL' : activeTab === 'CALCU' ? 'CALCU' : 'GAMES'}
+                    {activeTab === 'JOURNAL' ? 'JOURNAL' : activeTab === 'CALCU' ? 'CALCU' : 'INSIGHT'}
                   </span>
                   <span className="ml-2 font-bold bg-gradient-to-br from-emerald-400 via-yellow-400 to-emerald-500 bg-clip-text text-transparent">XX</span>
                   {activeTab === 'JOURNAL' && journalMode === 'AUTO' && (
@@ -2536,9 +2541,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     RISK CALCULATOR
                   </span>
                 )}
-                {activeTab === 'GAMES' && (
+                {activeTab === 'INSIGHT' && (
                   <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
-                    TRAINING
+                    AI ANALYSIS
                   </span>
                 )}
               </div>
@@ -3746,7 +3751,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     </>
                 )}
 
-                 {/* MECCA TAB - Full Screen Trading Dashboard */}
+                 {/* MECCA TAB - Chart + Economic Calendar only (AI moved to Insight tab) */}
                  {activeTab === 'MECCA' && (
                      <div className="w-full h-full overflow-hidden">
                          <GeminiSetupAnalyzer 
@@ -3754,6 +3759,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                            mobileActiveTab={meccaMobileTab}
                            onMobileTabChange={setMeccaMobileTab}
                            isMobileInstance={true}
+                           hideAiPanel={true}
                          />
                      </div>
                  )}
@@ -3765,22 +3771,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                      </div>
                  )}
 
-                 {/* GAMES TAB - Static view */}
-                 {activeTab === 'GAMES' && (
-                     <div className="w-full h-full overflow-y-auto custom-scrollbar">
-                        <div className="flex flex-col gap-4 p-4 pb-24">
-                             {/* XX COINS - Only visible in GAMES tab */}
-                             <div className={`px-2 py-1 rounded-full border flex items-center gap-1.5 self-end ${isDarkMode ? 'border-bronze-500/30 bg-bronze-500/10 text-bronze-500' : 'border-yellow-600/30 bg-yellow-100 text-yellow-700'}`}>
-                                 <span className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">XX COINS</span>
-                                 <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
-                             </div>
-                             <SpotlightCard className="h-[calc(50vh-4rem)] min-h-[300px] w-full" isDarkMode={isDarkMode} tilt={false}>
-                                 <TradeReplayWidget isDarkMode={isDarkMode} trades={filteredTrades} />
-                             </SpotlightCard>
-                             <SpotlightCard className="h-[calc(50vh-4rem)] min-h-[300px] w-full" isDarkMode={isDarkMode} tilt={false}>
-                                 <PatternDojo isDarkMode={isDarkMode} onOutcome={handleDojoOutcome} />
-                             </SpotlightCard>
-                        </div>
+                 {/* INSIGHT TAB - Gemini API setup + AI analysis (mobile/tablet; separate from MECCA) */}
+                 {activeTab === 'INSIGHT' && (
+                     <div className="w-full h-full overflow-hidden">
+                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} insightOnly={true} />
                      </div>
                  )}
              </div>
@@ -4085,30 +4079,14 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      </>
                                  )}
 
-                                 {/* GAMES TAB: Replay & Dojo */}
-                                 {activeTab === 'GAMES' && (
-                                     <div className="flex flex-col gap-6 h-[calc(100vh-10rem)] animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                         {/* XX COINS - Only visible in GAMES tab */}
-                                         <div className={`px-2 py-1 rounded-full border flex items-center gap-1.5 self-end ${isDarkMode ? 'border-bronze-500/30 bg-bronze-500/10 text-bronze-500' : 'border-yellow-600/30 bg-yellow-100 text-yellow-700'}`}>
-                                             <span className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">XX COINS</span>
-                                             <span className="text-[8px] font-mono whitespace-nowrap">| {coins} 💎</span>
-                                         </div>
-                                         <div className="flex flex-col lg:flex-row gap-6 flex-1">
-                                             <div className="flex-[3] min-w-0 h-full">
-                                                <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
-                                                    <span className="text-sm font-bold uppercase tracking-widest opacity-30">Trade Replay Coming Soon</span>
-                                                </div>
-                                             </div>
-                                             <div className="flex-1 min-w-[200px] h-full">
-                                                <div className="flex items-center justify-center h-full w-full border-2 border-dashed border-stone-200 dark:border-white/10 rounded-3xl">
-                                                    <span className="text-sm font-bold uppercase tracking-widest opacity-30">Pattern Dojo Coming Soon</span>
-                                                </div>
-                                             </div>
-                                         </div>
+                                 {/* INSIGHT TAB - Gemini API setup + AI analysis (separate from MECCA) */}
+                                 {activeTab === 'INSIGHT' && (
+                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
+                                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} insightOnly={true} />
                                      </div>
                                  )}
 
-                                 {/* MECCA - Full Screen Trading Dashboard */}
+                                 {/* MECCA - Chart + Economic Calendar only (AI in Insight tab) */}
                                  {activeTab === 'MECCA' && (
                                      <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
                                          <GeminiSetupAnalyzer 
@@ -4116,6 +4094,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                            mobileActiveTab={meccaMobileTab}
                                            onMobileTabChange={setMeccaMobileTab}
                                            isMobileInstance={false}
+                                           hideAiPanel={true}
                                          />
                                      </div>
                                  )}

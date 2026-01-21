@@ -211,12 +211,84 @@ const getStyleConfig = (style: TradingStyle) => {
   return TRADING_STYLES.find(s => s.value === style) || TRADING_STYLES[1]; // Default to intraday
 };
 
+// 5 assets for Insight: display label + internal symbol for API/live prices
+const INSIGHT_ASSETS = [
+  { display: 'XAUUSD', internal: 'XAUUSD' },
+  { display: 'BTCUSD', internal: 'BTCUSD' },
+  { display: 'US30', internal: 'U30USD' },
+  { display: 'NAS100', internal: 'NDXUSD' },
+  { display: 'SPX', internal: 'SPXUSD' },
+] as const;
+
+const getInsightDisplayName = (internal: string) =>
+  INSIGHT_ASSETS.find((a) => a.internal === internal)?.display ?? internal;
+
+// Selectable 5-asset cards for insightOnly: live price, green/red by movement, click to select with gradient+animation
+interface InsightAssetCardsProps {
+  selectedInternal: string;
+  onSelect: (internal: string) => void;
+}
+
+const InsightAssetCards: React.FC<InsightAssetCardsProps> = ({ selectedInternal, onSelect }) => {
+  const p1 = useOptimizedLivePrice('XAUUSD', { debounceMs: 100 });
+  const p2 = useOptimizedLivePrice('BTCUSD', { debounceMs: 100 });
+  const p3 = useOptimizedLivePrice('U30USD', { debounceMs: 100 });
+  const p4 = useOptimizedLivePrice('NDXUSD', { debounceMs: 100 });
+  const p5 = useOptimizedLivePrice('SPXUSD', { debounceMs: 100 });
+  const prices = [p1, p2, p3, p4, p5];
+
+  return (
+    <div className="shrink-0 grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 px-4 pt-4 pb-2">
+      {INSIGHT_ASSETS.map(({ display, internal }, i) => {
+        const { livePrice, change } = prices[i];
+        const isUp = change > 0;
+        const isDown = change < 0;
+        const selected = selectedInternal === internal;
+        return (
+          <button
+            key={internal}
+            type="button"
+            onClick={() => onSelect(internal)}
+            className={`relative flex flex-col items-center justify-center py-3 px-2 sm:py-4 sm:px-3 rounded-2xl min-w-0 transition-all duration-300 ease-out active:scale-[0.98] ${
+              selected ? 'scale-[1.02]' : 'scale-100'
+            }`}
+            style={{
+              background: selected
+                ? 'linear-gradient(135deg, rgba(13, 148, 136, 0.18) 0%, rgba(4, 120, 87, 0.14) 50%, rgba(6, 95, 70, 0.12) 100%)'
+                : 'rgba(255, 255, 255, 0.03)',
+              border: selected ? '2px solid rgba(13, 148, 136, 0.6)' : '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: selected ? '0 0 20px rgba(13, 148, 136, 0.25), inset 0 1px 0 rgba(255,255,255,0.06)' : '0 2px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            <span className="text-[11px] sm:text-xs font-bold tracking-wide truncate w-full text-center mb-1" style={{ color: selected ? 'rgba(167, 243, 208, 0.95)' : neonColors.textDim }}>
+              {display}
+            </span>
+            <span
+              className={`text-sm sm:text-base font-bold tabular-nums ${isUp ? 'text-emerald-400' : isDown ? 'text-red-400' : ''}`}
+              style={!isUp && !isDown ? { color: neonColors.textPrimary } : undefined}
+            >
+              {livePrice != null && livePrice > 0 ? livePrice.toFixed(2) : '—'}
+            </span>
+            {selected && (
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-teal-400" style={{ opacity: 0.8 }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 interface MeccaXXDashboardProps {
   isDarkMode?: boolean;
   mobileActiveTab?: 'chart' | 'economic' | 'analyze';
   onMobileTabChange?: (tab: 'chart' | 'economic' | 'analyze') => void;
   /** When true, this instance is the mobile one; only it should portal into #mecca-mobile-asset-slot. */
   isMobileInstance?: boolean;
+  /** When true, MECCA shows only Chart + Economic Calendar (no AI slide/panel). AI is in Insight tab. */
+  hideAiPanel?: boolean;
+  /** When true, render only the Gemini API setup / AI analysis panel (for Insight tab). */
+  insightOnly?: boolean;
 }
 
 const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
@@ -224,6 +296,8 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
   mobileActiveTab: externalMobileTab,
   onMobileTabChange,
   isMobileInstance = false,
+  hideAiPanel = false,
+  insightOnly = false,
 }) => {
   // State
   const [symbol, setSymbol] = useState('XAUUSD');
@@ -254,9 +328,10 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
   const swipeDisabledRef = useRef(false); // true when touch started in AI scroll area — skip slide change, allow scroll
   const minSwipe = 25;
 
+  const maxMeccaSlide = hideAiPanel ? 1 : 2;
   const handleMeccaSwipeEnd = (startY: number, startX: number, endY: number, endX: number) => {
     const dy = endY - startY;
-    if (dy > minSwipe && activeMeccaSlide < 2) setActiveMeccaSlide((s) => s + 1);
+    if (dy > minSwipe && activeMeccaSlide < maxMeccaSlide) setActiveMeccaSlide((s) => s + 1);
     else if (dy < -minSwipe && activeMeccaSlide > 0) setActiveMeccaSlide((s) => s - 1);
   };
   const onMeccaTouchStart = (e: React.TouchEvent) => {
@@ -284,7 +359,7 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
     if (wheelCooldown.current) return;
     const dy = e.deltaY;
     if (Math.abs(dy) > 30) {
-      if (dy > 0 && activeMeccaSlide < 2) { setActiveMeccaSlide((s) => s + 1); wheelCooldown.current = true; setTimeout(() => { wheelCooldown.current = false; }, 400); }
+      if (dy > 0 && activeMeccaSlide < maxMeccaSlide) { setActiveMeccaSlide((s) => s + 1); wheelCooldown.current = true; setTimeout(() => { wheelCooldown.current = false; }, 400); }
       else if (dy < 0 && activeMeccaSlide > 0) { setActiveMeccaSlide((s) => s - 1); wheelCooldown.current = true; setTimeout(() => { wheelCooldown.current = false; }, 400); }
     }
   };
@@ -449,6 +524,90 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
     }
   }, [isApiKeySet, symbol, timeframe, tradingStyle, apiKey, livePrice, fetchMarketCandles]);
 
+  // Shared AI panel body (Gemini setup, trading style, analyze, results) — used in MECCA slide 2 and Insight-only view
+  const aiPanelScrollContent = (
+    <>
+      {!isApiKeySet && (
+        <div className="p-4 rounded-xl" style={{ background: neonColors.bgCard, border: `1px solid ${neonColors.borderDefault}` }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}>
+              <Key className="w-5 h-5 text-black" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>Setup Gemini API</h3>
+              <p className="text-xs" style={{ color: neonColors.textDim }}>Required for AI analysis</p>
+            </div>
+          </div>
+          <div className="relative mb-3">
+            <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => { setApiKey(e.target.value); if (apiKeyStatus !== 'idle') { setApiKeyStatus('idle'); setError(null); } }} placeholder="Paste your API key..." className="w-full px-4 py-3 pr-12 rounded-xl text-sm" style={{ background: neonColors.bgSecondary, border: `1px solid ${apiKeyStatus === 'invalid' ? neonColors.negative : neonColors.borderDefault}`, color: neonColors.textPrimary }} />
+            <button onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1">{showApiKey ? <EyeOff className="w-4 h-4" style={{ color: neonColors.textMuted }} /> : <Eye className="w-4 h-4" style={{ color: neonColors.textMuted }} />}</button>
+          </div>
+          {apiKeyStatus === 'invalid' && error && <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: 'rgba(239,68,68,0.1)' }}><AlertCircle className="w-4 h-4" style={{ color: neonColors.negative }} /><span className="text-xs" style={{ color: neonColors.negative }}>{error}</span></div>}
+          <button onClick={handleSetApiKey} disabled={isValidatingKey || !apiKey.trim()} className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2" style={{ background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, color: isValidatingKey ? neonColors.textMuted : '#000', opacity: !apiKey.trim() ? 0.5 : 1 }}>
+            {isValidatingKey ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Validating...</span></> : <><CheckCircle2 className="w-4 h-4" /><span>Set API Key</span></>}
+          </button>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block text-center text-xs mt-3 underline" style={{ color: greenAccent.primary }}>Get your free API key →</a>
+        </div>
+      )}
+      {isApiKeySet && (
+        <>
+          <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: `${greenAccent.primary}10`, border: `1px solid ${greenAccent.primary}30` }}>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" style={{ color: greenAccent.primary }} /><span className="text-xs font-medium" style={{ color: greenAccent.primary }}>API Key Set</span></div>
+            <button onClick={handleClearApiKey} className="text-xs underline" style={{ color: neonColors.textMuted }}>Change</button>
+          </div>
+          <div className="p-4 rounded-xl" style={{ background: neonColors.bgCard, border: `1px solid ${neonColors.borderDefault}` }}>
+            <h4 className="text-xs font-bold mb-3" style={{ color: neonColors.textPrimary }}>Select Trading Style</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {TRADING_STYLES.map((style) => (
+                <button key={style.value} onClick={() => { setTradingStyle(style.value); if (style.timeframes[0] && !style.timeframes.includes(timeframe)) setTimeframe(style.timeframes[0]); }} className="p-3 rounded-xl text-left transition-all" style={{ background: tradingStyle === style.value ? `${greenAccent.primary}15` : 'rgba(255,255,255,0.03)', border: `1px solid ${tradingStyle === style.value ? `${greenAccent.primary}50` : 'transparent'}` }}>
+                  <span className="text-xs font-bold block" style={{ color: tradingStyle === style.value ? greenAccent.primary : neonColors.textPrimary }}>{style.label}</span>
+                  <span className="text-[10px] block mt-0.5" style={{ color: neonColors.textDim }}>{style.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <button onClick={analyzeSetup} disabled={isAnalyzing || !livePrice} className="w-full py-4 rounded-xl text-base font-bold flex items-center justify-center gap-3 transition-all" style={{ background: isAnalyzing ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, color: isAnalyzing ? neonColors.textMuted : '#000', opacity: !livePrice ? 0.5 : 1, boxShadow: isAnalyzing ? 'none' : `0 4px 20px ${greenAccent.primary}40` }}>
+            {isAnalyzing ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing {getInsightDisplayName(symbol)}...</span></> : <><Brain className="w-5 h-5" /><span>Analyze {getInsightDisplayName(symbol)}</span></>}
+          </button>
+        </>
+      )}
+      {analysis && (
+        <div className="p-4 rounded-xl" style={{ background: neonColors.bgCard, border: `1px solid ${neonColors.borderDefault}` }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2"><Brain className="w-4 h-4" style={{ color: greenAccent.primary }} /><span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>Latest Analysis</span></div>
+            <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ background: analysis.bias === 'bullish' ? `${greenAccent.primary}20` : analysis.bias === 'bearish' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: analysis.bias === 'bullish' ? greenAccent.primary : analysis.bias === 'bearish' ? '#ef4444' : '#f59e0b' }}>{analysis.bias.toUpperCase()}</span>
+          </div>
+          <p className="text-xs mb-3" style={{ color: neonColors.textSecondary }}>{analysis.insight}</p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}><span className="text-[10px] block" style={{ color: neonColors.textDim }}>Confidence</span><span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>{analysis.confidence}%</span></div>
+            <div className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}><span className="text-[10px] block" style={{ color: neonColors.textDim }}>Patterns</span><span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>{analysis.patterns?.length || 0}</span></div>
+          </div>
+          <button onClick={() => setShowProModal(true)} className="w-full py-3 rounded-lg text-sm font-medium" style={{ background: `${greenAccent.primary}15`, color: greenAccent.primary, border: `1px solid ${greenAccent.primary}30` }}>View Full Analysis →</button>
+        </div>
+      )}
+      {error && isApiKeySet && <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.1)' }}><AlertCircle className="w-4 h-4" style={{ color: neonColors.negative }} /><span className="text-xs" style={{ color: neonColors.negative }}>{error}</span></div>}
+      <div className="h-8" aria-hidden="true" />
+    </>
+  );
+
+  if (insightOnly) {
+    return (
+      <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#050505] relative">
+        <style>{neonAnimations}</style>
+        {/* 5 selectable asset cards: XAUUSD, BTCUSD, US30, NAS100, SPX — replaces top bar + select */}
+        <InsightAssetCards selectedInternal={symbol} onSelect={setSymbol} />
+        {/* Timeframe: Robinhood-style dark green, expanded (1W) */}
+        <div className="shrink-0 px-4 pb-3">
+          <TimeframeSelector variant="insight" selectedTimeframe={timeframe} onSelect={setTimeframe} size="md" />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-0">
+          <div className="flex flex-col h-full w-full overflow-x-hidden custom-scrollbar" data-mecca-ai-scroll style={{ touchAction: 'pan-y' }}>{aiPanelScrollContent}</div>
+        </div>
+        <ProAnalysisModal isOpen={showProModal} onClose={() => setShowProModal(false)} analysis={proAnalysis} isLoading={isAnalyzing || isFetchingCandles} error={error} displaySymbol={getInsightDisplayName(symbol)} />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#050505] relative">
       <style>{neonAnimations}</style>
@@ -511,261 +670,14 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
                 </MeccaSpotlightCard>
               </div>
 
-              {/* Slide 2: AI Analysis - fills the card edge-to-edge, no title */}
+              {/* Slide 2: AI Analysis - hidden when hideAiPanel (AI moved to Insight tab) */}
+              {!hideAiPanel && (
               <div className="w-full h-full p-4 pb-24">
                 <MeccaSpotlightCard variant="journal" className="h-full w-full" noPadding>
-                  <div className="flex flex-col h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4" data-mecca-ai-scroll style={{ touchAction: 'pan-y' }}>
-                {/* API Key Setup - If not set */}
-                {!isApiKeySet && (
-                  <div 
-                    className="p-4 rounded-xl"
-                    style={{ 
-                      background: neonColors.bgCard,
-                      border: `1px solid ${neonColors.borderDefault}`,
-                    }}
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div 
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}
-                      >
-                        <Key className="w-5 h-5 text-black" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>Setup Gemini API</h3>
-                        <p className="text-xs" style={{ color: neonColors.textDim }}>Required for AI analysis</p>
-                      </div>
-                    </div>
-
-                    <div className="relative mb-3">
-                      <input
-                        type={showApiKey ? 'text' : 'password'}
-                        value={apiKey}
-                        onChange={(e) => {
-                          setApiKey(e.target.value);
-                          if (apiKeyStatus !== 'idle') {
-                            setApiKeyStatus('idle');
-                            setError(null);
-                          }
-                        }}
-                        placeholder="Paste your API key..."
-                        className="w-full px-4 py-3 pr-12 rounded-xl text-sm"
-                        style={{
-                          background: neonColors.bgSecondary,
-                          border: `1px solid ${apiKeyStatus === 'invalid' ? neonColors.negative : neonColors.borderDefault}`,
-                          color: neonColors.textPrimary,
-                        }}
-                      />
-                      <button
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                      >
-                        {showApiKey ? <EyeOff className="w-4 h-4" style={{ color: neonColors.textMuted }} /> : <Eye className="w-4 h-4" style={{ color: neonColors.textMuted }} />}
-                      </button>
-                    </div>
-
-                    {apiKeyStatus === 'invalid' && error && (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                        <AlertCircle className="w-4 h-4" style={{ color: neonColors.negative }} />
-                        <span className="text-xs" style={{ color: neonColors.negative }}>{error}</span>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={handleSetApiKey}
-                      disabled={isValidatingKey || !apiKey.trim()}
-                      className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                      style={{
-                        background: isValidatingKey 
-                          ? neonColors.bgSecondary 
-                          : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`,
-                        color: isValidatingKey ? neonColors.textMuted : '#000',
-                        opacity: !apiKey.trim() ? 0.5 : 1,
-                      }}
-                    >
-                      {isValidatingKey ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Validating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Set API Key</span>
-                        </>
-                      )}
-                    </button>
-
-                    <a 
-                      href="https://aistudio.google.com/app/apikey" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="block text-center text-xs mt-3 underline"
-                      style={{ color: greenAccent.primary }}
-                    >
-                      Get your free API key →
-                    </a>
-                  </div>
-                )}
-
-                {/* Trading Style Selector - When API key is set */}
-                {isApiKeySet && (
-                  <>
-                    {/* Ready Status */}
-                    <div 
-                      className="flex items-center justify-between p-3 rounded-xl"
-                      style={{ 
-                        background: `${greenAccent.primary}10`,
-                        border: `1px solid ${greenAccent.primary}30`,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" style={{ color: greenAccent.primary }} />
-                        <span className="text-xs font-medium" style={{ color: greenAccent.primary }}>API Key Set</span>
-                      </div>
-                      <button
-                        onClick={handleClearApiKey}
-                        className="text-xs underline"
-                        style={{ color: neonColors.textMuted }}
-                      >
-                        Change
-                      </button>
-                    </div>
-
-                    {/* Trading Style Selection */}
-                    <div 
-                      className="p-4 rounded-xl"
-                      style={{ 
-                        background: neonColors.bgCard,
-                        border: `1px solid ${neonColors.borderDefault}`,
-                      }}
-                    >
-                      <h4 className="text-xs font-bold mb-3" style={{ color: neonColors.textPrimary }}>Select Trading Style</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {TRADING_STYLES.map((style) => (
-                          <button
-                            key={style.value}
-                            onClick={() => {
-                              setTradingStyle(style.value);
-                              if (style.timeframes[0] && !style.timeframes.includes(timeframe)) {
-                                setTimeframe(style.timeframes[0]);
-                              }
-                            }}
-                            className="p-3 rounded-xl text-left transition-all"
-                            style={{
-                              background: tradingStyle === style.value 
-                                ? `${greenAccent.primary}15`
-                                : 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${tradingStyle === style.value ? `${greenAccent.primary}50` : 'transparent'}`,
-                            }}
-                          >
-                            <span 
-                              className="text-xs font-bold block"
-                              style={{ color: tradingStyle === style.value ? greenAccent.primary : neonColors.textPrimary }}
-                            >
-                              {style.label}
-                            </span>
-                            <span className="text-[10px] block mt-0.5" style={{ color: neonColors.textDim }}>
-                              {style.description}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Analyze Button */}
-                    <button
-                      onClick={analyzeSetup}
-                      disabled={isAnalyzing || !livePrice}
-                      className="w-full py-4 rounded-xl text-base font-bold flex items-center justify-center gap-3 transition-all"
-                      style={{
-                        background: isAnalyzing
-                          ? neonColors.bgSecondary
-                          : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`,
-                        color: isAnalyzing ? neonColors.textMuted : '#000',
-                        opacity: !livePrice ? 0.5 : 1,
-                        boxShadow: isAnalyzing ? 'none' : `0 4px 20px ${greenAccent.primary}40`,
-                      }}
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Analyzing {symbol}...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="w-5 h-5" />
-                          <span>Analyze {symbol}</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
-
-                {/* Analysis Result Summary */}
-                {analysis && (
-                  <div 
-                    className="p-4 rounded-xl"
-                    style={{ 
-                      background: neonColors.bgCard,
-                      border: `1px solid ${neonColors.borderDefault}`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Brain className="w-4 h-4" style={{ color: greenAccent.primary }} />
-                        <span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>Latest Analysis</span>
-                      </div>
-                      <span 
-                        className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ 
-                          background: analysis.bias === 'bullish' ? `${greenAccent.primary}20` : analysis.bias === 'bearish' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
-                          color: analysis.bias === 'bullish' ? greenAccent.primary : analysis.bias === 'bearish' ? '#ef4444' : '#f59e0b',
-                        }}
-                      >
-                        {analysis.bias.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-xs mb-3" style={{ color: neonColors.textSecondary }}>{analysis.insight}</p>
-                    
-                    {/* Quick Stats */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <div className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <span className="text-[10px] block" style={{ color: neonColors.textDim }}>Confidence</span>
-                        <span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>{analysis.confidence}%</span>
-                      </div>
-                      <div className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <span className="text-[10px] block" style={{ color: neonColors.textDim }}>Patterns</span>
-                        <span className="text-sm font-bold" style={{ color: neonColors.textPrimary }}>{analysis.patterns?.length || 0}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setShowProModal(true)}
-                      className="w-full py-3 rounded-lg text-sm font-medium"
-                      style={{ 
-                        background: `${greenAccent.primary}15`,
-                        color: greenAccent.primary,
-                        border: `1px solid ${greenAccent.primary}30`,
-                      }}
-                    >
-                      View Full Analysis →
-                    </button>
-                  </div>
-                )}
-
-                {/* Error Display */}
-                {error && isApiKeySet && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                    <AlertCircle className="w-4 h-4" style={{ color: neonColors.negative }} />
-                    <span className="text-xs" style={{ color: neonColors.negative }}>{error}</span>
-                  </div>
-                )}
-
-                    <div className="h-8" aria-hidden="true" />
-                  </div>
+                  <div className="flex flex-col h-full w-full overflow-y-auto overflow-x-hidden custom-scrollbar p-4" data-mecca-ai-scroll style={{ touchAction: 'pan-y' }}>{aiPanelScrollContent}</div>
                 </MeccaSpotlightCard>
               </div>
+              )}
             </div>
             {/* Right-edge swipe zone — always receives touches for reliable slide swiping (e.g. over TradingView iframe or scrollable AI) */}
             <div
@@ -779,9 +691,9 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
               onMouseLeave={onMeccaMouseLeave}
               aria-hidden
             />
-            {/* Orange indicator on right - Journal XX style (active: h-8 bg-amber-500, inactive: h-1.5 bg-white/20) */}
+            {/* Orange indicator on right - 2 dots when hideAiPanel, 3 when not */}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10 pointer-events-none">
-              {[0, 1, 2].map((i) => (
+              {Array.from({ length: maxMeccaSlide + 1 }, (_, i) => i).map((i) => (
                 <div key={i} className={`w-1.5 rounded-full transition-all duration-300 ${activeMeccaSlide === i ? 'h-8 bg-amber-500' : 'h-1.5 bg-white/20'}`} />
               ))}
             </div>
@@ -831,8 +743,8 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
           {/* Asset Ticker Bar - Hidden on mobile to save space */}
           {!isMobile && <SessionTimeline selectedSymbol={symbol} onSelectSymbol={setSymbol} />}
 
-          {/* AI Analysis - Journal XX SpotlightCard */}
-          {(isDesktop || showAIPanel) && (
+          {/* AI Analysis - hidden when hideAiPanel (AI in Insight tab) */}
+          {!hideAiPanel && (isDesktop || showAIPanel) && (
             <MeccaSpotlightCard variant="journal" className="shrink-0">
               <div className="flex flex-col gap-3">
               {/* Compact API Key Input - Inline with status */}
@@ -1032,6 +944,7 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
         analysis={proAnalysis}
         isLoading={isAnalyzing || isFetchingCandles}
         error={error}
+        displaySymbol={getInsightDisplayName(symbol)}
       />
     </div>
   );

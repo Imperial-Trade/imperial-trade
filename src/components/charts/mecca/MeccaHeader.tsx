@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NotebookPen, BarChart3, Calculator, Gamepad2, LucideIcon, TrendingUp, ChevronDown } from 'lucide-react';
+import { NotebookPen, BarChart3, Calculator, Sparkles, LucideIcon, TrendingUp, ChevronDown } from 'lucide-react';
 import { premiumGradients } from './neonTheme';
 
 // Premium color configuration matching JournalXX
@@ -15,7 +15,7 @@ const NAV_ITEMS: { id: string; icon: LucideIcon; label: string }[] = [
   { id: 'JOURNAL', icon: NotebookPen, label: 'Journal' },
   { id: 'MECCA', icon: BarChart3, label: 'Mecca' },
   { id: 'CALCU', icon: Calculator, label: 'Calcu' },
-  { id: 'GAMES', icon: Gamepad2, label: 'Games' },
+  { id: 'INSIGHT', icon: Sparkles, label: 'Insight' },
 ];
 
 // Mobile tab items for MECCA XX dashboard

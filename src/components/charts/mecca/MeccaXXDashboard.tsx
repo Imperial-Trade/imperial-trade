@@ -178,10 +178,10 @@ const TRADING_STYLES = [
   { 
     value: 'intraday', 
     label: 'Intraday', 
-    description: '15min-1h trades, same day close', 
-    timeframes: ['15m', '1h'],
-    primaryTF: '15m',     // Execution timeframe  
-    contextTF: '1h',      // Higher timeframe for trend context
+    description: '5min-4h trades, same day close', 
+    timeframes: ['5m', '4h'],
+    primaryTF: '5m',     // Execution timeframe  
+    contextTF: '4h',      // Higher timeframe for trend context
     candleCount: 100
   },
   { 
@@ -591,19 +591,225 @@ const MeccaXXDashboard: React.FC<MeccaXXDashboardProps> = ({
   );
 
   if (insightOnly) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MeccaXXDashboard.tsx:593',message:'insightOnly render started',data:{insightOnly:true,tradingStyle,tradingStylesCount:TRADING_STYLES.length,hasShowTradingTypes:true},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-check',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     return (
-      <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#050505] relative">
-        <style>{neonAnimations}</style>
+      <div className={`w-full h-full min-h-0 flex flex-col overflow-hidden ${isDarkMode ? 'bg-[#050505]' : 'bg-[#F0F0F0]'} relative`}>
+        <style>{neonAnimations}
+          {`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+            @keyframes slideUp {
+              from { 
+                transform: translateY(100%);
+                opacity: 0;
+              }
+              to { 
+                transform: translateY(0);
+                opacity: 1;
+              }
+            }
+            .shimmer-animation {
+              animation: shimmer 2s infinite;
+            }
+          `}
+        </style>
+        {/* Trading Types: Scalping, Intraday, Swing, Position */}
+        <div className="shrink-0 px-4 pt-4 pb-3">
+          {/* #region agent log */}
+          {(() => {
+            fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MeccaXXDashboard.tsx:618',message:'Rendering TimeframeSelector with trade types',data:{showTradingTypes:true,tradingStylesLength:TRADING_STYLES.length,selectedTradingStyle:tradingStyle,timeframe},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-check',hypothesisId:'E'})}).catch(()=>{});
+            return null;
+          })()}
+          {/* #endregion */}
+          <TimeframeSelector 
+            variant="insight" 
+            selectedTimeframe={timeframe} 
+            onSelect={(tf) => {
+              setTimeframe(tf);
+              // Sync trading style based on selected timeframe
+              const style = TRADING_STYLES.find(s => s.timeframes.includes(tf));
+              if (style) {
+                setTradingStyle(style.value);
+              }
+            }} 
+            size="md" 
+            showTradingTypes={true}
+            tradingStyles={TRADING_STYLES}
+            selectedTradingStyle={tradingStyle}
+            onTradingStyleSelect={(style) => {
+              setTradingStyle(style as TradingStyle);
+              const styleConfig = TRADING_STYLES.find(s => s.value === style);
+              if (styleConfig?.timeframes[0]) {
+                setTimeframe(styleConfig.timeframes[0]);
+              }
+            }}
+          />
+        </div>
         {/* 5 selectable asset cards: XAUUSD, BTCUSD, US30, NAS100, SPX — replaces top bar + select */}
-        <InsightAssetCards selectedInternal={symbol} onSelect={setSymbol} />
-        {/* Timeframe: Robinhood-style dark green, expanded (1W) */}
-        <div className="shrink-0 px-4 pb-3">
-          <TimeframeSelector variant="insight" selectedTimeframe={timeframe} onSelect={setTimeframe} size="md" />
+        <InsightAssetCards selectedInternal={symbol} onSelect={setSymbol} isDarkMode={isDarkMode} />
+        {/* Content wrapped in SpotlightCard with proper spacing */}
+        <div className="flex-1 min-h-0 p-4" style={{ paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)))' }}>
+          <MeccaSpotlightCard variant="journal" className="h-full w-full flex flex-col relative" noPadding>
+            {/* API KEY label in upper right corner */}
+            {isApiKeySet && (
+              <div className="absolute top-4 right-4 z-10">
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: greenAccent.primary }}>
+                  API KEY
+                </span>
+              </div>
+            )}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-4 custom-scrollbar relative">
+              {/* Centered pulsing brain when API key is set but no analysis yet - in the middle of scrollable area */}
+              {isApiKeySet && !analysis && !isAnalyzing && !isFetchingCandles && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="flex flex-col items-center justify-center gap-6">
+                    {/* Pulsing Brain Icon */}
+                    <div className="relative">
+                      {/* Outer pulsing circle */}
+                      <div 
+                        className="absolute inset-0 rounded-full" 
+                        style={{ 
+                          border: `2px solid ${greenAccent.primary}`, 
+                          opacity: 0.3, 
+                          margin: '-20px', 
+                          width: 'calc(100% + 40px)', 
+                          height: 'calc(100% + 40px)',
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                        }} 
+                      />
+                      {/* Brain icon container */}
+                      <div 
+                        className="w-20 h-20 rounded-full flex items-center justify-center" 
+                        style={{ 
+                          background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
+                          border: `2px solid ${greenAccent.primary}40`,
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                          boxShadow: `0 0 30px ${greenAccent.primary}30`
+                        }}
+                      >
+                        <Brain className="w-10 h-10" style={{ color: greenAccent.primary }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-col w-full overflow-x-hidden" data-mecca-ai-scroll style={{ touchAction: 'pan-y' }}>{aiPanelScrollContent}</div>
+            </div>
+            {/* Fixed Analyze button at bottom of SpotlightCard */}
+            {isApiKeySet && (
+              <div className="shrink-0 p-4 pt-2 border-t border-slate-300 dark:border-slate-800/50">
+                <button 
+                  onClick={analyzeSetup} 
+                  disabled={isAnalyzing || isFetchingCandles || !livePrice} 
+                  className="w-full py-4 rounded-xl text-base font-bold flex items-center justify-center gap-3 transition-all duration-300 relative overflow-hidden" 
+                  style={{ 
+                    background: isAnalyzing || isFetchingCandles 
+                      ? neonColors.bgSecondary 
+                      : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, 
+                    color: isAnalyzing || isFetchingCandles ? neonColors.textMuted : '#000', 
+                    opacity: !livePrice ? 0.5 : 1, 
+                    boxShadow: isAnalyzing || isFetchingCandles ? 'none' : `0 4px 20px ${greenAccent.primary}40`,
+                    transform: isAnalyzing || isFetchingCandles ? 'scale(0.98)' : 'scale(1)'
+                  }}
+                >
+                  {/* Pre-loading shimmer effect - shows on hover/ready state */}
+                  {!isAnalyzing && !isFetchingCandles && livePrice && (
+                    <div className="absolute inset-0 shimmer-animation bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  )}
+                  {isAnalyzing || isFetchingCandles ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Preparing Analysis...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="w-5 h-5" />
+                      <span>Analyze {getInsightDisplayName(symbol)}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </MeccaSpotlightCard>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-0">
-          <div className="flex flex-col h-full w-full overflow-x-hidden custom-scrollbar" data-mecca-ai-scroll style={{ touchAction: 'pan-y' }}>{aiPanelScrollContent}</div>
-        </div>
-        <ProAnalysisModal isOpen={showProModal} onClose={() => setShowProModal(false)} analysis={proAnalysis} isLoading={isAnalyzing || isFetchingCandles} error={error} displaySymbol={getInsightDisplayName(symbol)} />
+        {/* Loading Modal - Slides up from bottom with smooth transition */}
+        {isAnalyzing || isFetchingCandles ? (
+          <div 
+            className="fixed inset-0 z-[9999] transition-opacity duration-300"
+            style={{ 
+              background: 'rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            <div 
+              className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
+              style={{
+                transform: 'translateY(0)',
+                paddingTop: '2rem',
+                paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)))',
+                animation: 'slideUp 0.5s cubic-bezier(0.32, 0.72, 0, 1)'
+              }}
+            >
+              <div className="flex flex-col items-center justify-center gap-8 p-8 w-full max-w-md">
+                {/* Animated Brain Icon with pulsing circles */}
+                <div className="relative">
+                  {/* Outer pulsing circle - animated ping */}
+                  <div 
+                    className="absolute inset-0 rounded-full" 
+                    style={{ 
+                      border: `3px solid ${greenAccent.primary}`, 
+                      opacity: 0.2, 
+                      margin: '-32px', 
+                      width: 'calc(100% + 64px)', 
+                      height: 'calc(100% + 64px)',
+                      animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+                    }} 
+                  />
+                  {/* Middle pulsing circle */}
+                  <div 
+                    className="absolute inset-0 rounded-full" 
+                    style={{ 
+                      border: `2px solid ${greenAccent.primary}`, 
+                      opacity: 0.4, 
+                      margin: '-20px', 
+                      width: 'calc(100% + 40px)', 
+                      height: 'calc(100% + 40px)',
+                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    }} 
+                  />
+                  {/* Brain icon container */}
+                  <div 
+                    className="w-28 h-28 rounded-full flex items-center justify-center" 
+                    style={{ 
+                      background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
+                      border: `3px solid ${greenAccent.primary}60`,
+                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                      boxShadow: `0 0 40px ${greenAccent.primary}40`
+                    }}
+                  >
+                    <Brain className="w-14 h-14" style={{ color: greenAccent.primary }} />
+                  </div>
+                </div>
+                {/* Text content */}
+                <div className="text-center space-y-3">
+                  <p className="font-semibold text-xl text-white">
+                    Analyzing {getInsightDisplayName(symbol)}...
+                  </p>
+                  <p className="text-sm text-gray-400 max-w-xs">
+                    Processing market data and generating insights
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        
+        {/* Results Modal - Only show when analysis is complete */}
+        <ProAnalysisModal isOpen={showProModal && !isAnalyzing && !isFetchingCandles} onClose={() => setShowProModal(false)} analysis={proAnalysis} isLoading={false} error={error} displaySymbol={getInsightDisplayName(symbol)} />
       </div>
     );
   }

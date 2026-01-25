@@ -4,6 +4,49 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { readFileSync, statSync } from "fs";
+
+// #region agent log
+const logEndpoint = 'http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0';
+function logBuild(message, data = {}) {
+  fetch(logEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'debug-session',
+      runId: 'vite-build',
+      hypothesisId: data.hypothesisId || 'D',
+      location: 'vite.config.ts',
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+}
+
+// Log key files before build
+const keyFiles = [
+  'src/components/charts/mecca/MeccaXXDashboard.tsx',
+  'src/components/charts/mecca/TimeframeSelector.tsx',
+];
+keyFiles.forEach(file => {
+  try {
+    const fullPath = path.resolve(__dirname, file);
+    const stats = statSync(fullPath);
+    const content = readFileSync(fullPath, 'utf8');
+    logBuild('File before build', {
+      hypothesisId: 'D',
+      file,
+      lastModified: stats.mtime.toISOString(),
+      size: stats.size,
+      hasShowTradingTypes: content.includes('showTradingTypes'),
+      hasInsightOnly: content.includes('insightOnly'),
+    });
+  } catch (e) {
+    logBuild('File read error', { hypothesisId: 'D', file, error: e.message });
+  }
+});
+// #endregion
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({

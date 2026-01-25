@@ -238,7 +238,7 @@ const InsightAssetCards: React.FC<InsightAssetCardsProps> = ({ selectedInternal,
   const prices = [p1, p2, p3, p4, p5];
 
   return (
-    <div className="shrink-0 grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 px-4 pt-4 pb-2">
+    <div className="shrink-0 grid grid-cols-5 gap-2 sm:gap-3 px-4 pt-4 pb-2 overflow-x-auto">
       {INSIGHT_ASSETS.map(({ display, internal }, i) => {
         const { livePrice, change } = prices[i];
         const isUp = change > 0;

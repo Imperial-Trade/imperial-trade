@@ -5322,75 +5322,94 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const hasPhotos = galleryPhotos.length > 0;
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
-                       // Show deconstruct button only when photos are added
+                       // Show deconstruct SpotlightCard button only when photos are added (pre-analyzing button)
                        if (galleryPhotos.length === 0) {
                          return null;
                        }
                        
                        return (
-                         <button
+                         <SpotlightCard 
+                           variant="journal" 
+                           className="w-full cursor-pointer" 
+                           isDarkMode={isDarkMode}
+                           noPadding={false}
                            onClick={() => {
                              // Analyze all photos (starting with first one)
-                             if (galleryPhotos.length > 0) {
+                             if (galleryPhotos.length > 0 && !isAnalyzing) {
                                handleDeconstruct(galleryPhotos[0]);
                              }
                            }}
-                           disabled={isAnalyzing}
-                           className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                            style={{
+                             padding: '1rem',
                              background: isDarkMode 
                                ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                             border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
-                             boxShadow: isDarkMode
-                               ? `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)`
-                               : `0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
-                             minHeight: '48px',
-                             WebkitTapHighlightColor: 'transparent',
+                             border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
+                             boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+                             opacity: isAnalyzing ? 0.5 : 1,
+                             cursor: isAnalyzing ? 'not-allowed' : 'pointer',
                            }}
                          >
-                           {isAnalyzing ? (
-                             <span className="flex items-center justify-center gap-2">
-                               <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               // Analyze all photos (starting with first one)
+                               if (galleryPhotos.length > 0 && !isAnalyzing) {
+                                 handleDeconstruct(galleryPhotos[0]);
+                               }
+                             }}
+                             disabled={isAnalyzing}
+                             className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                             style={{
+                               background: 'transparent',
+                               border: 'none',
+                               minHeight: '48px',
+                               WebkitTapHighlightColor: 'transparent',
+                             }}
+                           >
+                             {isAnalyzing ? (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                                 <span 
+                                   style={{
+                                     background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                     WebkitBackgroundClip: 'text',
+                                     WebkitTextFillColor: 'transparent',
+                                     backgroundClip: 'text',
+                                   }}
+                                 >
+                                   ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
+                                 </span>
+                               </span>
+                             ) : (
                                <span 
+                                 className="flex items-center justify-center"
                                  style={{
-                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
                                    WebkitBackgroundClip: 'text',
                                    WebkitTextFillColor: 'transparent',
                                    backgroundClip: 'text',
+                                   backgroundSize: '200% 100%',
+                                   animation: 'gradient-shift 3s ease-in-out infinite',
                                  }}
                                >
-                                 ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
+                                 DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
                                </span>
-                             </span>
-                           ) : (
-                             <span 
-                               className="flex items-center justify-center"
-                               style={{
-                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                 WebkitBackgroundClip: 'text',
-                                 WebkitTextFillColor: 'transparent',
-                                 backgroundClip: 'text',
-                                 backgroundSize: '200% 100%',
-                                 animation: 'gradient-shift 3s ease-in-out infinite',
-                               }}
-                             >
-                               DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
-                             </span>
-                           )}
-                           
-                           {/* Animated glow effect on hover */}
-                           {!isAnalyzing && (
-                             <div 
-                               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                               style={{
-                                 background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                 filter: 'blur(8px)',
-                                 transform: 'scale(1.1)',
-                               }}
-                             />
-                           )}
-                         </button>
+                             )}
+                             
+                             {/* Animated glow effect on hover */}
+                             {!isAnalyzing && (
+                               <div 
+                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                 style={{
+                                   background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                   filter: 'blur(8px)',
+                                   transform: 'scale(1.1)',
+                                 }}
+                               />
+                             )}
+                           </button>
+                         </SpotlightCard>
                        );
                      }}
                    </DeconstructorPanel>

@@ -3919,12 +3919,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              
                              return (
                                <div className="flex flex-col h-full overflow-y-auto">
-                                 {/* Animated Brain - Clickable to add photos */}
+                                 {/* Animated Brain - Display only (not clickable) */}
                                  {canAddMore && !isAnalyzing && (
                                    <div 
-                                     className="relative flex items-center justify-center w-full cursor-pointer"
+                                     className="relative flex items-center justify-center w-full"
                                      style={{ padding: '2rem', minHeight: '250px' }}
-                                     onClick={() => fileInputRef.current?.click()}
                                    >
                                      {/* Pulsing outer ring */}
                                      <div 
@@ -3969,12 +3968,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                            filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
                                          }} 
                                        />
-                                     </div>
-                                     {/* Click hint text */}
-                                     <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-                                       <p className="text-xs text-center" style={{ color: neonColors.textMuted }}>
-                                         Tap to add photos ({galleryPhotos.length}/{maxPhotos})
-                                       </p>
                                      </div>
                                    </div>
                                  )}

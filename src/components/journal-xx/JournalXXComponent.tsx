@@ -5204,8 +5204,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  <div className="px-4 sm:px-5 pb-3">
                    {/* Provide DeconstructorPanel context but render custom UI */}
                    <DeconstructorPanel isDarkMode={isDarkMode}>
-                     {() => {
-                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = useDeconstructor();
+                     {(context) => {
+                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = context;
                        const hasPhotos = galleryPhotos.length > 0;
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        

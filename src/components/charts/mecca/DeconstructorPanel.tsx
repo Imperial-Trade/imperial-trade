@@ -14,6 +14,7 @@ interface DeconstructorContextType {
   galleryPhotos: GalleryPhoto[];
   isAnalyzing: boolean;
   handleDeconstruct: (photo: GalleryPhoto) => Promise<void>;
+  handleFileUpload: (files: FileList | File[]) => Promise<void>;
   removePhoto: (photoId: string) => void;
   panelContent?: React.ReactNode;
 }
@@ -1683,9 +1684,10 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     galleryPhotos,
     isAnalyzing,
     handleDeconstruct,
+    handleFileUpload,
     removePhoto,
     panelContent,
-  }), [galleryPhotos, isAnalyzing, handleDeconstruct, removePhoto, panelContent]);
+  }), [galleryPhotos, isAnalyzing, handleDeconstruct, handleFileUpload, removePhoto, panelContent]);
 
   return (
     <DeconstructorContext.Provider value={contextValue}>

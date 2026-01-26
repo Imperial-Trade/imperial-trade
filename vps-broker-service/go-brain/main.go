@@ -8,11 +8,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -530,8 +532,33 @@ func launchContainerWithMonitoring(conn *BrokerConnection, attempt int) bool {
 		last_error = NULL 
 		WHERE id = $1`, conn.ID)
 	
-	// Create launch.ini config file
-	iniPath := filepath.Join("/root/imperial-factory/config", fmt.Sprintf("launch_%s.ini", conn.ID))
+	// =============================================================================
+	// METAAPI-STYLE: Per-Account Persistent Terminal
+	// =============================================================================
+	// Each account gets its own persistent config folder that survives restarts.
+	// This prevents the "account has been changed" auto-trading block.
+	// First sync: copies master config as base, subsequent syncs reuse same folder.
+	// =============================================================================
+	
+	accountTerminalPath := filepath.Join("/root/imperial-factory/user-terminals", conn.Login)
+	
+	// Create account-specific terminal folder if it doesn't exist
+	if _, err := os.Stat(accountTerminalPath); os.IsNotExist(err) {
+		log.Printf("[TERMINAL] Creating new terminal folder for account %s", conn.Login)
+		if err := os.MkdirAll(accountTerminalPath, 0755); err != nil {
+			log.Printf("[CONTAINER] Failed to create terminal folder for %s: %v", conn.Login, err)
+			return false
+		}
+		// Copy master config as base (includes pre-authorized settings)
+		copyCmd := fmt.Sprintf("cp -r /root/imperial-factory/mt5-master/config/* %s/", accountTerminalPath)
+		exec.Command("sh", "-c", copyCmd).Run()
+		log.Printf("[TERMINAL] Initialized terminal folder from master config")
+	} else {
+		log.Printf("[TERMINAL] Reusing existing terminal folder for account %s", conn.Login)
+	}
+	
+	// Create launch.ini with user credentials in the account's folder
+	iniPath := filepath.Join(accountTerminalPath, "launch.ini")
 	if err := createLaunchIni(iniPath, conn); err != nil {
 		log.Printf("[CONTAINER] Failed to create config for %s: %v", conn.ID, err)
 		return false
@@ -548,7 +575,6 @@ func launchContainerWithMonitoring(conn *BrokerConnection, attempt int) bool {
 	os.Remove(filepath.Join(sharedDataPath, "sync_data.json"))
 	
 	// Determine broker-specific speed file (servers.dat)
-	// This contains pre-cached server IPs for instant connection
 	brokerFolder := "xs" // Default to XS
 	if strings.Contains(strings.ToUpper(conn.BrokerName), "EC") || 
 	   strings.Contains(strings.ToUpper(conn.Server), "ECMARKET") {
@@ -564,10 +590,13 @@ func launchContainerWithMonitoring(conn *BrokerConnection, attempt int) bool {
 		log.Printf("[CONTAINER] Using broker-specific speed file: %s", brokerFolder)
 	}
 	
+	// Copy speed file to account terminal folder
+	exec.Command("cp", speedFilePath, filepath.Join(accountTerminalPath, "servers.dat")).Run()
+	
 	// Remove any existing container with same name
 	dockerClient.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
 	
-	// Create container with File-Relay mount and Speed File injection
+	// Create container with PERSISTENT per-account terminal folder
 	startTime := time.Now()
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 		Image: "imperial-mt5-worker:latest",
@@ -576,11 +605,11 @@ func launchContainerWithMonitoring(conn *BrokerConnection, attempt int) bool {
 		},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:/mt5/config/launch.ini:ro", iniPath),
-			// Speed File: Inject broker-specific servers.dat for instant connection
-			fmt.Sprintf("%s:/mt5/config/servers.dat:ro", speedFilePath),
+			// METAAPI-STYLE: Mount account-specific persistent config folder
+			// This folder persists across container restarts, preserving auth state
+			fmt.Sprintf("%s:/mt5/config", accountTerminalPath),
 			// File-Relay: Mount shared folder for EA to write trade data
-			fmt.Sprintf("%s:/root/.wine/drive_c/users/root/AppData/Roaming/MetaQuotes/Terminal/Common/Files", sharedDataPath),
+			fmt.Sprintf("%s:/mt5/MQL5/Files", sharedDataPath),
 		},
 		AutoRemove: false,
 		Resources: container.Resources{
@@ -848,50 +877,67 @@ func decryptCredentials(encrypted, userID string) string {
 		return ""
 	}
 
-	// Frontend uses AES-GCM with base64 encoding
-	// Format: base64(IV[12 bytes] + ciphertext + authTag[16 bytes])
-	
-	// Decode base64
-	combined, err := base64.StdEncoding.DecodeString(encrypted)
-	if err != nil {
-		// Not valid base64, might be plaintext or old format
-		log.Printf("[DECRYPT] Base64 decode failed for credential, trying as plaintext")
-		return encrypted
+	var combined []byte
+	var err error
+
+	// Check if it's hex format with colons (legacy: iv:nonce:ciphertext)
+	if strings.Contains(encrypted, ":") {
+		parts := strings.Split(encrypted, ":")
+		if len(parts) == 3 {
+			iv, err1 := hex.DecodeString(parts[0])
+			nonce, err2 := hex.DecodeString(parts[1])
+			ciphertext, err3 := hex.DecodeString(parts[2])
+			if err1 == nil && err2 == nil && err3 == nil {
+				combined = make([]byte, len(iv)+len(nonce)+len(ciphertext))
+				copy(combined, iv)
+				copy(combined[len(iv):], nonce)
+				copy(combined[len(iv)+len(nonce):], ciphertext)
+				log.Printf("[DECRYPT] Hex format: %d bytes total", len(combined))
+			} else {
+				log.Printf("[DECRYPT] Hex decode failed, using as plaintext")
+				return encrypted
+			}
+		} else {
+			log.Printf("[DECRYPT] Invalid hex format, using as plaintext")
+			return encrypted
+		}
+	} else {
+		// Standard base64 format
+		combined, err = base64.StdEncoding.DecodeString(encrypted)
+		if err != nil {
+			log.Printf("[DECRYPT] Base64 decode failed, using as plaintext")
+			return encrypted
+		}
 	}
-	
-	// Need at least IV (12) + some ciphertext + auth tag (16)
+
 	if len(combined) < 28 {
-		log.Printf("[DECRYPT] Encrypted data too short: %d bytes", len(combined))
+		log.Printf("[DECRYPT] Data too short: %d bytes", len(combined))
 		return encrypted
 	}
 
 	// Derive key from user ID and secret (same as frontend)
-	// Frontend: keyMaterial = `${session.user.id}-${secret}`
 	keyMaterial := userID + "-" + ENCRYPTION_SECRET
 	keyHash := sha256.Sum256([]byte(keyMaterial))
 	key := keyHash[:32]
 
-	// Extract IV (first 12 bytes) and ciphertext+tag (rest)
 	iv := combined[:12]
 	ciphertext := combined[12:]
 
-	// Create AES-GCM cipher
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		log.Printf("[DECRYPT] AES cipher creation failed: %v", err)
+		log.Printf("[DECRYPT] AES cipher error: %v", err)
 		return ""
 	}
 
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		log.Printf("[DECRYPT] GCM mode creation failed: %v", err)
+		log.Printf("[DECRYPT] GCM error: %v", err)
 		return ""
 	}
 
-	// Decrypt with authentication
 	plaintext, err := aesGCM.Open(nil, iv, ciphertext, nil)
 	if err != nil {
-		log.Printf("[DECRYPT] Decryption failed: %v", err)
+		log.Printf("[DECRYPT] Decryption error: %v", err)
 		return ""
 	}
 

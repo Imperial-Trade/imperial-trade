@@ -123,6 +123,52 @@
     </script>
     
     <!-- OneSignal Initialization handled by useOneSignal.ts hook - DO NOT ADD DUPLICATE INIT HERE -->
+    
+    <!-- iOS PWA Detection and Fullscreen Enforcement -->
+    <script>
+      (function() {
+        // Detect iOS PWA mode
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isInStandaloneMode = ('standalone' in window.navigator) && window.navigator.standalone;
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || isInStandaloneMode;
+        
+        // Apply standalone class to html/body for CSS targeting
+        if (isPWA) {
+          document.documentElement.classList.add('standalone');
+          document.body.classList.add('standalone');
+          console.log('✅ [PWA] Running in standalone mode - enforcing fullscreen');
+        } else if (isIOS) {
+          console.warn('⚠️ [iOS] Not in PWA mode. Add to Home Screen for fullscreen experience.');
+        }
+        
+        // Monitor for display mode changes (e.g., after navigation)
+        const mediaQuery = window.matchMedia('(display-mode: standalone)');
+        const handleDisplayModeChange = (e) => {
+          if (e.matches || isInStandaloneMode) {
+            document.documentElement.classList.add('standalone');
+            document.body.classList.add('standalone');
+            console.log('✅ [PWA] Display mode changed to standalone');
+          } else {
+            document.documentElement.classList.remove('standalone');
+            document.body.classList.remove('standalone');
+          }
+        };
+        
+        if (mediaQuery.addEventListener) {
+          mediaQuery.addEventListener('change', handleDisplayModeChange);
+        } else if (mediaQuery.addListener) {
+          mediaQuery.addListener(handleDisplayModeChange);
+        }
+        
+        // Also check on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+          const root = document.getElementById('root');
+          if (root && isPWA) {
+            root.classList.add('standalone');
+          }
+        });
+      })();
+    </script>
   </head>
 
   <body>

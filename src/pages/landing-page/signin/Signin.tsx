@@ -62,7 +62,8 @@ export default function SigninPage() {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Redirect to dashboard after successful login
-      navigate("/dashboard/home");
+      // Use replace: true to maintain PWA context (no browser history entry)
+      navigate("/dashboard/home", { replace: true });
     } catch (error) {
       console.error("Login failed:", error);
       setStatus({

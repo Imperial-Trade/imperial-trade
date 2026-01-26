@@ -3901,36 +3901,23 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     </>
                 )}
 
-                 {/* MECCA TAB - Chart + Economic Calendar only (AI moved to Insight tab) */}
+                 {/* MECCA TAB - Mobile: Only Deconstructor (Charts/Calendar removed) */}
                  {activeTab === 'MECCA' && (
                      <div className="lg:hidden relative overflow-hidden" 
-                          onTouchStart={onTouchStart} 
-                          onTouchMove={onTouchMove} 
-                          onTouchEnd={onTouchEnd} 
-                          onMouseDown={onMouseDown}
-                          onMouseUp={onMouseUp}
-                          onMouseLeave={onMouseLeave}
-                          onWheel={onWheel}
                           style={{ 
-                            touchAction: 'none',
                             height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             maxHeight: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             minHeight: 0,
                           }}
                      >
-                         <GeminiSetupAnalyzer 
-                           isDarkMode={isDarkMode} 
-                           mobileActiveTab={meccaMobileTab}
-                           onMobileTabChange={setMeccaMobileTab}
-                           isMobileInstance={true}
-                           hideAiPanel={true}
-                           touchStartY={touchStartY}
-                           touchStartX={touchStartX}
-                           wheelCooldown={wheelCooldown}
-                           minSwipeDistance={minSwipeDistance}
-                           handleSwipeEnd={handleSwipeEnd}
-                           activeTab={activeTab}
-                         />
+                         {/* Mobile MECCA tab now only shows deconstructor - no charts/calendar */}
+                         <div className="w-full h-full flex items-center justify-center">
+                             <div className="text-center px-4">
+                                 <p className="text-sm text-slate-400 dark:text-slate-500 mb-2">
+                                     Use the deconstructor below to analyze trading screenshots
+                                 </p>
+                             </div>
+                         </div>
                      </div>
                  )}
 

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import ProAnalysisModal from '@/components/charts/mecca/ProAnalysisModal';
 import { ProAnalysisResult } from '@/components/charts/mecca/proAnalysisTypes';
-import { Key, History } from 'lucide-react';
+import { Key, History, Brain, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { 
   SettingsIcon, MaximizeIcon, BrainCircuitIcon, MicIcon, 
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
@@ -33,6 +33,8 @@ import RiskCalculator from '@/components/tools/RiskCalculator';
 import { GeminiSetupAnalyzer, GeminiSetupAnalyzerRef } from '@/components/charts/GeminiSetupAnalyzer';
 import { MeccaHeader } from '@/components/charts/mecca';
 import { MeccaSpotlightCard as SpotlightCard } from '@/components/charts/mecca/MeccaSpotlightCard';
+import { DeconstructorPanel, DeconstructorButtons, useDeconstructor } from '@/components/charts/mecca/DeconstructorPanel';
+import { neonColors } from '@/components/charts/mecca/neonTheme';
 import NewsTicker from '@/components/shared/NewsTicker';
 import InsightHistoryPage from './InsightHistoryPage';
 
@@ -5189,6 +5191,157 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                  </div>
              </div>
+
+             {/* Mecca XX Deconstructor - Mobile Only, Just Above Bottom Nav */}
+             {activeTab === 'MECCA' && (
+               <div 
+                 className="absolute bottom-0 left-0 right-0 z-[59] lg:hidden"
+                 style={{ 
+                   paddingBottom: `calc(max(1.5rem, env(safe-area-inset-bottom, 0px)) + 5.5rem)`, // Space for bottom nav
+                   pointerEvents: 'auto',
+                 }}
+               >
+                 <div className="px-4 sm:px-5 pb-3">
+                   <DeconstructorPanel isDarkMode={isDarkMode}>
+                     {() => {
+                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = useDeconstructor();
+                       const hasPhotos = galleryPhotos.length > 0;
+                       
+                       return (
+                         <MeccaSpotlightCard 
+                           variant="journal" 
+                           className="w-full" 
+                           isDarkMode={isDarkMode}
+                           noPadding={false}
+                           style={{
+                             padding: '1rem',
+                             background: isDarkMode 
+                               ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
+                               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
+                             border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
+                             boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+                           }}
+                         >
+                           {/* Image Gallery Container */}
+                           {hasPhotos && (
+                             <div className="mb-3 space-y-2">
+                               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
+                                 {galleryPhotos.map((photo) => (
+                                   <div
+                                     key={photo.id}
+                                     className="relative flex-shrink-0 group"
+                                     style={{
+                                       width: '80px',
+                                       height: '80px',
+                                       borderRadius: '12px',
+                                       overflow: 'hidden',
+                                       border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
+                                       boxShadow: `0 4px 12px rgba(34, 197, 94, 0.2)`,
+                                     }}
+                                   >
+                                     <img
+                                       src={photo.thumbnailUrl || photo.url}
+                                       alt="Trade screenshot"
+                                       className="w-full h-full object-cover"
+                                     />
+                                     {photo.isAnalyzed && (
+                                       <div 
+                                         className="absolute inset-0 flex items-center justify-center"
+                                         style={{
+                                           background: 'rgba(0, 0, 0, 0.6)',
+                                           backdropFilter: 'blur(4px)',
+                                         }}
+                                       >
+                                         <div 
+                                           className="text-xs font-bold"
+                                           style={{ color: neonColors.emerald }}
+                                         >
+                                           ✓
+                                         </div>
+                                       </div>
+                                     )}
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+
+                           {/* Deconstruct Button */}
+                           <button
+                             onClick={() => {
+                               if (galleryPhotos.length > 0) {
+                                 handleDeconstruct(galleryPhotos[0]);
+                               } else if (fileInputRef.current) {
+                                 fileInputRef.current.click();
+                               }
+                             }}
+                             disabled={isAnalyzing || galleryPhotos.length === 0}
+                             className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                             style={{
+                               background: galleryPhotos.length > 0 && !isAnalyzing
+                                 ? `linear-gradient(135deg, ${neonColors.emerald} 0%, ${neonColors.emeraldDark} 100%)`
+                                 : isDarkMode 
+                                   ? 'rgba(34, 197, 94, 0.1)' 
+                                   : 'rgba(34, 197, 94, 0.15)',
+                               color: galleryPhotos.length > 0 && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
+                               border: `2px solid ${galleryPhotos.length > 0 && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
+                               boxShadow: galleryPhotos.length > 0 && !isAnalyzing
+                                 ? `0 0 20px ${neonColors.emeraldGlow}, 0 4px 12px rgba(34, 197, 94, 0.3)`
+                                 : 'none',
+                               minHeight: '48px',
+                               WebkitTapHighlightColor: 'transparent',
+                             }}
+                           >
+                             {isAnalyzing ? (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                                 <span>ANALYZING...</span>
+                               </span>
+                             ) : galleryPhotos.length > 0 ? (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Brain className="w-4 h-4" />
+                                 <span>DECONSTRUCT</span>
+                               </span>
+                             ) : (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Upload className="w-4 h-4" />
+                                 <span>ADD IMAGE</span>
+                               </span>
+                             )}
+                             
+                             {/* Animated glow effect on hover */}
+                             {galleryPhotos.length > 0 && !isAnalyzing && (
+                               <div 
+                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                 style={{
+                                   background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                   filter: 'blur(8px)',
+                                   transform: 'scale(1.1)',
+                                 }}
+                               />
+                             )}
+                           </button>
+
+                           {/* Hidden file input */}
+                           <input
+                             ref={fileInputRef}
+                             type="file"
+                             multiple
+                             accept="image/*"
+                             className="hidden"
+                             onChange={(e) => {
+                               if (e.target.files && e.target.files.length > 0) {
+                                 // File handling is done by DeconstructorPanel context
+                               }
+                             }}
+                           />
+                         </MeccaSpotlightCard>
+                       );
+                     }}
+                   </DeconstructorPanel>
+                 </div>
+               </div>
+             )}
 
              {/* Mobile Bottom Nav */}
              <div 

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom';
 import ProAnalysisModal from '@/components/charts/mecca/ProAnalysisModal';
 import { ProAnalysisResult } from '@/components/charts/mecca/proAnalysisTypes';
-import { Key, History, Brain, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Key, History, Brain, Upload, Loader2, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { 
   SettingsIcon, MaximizeIcon, BrainCircuitIcon, MicIcon, 
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
@@ -5202,10 +5202,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  }}
                >
                  <div className="px-4 sm:px-5 pb-3">
+                   {/* Provide DeconstructorPanel context but render custom UI */}
                    <DeconstructorPanel isDarkMode={isDarkMode}>
                      {() => {
                        const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = useDeconstructor();
                        const hasPhotos = galleryPhotos.length > 0;
+                       const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
                        return (
                          <MeccaSpotlightCard 
@@ -5222,70 +5224,93 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
                            }}
                          >
-                           {/* Image Gallery Container */}
-                           {hasPhotos && (
-                             <div className="mb-3 space-y-2">
-                               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
-                                 {galleryPhotos.map((photo) => (
-                                   <div
-                                     key={photo.id}
-                                     className="relative flex-shrink-0 group"
+                           {/* Image Container - Shows selected image or upload placeholder */}
+                           <div 
+                             className="w-full mb-3 rounded-xl overflow-hidden relative"
+                             style={{
+                               minHeight: '200px',
+                               maxHeight: '300px',
+                               background: isDarkMode 
+                                 ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.8) 100%)'
+                                 : 'linear-gradient(135deg, rgba(240, 240, 240, 0.8) 0%, rgba(250, 250, 250, 0.8) 100%)',
+                               border: `2px dashed ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
+                             }}
+                           >
+                             {selectedPhoto ? (
+                               <>
+                                 <img
+                                   src={selectedPhoto.thumbnailUrl || selectedPhoto.url}
+                                   alt="Trade screenshot to deconstruct"
+                                   className="w-full h-full object-contain"
+                                   style={{ maxHeight: '300px' }}
+                                 />
+                                 {selectedPhoto.isAnalyzed && (
+                                   <div 
+                                     className="absolute top-2 right-2 px-2 py-1 rounded-lg flex items-center gap-1.5"
                                      style={{
-                                       width: '80px',
-                                       height: '80px',
-                                       borderRadius: '12px',
-                                       overflow: 'hidden',
-                                       border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
-                                       boxShadow: `0 4px 12px rgba(34, 197, 94, 0.2)`,
+                                       background: 'rgba(0, 0, 0, 0.7)',
+                                       backdropFilter: 'blur(8px)',
+                                       border: `1px solid ${neonColors.emerald}`,
                                      }}
                                    >
-                                     <img
-                                       src={photo.thumbnailUrl || photo.url}
-                                       alt="Trade screenshot"
-                                       className="w-full h-full object-cover"
-                                     />
-                                     {photo.isAnalyzed && (
-                                       <div 
-                                         className="absolute inset-0 flex items-center justify-center"
-                                         style={{
-                                           background: 'rgba(0, 0, 0, 0.6)',
-                                           backdropFilter: 'blur(4px)',
-                                         }}
-                                       >
-                                         <div 
-                                           className="text-xs font-bold"
-                                           style={{ color: neonColors.emerald }}
-                                         >
-                                           ✓
-                                         </div>
-                                       </div>
-                                     )}
+                                     <CheckCircle2 className="w-3.5 h-3.5" style={{ color: neonColors.emerald }} />
+                                     <span className="text-[10px] font-bold" style={{ color: neonColors.emerald }}>
+                                       ANALYZED
+                                     </span>
                                    </div>
-                                 ))}
+                                 )}
+                               </>
+                             ) : (
+                               <div 
+                                 className="w-full h-full flex flex-col items-center justify-center p-6 cursor-pointer"
+                                 onClick={() => fileInputRef.current?.click()}
+                                 style={{ minHeight: '200px' }}
+                               >
+                                 <div 
+                                   className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+                                   style={{
+                                     background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
+                                     border: `2px solid ${neonColors.emerald}40`,
+                                   }}
+                                 >
+                                   <ImageIcon className="w-8 h-8" style={{ color: neonColors.emerald }} />
+                                 </div>
+                                 <p 
+                                   className="text-sm font-medium mb-1"
+                                   style={{ color: isDarkMode ? neonColors.textSecondary : '#666' }}
+                                 >
+                                   Tap to add image
+                                 </p>
+                                 <p 
+                                   className="text-xs text-center"
+                                   style={{ color: isDarkMode ? neonColors.textMuted : '#999' }}
+                                 >
+                                   Upload trading screenshot
+                                 </p>
                                </div>
-                             </div>
-                           )}
+                             )}
+                           </div>
 
                            {/* Deconstruct Button */}
                            <button
                              onClick={() => {
-                               if (galleryPhotos.length > 0) {
-                                 handleDeconstruct(galleryPhotos[0]);
+                               if (selectedPhoto) {
+                                 handleDeconstruct(selectedPhoto);
                                } else if (fileInputRef.current) {
                                  fileInputRef.current.click();
                                }
                              }}
-                             disabled={isAnalyzing || galleryPhotos.length === 0}
+                             disabled={isAnalyzing || !selectedPhoto}
                              className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                              style={{
-                               background: galleryPhotos.length > 0 && !isAnalyzing
+                               background: selectedPhoto && !isAnalyzing
                                  ? `linear-gradient(135deg, ${neonColors.emerald} 0%, ${neonColors.emeraldDark} 100%)`
                                  : isDarkMode 
                                    ? 'rgba(34, 197, 94, 0.1)' 
                                    : 'rgba(34, 197, 94, 0.15)',
-                               color: galleryPhotos.length > 0 && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
-                               border: `2px solid ${galleryPhotos.length > 0 && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
-                               boxShadow: galleryPhotos.length > 0 && !isAnalyzing
+                               color: selectedPhoto && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
+                               border: `2px solid ${selectedPhoto && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
+                               boxShadow: selectedPhoto && !isAnalyzing
                                  ? `0 0 20px ${neonColors.emeraldGlow}, 0 4px 12px rgba(34, 197, 94, 0.3)`
                                  : 'none',
                                minHeight: '48px',
@@ -5297,7 +5322,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
                                  <span>ANALYZING...</span>
                                </span>
-                             ) : galleryPhotos.length > 0 ? (
+                             ) : selectedPhoto ? (
                                <span className="flex items-center justify-center gap-2">
                                  <Brain className="w-4 h-4" />
                                  <span>DECONSTRUCT</span>
@@ -5310,7 +5335,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              )}
                              
                              {/* Animated glow effect on hover */}
-                             {galleryPhotos.length > 0 && !isAnalyzing && (
+                             {selectedPhoto && !isAnalyzing && (
                                <div 
                                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                                  style={{

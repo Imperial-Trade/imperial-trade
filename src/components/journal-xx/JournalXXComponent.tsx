@@ -5636,7 +5636,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                    )}
                                  </div>
                                </div>
-                             )}
                            </SpotlightCard>
                            
                            {/* Hidden file input - using same context */}

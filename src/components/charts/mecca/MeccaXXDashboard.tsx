@@ -13,7 +13,7 @@ import { neonColors, neonAnimations, sessionColors } from './neonTheme';
 import NewsTicker from '@/components/shared/NewsTicker';
 import { ProAnalysisResult, toBasicAnalysis } from './proAnalysisTypes';
 import { analyzeWithGemini } from './proAnalysisService';
-import { DeconstructorPanel, DeconstructorButtons } from './DeconstructorPanel';
+import { DeconstructorPanel, DeconstructorButtons, DeconstructorPanelContent } from './DeconstructorPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 

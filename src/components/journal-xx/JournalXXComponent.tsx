@@ -5249,90 +5249,78 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
                        return (
-                         <SpotlightCard 
-                           variant="journal" 
-                           className="w-full" 
-                           isDarkMode={isDarkMode}
-                           noPadding={false}
+                         <button
+                           onClick={() => {
+                             if (selectedPhoto) {
+                               handleDeconstruct(selectedPhoto);
+                             } else if (fileInputRef.current) {
+                               fileInputRef.current.click();
+                             }
+                           }}
+                           disabled={isAnalyzing}
+                           className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                            style={{
-                             padding: '1rem',
                              background: isDarkMode 
                                ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                             border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
-                             boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+                             border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
+                             boxShadow: isDarkMode
+                               ? `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)`
+                               : `0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
+                             minHeight: '48px',
+                             WebkitTapHighlightColor: 'transparent',
                            }}
                          >
-                           {/* Deconstruct Button */}
-                           <button
-                             onClick={() => {
-                               if (selectedPhoto) {
-                                 handleDeconstruct(selectedPhoto);
-                               } else if (fileInputRef.current) {
-                                 fileInputRef.current.click();
-                               }
-                             }}
-                             disabled={isAnalyzing || !selectedPhoto}
-                             className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
-                             style={{
-                               background: selectedPhoto && !isAnalyzing
-                                 ? `linear-gradient(135deg, ${neonColors.emerald} 0%, ${neonColors.emeraldDark} 100%)`
-                                 : isDarkMode 
-                                   ? 'rgba(34, 197, 94, 0.1)' 
-                                   : 'rgba(34, 197, 94, 0.15)',
-                               color: selectedPhoto && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
-                               border: `2px solid ${selectedPhoto && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
-                               boxShadow: selectedPhoto && !isAnalyzing
-                                 ? `0 0 20px ${neonColors.emeraldGlow}, 0 4px 12px rgba(34, 197, 94, 0.3)`
-                                 : 'none',
-                               minHeight: '48px',
-                               WebkitTapHighlightColor: 'transparent',
-                             }}
-                           >
-                             {isAnalyzing ? (
-                               <span className="flex items-center justify-center gap-2">
-                                 <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
-                                 <span>ANALYZING...</span>
-                               </span>
-                             ) : selectedPhoto ? (
-                               <span className="flex items-center justify-center gap-2">
-                                 <Brain className="w-4 h-4" />
-                                 <span>DECONSTRUCT</span>
-                               </span>
-                             ) : (
-                               <span className="flex items-center justify-center gap-2">
-                                 <Upload className="w-4 h-4" />
-                                 <span>ADD IMAGE</span>
-                               </span>
-                             )}
-                             
-                             {/* Animated glow effect on hover */}
-                             {selectedPhoto && !isAnalyzing && (
-                               <div 
-                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                           {isAnalyzing ? (
+                             <span className="flex items-center justify-center gap-2">
+                               <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                               <span 
                                  style={{
-                                   background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                   filter: 'blur(8px)',
-                                   transform: 'scale(1.1)',
+                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                   WebkitBackgroundClip: 'text',
+                                   WebkitTextFillColor: 'transparent',
+                                   backgroundClip: 'text',
                                  }}
-                               />
-                             )}
-                           </button>
-
-                           {/* Hidden file input */}
-                           <input
-                             ref={fileInputRef}
-                             type="file"
-                             multiple
-                             accept="image/*"
-                             className="hidden"
-                             onChange={(e) => {
-                               if (e.target.files && e.target.files.length > 0) {
-                                 // File handling is done by DeconstructorPanel context
-                               }
-                             }}
-                           />
-                         </SpotlightCard>
+                               >
+                                 ANALYZING...
+                               </span>
+                             </span>
+                           ) : (
+                             <span className="flex items-center justify-center gap-2">
+                               <Brain className="w-4 h-4" style={{ 
+                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                 WebkitBackgroundClip: 'text',
+                                 WebkitTextFillColor: 'transparent',
+                                 backgroundClip: 'text',
+                                 filter: 'drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))',
+                               }} />
+                               <span 
+                                 style={{
+                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
+                                   WebkitBackgroundClip: 'text',
+                                   WebkitTextFillColor: 'transparent',
+                                   backgroundClip: 'text',
+                                   backgroundSize: '200% 100%',
+                                   animation: 'gradient-shift 3s ease-in-out infinite',
+                                 }}
+                               >
+                                 DECONSTRUCT
+                               </span>
+                             </span>
+                           )}
+                           
+                           {/* Animated glow effect on hover */}
+                           {!isAnalyzing && (
+                             <div 
+                               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                               style={{
+                                 background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                 filter: 'blur(8px)',
+                                 transform: 'scale(1.1)',
+                               }}
+                             />
+                           )}
+                         </button>
                        );
                      }}
                    </DeconstructorPanel>
@@ -5455,6 +5443,14 @@ const brainAnimationStyles = `
     75% {
       transform: scale(1.05) rotate(2deg);
       opacity: 0.9;
+    }
+  }
+  @keyframes gradient-shift {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
     }
   }
 `;

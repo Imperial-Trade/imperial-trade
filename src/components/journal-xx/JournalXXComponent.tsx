@@ -5311,7 +5311,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                    {/* Deconstruct SpotlightCard - Pre-analyzing button */}
                    <DeconstructorPanel isDarkMode={isDarkMode}>
                      {(context) => {
-                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing, removePhoto } = context;
+                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing, removePhoto, handleFileUpload } = context;
                        const hasPhotos = galleryPhotos.length > 0;
                        const maxPhotos = 5;
                        
@@ -5420,7 +5420,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      e.preventDefault();
                                      e.stopPropagation();
                                    }}
-                                   onDrop={(e) => {
+                                   onDrop={async (e) => {
                                      e.preventDefault();
                                      e.stopPropagation();
                                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -5432,11 +5432,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                        const dataTransfer = new DataTransfer();
                                        filesToAdd.forEach(file => dataTransfer.items.add(file));
                                        
-                                       // Trigger file input change
-                                       if (fileInputRef.current) {
-                                         fileInputRef.current.files = dataTransfer.files;
-                                         fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
-                                       }
+                                       // Call handleFileUpload directly
+                                       await handleFileUpload(dataTransfer.files);
                                      }
                                    }}
                                    className="relative flex-1 flex flex-col items-center justify-center text-center cursor-pointer group overflow-hidden"
@@ -5646,7 +5643,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              multiple
                              accept="image/*"
                              className="hidden"
-                             onChange={(e) => {
+                             onChange={async (e) => {
                                if (e.target.files && e.target.files.length > 0) {
                                  const files = Array.from(e.target.files);
                                  const remainingSlots = maxPhotos - galleryPhotos.length;
@@ -5656,8 +5653,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                    console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
                                  }
                                  
-                                 // File handling is done by DeconstructorPanel context
-                                 // The handleFileUpload will be called automatically by DeconstructorPanel
+                                 // Create a FileList-like object for handleFileUpload
+                                 const dataTransfer = new DataTransfer();
+                                 filesToAdd.forEach(file => dataTransfer.items.add(file));
+                                 
+                                 // Call handleFileUpload directly
+                                 await handleFileUpload(dataTransfer.files);
+                                 
+                                 // Reset input to allow selecting the same file again
+                                 if (fileInputRef.current) {
+                                   fileInputRef.current.value = '';
+                                 }
                                }
                              }}
                            />

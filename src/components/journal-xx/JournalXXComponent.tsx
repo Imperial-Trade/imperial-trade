@@ -3911,13 +3911,65 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                           }}
                      >
                          {/* Mobile MECCA tab now only shows deconstructor - no charts/calendar */}
-                         <div className="w-full h-full flex items-center justify-center">
-                             <div className="text-center px-4">
-                                 <p className="text-sm text-slate-400 dark:text-slate-500 mb-2">
-                                     Use the deconstructor below to analyze trading screenshots
-                                 </p>
-                             </div>
-                         </div>
+                         {/* Animated Brain - Only visible when no photos in deconstructor */}
+                         <DeconstructorPanel isDarkMode={isDarkMode}>
+                           {(context) => {
+                             const { galleryPhotos, isAnalyzing } = context;
+                             
+                             // Show brain animation when no photos and not analyzing
+                             if (galleryPhotos.length === 0 && !isAnalyzing) {
+                               return (
+                                 <div className="relative flex items-center justify-center flex-1 min-h-0 w-full h-full" style={{ padding: '2rem' }}>
+                                   {/* Pulsing outer ring */}
+                                   <div 
+                                     className="absolute rounded-full border-2"
+                                     style={{
+                                       width: '200px',
+                                       height: '200px',
+                                       borderColor: neonColors.emerald,
+                                       opacity: 0.3,
+                                       animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                       boxShadow: `0 0 40px ${neonColors.emeraldGlow}`,
+                                     }}
+                                   />
+                                   {/* Rotating middle ring */}
+                                   <div 
+                                     className="absolute rounded-full border-2"
+                                     style={{
+                                       width: '160px',
+                                       height: '160px',
+                                       borderColor: neonColors.emerald,
+                                       opacity: 0.5,
+                                       animation: 'rotate-slow 4s linear infinite',
+                                       boxShadow: `0 0 30px ${neonColors.emeraldGlow}`,
+                                     }}
+                                   />
+                                   {/* Pulsing inner symbol container */}
+                                   <div 
+                                     className="relative w-32 h-32 rounded-full flex items-center justify-center"
+                                     style={{
+                                       background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
+                                       border: `3px solid ${neonColors.emerald}`,
+                                       animation: 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                       boxShadow: `0 0 40px ${neonColors.emeraldGlow}, inset 0 0 20px ${neonColors.emeraldGlow}40`,
+                                     }}
+                                   >
+                                     {/* Animated Brain/Deconstructor Symbol */}
+                                     <Brain 
+                                       className="w-16 h-16"
+                                       style={{ 
+                                         color: neonColors.emerald,
+                                         animation: 'brain-think 1.5s ease-in-out infinite',
+                                         filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
+                                       }} 
+                                     />
+                                   </div>
+                                 </div>
+                               );
+                             }
+                             return null;
+                           }}
+                         </DeconstructorPanel>
                      </div>
                  )}
 
@@ -5425,3 +5477,62 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 };
 
 export default JournalXX;
+
+// CSS Animations for Brain Animation in MECCA tab
+const brainAnimationStyles = `
+  @keyframes pulse-ring {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.1;
+    }
+  }
+  @keyframes rotate-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pulse-symbol {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+  @keyframes brain-think {
+    0%, 100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+    25% {
+      transform: scale(1.05) rotate(-2deg);
+      opacity: 0.9;
+    }
+    50% {
+      transform: scale(1.1) rotate(0deg);
+      opacity: 1;
+    }
+    75% {
+      transform: scale(1.05) rotate(2deg);
+      opacity: 0.9;
+    }
+  }
+`;
+
+// Inject styles into document head if not already present
+if (typeof document !== 'undefined') {
+  const styleId = 'mecca-brain-animations';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = brainAnimationStyles;
+    document.head.appendChild(style);
+  }
+}

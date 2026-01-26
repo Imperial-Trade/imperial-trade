@@ -3911,63 +3911,137 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                           }}
                      >
                          {/* Mobile MECCA tab now only shows deconstructor - no charts/calendar */}
-                         {/* Animated Brain - Only visible when no photos in deconstructor */}
                          <DeconstructorPanel isDarkMode={isDarkMode}>
                            {(context) => {
-                             const { galleryPhotos, isAnalyzing } = context;
+                             const { galleryPhotos, isAnalyzing, fileInputRef, handleDeconstruct } = context;
+                             const maxPhotos = 5;
+                             const canAddMore = galleryPhotos.length < maxPhotos;
                              
-                             // Show brain animation when no photos and not analyzing
-                             if (galleryPhotos.length === 0 && !isAnalyzing) {
-                               return (
-                                 <div className="relative flex items-center justify-center flex-1 min-h-0 w-full h-full" style={{ padding: '2rem' }}>
-                                   {/* Pulsing outer ring */}
+                             return (
+                               <div className="flex flex-col h-full overflow-y-auto">
+                                 {/* Animated Brain - Clickable to add photos */}
+                                 {canAddMore && !isAnalyzing && (
                                    <div 
-                                     className="absolute rounded-full border-2"
-                                     style={{
-                                       width: '200px',
-                                       height: '200px',
-                                       borderColor: neonColors.emerald,
-                                       opacity: 0.3,
-                                       animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                       boxShadow: `0 0 40px ${neonColors.emeraldGlow}`,
-                                     }}
-                                   />
-                                   {/* Rotating middle ring */}
-                                   <div 
-                                     className="absolute rounded-full border-2"
-                                     style={{
-                                       width: '160px',
-                                       height: '160px',
-                                       borderColor: neonColors.emerald,
-                                       opacity: 0.5,
-                                       animation: 'rotate-slow 4s linear infinite',
-                                       boxShadow: `0 0 30px ${neonColors.emeraldGlow}`,
-                                     }}
-                                   />
-                                   {/* Pulsing inner symbol container */}
-                                   <div 
-                                     className="relative w-32 h-32 rounded-full flex items-center justify-center"
-                                     style={{
-                                       background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
-                                       border: `3px solid ${neonColors.emerald}`,
-                                       animation: 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                       boxShadow: `0 0 40px ${neonColors.emeraldGlow}, inset 0 0 20px ${neonColors.emeraldGlow}40`,
-                                     }}
+                                     className="relative flex items-center justify-center w-full cursor-pointer"
+                                     style={{ padding: '2rem', minHeight: '250px' }}
+                                     onClick={() => fileInputRef.current?.click()}
                                    >
-                                     {/* Animated Brain/Deconstructor Symbol */}
-                                     <Brain 
-                                       className="w-16 h-16"
-                                       style={{ 
-                                         color: neonColors.emerald,
-                                         animation: 'brain-think 1.5s ease-in-out infinite',
-                                         filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
-                                       }} 
+                                     {/* Pulsing outer ring */}
+                                     <div 
+                                       className="absolute rounded-full border-2"
+                                       style={{
+                                         width: '200px',
+                                         height: '200px',
+                                         borderColor: neonColors.emerald,
+                                         opacity: 0.3,
+                                         animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                         boxShadow: `0 0 40px ${neonColors.emeraldGlow}`,
+                                       }}
                                      />
+                                     {/* Rotating middle ring */}
+                                     <div 
+                                       className="absolute rounded-full border-2"
+                                       style={{
+                                         width: '160px',
+                                         height: '160px',
+                                         borderColor: neonColors.emerald,
+                                         opacity: 0.5,
+                                         animation: 'rotate-slow 4s linear infinite',
+                                         boxShadow: `0 0 30px ${neonColors.emeraldGlow}`,
+                                       }}
+                                     />
+                                     {/* Pulsing inner symbol container */}
+                                     <div 
+                                       className="relative w-32 h-32 rounded-full flex items-center justify-center"
+                                       style={{
+                                         background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
+                                         border: `3px solid ${neonColors.emerald}`,
+                                         animation: 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                         boxShadow: `0 0 40px ${neonColors.emeraldGlow}, inset 0 0 20px ${neonColors.emeraldGlow}40`,
+                                       }}
+                                     >
+                                       {/* Animated Brain/Deconstructor Symbol */}
+                                       <Brain 
+                                         className="w-16 h-16"
+                                         style={{ 
+                                           color: neonColors.emerald,
+                                           animation: 'brain-think 1.5s ease-in-out infinite',
+                                           filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
+                                         }} 
+                                       />
+                                     </div>
+                                     {/* Click hint text */}
+                                     <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                                       <p className="text-xs text-center" style={{ color: neonColors.textMuted }}>
+                                         Tap to add photos ({galleryPhotos.length}/{maxPhotos})
+                                       </p>
+                                     </div>
                                    </div>
-                                 </div>
-                               );
-                             }
-                             return null;
+                                 )}
+                                 
+                                 {/* Photo Grid - Shows uploaded photos below brain */}
+                                 {galleryPhotos.length > 0 && (
+                                   <div className="px-4 pb-4">
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                                       {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
+                                         <div
+                                           key={photo.id}
+                                           className="relative aspect-square rounded-xl overflow-hidden border-2"
+                                           style={{
+                                             borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)',
+                                             background: isDarkMode ? 'rgba(20, 20, 20, 0.8)' : 'rgba(240, 240, 240, 0.8)',
+                                           }}
+                                         >
+                                           <img
+                                             src={photo.thumbnailUrl || photo.url}
+                                             alt={`Photo ${index + 1}`}
+                                             className="w-full h-full object-cover"
+                                           />
+                                           {photo.isAnalyzed && (
+                                             <div className="absolute top-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
+                                               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                             </div>
+                                           )}
+                                           <div className="absolute bottom-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
+                                             <span className="text-[10px] font-bold text-white">{index + 1}</span>
+                                           </div>
+                                         </div>
+                                       ))}
+                                     </div>
+                                     
+                                     {/* Photo count info */}
+                                     <div className="text-center mb-3">
+                                       <p className="text-xs" style={{ color: isDarkMode ? neonColors.textMuted : '#666' }}>
+                                         {galleryPhotos.length} photo{galleryPhotos.length !== 1 ? 's' : ''} added
+                                         {canAddMore && ` (${maxPhotos - galleryPhotos.length} more available)`}
+                                       </p>
+                                     </div>
+                                   </div>
+                                 )}
+                                 
+                                 {/* Hidden file input - accepts up to 5 photos */}
+                                 <input
+                                   ref={fileInputRef}
+                                   type="file"
+                                   multiple
+                                   accept="image/*"
+                                   className="hidden"
+                                   onChange={(e) => {
+                                     if (e.target.files && e.target.files.length > 0) {
+                                       const files = Array.from(e.target.files);
+                                       const remainingSlots = maxPhotos - galleryPhotos.length;
+                                       const filesToAdd = files.slice(0, remainingSlots);
+                                       
+                                       if (filesToAdd.length < files.length) {
+                                         // Show toast if trying to add more than allowed
+                                         console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
+                                       }
+                                       // File handling is done by DeconstructorPanel context
+                                     }
+                                   }}
+                                 />
+                               </div>
+                             );
                            }}
                          </DeconstructorPanel>
                      </div>
@@ -5248,13 +5322,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const hasPhotos = galleryPhotos.length > 0;
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
+                       // Show deconstruct button only when photos are added
+                       if (galleryPhotos.length === 0) {
+                         return null;
+                       }
+                       
                        return (
                          <button
                            onClick={() => {
-                             if (selectedPhoto) {
-                               handleDeconstruct(selectedPhoto);
-                             } else if (fileInputRef.current) {
-                               fileInputRef.current.click();
+                             // Analyze all photos (starting with first one)
+                             if (galleryPhotos.length > 0) {
+                               handleDeconstruct(galleryPhotos[0]);
                              }
                            }}
                            disabled={isAnalyzing}
@@ -5282,7 +5360,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                    backgroundClip: 'text',
                                  }}
                                >
-                                 ANALYZING...
+                                 ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
                                </span>
                              </span>
                            ) : (
@@ -5297,7 +5375,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  animation: 'gradient-shift 3s ease-in-out infinite',
                                }}
                              >
-                               DECONSTRUCT
+                               DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
                              </span>
                            )}
                            

@@ -5313,231 +5313,254 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                      {(context) => {
                        const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = context;
                        const hasPhotos = galleryPhotos.length > 0;
+                       const maxPhotos = 5;
                        
                        // Always show SpotlightCard
                        return (
-                         <SpotlightCard 
-                           variant="journal" 
-                           className={`w-full ${hasPhotos ? 'cursor-pointer' : ''}`}
-                           isDarkMode={isDarkMode}
-                           noPadding={false}
-                           onClick={() => {
-                             // Analyze all photos (starting with first one)
-                             if (hasPhotos && !isAnalyzing) {
-                               handleDeconstruct(galleryPhotos[0]);
-                             }
-                           }}
-                           style={{
-                             padding: hasPhotos ? '1rem' : '0',
-                             background: isDarkMode 
-                               ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
-                               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                             border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
-                             boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
-                             opacity: isAnalyzing ? 0.6 : 1,
-                             cursor: isAnalyzing ? 'not-allowed' : (hasPhotos ? 'pointer' : 'default'),
-                           }}
-                         >
-                           {hasPhotos ? (
-                             // Deconstruct Button (when photos exist)
-                             <button
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 if (!isAnalyzing) {
-                                   handleDeconstruct(galleryPhotos[0]);
-                                 }
-                               }}
-                               disabled={isAnalyzing}
-                               className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
-                               style={{
-                                 background: 'transparent',
-                                 border: 'none',
-                                 minHeight: '48px',
-                                 WebkitTapHighlightColor: 'transparent',
-                               }}
-                             >
-                               {isAnalyzing ? (
-                                 <span className="flex items-center justify-center gap-2">
-                                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                         <>
+                           <SpotlightCard 
+                             variant="journal" 
+                             className={`w-full ${hasPhotos ? 'cursor-pointer' : ''}`}
+                             isDarkMode={isDarkMode}
+                             noPadding={false}
+                             onClick={() => {
+                               // Analyze all photos (starting with first one)
+                               if (hasPhotos && !isAnalyzing) {
+                                 handleDeconstruct(galleryPhotos[0]);
+                               }
+                             }}
+                             style={{
+                               padding: hasPhotos ? '1rem' : '0',
+                               background: isDarkMode 
+                                 ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
+                                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
+                               border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
+                               boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+                               opacity: isAnalyzing ? 0.6 : 1,
+                               cursor: isAnalyzing ? 'not-allowed' : (hasPhotos ? 'pointer' : 'default'),
+                             }}
+                           >
+                             {hasPhotos ? (
+                               // Deconstruct Button (when photos exist)
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   if (!isAnalyzing) {
+                                     handleDeconstruct(galleryPhotos[0]);
+                                   }
+                                 }}
+                                 disabled={isAnalyzing}
+                                 className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                                 style={{
+                                   background: 'transparent',
+                                   border: 'none',
+                                   minHeight: '48px',
+                                   WebkitTapHighlightColor: 'transparent',
+                                 }}
+                               >
+                                 {isAnalyzing ? (
+                                   <span className="flex items-center justify-center gap-2">
+                                     <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                                     <span 
+                                       style={{
+                                         background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                         WebkitBackgroundClip: 'text',
+                                         WebkitTextFillColor: 'transparent',
+                                         backgroundClip: 'text',
+                                       }}
+                                     >
+                                       ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
+                                     </span>
+                                   </span>
+                                 ) : (
                                    <span 
+                                     className="flex items-center justify-center"
                                      style={{
-                                       background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                       background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
                                        WebkitBackgroundClip: 'text',
                                        WebkitTextFillColor: 'transparent',
                                        backgroundClip: 'text',
+                                       backgroundSize: '200% 100%',
+                                       animation: 'gradient-shift 3s ease-in-out infinite',
                                      }}
                                    >
-                                     ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
+                                     DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
                                    </span>
-                                 </span>
-                               ) : (
-                                 <span 
-                                   className="flex items-center justify-center"
-                                   style={{
-                                     background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                     WebkitBackgroundClip: 'text',
-                                     WebkitTextFillColor: 'transparent',
-                                     backgroundClip: 'text',
-                                     backgroundSize: '200% 100%',
-                                     animation: 'gradient-shift 3s ease-in-out infinite',
-                                   }}
-                                 >
-                                   DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
-                                 </span>
-                               )}
-                               
-                               {/* Animated glow effect on hover */}
-                               {!isAnalyzing && (
+                                 )}
+                                 
+                                 {/* Animated glow effect on hover */}
+                                 {!isAnalyzing && (
+                                   <div 
+                                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                     style={{
+                                       background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                       filter: 'blur(8px)',
+                                       transform: 'scale(1.1)',
+                                     }}
+                                   />
+                                 )}
+                               </button>
+                             ) : (
+                               // Beautiful Photo Upload Area (when no photos)
+                               <div
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   if (fileInputRef.current) {
+                                     fileInputRef.current.click();
+                                   }
+                                 }}
+                                 onDragOver={(e) => {
+                                   e.preventDefault();
+                                   e.stopPropagation();
+                                 }}
+                                 onDrop={(e) => {
+                                   e.preventDefault();
+                                   e.stopPropagation();
+                                   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                     const files = Array.from(e.dataTransfer.files);
+                                     const remainingSlots = maxPhotos - galleryPhotos.length;
+                                     const filesToAdd = files.slice(0, remainingSlots);
+                                     
+                                     // Create a FileList-like object for handleFileUpload
+                                     const dataTransfer = new DataTransfer();
+                                     filesToAdd.forEach(file => dataTransfer.items.add(file));
+                                     
+                                     // Trigger file input change
+                                     if (fileInputRef.current) {
+                                       fileInputRef.current.files = dataTransfer.files;
+                                       fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
+                                     }
+                                   }
+                                 }}
+                                 className="relative w-full p-6 sm:p-8 rounded-2xl transition-all duration-300 cursor-pointer group overflow-hidden"
+                                 style={{
+                                   background: isDarkMode
+                                     ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.6) 0%, rgba(10, 10, 10, 0.6) 100%)'
+                                     : 'linear-gradient(135deg, rgba(250, 250, 250, 0.6) 0%, rgba(240, 240, 240, 0.6) 100%)',
+                                   border: `2px dashed ${isDarkMode ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.5)'}`,
+                                   backdropFilter: 'blur(10px)',
+                                   WebkitBackdropFilter: 'blur(10px)',
+                                   minHeight: '180px',
+                                   WebkitTapHighlightColor: 'transparent',
+                                 }}
+                               >
+                                 {/* Animated background gradient on hover */}
                                  <div 
                                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                                    style={{
-                                     background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                     filter: 'blur(8px)',
-                                     transform: 'scale(1.1)',
+                                     background: `linear-gradient(135deg, ${neonColors.emerald}10 0%, ${neonColors.emeraldDark}05 100%)`,
                                    }}
                                  />
-                               )}
-                             </button>
-                           ) : (
-                             // Beautiful Photo Upload Area (when no photos)
-                             <div
-                               onClick={() => fileInputRef.current?.click()}
-                               onDragOver={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                               }}
-                               onDrop={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                                 if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                   // File handling is done by DeconstructorPanel context
-                                 }
-                               }}
-                               className="relative w-full p-6 sm:p-8 rounded-2xl transition-all duration-300 cursor-pointer group overflow-hidden"
-                               style={{
-                                 background: isDarkMode
-                                   ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.6) 0%, rgba(10, 10, 10, 0.6) 100%)'
-                                   : 'linear-gradient(135deg, rgba(250, 250, 250, 0.6) 0%, rgba(240, 240, 240, 0.6) 100%)',
-                                 border: `2px dashed ${isDarkMode ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.5)'}`,
-                                 backdropFilter: 'blur(10px)',
-                                 WebkitBackdropFilter: 'blur(10px)',
-                                 minHeight: '180px',
-                                 WebkitTapHighlightColor: 'transparent',
-                               }}
-                             >
-                               {/* Animated background gradient on hover */}
-                               <div 
-                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                 style={{
-                                   background: `linear-gradient(135deg, ${neonColors.emerald}10 0%, ${neonColors.emeraldDark}05 100%)`,
-                                 }}
-                               />
-                               
-                               {/* Content */}
-                               <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                                 {/* Icon Container with Glow */}
-                                 <div 
-                                   className="relative mb-4 sm:mb-5"
-                                 >
+                                 
+                                 {/* Content */}
+                                 <div className="relative z-10 flex flex-col items-center justify-center text-center">
+                                   {/* Icon Container with Glow */}
                                    <div 
-                                     className="absolute inset-0 rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300"
-                                     style={{
-                                       background: `radial-gradient(circle, ${neonColors.emerald} 0%, transparent 70%)`,
-                                       transform: 'scale(1.5)',
-                                     }}
-                                   />
-                                   <div 
-                                     className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                                     style={{
-                                       background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
-                                       border: `2px solid ${neonColors.emerald}40`,
-                                       boxShadow: `0 0 20px ${neonColors.emeraldGlow}40, inset 0 0 10px ${neonColors.emeraldGlow}20`,
+                                     className="relative mb-4 sm:mb-5"
+                                   >
+                                     <div 
+                                       className="absolute inset-0 rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300"
+                                       style={{
+                                         background: `radial-gradient(circle, ${neonColors.emerald} 0%, transparent 70%)`,
+                                         transform: 'scale(1.5)',
+                                       }}
+                                     />
+                                     <div 
+                                       className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                                       style={{
+                                         background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
+                                         border: `2px solid ${neonColors.emerald}40`,
+                                         boxShadow: `0 0 20px ${neonColors.emeraldGlow}40, inset 0 0 10px ${neonColors.emeraldGlow}20`,
+                                       }}
+                                     >
+                                       <ImageIcon 
+                                         className="w-8 h-8 sm:w-10 sm:h-10 transition-transform duration-300 group-hover:scale-110" 
+                                         style={{ color: neonColors.emerald }}
+                                       />
+                                     </div>
+                                   </div>
+                                   
+                                   {/* Main Text */}
+                                   <h3 
+                                     className="text-base sm:text-lg font-bold mb-2 transition-colors duration-300"
+                                     style={{ 
+                                       color: isDarkMode ? '#ffffff' : '#1a1a1a',
                                      }}
                                    >
-                                     <ImageIcon 
-                                       className="w-8 h-8 sm:w-10 sm:h-10 transition-transform duration-300 group-hover:scale-110" 
-                                       style={{ color: neonColors.emerald }}
-                                     />
+                                     Add Trading Screenshots
+                                   </h3>
+                                   
+                                   {/* Description */}
+                                   <p 
+                                     className="text-xs sm:text-sm mb-4 max-w-xs mx-auto leading-relaxed"
+                                     style={{ 
+                                       color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
+                                     }}
+                                   >
+                                     Upload up to 5 screenshots to analyze your trading performance
+                                   </p>
+                                   
+                                   {/* Photo Limit Badge */}
+                                   <div 
+                                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 group-hover:scale-105"
+                                     style={{
+                                       background: isDarkMode 
+                                         ? `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`
+                                         : `linear-gradient(135deg, ${neonColors.emerald}15 0%, ${neonColors.emeraldDark}08 100%)`,
+                                       border: `1px solid ${neonColors.emerald}40`,
+                                       color: neonColors.emerald,
+                                     }}
+                                   >
+                                     <Upload className="w-3.5 h-3.5" />
+                                     <span>Max 5 Photos</span>
                                    </div>
+                                   
+                                   {/* Hint Text */}
+                                   <p 
+                                     className="text-[10px] sm:text-xs mt-3 opacity-60"
+                                     style={{ 
+                                       color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                                     }}
+                                   >
+                                     Tap or drag & drop images here
+                                   </p>
                                  </div>
                                  
-                                 {/* Main Text */}
-                                 <h3 
-                                   className="text-base sm:text-lg font-bold mb-2 transition-colors duration-300"
-                                   style={{ 
-                                     color: isDarkMode ? '#ffffff' : '#1a1a1a',
-                                   }}
-                                 >
-                                   Add Trading Screenshots
-                                 </h3>
-                                 
-                                 {/* Description */}
-                                 <p 
-                                   className="text-xs sm:text-sm mb-4 max-w-xs mx-auto leading-relaxed"
-                                   style={{ 
-                                     color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
-                                   }}
-                                 >
-                                   Upload up to 5 screenshots to analyze your trading performance
-                                 </p>
-                                 
-                                 {/* Photo Limit Badge */}
+                                 {/* Shimmer effect on hover */}
                                  <div 
-                                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 group-hover:scale-105"
+                                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                                    style={{
-                                     background: isDarkMode 
-                                       ? `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`
-                                       : `linear-gradient(135deg, ${neonColors.emerald}15 0%, ${neonColors.emeraldDark}08 100%)`,
-                                     border: `1px solid ${neonColors.emerald}40`,
-                                     color: neonColors.emerald,
+                                     background: 'linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.1) 50%, transparent 100%)',
+                                     animation: 'shimmer 2s infinite',
                                    }}
-                                 >
-                                   <Upload className="w-3.5 h-3.5" />
-                                   <span>Max 5 Photos</span>
-                                 </div>
-                                 
-                                 {/* Hint Text */}
-                                 <p 
-                                   className="text-[10px] sm:text-xs mt-3 opacity-60"
-                                   style={{ 
-                                     color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
-                                   }}
-                                 >
-                                   Tap or drag & drop images here
-                                 </p>
+                                 />
                                </div>
-                               
-                               {/* Shimmer effect on hover */}
-                               <div 
-                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                                 style={{
-                                   background: 'linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.1) 50%, transparent 100%)',
-                                   animation: 'shimmer 2s infinite',
-                                 }}
-                               />
-                             </div>
-                           )}
-                         </SpotlightCard>
-                       );
-                     }}
-                   </DeconstructorPanel>
-                   {/* Hidden file input - needed for button click */}
-                   <DeconstructorPanel isDarkMode={isDarkMode}>
-                     {(context) => {
-                       const { fileInputRef } = context;
-                       return (
-                         <input
-                           ref={fileInputRef}
-                           type="file"
-                           multiple
-                           accept="image/*"
-                           className="hidden"
-                           onChange={(e) => {
-                             if (e.target.files && e.target.files.length > 0) {
-                               // File handling is done by DeconstructorPanel context
-                             }
-                           }}
-                         />
+                             )}
+                           </SpotlightCard>
+                           
+                           {/* Hidden file input - using same context */}
+                           <input
+                             ref={fileInputRef}
+                             type="file"
+                             multiple
+                             accept="image/*"
+                             className="hidden"
+                             onChange={(e) => {
+                               if (e.target.files && e.target.files.length > 0) {
+                                 const files = Array.from(e.target.files);
+                                 const remainingSlots = maxPhotos - galleryPhotos.length;
+                                 const filesToAdd = files.slice(0, remainingSlots);
+                                 
+                                 if (filesToAdd.length < files.length) {
+                                   console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
+                                 }
+                                 
+                                 // File handling is done by DeconstructorPanel context
+                                 // The handleFileUpload will be called automatically by DeconstructorPanel
+                               }
+                             }}
+                           />
+                         </>
                        );
                      }}
                    </DeconstructorPanel>

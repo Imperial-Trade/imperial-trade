@@ -286,6 +286,35 @@
     flex-direction: column;
   }
 
+  /* iOS PWA: Force fullscreen on all routes */
+  @media (display-mode: standalone) {
+    html, body, #root {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      height: -webkit-fill-available !important;
+      overflow: hidden !important;
+    }
+  }
+
+  /* iOS PWA: Additional check for standalone navigator property */
+  @supports (-webkit-touch-callout: none) {
+    html.standalone, body.standalone, #root.standalone {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      overflow: hidden !important;
+    }
+  }
+
   /* Mobile viewport and overflow fixes */
   .admin-tools-container {
     max-width: 100vw;

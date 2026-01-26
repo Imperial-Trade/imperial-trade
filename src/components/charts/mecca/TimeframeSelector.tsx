@@ -7,14 +7,8 @@ interface TimeframeSelectorProps {
   size?: 'sm' | 'md' | 'lg';
   /** 'insight' = Robinhood-style dark green gradient; default = bright emerald */
   variant?: 'default' | 'insight';
-  /** When true, show trading style buttons (Scalping, Intraday, Swing, Position) in 2x2 grid */
+  /** Show trading style buttons instead of timeframes */
   showTradingTypes?: boolean;
-  /** Trading styles data - passed from parent */
-  tradingStyles?: Array<{ value: string; label: string; timeframes: string[] }>;
-  /** Selected trading style */
-  selectedTradingStyle?: string;
-  /** Callback when trading style changes */
-  onTradingStyleSelect?: (style: string) => void;
 }
 
 const TIMEFRAMES = [
@@ -25,6 +19,37 @@ const TIMEFRAMES = [
   { value: '4h', label: '4H' },
   { value: '1d', label: '1D' },
   { value: '1w', label: '1W' },
+];
+
+const TRADING_STYLES = [
+  { 
+    value: 'scalping', 
+    label: 'Scalping', 
+    timeframe: '1M - 5M',
+    timeframes: ['1m', '5m'],
+    defaultTimeframe: '1m'
+  },
+  { 
+    value: 'intraday', 
+    label: 'Intraday', 
+    timeframe: '15M - 1H',
+    timeframes: ['15m', '1h'],
+    defaultTimeframe: '15m'
+  },
+  { 
+    value: 'swing', 
+    label: 'Swing Trade', 
+    timeframe: '4H - 1D',
+    timeframes: ['4h', '1d'],
+    defaultTimeframe: '4h'
+  },
+  { 
+    value: 'position', 
+    label: 'Position', 
+    timeframe: '1D - 1W',
+    timeframes: ['1d', '1w'],
+    defaultTimeframe: '1w'
+  },
 ];
 
 // Default: bright emerald
@@ -47,59 +72,9 @@ const TimeframeSelector: React.FC<TimeframeSelectorProps> = ({
   size = 'md',
   variant = 'default',
   showTradingTypes = false,
-  tradingStyles = [],
-  selectedTradingStyle,
-  onTradingStyleSelect,
 }) => {
   const [hoveredTf, setHoveredTf] = useState<string | null>(null);
   const isInsight = variant === 'insight';
-
-  // If showing trading types, render 2x2 grid
-  if (showTradingTypes && tradingStyles.length > 0) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TimeframeSelector.tsx:58',message:'Rendering trade types grid',data:{showTradingTypes,tradingStylesLength:tradingStyles.length,selectedTradingStyle},timestamp:Date.now(),sessionId:'debug-session',runId:'runtime-check',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
-    return (
-      <div className="grid grid-cols-2 gap-2">
-        {tradingStyles.map((style) => {
-          const isSelected = selectedTradingStyle === style.value;
-          return (
-            <button
-              key={style.value}
-              onClick={() => {
-                onTradingStyleSelect?.(style.value);
-                // Auto-select first timeframe for this style
-                if (style.timeframes[0]) {
-                  onSelect(style.timeframes[0]);
-                }
-              }}
-              className="relative flex flex-col items-center justify-center py-3 px-4 rounded-2xl transition-all duration-300"
-              style={{
-                background: isSelected
-                  ? 'linear-gradient(135deg, rgba(13, 148, 136, 0.18) 0%, rgba(4, 120, 87, 0.14) 100%)'
-                  : 'rgba(255, 255, 255, 0.03)',
-                border: isSelected ? '2px solid rgba(13, 148, 136, 0.6)' : '1px solid rgba(255, 255, 255, 0.08)',
-                boxShadow: isSelected ? '0 0 20px rgba(13, 148, 136, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
-              }}
-            >
-              <span className="text-sm font-bold" style={{ color: isSelected ? 'rgba(167, 243, 208, 0.95)' : 'rgba(163, 163, 163, 0.8)' }}>
-                {style.label}
-              </span>
-              <span className="text-xs mt-1" style={{ color: 'rgba(163, 163, 163, 0.6)' }}>
-                {style.timeframes.map(tf => {
-                  const tfMap: Record<string, string> = { '1m': '1M', '5m': '5M', '15m': '15M', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W' };
-                  return tfMap[tf] || tf;
-                }).join(' - ')}
-              </span>
-              {isSelected && (
-                <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-teal-400" style={{ opacity: 0.8 }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
 
   const sizeStyles = {
     sm: 'px-2 py-1 text-[10px]',
@@ -115,6 +90,117 @@ const TimeframeSelector: React.FC<TimeframeSelectorProps> = ({
     ? `0 0 12px ${insightColors.teal}50`
     : `0 0 15px ${premiumColors.emerald}40`;
 
+  // Determine which trading style is selected based on timeframe
+  const getSelectedTradingStyle = () => {
+    if (!showTradingTypes) return null;
+    return TRADING_STYLES.find(style => 
+      style.timeframes.includes(selectedTimeframe)
+    ) || TRADING_STYLES[1]; // Default to intraday
+  };
+
+  // If showing trading types, render 2x2 grid
+  if (showTradingTypes) {
+    const selectedStyle = getSelectedTradingStyle();
+    
+    return (
+      <div 
+        className="grid grid-cols-2 gap-2" 
+        style={{ 
+          pointerEvents: 'auto',
+          position: 'relative',
+          zIndex: 9999,
+          isolation: 'isolate',
+        }}
+      >
+        {TRADING_STYLES.map((style) => {
+          const isSelected = selectedStyle?.value === style.value;
+          const isHovered = hoveredTf === style.value && !isSelected;
+          
+          // Use teal colors for insight variant (matching the image)
+          const selectedTeal = isInsight ? insightColors.teal : '#0d9488';
+          const selectedTealLight = isInsight ? `${insightColors.teal}20` : '#0d948820';
+          const selectedTealBorder = isInsight ? insightColors.emerald : '#047857';
+          
+          const handleClick = (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(`[TimeframeSelector] Clicked ${style.label} (${style.value}), setting timeframe to ${style.defaultTimeframe}`);
+            // Select the default timeframe for this trading style
+            onSelect(style.defaultTimeframe);
+          };
+
+          return (
+            <button
+              key={style.value}
+              type="button"
+              data-trading-style={style.value}
+              onClick={handleClick}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`[TimeframeSelector] MouseDown on ${style.label}`);
+                handleClick(e as any);
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`[TimeframeSelector] TouchEnd on ${style.label}`);
+                handleClick(e as any);
+              }}
+              onMouseEnter={() => {
+                console.log(`[TimeframeSelector] Hovering ${style.label}`);
+                setHoveredTf(style.value);
+              }}
+              onMouseLeave={() => setHoveredTf(null)}
+              className="relative rounded-xl p-3 md:p-4 transition-all duration-200 text-left cursor-pointer select-none"
+              style={{
+                background: isSelected 
+                  ? selectedTealLight
+                  : isHovered 
+                    ? 'rgba(255, 255, 255, 0.05)' 
+                    : 'rgba(255, 255, 255, 0.02)',
+                border: isSelected 
+                  ? `1.5px solid ${selectedTealBorder}`
+                  : 'none',
+                color: isSelected 
+                  ? selectedTeal
+                  : isHovered 
+                    ? '#fff' 
+                    : 'rgba(163, 163, 163, 0.8)',
+                boxShadow: isSelected ? `0 2px 8px ${selectedTeal}30` : '0 1px 3px rgba(0,0,0,0.1)',
+                transform: isSelected ? 'scale(1.01)' : 'scale(1)',
+                pointerEvents: 'auto',
+                zIndex: 9999,
+                position: 'relative',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                isolation: 'isolate',
+              }}
+            >
+              <div className="font-semibold text-sm md:text-base mb-1 pointer-events-none">
+                {style.label}
+              </div>
+              <div className="text-[10px] md:text-xs opacity-70 pointer-events-none">
+                {style.timeframe}
+              </div>
+              {isSelected && (
+                <div 
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full pointer-events-none"
+                  style={{ 
+                    background: selectedTeal,
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Default: Show timeframes
   return (
     <div 
       className="flex items-center gap-0.5 md:gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide scroll-touch"
@@ -130,15 +216,26 @@ const TimeframeSelector: React.FC<TimeframeSelectorProps> = ({
         return (
           <button
             key={tf.value}
-            onClick={() => onSelect(tf.value)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(tf.value);
+            }}
             onMouseEnter={() => setHoveredTf(tf.value)}
             onMouseLeave={() => setHoveredTf(null)}
-            className={`relative rounded-lg font-bold transition-all duration-200 shrink-0 ${sizeStyles[size]}`}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+            }}
+            className={`relative rounded-lg font-bold transition-all duration-200 shrink-0 cursor-pointer ${sizeStyles[size]}`}
             style={{
               background: isSelected ? selectedBg : isHovered ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
               color: isSelected ? selectedColor : isHovered ? '#fff' : 'rgba(163, 163, 163, 0.6)',
               boxShadow: isSelected ? selectedShadow : 'none',
               transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+              pointerEvents: 'auto',
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
             }}
           >
             {tf.label}

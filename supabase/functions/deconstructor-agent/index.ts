@@ -7,6 +7,7 @@ import { sanitizeText } from "../_shared/sanitizer.ts";
 interface DeconstructorRequest {
   user_id: string;
   file_urls?: string[];
+  api_key?: string; // Optional user-provided API key (falls back to env var)
 }
 
 // Fixed helper function to convert image URL to base64 (handles large images)
@@ -99,6 +100,8 @@ You MUST base your analysis primarily on what you can SEE in the provided screen
 
 **RESPONSE FORMAT - SCREENSHOT-BASED JSON:**
 {
+  "overall_rating": "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C" | "D" | "F",
+  "rating_explanation": "Brief explanation of why this rating was assigned based on visible evidence from the screenshots",
   "screenshot_analysis": {
     "images_processed": number,
     "platform_detected": "specific trading platform name",
@@ -153,6 +156,24 @@ You MUST base your analysis primarily on what you can SEE in the provided screen
     "Important observation from screenshots"
   ]
 }
+
+**RATING CRITERIA (Base rating on visible evidence ONLY from screenshots):**
+- A+: Exceptional execution visible, perfect risk management (stop losses clearly set, appropriate position sizing), clear professional patterns (consistent entries, disciplined exits), excellent entry/exit timing visible
+- A: Excellent execution visible, strong risk management (stops visible, good position sizing), professional patterns visible, very good entry/exit timing
+- A-: Very good execution visible, good risk management (stops present, reasonable sizing), solid patterns visible, good entry/exit timing
+- B+: Good execution visible, acceptable risk management (some stops visible, mostly appropriate sizing), decent patterns visible, acceptable entry/exit timing
+- B: Average execution visible, basic risk management (stops sometimes visible, inconsistent sizing), some patterns visible, average entry/exit timing
+- B-: Below average execution visible, inconsistent risk management (stops rarely visible, inconsistent sizing), weak patterns visible, poor entry/exit timing
+- C: Poor execution visible, poor risk management (no stops visible, excessive sizing), few patterns visible, very poor entry/exit timing
+- D: Very poor execution visible, dangerous risk management (no stops, excessive leverage/position sizes), no clear patterns visible, terrible entry/exit timing
+- F: Critical issues visible: excessive risk (no stops, dangerous position sizes), emotional trading patterns (revenge trades, FOMO entries), no discipline visible, reckless behavior evident
+
+**RATING ASSIGNMENT RULES:**
+- Base rating ONLY on what you can see in the screenshots
+- Consider: risk management visibility (stop losses), position sizing consistency, entry/exit quality, trading discipline, emotional indicators
+- If you cannot see enough evidence, default to C or B- (average)
+- Be strict: A+ should be rare and only for exceptional visible evidence
+- F should be reserved for clearly dangerous or reckless trading visible in screenshots
 
 **CRITICAL INSTRUCTIONS:**
 - Base analysis ONLY on what you can see in screenshots
@@ -316,16 +337,37 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("GOOGLE_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Missing required environment variables");
       throw new Error("Missing required environment variables.");
     }
 
-    const { user_id, file_urls = [] }: DeconstructorRequest = await req.json();
+    const { user_id, file_urls = [], api_key }: DeconstructorRequest = await req.json();
+    
+    // Use user-provided API key if available, otherwise fall back to environment variable
+    const apiKey = api_key || Deno.env.get("GOOGLE_API_KEY");
+    
+    if (!apiKey) {
+      console.error("No API key provided. User must set API key in frontend or configure GOOGLE_API_KEY environment variable.");
+      // Return error instead of fallback so user knows what's wrong
+      return new Response(
+        JSON.stringify({
+          reply: JSON.stringify({
+            error: "API key not configured",
+            message: "Please set your Gemini API key in the Insight XX settings, or contact support if using a shared key.",
+            requires_api_key: true
+          }),
+          error: "API key not configured. Please set your Gemini API key in the Insight XX settings."
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     if (!user_id) {
       console.error("user_id is required");
       throw new Error("user_id is required.");
@@ -387,33 +429,6 @@ serve(async (req) => {
     console.log("Deconstructor Agent - User preferences loaded:", !!userPreferences);
     console.log("Deconstructor Agent - Analysis history entries:", analysisHistory?.length || 0);
 
-    // Fetch trading journal data
-    console.log("Deconstructor Agent - Fetching trading journal data...");
-    const { data: trades, error: fetchError } = await supabase
-      .from("trade_journal_entries")
-      .select(
-        "asset_ticker, trade_type, entry_price, exit_price, notes, pnl, trade_date"
-      )
-      .eq("user_id", user_id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    if (fetchError) {
-      console.error("Deconstructor Agent - Error fetching trades:", fetchError);
-      throw fetchError;
-    }
-
-    const sanitizedTrades =
-      trades?.map((trade) => ({
-        ...trade,
-        notes: sanitizeText(trade.notes),
-      })) || [];
-
-    console.log(
-      "Deconstructor Agent - Trades fetched:",
-      sanitizedTrades.length
-    );
-
     // Build the contents array for Google AI API - PRIORITIZE VISUAL ANALYSIS
     const contents = [];
 
@@ -451,27 +466,15 @@ serve(async (req) => {
     
     mainContent += personalizationContext;
 
-    // Add screenshot analysis section if images are provided (PRIMARY FOCUS)
+    // Add screenshot analysis section if images are provided (PRIMARY FOCUS - 100% SCREENSHOT-BASED)
     if (file_urls.length > 0) {
-      mainContent += `\n\n--- PRIMARY VISUAL ANALYSIS ---\nFocus your analysis on these ${file_urls.length} trading screenshots for ${userName}. Extract all visible trading data, patterns, and behaviors from the images.`;
-      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data\n- Compare current performance with ${userName}'s historical patterns if available`;
+      mainContent += `\n\n--- PRIMARY VISUAL ANALYSIS (100% SCREENSHOT-BASED) ---\nFocus your analysis EXCLUSIVELY on these ${file_urls.length} trading screenshots for ${userName}. Extract ALL visible trading data, patterns, and behaviors from the images. DO NOT use any external data sources - base your analysis solely on what you can see in the screenshots.`;
+      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades ONLY\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data\n- Assign overall_rating (A+ to F) based STRICTLY on visible evidence from screenshots\n- Provide rating_explanation explaining why this rating was assigned based on what you see`;
     } else {
       mainContent += `\n\n--- NO SCREENSHOTS PROVIDED ---\nNo visual data available for analysis. Provide recommendations for capturing screenshots for future analysis.`;
     }
 
-    // Add minimal trading journal data only as supplementary context
-    if (sanitizedTrades.length > 0) {
-      const condensedTrades = sanitizedTrades.slice(0, 5).map((trade) => ({
-        ticker: trade.asset_ticker,
-        pnl: trade.pnl,
-        date: trade.trade_date,
-        notes: trade.notes ? trade.notes.substring(0, 50) : null,
-      }));
-
-      mainContent += `\n\n--- SUPPLEMENTARY CONTEXT ---\nIf screenshots lack detail, use this minimal trading data as context only: ${JSON.stringify(condensedTrades)}`;
-    }
-
-    mainContent += `\n\nProvide comprehensive visual analysis in the specified JSON format, focusing primarily on what you can see in the uploaded screenshots.`;
+    mainContent += `\n\nProvide comprehensive visual analysis in the specified JSON format, focusing EXCLUSIVELY on what you can see in the uploaded screenshots. Include overall_rating and rating_explanation based on visible evidence.`;
 
     // Start with the text part
     const parts = [{ text: mainContent }];
@@ -535,16 +538,26 @@ serve(async (req) => {
         3 // max retries
       );
     } catch (error) {
+      const errorMessage = (error as Error).message;
       console.error(
-        "Deconstructor Agent - AI analysis failed, using fallback:",
-        (error as Error).message
+        "Deconstructor Agent - AI analysis failed:",
+        errorMessage
       );
+      console.error("Deconstructor Agent - Error stack:", (error as Error).stack);
 
-      // Generate fallback analysis
-      analysisResponse = generateFallbackAnalysis(
-        sanitizedTrades.length,
-        file_urls.length
-      );
+      // Check if it's an API key error
+      if (errorMessage.includes("API key") || errorMessage.includes("401") || errorMessage.includes("403")) {
+        throw new Error(`Invalid API key: ${errorMessage}. Please check your Gemini API key in Insight XX settings.`);
+      }
+
+      // Check if it's a quota/rate limit error
+      if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("RATE_LIMIT")) {
+        throw new Error(`API quota exceeded: ${errorMessage}. Please try again in a few minutes.`);
+      }
+
+      // For other errors, throw instead of silently returning fallback
+      // This ensures users see the actual error
+      throw new Error(`AI analysis failed: ${errorMessage}. Please try again or contact support if the issue persists.`);
     }
 
     console.log(

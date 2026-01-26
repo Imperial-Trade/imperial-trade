@@ -219,6 +219,51 @@ export function parseGeminiResponse(text: string, symbol: string, timeframe: str
   
   const result = JSON.parse(jsonText);
   
+  // Calculate actual risk-reward ratios from prices
+  const calculateRiskReward = (
+    direction: string,
+    entryPrice: number,
+    stopLoss: number,
+    takeProfit: number
+  ): string => {
+    if (!entryPrice || !stopLoss || !takeProfit || entryPrice === stopLoss) {
+      return '1:2'; // Default fallback
+    }
+    
+    if (direction === 'LONG') {
+      const risk = Math.abs(entryPrice - stopLoss);
+      const reward = Math.abs(takeProfit - entryPrice);
+      if (risk === 0) return '1:2';
+      const rr = reward / risk;
+      return `1:${rr.toFixed(2)}`;
+    } else if (direction === 'SHORT') {
+      const risk = Math.abs(stopLoss - entryPrice);
+      const reward = Math.abs(entryPrice - takeProfit);
+      if (risk === 0) return '1:2';
+      const rr = reward / risk;
+      return `1:${rr.toFixed(2)}`;
+    }
+    
+    return '1:2';
+  };
+  
+  // Get entry price (average of execution zone)
+  const entryPrice = result.tradeSetup?.executionZone 
+    ? (result.tradeSetup.executionZone.min + result.tradeSetup.executionZone.max) / 2
+    : currentPrice;
+  
+  const stopLoss = result.tradeSetup?.stopLoss?.price || currentPrice * 0.99;
+  const direction = result.tradeSetup?.direction || 'NEUTRAL';
+  
+  // Calculate RR for each TP
+  const tp1 = result.tradeSetup?.targets?.tp1;
+  const tp2 = result.tradeSetup?.targets?.tp2;
+  const tp3 = result.tradeSetup?.targets?.tp3;
+  
+  // Use TP1 for main RR calculation (most conservative)
+  const mainTP = tp1?.price || tp2?.price || tp3?.price || currentPrice * 1.01;
+  const calculatedRR = calculateRiskReward(direction, entryPrice, stopLoss, mainTP);
+  
   // Validate and sanitize
   const sanitized: ProAnalysisResult = {
     executiveSummary: result.executiveSummary || 'Analysis completed',
@@ -243,9 +288,21 @@ export function parseGeminiResponse(text: string, symbol: string, timeframe: str
         max: result.tradeSetup?.executionZone?.max || currentPrice * 1.002,
       },
       targets: {
-        tp1: result.tradeSetup?.targets?.tp1 || { price: currentPrice * 1.01, label: 'Conservative', rr: '1:1' },
-        tp2: result.tradeSetup?.targets?.tp2 || { price: currentPrice * 1.02, label: 'Institutional', rr: '1:2' },
-        tp3: result.tradeSetup?.targets?.tp3 || { price: currentPrice * 1.03, label: 'Moonshot', rr: '1:3' },
+        tp1: (() => {
+          const tp = result.tradeSetup?.targets?.tp1 || { price: currentPrice * 1.01, label: 'Conservative', rr: '1:1' };
+          const calculatedRR = calculateRiskReward(direction, entryPrice, stopLoss, tp.price);
+          return { ...tp, rr: calculatedRR };
+        })(),
+        tp2: (() => {
+          const tp = result.tradeSetup?.targets?.tp2 || { price: currentPrice * 1.02, label: 'Institutional', rr: '1:2' };
+          const calculatedRR = calculateRiskReward(direction, entryPrice, stopLoss, tp.price);
+          return { ...tp, rr: calculatedRR };
+        })(),
+        tp3: (() => {
+          const tp = result.tradeSetup?.targets?.tp3 || { price: currentPrice * 1.03, label: 'Moonshot', rr: '1:3' };
+          const calculatedRR = calculateRiskReward(direction, entryPrice, stopLoss, tp.price);
+          return { ...tp, rr: calculatedRR };
+        })(),
       },
       stopLoss: {
         price: result.tradeSetup?.stopLoss?.price || currentPrice * 0.99,
@@ -266,7 +323,7 @@ export function parseGeminiResponse(text: string, symbol: string, timeframe: str
       atr: result.riskManagement?.atr || 0,
       suggestedRiskPercent: result.riskManagement?.suggestedRiskPercent || 1,
       positionSizeFormula: result.riskManagement?.positionSizeFormula || 'Account * 0.01 / (Entry - SL)',
-      riskRewardRatio: result.riskManagement?.riskRewardRatio || '1:2',
+      riskRewardRatio: calculatedRR, // Use calculated RR instead of AI response
     },
     support: (result.support || []).filter((s: any) => s.price < currentPrice).slice(0, 3),
     resistance: (result.resistance || []).filter((r: any) => r.price > currentPrice).slice(0, 3),

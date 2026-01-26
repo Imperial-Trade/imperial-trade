@@ -12,12 +12,25 @@ export default defineConfig(({ mode }) => ({
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
   },
   server: {
-    host: "0.0.0.0", // Accept connections from all interfaces so mobile can reach via your PC's IP (e.g. http://192.168.1.x:8081)
-    port: 8081,
-    strictPort: true, // Fail if 8081 is in use (required for dev:mobile tunnel)
+    host: "0.0.0.0", // Accept connections from all interfaces so mobile can reach via your PC's IP (e.g. http://192.168.1.x:8080)
+    port: 8080,
+    strictPort: false, // Allow port fallback if 8080 is in use
     allowedHosts: true, // Allow tunnel hosts (e.g. *.lhr.life) so mobile can load via dev:mobile
     // Add history API fallback for SPA routing
     historyApiFallback: true,
+    // Enable HMR (Hot Module Replacement) for auto-reload - matches server host
+    hmr: {
+      host: 'localhost', // Use localhost for HMR (more reliable)
+      port: 8080,
+      protocol: 'ws', // WebSocket protocol for HMR
+      clientPort: 8080, // Client connects to same port
+    },
+    // Watch for file changes and auto-reload
+    watch: {
+      usePolling: false, // Use native file system events (faster than polling)
+      interval: 100, // Check for changes every 100ms (if polling is enabled)
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'], // Ignore unnecessary files
+    },
   },
   plugins: [
     react(),

@@ -59,7 +59,7 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
   const currentTab = MOBILE_TABS.find((t) => t.id === mobileActiveTab);
 
   return (
-    <header className="w-full shrink-0 flex flex-col py-3 border-b border-white/5 bg-[#050505] transition-all duration-300 relative">
+    <header className="w-full shrink-0 flex flex-col py-3 border-b border-white/5 dark:border-white/5 border-black/5 bg-white dark:bg-[#050505] transition-all duration-300 relative">
       {/* Row 1: Logo (left) + Session (right) — leveled with items-center; ticker gets its own full-width row below */}
       <div className="flex flex-row justify-between items-center w-full px-4 sm:px-6">
       {/* Logo & Branding + Mobile Tab Dropdown - compact to match SessionIndicators height (~17px) */}
@@ -80,7 +80,7 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
         {/* Branding: MECCA XX - text size to match SessionIndicators height */}
         <div className="shrink-0 flex items-center leading-none">
           <h1 className="text-[10px] md:text-xs font-bold tracking-wider flex items-center leading-none">
-            <span className="text-white">MECCA</span>
+            <span className="text-stone-900 dark:text-white">MECCA</span>
             <span 
               className="ml-1 text-xs md:text-sm font-black animate-text-shimmer leading-none"
               style={{
@@ -94,7 +94,7 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
               XX
             </span>
           </h1>
-          <p className="text-[8px] md:text-[9px] hidden sm:block font-medium tracking-wide ml-1.5 leading-none" style={{ color: 'rgba(163, 163, 163, 0.6)' }}>
+          <p className="text-[8px] md:text-[9px] hidden sm:block font-medium tracking-wide ml-1.5 leading-none text-stone-500 dark:text-[rgba(163,163,163,0.6)]">
             Trading Analysis Hub
           </p>
         </div>
@@ -129,7 +129,7 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
 
             {/* Slide-down panel - Journal XX bottom nav design (rounded-2xl, border, same button styles) */}
             <div
-              className="absolute top-full right-0 mt-1 w-[min(220px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#1C1C1E] shadow-2xl transition-[max-height,opacity] duration-300 ease-out z-[100]"
+              className="absolute top-full right-0 mt-1 w-[min(220px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#1C1C1E] shadow-2xl transition-[max-height,opacity] duration-300 ease-out z-[100]"
               style={{
                 maxHeight: mobileTabOpen ? 220 : 0,
                 opacity: mobileTabOpen ? 1 : 0,

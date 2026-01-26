@@ -10,6 +10,10 @@ interface MeccaSpotlightCardProps {
   enableTilt?: boolean;
   /** 'journal' = match Journal XX SpotlightCard exactly (border rgba(255,255,255,0.1), no aurora, no accent) */
   variant?: 'journal' | 'mecca';
+  /** Dark mode state - affects background color for journal variant */
+  isDarkMode?: boolean;
+  /** Custom style for the outer wrapper */
+  style?: React.CSSProperties;
 }
 
 // Premium color configurations
@@ -53,6 +57,8 @@ export const MeccaSpotlightCard: React.FC<MeccaSpotlightCardProps> = ({
   enableAurora = true,
   enableTilt = false,
   variant = 'mecca',
+  isDarkMode = true,
+  style,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -103,9 +109,11 @@ export const MeccaSpotlightCard: React.FC<MeccaSpotlightCardProps> = ({
       onClick={onClick}
       className={`relative rounded-3xl transition-all duration-300 ease-out group ${className}`}
       style={{
+        ...style,
         transform: enableTilt
           ? `perspective(1000px) rotateX(${tiltValues.x}deg) rotateY(${tiltValues.y}deg)`
           : 'none',
+        background: isJournal && !isDarkMode ? 'transparent' : undefined,
       }}
     >
       {/* Aurora (mecca only) */}
@@ -119,11 +127,13 @@ export const MeccaSpotlightCard: React.FC<MeccaSpotlightCardProps> = ({
         />
       )}
 
-      {/* Border: journal = Journal XX (rgba 255,255,255,0.1); mecca = emerald tint */}
+      {/* Border: journal = Journal XX (rgba 255,255,255,0.1) in dark, rgba(0,0,0,0.1) in light; mecca = emerald tint */}
       <div
         className="absolute inset-0 rounded-3xl pointer-events-none z-0"
         style={{
-          background: isJournal ? 'rgba(255,255,255,0.1)' : (isHovered ? colors.border : 'rgba(34, 197, 94, 0.2)'),
+          background: isJournal 
+            ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+            : (isHovered ? colors.border : 'rgba(34, 197, 94, 0.2)'),
           boxShadow: isJournal ? 'none' : (isHovered ? `0 0 20px ${colors.aurora1}40` : `0 0 12px rgba(34, 197, 94, 0.12)`),
         }}
       />
@@ -136,12 +146,21 @@ export const MeccaSpotlightCard: React.FC<MeccaSpotlightCardProps> = ({
         }}
       />
 
-      {/* Inner: Journal XX uses bg #0A0A0A, rounded-[23px], p-6 or noPadding */}
-      <div className={`relative w-full p-[1px] rounded-3xl z-10 ${heightClass}`}>
+      {/* Inner: Journal XX uses bg #0A0A0A in dark mode, transparent in light mode, rounded-[23px], p-6 or noPadding */}
+      <div 
+        className={`relative w-full z-10 ${heightClass}`}
+        style={{
+          background: isJournal && !isDarkMode ? 'transparent' : undefined,
+          padding: isJournal && !isDarkMode ? '0' : '1px',
+          borderRadius: style?.borderRadius || '0.75rem',
+        }}
+      >
         <div
-          className={`relative w-full bg-[#0A0A0A] rounded-[23px] overflow-hidden flex flex-col ${heightClass} ${noPadding ? '' : 'p-6'}`}
+          className={`relative w-full overflow-hidden flex flex-col ${heightClass} ${noPadding ? '' : 'p-6'}`}
           style={{
+            backgroundColor: style?.backgroundColor !== undefined ? style.backgroundColor : (isJournal ? (isDarkMode ? '#0A0A0A' : '#fff') : '#0A0A0A'),
             boxShadow: isJournal ? 'none' : (isHovered ? `0 8px 32px rgba(0,0,0,0.4), 0 0 60px ${colors.spotlight}` : '0 4px 24px rgba(0,0,0,0.3)'),
+            borderRadius: style?.borderRadius || '0.75rem',
           }}
         >
           {/* Accent bar: mecca only */}

@@ -638,16 +638,8 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     });
   }, [galleryPhotos.length, filteredPhotos.length, isLinkedToJournal, showFilters]);
 
-  // Create context value after all callbacks are defined
-  const contextValue: DeconstructorContextType = useMemo(() => ({
-    fileInputRef,
-    galleryPhotos,
-    isAnalyzing,
-    handleDeconstruct,
-    panelContent,
-  }), [galleryPhotos, isAnalyzing, handleDeconstruct, panelContent]);
-
   // Split into content and provider - content goes inside spotlight card, provider wraps everything
+  // Define panelContent BEFORE contextValue to avoid initialization error
   const panelContent = (
     <>
       <div className="h-full flex flex-col min-h-0 overflow-y-auto relative z-10" style={{ 

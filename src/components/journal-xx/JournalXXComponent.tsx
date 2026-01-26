@@ -5567,7 +5567,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                        {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
                                          <div
                                            key={photo.id}
-                                           className="relative flex-shrink-0 aspect-square rounded-lg overflow-hidden border"
+                                           className="relative flex-shrink-0 aspect-square rounded-lg overflow-hidden border group"
                                            style={{
                                              width: 'calc((100% - 1rem) / 5)',
                                              minWidth: '36px',
@@ -5587,7 +5587,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                e.stopPropagation();
                                                removePhoto(photo.id);
                                              }}
-                                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:scale-110 z-10"
+                                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-rose-600 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-200 hover:scale-110 z-10"
                                              style={{
                                                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
                                              }}

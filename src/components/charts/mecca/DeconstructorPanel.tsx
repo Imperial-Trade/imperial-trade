@@ -14,6 +14,7 @@ interface DeconstructorContextType {
   galleryPhotos: GalleryPhoto[];
   isAnalyzing: boolean;
   handleDeconstruct: (photo: GalleryPhoto) => Promise<void>;
+  panelContent?: React.ReactNode;
 }
 
 export const DeconstructorContext = createContext<DeconstructorContextType | null>(null);
@@ -643,7 +644,8 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     galleryPhotos,
     isAnalyzing,
     handleDeconstruct,
-  }), [galleryPhotos, isAnalyzing, handleDeconstruct]);
+    panelContent,
+  }), [galleryPhotos, isAnalyzing, handleDeconstruct, panelContent]);
 
   // Split into content and provider - content goes inside spotlight card, provider wraps everything
   const panelContent = (
@@ -1679,9 +1681,23 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
   return (
     <DeconstructorContext.Provider value={contextValue}>
-      {children ? children(contextValue) : panelContent}
+      {children ? children({ ...contextValue, panelContent }) : panelContent}
     </DeconstructorContext.Provider>
   );
+};
+
+// Export panel content as a separate component that uses context
+// This component should be used within DeconstructorPanel's children render prop
+export const DeconstructorPanelContent: React.FC<{ isDarkMode?: boolean }> = ({ isDarkMode = true }) => {
+  const context = useContext(DeconstructorContext);
+  
+  if (!context) {
+    console.error('DeconstructorPanelContent must be used within DeconstructorPanel');
+    return null;
+  }
+
+  // Render the panelContent from context
+  return <>{context.panelContent}</>;
 };
 
 // Export buttons component to be rendered outside spotlight card

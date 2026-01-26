@@ -5324,6 +5324,26 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        );
                      }}
                    </DeconstructorPanel>
+                   {/* Hidden file input - needed for button click */}
+                   <DeconstructorPanel isDarkMode={isDarkMode}>
+                     {(context) => {
+                       const { fileInputRef } = context;
+                       return (
+                         <input
+                           ref={fileInputRef}
+                           type="file"
+                           multiple
+                           accept="image/*"
+                           className="hidden"
+                           onChange={(e) => {
+                             if (e.target.files && e.target.files.length > 0) {
+                               // File handling is done by DeconstructorPanel context
+                             }
+                           }}
+                         />
+                       );
+                     }}
+                   </DeconstructorPanel>
                  </div>
                </div>
              )}

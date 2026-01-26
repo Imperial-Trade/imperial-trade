@@ -5210,7 +5210,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
                        return (
-                         <MeccaSpotlightCard 
+                         <SpotlightCard 
                            variant="journal" 
                            className="w-full" 
                            isDarkMode={isDarkMode}
@@ -5360,7 +5360,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                }
                              }}
                            />
-                         </MeccaSpotlightCard>
+                         </SpotlightCard>
                        );
                      }}
                    </DeconstructorPanel>

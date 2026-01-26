@@ -5249,7 +5249,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
                        return (
-                         <button
+                         <div 
+                           className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
                            onClick={() => {
                              if (selectedPhoto) {
                                handleDeconstruct(selectedPhoto);
@@ -5257,62 +5258,130 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                fileInputRef.current.click();
                              }
                            }}
-                           disabled={isAnalyzing}
-                           className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
-                           style={{
-                             background: isDarkMode 
-                               ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
-                               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                             border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
-                             boxShadow: isDarkMode
-                               ? `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)`
-                               : `0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
-                             minHeight: '48px',
-                             WebkitTapHighlightColor: 'transparent',
-                           }}
                          >
-                           {isAnalyzing ? (
-                             <span className="flex items-center justify-center gap-2">
-                               <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
-                               <span 
+                           {/* Responsive Deconstruct Card */}
+                           <div 
+                             className={`
+                               relative overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer
+                               ${isDarkMode ? 'bg-gradient-to-br from-slate-900/95 to-slate-800/95' : 'bg-gradient-to-br from-white/95 to-slate-50/95'}
+                               border ${isDarkMode ? 'border-emerald-500/30' : 'border-emerald-500/40'}
+                               shadow-lg ${isDarkMode ? 'shadow-black/40' : 'shadow-black/20'}
+                               hover:shadow-xl hover:shadow-emerald-500/20
+                               hover:scale-[1.02] active:scale-[0.98]
+                               ${isAnalyzing ? 'opacity-75 cursor-wait' : ''}
+                             `}
+                           >
+                             {/* Animated glow effect on hover */}
+                             {!isAnalyzing && (
+                               <div 
+                                 className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                                  style={{
-                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
-                                   WebkitBackgroundClip: 'text',
-                                   WebkitTextFillColor: 'transparent',
-                                   backgroundClip: 'text',
+                                   background: `linear-gradient(135deg, ${neonColors.emeraldLight}20 0%, ${neonColors.emerald}20 100%)`,
+                                   filter: 'blur(20px)',
                                  }}
+                               />
+                             )}
+                             
+                             {/* Card Content */}
+                             <div className="relative p-4 sm:p-5 md:p-6">
+                               {/* Header */}
+                               <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                 <div className="flex items-center gap-2 sm:gap-3">
+                                   <div className={`
+                                     p-2 sm:p-2.5 rounded-xl
+                                     ${isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-500/10'}
+                                     border ${isDarkMode ? 'border-emerald-500/20' : 'border-emerald-500/30'}
+                                   `}>
+                                     {isAnalyzing ? (
+                                       <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-emerald-500" />
+                                     ) : (
+                                       <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+                                     )}
+                                   </div>
+                                   <div>
+                                     <h3 className={`
+                                       text-sm sm:text-base font-bold uppercase tracking-wider
+                                       ${isDarkMode ? 'text-white' : 'text-slate-900'}
+                                     `}>
+                                       Deconstruct
+                                     </h3>
+                                     <p className={`
+                                       text-xs sm:text-sm
+                                       ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}
+                                     `}>
+                                       {isAnalyzing ? 'Analyzing...' : (selectedPhoto ? 'Ready' : 'Waiting')}
+                                     </p>
+                                   </div>
+                                 </div>
+                               </div>
+                               
+                               {/* Status Badge */}
+                               <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                                 <span className={`
+                                   px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold
+                                   ${isAnalyzing 
+                                     ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                     : selectedPhoto
+                                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                       : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                                   }
+                                 `}>
+                                   {isAnalyzing ? 'Processing' : (selectedPhoto ? 'Ready' : 'No Image')}
+                                 </span>
+                               </div>
+                               
+                               {/* Action Button */}
+                               <button
+                                 disabled={isAnalyzing}
+                                 className={`
+                                   w-full py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider
+                                   transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
+                                   ${selectedPhoto && !isAnalyzing
+                                     ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50'
+                                     : isDarkMode
+                                       ? 'bg-slate-700/50 text-slate-400 border border-slate-600/50'
+                                       : 'bg-slate-200/50 text-slate-500 border border-slate-300/50'
+                                   }
+                                 `}
                                >
-                                 ANALYZING...
-                               </span>
-                             </span>
-                           ) : (
-                             <span 
-                               className="flex items-center justify-center"
-                               style={{
-                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                 WebkitBackgroundClip: 'text',
-                                 WebkitTextFillColor: 'transparent',
-                                 backgroundClip: 'text',
-                                 backgroundSize: '200% 100%',
-                                 animation: 'gradient-shift 3s ease-in-out infinite',
-                               }}
-                             >
-                               DECONSTRUCT
-                             </span>
-                           )}
+                                 {isAnalyzing ? 'Analyzing...' : (selectedPhoto ? 'Deconstruct Now' : 'Add Image')}
+                               </button>
+                             </div>
+                           </div>
                            
-                           {/* Animated glow effect on hover */}
-                           {!isAnalyzing && (
-                             <div 
-                               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                               style={{
-                                 background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                 filter: 'blur(8px)',
-                                 transform: 'scale(1.1)',
-                               }}
-                             />
+                           {/* Additional Info Card (if photo exists) */}
+                           {selectedPhoto && !isAnalyzing && (
+                             <div className={`
+                               relative overflow-hidden rounded-2xl p-4 sm:p-5 md:p-6
+                               ${isDarkMode ? 'bg-gradient-to-br from-slate-900/95 to-slate-800/95' : 'bg-gradient-to-br from-white/95 to-slate-50/95'}
+                               border ${isDarkMode ? 'border-emerald-500/20' : 'border-emerald-500/30'}
+                               shadow-lg ${isDarkMode ? 'shadow-black/40' : 'shadow-black/20'}
+                             `}>
+                               <div className="flex flex-col gap-2 sm:gap-3">
+                                 <div className="flex items-center gap-2">
+                                   <ImageIcon className="w-4 h-4 text-emerald-500" />
+                                   <span className={`
+                                     text-xs sm:text-sm font-medium
+                                     ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}
+                                   `}>
+                                     Image Selected
+                                   </span>
+                                 </div>
+                                 {selectedPhoto.isAnalyzed && (
+                                   <div className="flex items-center gap-2">
+                                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                     <span className={`
+                                       text-xs sm:text-sm font-medium
+                                       ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}
+                                     `}>
+                                       Previously Analyzed
+                                     </span>
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
                            )}
-                         </button>
+                         </div>
                        );
                      }}
                    </DeconstructorPanel>

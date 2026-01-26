@@ -469,13 +469,13 @@ export default function RiskCalculator() {
         </div>
 
         {/* Fixed Calculate Button */}
-        <div className="shrink-0 p-4 pt-2 pb-6 border-t border-slate-800/50 bg-[#050505]">
+        <div className="shrink-0 p-4 pt-2 pb-6 border-t border-slate-800/50 bg-white dark:bg-[#0A0A0A]">
           <button
             onClick={handleCalculate}
             disabled={!canCalculate}
             className={`w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 ${
               canCalculate
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98]'
+                ? 'bg-white dark:bg-[#0A0A0A] border border-emerald-500/50 text-emerald-500 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98]'
                 : 'bg-slate-800 text-slate-500 cursor-not-allowed'
             }`}
           >

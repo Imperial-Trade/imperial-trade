@@ -5315,28 +5315,25 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  }}
                >
                  <div className="px-4 sm:px-5 pb-3">
-                   {/* Provide DeconstructorPanel context but render custom UI */}
+                   {/* Deconstruct SpotlightCard - Pre-analyzing button */}
                    <DeconstructorPanel isDarkMode={isDarkMode}>
                      {(context) => {
                        const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = context;
                        const hasPhotos = galleryPhotos.length > 0;
-                       const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
-                       // Show deconstruct SpotlightCard button only when photos are added (pre-analyzing button)
-                       if (galleryPhotos.length === 0) {
-                         return null;
-                       }
-                       
+                       // Always show SpotlightCard, but disable when no photos
                        return (
                          <SpotlightCard 
                            variant="journal" 
-                           className="w-full cursor-pointer" 
+                           className={`w-full ${hasPhotos ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                            isDarkMode={isDarkMode}
                            noPadding={false}
                            onClick={() => {
                              // Analyze all photos (starting with first one)
-                             if (galleryPhotos.length > 0 && !isAnalyzing) {
+                             if (hasPhotos && !isAnalyzing) {
                                handleDeconstruct(galleryPhotos[0]);
+                             } else if (!hasPhotos && fileInputRef.current) {
+                               fileInputRef.current.click();
                              }
                            }}
                            style={{
@@ -5346,19 +5343,21 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
                              border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
                              boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
-                             opacity: isAnalyzing ? 0.5 : 1,
-                             cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                             opacity: (isAnalyzing || !hasPhotos) ? 0.6 : 1,
+                             cursor: (isAnalyzing || !hasPhotos) ? 'not-allowed' : 'pointer',
                            }}
                          >
                            <button
                              onClick={(e) => {
                                e.stopPropagation();
                                // Analyze all photos (starting with first one)
-                               if (galleryPhotos.length > 0 && !isAnalyzing) {
+                               if (hasPhotos && !isAnalyzing) {
                                  handleDeconstruct(galleryPhotos[0]);
+                               } else if (!hasPhotos && fileInputRef.current) {
+                                 fileInputRef.current.click();
                                }
                              }}
-                             disabled={isAnalyzing}
+                             disabled={isAnalyzing || !hasPhotos}
                              className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                              style={{
                                background: 'transparent',
@@ -5381,7 +5380,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                    ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
                                  </span>
                                </span>
-                             ) : (
+                             ) : hasPhotos ? (
                                <span 
                                  className="flex items-center justify-center"
                                  style={{
@@ -5395,10 +5394,19 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                >
                                  DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
                                </span>
+                             ) : (
+                               <span 
+                                 className="flex items-center justify-center"
+                                 style={{
+                                   color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                                 }}
+                               >
+                                 ADD PHOTOS TO DECONSTRUCT
+                               </span>
                              )}
                              
                              {/* Animated glow effect on hover */}
-                             {!isAnalyzing && (
+                             {!isAnalyzing && hasPhotos && (
                                <div 
                                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                                  style={{

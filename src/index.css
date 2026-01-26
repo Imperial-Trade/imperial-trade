@@ -229,12 +229,26 @@
     background-color: hsl(var(--background));
   }
 
+  html {
+    /* Ensure fullscreen on mobile PWA */
+    height: 100%;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   body {
     @apply text-foreground;
     background-color: hsl(var(--background));
     min-height: 100vh;
     min-height: -webkit-fill-available;
     min-height: 100dvh; /* Dynamic viewport for iOS/Android (keyboard, browser chrome) */
+    height: 100%;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
     color: hsl(var(--foreground));
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     font-feature-settings: 'liga' 1, 'calt' 1;
@@ -242,6 +256,19 @@
     -moz-osx-font-smoothing: grayscale;
     /* Prevent both horizontal and vertical overscroll bounce */
     overscroll-behavior: none;
+    /* Ensure fullscreen on PWA */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #root {
+    height: 100%;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
   }
 
   /* Mobile viewport and overflow fixes */

@@ -1679,7 +1679,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
   return (
     <DeconstructorContext.Provider value={contextValue}>
-      {panelContent}
+      {children ? children(contextValue) : panelContent}
     </DeconstructorContext.Provider>
   );
 };

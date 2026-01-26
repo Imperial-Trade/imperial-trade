@@ -362,6 +362,11 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     setGalleryPhotos(prev => [...prev, ...newPhotos]);
   }, [user?.id, toast]);
 
+  // Remove photo from gallery
+  const removePhoto = useCallback((photoId: string) => {
+    setGalleryPhotos(prev => prev.filter(photo => photo.id !== photoId));
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files.length > 0) {

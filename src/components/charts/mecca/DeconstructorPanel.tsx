@@ -1671,6 +1671,15 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     </>
   );
 
+  // Create context value AFTER panelContent is defined
+  const contextValue: DeconstructorContextType = useMemo(() => ({
+    fileInputRef,
+    galleryPhotos,
+    isAnalyzing,
+    handleDeconstruct,
+    panelContent,
+  }), [galleryPhotos, isAnalyzing, handleDeconstruct, panelContent]);
+
   return (
     <DeconstructorContext.Provider value={contextValue}>
       {children ? children({ ...contextValue, panelContent }) : panelContent}

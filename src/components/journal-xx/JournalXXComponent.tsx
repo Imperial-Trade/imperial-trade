@@ -5248,16 +5248,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        const hasPhotos = galleryPhotos.length > 0;
                        const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
                        
-                       const progress = isAnalyzing ? 50 : (selectedPhoto ? 100 : 0);
-                       const statusText = isAnalyzing ? 'Analyzing' : (selectedPhoto ? 'Ready' : 'Waiting');
-                       const remainingText = isAnalyzing ? 'Processing...' : (selectedPhoto ? 'Ready to Deconstruct' : 'No Image Selected');
-                       
                        return (
-                         <SpotlightCard 
-                           variant="journal" 
-                           className="w-full cursor-pointer" 
-                           isDarkMode={isDarkMode}
-                           noPadding={false}
+                         <button
                            onClick={() => {
                              if (selectedPhoto) {
                                handleDeconstruct(selectedPhoto);
@@ -5265,76 +5257,62 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                fileInputRef.current.click();
                              }
                            }}
+                           disabled={isAnalyzing}
+                           className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                            style={{
-                             padding: '1rem',
                              background: isDarkMode 
-                               ? 'rgba(10, 10, 10, 0.95)'
-                               : 'rgba(255, 255, 255, 0.95)',
-                             border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                             borderRadius: '12px',
+                               ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
+                               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
+                             border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
+                             boxShadow: isDarkMode
+                               ? `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)`
+                               : `0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
+                             minHeight: '48px',
+                             WebkitTapHighlightColor: 'transparent',
                            }}
                          >
-                           <div className="flex items-center justify-between w-full">
-                             {/* Left side: Text labels and values */}
-                             <div className="flex flex-col gap-1 flex-1">
-                               <div className="flex flex-col">
-                                 <span className="text-xs font-medium" style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' }}>
-                                   Status
-                                 </span>
-                                 <span className="text-base font-bold" style={{ color: isDarkMode ? '#ffffff' : '#000000' }}>
-                                   {statusText}
-                                 </span>
-                               </div>
-                               <div className="flex flex-col">
-                                 <span className="text-xs font-medium" style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)' }}>
-                                   Remaining
-                                 </span>
-                                 <span className="text-sm font-semibold" style={{ color: '#22c55e' }}>
-                                   {remainingText}
-                                 </span>
-                               </div>
-                             </div>
-                             
-                             {/* Right side: Circular progress indicator */}
-                             <div className="relative flex-shrink-0 ml-4">
-                               <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
-                                 {/* Background circle */}
-                                 <circle
-                                   cx="32"
-                                   cy="32"
-                                   r="28"
-                                   fill="none"
-                                   stroke={isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}
-                                   strokeWidth="4"
-                                 />
-                                 {/* Progress circle */}
-                                 <circle
-                                   cx="32"
-                                   cy="32"
-                                   r="28"
-                                   fill="none"
-                                   stroke="#22c55e"
-                                   strokeWidth="4"
-                                   strokeDasharray={`${2 * Math.PI * 28}`}
-                                   strokeDashoffset={`${2 * Math.PI * 28 * (1 - progress / 100)}`}
-                                   strokeLinecap="round"
-                                   style={{
-                                     transition: 'stroke-dashoffset 0.3s ease',
-                                     filter: 'drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))'
-                                   }}
-                                 />
-                               </svg>
-                               {/* Icon inside circle */}
-                               <div className="absolute inset-0 flex items-center justify-center">
-                                 {isAnalyzing ? (
-                                   <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#22c55e' }} />
-                                 ) : (
-                                   <Brain className="w-6 h-6" style={{ color: '#22c55e' }} />
-                                 )}
-                               </div>
-                             </div>
-                           </div>
-                         </SpotlightCard>
+                           {isAnalyzing ? (
+                             <span className="flex items-center justify-center gap-2">
+                               <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                               <span 
+                                 style={{
+                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                   WebkitBackgroundClip: 'text',
+                                   WebkitTextFillColor: 'transparent',
+                                   backgroundClip: 'text',
+                                 }}
+                               >
+                                 ANALYZING...
+                               </span>
+                             </span>
+                           ) : (
+                             <span 
+                               className="flex items-center justify-center"
+                               style={{
+                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
+                                 WebkitBackgroundClip: 'text',
+                                 WebkitTextFillColor: 'transparent',
+                                 backgroundClip: 'text',
+                                 backgroundSize: '200% 100%',
+                                 animation: 'gradient-shift 3s ease-in-out infinite',
+                               }}
+                             >
+                               DECONSTRUCT
+                             </span>
+                           )}
+                           
+                           {/* Animated glow effect on hover */}
+                           {!isAnalyzing && (
+                             <div 
+                               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                               style={{
+                                 background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                 filter: 'blur(8px)',
+                                 transform: 'scale(1.1)',
+                               }}
+                             />
+                           )}
+                         </button>
                        );
                      }}
                    </DeconstructorPanel>

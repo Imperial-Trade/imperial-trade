@@ -3903,16 +3903,15 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                  {/* MECCA TAB - Mobile: Only Deconstructor (Charts/Calendar removed) */}
                  {activeTab === 'MECCA' && (
-                     <div className="lg:hidden relative overflow-y-auto flex flex-col" 
+                     <div className="lg:hidden relative overflow-hidden" 
                           style={{ 
                             height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             maxHeight: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             minHeight: 0,
-                            paddingBottom: `calc(max(1.5rem, env(safe-area-inset-bottom, 0px)) + 5.5rem)`, // Space for bottom nav
                           }}
                      >
                          {/* Mobile MECCA tab now only shows deconstructor - no charts/calendar */}
-                         {/* Animated Brain - Only visible when no photos in deconstructor - Top Section */}
+                         {/* Animated Brain - Only visible when no photos in deconstructor */}
                          <DeconstructorPanel isDarkMode={isDarkMode}>
                            {(context) => {
                              const { galleryPhotos, isAnalyzing } = context;
@@ -3920,7 +3919,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              // Show brain animation when no photos and not analyzing
                              if (galleryPhotos.length === 0 && !isAnalyzing) {
                                return (
-                                 <div className="relative flex items-center justify-center w-full flex-shrink-0" style={{ padding: '2rem', minHeight: '250px', maxHeight: '300px' }}>
+                                 <div className="relative flex items-center justify-center flex-1 min-h-0 w-full h-full" style={{ padding: '2rem' }}>
                                    {/* Pulsing outer ring */}
                                    <div 
                                      className="absolute rounded-full border-2"
@@ -3971,172 +3970,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              return null;
                            }}
                          </DeconstructorPanel>
-                         
-                         {/* SpotlightCard - Below Brain Animation */}
-                         <div className="flex-shrink-0 px-4 sm:px-5 pb-3">
-                           <DeconstructorPanel isDarkMode={isDarkMode}>
-                             {(context) => {
-                               const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = context;
-                               const hasPhotos = galleryPhotos.length > 0;
-                               const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
-                               
-                               return (
-                                 <SpotlightCard 
-                                   variant="journal" 
-                                   className="w-full mx-auto" 
-                                   isDarkMode={isDarkMode}
-                                   noPadding={false}
-                                   style={{
-                                     padding: '0.75rem', // Reduced from 1rem (half)
-                                     maxWidth: '50%', // Cut by half
-                                     background: isDarkMode 
-                                       ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
-                                       : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                                     border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
-                                     boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
-                                   }}
-                                 >
-                                   {/* Image Container - Shows selected image or upload placeholder - Reduced by half */}
-                                   <div 
-                                     className="w-full mb-2 rounded-xl overflow-hidden relative"
-                                     style={{
-                                       minHeight: '100px', // Reduced from 200px (half)
-                                       maxHeight: '150px', // Reduced from 300px (half)
-                                       background: isDarkMode 
-                                         ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.8) 100%)'
-                                         : 'linear-gradient(135deg, rgba(240, 240, 240, 0.8) 0%, rgba(250, 250, 250, 0.8) 100%)',
-                                       border: `2px dashed ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
-                                     }}
-                                   >
-                                     {selectedPhoto ? (
-                                       <>
-                                         <img
-                                           src={selectedPhoto.thumbnailUrl || selectedPhoto.url}
-                                           alt="Trade screenshot to deconstruct"
-                                           className="w-full h-full object-contain"
-                                           style={{ maxHeight: '150px' }} // Reduced from 300px
-                                         />
-                                         {selectedPhoto.isAnalyzed && (
-                                           <div 
-                                             className="absolute top-1 right-1 px-1.5 py-0.5 rounded-lg flex items-center gap-1"
-                                             style={{
-                                               background: 'rgba(0, 0, 0, 0.7)',
-                                               backdropFilter: 'blur(8px)',
-                                               border: `1px solid ${neonColors.emerald}`,
-                                             }}
-                                           >
-                                             <CheckCircle2 className="w-2.5 h-2.5" style={{ color: neonColors.emerald }} />
-                                             <span className="text-[8px] font-bold" style={{ color: neonColors.emerald }}>
-                                               ANALYZED
-                                             </span>
-                                           </div>
-                                         )}
-                                       </>
-                                     ) : (
-                                       <div 
-                                         className="w-full h-full flex flex-col items-center justify-center p-3 cursor-pointer"
-                                         onClick={() => fileInputRef.current?.click()}
-                                         style={{ minHeight: '100px' }} // Reduced from 200px
-                                       >
-                                         <div 
-                                           className="w-8 h-8 rounded-full flex items-center justify-center mb-2"
-                                           style={{
-                                             background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
-                                             border: `2px solid ${neonColors.emerald}40`,
-                                           }}
-                                         >
-                                           <ImageIcon className="w-4 h-4" style={{ color: neonColors.emerald }} />
-                                         </div>
-                                         <p 
-                                           className="text-xs font-medium mb-0.5"
-                                           style={{ color: isDarkMode ? neonColors.textSecondary : '#666' }}
-                                         >
-                                           Tap to add image
-                                         </p>
-                                         <p 
-                                           className="text-[10px] text-center"
-                                           style={{ color: isDarkMode ? neonColors.textMuted : '#999' }}
-                                         >
-                                           Upload trading screenshot
-                                         </p>
-                                       </div>
-                                     )}
-                                   </div>
-
-                                   {/* Deconstruct Button - Reduced by half */}
-                                   <button
-                                     onClick={() => {
-                                       if (selectedPhoto) {
-                                         handleDeconstruct(selectedPhoto);
-                                       } else if (fileInputRef.current) {
-                                         fileInputRef.current.click();
-                                       }
-                                     }}
-                                     disabled={isAnalyzing || !selectedPhoto}
-                                     className="w-full py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
-                                     style={{
-                                       background: selectedPhoto && !isAnalyzing
-                                         ? `linear-gradient(135deg, ${neonColors.emerald} 0%, ${neonColors.emeraldDark} 100%)`
-                                         : isDarkMode 
-                                           ? 'rgba(34, 197, 94, 0.1)' 
-                                           : 'rgba(34, 197, 94, 0.15)',
-                                       color: selectedPhoto && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
-                                       border: `2px solid ${selectedPhoto && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
-                                       boxShadow: selectedPhoto && !isAnalyzing
-                                         ? `0 0 20px ${neonColors.emeraldGlow}, 0 4px 12px rgba(34, 197, 94, 0.3)`
-                                         : 'none',
-                                       minHeight: '36px', // Reduced from 48px
-                                       WebkitTapHighlightColor: 'transparent',
-                                     }}
-                                   >
-                                     {isAnalyzing ? (
-                                       <span className="flex items-center justify-center gap-1.5">
-                                         <Loader2 className="w-3 h-3 animate-spin" style={{ color: neonColors.emerald }} />
-                                         <span className="text-[10px]">ANALYZING...</span>
-                                       </span>
-                                     ) : selectedPhoto ? (
-                                       <span className="flex items-center justify-center gap-1.5">
-                                         <Brain className="w-3 h-3" />
-                                         <span className="text-[10px]">DECONSTRUCT</span>
-                                       </span>
-                                     ) : (
-                                       <span className="flex items-center justify-center gap-1.5">
-                                         <Upload className="w-3 h-3" />
-                                         <span className="text-[10px]">ADD IMAGE</span>
-                                       </span>
-                                     )}
-                                     
-                                     {/* Animated glow effect on hover */}
-                                     {selectedPhoto && !isAnalyzing && (
-                                       <div 
-                                         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                         style={{
-                                           background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                           filter: 'blur(8px)',
-                                           transform: 'scale(1.1)',
-                                         }}
-                                       />
-                                     )}
-                                   </button>
-
-                                   {/* Hidden file input */}
-                                   <input
-                                     ref={fileInputRef}
-                                     type="file"
-                                     multiple
-                                     accept="image/*"
-                                     className="hidden"
-                                     onChange={(e) => {
-                                       if (e.target.files && e.target.files.length > 0) {
-                                         // File handling is done by DeconstructorPanel context
-                                       }
-                                     }}
-                                   />
-                                 </SpotlightCard>
-                               );
-                             }}
-                           </DeconstructorPanel>
-                         </div>
                      </div>
                  )}
 
@@ -5398,6 +5231,181 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  </div>
              </div>
 
+             {/* Mecca XX Deconstructor - Mobile Only, Just Above Bottom Nav */}
+             {activeTab === 'MECCA' && (
+               <div 
+                 className="absolute bottom-0 left-0 right-0 z-[59] lg:hidden"
+                 style={{ 
+                   paddingBottom: `calc(max(1.5rem, env(safe-area-inset-bottom, 0px)) + 5.5rem)`, // Space for bottom nav
+                   pointerEvents: 'auto',
+                 }}
+               >
+                 <div className="px-4 sm:px-5 pb-3">
+                   {/* Provide DeconstructorPanel context but render custom UI */}
+                   <DeconstructorPanel isDarkMode={isDarkMode}>
+                     {(context) => {
+                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing } = context;
+                       const hasPhotos = galleryPhotos.length > 0;
+                       const selectedPhoto = galleryPhotos[0]; // Use first photo for deconstruction
+                       
+                       return (
+                         <SpotlightCard 
+                           variant="journal" 
+                           className="w-full" 
+                           isDarkMode={isDarkMode}
+                           noPadding={false}
+                           style={{
+                             padding: '1rem',
+                             background: isDarkMode 
+                               ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
+                               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
+                             border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
+                             boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
+                           }}
+                         >
+                           {/* Image Container - Shows selected image or upload placeholder */}
+                           <div 
+                             className="w-full mb-3 rounded-xl overflow-hidden relative"
+                             style={{
+                               minHeight: '200px',
+                               maxHeight: '300px',
+                               background: isDarkMode 
+                                 ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.8) 100%)'
+                                 : 'linear-gradient(135deg, rgba(240, 240, 240, 0.8) 0%, rgba(250, 250, 250, 0.8) 100%)',
+                               border: `2px dashed ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'}`,
+                             }}
+                           >
+                             {selectedPhoto ? (
+                               <>
+                                 <img
+                                   src={selectedPhoto.thumbnailUrl || selectedPhoto.url}
+                                   alt="Trade screenshot to deconstruct"
+                                   className="w-full h-full object-contain"
+                                   style={{ maxHeight: '300px' }}
+                                 />
+                                 {selectedPhoto.isAnalyzed && (
+                                   <div 
+                                     className="absolute top-2 right-2 px-2 py-1 rounded-lg flex items-center gap-1.5"
+                                     style={{
+                                       background: 'rgba(0, 0, 0, 0.7)',
+                                       backdropFilter: 'blur(8px)',
+                                       border: `1px solid ${neonColors.emerald}`,
+                                     }}
+                                   >
+                                     <CheckCircle2 className="w-3.5 h-3.5" style={{ color: neonColors.emerald }} />
+                                     <span className="text-[10px] font-bold" style={{ color: neonColors.emerald }}>
+                                       ANALYZED
+                                     </span>
+                                   </div>
+                                 )}
+                               </>
+                             ) : (
+                               <div 
+                                 className="w-full h-full flex flex-col items-center justify-center p-6 cursor-pointer"
+                                 onClick={() => fileInputRef.current?.click()}
+                                 style={{ minHeight: '200px' }}
+                               >
+                                 <div 
+                                   className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+                                   style={{
+                                     background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
+                                     border: `2px solid ${neonColors.emerald}40`,
+                                   }}
+                                 >
+                                   <ImageIcon className="w-8 h-8" style={{ color: neonColors.emerald }} />
+                                 </div>
+                                 <p 
+                                   className="text-sm font-medium mb-1"
+                                   style={{ color: isDarkMode ? neonColors.textSecondary : '#666' }}
+                                 >
+                                   Tap to add image
+                                 </p>
+                                 <p 
+                                   className="text-xs text-center"
+                                   style={{ color: isDarkMode ? neonColors.textMuted : '#999' }}
+                                 >
+                                   Upload trading screenshot
+                                 </p>
+                               </div>
+                             )}
+                           </div>
+
+                           {/* Deconstruct Button */}
+                           <button
+                             onClick={() => {
+                               if (selectedPhoto) {
+                                 handleDeconstruct(selectedPhoto);
+                               } else if (fileInputRef.current) {
+                                 fileInputRef.current.click();
+                               }
+                             }}
+                             disabled={isAnalyzing || !selectedPhoto}
+                             className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                             style={{
+                               background: selectedPhoto && !isAnalyzing
+                                 ? `linear-gradient(135deg, ${neonColors.emerald} 0%, ${neonColors.emeraldDark} 100%)`
+                                 : isDarkMode 
+                                   ? 'rgba(34, 197, 94, 0.1)' 
+                                   : 'rgba(34, 197, 94, 0.15)',
+                               color: selectedPhoto && !isAnalyzing ? '#000' : (isDarkMode ? neonColors.emerald : neonColors.emeraldDark),
+                               border: `2px solid ${selectedPhoto && !isAnalyzing ? neonColors.emerald : (isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)')}`,
+                               boxShadow: selectedPhoto && !isAnalyzing
+                                 ? `0 0 20px ${neonColors.emeraldGlow}, 0 4px 12px rgba(34, 197, 94, 0.3)`
+                                 : 'none',
+                               minHeight: '48px',
+                               WebkitTapHighlightColor: 'transparent',
+                             }}
+                           >
+                             {isAnalyzing ? (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                                 <span>ANALYZING...</span>
+                               </span>
+                             ) : selectedPhoto ? (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Brain className="w-4 h-4" />
+                                 <span>DECONSTRUCT</span>
+                               </span>
+                             ) : (
+                               <span className="flex items-center justify-center gap-2">
+                                 <Upload className="w-4 h-4" />
+                                 <span>ADD IMAGE</span>
+                               </span>
+                             )}
+                             
+                             {/* Animated glow effect on hover */}
+                             {selectedPhoto && !isAnalyzing && (
+                               <div 
+                                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                 style={{
+                                   background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
+                                   filter: 'blur(8px)',
+                                   transform: 'scale(1.1)',
+                                 }}
+                               />
+                             )}
+                           </button>
+
+                           {/* Hidden file input */}
+                           <input
+                             ref={fileInputRef}
+                             type="file"
+                             multiple
+                             accept="image/*"
+                             className="hidden"
+                             onChange={(e) => {
+                               if (e.target.files && e.target.files.length > 0) {
+                                 // File handling is done by DeconstructorPanel context
+                               }
+                             }}
+                           />
+                         </SpotlightCard>
+                       );
+                     }}
+                   </DeconstructorPanel>
+                 </div>
+               </div>
+             )}
 
              {/* Mobile Bottom Nav */}
              <div 

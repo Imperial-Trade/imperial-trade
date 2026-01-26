@@ -12,10 +12,10 @@ import TradingJournal from "@/components/tools/TradingJournal";
 import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 import { MobileBottomNav } from "@/components/advanced-tools/MobileBottomNav";
 const coreTools = [{
-  name: "Educational Journal",
+  name: "Trading Journal",
   icon: BookOpen,
   component: TradingJournal,
-  description: "Log and analyze your learning progress with AI-powered educational feedback."
+  description: "Track and analyze your trading performance"
 }, {
   name: "Educational Calculator",
   icon: Calculator,
@@ -133,7 +133,14 @@ export default function AdvancedTools() {
   return <div className="min-h-screen bg-background">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
-      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-2 lg:pt-4 pb-20 md:pb-6 bg-background overflow-y-auto">
+      <div 
+        className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-2 lg:pt-4 md:pb-6 bg-background overflow-y-auto"
+        style={{
+          paddingBottom: window.innerWidth < 768
+            ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + 1rem)'
+            : undefined,
+        }}
+      >
         {/* Header with Tool Info and Selection Panel */}
         <motion.div initial={{
         opacity: 0,

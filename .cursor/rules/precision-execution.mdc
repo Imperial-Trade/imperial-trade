@@ -1,0 +1,138 @@
+---
+alwaysApply: true
+---
+
+# Precision Execution - Universal Project Rules
+
+## Prompt Understanding Protocol
+Before executing ANY task:
+- [ ] Read the user's prompt completely and word-by-word
+- [ ] Identify which file(s) need modification
+- [ ] Read the current implementation of those files
+- [ ] Check for related components/files that might be affected
+- [ ] Verify the pattern matches existing codebase conventions
+- [ ] Understand the "why" behind the request
+- [ ] Confirm I know exactly what the end result should look like
+
+## Code Change Discipline
+
+### Pre-Change Analysis
+- Read ALL relevant files before modifying
+- Understand current implementation completely
+- Identify dependencies and relationships
+- Note existing patterns, conventions, and structure
+- Check how it works across different contexts (mobile/tablet/desktop, different routes, etc.)
+
+### Change Execution
+- Make MINIMAL changes - only what's needed
+- Don't refactor or "improve" unrelated code
+- Don't change variable names or structure unless necessary
+- Preserve existing patterns and conventions
+- Keep changes focused and isolated
+
+### Preservation Principle
+- Preserve ALL existing functionality
+- Preserve ALL existing layouts and designs
+- Preserve ALL existing responsive behavior
+- Preserve ALL existing spacing/positioning/styling
+- Preserve ALL existing state management patterns
+
+## Responsive Design Awareness
+- ALWAYS consider all screen sizes (mobile, tablet, desktop)
+- When adding conditionals, handle ALL breakpoints
+- When modifying responsive code, test ALL modes
+- Never assume a change only affects one mode
+- Check existing breakpoints and media queries
+
+## Responsive Design Validation (CRITICAL)
+When editing components for ANY screen size, MUST verify:
+
+### Component Visibility Checks
+- [ ] All buttons are visible and clickable at ALL breakpoints (mobile, tablet, desktop)
+- [ ] No buttons are hidden by `overflow-hidden`, `hidden`, or `opacity-0` at any breakpoint
+- [ ] All interactive elements remain accessible across screen sizes
+- [ ] Text is not cut off or truncated unexpectedly
+- [ ] Components fit within their containers at ALL screen sizes
+
+### Text and Content Validation
+- [ ] Text is readable and not cut off at any breakpoint
+- [ ] Long text uses proper truncation (`truncate`, `line-clamp`) if needed
+- [ ] Button text is fully visible (not "Complete & Cont..." when should be "Complete & Continue")
+- [ ] No text overflow causing layout breaks
+- [ ] Text scaling works correctly on different screen sizes
+
+### Layout and Container Fitting
+- [ ] Components fit within their parent containers at mobile (320px+), tablet (768px+), and desktop (1024px+)
+- [ ] No horizontal scrolling caused by overflow
+- [ ] Flex/grid layouts adapt correctly to screen size
+- [ ] Spacing/padding doesn't cause components to overflow
+- [ ] Fixed-width elements don't break layouts on smaller screens
+
+### Breakpoint-Specific Checks
+- [ ] Mobile (< 768px): Components stack/adapt correctly
+- [ ] Tablet (768px - 1023px): Components fit properly, no hidden elements
+- [ ] Desktop (≥ 1024px): Full layout works as intended
+- [ ] iPad specifically: Check both portrait and landscape orientations
+- [ ] No layout "jumps" or breaks at breakpoint transitions
+
+### Common Responsive Issues to Prevent
+- ❌ Buttons hidden by `hidden md:block` when they should be visible
+- ❌ Text truncated when full text should be visible
+- ❌ Components overflowing containers on tablet/iPad
+- ❌ Fixed widths causing horizontal scroll
+- ❌ Flex items wrapping incorrectly
+- ❌ Z-index issues hiding interactive elements
+- ❌ Overflow-hidden cutting off important content
+
+### Validation Process
+1. **Before making changes**: Identify which breakpoints are affected
+2. **During changes**: Use responsive classes correctly (`md:`, `lg:`, etc.)
+3. **After changes**: Verify component works at:
+   - Mobile (320px, 375px, 414px)
+   - Tablet/iPad (768px, 834px, 1024px)
+   - Desktop (1280px, 1440px, 1920px)
+4. **Check for**: Visibility, text overflow, container fitting, layout breaks
+
+## Error Prevention
+- Check for linting/compilation errors after changes
+- Verify no syntax errors introduced
+- Ensure type safety (if using TypeScript)
+- Don't break existing functionality to add new features
+- Test edge cases mentioned in the prompt
+
+## Common Patterns to Follow
+- Read before writing - Always read the file before modifying
+- Understand the "why" - What problem is this solving?
+- Check for related changes - If modifying one file, check related files
+- Don't duplicate work - Check if similar functionality exists
+- Don't over-engineer - Solve the exact problem stated
+
+## Red Flags - Stop and Clarify
+- Request is ambiguous or could be interpreted multiple ways
+- Multiple files/components involved and unclear which to modify
+- Request conflicts with existing patterns in codebase
+- Scope is unclear (quick fix vs comprehensive refactor)
+- Dependencies or prerequisites aren't clear
+- Request might break existing functionality
+
+## Quality Checklist
+Before finalizing any change:
+- [ ] Do I understand the EXACT requirement?
+- [ ] Have I read ALL relevant files?
+- [ ] Will this break any existing functionality?
+- [ ] Does this work across all screen sizes/modes?
+- [ ] Did I preserve existing layouts/designs?
+- [ ] Are changes minimal and focused?
+- [ ] Are there any linting/compilation errors?
+- [ ] Does this match the user's exact request?
+
+## Responsive Design Quality Checklist (MANDATORY for UI changes)
+- [ ] All buttons visible and clickable at mobile, tablet, and desktop
+- [ ] No text cut off or incorrectly truncated
+- [ ] Components fit within containers at ALL breakpoints
+- [ ] No horizontal scrolling caused by overflow
+- [ ] iPad/tablet layout verified (both portrait and landscape)
+- [ ] No hidden elements that should be visible
+- [ ] Text is fully readable (e.g., "Complete & Continue" not "Complete & Cont...")
+- [ ] Layout doesn't break at breakpoint transitions
+- [ ] All interactive elements remain accessible

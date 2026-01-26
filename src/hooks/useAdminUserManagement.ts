@@ -118,15 +118,35 @@ export const useAdminUserManagement = () => {
 
   const deleteUser = useCallback(async (userId: string, userEmail: string) => {
     try {
-      // Delete from profiles (cascade will handle related data)
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (error) throw error;
+      console.log('🗑️ Deleting user via Edge Function:', { userId, userEmail });
       
-      toast.success('User deleted successfully');
+      // Get current session for authorization
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Session expired. Please refresh the page and try again.');
+      }
+      
+      // Use the admin-user-management Edge Function for proper deletion
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-management`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'deleteUser',
+          userId: userId,
+          userData: { email: userEmail }
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+      
+      console.log('✅ User deleted successfully:', result);
       await loadUsers();
     } catch (error) {
       console.error('Error deleting user:', error);

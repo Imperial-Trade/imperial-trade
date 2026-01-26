@@ -31,6 +31,7 @@ import { useRealTimeRequests } from '@/hooks/useRealTimeRequests';
 import { useOptimizedFiltering } from '@/hooks/useOptimizedFiltering';
 import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 import { useOptimizedRetry } from '@/hooks/useOptimizedRetry';
+import { AdminBottomNav } from './AdminBottomNav';
 
 export const OptimizedAccountRequestManagement: React.FC = () => {
   const { requests, newRequestCount, loading, loadRequests, clearNewRequestCount } = useRealTimeRequests();
@@ -288,7 +289,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 pb-24 lg:pb-6">
         {/* Header with Actions */}
         <div className="flex items-center justify-between">
           <div>
@@ -655,6 +656,9 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
           onClose={() => removeToast(toast.id)}
         />
       ))}
+
+      {/* Mobile Admin Panel Bottom Navigation */}
+      <AdminBottomNav />
     </>
   );
 };

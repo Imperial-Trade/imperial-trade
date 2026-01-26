@@ -1,0 +1,108 @@
+---
+alwaysApply: true
+---
+
+# Imperial Trade - Project Rules
+
+## Prompt Understanding Protocol
+Before executing ANY task:
+- [ ] Read the user's prompt completely
+- [ ] Identify which file(s) need modification
+- [ ] Read the current implementation of those files
+- [ ] Check for related components that might be affected
+- [ ] Verify the pattern matches existing codebase conventions
+- [ ] Understand the "why" behind the request
+- [ ] Confirm I know exactly what the end result should look like
+
+## File Structure & Naming
+- Components: `src/components/[feature]/ComponentName.tsx` (PascalCase)
+- Hooks: `src/hooks/useHookName.ts` (camelCase, prefixed with `use`)
+- Pages: `src/pages/[feature]/PageName.tsx` (PascalCase)
+- Utils: `src/utils/utilName.ts` (camelCase)
+- Types: `src/types/typeName.ts` (camelCase)
+- Contexts: `src/contexts/ContextName.tsx` (PascalCase)
+
+## Code Patterns
+
+### PnL Formatting
+- **ALWAYS** format PnL values to exactly 2 decimal places: `.toFixed(2)`
+- Apply to: `trade.pnl`, `data.pnl`, `totalPnL`, `monthlyPnL`, `dayPnl`, cumulative PnL
+- Example: `{trade.pnl.toFixed(2)}` or `{isWin ? '+' : ''}{pnl.toFixed(2)}`
+
+### Supabase Patterns
+- Use `useTradeJournalEntries` hook for trade journal data
+- Use `TradeJournalEntry.create()`, `.update()`, `.delete()` for CRUD operations
+- Always handle loading and error states
+- Use real-time subscriptions when data needs to update live
+
+### Component Structure
+- Use functional components with hooks
+- Extract reusable logic into custom hooks
+- Use TypeScript interfaces for props
+- Implement proper error boundaries
+
+### Styling Conventions
+- Use Tailwind CSS classes
+- Support dark mode: `dark:bg-[color]` variants
+- Use template literals for dynamic classes: `` className={`base-class ${condition ? 'true-class' : 'false-class'}`} ``
+- **CRITICAL**: Never use `/90` opacity syntax in template literals - use `opacity-90` instead
+- Example: `via-[#050505] opacity-90` NOT `via-[#050505]/90`
+
+### State Management
+- Use `useState` for local component state
+- Use Context API for shared state (`AuthContext`, `TradeJournalContext`)
+- Lift state up when multiple components need it
+- Use `useMemo` and `useCallback` for performance optimization
+
+### Navigation
+- Use `useNavigate()` from `react-router-dom` for programmatic navigation
+- Use `Link` component for declarative navigation
+- Protected routes use `ProtectedRoute` wrapper
+- Always verify route exists in `App.tsx` before navigating
+
+### Error Handling
+- Wrap components in error boundaries
+- Handle async errors with try/catch
+- Display user-friendly error messages
+- Log errors for debugging
+
+### Type Safety
+- Always define TypeScript interfaces for props
+- Use proper types for Supabase responses
+- Avoid `any` type - use `unknown` if type is truly unknown
+- Use type guards for runtime type checking
+
+## Common Patterns to Avoid
+- Don't duplicate components - reuse existing ones
+- Don't mix localStorage and Supabase - use Supabase for persistence
+- Don't hardcode user IDs - use `AuthContext` user
+- Don't skip error handling
+- Don't forget dark mode variants
+
+## Edge Functions
+- Location: `supabase/functions/[function-name]/index.ts`
+- Use `createClient` with `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+- Include CORS headers from `_shared/cors.ts`
+- Handle errors and return proper status codes
+- **MCP Limitation**: Cannot deploy functions with shared modules - use CLI instead
+
+## MCP (Model Context Protocol)
+- Available for database operations
+- Can query Supabase tables
+- Cannot deploy Edge Functions with shared modules
+- Use for data insertion, updates, queries
+- For deployment, use Supabase CLI: `supabase functions deploy [function-name]`
+
+## Context-Aware Development
+- This is a trading journal application with complex state management
+- Components are interconnected (JournalPro, TradeGallery, TradeCard, etc.)
+- Changes to one component often affect others
+- Always check related components before making changes
+
+## Common Misunderstandings to Avoid
+- **PnL Display**: User might say "fix the numbers" - always check if it's about decimal formatting
+- **Component Location**: "Add to journal" could mean JournalPro.tsx OR JournalXX.tsx - check both
+- **Toggle Behavior**: "Switch between X and Y" - verify current toggle implementation first
+- **Styling**: "Make it look better" - check existing design system and dark mode patterns
+- **Data Flow**: "Show trades" - verify if data comes from localStorage, Supabase, or props
+- **Navigation**: "go to X" - verify route exists and check if it's protected

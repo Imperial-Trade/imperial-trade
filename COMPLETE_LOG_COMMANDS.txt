@@ -1,0 +1,30 @@
+# Complete Log Collection Commands - Copy and paste these
+
+echo "=== 1. Docker Container Logs (last 100 lines) ==="
+docker logs --tail 100 test-mt5-worker 2>&1
+
+echo ""
+echo "=== 2. MT5 Directory Structure ==="
+docker exec test-mt5-worker ls -la /mt5/ 2>/dev/null
+
+echo ""
+echo "=== 3. MT5 Logs Directory (if exists) ==="
+docker exec test-mt5-worker ls -la /mt5/logs/ 2>/dev/null || echo "No /mt5/logs directory found"
+
+echo ""
+echo "=== 4. All Log Files in Container ==="
+docker exec test-mt5-worker find /mt5 -name "*.log" -type f 2>/dev/null || echo "No .log files found"
+
+echo ""
+echo "=== 5. All Processes Running ==="
+docker exec test-mt5-worker ps aux | grep -E "wine|terminal|expert" | head -10
+
+echo ""
+echo "=== 6. Connection/Error Messages ==="
+docker logs test-mt5-worker 2>&1 | grep -i "connected\|login\|authenticate\|error\|fail" | tail -30
+
+echo ""
+echo "=== 7. Export All Logs to File ==="
+docker logs test-mt5-worker > /tmp/mt5-all-logs.txt 2>&1
+echo "Logs exported to: /tmp/mt5-all-logs.txt"
+echo "View with: cat /tmp/mt5-all-logs.txt"

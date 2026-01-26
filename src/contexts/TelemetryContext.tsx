@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react';
+import { randomUUID } from '@/lib/utils';
 
 // Telemetry event types for per-channel tracking
 export type TelemetryEvent = 
@@ -50,7 +51,7 @@ interface TelemetryProviderProps {
 
 export const TelemetryProvider = ({ children }: TelemetryProviderProps) => {
   const sessionInfo = useRef<SessionInfo>({
-    sessionId: crypto.randomUUID(),
+    sessionId: randomUUID(),
     buildVersion: import.meta.env.VITE_BUILD_ID || 'dev',
     startTime: new Date()
   });
@@ -79,7 +80,7 @@ export const TelemetryProvider = ({ children }: TelemetryProviderProps) => {
       clamp_activation: 0
     });
     sessionInfo.current = {
-      sessionId: crypto.randomUUID(),
+      sessionId: randomUUID(),
       buildVersion: import.meta.env.VITE_BUILD_ID || 'dev',
       startTime: new Date()
     };

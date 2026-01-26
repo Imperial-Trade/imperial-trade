@@ -1,0 +1,38 @@
+name: Auto Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-to-production:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Merge main to production
+        run: |
+          git checkout production
+          git merge main --no-edit -m "chore: Auto-merge main to production [skip ci]"
+          git push origin production
+
+      - name: Verify merge
+        run: |
+          echo "✅ Successfully merged main to production"
+          echo "DigitalOcean will auto-deploy from production branch"

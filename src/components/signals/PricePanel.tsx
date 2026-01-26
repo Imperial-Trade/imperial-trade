@@ -73,7 +73,14 @@ const StaticLevelsBlock = memo<{
 }>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason }) => {
   const isBuy = tradeType?.includes('buy') ?? false;
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
+  const rawHitTPs = (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
+  
+  // 🔧 FIX: Fill-down for display - if TP5 is hit, TP1-4 should also show as hit
+  // This ensures correct visual representation even if data has gaps
+  const maxHitTP = rawHitTPs.length > 0 ? Math.max(...rawHitTPs) : 0;
+  const hitTPs = maxHitTP > 0 
+    ? Array.from({ length: maxHitTP }, (_, i) => i + 1) // [1,2,3,4,5] if maxHitTP is 5
+    : [];
 
   return (
     <div className="mt-2">

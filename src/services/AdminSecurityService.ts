@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { randomUUID } from '@/lib/utils';
 
 interface SecurityAlert {
   id: string;
@@ -46,7 +47,7 @@ class AdminSecurityService {
     metadata?: Record<string, any>
   ) {
     const alert: SecurityAlert = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       type,
       severity,
       message,
@@ -203,3 +204,4 @@ class AdminSecurityService {
 }
 
 export const adminSecurity = AdminSecurityService.getInstance();
+

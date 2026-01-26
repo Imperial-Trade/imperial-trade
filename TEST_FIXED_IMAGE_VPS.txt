@@ -1,0 +1,44 @@
+# Test the fixed Docker image - Copy and paste these commands on VPS
+
+# Step 1: Clean up old test container (if exists)
+docker rm -f test-mt5-worker 2>/dev/null
+
+# Step 2: Make sure config directory exists
+mkdir -p /root/imperial-factory/config
+
+# Step 3: Create test launch.ini (replace LOGIN, PASSWORD, SERVER with your MT5 credentials)
+cat > /root/imperial-factory/config/test_launch.ini << 'EOF'
+[Common]
+Login=YOUR_LOGIN_HERE
+Password=YOUR_PASSWORD_HERE
+Server=YOUR_SERVER_HERE
+ProxyEnable=0
+CertConfirm=1
+
+[Experts]
+AllowLiveTrading=1
+AllowDllImport=0
+Enabled=1
+AccountAndConsole=1
+WebRequestEnable=1
+WebRequestUrl=https://kmuoqkcxguafxulqlbmi.supabase.co
+
+[Chart1]
+Symbol=EURUSD
+Period=M1
+Expert=ImperialSync
+EOF
+
+# Step 4: Run test container
+docker run -d --name test-mt5-worker \
+  -v /root/imperial-factory/config/test_launch.ini:/mt5/config/launch.ini:ro \
+  imperial-mt5-worker
+
+# Step 5: Wait for initialization
+sleep 10
+
+# Step 6: Check logs (should be CLEAN - no error spam!)
+docker logs test-mt5-worker
+
+# Step 7: Check for errors (should be minimal/empty if fixes worked)
+docker logs test-mt5-worker 2>&1 | grep -i "error\|warn\|fail" | head -20

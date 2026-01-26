@@ -1,0 +1,32 @@
+[
+  {
+    "broker": "EC Markets",
+    "success": false,
+    "connected": false,
+    "error": "Unknown error",
+    "error_type": "Unknown",
+    "suggestion": "",
+    "response_time": 276,
+    "status": 401
+  },
+  {
+    "broker": "XS.com",
+    "success": false,
+    "connected": false,
+    "error": "Unknown error",
+    "error_type": "Unknown",
+    "suggestion": "",
+    "response_time": 109,
+    "status": 401
+  },
+  {
+    "broker": "PU Prime",
+    "success": false,
+    "connected": false,
+    "error": "Unknown error",
+    "error_type": "Unknown",
+    "suggestion": "",
+    "response_time": 108,
+    "status": 401
+  }
+]

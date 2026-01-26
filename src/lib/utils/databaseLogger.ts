@@ -6,7 +6,7 @@ export interface DatabaseLogPayload {
   operation: 'INSERT' | 'UPDATE' | 'DELETE' | 'SELECT';
   table: string;
   id?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   timestamp: string;
   userId?: string;
 }
@@ -62,8 +62,8 @@ export function logDatabaseOperation(payload: DatabaseLogPayload): void {
 export function logDatabaseError(
   operation: string,
   table: string,
-  error: any,
-  context?: any
+  error: Error | unknown,
+  context?: Record<string, unknown>
 ): void {
   console.error(`❌ [DB ERROR] ${operation} on ${table}`);
   console.error('Error:', error);

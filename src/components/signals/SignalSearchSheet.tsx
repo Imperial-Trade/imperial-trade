@@ -1,103 +1,127 @@
 import React from 'react';
-import { 
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose
-} from "@/components/ui/drawer";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
+import { cn } from '@/lib/utils';
+import type { SlideDirection } from '@/hooks/useSheetNavigation';
 
 interface SignalSearchSheetProps {
   isOpen: boolean;
   onClose: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
+  slideDirection?: SlideDirection;
 }
 
 export function SignalSearchSheet({
   isOpen,
   onClose,
   searchValue,
-  onSearchChange
+  onSearchChange,
+  slideDirection
 }: SignalSearchSheetProps) {
-  const { colors } = useSignalTheme();
+  const { colors, isDark } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
+
+  // Get animation class based on slide direction
+  const getSlideAnimationClass = () => {
+    if (!slideDirection || isMobile) return '';
+    switch (slideDirection) {
+      case 'left': return 'sheet-slide-in-left';
+      case 'right': return 'sheet-slide-in-right';
+      default: return '';
+    }
+  };
 
   return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
-      <DrawerContent 
-        className="max-h-[70vh] rounded-t-3xl z-[110]"
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent 
+        side={isMobile ? "bottom-mobile" : "right"}
+        className={cn(
+          "w-full border-border/50 [&>button]:hidden flex flex-col",
+          isMobile ? "p-0" : "sm:max-w-md inset-y-0",
+          getSlideAnimationClass()
+        )}
         style={{
-          background: colors.bg.glass,
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          borderTop: `2px solid ${colors.border.default}`,
-          boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.3)`,
+          background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+          backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
         }}
       >
-        <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Search className="w-5 h-5" style={{ color: colors.text.accent }} />
-              <DrawerTitle style={{ color: colors.text.primary }}>Search Signals</DrawerTitle>
-            </div>
-            <DrawerClose asChild>
-              <button
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
-                style={{
-                  background: colors.bg.surface,
-                  color: colors.text.secondary,
-                }}
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </DrawerClose>
+        {/* Drag Handle Indicator - Instagram style */}
+        {isMobile && (
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
           </div>
-        </DrawerHeader>
+        )}
         
-        <div className="p-4 space-y-4">
-          <div className="relative">
-            <Search 
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 z-10 pointer-events-none" 
-              style={{ color: colors.text.tertiary }}
-            />
-            
-            <Input
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search by symbol, asset, or educator..."
-              className="h-12 pl-12 pr-12 text-base rounded-xl border transition-all duration-200"
+        <div className={cn("flex flex-col h-full overflow-hidden", isMobile ? "px-4" : "")}>
+          {/* Title Header - Desktop/Tablet only */}
+          {!isMobile && (
+            <div 
+              className="px-6 pt-4 pb-4 border-b border-border/50 sticky top-0 z-10"
               style={{
-                background: colors.bg.surface,
-                borderColor: colors.border.default,
-                color: colors.text.primary,
+                background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+                backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+                WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
               }}
-              autoFocus
-            />
+            >
+              <div className="flex items-center gap-3">
+                <Search className="w-5 h-5" style={{ color: '#D4AF37' }} />
+                <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
+                  Search
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <div className={cn("flex-1 overflow-y-auto", isMobile ? "pb-4" : "mt-4")}>
+            <div className={cn("space-y-4", isMobile ? "" : "px-6")}>
+              <div className="relative">
+                <Search 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 z-10 pointer-events-none" 
+                  style={{ color: colors.text.tertiary }}
+                />
+                
+                <Input
+                  value={searchValue}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder="Search by symbol, asset, or educator..."
+                  className="h-12 pl-12 pr-12 text-base rounded-xl border transition-all duration-200 focus:ring-0 focus:ring-offset-0 focus:border-white/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  style={{
+                    background: colors.bg.surface,
+                    borderColor: colors.border.default,
+                    color: colors.text.primary,
+                  }}
+                  autoFocus
+                />
 
-            {searchValue && (
-              <button
-                onClick={() => onSearchChange('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
-                style={{
-                  background: colors.state.danger,
-                  color: colors.accent.danger,
-                }}
-                aria-label="Clear search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+                {searchValue && (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
+                    style={{
+                      background: colors.state.danger,
+                      color: colors.accent.danger,
+                    }}
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
 
-          <div className="text-sm" style={{ color: colors.text.tertiary }}>
-            <p>Search by trading symbol, asset name, or educator name to filter signals.</p>
+              <div className="text-sm" style={{ color: colors.text.tertiary }}>
+                <p>Search by trading symbol, asset name, or educator name to filter signals.</p>
+              </div>
+            </div>
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   );
 }

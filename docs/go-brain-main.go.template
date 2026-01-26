@@ -1,0 +1,60 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os/exec"
+	"time"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+)
+
+const MAX_WORKERS = 25
+
+func main() {
+	cli, _ := client.NewClientWithOpts(client.FromEnv)
+	fmt.Println("🚀 Imperial Brain Online. Managing Worker Pool...")
+
+	for {
+		// 1. Check current running containers
+		containers, _ := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+		
+		if len(containers) < MAX_WORKERS {
+			// 2. Fetch the next user from Supabase 'next_sync_task' view
+			// [LOGIC: Use Supabase Go SDK here to get user credentials]
+			user := fetchNextUserFromDB() 
+			
+			if user != nil {
+				go launchWorker(cli, user)
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func launchWorker(cli *client.Client, user *User) {
+	ctx := context.Background()
+	
+	// Generate unique launch.ini for this specific user login
+	createIniFile(user)
+
+	resp, _ := cli.ContainerCreate(ctx, &container.Config{
+		Image: "imperial-worker",
+		Env: []string{"CONN_ID=" + user.ID},
+	}, nil, nil, nil, "worker_"+user.ID)
+
+	cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+	fmt.Printf("⚡ Fast Sync Started for: %s\n", user.Login)
+
+	// Auto-Kill after 90 seconds to reclaim RAM
+	time.Sleep(90 * time.Second)
+	cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true})
+}
+
+// TODO: Implement these functions:
+// - fetchNextUserFromDB() - Query 'next_sync_task' view, decrypt credentials
+// - createIniFile(user) - Write launch.ini with decrypted credentials
+// - User struct definition
+//
+// See Critical Implementation Notes in the plan for Cursor AI prompt

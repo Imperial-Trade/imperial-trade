@@ -15,7 +15,21 @@ interface TradeJournalEntry {
   screenshot_url?: string;
   screenshot_urls?: string[];
   ai_positive_feedback?: string;
+  followed_plan?: boolean;
+  target_hit_by_market?: boolean;
+  planned_target_price?: number;
+  planned_stop_loss?: number;
+  revenge_trade?: boolean;
+  strategy?: string;
+  session?: string;
+  emotion?: string;
   coach_status?: 'pending' | 'ready';
+  processing_status?: 'pending' | 'analyzing' | 'complete' | 'failed';
+  is_synced?: boolean; // Whether trade was synced from broker
+  broker_connection_id?: string; // ID of broker connection if synced
+  broker_trade_id?: string; // MT5 deal ticket when synced from broker (auto journal)
+  entry_time?: string; // ISO string for entry time (for auto journal trades)
+  exit_time?: string; // ISO string for exit time (for auto journal trades)
   created_at: string;
   updated_at: string;
 }

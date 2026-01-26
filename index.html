@@ -1,4 +1,4 @@
-
+-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -27,7 +27,8 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- Favicon -->
+    <!-- Favicon - SVG for modern browsers (dark theme with gold crown) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -119,36 +120,7 @@
     }
     </script>
     
-    <!-- OneSignal Initialization - ALL prompts disabled, using custom Airbnb modal ONLY -->
-    <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
-          safari_web_id: "web.onesignal.auto.18b6e18e-7804-46d0-9cf7-7a5dce161e98",
-          // CRITICAL: Disable ALL auto-prompts
-          autoResubscribe: false,
-          autoRegister: false,
-          notifyButton: {
-            enable: false,
-          },
-          promptOptions: {
-            autoPrompt: false,
-            slidedown: {
-              prompts: [],
-              autoPrompt: false
-            },
-            native: {
-              autoPrompt: false
-            }
-          },
-          welcomeNotification: {
-            disable: false // Keep welcome notification from OneSignal Dashboard
-          },
-          allowLocalhostAsSecureOrigin: true
-        });
-      });
-    </script>
+    <!-- OneSignal Initialization handled by useOneSignal.ts hook - DO NOT ADD DUPLICATE INIT HERE -->
   </head>
 
   <body>

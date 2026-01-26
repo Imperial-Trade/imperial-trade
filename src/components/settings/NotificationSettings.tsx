@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Bell, Smartphone, Mail, MessageSquare, Shield, AlertTriangle } from 'lucide-react';
-// TODO: Import usePusherBeams when integrating
+import { useOneSignal } from '@/hooks/useOneSignal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -23,13 +23,17 @@ interface NotificationPreferences {
 
 export const NotificationSettings: React.FC = () => {
   const { user } = useAuth();
-  // TODO: Integrate usePusherBeams
-  const isInitialized = false;
-  const isPushEnabled = false;
-  const playerId = null;
-  const isSubscriptionLoading = false;
-  const subscribeToPush = async () => false;
-  const unsubscribeFromPush = async () => false;
+  // ✅ Using OneSignal for push notifications
+  const { isInitialized, isPushEnabled, subscribeToPush, unsubscribeFromPush, getUserId } = useOneSignal();
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  
+  // Get player ID when initialized
+  useEffect(() => {
+    if (isInitialized) {
+      getUserId().then(setPlayerId);
+    }
+  }, [isInitialized, getUserId, isPushEnabled]);
 
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     xeon_stream_subscription: false, // ✅ FIX: Changed from push_subscription_active

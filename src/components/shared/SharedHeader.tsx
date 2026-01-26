@@ -1,11 +1,17 @@
 import React, { useState } from "react"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, ChevronUp, ChevronDown, Home, BarChart3, Calendar, Brain, Clock } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, ChevronUp, ChevronDown, Home, BarChart3, Calendar, Brain, Clock, BookOpen, Sparkles } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAuth } from "@/contexts/AuthContext"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment"
 
@@ -48,7 +54,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
   };
 
   // Check if we're on the advanced tools/journal page
-  const isJournalSection = location.pathname.includes('/dashboard/advanced-tools');
+  const isJournalSection = location.pathname.includes('/dashboard/journal-xx');
 
   // Journal-specific navigation items
   const journalNavigationItems = [
@@ -108,7 +114,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       external: true
     },
     {
-      to: `${baseUrl}/dashboard/advanced-tools`,
+      to: `${baseUrl}/dashboard/journal-xx`,
       icon: TrendingUp,
       label: "Tools",
       description: "Advanced trading tools and analytics"
@@ -133,7 +139,7 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
           {!isHeaderCollapsed && (
             <nav className="hidden lg:flex lg:items-center gap-1 rounded-2xl p-1 lg:absolute lg:left-1/2 lg:top-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2">
             {navigationItems.map(item => {
-              const isActive = location.pathname === item.to;
+              const isActive = location.pathname === item.to || (item.hasDropdown && item.dropdownItems?.some(d => location.pathname === d.to));
               const ButtonComponent = (
                 <Button 
                   variant="ghost" 
@@ -148,6 +154,31 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
                 </Button>
               );
 
+              // If item has dropdown, render DropdownMenu
+              if (item.hasDropdown && item.dropdownItems) {
+                return (
+                  <DropdownMenu key={item.label}>
+                    <DropdownMenuTrigger asChild>
+                      {ButtonComponent}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-56">
+                      {item.dropdownItems.map(dropdownItem => (
+                        <DropdownMenuItem key={dropdownItem.to} asChild>
+                          <Link to={dropdownItem.to} className="flex items-center gap-3 cursor-pointer">
+                            <dropdownItem.icon className="h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{dropdownItem.label}</span>
+                              <span className="text-xs text-muted-foreground">{dropdownItem.description}</span>
+                            </div>
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              }
+
+              // Regular navigation item
               return item.external ? (
                 <a key={item.to} href={item.to}>
                   {ButtonComponent}

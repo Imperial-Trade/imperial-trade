@@ -1,0 +1,116 @@
+# User Commands - Precision Execution (Universal)
+
+## Command: execute-with-precision
+**Purpose**: Execute user requests with absolute precision across ANY project
+
+**When to use**: Every user request
+
+**Process**:
+```
+1. PARSE: 
+   - Read prompt word-by-word
+   - Extract exact requirements
+   - Extract constraints ("don't break X")
+   - Extract scope (files, modes, components)
+
+2. READ: 
+   - All relevant files mentioned
+   - Current implementation
+   - Related files that might be affected
+   - Existing patterns and conventions
+
+3. PLAN: 
+   - Minimal changes needed
+   - What to preserve
+   - Which files to modify
+   - How to maintain existing functionality
+
+4. VERIFY: 
+   - Check understanding
+   - Ask ONE specific question if unclear
+   - Confirm approach
+
+5. EXECUTE: 
+   - Make precise, focused changes
+   - Preserve everything else
+   - Follow existing patterns
+
+6. VALIDATE: 
+   - Check all modes/contexts
+   - Verify no breaking changes
+   - Ensure exact requirement met
+```
+
+**Output Format**:
+- Summary: "I understand you want [X]. This affects [Y]. I will preserve [Z]."
+- Files: List files to modify
+- Preservation: List what stays unchanged
+- Changes: List exact changes to make
+- Verification: Checklist for validation
+
+---
+
+## Command: preserve-mode-behavior
+**Purpose**: Ensure changes don't break behavior across different modes/contexts
+
+**When to use**: Any UI/layout/behavioral changes
+
+**Checklist**:
+```
+If applicable, verify:
+- [ ] Mobile behavior intact
+- [ ] Tablet behavior intact
+- [ ] Desktop behavior intact
+- [ ] Other contexts/routes intact
+- [ ] No visual/layout breaks
+- [ ] All interactive elements work
+```
+
+---
+
+## Command: minimal-change-only
+**Purpose**: Make only necessary changes, nothing more
+
+**Rules**:
+- Change ONLY what's requested
+- Don't refactor unrelated code
+- Don't "improve" things not asked
+- Don't add features not requested
+- Don't change variable names unless needed
+- Preserve all existing patterns
+
+---
+
+## Command: verify-before-finalize
+**Purpose**: Final verification before completing changes
+
+**Checklist**:
+- [ ] Matches user's exact request
+- [ ] No existing functionality broken
+- [ ] All applicable modes/contexts work
+- [ ] Layouts/designs preserved
+- [ ] No errors (linting, compilation, runtime)
+- [ ] Changes are minimal
+- [ ] Code follows existing patterns
+- [ ] Dependencies considered
+
+---
+
+## Command: understand-first
+**Purpose**: Deep understanding before any action
+
+**When to use**: For every user request
+
+**Process**:
+1. Parse prompt completely
+2. Extract primary request
+3. Extract constraints
+4. Extract mode/scope specificity
+5. Read relevant files
+6. Understand current implementation
+7. Plan approach
+8. Confirm understanding OR ask ONE specific question
+9. Execute
+
+
+

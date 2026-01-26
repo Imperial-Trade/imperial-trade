@@ -1,14 +1,20 @@
 import React from "react";
-import { 
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose
-} from "@/components/ui/drawer";
-import { Filter, TrendingUp, Users, Check, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Filter, TrendingUp, Users, Check, X, Clock, Bell, Plus } from "lucide-react";
 import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { cn } from "@/lib/utils";
+import { MobileFilterButton } from "./MobileFilterButton";
+import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+
+interface FilterState {
+  search: string;
+  status: string;
+  tradeType: string;
+  educator: string;
+  selectedEducators: string[];
+}
 
 interface MobileFilterSheetProps {
   type: 'status' | 'tradeType' | 'educator';
@@ -20,6 +26,14 @@ interface MobileFilterSheetProps {
   educatorOptions?: Array<{ id: string; name: string }>;
   selectedEducators?: string[];
   onEducatorsChange?: (educators: string[]) => void;
+  filters?: FilterState;
+  statusOptions?: Array<{ value: string; label: string; icon?: any }>;
+  tradeTypeOptions?: Array<{ value: string; label: string; icon?: any }>;
+  canCreateSignals?: boolean;
+  onCreateSignal?: () => void;
+  onOpenFilterSheet?: (type: 'status' | 'tradeType' | 'educator') => void;
+  onOpenNotificationSheet?: () => void;
+  onOpenNotificationSettings?: () => void;
 }
 
 export function MobileFilterSheet({
@@ -31,9 +45,18 @@ export function MobileFilterSheet({
   options = [],
   educatorOptions = [],
   selectedEducators = [],
-  onEducatorsChange
+  onEducatorsChange,
+  filters,
+  statusOptions = [],
+  tradeTypeOptions = [],
+  canCreateSignals = false,
+  onCreateSignal,
+  onOpenFilterSheet,
+  onOpenNotificationSheet,
+  onOpenNotificationSettings
 }: MobileFilterSheetProps) {
   const { colors } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
   
   const getTitle = () => {
     switch (type) {
@@ -197,42 +220,150 @@ export function MobileFilterSheet({
   };
 
   return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
-      <DrawerContent 
-        className="max-h-[70vh] rounded-t-3xl z-[110]"
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent 
+        side={isMobile ? "bottom-mobile" : "right"}
+        className={cn(
+          "w-full bg-background/95 backdrop-blur-xl border-border/50 [&>button]:hidden flex flex-col",
+          isMobile ? "p-0" : "sm:max-w-md inset-y-0"
+        )}
         style={{
-          background: colors.bg.glass,
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          borderTop: `2px solid ${colors.border.default}`,
-          boxShadow: `0 -10px 40px rgba(0, 0, 0, 0.3)`,
+          paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingBottom: isMobile ? 'max(env(safe-area-inset-bottom, 0px), 12px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
         }}
       >
-        <DrawerHeader style={{ borderBottom: `1px solid ${colors.border.default}` }} className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span style={{ color: colors.text.accent }}>{getIcon()}</span>
-              <DrawerTitle style={{ color: colors.text.primary }}>{getTitle()}</DrawerTitle>
-            </div>
-            <DrawerClose asChild>
-              <button
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105"
-                style={{
-                  background: colors.bg.surface,
-                  color: colors.text.secondary,
-                }}
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </DrawerClose>
+        {/* Drag Handle Indicator - Instagram style */}
+        {isMobile && (
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
           </div>
-        </DrawerHeader>
+        )}
         
-        <div className="p-4 space-y-2 overflow-y-auto">
-          {renderOptions()}
+        <div className={cn("flex flex-col h-full overflow-hidden", isMobile ? "px-4" : "")}>
+        {/* Filter Buttons Section - Same as filter card (Desktop/Tablet only) */}
+        {!isMobile && filters && onOpenFilterSheet && (
+          <div className="px-6 pt-4 pb-4 border-b border-border/50">
+            <div className="flex items-center gap-3">
+              {/* Status Filter Icon */}
+              {statusOptions.length > 0 && (
+                <MobileFilterButton 
+                  icon={<Filter className="w-4 h-4" />} 
+                  label="Status" 
+                  isActive={filters.status !== 'all' && filters.status !== ''} 
+                  onClick={() => {
+                    if (type !== 'status') {
+                      onClose();
+                      onOpenFilterSheet('status');
+                    }
+                  }} 
+                />
+              )}
+              
+              {/* Trade Type Filter Icon */}
+              {tradeTypeOptions.length > 0 && (
+                <MobileFilterButton 
+                  icon={<TrendingUp className="w-4 h-4" />} 
+                  label="Type" 
+                  isActive={filters.tradeType !== 'all' && filters.tradeType !== ''} 
+                  onClick={() => {
+                    if (type !== 'tradeType') {
+                      onClose();
+                      onOpenFilterSheet('tradeType');
+                    }
+                  }} 
+                />
+              )}
+              
+              {/* Educator Filter Icon */}
+              {educatorOptions.length > 1 && (
+                <MobileFilterButton 
+                  icon={<Users className="w-4 h-4" />} 
+                  label="Educator" 
+                  isActive={filters.educator !== 'all' && filters.educator !== ''} 
+                  onClick={() => {
+                    if (type !== 'educator') {
+                      onClose();
+                      onOpenFilterSheet('educator');
+                    }
+                  }} 
+                />
+              )}
+              
+              {/* Recent Activity Button */}
+              {onOpenNotificationSheet && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenNotificationSheet();
+                  }}
+                  className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
+                  style={{
+                    background: colors.bg.surface,
+                    backdropFilter: 'blur(20px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                    border: `1px solid ${colors.border.default}`,
+                    color: colors.text.secondary
+                  }}
+                >
+                  <Clock className="w-4 h-4" />
+                </button>
+              )}
+              
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 ml-auto">
+                {/* Notification Settings Bell Button */}
+                {onOpenNotificationSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenNotificationSettings();
+                    }}
+                    className="h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95 relative"
+                    style={{
+                      background: colors.bg.surface,
+                      backdropFilter: 'blur(20px) saturate(150%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                      border: `1px solid ${colors.border.default}`,
+                      color: colors.text.secondary
+                    }}
+                  >
+                    <Bell className="w-4 h-4" />
+                  </button>
+                )}
+                
+                {/* Create Alert Button */}
+                {canCreateSignals && onCreateSignal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onCreateSignal();
+                    }}
+                    className="h-9 px-3 rounded-xl flex items-center justify-center transition-all duration-300 ease-out hover:scale-105 active:scale-95"
+                    style={{
+                      background: colors.state.ctaGradient,
+                      backdropFilter: 'blur(20px) saturate(150%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                      border: `1px solid ${colors.border.active}`
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1.5 text-blue-500" />
+                    <span className="text-xs font-bold text-white">Create</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={cn("flex-1 overflow-y-auto mt-4", isMobile ? "pb-4" : "")}>
+          <div className="pr-4 space-y-2">
+            {renderOptions()}
+          </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

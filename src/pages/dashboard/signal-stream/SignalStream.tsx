@@ -4,7 +4,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Plus, RefreshCw, Bell, Filter, Clock, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { calculatePipsForSignal } from '@/utils/pipsCalculator';
 import { TrendlineEmptyState } from '@/components/empty-states/TrendlineEmptyState';
 import { MagnifyingSearchEmptyState } from '@/components/empty-states/MagnifyingSearchEmptyState';
@@ -14,11 +14,13 @@ import { useAuthorizationAware } from '@/hooks/useAuthorizationAware';
 // PHASE 2: Error boundary for signal stream
 import SignalStreamErrorBoundary from '@/components/errors/SignalStreamErrorBoundary';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
+import { normalizeSymbol } from '@/utils/symbolUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
+import { SignalStreamFooterNav } from '@/components/signals/SignalStreamFooterNav';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -32,16 +34,20 @@ import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertFor
 import { PriceRefreshButton } from '@/components/signals/PriceRefreshButton';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { NotificationBellIcon } from '@/components/notifications/NotificationBellIcon';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 // Removed ProfessionalNotificationModal - using native iOS prompt only
 import { useNotificationPrompt } from '@/contexts/NotificationPromptContext';
 import { useWelcome } from '@/contexts/WelcomeContext';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { AirbnbStyleNotificationModal } from '@/components/notifications/AirbnbStyleNotificationModal';
+import { ProviderNotificationSettingsModal } from '@/components/notifications/ProviderNotificationSettingsModal';
 
 export default function SignalStream() {
   const {
-    colors
+    colors,
+    isDark
   } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
   const {
     user,
     profile
@@ -86,6 +92,7 @@ export default function SignalStream() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [excludedSignalIds, setExcludedSignalIds] = useState<Set<string>>(new Set());
   const [showAirbnbNotificationModal, setShowAirbnbNotificationModal] = useState(false);
+  const [showProviderNotificationModal, setShowProviderNotificationModal] = useState(false);
   
   // Initialize selectedEducators with all educator IDs for consistency across devices
   const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
@@ -1070,6 +1077,14 @@ export default function SignalStream() {
       activeSignals.forEach(signal => {
         const priceData = prices[signal.tradermadeSymbol];
         if (!priceData) return;
+        
+        // 🔧 FIX: Validate price data before detection - prevent premature SL/TP hits
+        // Skip if price is 0, undefined, or clearly invalid
+        const rawPrice = priceData.price || priceData.bid || priceData.ask;
+        if (!rawPrice || rawPrice <= 0 || !isFinite(rawPrice)) {
+          return; // Invalid price data - skip detection
+        }
+        
         const isBuy = signal.tradeType === 'buy' || signal.tradeType === 'buy_limit';
 
         // --- TP DETECTION ---
@@ -1095,6 +1110,18 @@ export default function SignalStream() {
         }) => {
           if (!price || price <= 0) return;
           const currentPrice = isBuy ? priceData.ask || priceData.price : priceData.bid || priceData.price;
+          
+          // 🔧 FIX: Validate price is moving in profitable direction before checking TP
+          // For BUY: price must be >= entry to even consider TP hits
+          // For SELL: price must be <= entry to even consider TP hits
+          const isPriceInProfitDirection = isBuy 
+            ? currentPrice >= signal.entryPrice 
+            : currentPrice <= signal.entryPrice;
+          
+          if (!isPriceInProfitDirection) {
+            return; // Price is not in profit direction, skip TP check
+          }
+          
           const tpHit = isBuy ? currentPrice >= price : currentPrice <= price;
           if (tpHit) {
             // 🔒 TIER 1: Atomic guard - combine all checks in one operation
@@ -1123,8 +1150,10 @@ export default function SignalStream() {
             processingSignalsRef.current.add(tpKey);
             instantToastHandledRef.current.add(tpKey);
 
-            // Optimistic UI Update
-            const updatedTPHits = [...(signal.tpHits || []), level].sort((a, b) => a - b);
+            // 🔧 FIX: Fill-down logic - when TP level is hit, mark ALL lower TPs as hit too
+            // This ensures if price jumps to TP5, we correctly mark TP1,2,3,4,5 as hit
+            const allLevelsUpToHit = Array.from({ length: level }, (_, i) => i + 1); // [1] for TP1, [1,2] for TP2, etc.
+            const updatedTPHits = [...new Set([...(signal.tpHits || []), ...allLevelsUpToHit])].sort((a, b) => a - b);
 
             // 🆕 COUNT TOTAL DEFINED TPs
             const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5].filter(tp => tp && tp > 0).length;
@@ -1173,6 +1202,8 @@ export default function SignalStream() {
               if (allTPsHit) {
                 console.log(`✅ [All TPs Hit] Database trigger will send notification via Realtime`);
               }
+            }).catch(() => {
+              processingSignalsRef.current.delete(tpKey);
             });
           }
         });
@@ -1230,6 +1261,8 @@ export default function SignalStream() {
               }
 
               // 🔓 UNLOCK: Always remove from processing
+              processingSignalsRef.current.delete(slKey);
+            }).catch(() => {
               processingSignalsRef.current.delete(slKey);
             });
           }
@@ -1307,22 +1340,32 @@ export default function SignalStream() {
     // Subscribe to symbols from both active AND pending alerts (normalized)
     [...filteredSignals.active, ...alerts.filter(a => a.status === 'pending')].forEach(alert => {
       if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim().toUpperCase());
+        // ✅ CRITICAL: Normalize symbol (handles BTC -> BTCUSD, US30 -> U30USD, SPX -> SPXUSD, NAS100 -> NDXUSD)
+        const normalizedSymbol = normalizeSymbol(alert.tradermadeSymbol.trim());
+        if (normalizedSymbol) {
+          symbolSet.add(normalizedSymbol);
+          if (isDevToolsEnabled()) {
+            console.log(`🔍 [SignalStream] Normalized symbol: ${alert.tradermadeSymbol.trim()} -> ${normalizedSymbol}`);
+          }
+        } else {
+          console.warn(`⚠️ [SignalStream] Failed to normalize symbol: ${alert.tradermadeSymbol.trim()}`);
+        }
       }
     });
 
     // If no symbols found, subscribe to essential symbols for warm-start
     if (symbolSet.size === 0) {
-      ['XAUUSD', 'BTCUSD'].forEach(symbol => {
+      ['XAUUSD', 'BTCUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].forEach(symbol => {
         symbolSet.add(symbol);
       });
       if (isDevToolsEnabled()) {
-        console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD');
+        console.log('🔄 SignalStream - No alert symbols found, using essential symbols: XAUUSD, BTCUSD, U30USD, SPXUSD, NDXUSD');
       }
     }
 
-    // Limit to top 2 symbols for efficient connection management
-    const symbolList = Array.from(symbolSet).sort().slice(0, 2);
+    // ✅ FIX: Subscribe to ALL symbols from alerts (removed 2-symbol limit)
+    // This ensures all signals get live prices, especially for BTCUSD, XAUUSD, US30, SPX, NAS100
+    const symbolList = Array.from(symbolSet).sort();
 
     // 🎯 DEEP EQUALITY CHECK: Return same reference if content identical
     const prev = prevSymbolsRef.current;
@@ -1356,6 +1399,7 @@ export default function SignalStream() {
   } = useOptimizedWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
+  // ✅ CRITICAL: Keys are normalized symbols (BTCUSD, XAUUSD, U30USD, SPXUSD, NDXUSD)
   const livePrices = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(livePricesData).forEach(([symbol, priceData]) => {
@@ -1365,6 +1409,13 @@ export default function SignalStream() {
     });
     return result;
   }, [livePricesData]);
+
+  // ✅ Helper function to get live price with proper symbol normalization
+  const getLivePrice = useCallback((tradermadeSymbol: string | undefined, assetName?: string): number | null => {
+    if (!tradermadeSymbol && !assetName) return null;
+    const normalizedSymbol = normalizeSymbol(tradermadeSymbol || assetName || '');
+    return normalizedSymbol ? (livePrices[normalizedSymbol] || null) : null;
+  }, [livePrices]);
 
   // 🎯 FIXED: Update subscriptions when symbols change (subscribe is stable now)
   useEffect(() => {
@@ -1618,13 +1669,18 @@ export default function SignalStream() {
       // ============================================
       if (newStatus === 'closed') {
         console.log('🔒 Closing signal via RPC...', alert.id);
+        
+        // Get live price for accurate closing price - normalize symbol for lookup
+        const livePrice = getLivePrice(alert.tradermadeSymbol, alert.assetName);
+        
         const {
           data,
           error
         } = await supabase.rpc('close_trade_alert', {
           p_alert_id: alert.id,
           p_user_id: profile?.id || user?.id,
-          p_close_reason: 'manual'
+          p_close_reason: 'manual',
+          p_closing_price: livePrice
         });
         if (error) {
           console.error('❌ RPC close_trade_alert failed:', error);
@@ -1899,6 +1955,23 @@ export default function SignalStream() {
     <StreamErrorBoundary>
       <div className="fixed inset-0 overflow-hidden bg-background z-40">
         
+        {/* Mobile Status Bar Overlay - covers ONLY iOS status bar area */}
+        {isMobile && (
+          <div 
+            className="fixed top-0 left-0 right-0 pointer-events-none"
+            style={{
+              top: '0',
+              height: 'env(safe-area-inset-top, 0px)',
+              zIndex: 100,
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              background: isDark ? 'rgba(15, 15, 20, 0.3)' : '#FFFFFF',
+              border: 'none',
+              boxShadow: 'none',
+            }}
+          />
+        )}
+        
         {/* Content wrapper with z-index, safe area padding for iOS notch, and lg:pt-24 to clear desktop header */}
         <div 
           className="relative z-[60] h-full overflow-y-auto pb-20 md:pb-6"
@@ -1906,6 +1979,9 @@ export default function SignalStream() {
             paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
             paddingLeft: 'env(safe-area-inset-left)',
             paddingRight: 'env(safe-area-inset-right)',
+            paddingBottom: window.innerWidth < 768
+              ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)'
+              : undefined,
           }}
         >
           {/* Desktop header clearance spacer - hidden on mobile where safe-area-inset handles spacing */}
@@ -1938,6 +2014,7 @@ export default function SignalStream() {
                     onCreateSignal={() => setShowCreateModal(true)} 
                     unreadNotifications={unreadNotifications} 
                     onBellClick={handleBellClick}
+                    onNotificationSettingsClick={() => setShowProviderNotificationModal(true)}
                     onClearUnread={() => setUnreadNotifications(0)}
                     onShowPrompt={() => setShouldShowNotificationPrompt(true)}
                   />
@@ -1992,7 +2069,7 @@ export default function SignalStream() {
                         close_reason: alert.closeReason,
                         created_date: alert.createdAt,
                         updated_date: alert.updatedAt
-                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />)}
+                      }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert)} livePrice={getLivePrice(alert.tradermadeSymbol, alert.assetName)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} justAdded={justAddedIds.has(alert.id)} />)}
                       </div> : <div className="text-center py-8">
                         <TrendlineEmptyState />
                         <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
@@ -2090,6 +2167,61 @@ export default function SignalStream() {
               }}
             />
           )}
+
+          {/* ✅ Provider Notification Settings Modal */}
+          <ProviderNotificationSettingsModal
+            isOpen={showProviderNotificationModal}
+            onClose={() => setShowProviderNotificationModal(false)}
+            onSuccess={() => {
+              setShowProviderNotificationModal(false);
+            }}
+            educatorOptions={educatorMetadata.educatorOptions}
+            filters={filters}
+            onFiltersChange={setFilters}
+            statusOptions={[
+              { value: 'all', label: 'All Status', icon: Filter },
+              { value: 'active', label: 'Active', icon: Clock },
+              { value: 'closed', label: 'Closed', icon: CheckCircle }
+            ]}
+            tradeTypeOptions={[
+              { value: 'all', label: 'All Types', icon: Filter },
+              { value: 'buy', label: 'Buy Orders', icon: TrendingUp },
+              { value: 'sell', label: 'Sell Orders', icon: TrendingDown }
+            ]}
+            canCreateSignals={canCreateSignals}
+            onCreateSignal={() => {
+              setShowProviderNotificationModal(false);
+              setShowCreateModal(true);
+            }}
+            onOpenFilterSheet={(type) => {
+              // Open the filter sheet via the global function exposed by SignalStreamFilters
+              if ((window as any).__signalStreamOpenFilterSheet) {
+                (window as any).__signalStreamOpenFilterSheet(type);
+              }
+            }}
+          />
+
+          {/* Footer Navigation Bar - Mobile Only */}
+          <SignalStreamFooterNav
+            filters={filters}
+            onFiltersChange={setFilters}
+            onOpenFilter={() => {
+              // Trigger filter sheet opening via global function (opens with status tab by default)
+              if ((window as any).__signalStreamOpenFilterSheet) {
+                (window as any).__signalStreamOpenFilterSheet('status');
+              }
+            }}
+            onOpenRecent={() => {
+              // Trigger recent sheet opening
+              if ((window as any).__signalStreamOpenNotificationSheet) {
+                (window as any).__signalStreamOpenNotificationSheet();
+              }
+            }}
+            onOpenNotifications={() => setShowProviderNotificationModal(true)}
+            onCreateAlert={() => setShowCreateModal(true)}
+            educatorOptions={educatorMetadata.educatorOptions}
+            canCreateSignals={canCreateSignals}
+          />
         </div>
       </div>
     </StreamErrorBoundary>

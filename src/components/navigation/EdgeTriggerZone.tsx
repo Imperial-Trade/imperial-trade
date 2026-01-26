@@ -17,9 +17,23 @@ export function EdgeTriggerZone({
   if (isVisible) return null;
 
   const handleTrigger = (e: React.TouchEvent | React.MouseEvent) => {
+    // Get touch/mouse position
+    const clientY = 'clientY' in e ? e.clientY : (e as React.TouchEvent).touches[0]?.clientY;
+    const clientX = 'clientX' in e ? e.clientX : (e as React.TouchEvent).touches[0]?.clientX;
+    
+    // Exclude header area (top 80px) and footer area (bottom 80px)
+    const headerHeight = 80;
+    const footerHeight = 80;
+    const viewportHeight = window.innerHeight;
+    
+    if (clientY !== undefined && (clientY < headerHeight || clientY > (viewportHeight - footerHeight))) {
+      // Touch is in header or footer area, ignore
+      return;
+    }
+    
     console.log('🎯 Edge zone triggered:', {
       type: e.type,
-      clientX: 'clientX' in e ? e.clientX : (e as React.TouchEvent).touches[0]?.clientX
+      clientX: clientX
     });
     
     onTrigger();

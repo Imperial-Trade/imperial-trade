@@ -1,0 +1,18 @@
+# Commands to Run on Ubuntu VPS to Test MT5 Connection
+
+# Step 1: Find the vps-broker-service directory
+find / -name "test_connection.py" 2>/dev/null | head -5
+
+# Step 2: Navigate to the directory (use the path from Step 1)
+# Example: cd /root/vps-broker-service
+# Or: cd /home/username/vps-broker-service
+
+# Step 3: Test MT5 connection
+python3 python/test_connection.py '{"login":"81071266","password":"Imperial@2026","server":"ECMarkets-MT5-Live01"}'
+
+# Alternative: If you need to check if Python and MetaTrader5 are installed first:
+python3 --version
+python3 -c "import MetaTrader5; print('MetaTrader5 library is installed')"
+
+# If MetaTrader5 is not installed:
+pip3 install MetaTrader5

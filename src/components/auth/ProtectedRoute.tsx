@@ -26,11 +26,23 @@ export const ProtectedRoute = ({
   const queryClient = useQueryClient();
 
   // Wait for both auth AND roles to finish loading
-  if (authLoading || rolesLoading) return <LoadingSpinner />;
-  if (!user) return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  if (authLoading || rolesLoading) {
+    console.log('[ProtectedRoute] Waiting for auth/roles to load...', { authLoading, rolesLoading, path: location.pathname });
+    return <LoadingSpinner />;
+  }
   
-  // Show error UI if role fetching failed
-  if (error) {
+  if (!user) {
+    console.log('[ProtectedRoute] No user found, redirecting to signin', { path: location.pathname });
+    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
+  }
+  
+  console.log('[ProtectedRoute] User authenticated, allowing access', { userId: user.id, path: location.pathname });
+  
+  // ✅ FIX: If role fetching failed but user is authenticated, grant default access
+  // This prevents blocking users due to temporary network/database issues
+  // Only show error UI if we're on a route that requires specific roles (not just 'user')
+  if (error && requiredRoles.length > 0 && !requiredRoles.includes('user')) {
+    // Only block if specific roles are required (admin, educator, etc.)
     return (
       <AuthorizationError 
         error={error}
@@ -41,6 +53,11 @@ export const ProtectedRoute = ({
     );
   }
   
+  // If error but only 'user' role is required, log warning but allow access
+  if (error) {
+    console.warn('[ProtectedRoute] Role fetch failed, but granting default user access:', error);
+  }
+  
   // ✅ SECURITY FIX: Implement role hierarchy
   // Admins, moderators, and educators automatically have 'user' access
   const hasPrivilegedRole = userRoles?.some(role => 
@@ -49,10 +66,17 @@ export const ProtectedRoute = ({
 
   const hasExactRole = requiredRoles.some(role => userRoles?.includes(role));
 
+  // ✅ FIX: If user is authenticated but has no roles (or roles failed to load), grant default 'user' access
+  // This prevents redirect loops when roles haven't been assigned yet or when there's a temporary error
+  const hasDefaultUserAccess = user && 
+    requiredRoles.includes('user') && 
+    (!userRoles || userRoles.length === 0 || error);
+
   // Grant access if user has either:
   // 1. The exact required role(s), OR
-  // 2. A privileged role (which includes 'user' permissions)
-  const hasAccess = hasExactRole || (requiredRoles.includes('user') && hasPrivilegedRole);
+  // 2. A privileged role (which includes 'user' permissions), OR
+  // 3. Default 'user' access for authenticated users without roles
+  const hasAccess = hasExactRole || (requiredRoles.includes('user') && hasPrivilegedRole) || hasDefaultUserAccess;
 
   // Debug logging
   console.log('[ProtectedRoute] Role Check:', {
@@ -60,6 +84,7 @@ export const ProtectedRoute = ({
     requiredRoles,
     hasExactRole,
     hasPrivilegedRole,
+    hasDefaultUserAccess,
     hasAccess,
     currentPath: location.pathname
   });

@@ -123,44 +123,9 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
         }
       }
 
-      // Step 3: Auto-subscribe to ALL signal providers (educators and admins)
-      try {
-        // Get all signal providers (users who create signals)
-        const { data: providers, error: providersError } = await supabase
-          .from('profiles')
-          .select('id')
-          .or('user_type.eq.educator,user_type.eq.admin');
-
-        if (providersError) {
-          console.error('Error fetching providers:', providersError);
-        } else if (providers && providers.length > 0) {
-          // Create subscriptions for each provider
-          const subscriptions = providers.map(provider => ({
-            user_id: user.id,
-            provider_id: provider.id,
-            is_active: true,
-            subscribed_at: new Date().toISOString(),
-          }));
-
-          const { error: subscribeError } = await supabase
-            .from('signal_subscriptions')
-            .upsert(subscriptions, {
-              onConflict: 'user_id,provider_id',
-              ignoreDuplicates: false,
-            });
-
-          if (subscribeError) {
-            console.error('Error creating signal subscriptions:', subscribeError);
-          } else {
-            console.log(`✅ [Auto-Subscribe] Subscribed to ${providers.length} signal providers`);
-          }
-        }
-      } catch (error) {
-        console.error('Error in auto-subscription:', error);
-        // Don't fail the entire process if subscription fails
-      }
-
-      // Step 4: Mark that user has seen this modal
+      // Step 3: Mark that user has seen this modal
+      // Note: Auto-subscribe logic is now handled in useOneSignal.subscribeToPush()
+      // to avoid duplicate operations
       localStorage.setItem(`notification_permission_shown_${user.id}`, 'true');
       console.log(`✅ [Modal] Marked modal as seen for user ${user.id}`);
 
@@ -172,8 +137,17 @@ export function AirbnbStyleNotificationModal({ onClose, onSuccess }: Props) {
 
       onSuccess();
     } catch (error: any) {
-      console.error('Failed to enable notifications:', error);
-      onSuccess();
+      console.error('❌ [Modal] Failed to enable notifications:', error);
+      
+      // ✅ FIX: Show error toast instead of calling onSuccess()
+      toast({
+        title: "Subscription Failed",
+        description: error.message || "Could not enable push notifications. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Don't close the modal - let user try again or close manually
+      // onSuccess(); // ❌ REMOVED - Don't mark as success when it failed
     } finally {
       setIsLoading(false);
     }

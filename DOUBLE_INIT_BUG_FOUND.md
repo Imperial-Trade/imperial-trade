@@ -11,7 +11,7 @@
 ### **Location #1: index.html (Lines 79-106)**
 ```javascript
 await OneSignal.init({
-  appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
+  appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
   // ... full config
 });
 ```
@@ -19,7 +19,7 @@ await OneSignal.init({
 ### **Location #2: useOneSignal.ts (Line 69-71)**
 ```typescript
 await window.OneSignal.init({
-  appId: "3ea69bee-8061-4d47-8053-fc95779b6f1e",
+  appId: "3ea69bee-8061-4dd7-8053-fc95779b0f1e",
   // ... full config
 });
 ```

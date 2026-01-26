@@ -34,7 +34,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTool, on
   const isActive = (toolName: string) => activeTool.name === toolName;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-dark border-t border-white/10 z-[100] pb-safe bottom-nav-fixed">
+    <nav 
+      className="md:hidden fixed bottom-0 left-0 right-0 glass-dark border-t border-white/10 z-[100] pb-safe bottom-nav-fixed"
+      onTouchStart={(e) => {
+        e.stopPropagation();
+      }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
       <div className="flex justify-around items-center py-2">
         {navItems.map((item) => {
           const active = isActive(item.toolName);

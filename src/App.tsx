@@ -27,6 +27,8 @@ import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import { ContextErrorBoundary } from "@/components/error-boundary/ContextErrorBoundary";
 import { WebSocketErrorBoundary } from "@/components/error-boundary/WebSocketErrorBoundary";
+import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
+import { Toaster } from "@/components/ui/sonner";
 
 import { GlobalWelcomeOverlay } from "@/components/ui/GlobalWelcomeOverlay";
 import { initializeAppState } from "@/utils/appStateCleanup";
@@ -81,6 +83,10 @@ const AdminPanel = lazyWithRetry(() => import("@/pages/dashboard/admin-panel/Adm
 const AthenaTest = lazyWithRetry(() => import("@/pages/dashboard/athena/AthenaTest"));
 const DevTests = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/DevTests"));
 const PriceTestingPage = lazyWithRetry(() => import("@/pages/dashboard/dev-tests/PriceTestingPage"));
+
+// Tools Pages - Lazy Loaded with Retry
+const JournalXXPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXX"));
+const JournalXXProPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXXPro"));
 
 // Educator Pages - Lazy Loaded with Retry
 const EducatorSignalManagement = lazyWithRetry(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
@@ -163,7 +169,8 @@ function App() {
           <RealtimeShutdownGuard />
           <VersionChecker />
           <CacheCleanerMount />
-          {/* <Sonner /> ← REMOVED: Using ModernNotificationSystem only */}
+          {/* Sonner Toaster for admin actions - glassmorphism style, bottom-right on desktop, bottom-center on mobile */}
+          <Toaster position="bottom-right" />
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>
@@ -281,6 +288,26 @@ function App() {
             <Route
               path="advanced-tools"
               element={<AdvancedTools />}
+            />
+            <Route
+              path="journal-xx"
+              element={
+                <TradeJournalProvider>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+                    <JournalXXPage />
+                  </Suspense>
+                </TradeJournalProvider>
+              }
+            />
+            <Route
+              path="journal-xx-pro"
+              element={
+                <TradeJournalProvider>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+                    <JournalXXProPage />
+                  </Suspense>
+                </TradeJournalProvider>
+              }
             />
             <Route
               path="admin-tools"

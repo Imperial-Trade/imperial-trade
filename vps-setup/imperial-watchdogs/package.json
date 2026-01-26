@@ -1,0 +1,22 @@
+{
+  "name": "imperial-watchdogs",
+  "version": "1.0.0",
+  "description": "Watchdog services to ensure Price Feeder and MT5 never stop",
+  "main": "index.js",
+  "scripts": {
+    "start:price-feeder-watchdog": "node price-feeder-watchdog.js",
+    "start:mt5-watchdog": "node mt5-watchdog.js",
+    "start:all": "concurrently \"npm run start:price-feeder-watchdog\" \"npm run start:mt5-watchdog\""
+  },
+  "keywords": ["watchdog", "monitoring", "pm2"],
+  "author": "Imperial Trade",
+  "license": "ISC",
+  "dependencies": {
+    "pm2": "^5.4.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
+

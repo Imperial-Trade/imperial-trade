@@ -1,0 +1,16 @@
+# Commands to check container status and get more information
+
+# 1. Check if container is still running
+docker ps -a | grep test-mt5-worker
+
+# 2. Check container status details
+docker inspect test-mt5-worker | grep -A 5 "State"
+
+# 3. Get latest logs (last 100 lines)
+docker logs --tail 100 test-mt5-worker
+
+# 4. Follow logs in real-time (press Ctrl+C to stop)
+docker logs -f test-mt5-worker
+
+# 5. Check for any error messages
+docker logs test-mt5-worker 2>&1 | grep -i "error\|fail\|exception" | tail -20

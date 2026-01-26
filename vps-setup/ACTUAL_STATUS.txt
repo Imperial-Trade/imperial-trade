@@ -1,0 +1,4 @@
+STATUS CHECK RESULTS
+====================
+
+Running direct commands to get actual status...

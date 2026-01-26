@@ -35,10 +35,10 @@ jwt_expiry = 3600
 enable_signup = true
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📊 SIGNAL STREAM & PRICE SYSTEM
+# 📊 JOURNAL XX PRO BROKER SYNC
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[functions.price-ingestor]
+[functions.mt5-sync]
 verify_jwt = false
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -48,8 +48,7 @@ verify_jwt = false
 # The old separate detector functions (tp1-detector, tp2-detector, etc.)
 # have been DELETED and replaced with Phase 2 integrated detection.
 #
-# NEW SYSTEM: Detection is now integrated into price-ingestor for instant
-# detection (~500ms latency instead of cron-based polling).
+# NOTE: Live prices are handled by VPS calling upsert_market_price_enhanced RPC directly
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [functions.admin-user-management]

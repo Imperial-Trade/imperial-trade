@@ -31,9 +31,16 @@ const ASSET_PRICE_RANGES: Record<string, PriceRange> = {
   'SILVER': { min: 15, max: 50, name: 'Silver' },
   'XAGUSD': { min: 15, max: 50, name: 'Silver' },
   'SPX500': { min: 2000, max: 8000, name: 'S&P 500' },
+  'SPXUSD': { min: 2000, max: 8000, name: 'S&P 500' },
+  'SPX': { min: 2000, max: 8000, name: 'S&P 500' },
   'US500': { min: 2000, max: 8000, name: 'S&P 500' },
-  'NAS100': { min: 8000, max: 25000, name: 'NASDAQ' },
-  'DJ30': { min: 20000, max: 50000, name: 'Dow Jones' }
+  'NAS100': { min: 8000, max: 30000, name: 'NASDAQ' },
+  'NDXUSD': { min: 8000, max: 30000, name: 'NASDAQ 100' },
+  'NDX': { min: 8000, max: 30000, name: 'NASDAQ 100' },
+  'DJ30': { min: 20000, max: 50000, name: 'Dow Jones' },
+  'U30USD': { min: 20000, max: 50000, name: 'US 30' },
+  'US30': { min: 20000, max: 50000, name: 'US 30' },
+  'DOW': { min: 20000, max: 50000, name: 'Dow Jones' }
 };
 
 /**

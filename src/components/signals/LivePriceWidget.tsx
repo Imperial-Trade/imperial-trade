@@ -9,6 +9,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
 import { LivePriceWidgetProps } from '@/types/components';
 import { getMarketStatus } from '@/utils/marketStatus';
+import { getPipSize } from '@/utils/pipCalculations';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -17,34 +18,24 @@ const calculatePips = (entry, current, symbol) => {
     points: null,
     difference
   };
+  
+  // Use the centralized pip size calculation (supports all symbols including indices)
+  const pipSize = getPipSize(symbol);
+  
   const upperSymbol = symbol.toUpperCase();
-  if (upperSymbol.includes('JPY')) {
-    return {
-      pips: difference / 0.01,
-      points: null,
-      difference
-    };
-  }
-  if (upperSymbol.startsWith('XAU')) {
-    // Gold
-    return {
-      pips: difference / 0.1,
-      points: null,
-      difference
-    };
-  }
+  
+  // For Bitcoin, use points instead of pips (crypto convention)
   if (upperSymbol.startsWith('BTC')) {
-    // Bitcoin
-    // For crypto, "pip" isn't standard. We'll call them points.
     return {
       pips: null,
       points: difference,
       difference
     };
   }
-  // Standard forex pair
+  
+  // For all other symbols (forex, gold, indices), use pips
   return {
-    pips: difference / 0.0001,
+    pips: difference / pipSize,
     points: null,
     difference
   };

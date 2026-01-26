@@ -1,3 +1,5 @@
+import { randomUUID } from '@/lib/utils';
+
 interface PerformanceMetric {
   id: string;
   name: string;
@@ -32,7 +34,7 @@ class PerformanceMonitorService {
 
   trackMetric(name: string, value: number, type: PerformanceMetric['type'], metadata?: Record<string, any>) {
     const metric: PerformanceMetric = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       name,
       value,
       type,
@@ -124,5 +126,7 @@ class PerformanceMonitorService {
     return errorCount / recentMetrics.length;
   }
 }
+
+export const performanceMonitor = PerformanceMonitorService.getInstance();
 
 export const performanceMonitor = PerformanceMonitorService.getInstance();

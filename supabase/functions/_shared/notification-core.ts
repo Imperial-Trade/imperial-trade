@@ -23,6 +23,7 @@ export interface SignalData {
   trade_type: string;
   entry_price: number;
   triggered_price?: number;
+  closing_price?: number;  // Actual price when signal was closed
   stop_loss?: number;
   tp1?: number;
   tp2?: number;
@@ -30,6 +31,7 @@ export interface SignalData {
   tp4?: number;
   tp5?: number;
   tp_hits?: number[]; // Array of hit TPs [1, 2, 3, ...]
+  total_tps_set?: number; // Count of non-null TPs (from trigger)
   author_name: string;
   author_avatar_url?: string;
   author_user_type?: string;
@@ -44,15 +46,73 @@ export interface SignalData {
 // 🎨 NOTIFICATION TEMPLATES (Based on User's 9 Templates)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// Helper function to format pips correctly (avoid "PIPS Pips" redundancy)
+function formatPips(pips: string | number | undefined, addSign: boolean = true): string {
+  if (pips === null || pips === undefined) return '0';
+  
+  const pipsStr = String(pips);
+  
+  // If already formatted with "PIPS" suffix, just return it (cleaned up)
+  if (pipsStr.toUpperCase().includes('PIPS')) {
+    return pipsStr.replace(/\s*PIPS\s*/gi, '').trim();
+  }
+  
+  // Parse as number and format
+  const pipsNum = parseFloat(pipsStr.replace(/[^0-9.-]/g, ''));
+  if (isNaN(pipsNum)) return '0';
+  
+  const sign = addSign && pipsNum >= 0 ? '+' : '';
+  return `${sign}${pipsNum.toFixed(1)}`;
+}
+
+// Helper to get TP price based on tp_number
+function getTpPrice(data: SignalData): number | string {
+  if (data.triggered_price) return data.triggered_price;
+  switch (data.tp_number) {
+    case 1: return data.tp1 || data.entry_price;
+    case 2: return data.tp2 || data.entry_price;
+    case 3: return data.tp3 || data.entry_price;
+    case 4: return data.tp4 || data.entry_price;
+    case 5: return data.tp5 || data.entry_price;
+    default: return data.entry_price;
+  }
+}
+
+// Helper to count how many TPs are set (non-null)
+function countSetTPs(data: SignalData): number {
+  let count = 0;
+  if (data.tp1) count++;
+  if (data.tp2) count++;
+  if (data.tp3) count++;
+  if (data.tp4) count++;
+  if (data.tp5) count++;
+  return count;
+}
+
+// Helper to get the last TP number and price
+function getLastTpInfo(data: SignalData): { tpNum: number; price: number | string } {
+  const count = countSetTPs(data);
+  const tpNum = count || (data.tp_hits?.length || 0);
+  let price: number | string = data.entry_price;
+  switch (tpNum) {
+    case 1: price = data.tp1 || data.entry_price; break;
+    case 2: price = data.tp2 || data.entry_price; break;
+    case 3: price = data.tp3 || data.entry_price; break;
+    case 4: price = data.tp4 || data.entry_price; break;
+    case 5: price = data.tp5 || data.entry_price; break;
+  }
+  return { tpNum, price };
+}
+
 export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => NotificationTemplate> = {
-  // Template 1: signal_created (BUY/SELL) - Professional TradingView Style
+  // Template 1: signal_created (BUY/SELL)
   signal_created: (data) => ({
     type: 'signal_created',
-    title: `${data.trade_type.toUpperCase()} ${data.asset_name} @ ${data.entry_price}`,
-    message: `New Signal • ${data.author_name}`,
+    title: `${data.author_name.toUpperCase()} 🚀 NEW ${data.trade_type.toUpperCase()} SIGNAL`,
+    message: `\n${data.trade_type.toUpperCase()} Signal is Posted on ${data.asset_name} at $${data.entry_price}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Signal',
     color: 'blue',
-    icon: '📈',
+    icon: '🚀',
     sound: true,
     priority: 2,
   }),
@@ -60,8 +120,8 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 2: pending_limit_created (BUY LIMIT/SELL LIMIT)
   pending_limit_created: (data) => ({
     type: 'pending_limit_created',
-    title: `Limit Order: ${data.trade_type.replace('_', ' ').toUpperCase()} ${data.asset_name}`,
-    message: `Entry: ${data.entry_price} • ${data.author_name}`,
+    title: `${data.author_name.toUpperCase()} ⏳ PENDING ${data.trade_type.replace('_', ' ').toUpperCase()}`,
+    message: `\nWaiting to reach ${data.asset_name} at $${data.entry_price}`,
     badge: 'Pending',
     color: 'yellow',
     icon: '⏳',
@@ -72,23 +132,23 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 3: limit_activated
   limit_activated: (data) => ({
     type: 'limit_activated',
-    title: `Limit Activated: ${data.asset_name}`,
-    message: `Order triggered at ${data.triggered_price || data.entry_price}`,
+    title: `${data.author_name.toUpperCase()} ✅ ${data.trade_type.replace('_', ' ').toUpperCase()} ACTIVATED`,
+    message: `\n${data.trade_type.replace('_', ' ').toUpperCase()} activated on ${data.asset_name} at $${data.triggered_price || data.entry_price}`,
     badge: 'Active',
     color: 'blue',
-    icon: '⚡',
+    icon: '✅',
     sound: true,
     priority: 3,
   }),
 
-  // Template 4: tp_hit (TP1-TP5)
+  // Template 4: tp_hit (TP1-TP5) - Shortened to fit on one line
   tp_hit: (data) => ({
     type: 'tp_hit',
-    title: `TP${data.tp_number} Hit: ${data.asset_name}`,
-    message: `+${data.pips || '0'} Pips • ${data.triggered_price}`,
+    title: `${data.author_name.toUpperCase()} 🎯 TAKE PROFIT HIT`,
+    message: `\nTP${data.tp_number} HIT ${data.asset_name} @ $${getTpPrice(data)} | ${formatPips(data.pips)} PIPS`,
     badge: 'Profit',
     color: 'green',
-    icon: '💰',
+    icon: '🎯',
     sound: true,
     priority: 3,
   }),
@@ -96,23 +156,23 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 5: stop_loss_hit
   stop_loss_hit: (data) => ({
     type: 'stop_loss_hit',
-    title: `Stop Loss Hit: ${data.asset_name}`,
-    message: `${data.pips || '0'} Pips • ${data.triggered_price}`,
+    title: `${data.author_name.toUpperCase()} 🔻 STOP LOSS HIT`,
+    message: `\nSL HIT on ${data.asset_name} at $${data.stop_loss}`,
     badge: 'Stopped',
     color: 'red',
-    icon: '🛑',
+    icon: '🔻',
     sound: true,
     priority: 3,
   }),
 
-  // Template 6: manual_close
+  // Template 6: manual_close (no TP hit)
   manual_close: (data) => ({
     type: 'manual_close',
-    title: `Closed: ${data.asset_name}`,
-    message: `Manual Close • ${data.author_name}`,
+    title: `${data.author_name.toUpperCase()} 🧑‍💼 MANUALLY CLOSED`,
+    message: `\nManually closed ${data.asset_name} at $${data.closing_price || data.triggered_price || data.entry_price}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Closed',
     color: 'grey',
-    icon: '🔒',
+    icon: '🧑‍💼',
     sound: false,
     priority: 1,
   }),
@@ -120,32 +180,39 @@ export const NOTIFICATION_TEMPLATES: Record<string, (data: SignalData) => Notifi
   // Template 7: manual_close_with_tp_hit
   manual_close_with_tp_hit: (data) => ({
     type: 'manual_close_with_tp_hit',
-    title: `Closed in Profit: ${data.asset_name}`,
-    message: `+${data.pips || '0'} Pips • Manual Close`,
+    title: `${data.author_name.toUpperCase()} 💰 CLOSED IN PROFITS`,
+    message: `\nSecured Profits ${data.asset_name} @ $${data.closing_price || data.triggered_price || data.entry_price} | ${formatPips(data.pips)} PIPS${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Profit',
-    color: 'grey',
-    icon: '💸',
+    color: 'green',
+    icon: '💰',
     sound: true,
     priority: 2,
   }),
 
-  // Template 8: all_tps_hit
-  all_tps_hit: (data) => ({
+  // Template 8: all_tps_hit - Dynamic TP count
+  all_tps_hit: (data) => {
+    const lastTp = getLastTpInfo(data);
+    // Use total_tps_set from trigger if available, otherwise count from data
+    const tpCount = data.total_tps_set || countSetTPs(data) || lastTp.tpNum;
+    const tpNumber = data.tp_number || lastTp.tpNum;
+    const tpPrice = data.triggered_price || lastTp.price;
+    return {
     type: 'all_tps_hit',
-    title: `All Targets Hit: ${data.asset_name}`,
-    message: `Max Profit Reached • ${data.pips || '0'} Pips`,
+      title: `${data.author_name.toUpperCase()} 🎉 ALL ${tpCount} TP HIT!`,
+      message: `\nTP${tpNumber} HIT ${data.asset_name} @ $${tpPrice} | ${formatPips(data.pips)} PIPS\n👑All take profits completed successfully!`,
     badge: 'Jackpot',
     color: 'green',
-    icon: '🏆',
+      icon: '🎉',
     sound: true,
     priority: 3,
-  }),
+    };
+  },
 
   // Template 9: notes_updated
   notes_updated: (data) => ({
     type: 'notes_updated',
-    title: `Update: ${data.asset_name}`,
-    message: `${data.notes || 'Signal details updated'}`,
+    title: `${data.author_name.toUpperCase()} 📝 NOTES UPDATED`,
+    message: `\nRecent notes update for ${data.asset_name}${data.notes ? `\n⚞ ${data.notes}` : ''}`,
     badge: 'Update',
     color: 'yellow',
     icon: '📝',
@@ -238,7 +305,7 @@ export async function sendRealtimeNotification(
         // Convert pips string to pips_data object with Risk/Reward ratio
         pips_data: {
           value: pipsValue,
-          formatted: signalData.pips || '+0.0 PIPS',
+          formatted: `${pipsValue >= 0 ? '+' : ''}${pipsValue.toFixed(1)} Pips`,
           direction: pipsValue >= 0 ? 'profit' as const : 'loss' as const,
           percentage
         },
@@ -349,8 +416,11 @@ export async function sendRealtimeNotification(
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📱 PUSH NOTIFICATION (OneSignal - All Platforms)
+// 📱 PUSH NOTIFICATION (OneSignal - Using External User IDs)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+// We use include_external_user_ids (Supabase User IDs) instead of include_player_ids
+// This is simpler and automatically supports multiple devices per user
 
 export async function sendPushNotification(
   supabase: any,
@@ -366,96 +436,27 @@ export async function sendPushNotification(
     return { success: false, error: 'OneSignal not configured', sent: 0 };
   }
 
-  // ✅ CRITICAL FIX: Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
+  // ✅ Extract user IDs from user objects (trigger sends: [{user_id, display_name}])
   const extractedUserIds = Array.isArray(pushUserIds) 
     ? pushUserIds.map((u: any) => typeof u === 'string' ? u : u.user_id).filter(Boolean)
     : [];
 
   if (extractedUserIds.length === 0) {
     console.log('ℹ️ No push-enabled users for this notification');
-    
-    // ✅ FIX: Log to analytics even when no users (for dashboard visibility)
-    try {
-      await supabase.from('notification_analytics').insert({
-        signal_id: signalData.id,
-        user_id: null, // System-level notification attempt
-        notification_type: template.type,
-        sent_at: new Date().toISOString(),
-        failed_at: new Date().toISOString(),
-        failure_reason: 'No push-enabled users available',
-      });
-    } catch (error) {
-      console.warn('Failed to log analytics:', error);
-    }
-    
     return { success: true, sent: 0 };
   }
 
-  // ✅ MULTI-DEVICE FIX: Fetch ALL active device subscriptions (supports multiple devices per user)
-  console.log(`📋 [OneSignal] Fetching Player IDs for ${extractedUserIds.length} users from device_subscriptions`);
-  
-  const { data: devices, error: deviceError } = await supabase
-    .from('device_subscriptions')
-    .select('user_id, onesignal_player_id, device_info, platform, is_mobile')
-    .in('user_id', extractedUserIds)
-    .eq('is_active', true)
-    .not('onesignal_player_id', 'is', null);
-
-  if (deviceError) {
-    console.error('❌ Failed to fetch device subscriptions:', deviceError);
-    return { success: false, error: 'Failed to fetch device subscriptions', sent: 0 };
-  }
-
-  if (!devices || devices.length === 0) {
-    console.log('ℹ️ No active devices found for push users');
-    
-    // ✅ FIX: Log to analytics for each user without devices (for dashboard visibility)
-    for (const userId of extractedUserIds) {
-      try {
-        await supabase.from('notification_analytics').insert({
-          signal_id: signalData.id,
-          user_id: userId,
-          notification_type: template.type,
-          sent_at: new Date().toISOString(),
-          failed_at: new Date().toISOString(),
-          failure_reason: 'No active devices - User needs to subscribe via Airbnb modal',
-        });
-      } catch (error) {
-        console.warn('Failed to log analytics:', error);
-      }
-    }
-    
-    return { success: true, sent: 0 };
-  }
-
-  // Create a map of userId -> array of playerIDs (supports multiple devices per user)
-  const userPlayerMap = new Map<string, string[]>();
-  devices.forEach((device: any) => {
-    if (device.onesignal_player_id) {
-      const existing = userPlayerMap.get(device.user_id) || [];
-      existing.push(device.onesignal_player_id);
-      userPlayerMap.set(device.user_id, existing);
-    }
-  });
-
-  const totalDevices = devices.length;
-  const usersWithDevices = userPlayerMap.size;
-  console.log(`📋 [Player IDs] Found ${totalDevices} active devices for ${usersWithDevices} users`, {
-    devicesPerUser: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
-      userId: userId.substring(0, 8),
-      deviceCount: playerIds.length
-    }))
-  });
+  console.log(`📋 [OneSignal] Sending to ${extractedUserIds.length} users via External User IDs (Supabase UIDs)`);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 🔒 ENFORCE USER PREFERENCES (Rate Limits, Quiet Hours, Type Toggles)
+  // 🔒 ENFORCE USER PREFERENCES (Quiet Hours, Type Toggles)
+  // Note: Rate limits removed - trading notifications are time-sensitive
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   
   const filteredUserIds: string[] = [];
   const skipReasons: Record<string, string[]> = {
     user_disabled: [],
     quiet_hours: [],
-    rate_limited: []
   };
 
   for (const userId of extractedUserIds) {
@@ -529,38 +530,8 @@ export async function sendPushNotification(
         }
       }
 
-      // Check rate limit (notifications per hour)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { data: recentNotifs, error: countError } = await supabase
-        .from('notification_analytics')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('sent_at', oneHourAgo)
-        .is('failed_at', null); // Only count successfully sent
-
-      if (countError) {
-        console.warn(`Failed to check rate limit for user ${userId}:`, countError);
-        // Allow on error (don't block user)
-        filteredUserIds.push(userId);
-        continue;
-      }
-
-      const maxPerHour = prefs.max_per_hour || 20;
-      if (recentNotifs && recentNotifs.length >= maxPerHour) {
-        console.log(`🚫 User ${userId.substring(0, 8)} over rate limit (${recentNotifs.length}/${maxPerHour})`);
-        skipReasons.rate_limited.push(userId);
-        
-        // Log skip reason to analytics
-        await supabase.from('notification_analytics').insert({
-          signal_id: signalData.id,
-          user_id: userId,
-          notification_type: template.type,
-          sent_at: new Date().toISOString(),
-          failed_at: new Date().toISOString(),
-          failure_reason: `Rate limit exceeded (${recentNotifs.length}/${maxPerHour})`,
-        });
-        continue;
-      }
+      // 🔧 REMOVED: Rate limit check - trading notifications are time-sensitive and should never be blocked
+      // Users can control notification preferences via quiet hours and type toggles instead
 
       // User passed all checks
       filteredUserIds.push(userId);
@@ -574,70 +545,32 @@ export async function sendPushNotification(
 
   console.log(`📊 [Preference Enforcement] Original: ${extractedUserIds.length}, Filtered: ${filteredUserIds.length}`, {
     user_disabled: skipReasons.user_disabled.length,
-    quiet_hours: skipReasons.quiet_hours.length,
-    rate_limited: skipReasons.rate_limited.length
+    quiet_hours: skipReasons.quiet_hours.length
   });
 
   if (filteredUserIds.length === 0) {
     console.log('ℹ️ All users filtered by preferences');
-    
-    // Analytics already logged above for each filtered user with reason
-    return { success: true, sent: 0 };
-  }
-
-  // ✅ MULTI-DEVICE FIX: Get ALL Player IDs for filtered users (supports multiple devices per user)
-  const finalPlayerIds: string[] = [];
-  filteredUserIds.forEach(userId => {
-    const playerIds = userPlayerMap.get(userId);
-    if (playerIds && playerIds.length > 0) {
-      finalPlayerIds.push(...playerIds); // Add all devices for this user
-    }
-  });
-
-  if (finalPlayerIds.length === 0) {
-    console.log('ℹ️ All users filtered or no Player IDs available (after preference check)');
-    
-    // ✅ FIX: Log to analytics for users who passed preferences but have no Player ID
-    for (const userId of filteredUserIds) {
-      const playerIds = userPlayerMap.get(userId);
-      if (!playerIds || playerIds.length === 0) {
-        try {
-          await supabase.from('notification_analytics').insert({
-            signal_id: signalData.id,
-            user_id: userId,
-            notification_type: template.type,
-            sent_at: new Date().toISOString(),
-            failed_at: new Date().toISOString(),
-            failure_reason: 'No Player ID available after preference check',
-          });
-        } catch (error) {
-          console.warn('Failed to log analytics:', error);
-        }
-      }
-    }
-    
     return { success: true, sent: 0 };
   }
 
   try {
-    console.log(`📤 [OneSignal] Sending push notification:`, {
+    console.log(`📤 [OneSignal] Sending push notification using External User IDs:`, {
       type: template.type,
       asset: signalData.asset_name,
-      totalDevices: finalPlayerIds.length,
-      uniqueUsers: filteredUserIds.length,
-      playerIds: finalPlayerIds.map(id => id.substring(0, 8) + '...'),
-      deviceBreakdown: Array.from(userPlayerMap.entries()).map(([userId, playerIds]) => ({
-        user: userId.substring(0, 8),
-        devices: playerIds.length,
-      })),
+      userCount: filteredUserIds.length,
+      userIds: filteredUserIds.map(id => id.substring(0, 8) + '...'),
     });
 
-    // Build OneSignal notification payload (WEB PUSH ONLY)
+    // ✅ Build OneSignal notification payload using External User IDs (Supabase UIDs)
+    // Per Supabase Guide: https://supabase.com/partners/integrations/onesignal
+    // This automatically sends to ALL devices registered under each user
     const payload = {
       app_id: ONESIGNAL_APP_ID,
       
-      // ✅ CRITICAL FIX: Target SPECIFIC Player IDs (not segments)
-      include_player_ids: finalPlayerIds,
+      // ✅ USE EXTERNAL USER IDs (Supabase User IDs) - NOT Player IDs
+      // This is the recommended approach per Supabase + OneSignal integration guide
+      // OneSignal handles multi-device automatically when using OneSignal.login(uid)
+      include_external_user_ids: filteredUserIds,
       
       // Notification content
       headings: { en: template.title },
@@ -652,10 +585,6 @@ export async function sendPushNotification(
       ios_badgeType: 'Increase',
       ios_badgeCount: 1,
       ios_sound: template.sound ? 'default' : undefined,
-      
-      // ❌ REMOVED: Android-specific settings (we're web-only, no native Android app)
-      // android_channel_id causes "Could not find android_channel_id" error
-      // android_accent_color is for native Android only
       
       // Custom data payload
       data: {
@@ -715,7 +644,7 @@ export async function sendPushNotification(
 
       console.log(`✅ [OneSignal] Push sent successfully:`, {
         id: result.id,
-        recipients: result.recipients || finalPlayerIds.length,
+        recipients: result.recipients || filteredUserIds.length,
       });
 
       // 📊 Log success to analytics for EACH user

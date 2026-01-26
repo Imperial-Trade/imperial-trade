@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Clock, X } from 'lucide-react';
 import { useNotificationStore } from '@/contexts/NotificationStoreContext';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
@@ -10,6 +9,17 @@ import { NotificationBadge } from '@/components/notifications/NotificationBadge'
 import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
 import { ProgressIndicator } from '@/components/notifications/ProgressIndicator';
 import { cn } from '@/lib/utils';
+import { useSignalTheme } from '@/hooks/useSignalTheme';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
+import type { SlideDirection } from '@/hooks/useSheetNavigation';
+
+interface FilterState {
+  search: string;
+  status: string;
+  tradeType: string;
+  educator: string;
+  selectedEducators: string[];
+}
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -17,12 +27,38 @@ interface NotificationSheetProps {
   unreadNotifications?: number;
   onClearUnread?: () => void;
   onShowPrompt?: () => void;
+  filters?: FilterState;
+  statusOptions?: Array<{ value: string; label: string; icon?: any }>;
+  tradeTypeOptions?: Array<{ value: string; label: string; icon?: any }>;
+  educatorOptions?: Array<{ id: string; name: string }>;
+  canCreateSignals?: boolean;
+  onCreateSignal?: () => void;
+  onOpenFilterSheet?: (type: 'status' | 'tradeType' | 'educator') => void;
+  onOpenNotificationSettings?: () => void;
+  slideDirection?: SlideDirection;
 }
 
-export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClearUnread, onShowPrompt }: NotificationSheetProps) {
+export function NotificationSheet({ 
+  isOpen, 
+  onClose, 
+  unreadNotifications, 
+  onClearUnread, 
+  onShowPrompt,
+  filters,
+  statusOptions = [],
+  tradeTypeOptions = [],
+  educatorOptions = [],
+  canCreateSignals = false,
+  onCreateSignal,
+  onOpenFilterSheet,
+  onOpenNotificationSettings,
+  slideDirection
+}: NotificationSheetProps) {
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
   const events = getRecentNotifications(100); // Show latest 100 notifications
+  const { colors, isDark } = useSignalTheme();
+  const { isMobile } = useDeviceDetection();
   
   // Swipe to close state
   const [dragX, setDragX] = useState(0);
@@ -41,26 +77,57 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
 
   // Swipe to close handlers
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isMobile) {
+      dragStartX.current = e.touches[0].clientY;
+    } else {
     dragStartX.current = e.touches[0].clientX;
+    }
     setIsDragging(true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
+    if (isMobile) {
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - dragStartX.current;
+      // Only allow dragging down (positive direction) for bottom sheet
+      if (diff > 0) {
+        setDragX(diff);
+      }
+    } else {
     const currentX = e.touches[0].clientX;
     const diff = currentX - dragStartX.current;
-    // Only allow dragging to the right (positive direction)
+      // Only allow dragging to the right (positive direction) for right sheet
     if (diff > 0) {
       setDragX(diff);
+      }
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     setIsDragging(false);
+    
+    // ✅ FIX: Calculate distance directly instead of using stale state
+    // Get the final touch position
+    if (isMobile) {
+      const finalY = e.changedTouches[0]?.clientY || dragStartX.current;
+      const totalDistance = finalY - dragStartX.current;
+      
+      // If dragged more than 100px down, close the sheet
+      if (totalDistance > 100) {
+        onClose();
+      }
+    } else {
+      const finalX = e.changedTouches[0]?.clientX || dragStartX.current;
+      const totalDistance = finalX - dragStartX.current;
+      
     // If dragged more than 100px to the right, close the sheet
-    if (dragX > 100) {
+      if (totalDistance > 100) {
       onClose();
+      }
     }
+    
+    // Reset drag position
     setDragX(0);
   };
 
@@ -105,23 +172,50 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
     }
   };
 
+  // Get animation class based on slide direction
+  const getSlideAnimationClass = () => {
+    if (!slideDirection || isMobile) return '';
+    switch (slideDirection) {
+      case 'left': return 'sheet-slide-in-left';
+      case 'right': return 'sheet-slide-in-right';
+      default: return '';
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
-        side="right" 
-        className="w-full sm:max-w-md bg-background/95 backdrop-blur-xl border-border/50 inset-y-0 [&>button]:hidden"
+        side={isMobile ? "bottom-mobile" : "right"}
+        className={cn(
+          "w-full border-border/50 [&>button]:hidden flex flex-col",
+          isMobile ? "p-0" : "sm:max-w-md inset-y-0",
+          getSlideAnimationClass()
+        )}
         ref={sheetRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', // Safe area for iOS notch
-          transform: isDragging ? `translateX(${dragX}px)` : undefined,
+          background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+          backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+          paddingTop: isMobile ? 0 : 'max(env(safe-area-inset-top, 0px), 12px)',
+          paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'max(env(safe-area-inset-bottom, 0px), 12px)',
+          transform: isMobile 
+            ? (isDragging ? `translateY(${dragX}px)` : undefined)
+            : (isDragging ? `translateX(${dragX}px)` : undefined),
           transition: isDragging ? 'none' : 'transform 0.3s ease-out'
         }}
       >
+        {/* Drag Handle Indicator - Instagram style */}
+        {isMobile && (
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
+          </div>
+        )}
+        
         {/* Swipe indicator */}
-        {isDragging && dragX > 20 && (
+        {isDragging && dragX > 20 && !isMobile && (
           <div 
             className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 text-sm font-medium"
             style={{ opacity: Math.min(dragX / 100, 1) }}
@@ -130,26 +224,27 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
           </div>
         )}
         
-        <SheetHeader className="pt-2 lg:pt-16">
-          <SheetTitle className="flex items-center gap-3 justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+        <div className={cn("flex flex-col h-full overflow-hidden", isMobile ? "px-4" : "")}>
+        {/* Title Header - Desktop/Tablet only */}
+        {!isMobile && (
+          <div 
+            className="px-6 pt-4 pb-4 border-b border-border/50 sticky top-0 z-10"
+            style={{
+              background: isDark ? 'rgba(15, 15, 20, 0.95)' : '#FFFFFF',
+              backdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+              WebkitBackdropFilter: isDark ? 'blur(30px) saturate(180%)' : 'none',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5" style={{ color: '#D4AF37' }} />
+              <span className="text-lg font-semibold" style={{ color: colors.text.primary }}>
               Recent Activity
+              </span>
             </div>
-            {/* Custom close button - level with title */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0 rounded-full hover:bg-muted"
-            >
-              <X className="h-5 w-5" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </SheetTitle>
-        </SheetHeader>
+          </div>
+        )}
 
-        <ScrollArea className="h-[calc(100vh-12rem)] mt-6">
+        <div className={cn("flex-1 overflow-y-auto mt-4", isMobile ? "pb-4" : "")}>
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
@@ -275,7 +370,8 @@ export function NotificationSheet({ isOpen, onClose, unreadNotifications, onClea
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
+        </div>
       </SheetContent>
     </Sheet>
   );

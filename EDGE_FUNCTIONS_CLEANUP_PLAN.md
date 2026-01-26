@@ -1,140 +1,99 @@
-# 🗑️ EDGE FUNCTIONS CLEANUP PLAN
+# Edge Functions Cleanup Plan
 
-## 📊 **CURRENT EDGE FUNCTIONS AUDIT**
+## Current Broker Sync Edge Functions
 
-### ✅ **KEEP - Active New Notification System** (10 functions)
-These are the NEW instant notification system - **KEEP ALL**:
-- `notify-signal-created` ✅ KEEP
-- `notify-tp1-hit` ✅ KEEP
-- `notify-tp2-hit` ✅ KEEP
-- `notify-tp3-hit` ✅ KEEP
-- `notify-tp4-hit` ✅ KEEP
-- `notify-tp5-hit` ✅ KEEP
-- `notify-stop-loss-hit` ✅ KEEP
-- `notify-limit-activated` ✅ KEEP
-- `notify-signal-closed` ✅ KEEP
-- `notify-notes-updated` ✅ KEEP
+### ✅ ACTIVE & REQUIRED (Keep)
 
-### ✅ **KEEP - Core Signal/Price System** (3 functions)
-Essential for signal stream and prices - **KEEP ALL**:
-- `price-ingestor` ✅ KEEP (ingests live prices)
-- `order-trigger-monitor` ✅ KEEP (monitors limit orders)
-- `priority-alert-monitor` ✅ KEEP (monitors priority alerts)
+1. **mt5-sync** ✅ KEEP
+   - **Used By**: MQL5 EA (ImperialSync.mq5) - sends trades directly
+   - **Status**: ACTIVE (Version 8, deployed 2026-01-12)
+   - **Purpose**: Main sync endpoint - receives trades from MQL5 EA
+   - **Action**: ✅ KEEP
 
-### ❌ **REMOVE - Old/Redundant Notification System** (4 functions)
-These are OLD and no longer called - **DELETE ALL**:
-- `enhanced-signal-notification-dispatcher` ❌ DELETE (old system)
-- `signal-notification-dispatcher` ❌ DELETE (old system)
-- `price-monitoring` ❌ DELETE (replaced by new system)
-- `test-notification` ❌ DELETE (testing only)
+2. **test-broker-connection** ✅ KEEP
+   - **Used By**: Frontend (AutoJournalView.tsx)
+   - **Status**: ACTIVE (Version 52, deployed 2026-01-09)
+   - **Purpose**: Tests MT5 connection before saving credentials
+   - **Action**: ✅ KEEP
 
-### ⚠️ **MAYBE KEEP - Legacy/Fallback** (1 function)
-- `notify-tp-hit` ⚠️ **DECISION NEEDED**
-  - Purpose: Generic TP handler (fallback)
-  - Current: We have specific `notify-tp1-hit` through `notify-tp5-hit`
-  - Recommendation: **KEEP for now** as fallback in SQL trigger
+3. **sync-broker-trades** ✅ KEEP
+   - **Used By**: Frontend (AutoJournalView.tsx)
+   - **Status**: ACTIVE (Version 33, deployed 2026-01-08)
+   - **Purpose**: Manual sync of trades (Sync Now button)
+   - **Action**: ✅ KEEP
 
-### ✅ **KEEP - Other Essential Systems**
-These are unrelated to signal stream but still needed:
-- `account-request-notifications` ✅ KEEP
-- `account-request-rate-limit` ✅ KEEP
-- `account-status-check` ✅ KEEP
-- `account-status-websocket` ✅ KEEP
-- `admin-user-management` ✅ KEEP
-- `ai-trade-analysis` ✅ KEEP
-- `check-user-existence` ✅ KEEP
-- `cleanup-old-data` ✅ KEEP
-- `coach-agent` ✅ KEEP
-- `deconstructor-agent` ✅ KEEP
-- `economic-calendar` ✅ KEEP
-- `file-upload` ✅ KEEP
-- `generate-zoom-jwt` ✅ KEEP
-- `get-historical-data` ✅ KEEP
-- `hello` ✅ KEEP (health check)
-- `ingest-secret-verifier` ✅ KEEP
-- `migrate-approved-accounts` ✅ KEEP
-- `notification-cleanup` ✅ KEEP
-- `posthog-config` ✅ KEEP
-- `rate-limit-websocket` ✅ KEEP
-- `register-device-token` ✅ KEEP
-- `reset` ✅ KEEP
-- `send-welcome-email` ✅ KEEP
-- `share-trade-signal` ✅ KEEP
-- `simplified-signup` ✅ KEEP
-- `trading-journal-ai-coach-gemeni` ✅ KEEP
-- `unified-account-approval` ✅ KEEP
+4. **price-ingestor** ✅ KEEP
+   - **Used By**: VPS Price Feeder service
+   - **Status**: ACTIVE (Version 626, deployed 2025-12-01)
+   - **Purpose**: Receives price data from VPS
+   - **Action**: ✅ KEEP (separate from broker sync but needed)
 
 ---
 
-## 🗑️ **FUNCTIONS TO DELETE** (4 total)
+### ❓ POTENTIALLY UNUSED (Verify & Consider Removing)
 
-1. **`enhanced-signal-notification-dispatcher`**
-   - Reason: Old monolithic notification system (replaced by new system)
-   - Last used: Before PR #178
-   - Status: No longer called by any code
+5. **journal-ingestor** ❓ VERIFY
+   - **Referenced By**: VPS auto-sync service (vps-broker-service/src/auto-sync.ts)
+   - **Status**: ACTIVE (Version 25, deployed 2026-01-06)
+   - **Purpose**: Receives trades from VPS auto-sync service
+   - **Note**: Auto-sync service is OPTIONAL and disables gracefully if env vars not set
+   - **Question**: Is auto-sync service actually running? If not, this function is unused
+   - **Action**: ❓ VERIFY if auto-sync is running, then decide
 
-2. **`signal-notification-dispatcher`**
-   - Reason: Even older notification system
-   - Last used: Long time ago
-   - Status: No longer called by any code
-
-3. **`price-monitoring`**
-   - Reason: Old notification trigger (replaced by database trigger + new Edge Functions)
-   - Last used: Before PR #178
-   - Status: No longer called by any code
-
-4. **`test-notification`**
-   - Reason: Testing/debugging only
-   - Status: Not used in production
+6. **vps-setup-executor** ❓ VERIFY
+   - **Used By**: NO REFERENCES FOUND in frontend code
+   - **Status**: NOT FOUND in deployed functions list
+   - **Purpose**: Unknown
+   - **Action**: ❓ VERIFY if exists and if used, if not - can be removed
 
 ---
 
-## 📝 **CLEANUP ACTIONS**
+## Recommended Actions
 
-### **Step 1: Delete Edge Function Directories**
-```bash
-rm -rf enhanced-signal-notification-dispatcher/
-rm -rf signal-notification-dispatcher/
-rm -rf price-monitoring/
-rm -rf test-notification/
-```
+### Step 1: Verify Auto-Sync Status
+- Check VPS logs to see if auto-sync service is running
+- Check if journal-ingestor receives any requests
+- If auto-sync is disabled/not running → journal-ingestor can be removed
 
-### **Step 2: Update `config.toml`**
-Remove these entries:
-```toml
-[functions.enhanced-signal-notification-dispatcher]
-[functions.price-monitoring]
-[functions.test-notification]
-```
+### Step 2: Check vps-setup-executor
+- Verify if function exists in Supabase
+- Check if it's called anywhere (database triggers, external systems)
+- If unused → can be removed
 
-**KEEP** `notify-tp-hit` as fallback in config.toml
+### Step 3: Remove Unused Functions
+- After verification, remove unused functions to simplify the flow
 
 ---
 
-## ✅ **POST-CLEANUP VERIFICATION**
+## Simplified Flow (After Cleanup)
 
-After cleanup, the notification flow will be:
+### Broker Sync Flow (Keep These)
 ```
-Database Trigger (instant_notification_router)
-    ↓
-Routes to specific Edge Functions:
-    - notify-signal-created
-    - notify-tp1-hit (or tp2, tp3, tp4, tp5)
-    - notify-stop-loss-hit
-    - notify-limit-activated
-    - notify-signal-closed
-    - notify-notes-updated
-    ↓
-notification-core.ts (sendRealtimeNotification)
-    ↓
-Supabase Realtime (instant-alerts channel)
-    ↓
-ModernNotificationSystem (frontend)
+1. Connect Broker:
+   Frontend → test-broker-connection → VPS → Database
+
+2. Manual Sync:
+   Frontend → sync-broker-trades → VPS → Database
+
+3. Automatic Sync:
+   MQL5 EA → mt5-sync → Database
 ```
 
-✅ **Clean, single-path notification system!**
+### Price Flow (Separate)
+```
+VPS Price Feeder → price-ingestor → Database
+```
 
 ---
 
-## 🚀 **READY TO EXECUTE**
+## Summary
 
+**Keep (4 functions):**
+- ✅ mt5-sync
+- ✅ test-broker-connection
+- ✅ sync-broker-trades
+- ✅ price-ingestor
+
+**Verify & Possibly Remove (2 functions):**
+- ❓ journal-ingestor (if auto-sync not running)
+- ❓ vps-setup-executor (if unused)

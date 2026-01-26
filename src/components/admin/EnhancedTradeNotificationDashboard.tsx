@@ -1,18 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
-  Bell, TrendingUp, TrendingDown, Activity, AlertTriangle, 
-  CheckCircle, XCircle, Clock, Users, Zap, Settings, RefreshCw,
-  BarChart3, PieChart, Target, Download, Calendar, Search, User
+  Bell, 
+  TrendingUp, 
+  TrendingDown, 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Users, 
+  Zap, 
+  RefreshCw,
+  BarChart3, 
+  Target, 
+  Download, 
+  Calendar, 
+  Search, 
+  User,
+  ChevronDown,
+  SlidersHorizontal,
+  X,
+  Loader2,
+  Send,
+  Smartphone,
+  Wifi,
+  WifiOff,
+  Eye,
+  Settings,
+  MoreVertical
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-// ✅ FIX: Import Chart.js normally (parent component is already lazy-loaded)
-import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,8 +49,14 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -77,18 +106,40 @@ interface NotificationMetrics {
 }
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
+type TabType = 'overview' | 'types' | 'failures' | 'subscriptions';
 
-// ✅ FIX: Export as default to match AdminTools import
 export default function EnhancedTradeNotificationDashboard() {
   const [metrics, setMetrics] = useState<NotificationMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
+  const [loadingPhase, setLoadingPhase] = useState<'loading' | 'transitioning' | 'complete'>('loading');
+
+  // Loading phase: 1s loading, then 0.5s transition
+  useEffect(() => {
+    const loadingTimer = setTimeout(() => {
+      setLoadingPhase('transitioning');
+    }, 1000);
+    
+    const transitionTimer = setTimeout(() => {
+      setLoadingPhase('complete');
+    }, 1500);
+    
+    return () => {
+      clearTimeout(loadingTimer);
+      clearTimeout(transitionTimer);
+    };
+  }, []);
+
+  const loading = dataLoading || loadingPhase === 'loading';
+  const isTransitioning = loadingPhase === 'transitioning';
 
   useEffect(() => {
     loadMetrics();
-    const interval = setInterval(loadMetrics, 30000); // Refresh every 30s
+    const interval = setInterval(loadMetrics, 30000);
     return () => clearInterval(interval);
   }, [timeRange]);
 
@@ -108,7 +159,6 @@ export default function EnhancedTradeNotificationDashboard() {
       setRefreshing(true);
       const startDate = getTimeRangeDate();
       
-      // Define the expected analytics record type
       type AnalyticsRecord = {
         id: string;
         notification_type: string;
@@ -121,7 +171,6 @@ export default function EnhancedTradeNotificationDashboard() {
         created_at: string | null;
       };
       
-      // Get analytics data with explicit typing
       const { data, error } = await supabase
         .from('notification_analytics')
         .select('id, notification_type, user_id, sent_at, delivered_at, failed_at, failure_reason, onesignal_notification_id, created_at')
@@ -134,26 +183,24 @@ export default function EnhancedTradeNotificationDashboard() {
       const analytics = (data || []) as AnalyticsRecord[];
 
       if (analytics.length === 0) {
-      setMetrics({
-        total_sent: 0,
-        total_delivered: 0,
-        total_failed: 0,
-        delivery_rate: 0,
-        by_type: [],
-        recent_failures: [],
-        recent_notifications: [],
-        hourly_volume: []
-      });
+        setMetrics({
+          total_sent: 0,
+          total_delivered: 0,
+          total_failed: 0,
+          delivery_rate: 0,
+          by_type: [],
+          recent_failures: [],
+          recent_notifications: [],
+          hourly_volume: []
+        });
         return;
       }
 
-      // Calculate metrics
       const total_sent = analytics.length;
       const total_delivered = analytics.filter(a => a.delivered_at).length;
       const total_failed = analytics.filter(a => a.failed_at).length;
       const delivery_rate = total_sent > 0 ? (total_delivered / total_sent) * 100 : 0;
 
-      // Group by type
       const byType: Record<string, any> = {};
       analytics.forEach(a => {
         if (!byType[a.notification_type]) {
@@ -164,7 +211,6 @@ export default function EnhancedTradeNotificationDashboard() {
         if (a.failed_at) byType[a.notification_type].failed++;
       });
 
-      // Calculate hourly volume (last 24 hours only)
       const hourly: Record<string, any> = {};
       const last24h = analytics.filter(a => {
         const timeStr = a.sent_at || a.created_at;
@@ -186,7 +232,6 @@ export default function EnhancedTradeNotificationDashboard() {
         if (a.failed_at) hourly[hourKey].failed++;
       });
 
-      // Fill missing hours
       const hourlyVolume = [];
       for (let i = 0; i < 24; i++) {
         const hourKey = `${i}:00`;
@@ -207,7 +252,7 @@ export default function EnhancedTradeNotificationDashboard() {
             id: a.id,
             type: a.notification_type,
             reason: a.failure_reason || 'Unknown',
-            created_at: a.created_at
+            created_at: a.created_at || ''
           })),
         recent_notifications: analytics
           .slice(-20)
@@ -215,8 +260,8 @@ export default function EnhancedTradeNotificationDashboard() {
           .map(a => ({
             id: a.id,
             type: a.notification_type,
-            user_id: a.user_id,
-            sent_at: a.sent_at,
+            user_id: a.user_id || '',
+            sent_at: a.sent_at || '',
             delivered_at: a.delivered_at,
             failed_at: a.failed_at,
             failure_reason: a.failure_reason,
@@ -228,7 +273,7 @@ export default function EnhancedTradeNotificationDashboard() {
     } catch (error: any) {
       console.error('Failed to load metrics:', error);
     } finally {
-      setLoading(false);
+      setDataLoading(false);
       setRefreshing(false);
     }
   };
@@ -256,43 +301,83 @@ export default function EnhancedTradeNotificationDashboard() {
     a.click();
   };
 
+  const getStatusConfig = (status: 'delivered' | 'failed' | 'pending') => {
+    switch (status) {
+      case 'delivered':
+        return { 
+          icon: CheckCircle, 
+          label: 'Delivered', 
+          bg: 'bg-emerald-50 dark:bg-emerald-500/10', 
+          text: 'text-emerald-600 dark:text-emerald-400',
+          border: 'border-emerald-200 dark:border-emerald-500/20'
+        };
+      case 'failed':
+        return { 
+          icon: XCircle, 
+          label: 'Failed', 
+          bg: 'bg-red-50 dark:bg-red-500/10', 
+          text: 'text-red-600 dark:text-red-400',
+          border: 'border-red-200 dark:border-red-500/20'
+        };
+      case 'pending':
+        return { 
+          icon: Clock, 
+          label: 'Pending', 
+          bg: 'bg-amber-50 dark:bg-amber-500/10', 
+          text: 'text-amber-600 dark:text-amber-400',
+          border: 'border-amber-200 dark:border-amber-500/20'
+        };
+    }
+  };
+
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-12 flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
-            <span className="text-lg">Loading Trade Notification Analytics...</span>
+      <div className="w-full min-h-[400px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <Bell className="w-8 h-8 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-md">
+              <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-center">
+            <p className="text-base font-medium text-slate-900 dark:text-white">Loading Analytics</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Please wait...</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!metrics) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load notification metrics. Please check your database connection.
-        </AlertDescription>
-      </Alert>
+      <div className="w-full min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Failed to Load</h3>
+          <p className="text-slate-500 dark:text-slate-400">Please check your database connection.</p>
+        </div>
+      </div>
     );
   }
 
-  const deliveryRateColor = metrics.delivery_rate >= 95 ? 'text-green-500' : 
-                             metrics.delivery_rate >= 80 ? 'text-yellow-500' : 
-                             'text-red-500';
+  const deliveryRateColor = metrics.delivery_rate >= 95 ? 'text-emerald-600 dark:text-emerald-400' : 
+                           metrics.delivery_rate >= 80 ? 'text-amber-600 dark:text-amber-400' : 
+                           'text-red-600 dark:text-red-400';
 
-  // Chart Data
+  const systemHealthy = metrics.delivery_rate >= 95;
+
+  // Chart configurations
   const hourlyChartData = {
     labels: metrics.hourly_volume.map(h => h.hour),
     datasets: [
       {
         label: 'Delivered',
         data: metrics.hourly_volume.map(h => h.delivered),
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4
       },
@@ -312,453 +397,491 @@ export default function EnhancedTradeNotificationDashboard() {
     datasets: [{
       data: metrics.by_type.map(t => t.count),
       backgroundColor: [
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(34, 197, 94, 0.8)',
+        'rgba(139, 92, 246, 0.8)',
+        'rgba(16, 185, 129, 0.8)',
         'rgba(239, 68, 68, 0.8)',
-        'rgba(234, 179, 8, 0.8)',
-        'rgba(168, 85, 247, 0.8)',
+        'rgba(245, 158, 11, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
         'rgba(236, 72, 153, 0.8)',
       ],
-      borderWidth: 2,
-      borderColor: 'rgba(255, 255, 255, 0.1)'
+      borderWidth: 0
     }]
   };
 
+  const tabs: { value: TabType; label: string; count?: number }[] = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'types', label: 'By Type', count: metrics.by_type.length },
+    { value: 'failures', label: 'Failures', count: metrics.recent_failures.length },
+    { value: 'subscriptions', label: 'Users' },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Trade Notifications</h2>
-          <p className="text-muted-foreground">
-            Professional monitoring and analytics for OneSignal push notifications
-          </p>
+    <div 
+      className={`w-full pb-24 lg:pb-6 transition-all duration-500 ${
+        isTransitioning ? 'blur-sm opacity-90' : 'blur-0 opacity-100'
+      }`}
+    >
+      {/* Header Section */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4 lg:mb-6">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <Bell className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg lg:text-2xl font-bold text-slate-900 dark:text-white">Notifications</h1>
+              <p className="text-xs lg:text-sm text-slate-500 dark:text-slate-400">
+                {metrics.total_sent} sent • {timeRange === '24h' ? 'Last 24h' : timeRange === '7d' ? 'Last 7 days' : timeRange === '30d' ? 'Last 30 days' : 'All time'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Mobile Actions */}
+          <div className="flex lg:hidden items-center gap-2">
+            <button
+              onClick={() => setIsFilterOpen(true)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={loadMetrics}
+              disabled={refreshing}
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          
+          {/* Desktop Actions */}
+          <div className="hidden lg:flex items-center gap-3">
+            {/* Time Range */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              {(['24h', '7d', '30d', 'all'] as TimeRange[]).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    timeRange === range
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {range === 'all' ? 'All' : range.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            
+            <Button onClick={exportToCSV} variant="outline" size="sm" className="h-10">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            
+            <Button onClick={loadMetrics} disabled={refreshing} variant="outline" size="sm" className="h-10">
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          {/* Time Range Selector */}
-          <div className="flex items-center gap-1 border rounded-lg p-1">
-            {(['24h', '7d', '30d', 'all'] as TimeRange[]).map((range) => (
-              <Button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                variant={timeRange === range ? 'default' : 'ghost'}
-                size="sm"
-                className="gap-1"
-              >
-                <Calendar className="w-3 h-3" />
-                {range === 'all' ? 'All Time' : range.toUpperCase()}
-              </Button>
-            ))}
+        {/* System Health Alert */}
+        {!systemHealthy && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-red-700 dark:text-red-300">Low Delivery Rate</p>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {metrics.delivery_rate}% (Target: 95%+). {metrics.total_failed} notifications failed.
+              </p>
+            </div>
           </div>
-
-          {/* Export Button */}
-          <Button onClick={exportToCSV} variant="outline" size="sm" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export CSV
-          </Button>
-
-          {/* Refresh Button */}
-          <Button 
-            onClick={loadMetrics} 
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Critical Health Status */}
-      {metrics.delivery_rate < 95 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>⚠️ LOW DELIVERY RATE:</strong> {metrics.delivery_rate}% (Target: 95%+).
-            {metrics.total_failed > 0 && ` ${metrics.total_failed} notifications failed in selected time range.`}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Key Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sent</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.total_sent.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {timeRange === '24h' ? 'Last 24 hours' : timeRange === '7d' ? 'Last 7 days' : timeRange === '30d' ? 'Last 30 days' : 'All time'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivery Rate</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${deliveryRateColor}`}>
-              {metrics.delivery_rate}%
+        )}
+        
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 lg:mb-6">
+          {/* Total Sent */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 lg:p-4 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Total Sent</p>
+                <p className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white mt-1">{metrics.total_sent.toLocaleString()}</p>
+              </div>
+              <Send className="w-5 h-5 lg:w-6 lg:h-6 text-slate-500 opacity-60" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.total_delivered.toLocaleString()} delivered
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Failed Deliveries</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${metrics.total_failed > 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {metrics.total_failed}
+          </div>
+          
+          {/* Delivery Rate */}
+          <div className={`rounded-xl p-3 lg:p-4 border ${
+            systemHealthy 
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20' 
+              : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Delivery Rate</p>
+                <p className={`text-xl lg:text-2xl font-bold mt-1 ${deliveryRateColor}`}>{metrics.delivery_rate}%</p>
+              </div>
+              <Target className={`w-5 h-5 lg:w-6 lg:h-6 opacity-60 ${systemHealthy ? 'text-emerald-500' : 'text-amber-500'}`} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.total_failed === 0 ? '✅ All successful' : '⚠️ Needs attention'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {metrics.delivery_rate >= 95 ? (
-                <>
-                  <CheckCircle className="w-6 h-6 text-green-500" />
-                  <span className="text-2xl font-bold text-green-500">Healthy</span>
-                </>
+          </div>
+          
+          {/* Failed */}
+          <div className={`rounded-xl p-3 lg:p-4 border ${
+            metrics.total_failed > 0
+              ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20'
+              : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Failed</p>
+                <p className={`text-xl lg:text-2xl font-bold mt-1 ${metrics.total_failed > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {metrics.total_failed}
+                </p>
+              </div>
+              {metrics.total_failed > 0 ? (
+                <XCircle className="w-5 h-5 lg:w-6 lg:h-6 text-red-500 opacity-60" />
               ) : (
-                <>
-                  <AlertTriangle className="w-6 h-6 text-yellow-500" />
-                  <span className="text-2xl font-bold text-yellow-500">Degraded</span>
-                </>
+                <CheckCircle className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-500 opacity-60" />
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.delivery_rate >= 95 ? 'All systems operational' : 'Performance below target'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Hourly Volume Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Hourly Volume (Last 24h)
-            </CardTitle>
-            <CardDescription>Notification delivery patterns by hour</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Line 
-              data={hourlyChartData} 
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                  legend: { position: 'bottom' as const },
-                  tooltip: { mode: 'index' as const, intersect: false }
-                },
-                scales: {
-                  y: { beginAtZero: true }
-                }
-              }} 
-            />
-          </CardContent>
-        </Card>
-
-        {/* Type Distribution Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="w-5 h-5" />
-              Notification Types
-            </CardTitle>
-            <CardDescription>Distribution by notification type</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center">
-            <div className="w-full max-w-sm">
-              <Doughnut 
-                data={typeChartData} 
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: {
-                    legend: { position: 'bottom' as const }
-                  }
-                }} 
-              />
+          </div>
+          
+          {/* System Status */}
+          <div className={`rounded-xl p-3 lg:p-4 border ${
+            systemHealthy
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20'
+              : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</p>
+                <p className={`text-lg lg:text-xl font-bold mt-1 ${systemHealthy ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {systemHealthy ? 'Healthy' : 'Degraded'}
+                </p>
+              </div>
+              {systemHealthy ? (
+                <Wifi className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-500 opacity-60" />
+              ) : (
+                <WifiOff className="w-5 h-5 lg:w-6 lg:h-6 text-amber-500 opacity-60" />
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex overflow-x-auto gap-2 pb-1 -mx-1 px-1 lg:hidden">
+          {tabs.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                activeTab === tab.value
+                  ? 'bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/30'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              {tab.label} {tab.count !== undefined && <span className="ml-1 opacity-70">{tab.count}</span>}
+            </button>
+          ))}
+        </div>
+        
+        {/* Desktop Tabs */}
+        <div className="hidden lg:flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+          {tabs.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.value
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {tab.label} {tab.count !== undefined && <span className="ml-1 opacity-50">({tab.count})</span>}
+            </button>
+          ))}
+        </div>
       </div>
-
-      {/* Detailed Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">By Type</TabsTrigger>
-          <TabsTrigger value="failures">Failures</TabsTrigger>
-          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
+      
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Charts */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Hourly Volume */}
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart3 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Hourly Volume</h3>
+                </div>
+                <div className="h-[200px] lg:h-[250px]">
+                  <Line 
+                    data={hourlyChartData} 
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { 
+                          position: 'bottom' as const,
+                          labels: { usePointStyle: true, padding: 20 }
+                        }
+                      },
+                      scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                      }
+                    }} 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Type Distribution */}
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white">By Type</h3>
+                </div>
+                <div className="h-[200px] lg:h-[250px] flex items-center justify-center">
+                  {metrics.by_type.length > 0 ? (
+                    <Doughnut 
+                      data={typeChartData} 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { 
+                            position: 'bottom' as const,
+                            labels: { usePointStyle: true, padding: 15 }
+                          }
+                        },
+                        cutout: '60%'
+                      }} 
+                    />
+                  ) : (
+                    <p className="text-slate-500 dark:text-slate-400">No data</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
           {/* Recent Notifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                Recent Notifications (Last 20)
-              </CardTitle>
-              <CardDescription>Live feed of notification delivery status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecentNotificationsList metrics={metrics} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Types Breakdown</CardTitle>
-              <CardDescription>Detailed metrics by notification type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {metrics.by_type.length > 0 ? (
-                <div className="space-y-4">
-                  {metrics.by_type.map(type => {
-                    const deliveryRate = type.count > 0 ? (type.delivered / type.count) * 100 : 0;
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Send className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white">Recent Notifications</h3>
+                </div>
+                <Badge variant="outline" className="text-xs">{metrics.recent_notifications.length}</Badge>
+              </div>
+              
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {metrics.recent_notifications.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Bell className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400">No notifications sent yet</p>
+                  </div>
+                ) : (
+                  metrics.recent_notifications.map((notif) => {
+                    const status = notif.failed_at ? 'failed' : notif.delivered_at ? 'delivered' : 'pending';
+                    const statusConfig = getStatusConfig(status);
+                    const StatusIcon = statusConfig.icon;
+                    
                     return (
-                      <div key={type.type} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono">
-                              {type.type.replace(/_/g, ' ')}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {type.count} sent
-                            </span>
-                          </div>
-                          <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all ${deliveryRate >= 95 ? 'bg-green-500' : deliveryRate >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${deliveryRate}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div className="ml-4 text-right space-y-1">
-                          <div className="text-lg font-bold">{Math.round(deliveryRate)}%</div>
-                          <div className="text-xs text-muted-foreground">
-                            {type.delivered} / {type.count}
-                          </div>
-                          {type.failed > 0 && (
-                            <div className="text-xs text-red-500">
-                              {type.failed} failed
+                      <div
+                        key={notif.id}
+                        className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${statusConfig.bg}`}>
+                              <StatusIcon className={`w-4 h-4 ${statusConfig.text}`} />
                             </div>
-                          )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-slate-900 dark:text-white text-sm">
+                                  {notif.type.replace(/_/g, ' ')}
+                                </span>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.bg} ${statusConfig.text}`}>
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                                User: {notif.user_id?.substring(0, 8) || 'N/A'}...
+                              </p>
+                              {notif.failure_reason && (
+                                <p className="text-xs text-red-500 mt-1">{notif.failure_reason}</p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs text-slate-400 flex-shrink-0">
+                            {notif.sent_at ? new Date(notif.sent_at).toLocaleTimeString() : '—'}
+                          </span>
                         </div>
                       </div>
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  No notifications sent in selected time range
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="subscriptions" className="space-y-4">
-          <UserSubscriptionsList />
-        </TabsContent>
-
-        <TabsContent value="failures" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Failures ({metrics.recent_failures.length})</CardTitle>
-              <CardDescription>Last 10 failed notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {metrics.recent_failures.length > 0 ? (
-                <div className="space-y-2">
-                  {metrics.recent_failures.map(failure => (
-                    <Alert key={failure.id} variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <strong className="font-mono">{failure.type.replace(/_/g, ' ')}</strong>
-                            <p className="text-xs">{failure.reason}</p>
-                          </div>
-                          <span className="text-xs opacity-70">
-                            {new Date(failure.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                  <p className="text-lg font-semibold">✅ No Failures!</p>
-                  <p className="text-sm text-muted-foreground">All notifications delivered successfully</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Configuration</CardTitle>
-              <CardDescription>OneSignal Integration Status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">OneSignal App ID</p>
-                  <p className="text-sm text-muted-foreground font-mono">3ea69bee-8061-4d47-8053-fc95779b6f1e</p>
-                </div>
-                <Badge variant="default">✅ Configured</Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">REST API Key</p>
-                  <p className="text-sm text-muted-foreground">••••••••••••••••</p>
-                </div>
-                <Badge variant="default">✅ Set</Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">Edge Functions</p>
-                  <p className="text-sm text-muted-foreground">6 notification functions deployed</p>
-                </div>
-                <Badge variant="default">✅ Active</Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">Analytics Tracking</p>
-                  <p className="text-sm text-muted-foreground">Real-time logging enabled</p>
-                </div>
-                <Badge variant="default">✅ Enabled</Badge>
-              </div>
-
-              <Alert>
-                <Activity className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>✅ System Status:</strong> All components operational. OneSignal integration working correctly with full analytics tracking.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Pro Tips */}
-      <Alert>
-        <Zap className="h-4 w-4" />
-        <AlertDescription>
-          <strong>💡 Pro Tips:</strong> Maintain 95%+ delivery rate for professional standards. 
-          Export analytics regularly to track trends. Check failures tab daily for any issues.
-        </AlertDescription>
-      </Alert>
-    </div>
-  );
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📋 RECENT NOTIFICATIONS LIST
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-function RecentNotificationsList({ metrics }: { metrics: NotificationMetrics | null }) {
-  if (!metrics || metrics.recent_notifications.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>No notifications sent yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2 max-h-[400px] overflow-y-auto">
-      {metrics.recent_notifications.map((notif) => {
-        const status = notif.failed_at ? 'failed' : notif.delivered_at ? 'delivered' : 'pending';
-        const statusColor = status === 'delivered' ? 'text-green-500' : 
-                           status === 'failed' ? 'text-red-500' : 
-                           'text-yellow-500';
-        const statusIcon = status === 'delivered' ? <CheckCircle className="w-4 h-4" /> :
-                          status === 'failed' ? <XCircle className="w-4 h-4" /> :
-                          <Clock className="w-4 h-4" />;
-
-        return (
-          <div
-            key={notif.id}
-            className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-          >
-            <div className="flex items-center gap-3 flex-1">
-              <div className={statusColor}>
-                {statusIcon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {notif.type.replace(/_/g, ' ')}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    User: {notif.user_id?.substring(0, 8) || 'N/A'}...
-                  </span>
-                </div>
-                {notif.onesignal_notification_id && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    OneSignal ID: {notif.onesignal_notification_id?.substring(0, 20)}...
-                  </div>
-                )}
-                {notif.failure_reason && (
-                  <div className="text-xs text-red-500 mt-1">
-                    {notif.failure_reason}
-                  </div>
+                  })
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {activeTab === 'types' && (
+        <div className="space-y-3">
+          {metrics.by_type.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Data</h3>
+              <p className="text-slate-500 dark:text-slate-400">No notifications in selected time range.</p>
             </div>
-            <div className="text-right">
-              <Badge 
-                variant={status === 'delivered' ? 'default' : status === 'failed' ? 'destructive' : 'secondary'}
-                className={status === 'delivered' ? 'bg-green-500' : ''}
-              >
-                {status === 'delivered' ? '✅ Delivered' : 
-                 status === 'failed' ? '❌ Failed' : 
-                 '⏳ Pending'}
-              </Badge>
-              <div className="text-xs text-muted-foreground mt-1">
-                {new Date(notif.sent_at).toLocaleTimeString()}
+          ) : (
+            metrics.by_type.map((type) => {
+              const deliveryRate = type.count > 0 ? (type.delivered / type.count) * 100 : 0;
+              const isHealthy = deliveryRate >= 95;
+              
+              return (
+                <Card key={type.type} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+                          <Bell className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-slate-900 dark:text-white capitalize">
+                            {type.type.replace(/_/g, ' ')}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {type.count} sent • {type.delivered} delivered
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${isHealthy ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {Math.round(deliveryRate)}%
+                        </p>
+                        {type.failed > 0 && (
+                          <p className="text-xs text-red-500">{type.failed} failed</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all rounded-full ${isHealthy ? 'bg-emerald-500' : deliveryRate >= 80 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        style={{ width: `${deliveryRate}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+      
+      {activeTab === 'failures' && (
+        <div className="space-y-3">
+          {metrics.recent_failures.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-emerald-500" />
               </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Failures</h3>
+              <p className="text-slate-500 dark:text-slate-400">All notifications delivered successfully.</p>
+            </div>
+          ) : (
+            metrics.recent_failures.map((failure) => (
+              <Card key={failure.id} className="bg-white dark:bg-slate-900 border-red-200 dark:border-red-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-medium text-slate-900 dark:text-white capitalize">
+                          {failure.type.replace(/_/g, ' ')}
+                        </h4>
+                        <span className="text-xs text-slate-400">
+                          {failure.created_at ? new Date(failure.created_at).toLocaleString() : '—'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1">{failure.reason}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+      
+      {activeTab === 'subscriptions' && (
+        <UserSubscriptionsList />
+      )}
+
+      {/* Mobile Filter Sheet */}
+      <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-0 gap-0 rounded-t-3xl rounded-b-none fixed bottom-0 top-auto translate-y-0">
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
+          </div>
+          
+          <DialogHeader className="px-6 pb-4">
+            <DialogTitle className="text-slate-900 dark:text-white text-lg font-semibold flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              Time Range
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="px-6 pb-8 space-y-5">
+            <div className="grid grid-cols-2 gap-2">
+              {(['24h', '7d', '30d', 'all'] as TimeRange[]).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setTimeRange(range);
+                    setIsFilterOpen(false);
+                  }}
+                  className={`py-3 px-3 rounded-xl text-sm font-medium transition-all border ${
+                    timeRange === range
+                      ? 'bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {range === '24h' ? 'Last 24 Hours' : range === '7d' ? 'Last 7 Days' : range === '30d' ? 'Last 30 Days' : 'All Time'}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button onClick={exportToCSV} variant="outline" className="flex-1 h-12">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button
+                onClick={() => {
+                  loadMetrics();
+                  setIsFilterOpen(false);
+                }}
+                className="flex-1 h-12 bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
             </div>
           </div>
-        );
-      })}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -794,7 +917,6 @@ function UserSubscriptionsList() {
     try {
       setLoading(true);
 
-      // Get all users with their profile info
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, display_name, email, device_token, xeon_stream_subscription, created_at')
@@ -807,7 +929,6 @@ function UserSubscriptionsList() {
         return;
       }
 
-      // Get notification stats for each user
       const userSubscriptions: UserSubscription[] = await Promise.all(
         profiles.map(async (profile) => {
           const { data: notifStats } = await supabase
@@ -847,13 +968,10 @@ function UserSubscriptionsList() {
   };
 
   const filteredUsers = users.filter(user => {
-    // Filter by search term
     const matchesSearch = !searchTerm || 
       user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.device_token?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filter by status
     const matchesStatus = filterStatus === 'all' || 
       (filterStatus === 'subscribed' && user.xeon_stream_subscription) ||
       (filterStatus === 'unsubscribed' && !user.xeon_stream_subscription);
@@ -867,175 +985,137 @@ function UserSubscriptionsList() {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-12 flex items-center justify-center">
-          <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          User Subscriptions ({users.length} total)
-        </CardTitle>
-        <CardDescription>
-          All users with their OneSignal Player IDs and subscription status
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="p-4 border rounded-lg">
-            <div className="text-sm text-muted-foreground">Subscribed</div>
-            <div className="text-2xl font-bold text-green-500">{subscribedCount}</div>
-          </div>
-          <div className="p-4 border rounded-lg">
-            <div className="text-sm text-muted-foreground">Unsubscribed</div>
-            <div className="text-2xl font-bold text-red-500">{unsubscribedCount}</div>
-          </div>
-          <div className="p-4 border rounded-lg">
-            <div className="text-sm text-muted-foreground">With Player ID</div>
-            <div className="text-2xl font-bold text-blue-500">{withPlayerIdCount}</div>
-          </div>
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-emerald-50 dark:bg-emerald-500/10 rounded-xl p-3 border border-emerald-200 dark:border-emerald-500/20">
+          <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase">Subscribed</p>
+          <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{subscribedCount}</p>
         </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or Player ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant={filterStatus === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('all')}
-            >
-              All ({users.length})
-            </Button>
-            <Button
-              variant={filterStatus === 'subscribed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('subscribed')}
-            >
-              Subscribed ({subscribedCount})
-            </Button>
-            <Button
-              variant={filterStatus === 'unsubscribed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('unsubscribed')}
-            >
-              Unsubscribed ({unsubscribedCount})
-            </Button>
-          </div>
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+          <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 uppercase">Unsubscribed</p>
+          <p className="text-xl font-bold text-slate-700 dark:text-slate-300">{unsubscribedCount}</p>
         </div>
-
-        {/* User List */}
-        <div className="space-y-2 max-h-[600px] overflow-y-auto">
-          {filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => (
-              <div
-                key={user.id}
-                className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-2">
-                    {/* User Info */}
-                    <div className="flex items-center gap-3">
-                      <User className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">
-                          {user.display_name || user.email?.split('@')[0] || 'User'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {user.email || 'No email'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* OneSignal Player ID */}
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {user.device_token ? (
-                          <>
-                            <Bell className="w-3 h-3 mr-1" />
-                            {user.device_token?.substring(0, 20)}...
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3 h-3 mr-1" />
-                            No Player ID
-                          </>
-                        )}
-                      </Badge>
+        <div className="bg-violet-50 dark:bg-violet-500/10 rounded-xl p-3 border border-violet-200 dark:border-violet-500/20">
+          <p className="text-[10px] font-medium text-violet-600 dark:text-violet-400 uppercase">With Device</p>
+          <p className="text-xl font-bold text-violet-700 dark:text-violet-300">{withPlayerIdCount}</p>
+        </div>
+      </div>
+      
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+            style={{ fontSize: '16px' }}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[
+            { value: 'all' as const, label: 'All', count: users.length },
+            { value: 'subscribed' as const, label: 'Subscribed', count: subscribedCount },
+            { value: 'unsubscribed' as const, label: 'Not Subscribed', count: unsubscribedCount },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setFilterStatus(filter.value)}
+              className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                filterStatus === filter.value
+                  ? 'bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/30'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              {filter.label} <span className="opacity-60">({filter.count})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* User List */}
+      <div className="space-y-2">
+        {filteredUsers.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-500 dark:text-slate-400">No users found</p>
+          </div>
+        ) : (
+          filteredUsers.map((user) => (
+            <Card key={user.id} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    user.xeon_stream_subscription 
+                      ? 'bg-emerald-100 dark:bg-emerald-500/20' 
+                      : 'bg-slate-100 dark:bg-slate-800'
+                  }`}>
+                    <User className={`w-5 h-5 ${
+                      user.xeon_stream_subscription 
+                        ? 'text-emerald-600 dark:text-emerald-400' 
+                        : 'text-slate-500'
+                    }`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-medium text-slate-900 dark:text-white truncate">
+                        {user.display_name || user.email?.split('@')[0] || 'User'}
+                      </h4>
                       {user.xeon_stream_subscription ? (
-                        <Badge variant="default" className="bg-green-500">
-                          ✅ Subscribed
+                        <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 flex-shrink-0">
+                          <Wifi className="w-3 h-3 mr-1" />
+                          Subscribed
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">
-                          🔕 Not Subscribed
+                        <Badge variant="outline" className="text-slate-500 flex-shrink-0">
+                          <WifiOff className="w-3 h-3 mr-1" />
+                          Not Subscribed
                         </Badge>
                       )}
                     </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      {user.email || 'No email'}
+                    </p>
+                    
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {user.device_token ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                          <Smartphone className="w-3 h-3" />
+                          Device registered
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                          <Smartphone className="w-3 h-3" />
+                          No device
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-400">
                         <Bell className="w-3 h-3" />
                         {user.total_notifications_received} received
-                      </div>
-                      {user.total_notifications_failed > 0 && (
-                        <div className="flex items-center gap-1 text-red-500">
-                          <XCircle className="w-3 h-3" />
-                          {user.total_notifications_failed} failed
-                        </div>
-                      )}
+                      </span>
                       {user.total_notifications_received > 0 && (
-                        <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
                           <Target className="w-3 h-3" />
-                          {user.delivery_rate}% delivery rate
-                        </div>
-                      )}
-                      {user.last_notification_at && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          Last: {new Date(user.last_notification_at).toLocaleDateString()}
-                        </div>
+                          {user.delivery_rate}% rate
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No users found matching your filters</p>
-            </div>
-          )}
-        </div>
-
-        {/* Legend */}
-        <Alert>
-          <Bell className="h-4 w-4" />
-          <AlertDescription>
-            <strong>💡 Note:</strong> "Player ID" is the OneSignal device identifier. 
-            Users must enable push notifications in their browser to get a Player ID. 
-            "Subscribed" means they have xeon_stream_subscription enabled.
-          </AlertDescription>
-        </Alert>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
-

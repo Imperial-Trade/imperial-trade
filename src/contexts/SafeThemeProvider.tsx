@@ -35,6 +35,18 @@ export function SafeThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [currentTheme]);
 
+  // Sync theme-color meta so status bar matches header (iOS/Android)
+  useEffect(() => {
+    const color = currentTheme === 'dark' ? '#050505' : '#F5F5F0';
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', color);
+  }, [currentTheme]);
+
   const updateTheme = useCallback((newTheme: Theme) => {
     try {
       window.localStorage.setItem('theme', newTheme);

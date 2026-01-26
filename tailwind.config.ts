@@ -42,7 +42,11 @@ export default {
         },
         accent: {
           DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))'
+          foreground: 'hsl(var(--accent-foreground))',
+          'green': 'hsl(var(--accent-green))',
+          'blue': 'hsl(var(--accent-blue))',
+          'gold': 'hsl(var(--accent-gold))',
+          'red': 'hsl(var(--accent-red))'
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -127,12 +131,33 @@ export default {
           'DEFAULT': 'hsl(217, 91%, 60%)',
           'dark': 'hsl(217, 91%, 55%)',
         },
-        // Trading platform accent colors  
-        accent: {
-          'green': 'hsl(var(--accent-green))',
-          'blue': 'hsl(var(--accent-blue))',
-          'gold': 'hsl(var(--accent-gold))',
-          'red': 'hsl(var(--accent-red))'
+        // Journal XX custom colors
+        bronze: {
+          '400': '#E6A867',
+          '500': '#CD7F32',
+          '600': '#A05A1C',
+          '700': '#8B4513'
+        },
+        'dirty-white': '#E3DAC9',
+        // Override slate with neutral grays (no blue tint) for Journal XX
+        slate: {
+          '700': '#27272a',
+          '800': '#18181b',
+          '900': '#09090b',
+          '950': '#000000'
+        },
+        // Override stone colors for Journal XX
+        stone: {
+          '50': '#fafaf9',
+          '100': '#f5f5f4',
+          '200': '#e7e5e4',
+          '300': '#d6d3d1',
+          '400': '#a8a29e',
+          '500': '#78716c',
+          '600': '#57534e',
+          '700': '#44403c',
+          '800': '#292524',
+          '900': '#1c1917'
         },
 				// Surface colors for components
 				surface: 'hsl(var(--surface))',
@@ -192,6 +217,22 @@ export default {
 						backgroundColor: 'hsl(var(--destructive) / 0)',
 						color: 'hsl(var(--destructive))'
 					}
+				},
+				'slide-in-from-bottom-above-nav': {
+					from: {
+						transform: 'translateY(calc(100% + 80px))'
+					},
+					to: {
+						transform: 'translateY(0)'
+					}
+				},
+				'slide-out-to-bottom-above-nav': {
+					from: {
+						transform: 'translateY(0)'
+					},
+					to: {
+						transform: 'translateY(calc(100% + 80px))'
+					}
 				}
 			},
 			animation: {
@@ -200,7 +241,9 @@ export default {
 				'flash-green': 'flash-green 0.7s ease-in-out',
 				'flash-red': 'flash-red 0.7s ease-in-out',
 				'flash-green-intense': 'flash-green 0.4s ease-in-out',
-				'flash-red-intense': 'flash-red 0.4s ease-in-out'
+				'flash-red-intense': 'flash-red 0.4s ease-in-out',
+				'slide-in-from-bottom-above-nav': 'slide-in-from-bottom-above-nav 0.3s ease-out',
+				'slide-out-to-bottom-above-nav': 'slide-out-to-bottom-above-nav 0.3s ease-out'
 			}
 		}
 	},

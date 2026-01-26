@@ -22,8 +22,8 @@ export const useOrderManagement = () => {
     return userId;
   };
 
-  const cancelOrder = useCallback(async (orderId: string): Promise<void> => {
-    console.log('🚫 Cancelling order:', orderId);
+  const cancelOrder = useCallback(async (orderId: string, closingPrice?: number): Promise<void> => {
+    console.log('🚫 Cancelling order:', orderId, 'at price:', closingPrice);
     
     const currentUserId = ensureAuthAndOwnershipContext();
 
@@ -34,7 +34,8 @@ export const useOrderManagement = () => {
       const { data, error } = await supabase.rpc('close_trade_alert', {
         p_alert_id: orderId,
         p_user_id: currentUserId,
-        p_close_reason: 'manual'
+        p_close_reason: 'manual',
+        p_closing_price: closingPrice || null
       });
 
       if (error) {

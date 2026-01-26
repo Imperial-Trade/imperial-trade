@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════════════════════════════════
+=== TEST 1: PYTHON SCRIPT WITH REAL CREDENTIALS ===
+═══════════════════════════════════════════════════════════════════════════════
+
+Running test_with_real_credentials.py...
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING MT5 CONNECTION WITH REAL CREDENTIALS
+═══════════════════════════════════════════════════════════════════════════════
+Login: 800107112
+Server: ECMarketsLtd-Demo
+Password: ********
+
+[STEP 1] Initializing MT5...
+[OK] MT5 initialized successfully (4.86s)
+
+[STEP 2] Getting MT5 version...
+[OK] MT5 Version: 500, Build: 5488, Release: 19 Dec 2025
+
+[STEP 3] Waiting for IPC pipe...
+[OK] IPC pipe ready
+
+[STEP 4] Verifying terminal info...
+[OK] Terminal Connected: True
+[OK] Trade Allowed: True
+
+[STEP 5] Getting account info...
+[OK] Account Login: 800107112
+[OK] Account Name: Demo
+[OK] Account Server: ECMarketsLtd-Demo
+[OK] Account Balance: 1129.46 USD
+[OK] Account Equity: 1129.46 USD
+[OK] Account Leverage: 1:1000
+[OK] Trade Allowed: True
+
+═══════════════════════════════════════════════════════════════════════════════
+[SUCCESS] CONNECTION TEST PASSED!
+═══════════════════════════════════════════════════════════════════════════════
+
+{
+  "success": true,
+  "connected": true,
+  "mt5_version": {
+    "version": 500,
+    "build": 5488,
+    "release_date": "19 Dec 2025"
+  },
+  "account_info": {
+    "login": 800107112,
+    "name": "Demo",
+    "server": "ECMarketsLtd-Demo",
+    "company": "EC Markets Ltd.",
+    "currency": "USD",
+    "balance": 1129.46,
+    "equity": 1129.46,
+    "profit": 0.0,
+    "leverage": 1000,
+    "trade_allowed": true,
+    "trade_expert": true,
+    "margin": 0.0,
+    "margin_free": 1129.46,
+    "margin_level": 0.0
+  },
+  "connection_time_ms": 6232
+}

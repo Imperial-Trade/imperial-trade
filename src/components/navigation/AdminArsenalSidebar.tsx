@@ -262,29 +262,6 @@ export function AdminArsenalSidebar() {
   
   return (
     <>
-      {/* Handle/Tab - visible when closed */}
-      {!isOpen && (
-        <motion.button
-          className="fixed right-0 top-[calc(50vh+2.5rem)] -translate-y-1/2 z-[60] cursor-pointer"
-          onClick={() => {
-            navigate(getDefaultAdminRoute());
-            setIsOpen(true);
-          }}
-          whileHover={{ opacity: 0.9 }}
-          whileTap={{ opacity: 0.7 }}
-        >
-          <div 
-            className="bg-slate-800/60 backdrop-blur-md px-3 py-6 rounded-l-lg border-l border-t border-b border-slate-600/50 hover:bg-slate-700/70 transition-colors"
-            style={{ writingMode: 'vertical-rl' }}
-          >
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-white" />
-              <span className="font-bold tracking-wider text-sm text-white">ADMIN</span>
-            </div>
-          </div>
-        </motion.button>
-      )}
-      
       {/* Main Sidebar Panel */}
       <motion.aside
         className={`fixed right-0 top-20 h-[calc(100vh-5rem)] z-[60] bg-background/30 backdrop-blur-xl border-l border-white/10 shadow-2xl ${

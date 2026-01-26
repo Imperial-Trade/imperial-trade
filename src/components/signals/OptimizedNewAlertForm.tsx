@@ -23,10 +23,13 @@ import {
   getPipSize 
 } from '@/utils/pipCalculations';
 
-// Asset cards for the two allowed symbols
+// Asset cards for all supported symbols
 const ALLOWED_ASSETS = [
   { symbol: 'XAUUSD', name: 'Gold' },
-  { symbol: 'BTCUSD', name: 'Bitcoin' }
+  { symbol: 'BTCUSD', name: 'Bitcoin' },
+  { symbol: 'U30USD', name: 'US 30' },
+  { symbol: 'SPXUSD', name: 'S&P 500' },
+  { symbol: 'NDXUSD', name: 'NASDAQ 100' }
 ];
 
 interface OptimizedNewAlertFormProps {
@@ -148,7 +151,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
     let newStopLoss = '';
     const newTakeProfits = [...currentTakeProfits];
-    const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+    const getDecimalPlaces = (symbol: string) => {
+      const upperSymbol = symbol.toUpperCase();
+      // Indices and crypto: 2 decimal places
+      if (upperSymbol === 'BTCUSD' || upperSymbol === 'XAUUSD' || 
+          upperSymbol === 'U30USD' || upperSymbol === 'SPXUSD' || upperSymbol === 'NDXUSD' ||
+          upperSymbol.includes('US30') || upperSymbol.includes('SPX') || upperSymbol.includes('NDX')) {
+        return 2;
+      }
+      // Forex pairs: 5 decimal places
+      return 5;
+    };
     const decimals = getDecimalPlaces(assetSymbol);
 
     // Recalculate stop loss if stop loss pips exist
@@ -256,7 +269,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   }, []);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
-    const priceStr = price.toString();
+    // Format to proper decimal places based on asset (2 for indices/crypto, 5 for forex)
+    const getDecimalPlaces = (symbol: string) => {
+      const upperSymbol = symbol.toUpperCase();
+      if (upperSymbol === 'BTCUSD' || upperSymbol === 'XAUUSD' || 
+          upperSymbol === 'U30USD' || upperSymbol === 'SPXUSD' || upperSymbol === 'NDXUSD') {
+        return 2;
+      }
+      return 5;
+    };
+    const decimals = selectedAsset ? getDecimalPlaces(selectedAsset.symbol) : 2;
+    const priceStr = price.toFixed(decimals);
     setFormData(prev => ({ ...prev, entry_price: priceStr }));
     
     // Immediately recalculate targets if we have pip inputs and selected asset
@@ -347,7 +370,17 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       const pipValue = parseFloat(pips);
       
       if (!isNaN(entryPrice) && !isNaN(pipValue) && pipValue > 0) {
-        const getDecimalPlaces = (symbol: string) => symbol === 'BTCUSD' || symbol === 'XAUUSD' ? 2 : 5;
+        const getDecimalPlaces = (symbol: string) => {
+          const upperSymbol = symbol.toUpperCase();
+          // Indices and crypto: 2 decimal places
+          if (upperSymbol === 'BTCUSD' || upperSymbol === 'XAUUSD' || 
+              upperSymbol === 'U30USD' || upperSymbol === 'SPXUSD' || upperSymbol === 'NDXUSD' ||
+              upperSymbol.includes('US30') || upperSymbol.includes('SPX') || upperSymbol.includes('NDX')) {
+            return 2;
+          }
+          // Forex pairs: 5 decimal places
+          return 5;
+        };
         const decimals = getDecimalPlaces(selectedAsset.symbol);
         
         let direction: 'up' | 'down' = 'up';
@@ -599,10 +632,10 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             <label className="text-sm font-medium">Entry Price</label>
             <Input
               type="number"
-              step="0.00001"
+              step={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.01" : "0.00001"}
               value={formData.entry_price}
               onChange={(e) => handleInputChange('entry_price', e.target.value)}
-              placeholder="0.00000"
+              placeholder={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.00" : "0.00000"}
               className="h-9 text-right font-mono bg-input border-border"
             />
             {errors.entry_price && (
@@ -624,10 +657,10 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 <div className="flex-1 min-w-0">
                   <Input
                     type="number"
-                    step="0.00001"
+                    step={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.01" : "0.00001"}
                     value={formData.stop_loss}
                     onChange={(e) => handleStopLossChange(e.target.value)}
-                    placeholder="Price"
+                    placeholder={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.00" : "0.00000"}
                     className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
                   />
                 </div>
@@ -689,10 +722,10 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                     <div className="flex-1 min-w-0">
                       <Input
                         type="number"
-                        step="0.00001"
+                        step={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.01" : "0.00001"}
                         value={tp}
                         onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                        placeholder="Price"
+                        placeholder={selectedAsset && ['BTCUSD', 'XAUUSD', 'U30USD', 'SPXUSD', 'NDXUSD'].includes(selectedAsset.symbol) ? "0.00" : "0.00000"}
                         className="h-10 sm:h-9 md:h-7 text-sm font-mono text-right bg-input border-border"
                       />
                     </div>

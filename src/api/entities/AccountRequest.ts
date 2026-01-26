@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
+import { randomUUID } from '@/lib/utils';
 
 export interface AccountRequestData {
   id?: string;
@@ -38,7 +39,7 @@ export class AccountRequest {
     console.log('🚀 Creating account request:', data);
     
     // Generate client UUID for traceability
-    const clientId = crypto.randomUUID();
+    const clientId = randomUUID();
     console.log('📍 Client trace ID:', clientId);
     
     // Step 1: Check rate limits without consuming (just checking)
@@ -215,3 +216,4 @@ export class AccountRequest {
     return (data || []) as AccountRequestData[];
   }
 }
+

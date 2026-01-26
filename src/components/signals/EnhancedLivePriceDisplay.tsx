@@ -20,6 +20,8 @@ import {
   Timer
 } from 'lucide-react';
 import { getStandardSymbol } from '@/types/assets';
+import { normalizeSymbol } from '@/utils/symbolUtils';
+import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -37,28 +39,59 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = React.
   className = ''
 }) => {
   // Use standardized symbol mapping
-  const apiSymbol = getStandardSymbol(symbol) || symbol;
+  // Extract symbol from formats like "Gold (XAUUSD)" or "XAUUSD" or "XAU/USD"
+  const extractSymbol = (input: string): string => {
+    // Try to extract from parentheses first: "Gold (XAUUSD)" -> "XAUUSD"
+    const parenMatch = input.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      return parenMatch[1].trim();
+    }
+    // Otherwise use the input as-is
+    return input.trim();
+  };
   
-  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(symbol, {
+  const extractedSymbol = extractSymbol(symbol);
+  const apiSymbol = getStandardSymbol(extractedSymbol) || normalizeSymbol(extractedSymbol);
+  
+  const { price, change, changePercent, isLoading, error, lastUpdated, connectionStatus, priceUpdateSource, refreshPrice, arrivalAgeMs, arrivalAgeSeconds } = useOptimizedLivePrice(apiSymbol, {
     debounceMs: 50, // Critical: Faster response for trading decisions
     enableSmartPausing: false
   });
+  
+  // Debug logging for symbol resolution
+  useEffect(() => {
+    console.log(`🔍 [EnhancedLivePriceDisplay] Symbol resolution: ${symbol} -> ${apiSymbol}`);
+    console.log(`📊 [EnhancedLivePriceDisplay] Price data:`, { price, isLoading, error, connectionStatus, lastUpdated });
+  }, [symbol, apiSymbol, price, isLoading, error, connectionStatus, lastUpdated]);
 
   // Defensive check: Prevent showing implausible prices for closed markets
   const displayPrice = useMemo(() => {
-    if (!price || price === 0) return 0;
+    if (!price || price === 0) {
+      if (isDevToolsEnabled()) {
+        console.log(`⚠️ [EnhancedLivePriceDisplay] No price for ${apiSymbol}: price=${price}`);
+      }
+      return 0;
+    }
     
-    // Check price plausibility
-    if (!isPricePlausibleForSymbol(price, symbol)) {
-      console.error(`🚨 UI Guard: Blocked implausible price display for ${symbol}: ${price}`);
+    // Check price plausibility using apiSymbol (normalized symbol)
+    const isPlausible = isPricePlausibleForSymbol(price, apiSymbol);
+    if (!isPlausible) {
+      console.error(`🚨 UI Guard: Blocked implausible price display for ${apiSymbol}: ${price}`);
+      if (isDevToolsEnabled()) {
+        console.log(`🔍 [Price Guard] Symbol: ${apiSymbol}, Price: ${price}, Range check failed`);
+      }
       return 0; // Don't show implausible prices
     }
     
+    if (isDevToolsEnabled() && price > 0) {
+      console.log(`✅ [EnhancedLivePriceDisplay] Valid price for ${apiSymbol}: $${price}`);
+    }
+    
     return price;
-  }, [price, symbol]);
+  }, [price, apiSymbol]);
 
   // Critical: Monitor price staleness for trading safety - Robust Live Guarantee
-  const stalenessStatus = usePriceStalenessMonitor(symbol, 8); // 8-second staleness threshold for continuous Live display
+  const stalenessStatus = usePriceStalenessMonitor(apiSymbol, 8); // 8-second staleness threshold for continuous Live display
   
   // ✅ FLICKER ELIMINATION: Stability management
   const { shouldAllowQualityChange } = useConnectionStability();

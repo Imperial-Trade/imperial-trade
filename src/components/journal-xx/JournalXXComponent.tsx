@@ -5286,26 +5286,18 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                </span>
                              </span>
                            ) : (
-                             <span className="flex items-center justify-center gap-2">
-                               <Brain className="w-4 h-4" style={{ 
-                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                             <span 
+                               className="flex items-center justify-center"
+                               style={{
+                                 background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
                                  WebkitBackgroundClip: 'text',
                                  WebkitTextFillColor: 'transparent',
                                  backgroundClip: 'text',
-                                 filter: 'drop-shadow(0 0 4px rgba(34, 197, 94, 0.5))',
-                               }} />
-                               <span 
-                                 style={{
-                                   background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                   WebkitBackgroundClip: 'text',
-                                   WebkitTextFillColor: 'transparent',
-                                   backgroundClip: 'text',
-                                   backgroundSize: '200% 100%',
-                                   animation: 'gradient-shift 3s ease-in-out infinite',
-                                 }}
-                               >
-                                 DECONSTRUCT
-                               </span>
+                                 backgroundSize: '200% 100%',
+                                 animation: 'gradient-shift 3s ease-in-out infinite',
+                               }}
+                             >
+                               DECONSTRUCT
                              </span>
                            )}
                            

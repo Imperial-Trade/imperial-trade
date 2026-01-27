@@ -3917,15 +3917,197 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              const maxPhotos = 5;
                              const canAddMore = galleryPhotos.length < maxPhotos;
                              
+                             // Long-press state management
+                             const [isLongPressing, setIsLongPressing] = useState(false);
+                             const [longPressProgress, setLongPressProgress] = useState(0);
+                             const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+                             const longPressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+                             const LONG_PRESS_DURATION = 2000; // 2 seconds
+                             
+                             // Cleanup on unmount
+                             useEffect(() => {
+                               return () => {
+                                 if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                 if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                               };
+                             }, []);
+                             
+                             // Debug: Log state changes
+                             useEffect(() => {
+                               console.log('[Brain] isLongPressing:', isLongPressing, 'progress:', longPressProgress, 'photos:', galleryPhotos.length);
+                             }, [isLongPressing, longPressProgress, galleryPhotos.length]);
+                             
                              return (
                                <div className="flex flex-col h-full overflow-y-auto">
-                                 {/* Animated Brain - Display only (not clickable) */}
-                                 {canAddMore && !isAnalyzing && (
+                                 {/* Animated Brain - Long-press to activate analysis */}
+                                 {!isAnalyzing && (
                                    <div 
                                      className="relative flex items-center justify-center w-full"
                                      style={{ padding: '2rem', minHeight: '250px' }}
+                                     onTouchStart={(e) => {
+                                       e.preventDefault();
+                                       e.stopPropagation();
+                                       
+                                       // Only work if photos exist
+                                       if (galleryPhotos.length === 0) {
+                                         console.log('[Brain] No photos, cannot analyze');
+                                         return;
+                                       }
+                                       
+                                       console.log('[Brain] Touch start - starting long press');
+                                       setIsLongPressing(true);
+                                       setLongPressProgress(0);
+                                       
+                                       const startTime = Date.now();
+                                       
+                                       // Progress animation
+                                       longPressIntervalRef.current = setInterval(() => {
+                                         const elapsed = Date.now() - startTime;
+                                         const progress = Math.min((elapsed / LONG_PRESS_DURATION) * 100, 100);
+                                         setLongPressProgress(progress);
+                                         console.log('[Brain] Progress:', progress);
+                                         
+                                         if (progress >= 100) {
+                                           if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                           if (galleryPhotos.length > 0) {
+                                             console.log('[Brain] Long press complete - starting analysis');
+                                             handleDeconstruct(galleryPhotos[0]);
+                                           }
+                                           setIsLongPressing(false);
+                                           setLongPressProgress(0);
+                                         }
+                                       }, 16);
+                                       
+                                       longPressTimerRef.current = setTimeout(() => {
+                                         if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                         if (galleryPhotos.length > 0) {
+                                           console.log('[Brain] Timer complete - starting analysis');
+                                           handleDeconstruct(galleryPhotos[0]);
+                                         }
+                                         setIsLongPressing(false);
+                                         setLongPressProgress(0);
+                                       }, LONG_PRESS_DURATION);
+                                     }}
+                                     onTouchEnd={(e) => {
+                                       e.preventDefault();
+                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                       setIsLongPressing(false);
+                                       setLongPressProgress(0);
+                                     }}
+                                     onMouseDown={(e) => {
+                                       e.preventDefault();
+                                       e.stopPropagation();
+                                       
+                                       // Only work if photos exist
+                                       if (galleryPhotos.length === 0) {
+                                         console.log('[Brain] No photos, cannot analyze');
+                                         return;
+                                       }
+                                       
+                                       console.log('[Brain] Mouse down - starting long press');
+                                       setIsLongPressing(true);
+                                       setLongPressProgress(0);
+                                       
+                                       const startTime = Date.now();
+                                       
+                                       longPressIntervalRef.current = setInterval(() => {
+                                         const elapsed = Date.now() - startTime;
+                                         const progress = Math.min((elapsed / LONG_PRESS_DURATION) * 100, 100);
+                                         setLongPressProgress(progress);
+                                         console.log('[Brain] Progress:', progress);
+                                         
+                                         if (progress >= 100) {
+                                           if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                           if (galleryPhotos.length > 0) {
+                                             console.log('[Brain] Long press complete - starting analysis');
+                                             handleDeconstruct(galleryPhotos[0]);
+                                           }
+                                           setIsLongPressing(false);
+                                           setLongPressProgress(0);
+                                         }
+                                       }, 16);
+                                       
+                                       longPressTimerRef.current = setTimeout(() => {
+                                         if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                         if (galleryPhotos.length > 0) {
+                                           console.log('[Brain] Timer complete - starting analysis');
+                                           handleDeconstruct(galleryPhotos[0]);
+                                         }
+                                         setIsLongPressing(false);
+                                         setLongPressProgress(0);
+                                       }, LONG_PRESS_DURATION);
+                                     }}
+                                     onMouseUp={(e) => {
+                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                       setIsLongPressing(false);
+                                       setLongPressProgress(0);
+                                     }}
+                                     onMouseLeave={(e) => {
+                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
+                                       setIsLongPressing(false);
+                                       setLongPressProgress(0);
+                                     }}
+                                     style={{ 
+                                       padding: '2rem', 
+                                       minHeight: '250px',
+                                       cursor: galleryPhotos.length > 0 ? 'pointer' : 'default',
+                                       userSelect: 'none',
+                                       WebkitUserSelect: 'none',
+                                       touchAction: 'none',
+                                       pointerEvents: 'auto',
+                                       zIndex: 10,
+                                     }}
                                    >
-                                     {/* Pulsing outer ring */}
+                                     {/* Simple Green Progress Ring - Rotates 360 degrees during long press */}
+                                     {isLongPressing && (
+                                       <svg
+                                         className="absolute"
+                                         width="240"
+                                         height="240"
+                                         viewBox="0 0 240 240"
+                                         style={{
+                                           top: '50%',
+                                           left: '50%',
+                                           transform: 'translate(-50%, -50%) rotate(-90deg)',
+                                           zIndex: 20,
+                                           pointerEvents: 'none',
+                                         }}
+                                       >
+                                         {/* Base ring - subtle background */}
+                                         <circle
+                                           cx="120"
+                                           cy="120"
+                                           r="110"
+                                           fill="none"
+                                           stroke={neonColors.emerald}
+                                           strokeWidth="2"
+                                           strokeOpacity="0.2"
+                                           strokeDasharray={`${2 * Math.PI * 110}`}
+                                         />
+                                         
+                                         {/* Progress ring - rotates from 0 to 360 degrees */}
+                                         <circle
+                                           cx="120"
+                                           cy="120"
+                                           r="110"
+                                           fill="none"
+                                           stroke={neonColors.emerald}
+                                           strokeWidth="4"
+                                           strokeLinecap="round"
+                                           strokeDasharray={`${2 * Math.PI * 110}`}
+                                           strokeDashoffset={`${2 * Math.PI * 110 * (1 - longPressProgress / 100)}`}
+                                           style={{
+                                             transition: 'stroke-dashoffset 0.05s linear',
+                                             filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
+                                           }}
+                                         />
+                                       </svg>
+                                     )}
+                                     
+                                     {/* Simple Pulsing Outer Ring - Static */}
                                      <div 
                                        className="absolute rounded-full border-2"
                                        style={{
@@ -3937,7 +4119,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                          boxShadow: `0 0 40px ${neonColors.emeraldGlow}`,
                                        }}
                                      />
-                                     {/* Rotating middle ring */}
+                                     
+                                     {/* Simple Rotating Middle Ring - Static */}
                                      <div 
                                        className="absolute rounded-full border-2"
                                        style={{
@@ -3949,7 +4132,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                          boxShadow: `0 0 30px ${neonColors.emeraldGlow}`,
                                        }}
                                      />
-                                     {/* Pulsing inner symbol container */}
+                                     
+                                     {/* Simple Brain Container - Static */}
                                      <div 
                                        className="relative w-32 h-32 rounded-full flex items-center justify-center"
                                        style={{
@@ -5417,115 +5601,59 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      </div>
                                    )}
                                    
-                                   {/* Main Text - Replace with Deconstruct Button when photos exist */}
-                                   {hasPhotos ? (
-                                     <button
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         if (!isAnalyzing) {
-                                           handleDeconstruct(galleryPhotos[0]);
-                                         }
-                                       }}
-                                       disabled={isAnalyzing}
-                                       className="relative overflow-hidden group mb-1.5"
-                                       style={{
-                                         background: 'transparent',
-                                         border: 'none',
-                                         WebkitTapHighlightColor: 'transparent',
-                                       }}
-                                     >
-                                       {isAnalyzing ? (
-                                         <span className="flex items-center justify-center gap-2">
-                                           <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
-                                           <span 
-                                             className="text-sm sm:text-base font-bold"
-                                             style={{
-                                               background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
-                                               WebkitBackgroundClip: 'text',
-                                               WebkitTextFillColor: 'transparent',
-                                               backgroundClip: 'text',
-                                             }}
-                                           >
-                                             ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
-                                           </span>
-                                         </span>
-                                       ) : (
-                                         <span 
-                                           className="text-sm sm:text-base font-bold transition-colors duration-300"
-                                           style={{
-                                             background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                             WebkitBackgroundClip: 'text',
-                                             WebkitTextFillColor: 'transparent',
-                                             backgroundClip: 'text',
-                                             backgroundSize: '200% 100%',
-                                             animation: 'gradient-shift 3s ease-in-out infinite',
-                                           }}
-                                         >
-                                           DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
-                                         </span>
-                                       )}
-                                       
-                                       {/* Animated glow effect on hover */}
-                                       {!isAnalyzing && (
-                                         <div 
-                                           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                           style={{
-                                             background: `linear-gradient(135deg, ${neonColors.emeraldLight} 0%, ${neonColors.emerald} 100%)`,
-                                             filter: 'blur(8px)',
-                                             transform: 'scale(1.1)',
-                                           }}
-                                         />
-                                       )}
-                                     </button>
-                                   ) : (
-                                     <h3 
-                                       className="text-sm sm:text-base font-bold mb-1.5 transition-colors duration-300"
-                                       style={{ 
-                                         color: isDarkMode ? '#ffffff' : '#1a1a1a',
-                                       }}
-                                     >
-                                       Add Trading Screenshots
-                                     </h3>
-                                   )}
-                                     
-                                     {/* Description - Only show when no photos */}
-                                     {!hasPhotos && (
-                                       <>
-                                         <p 
-                                           className="text-[10px] sm:text-xs mb-2 max-w-xs mx-auto leading-relaxed"
-                                           style={{ 
-                                             color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
-                                           }}
-                                         >
-                                           Upload up to 5 screenshots to analyze your trading performance
-                                         </p>
-                                         
-                                         {/* Photo Limit Badge */}
-                                         <div 
-                                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all duration-300 group-hover:scale-105"
-                                           style={{
-                                             background: isDarkMode 
-                                               ? `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`
-                                               : `linear-gradient(135deg, ${neonColors.emerald}15 0%, ${neonColors.emeraldDark}08 100%)`,
-                                             border: `1px solid ${neonColors.emerald}40`,
-                                             color: neonColors.emerald,
-                                           }}
-                                         >
-                                           <Upload className="w-3 h-3" />
-                                           <span>Max 5 Photos</span>
-                                         </div>
-                                         
-                                         {/* Hint Text */}
-                                         <p 
-                                           className="text-[9px] sm:text-[10px] mt-2 opacity-60"
-                                           style={{ 
-                                             color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
-                                           }}
-                                         >
-                                           Tap or drag & drop images here
-                                         </p>
-                                       </>
-                                     )}
+                                  {/* Main Text - Replace with Deconstruct text when photos exist */}
+                                  <div className="relative z-10 flex flex-col items-center justify-center">
+                                    {hasPhotos ? (
+                                      isAnalyzing ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
+                                          <span 
+                                            className="text-sm sm:text-base font-bold"
+                                            style={{
+                                              background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
+                                              WebkitBackgroundClip: 'text',
+                                              WebkitTextFillColor: 'transparent',
+                                              backgroundClip: 'text',
+                                            }}
+                                          >
+                                            ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
+                                          </span>
+                                        </span>
+                                      ) : (
+                                        <span 
+                                          className="text-sm sm:text-base font-bold"
+                                          style={{
+                                            background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            backgroundClip: 'text',
+                                            backgroundSize: '200% 100%',
+                                            animation: 'gradient-shift 3s ease-in-out infinite',
+                                            userSelect: 'none',
+                                            pointerEvents: 'none',
+                                          }}
+                                        >
+                                          DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
+                                        </span>
+                                      )
+                                    ) : (
+                                      <span 
+                                        className="text-sm sm:text-base font-bold"
+                                        style={{
+                                          background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
+                                          WebkitBackgroundClip: 'text',
+                                          WebkitTextFillColor: 'transparent',
+                                          backgroundClip: 'text',
+                                          backgroundSize: '200% 100%',
+                                          animation: 'gradient-shift 3s ease-in-out infinite',
+                                          userSelect: 'none',
+                                          pointerEvents: 'none',
+                                        }}
+                                      >
+                                        DECONSTRUCT
+                                      </span>
+                                    )}
+                                  </div>
                                    </div>
                                    
                                    {/* Shimmer effect on hover - Only when no photos */}
@@ -5540,103 +5668,119 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                    )}
                                  </div>
                                  
-                                 {/* Bottom Section - Photo Preview Area (1/6 of space) */}
-                                 <div
-                                   className="relative flex-shrink-0"
-                                   style={{
-                                     height: 'calc(100% / 6)',
-                                     minHeight: '46px', // 276px / 6 ≈ 46px
-                                   }}
-                                 >
-                                   {/* Dotted Rectangle Border */}
-                                   <div
-                                     className="absolute inset-0 rounded-xl border-2 border-dashed transition-all duration-300"
-                                     style={{
-                                       borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.5)',
-                                       background: isDarkMode
-                                         ? 'rgba(10, 10, 10, 0.3)'
-                                         : 'rgba(250, 250, 250, 0.3)',
-                                       backdropFilter: 'blur(5px)',
-                                       WebkitBackdropFilter: 'blur(5px)',
-                                     }}
-                                   />
-                                   
-                                   {/* Photo Grid Inside Dotted Rectangle */}
-                                   {galleryPhotos.length > 0 ? (
-                                     <div className="absolute inset-0 p-1.5 flex items-center gap-1.5 overflow-x-auto">
-                                       {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
-                                         <div
-                                           key={photo.id}
-                                           className="relative flex-shrink-0 aspect-square rounded-lg overflow-hidden border group"
-                                           style={{
-                                             width: 'calc((100% - 1rem) / 5)',
-                                             minWidth: '36px',
-                                             maxWidth: '50px',
-                                             borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)',
-                                             background: isDarkMode ? 'rgba(20, 20, 20, 0.8)' : 'rgba(240, 240, 240, 0.8)',
-                                           }}
-                                         >
-                                           <img
-                                             src={photo.thumbnailUrl || photo.url}
-                                             alt={`Photo ${index + 1}`}
-                                             className="w-full h-full object-cover"
-                                           />
-                                           {/* Delete Button */}
-                                           <button
-                                             onClick={(e) => {
-                                               e.stopPropagation();
-                                               removePhoto(photo.id);
-                                             }}
-                                             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 border border-rose-600 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-200 hover:scale-110 z-10"
-                                             style={{
-                                               boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
-                                             }}
-                                           >
-                                             <X className="w-2.5 h-2.5 text-white" />
-                                           </button>
-                                           {/* Photo Number */}
-                                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 py-0.5">
-                                             <span className="text-[8px] font-bold text-white">{index + 1}</span>
-                                           </div>
-                                         </div>
-                                       ))}
-                                       
-                                       {/* Add More Button if slots available */}
-                                       {galleryPhotos.length < maxPhotos && (
-                                         <button
-                                           onClick={(e) => {
-                                             e.stopPropagation();
-                                             if (fileInputRef.current) {
-                                               fileInputRef.current.click();
-                                             }
-                                           }}
-                                           className="flex-shrink-0 w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center transition-all duration-200 hover:scale-110 hover:border-solid"
-                                           style={{
-                                             borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.5)',
-                                             background: isDarkMode ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.08)',
-                                             minWidth: '36px',
-                                             maxWidth: '50px',
-                                           }}
-                                         >
-                                           <Upload className="w-4 h-4" style={{ color: neonColors.emerald }} />
-                                         </button>
-                                       )}
-                                     </div>
-                                   ) : (
-                                     <div className="absolute inset-0 flex items-center justify-center">
-                                       <p 
-                                         className="text-[9px] sm:text-[10px] opacity-50"
-                                         style={{ 
-                                           color: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
-                                         }}
-                                       >
-                                         Photos will appear here
-                                       </p>
-                                     </div>
-                                   )}
-                                 </div>
+                                {/* Bottom Section - Photo Preview Area (Chart Snapshot Style) */}
+                                <div className="shrink-0">
+                                  <label className="text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1" style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}>
+                                    Photo Snapshot
+                                  </label>
+                                  <div 
+                                    onClick={() => {
+                                      if (fileInputRef.current) {
+                                        fileInputRef.current.click();
+                                      }
+                                    }}
+                                    onDragEnter={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    onDragLeave={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }}
+                                    onDrop={async (e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                        const files = Array.from(e.dataTransfer.files);
+                                        const remainingSlots = maxPhotos - galleryPhotos.length;
+                                        const filesToAdd = files.slice(0, remainingSlots);
+                                        
+                                        if (filesToAdd.length < files.length) {
+                                          console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
+                                        }
+                                        
+                                        const dataTransfer = new DataTransfer();
+                                        filesToAdd.forEach(file => dataTransfer.items.add(file));
+                                        await handleFileUpload(dataTransfer.files);
+                                      }
+                                    }}
+                                    className={`relative w-full h-12 border-2 ${galleryPhotos.length > 0 ? 'border-solid' : 'border-dashed'} rounded-xl flex items-center ${galleryPhotos.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden`}
+                                    style={{
+                                      background: galleryPhotos.length > 0 
+                                        ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.125) 0%, rgba(22, 163, 74, 0.063) 100%)'
+                                        : 'linear-gradient(135deg, rgba(34, 197, 94, 0.125) 0%, rgba(22, 163, 74, 0.063) 100%)',
+                                      borderColor: galleryPhotos.length > 0
+                                        ? 'rgba(34, 197, 94, 0.25)'
+                                        : 'rgba(34, 197, 94, 0.25)',
+                                    }}
+                                  >
+                                    {galleryPhotos.length === 0 ? (
+                                      <>
+                                        <UploadIcon 
+                                          className={`relative z-10 w-5 h-5 transition-all duration-200 group-hover:scale-110`}
+                                          style={{ color: 'rgb(34, 197, 94)' }}
+                                        />
+                                        <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wide transition-colors`} style={{ color: 'rgb(34, 197, 94)' }}>
+                                          Click to upload photo
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <div className="flex items-center gap-2 w-full relative z-10">
+                                        <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+                                          {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
+                                            <div key={photo.id} className="relative shrink-0 group/image">
+                                              <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-emerald-400 dark:group-hover/image:border-emerald-400 transition-colors shadow-sm">
+                                                <img src={photo.thumbnailUrl || photo.url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  e.preventDefault();
+                                                  removePhoto(photo.id);
+                                                }}
+                                                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                                                title="Remove image"
+                                              >
+                                                ×
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {galleryPhotos.length < maxPhotos && (
+                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 whitespace-nowrap transition-colors`}>
+                                            {galleryPhotos.length}/{maxPhotos}
+                                          </span>
+                                        )}
+                                        {galleryPhotos.length >= maxPhotos && (
+                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                            MAX {maxPhotos}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                                </div>
                            </SpotlightCard>
+                           
+                           {/* Description - Only show when no photos, outside SpotlightCard */}
+                           {!hasPhotos && (
+                             <>
+                               <p 
+                                 className="text-[10px] sm:text-xs mb-2 max-w-xs mx-auto leading-relaxed mt-2"
+                                 style={{ 
+                                   color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                                 }}
+                               >
+                                 Upload up to 5 screenshots to analyze your trading performance
+                               </p>
+                             </>
+                           )}
                            
                            {/* Hidden file input - using same context */}
                            <input
@@ -5808,6 +5952,111 @@ const brainAnimationStyles = `
     }
     100% {
       transform: translateX(100%);
+    }
+  }
+  @keyframes pulse-ring-ai {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+  }
+  @keyframes rotate-slow-ai {
+    from {
+      transform: rotate(0deg) scale(1);
+    }
+    to {
+      transform: rotate(360deg) scale(1.05);
+    }
+  }
+  @keyframes pulse-symbol-ai {
+    0%, 100% {
+      transform: scale(1.2);
+      box-shadow: 0 0 100px rgba(34, 197, 94, 0.6), inset 0 0 50px rgba(34, 197, 94, 0.4);
+    }
+    50% {
+      transform: scale(1.3);
+      box-shadow: 0 0 120px rgba(34, 197, 94, 0.8), inset 0 0 60px rgba(34, 197, 94, 0.6);
+    }
+  }
+  @keyframes brain-think-ai {
+    0%, 100% {
+      transform: scale(1.15) rotate(0deg);
+      filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.8)) brightness(1.5);
+    }
+    25% {
+      transform: scale(1.2) rotate(-3deg);
+      filter: drop-shadow(0 0 25px rgba(34, 197, 94, 1)) brightness(1.6);
+    }
+    50% {
+      transform: scale(1.25) rotate(0deg);
+      filter: drop-shadow(0 0 30px rgba(34, 197, 94, 1)) brightness(1.7);
+    }
+    75% {
+      transform: scale(1.2) rotate(3deg);
+      filter: drop-shadow(0 0 25px rgba(34, 197, 94, 1)) brightness(1.6);
+    }
+  }
+  @keyframes holographicRotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes neuralPulse {
+    0%, 100% {
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @keyframes particlePulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 1;
+    }
+  }
+  @keyframes dataPulse {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.3);
+    }
+  }
+  @keyframes dataStream {
+    0% {
+      transform: translateY(-100px);
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(300px);
+      opacity: 0;
+    }
+  }
+  @keyframes aiTextPulse {
+    0%, 100% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.02);
     }
   }
 `;

@@ -33,7 +33,7 @@ import RiskCalculator from '@/components/tools/RiskCalculator';
 import { GeminiSetupAnalyzer, GeminiSetupAnalyzerRef } from '@/components/charts/GeminiSetupAnalyzer';
 import { MeccaHeader } from '@/components/charts/mecca';
 import { MeccaSpotlightCard as SpotlightCard } from '@/components/charts/mecca/MeccaSpotlightCard';
-import { DeconstructorPanel, DeconstructorButtons, useDeconstructor } from '@/components/charts/mecca/DeconstructorPanel';
+import { DeconstructorPanel, DeconstructorButtons, DeconstructorPanelContent, useDeconstructor } from '@/components/charts/mecca/DeconstructorPanel';
 import { neonColors } from '@/components/charts/mecca/neonTheme';
 import NewsTicker from '@/components/shared/NewsTicker';
 import InsightHistoryPage from './InsightHistoryPage';
@@ -782,7 +782,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
       };
     }
   }, [activeTab]);
-  const [meccaMobileTab, setMeccaMobileTab] = useState<'chart' | 'economic' | 'analyze'>('chart');
   const [tiltMode, setTiltMode] = useState(false);
   const [viewState, setViewState] = useState<'FORM' | 'ANALYZING' | 'REVIEW'>('FORM');
   const [activeMobileSlide, setActiveMobileSlide] = useState(0);
@@ -2570,8 +2569,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
               activeTab={activeTab}
               onTabChange={handleTabChange}
               showMobileTabs={false}
-              mobileActiveTab={meccaMobileTab}
-              onMobileTabChange={setMeccaMobileTab}
             />
           </div>
         ) : (
@@ -3901,7 +3898,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     </>
                 )}
 
-                 {/* MECCA TAB - Mobile: Only Deconstructor (Charts/Calendar removed) */}
+                 {/* MECCA TAB - Mobile: Deconstructor only */}
                  {activeTab === 'MECCA' && (
                      <div className="lg:hidden relative overflow-hidden" 
                           style={{ 
@@ -3910,316 +3907,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                             minHeight: 0,
                           }}
                      >
-                         {/* Mobile MECCA tab now only shows deconstructor - no charts/calendar */}
+                         {/* Mobile MECCA tab shows deconstructor */}
                          <DeconstructorPanel isDarkMode={isDarkMode}>
-                           {(context) => {
-                             const { galleryPhotos, isAnalyzing, fileInputRef, handleDeconstruct } = context;
-                             const maxPhotos = 5;
-                             const canAddMore = galleryPhotos.length < maxPhotos;
-                             
-                             // Long-press state management
-                             const [isLongPressing, setIsLongPressing] = useState(false);
-                             const [longPressProgress, setLongPressProgress] = useState(0);
-                             const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-                             const longPressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-                             const LONG_PRESS_DURATION = 2000; // 2 seconds
-                             
-                             // Cleanup on unmount
-                             useEffect(() => {
-                               return () => {
-                                 if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                 if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                               };
-                             }, []);
-                             
-                             // Debug: Log state changes
-                             useEffect(() => {
-                               console.log('[Brain] isLongPressing:', isLongPressing, 'progress:', longPressProgress, 'photos:', galleryPhotos.length);
-                             }, [isLongPressing, longPressProgress, galleryPhotos.length]);
-                             
-                             return (
-                               <div className="flex flex-col h-full overflow-y-auto">
-                                 {/* Animated Brain - Long-press to activate analysis */}
-                                 {!isAnalyzing && (
-                                   <div 
-                                     className="relative flex items-center justify-center w-full"
-                                     style={{ padding: '2rem', minHeight: '250px' }}
-                                     onTouchStart={(e) => {
-                                       e.preventDefault();
-                                       e.stopPropagation();
-                                       
-                                       // Only work if photos exist
-                                       if (galleryPhotos.length === 0) {
-                                         console.log('[Brain] No photos, cannot analyze');
-                                         return;
-                                       }
-                                       
-                                       console.log('[Brain] Touch start - starting long press');
-                                       setIsLongPressing(true);
-                                       setLongPressProgress(0);
-                                       
-                                       const startTime = Date.now();
-                                       
-                                       // Progress animation
-                                       longPressIntervalRef.current = setInterval(() => {
-                                         const elapsed = Date.now() - startTime;
-                                         const progress = Math.min((elapsed / LONG_PRESS_DURATION) * 100, 100);
-                                         setLongPressProgress(progress);
-                                         console.log('[Brain] Progress:', progress);
-                                         
-                                         if (progress >= 100) {
-                                           if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                           if (galleryPhotos.length > 0) {
-                                             console.log('[Brain] Long press complete - starting analysis');
-                                             handleDeconstruct(galleryPhotos[0]);
-                                           }
-                                           setIsLongPressing(false);
-                                           setLongPressProgress(0);
-                                         }
-                                       }, 16);
-                                       
-                                       longPressTimerRef.current = setTimeout(() => {
-                                         if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                         if (galleryPhotos.length > 0) {
-                                           console.log('[Brain] Timer complete - starting analysis');
-                                           handleDeconstruct(galleryPhotos[0]);
-                                         }
-                                         setIsLongPressing(false);
-                                         setLongPressProgress(0);
-                                       }, LONG_PRESS_DURATION);
-                                     }}
-                                     onTouchEnd={(e) => {
-                                       e.preventDefault();
-                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                       setIsLongPressing(false);
-                                       setLongPressProgress(0);
-                                     }}
-                                     onMouseDown={(e) => {
-                                       e.preventDefault();
-                                       e.stopPropagation();
-                                       
-                                       // Only work if photos exist
-                                       if (galleryPhotos.length === 0) {
-                                         console.log('[Brain] No photos, cannot analyze');
-                                         return;
-                                       }
-                                       
-                                       console.log('[Brain] Mouse down - starting long press');
-                                       setIsLongPressing(true);
-                                       setLongPressProgress(0);
-                                       
-                                       const startTime = Date.now();
-                                       
-                                       longPressIntervalRef.current = setInterval(() => {
-                                         const elapsed = Date.now() - startTime;
-                                         const progress = Math.min((elapsed / LONG_PRESS_DURATION) * 100, 100);
-                                         setLongPressProgress(progress);
-                                         console.log('[Brain] Progress:', progress);
-                                         
-                                         if (progress >= 100) {
-                                           if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                           if (galleryPhotos.length > 0) {
-                                             console.log('[Brain] Long press complete - starting analysis');
-                                             handleDeconstruct(galleryPhotos[0]);
-                                           }
-                                           setIsLongPressing(false);
-                                           setLongPressProgress(0);
-                                         }
-                                       }, 16);
-                                       
-                                       longPressTimerRef.current = setTimeout(() => {
-                                         if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                         if (galleryPhotos.length > 0) {
-                                           console.log('[Brain] Timer complete - starting analysis');
-                                           handleDeconstruct(galleryPhotos[0]);
-                                         }
-                                         setIsLongPressing(false);
-                                         setLongPressProgress(0);
-                                       }, LONG_PRESS_DURATION);
-                                     }}
-                                     onMouseUp={(e) => {
-                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                       setIsLongPressing(false);
-                                       setLongPressProgress(0);
-                                     }}
-                                     onMouseLeave={(e) => {
-                                       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-                                       if (longPressIntervalRef.current) clearInterval(longPressIntervalRef.current);
-                                       setIsLongPressing(false);
-                                       setLongPressProgress(0);
-                                     }}
-                                     style={{ 
-                                       padding: '2rem', 
-                                       minHeight: '250px',
-                                       cursor: galleryPhotos.length > 0 ? 'pointer' : 'default',
-                                       userSelect: 'none',
-                                       WebkitUserSelect: 'none',
-                                       touchAction: 'none',
-                                       pointerEvents: 'auto',
-                                       zIndex: 10,
-                                     }}
-                                   >
-                                     {/* Simple Green Progress Ring - Rotates 360 degrees during long press */}
-                                     {isLongPressing && (
-                                       <svg
-                                         className="absolute"
-                                         width="240"
-                                         height="240"
-                                         viewBox="0 0 240 240"
-                                         style={{
-                                           top: '50%',
-                                           left: '50%',
-                                           transform: 'translate(-50%, -50%) rotate(-90deg)',
-                                           zIndex: 20,
-                                           pointerEvents: 'none',
-                                         }}
-                                       >
-                                         {/* Base ring - subtle background */}
-                                         <circle
-                                           cx="120"
-                                           cy="120"
-                                           r="110"
-                                           fill="none"
-                                           stroke={neonColors.emerald}
-                                           strokeWidth="2"
-                                           strokeOpacity="0.2"
-                                           strokeDasharray={`${2 * Math.PI * 110}`}
-                                         />
-                                         
-                                         {/* Progress ring - rotates from 0 to 360 degrees */}
-                                         <circle
-                                           cx="120"
-                                           cy="120"
-                                           r="110"
-                                           fill="none"
-                                           stroke={neonColors.emerald}
-                                           strokeWidth="4"
-                                           strokeLinecap="round"
-                                           strokeDasharray={`${2 * Math.PI * 110}`}
-                                           strokeDashoffset={`${2 * Math.PI * 110 * (1 - longPressProgress / 100)}`}
-                                           style={{
-                                             transition: 'stroke-dashoffset 0.05s linear',
-                                             filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
-                                           }}
-                                         />
-                                       </svg>
-                                     )}
-                                     
-                                     {/* Simple Pulsing Outer Ring - Static */}
-                                     <div 
-                                       className="absolute rounded-full border-2"
-                                       style={{
-                                         width: '200px',
-                                         height: '200px',
-                                         borderColor: neonColors.emerald,
-                                         opacity: 0.3,
-                                         animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                         boxShadow: `0 0 40px ${neonColors.emeraldGlow}`,
-                                       }}
-                                     />
-                                     
-                                     {/* Simple Rotating Middle Ring - Static */}
-                                     <div 
-                                       className="absolute rounded-full border-2"
-                                       style={{
-                                         width: '160px',
-                                         height: '160px',
-                                         borderColor: neonColors.emerald,
-                                         opacity: 0.5,
-                                         animation: 'rotate-slow 4s linear infinite',
-                                         boxShadow: `0 0 30px ${neonColors.emeraldGlow}`,
-                                       }}
-                                     />
-                                     
-                                     {/* Simple Brain Container - Static */}
-                                     <div 
-                                       className="relative w-32 h-32 rounded-full flex items-center justify-center"
-                                       style={{
-                                         background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
-                                         border: `3px solid ${neonColors.emerald}`,
-                                         animation: 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                         boxShadow: `0 0 40px ${neonColors.emeraldGlow}, inset 0 0 20px ${neonColors.emeraldGlow}40`,
-                                       }}
-                                     >
-                                       {/* Animated Brain/Deconstructor Symbol */}
-                                       <Brain 
-                                         className="w-16 h-16"
-                                         style={{ 
-                                           color: neonColors.emerald,
-                                           animation: 'brain-think 1.5s ease-in-out infinite',
-                                           filter: `drop-shadow(0 0 8px ${neonColors.emeraldGlow})`,
-                                         }} 
-                                       />
-                                     </div>
-                                   </div>
-                                 )}
-                                 
-                                 {/* Photo Grid - Shows uploaded photos below brain */}
-                                 {galleryPhotos.length > 0 && (
-                                   <div className="px-4 pb-4">
-                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                                       {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
-                                         <div
-                                           key={photo.id}
-                                           className="relative aspect-square rounded-xl overflow-hidden border-2"
-                                           style={{
-                                             borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)',
-                                             background: isDarkMode ? 'rgba(20, 20, 20, 0.8)' : 'rgba(240, 240, 240, 0.8)',
-                                           }}
-                                         >
-                                           <img
-                                             src={photo.thumbnailUrl || photo.url}
-                                             alt={`Photo ${index + 1}`}
-                                             className="w-full h-full object-cover"
-                                           />
-                                           {photo.isAnalyzed && (
-                                             <div className="absolute top-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
-                                               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                             </div>
-                                           )}
-                                           <div className="absolute bottom-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
-                                             <span className="text-[10px] font-bold text-white">{index + 1}</span>
-                                           </div>
-                                         </div>
-                                       ))}
-                                     </div>
-                                     
-                                     {/* Photo count info */}
-                                     <div className="text-center mb-3">
-                                       <p className="text-xs" style={{ color: isDarkMode ? neonColors.textMuted : '#666' }}>
-                                         {galleryPhotos.length} photo{galleryPhotos.length !== 1 ? 's' : ''} added
-                                         {canAddMore && ` (${maxPhotos - galleryPhotos.length} more available)`}
-                                       </p>
-                                     </div>
-                                   </div>
-                                 )}
-                                 
-                                 {/* Hidden file input - accepts up to 5 photos */}
-                                 <input
-                                   ref={fileInputRef}
-                                   type="file"
-                                   multiple
-                                   accept="image/*"
-                                   className="hidden"
-                                   onChange={(e) => {
-                                     if (e.target.files && e.target.files.length > 0) {
-                                       const files = Array.from(e.target.files);
-                                       const remainingSlots = maxPhotos - galleryPhotos.length;
-                                       const filesToAdd = files.slice(0, remainingSlots);
-                                       
-                                       if (filesToAdd.length < files.length) {
-                                         // Show toast if trying to add more than allowed
-                                         console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
-                                       }
-                                       // File handling is done by DeconstructorPanel context
-                                     }
-                                   }}
-                                 />
-                               </div>
-                             );
-                           }}
+                           {() => (
+                             <div className="flex flex-col h-full overflow-y-auto">
+                               <DeconstructorPanelContent isDarkMode={isDarkMode} />
+                             </div>
+                           )}
                          </DeconstructorPanel>
                      </div>
                  )}
@@ -4598,16 +4292,19 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      </div>
                                  )}
 
-                                 {/* MECCA - Chart + Economic Calendar only (AI in Insight tab) */}
+                                 {/* MECCA - Deconstructor only */}
                                  {activeTab === 'MECCA' && (
                                      <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
-                                         <GeminiSetupAnalyzer 
-                                           isDarkMode={isDarkMode} 
-                                           mobileActiveTab={meccaMobileTab}
-                                           onMobileTabChange={setMeccaMobileTab}
-                                           isMobileInstance={false}
-                                           hideAiPanel={true}
-                                         />
+                                         <DeconstructorPanel isDarkMode={isDarkMode}>
+                                             {(context) => (
+                                                 <div className="w-full h-full flex flex-col">
+                                                     <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
+                                                         <DeconstructorPanelContent isDarkMode={isDarkMode} />
+                                                     </SpotlightCard>
+                                                     <DeconstructorButtons isDarkMode={isDarkMode} />
+                                                 </div>
+                                             )}
+                                         </DeconstructorPanel>
                                      </div>
                                  )}
                                  

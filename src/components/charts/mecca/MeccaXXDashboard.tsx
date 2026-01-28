@@ -403,7 +403,7 @@ interface MeccaXXDashboardProps {
   onMobileTabChange?: (tab: 'chart' | 'economic' | 'analyze') => void;
   /** When true, this instance is the mobile one; only it should portal into #mecca-mobile-asset-slot. */
   isMobileInstance?: boolean;
-  /** When true, MECCA shows only Chart + Economic Calendar (no AI slide/panel). AI is in Insight tab. */
+  /** MECCA shows only Deconstructor (no charts/calendar). */
   hideAiPanel?: boolean;
   /** When true, render only the Gemini API setup / AI analysis panel (for Insight tab). */
   insightOnly?: boolean;
@@ -1645,7 +1645,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             flexDirection: 'column',
           }}
         >
-          {/* Deconstructor Slide - Full width with padding like Journal XX calendar */}
+          {/* Deconstructor Slide - Full width */}
           <DeconstructorPanel isDarkMode={isDarkMode}>
             {() => (
               <div 

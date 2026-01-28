@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo, createContext, useContext } from 'react';
-import { Upload, Brain, X, Sparkles, CheckCircle2, AlertTriangle, Lightbulb, TrendingUp, Shield, Target, Loader2, Award, Filter, Link2, Calendar, Image as ImageIcon } from 'lucide-react';
+import { Upload, Brain, X, Sparkles, CheckCircle2, AlertTriangle, Lightbulb, TrendingUp, Shield, Target, Loader2, Award, Filter, Link2, Calendar, Image as ImageIcon, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
 import { MeccaSpotlightCard } from './MeccaSpotlightCard';
@@ -7,6 +7,9 @@ import { neonColors } from './neonTheme';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { DeconstructorPhaseLoader } from './DeconstructorPhaseLoader';
+import DeconstructorHistoryPage from './DeconstructorHistoryPage';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 // Context for sharing DeconstructorPanel state
 interface DeconstructorContextType {
@@ -120,11 +123,39 @@ const ratingConfig: Record<Rating, { color: string; bg: string; glow: string; bo
 };
 
 export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?: (context: DeconstructorContextType) => React.ReactNode }> = ({ isDarkMode = true, children }) => {
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:125',message:'Component MOUNTED',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'K'})}).catch(()=>{});
+    return () => {
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:125',message:'Component UNMOUNTED',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'K'})}).catch(()=>{});
+    };
+  }, []);
+  // #endregion
+  
   const { user } = useAuth();
   const { toast } = useToast();
+  const deviceInfo = useDeviceDetection();
+  const isMobile = deviceInfo.isMobile || deviceInfo.viewportWidth < 768;
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:129',message:'Mobile detection',data:{isMobile,viewportWidth:deviceInfo.viewportWidth,isMobileDevice:deviceInfo.isMobile},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'B'})}).catch(()=>{});
+  }, [isMobile, deviceInfo.viewportWidth, deviceInfo.isMobile]);
+  // #endregion
   
   // Gallery state
-  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:138',message:'useState initializer called',data:{initialCount:0},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'K'})}).catch(()=>{});
+    // #endregion
+    return [];
+  });
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:148',message:'galleryPhotos state changed',data:{count:galleryPhotos.length,photoIds:galleryPhotos.map(p=>p.id),photoUrls:galleryPhotos.map(p=>p.url?.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+  }, [galleryPhotos]);
+  // #endregion
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
   const [isLinkedToJournal, setIsLinkedToJournal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -140,13 +171,23 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [modalAnimating, setModalAnimating] = useState(false);
   const [showPreloader, setShowPreloader] = useState(false);
+  const [showPhaseLoader, setShowPhaseLoader] = useState(false);
+  const [isAnalysisReady, setIsAnalysisReady] = useState(false);
+  const [isButtonPressed, setIsButtonPressed] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showHistoryPage, setShowHistoryPage] = useState(false);
   
   const dragStartY = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const insightIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeChannelRef = useRef<any>(null);
+  const galleryPhotosRef = useRef<GalleryPhoto[]>([]);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    galleryPhotosRef.current = galleryPhotos;
+  }, [galleryPhotos]);
 
   const greenAccent = {
     primary: neonColors.emerald,
@@ -327,6 +368,9 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
   // Handle file upload
   const handleFileUpload = useCallback(async (files: FileList | File[]) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:356',message:'handleFileUpload called',data:{fileCount:Array.from(files).length,userId:user?.id,currentGalleryCount:galleryPhotos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
     if (!user?.id) {
       toast({
         title: "Login Required",
@@ -360,7 +404,23 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
       }
     }
 
-    setGalleryPhotos(prev => [...prev, ...newPhotos]);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:390',message:'handleFileUpload: Before setGalleryPhotos',data:{newPhotosCount:newPhotos.length,currentGalleryCount:galleryPhotos.length,newPhotoIds:newPhotos.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    setGalleryPhotos(prev => {
+      const updated = [...prev, ...newPhotos];
+      console.log('✅ setGalleryPhotos: prev=', prev.length, 'new=', updated.length, 'photos');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:394',message:'setGalleryPhotos: State update',data:{prevCount:prev.length,newCount:updated.length,newPhotoIds:updated.map(p=>p.id),newPhotoUrls:updated.map(p=>p.url?.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run6',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+      return updated;
+    });
+    
+    // #region agent log
+    setTimeout(() => {
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:402',message:'handleFileUpload: After setGalleryPhotos (async check)',data:{expectedCount:galleryPhotos.length + newPhotos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+    }, 100);
+    // #endregion
   }, [user?.id, toast]);
 
   // Remove photo from gallery
@@ -417,8 +477,9 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const handleDeconstruct = useCallback(async (photo: GalleryPhoto) => {
     if (!user?.id || isAnalyzing) return;
 
-    setShowPreloader(true);
+    setShowPhaseLoader(true);
     setIsAnalyzing(true);
+    setIsAnalysisReady(false);
     setAnalysisProgress(0);
     setInsightStream([]);
     setAnalysisResult(null);
@@ -501,7 +562,12 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
       await new Promise(resolve => setTimeout(resolve, 1000));
       addInsight("🎯 Analysis complete! Generating insights...");
 
-      setShowPreloader(false);
+      setIsAnalysisReady(true);
+      
+      // Wait for PhaseLoader to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setShowPhaseLoader(false);
       setAnalysisResult(validatedResult);
       setSelectedPhoto(null);
 
@@ -514,7 +580,8 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
       });
     } catch (error: any) {
       console.error('Analysis failed:', error);
-      setShowPreloader(false);
+      setShowPhaseLoader(false);
+      setIsAnalysisReady(false);
       addInsight(`❌ Analysis failed: ${error.message}`);
       toast({
         title: "Analysis Failed",
@@ -526,6 +593,11 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
       cleanup();
     }
   }, [user?.id, isAnalyzing, addInsight, simulateAnalysisStream, toast]);
+
+  // Handle PhaseLoader completion
+  const handlePhaseLoaderComplete = useCallback(() => {
+    setShowPhaseLoader(false);
+  }, []);
 
   // Filtered photos
   const filteredPhotos = useMemo(() => {
@@ -636,34 +708,66 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
   // Debug: Log when component renders
   useEffect(() => {
+    const shouldRenderBrain = !isAnalyzing && !showPhaseLoader;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:656',message:'Component render state',data:{galleryPhotos:galleryPhotos.length,isAnalyzing,showPhaseLoader,shouldRenderBrain,isButtonPressed,isMobile},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     console.log('🎨 DeconstructorPanel: New Gallery UI loaded v2.0', {
       galleryPhotos: galleryPhotos.length,
       filteredPhotos: filteredPhotos.length,
       isLinkedToJournal,
       showFilters,
+      isMobile,
+      isButtonPressed,
+      isAnalyzing,
+      showPhaseLoader,
+      shouldRenderBrain,
       timestamp: new Date().toISOString()
     });
-  }, [galleryPhotos.length, filteredPhotos.length, isLinkedToJournal, showFilters]);
+  }, [galleryPhotos.length, filteredPhotos.length, isLinkedToJournal, showFilters, isMobile, isButtonPressed, isAnalyzing, showPhaseLoader]);
 
   // Split into content and provider - content goes inside spotlight card, provider wraps everything
   // Define panelContent BEFORE contextValue to avoid initialization error
   const panelContent = (
     <>
-      <div className="h-full flex flex-col min-h-0 overflow-y-auto relative z-10" style={{ 
-        padding: 0,
-      }}>
-          {/* Animated Deconstructor Symbol - Only visible when no photos */}
-          {galleryPhotos.length === 0 && !isAnalyzing && (
-            <div className="relative flex items-center justify-center flex-1 min-h-0 w-full h-full" style={{ padding: '2rem' }}>
+    <div className="h-full flex flex-col min-h-0 overflow-y-auto relative z-10" style={{ 
+      padding: 0,
+    }}>
+          {/* Animated Deconstructor Symbol - Always visible when not analyzing */}
+          {(() => {
+            // #region agent log
+            const shouldRender = !isAnalyzing && !showPhaseLoader;
+            fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:681',message:'Brain button render check',data:{shouldRender,isAnalyzing,showPhaseLoader,galleryPhotos:galleryPhotos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            return shouldRender;
+          })() && (
+            <div 
+              className={`relative flex items-center justify-center w-full shrink-0 ${galleryPhotos.length > 0 ? (isMobile ? 'py-4' : 'py-6') : 'flex-1 min-h-0'}`} 
+              style={{ 
+                padding: galleryPhotos.length > 0 ? (isMobile ? '1rem 1rem 0.5rem' : '1.5rem 1.5rem 0.75rem') : (isMobile ? '1.5rem' : '2rem'),
+                zIndex: galleryPhotos.length > 0 ? 50 : 10,
+                position: 'relative',
+                pointerEvents: 'auto',
+              }}
+              onPointerDown={(e) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:730',message:'Container onPointerDown',data:{target:e.target,currentTarget:e.currentTarget},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'N'})}).catch(()=>{});
+                // #endregion
+              }}
+            >
                 {/* Pulsing outer ring */}
                 <div 
                   className="absolute rounded-full border-2"
                   style={{
-                    width: '200px',
-                    height: '200px',
+                    width: galleryPhotos.length > 0 
+                      ? (isMobile ? '140px' : '180px')
+                      : (isMobile ? '160px' : '200px'),
+                    height: galleryPhotos.length > 0 
+                      ? (isMobile ? '140px' : '180px')
+                      : (isMobile ? '160px' : '200px'),
                     borderColor: greenAccent.primary,
                     opacity: 0.3,
-                    animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    animation: galleryPhotos.length > 0 ? 'none' : 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     boxShadow: `0 0 40px ${greenAccent.glow}`,
                   }}
                 />
@@ -671,34 +775,171 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                 <div 
                   className="absolute rounded-full border-2"
                   style={{
-                    width: '160px',
-                    height: '160px',
+                    width: galleryPhotos.length > 0 
+                      ? (isMobile ? '110px' : '140px')
+                      : (isMobile ? '130px' : '160px'),
+                    height: galleryPhotos.length > 0 
+                      ? (isMobile ? '110px' : '140px')
+                      : (isMobile ? '130px' : '160px'),
                     borderColor: greenAccent.primary,
                     opacity: 0.5,
-                    animation: 'rotate-slow 4s linear infinite',
+                    animation: galleryPhotos.length > 0 ? 'none' : 'rotate-slow 4s linear infinite',
                     boxShadow: `0 0 30px ${greenAccent.glow}`,
                   }}
                 />
-                {/* Pulsing inner symbol container */}
+                {/* Pulsing inner symbol container - 3D Button when photo is available */}
                 <div 
-                  className="relative w-32 h-32 rounded-full flex items-center justify-center"
+                  key={`brain-button-${galleryPhotos.length}`}
+                  ref={(el) => {
+                    if (el) {
+                      const rect = el.getBoundingClientRect();
+                      const computedStyle = window.getComputedStyle(el);
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:787',message:'Brain button element ref',data:{galleryPhotos:galleryPhotos.length,hasPhotos:galleryPhotos.length>0,zIndex:galleryPhotos.length>0?200:10,computedZIndex:computedStyle.zIndex,pointerEvents:computedStyle.pointerEvents,computedAnimation:computedStyle.animation,cursor:computedStyle.cursor,position:computedStyle.position,width:rect.width,height:rect.height,top:rect.top,left:rect.left,visible:rect.width>0&&rect.height>0},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'J'})}).catch(()=>{});
+                      // #endregion
+                    }
+                  }}
+                  className={`relative ${galleryPhotos.length > 0 
+                    ? (isMobile ? 'w-24 h-24' : 'w-28 h-28')
+                    : (isMobile ? 'w-28 h-28' : 'w-32 h-32')} rounded-full flex items-center justify-center cursor-pointer touch-manipulation active:scale-95`}
                   style={{
-                    background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`,
-                    border: `3px solid ${greenAccent.primary}`,
-                    animation: 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    boxShadow: `0 0 40px ${greenAccent.glow}, inset 0 0 20px ${greenAccent.glow}40`,
+                    zIndex: 9999,
+                    position: 'relative',
+                    isolation: 'isolate',
+                    background: galleryPhotos.length > 0
+                      ? `linear-gradient(135deg, ${greenAccent.primary}30 0%, ${greenAccent.dark}15 100%)`
+                      : `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`,
+                    border: `${isMobile ? '2.5px' : '3px'} solid ${galleryPhotos.length > 0 ? greenAccent.primary : `${greenAccent.primary}80`}`,
+                    animation: (() => {
+                      const hasPhotos = galleryPhotos.length > 0;
+                      const anim = hasPhotos ? 'none' : 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:794',message:'Animation style calculation',data:{hasPhotos,galleryPhotosCount:galleryPhotos.length,animation:anim},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'I'})}).catch(()=>{});
+                      // #endregion
+                      return anim;
+                    })(),
+                    boxShadow: galleryPhotos.length > 0
+                      ? isButtonPressed
+                        ? `0 0 ${isMobile ? '25px' : '30px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '12px' : '15px'} ${greenAccent.glow}30, 0 ${isMobile ? '3px' : '4px'} ${isMobile ? '6px' : '8px'} rgba(0, 0, 0, 0.3)`
+                        : `0 0 ${isMobile ? '40px' : '50px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '20px' : '25px'} ${greenAccent.glow}50, 0 ${isMobile ? '6px' : '8px'} ${isMobile ? '12px' : '16px'} rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`
+                      : `0 0 40px ${greenAccent.glow}, inset 0 0 20px ${greenAccent.glow}40`,
+                    transform: (() => {
+                      const hasPhotos = galleryPhotos.length > 0;
+                      const transform = hasPhotos
+                        ? isButtonPressed
+                          ? `perspective(1000px) translateZ(${isMobile ? '-6px' : '-8px'}) rotateX(5deg) scale(0.95)`
+                          : `perspective(1000px) translateZ(${isMobile ? '10px' : '12px'}) rotateX(-5deg)`
+                        : undefined;
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:735',message:'Transform style calculation',data:{hasPhotos,isButtonPressed,isMobile,transform},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                      // #endregion
+                      return transform;
+                    })(),
+                    transition: galleryPhotos.length > 0 
+                      ? 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' 
+                      : undefined,
+                    WebkitTapHighlightColor: 'transparent',
+                    transformStyle: 'preserve-3d',
+                    willChange: galleryPhotos.length > 0 ? 'transform' : undefined,
+                    touchAction: 'manipulation',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    pointerEvents: galleryPhotos.length > 0 ? 'auto' : 'auto',
+                  }}
+                  // Unified handler for all input types (mouse, touch, pointer)
+                  onPointerDown={(e) => {
+                    const currentPhotos = galleryPhotosRef.current;
+                    if (currentPhotos.length > 0 && !isAnalyzing) {
+                      setIsButtonPressed(true);
+                    }
+                  }}
+                  onPointerUp={(e) => {
+                    setIsButtonPressed(false);
+                    
+                    // Trigger deconstruction on pointer up (works for both mouse and touch)
+                    const currentPhotos = galleryPhotosRef.current;
+                    if (currentPhotos.length > 0 && !isAnalyzing) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const firstPhoto = currentPhotos[0];
+                      if (firstPhoto.isAnalyzed && firstPhoto.analysisResult) {
+                        setAnalysisResult(firstPhoto.analysisResult);
+                        openModal();
+                      } else {
+                        handleDeconstruct(firstPhoto);
+                      }
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    setIsButtonPressed(false);
+                  }}
+                  onPointerCancel={() => {
+                    setIsButtonPressed(false);
+                  }}
+                  // Fallback onClick for older browsers
+                  onClick={(e) => {
+                    const currentPhotos = galleryPhotosRef.current;
+                    if (currentPhotos.length > 0 && !isAnalyzing) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const firstPhoto = currentPhotos[0];
+                      if (firstPhoto.isAnalyzed && firstPhoto.analysisResult) {
+                        setAnalysisResult(firstPhoto.analysisResult);
+                        openModal();
+                      } else {
+                        handleDeconstruct(firstPhoto);
+                      }
+                    }
                   }}
                 >
+                  {/* 3D Inner glow effect when button is active */}
+                  {galleryPhotos.length > 0 && (
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: `radial-gradient(circle at 30% 30%, ${greenAccent.primary}40, transparent 70%)`,
+                        opacity: isButtonPressed ? 0.6 : 0.8,
+                        transition: 'opacity 0.15s ease',
+                        transform: 'translateZ(4px)',
+                      }}
+                    />
+                  )}
+                  
                   {/* Animated Brain/Deconstructor Symbol */}
                   <Brain 
-                    className="w-16 h-16"
+                    className={`${galleryPhotos.length > 0 
+                      ? (isMobile ? 'w-12 h-12' : 'w-14 h-14')
+                      : (isMobile ? 'w-14 h-14' : 'w-16 h-16')} relative z-10`}
                     style={{ 
                       color: greenAccent.primary,
-                      animation: 'brain-think 1.5s ease-in-out infinite',
-                      filter: `drop-shadow(0 0 8px ${greenAccent.glow})`,
+                      animation: galleryPhotos.length > 0 ? 'none' : 'brain-think 1.5s ease-in-out infinite',
+                      filter: `drop-shadow(0 0 ${isMobile ? '6px' : '8px'} ${greenAccent.glow})`,
+                      transform: galleryPhotos.length > 0 && isButtonPressed
+                        ? `translateZ(4px) scale(0.9)`
+                        : galleryPhotos.length > 0
+                        ? `translateZ(${isMobile ? '6px' : '8px'})`
+                        : undefined,
+                      transition: galleryPhotos.length > 0 ? 'transform 0.15s ease' : undefined,
+                      pointerEvents: 'none',
                     }} 
                   />
                 </div>
+                {/* Hint text when photo is available */}
+                {galleryPhotos.length > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 text-center" style={{ marginTop: isMobile ? '0.5rem' : '0.75rem' }}>
+                    <p className={`${isMobile ? 'text-[10px]' : 'text-xs sm:text-sm'} font-medium animate-fade-in`} style={{ color: greenAccent.primary }}>
+                      {isMobile ? 'Tap to Analyze' : 'Click to Analyze'}
+                    </p>
+                  </div>
+                )}
+                {/* Hint text when no photos */}
+                {galleryPhotos.length === 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 text-center" style={{ marginTop: isMobile ? '0.5rem' : '0.75rem' }}>
+                    <p className={`${isMobile ? 'text-[10px]' : 'text-xs sm:text-sm'} font-medium`} style={{ color: `${greenAccent.primary}80` }}>
+                      {isMobile ? 'Add photos to analyze' : 'Add photos to analyze'}
+                    </p>
+                  </div>
+                )}
             </div>
           )}
 
@@ -728,6 +969,22 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* History Button */}
+              <button
+                onClick={() => setShowHistoryPage(true)}
+                className="p-2 rounded-lg transition-all touch-manipulation"
+                style={{
+                  background: neonColors.bgGlass,
+                  border: `1px solid ${neonColors.borderDefault}`,
+                  color: neonColors.textPrimary,
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                title="View Deconstruction History"
+              >
+                <History className="w-4 h-4" />
+              </button>
               {!isLinkedToJournal && (
                 <button
                   onClick={handleLinkJournal}
@@ -851,20 +1108,30 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             </div>
           )}
 
-          {/* Upload Zone */}
-          {!isAnalyzing && (
-            <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 text-center cursor-pointer transition-all mb-4 sm:mb-5 md:mb-6 touch-manipulation"
-              style={{
-                borderColor: neonColors.borderDefault,
-                background: neonColors.bgGlass,
-                minHeight: '120px',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
+        {/* Upload Zone */}
+        {!isAnalyzing && (
+          <div
+            onDrop={(e) => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1005',message:'onDrop triggered',data:{fileCount:e.dataTransfer.files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'L'})}).catch(()=>{});
+              // #endregion
+              handleDrop(e);
+            }}
+            onDragOver={handleDragOver}
+            onClick={() => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1012',message:'Upload zone clicked',data:{fileInputExists:!!fileInputRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'L'})}).catch(()=>{});
+              // #endregion
+              fileInputRef.current?.click();
+            }}
+            className="border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 text-center cursor-pointer transition-all mb-4 sm:mb-5 md:mb-6 touch-manipulation"
+            style={{
+              borderColor: neonColors.borderDefault,
+              background: neonColors.bgGlass,
+              minHeight: '120px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
               <div className="flex flex-col items-center gap-2 sm:gap-3">
                 <div 
                   className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-1 sm:mb-2"
@@ -996,8 +1263,8 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             </>
           )}
 
-          {/* Preloader */}
-          {showPreloader && (
+          {/* PhaseLoader - Similar to insight xx */}
+          {showPhaseLoader && (
             <div 
               className="fixed inset-0 z-[9998] flex items-center justify-center"
               style={{
@@ -1008,43 +1275,15 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
               }}
             >
               <div className="flex flex-col items-center gap-4 sm:gap-6 px-4">
-                <div className="relative">
-                  <div 
-                    className="absolute inset-0 rounded-full -m-[30px] sm:-m-[40px]" 
-                    style={{ 
-                      border: `3px solid ${greenAccent.primary}`, 
-                      opacity: 0.2, 
-                      width: 'calc(100% + 60px)',
-                      height: 'calc(100% + 60px)',
-                      animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
-                    }} 
-                  />
-                  <div 
-                    className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full flex items-center justify-center relative"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
-                      border: `3px solid ${greenAccent.primary}60`,
-                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                      boxShadow: `0 0 40px ${greenAccent.primary}40`
-                    }}
-                  >
-                    <Brain className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16" style={{ color: greenAccent.primary }} />
-                  </div>
-                </div>
-                <div className="text-center space-y-1 sm:space-y-2">
-                  <p className="font-semibold text-lg sm:text-xl" style={{ color: neonColors.textPrimary }}>
-                    Initializing Analysis...
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: neonColors.textMuted }}>
-                    Preparing MECCA AI engine
-                  </p>
+                <div className="scale-125">
+                  <DeconstructorPhaseLoader isReady={isAnalysisReady} onComplete={handlePhaseLoaderComplete} />
                 </div>
               </div>
             </div>
           )}
 
           {/* Loading Animation */}
-          {isAnalyzing && !showPreloader && (
+          {isAnalyzing && !showPhaseLoader && (
             <div 
               className="fixed inset-0 z-[9998] flex items-center justify-center"
               style={{
@@ -1590,6 +1829,22 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
         </div>
       )}
 
+      {/* History Page */}
+      {showHistoryPage && (
+        <DeconstructorHistoryPage
+          onClose={() => setShowHistoryPage(false)}
+          onSelectAnalysis={(analysis, photoUrl) => {
+            setAnalysisResult(analysis);
+            setShowHistoryPage(false);
+            // Open modal after a brief delay to allow history page to close
+            setTimeout(() => {
+              openModal();
+            }, 300);
+          }}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
       {/* CSS Animations */}
       <style>{`
         @keyframes fadeInUp {
@@ -1669,9 +1924,21 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
         accept="image/*"
         className="hidden"
         onChange={(e) => {
-          if (e.target.files) {
+          console.log('📁 File input onChange:', e.target.files?.length || 0, 'files');
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1910',message:'File input onChange triggered',data:{fileCount:e.target.files?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run6',hypothesisId:'L'})}).catch(()=>{});
+          // #endregion
+          if (e.target.files && e.target.files.length > 0) {
+            console.log('📤 Calling handleFileUpload with', e.target.files.length, 'files');
             handleFileUpload(e.target.files);
+          } else {
+            console.log('⚠️ No files selected');
           }
+        }}
+        onClick={(e) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1918',message:'File input clicked',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'L'})}).catch(()=>{});
+          // #endregion
         }}
         id="deconstructor-file-input"
       />

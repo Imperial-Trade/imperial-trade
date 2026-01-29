@@ -1,0 +1,845 @@
+{
+  "url": "http://localhost:8080",
+  "timestamp": "2026-01-29T09:16:50.532Z",
+  "results": [
+    {
+      "viewport": "iphone-se",
+      "width": 320,
+      "height": 568,
+      "dpr": 2,
+      "audit": {
+        "innerW": 320,
+        "scrollW": 320,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".scroll-reveal.visible",
+            "right": 345,
+            "width": 369
+          },
+          {
+            "selector": ".relative.flex.justify-center.mb-8.z-10",
+            "right": 345,
+            "width": 369
+          },
+          {
+            "selector": ".text-6xl.lg:text-8xl.font-black.mb-4.uppercase.text-white.relative.z-10",
+            "right": 345,
+            "width": 369
+          },
+          {
+            "selector": ".imperial-tech-font",
+            "right": 345,
+            "width": 369
+          },
+          {
+            "selector": ".text-xl.lg:text-2xl.text-white.mb-10.max-w-3xl.mx-auto.relative.z-10.px-4",
+            "right": 345,
+            "width": 369
+          },
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-8",
+      "width": 375,
+      "height": 667,
+      "dpr": 2,
+      "audit": {
+        "innerW": 375,
+        "scrollW": 375,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-muted-foreground.text-xs.leading-tight.line-clamp-2",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-x",
+      "width": 375,
+      "height": 812,
+      "dpr": 3,
+      "audit": {
+        "innerW": 375,
+        "scrollW": 375,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-muted-foreground.text-xs.leading-tight.line-clamp-2",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-12",
+      "width": 390,
+      "height": 844,
+      "dpr": 3,
+      "audit": {
+        "innerW": 390,
+        "scrollW": 390,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-muted-foreground.text-xs.leading-tight.line-clamp-2",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-11-xr",
+      "width": 414,
+      "height": 896,
+      "dpr": 2,
+      "audit": {
+        "innerW": 414,
+        "scrollW": 414,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".lg:col-span-4.relative",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".bg-background/10.backdrop-blur-md.rounded-3xl.border.border-white/20.p-12.lg:p-20.h-full.flex.flex-col.justify-center.glass-effect",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".absolute.top-20.left-20.w-96.h-96.bg-primary/20.rounded-full.blur-3xl.transform-gpu",
+            "right": 464,
+            "width": 384
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 427,
+            "width": 439
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-pro-max",
+      "width": 428,
+      "height": 926,
+      "dpr": 3,
+      "audit": {
+        "innerW": 428,
+        "scrollW": 428,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.top-20.left-20.w-96.h-96.bg-primary/20.rounded-full.blur-3xl.transform-gpu",
+            "right": 464,
+            "width": 384
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 442,
+            "width": 456
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-full.max-w-[480px].md:w-[480px].h-72.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-8.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 442,
+            "width": 456
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 549,
+            "width": 262
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 527,
+            "width": 221
+          },
+          {
+            "selector": ".mb-4.p-4.rounded-full.bg-gradient-to-br.from-surface/50.to-background/50.backdrop-blur-sm",
+            "right": 439,
+            "width": 50
+          },
+          {
+            "selector": ".text-lg.font-bold.text-primary.mb-3",
+            "right": 446,
+            "width": 64
+          },
+          {
+            "selector": ".text-muted-foreground.text-sm.leading-relaxed",
+            "right": 515,
+            "width": 197
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 746,
+            "width": 250
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 724,
+            "width": 210
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "iphone-17-pro-max",
+      "width": 440,
+      "height": 956,
+      "dpr": 3,
+      "audit": {
+        "innerW": 440,
+        "scrollW": 440,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.top-20.left-20.w-96.h-96.bg-primary/20.rounded-full.blur-3xl.transform-gpu",
+            "right": 464,
+            "width": 384
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 455,
+            "width": 470
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-full.max-w-[480px].md:w-[480px].h-72.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-8.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 455,
+            "width": 470
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 560,
+            "width": 271
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 533,
+            "width": 221
+          },
+          {
+            "selector": ".mb-4.p-4.rounded-full.bg-gradient-to-br.from-surface/50.to-background/50.backdrop-blur-sm",
+            "right": 445,
+            "width": 50
+          },
+          {
+            "selector": ".text-lg.font-bold.text-primary.mb-3",
+            "right": 452,
+            "width": 64
+          },
+          {
+            "selector": ".text-muted-foreground.text-sm.leading-relaxed",
+            "right": 521,
+            "width": 197
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 757,
+            "width": 258
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 730,
+            "width": 210
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "android-small",
+      "width": 360,
+      "height": 640,
+      "dpr": 3,
+      "audit": {
+        "innerW": 360,
+        "scrollW": 360,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".scroll-reveal.visible",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".relative.flex.justify-center.mb-8.z-10",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".text-6xl.lg:text-8xl.font-black.mb-4.uppercase.text-white.relative.z-10",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".imperial-tech-font",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".text-xl.lg:text-2xl.text-white.mb-10.max-w-3xl.mx-auto.relative.z-10.px-4",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "android-tall",
+      "width": 360,
+      "height": 780,
+      "dpr": 3,
+      "audit": {
+        "innerW": 360,
+        "scrollW": 360,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".scroll-reveal.visible",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".relative.flex.justify-center.mb-8.z-10",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".text-6xl.lg:text-8xl.font-black.mb-4.uppercase.text-white.relative.z-10",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".imperial-tech-font",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".text-xl.lg:text-2xl.text-white.mb-10.max-w-3xl.mx-auto.relative.z-10.px-4",
+            "right": 365,
+            "width": 369
+          },
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".flex.items-center.gap-2",
+            "right": 411,
+            "width": 374
+          },
+          {
+            "selector": ".flex-1.min-w-0",
+            "right": 411,
+            "width": 334
+          },
+          {
+            "selector": ".text-sm.font-semibold.mb-0.5.truncate",
+            "right": 411,
+            "width": 334
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "android-large",
+      "width": 412,
+      "height": 915,
+      "dpr": 3,
+      "audit": {
+        "innerW": 412,
+        "scrollW": 412,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".lg:col-span-2.space-y-6",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-primary.bg-primary/5",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".p-3.rounded-lg.border.cursor-pointer.transition-all.duration-300.card-hover.border-border.bg-card.hover:border-primary/50",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".lg:col-span-4.relative",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".bg-background/10.backdrop-blur-md.rounded-3xl.border.border-white/20.p-12.lg:p-20.h-full.flex.flex-col.justify-center.glass-effect",
+            "right": 424,
+            "width": 400
+          },
+          {
+            "selector": ".absolute.top-20.left-20.w-96.h-96.bg-primary/20.rounded-full.blur-3xl.transform-gpu",
+            "right": 464,
+            "width": 384
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 424,
+            "width": 437
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "ipad",
+      "width": 768,
+      "height": 1024,
+      "dpr": 2,
+      "audit": {
+        "innerW": 768,
+        "scrollW": 768,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 816,
+            "width": 864
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 847,
+            "width": 498
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1049,
+            "width": 478
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 894,
+            "width": 210
+          },
+          {
+            "selector": ".mb-4.p-4.rounded-full.bg-gradient-to-br.from-surface/50.to-background/50.backdrop-blur-sm",
+            "right": 808,
+            "width": 47
+          },
+          {
+            "selector": ".[object.SVGAnimatedString]",
+            "right": 797,
+            "width": 26
+          },
+          {
+            "selector": ".[object.SVGAnimatedString]",
+            "right": 793,
+            "width": 17
+          },
+          {
+            "selector": ".[object.SVGAnimatedString]",
+            "right": 788,
+            "width": 9
+          },
+          {
+            "selector": ".[object.SVGAnimatedString]",
+            "right": 788,
+            "width": 0
+          },
+          {
+            "selector": ".[object.SVGAnimatedString]",
+            "right": 788,
+            "width": 0
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "ipad-air",
+      "width": 834,
+      "height": 1112,
+      "dpr": 2,
+      "audit": {
+        "innerW": 834,
+        "scrollW": 834,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 889,
+            "width": 943
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 906,
+            "width": 544
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1109,
+            "width": 523
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 927,
+            "width": 210
+          },
+          {
+            "selector": ".mb-4.p-4.rounded-full.bg-gradient-to-br.from-surface/50.to-background/50.backdrop-blur-sm",
+            "right": 841,
+            "width": 47
+          },
+          {
+            "selector": ".text-lg.font-bold.text-primary.mb-3",
+            "right": 859,
+            "width": 83
+          },
+          {
+            "selector": ".text-muted-foreground.text-sm.leading-relaxed",
+            "right": 915,
+            "width": 188
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1294,
+            "width": 478
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 1118,
+            "width": 190
+          },
+          {
+            "selector": ".mb-4.p-4.rounded-full.bg-gradient-to-br.from-surface/50.to-background/50.backdrop-blur-sm",
+            "right": 1039,
+            "width": 43
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "laptop",
+      "width": 1366,
+      "height": 768,
+      "dpr": 1,
+      "audit": {
+        "innerW": 1366,
+        "scrollW": 1366,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1393,
+            "width": 1421
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1555,
+            "width": 802
+          },
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 1744,
+            "width": 744
+          },
+          {
+            "selector": ".text-card-foreground.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-80.h-52.text-center.bg-card/80.backdrop-blur-sm.border.border-border/50.p-4.rounded-2xl.flex.flex-col.justify-center.items-center.shadow-xl.hover:shadow-2xl.transition-all.duration-300",
+            "right": 1384,
+            "width": 190
+          },
+          {
+            "selector": ".text-muted-foreground.text-sm.leading-relaxed",
+            "right": 1373,
+            "width": 170
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "desktop",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "audit": {
+        "innerW": 1920,
+        "scrollW": 1920,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [
+          {
+            "selector": ".absolute.w-full.h-full.transition-all.duration-700.ease-out",
+            "right": 2021,
+            "width": 744
+          }
+        ],
+        "modals": []
+      }
+    },
+    {
+      "viewport": "wide-desktop",
+      "width": 2560,
+      "height": 1440,
+      "dpr": 1,
+      "audit": {
+        "innerW": 2560,
+        "scrollW": 2560,
+        "hasHorizontalScrollbar": false,
+        "overflowing": [],
+        "modals": []
+      }
+    }
+  ]
+}

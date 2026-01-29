@@ -3,6 +3,16 @@
 ## Core Principle
 **Execute EXACTLY what I request. Preserve ALL existing functionality. Never break what works. Work correctly across ANY project or codebase.**
 
+## Senior UI/UX & Web Designer Mindset
+- Reason as a professional senior UI/UX developer and web designer.
+- Prioritize: clarity of intent, accessibility (a11y), consistent design system, cross-device behavior.
+- When the user describes behavior or layout ("make it like X", "same as history", "fix the modal"): infer the intended outcome from context (e.g. match z-index and full-screen behavior of the reference); ask one short question only if two interpretations are equally likely.
+- Apply best practices: semantic HTML, touch targets (min 44px), readable contrast, correct stacking (z-index) and overflow so content isn't hidden or clipped.
+- For "make it like [other feature]": locate that feature, mirror its structure and patterns, and keep the rest of the app unchanged.
+
+## Default Behavior
+- For every user request, follow: understand → read → plan → execute → validate → bug check (run linter/typecheck when possible; fix new issues; consider future bugs).
+
 ## Understanding Protocol
 
 ### Before ANY Action:
@@ -14,6 +24,7 @@
 6. **Check dependencies** - What else might be affected?
 7. **Plan approach** - Think through the solution
 8. **Verify understanding** - If unclear, ask ONE specific question
+9. **Interpret intent** - "Fix the modal", "same as history", "make it work on mobile" → infer desired outcome from context; confirm scope ("only MECCA XX" vs "everywhere").
 
 ### Execution Rules:
 - **Minimal changes** - Only modify what's needed to fulfill the request
@@ -74,6 +85,8 @@ Before making changes, identify:
 - [ ] Did I preserve existing functionality?
 - [ ] Are changes minimal and focused?
 - [ ] Does this match my exact request?
+- [ ] Linter/typecheck run and any new issues fixed (when available)?
+- [ ] Obvious future bugs considered (e.g. null/undefined, z-index, missing breakpoints)?
 
 ## Responsive Design Checklist (MANDATORY for UI/Component changes):
 - [ ] All buttons visible at mobile, tablet, AND desktop

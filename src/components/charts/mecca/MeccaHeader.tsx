@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NotebookPen, BarChart3, Calculator, Sparkles, LucideIcon, TrendingUp, ChevronDown } from 'lucide-react';
+import { NotebookPen, BarChart3, Calculator, Sparkles, LucideIcon, TrendingUp, ChevronDown, Key } from 'lucide-react';
 import { premiumGradients } from './neonTheme';
 
 // Premium color configuration matching JournalXX
@@ -32,6 +32,8 @@ interface MeccaHeaderProps {
   mobileActiveTab?: 'chart' | 'economic' | 'analyze';
   onMobileTabChange?: (tabId: 'chart' | 'economic' | 'analyze') => void;
   showMobileTabs?: boolean;
+  onApiKeySetup?: () => void;
+  isApiKeySet?: boolean;
 }
 
 const MeccaHeader: React.FC<MeccaHeaderProps> = ({ 
@@ -40,6 +42,8 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
   mobileActiveTab = 'chart',
   onMobileTabChange,
   showMobileTabs = false,
+  onApiKeySetup,
+  isApiKeySet = false,
 }) => {
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [mobileTabOpen, setMobileTabOpen] = useState(false);
@@ -172,6 +176,25 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
 
       {/* Mobile: slot for session only (portaled from MeccaXXDashboard); logo and session leveled in this row */}
       <div id="mecca-mobile-asset-slot" className="flex-1 flex items-center justify-end min-w-0 lg:hidden" />
+      
+      {/* Key icon button for API key setup */}
+      {onApiKeySetup && (
+        <div className="flex items-center ml-auto">
+          <button
+            onClick={onApiKeySetup}
+            className="p-2 rounded-lg transition-all hover:bg-white/5 touch-manipulation"
+            style={{
+              color: isApiKeySet ? '#22c55e' : '#9ca3af',
+              minWidth: '44px',
+              minHeight: '44px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            title={isApiKeySet ? 'Change API Key' : 'Setup Gemini API Key'}
+          >
+            <Key className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Desktop Navigation - Centered pill style matching JournalXX */}
       <nav

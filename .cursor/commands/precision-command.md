@@ -84,4 +84,15 @@
 - [ ] No errors (linting, compilation, runtime)
 - [ ] Changes are minimal
 - [ ] Code follows existing patterns
+- [ ] Run linter/typecheck when available; fix any new issues.
+
+---
+
+## Command: default (apply to every request)
+**Purpose**: Follow the user's request, preserve existing behavior, and check for current and future bugs.
+
+**Process**:
+1. Understand → 2. Read → 3. Plan → 4. Execute → 5. Validate → 6. Bug check (run lint/typecheck when available; fix new issues; consider future bugs).
+
+**When to use**: Default flow for every user request.
 

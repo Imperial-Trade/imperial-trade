@@ -33,7 +33,7 @@ import RiskCalculator from '@/components/tools/RiskCalculator';
 import { GeminiSetupAnalyzer, GeminiSetupAnalyzerRef } from '@/components/charts/GeminiSetupAnalyzer';
 import { MeccaHeader } from '@/components/charts/mecca';
 import { MeccaSpotlightCard as SpotlightCard } from '@/components/charts/mecca/MeccaSpotlightCard';
-import { DeconstructorPanel, DeconstructorButtons, DeconstructorPanelContent, useDeconstructor } from '@/components/charts/mecca/DeconstructorPanel';
+import { DeconstructorPanel, DeconstructorButtons, DeconstructorPanelContent } from '@/components/charts/mecca/DeconstructorPanel';
 import { neonColors } from '@/components/charts/mecca/neonTheme';
 import NewsTicker from '@/components/shared/NewsTicker';
 import InsightHistoryPage from './InsightHistoryPage';
@@ -2569,6 +2569,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
               activeTab={activeTab}
               onTabChange={handleTabChange}
               showMobileTabs={false}
+              onApiKeySetup={() => {
+                insightAnalyzerRef.current?.showApiKeySetup();
+              }}
+              isApiKeySet={isApiKeySet}
             />
           </div>
         ) : (
@@ -2655,21 +2659,16 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                 <button
                   onClick={() => {
                     console.log('[JournalXX] Key icon clicked, isApiKeySet:', isApiKeySet, 'insightAnalyzerRef.current:', insightAnalyzerRef.current);
-                    if (isApiKeySet) {
                       insightAnalyzerRef.current?.showApiKeySetup();
-                    }
                   }}
-                  disabled={!isApiKeySet}
-                  className={`p-2 transition-all rounded-lg ${
-                    isApiKeySet 
-                      ? 'hover:opacity-80 cursor-pointer hover:bg-white/5' 
-                      : 'opacity-50 cursor-not-allowed'
-                  }`}
+                  className="p-2 transition-all rounded-lg hover:opacity-80 cursor-pointer hover:bg-white/5 touch-manipulation"
                   style={{ 
                     color: isApiKeySet ? '#22c55e' : '#9ca3af',
-                    pointerEvents: isApiKeySet ? 'auto' : 'none'
+                    minWidth: '44px',
+                    minHeight: '44px',
+                    WebkitTapHighlightColor: 'transparent',
                   }}
-                  title={isApiKeySet ? 'Change API Key' : 'Set API Key first using the form below'}
+                  title={isApiKeySet ? 'Change API Key' : 'Setup Gemini API Key'}
                 >
                   <Key className="w-4 h-4" />
                 </button>
@@ -3898,22 +3897,26 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     </>
                 )}
 
-                 {/* MECCA TAB - Mobile: Deconstructor only */}
+                 {/* MECCA TAB - Mobile: Deconstructor only - CONSISTENT STRUCTURE ACROSS ALL DEVICES */}
                  {activeTab === 'MECCA' && (
-                     <div className="lg:hidden relative overflow-hidden" 
+                     <div className="lg:hidden relative" 
                           style={{ 
                             height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             maxHeight: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
                             minHeight: 0,
+                            overflow: 'visible', // Allow hint text to be visible
                           }}
                      >
-                         {/* Mobile MECCA tab shows deconstructor */}
-                         <DeconstructorPanel isDarkMode={isDarkMode}>
-                           {() => (
-                             <div className="flex flex-col h-full overflow-y-auto">
-                               <DeconstructorPanelContent isDarkMode={isDarkMode} />
-                             </div>
-                           )}
+                         {/* Mobile MECCA tab - CONSISTENT with desktop/tablet */}
+                         <DeconstructorPanel key="mecca-deconstructor-mobile" isDarkMode={isDarkMode}>
+                           {(context) => (
+                               <div className="flex flex-col h-full overflow-y-auto">
+                               <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
+                                 <DeconstructorPanelContent isDarkMode={isDarkMode} />
+                               </SpotlightCard>
+                               <DeconstructorButtons isDarkMode={isDarkMode} />
+                                   </div>
+                                 )}
                          </DeconstructorPanel>
                      </div>
                  )}
@@ -4294,16 +4297,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                  {/* MECCA - Deconstructor only */}
                                  {activeTab === 'MECCA' && (
-                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
-                                         <DeconstructorPanel isDarkMode={isDarkMode}>
-                                             {(context) => (
-                                                 <div className="w-full h-full flex flex-col">
-                                                     <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
-                                                         <DeconstructorPanelContent isDarkMode={isDarkMode} />
-                                                     </SpotlightCard>
-                                                     <DeconstructorButtons isDarkMode={isDarkMode} />
-                                                 </div>
-                                             )}
+                                     <div className="h-full w-full overflow-visible animate-in fade-in duration-300">
+                                         {/* Desktop/Tablet MECCA tab - EXACT SAME STRUCTURE AS MOBILE */}
+                                         <DeconstructorPanel key="mecca-deconstructor-desktop" isDarkMode={isDarkMode}>
+                                           {(context) => (
+                                             <div className="flex flex-col h-full overflow-y-auto">
+                                               <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
+                                                 <DeconstructorPanelContent isDarkMode={isDarkMode} />
+                                               </SpotlightCard>
+                                               <DeconstructorButtons isDarkMode={isDarkMode} />
+                                             </div>
+                                           )}
                                          </DeconstructorPanel>
                                      </div>
                                  )}
@@ -5179,8 +5183,16 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  </div>
              </div>
 
-             {/* Mecca XX Deconstructor - Mobile Only, Just Above Bottom Nav */}
-             {activeTab === 'MECCA' && (
+             {/* REMOVED: Duplicate DeconstructorPanel instance causing state isolation
+                 The mobile deconstructor is already handled in the main mobile MECCA tab above (line 3912).
+                 This duplicate was causing state synchronization issues where photos uploaded
+                 in one instance weren't visible to the brain button in another instance.
+                 
+                 The "1/5" display was coming from this duplicate instance, but the brain button
+                 was in the main instance, so they had separate state.
+             */}
+             {/* Mecca XX Deconstructor - Mobile Only, Just Above Bottom Nav - DISABLED DUPLICATE */}
+             {false && activeTab === 'MECCA' && (
                <div 
                  className="absolute bottom-0 left-0 right-0 z-[59] lg:hidden"
                  style={{ 

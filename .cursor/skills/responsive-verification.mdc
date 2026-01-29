@@ -1,0 +1,36 @@
+---
+alwaysApply: true
+---
+
+# Skill: Responsive verification
+
+Purpose: Validate UI changes across mobile, tablet, and desktop and ensure no layout/visibility regressions.
+
+Viewports to test (portrait and landscape):
+- iPhones: 320x568@2, 375x667@2, 375x812@3, 390x844@3, 414x896@2, 428x926@3, 440x956@3 (iPhone 17 Pro Max)
+- Android phones: 360x640@3, 360x780@3, 375x812@3, 412x915@3
+- Tablets: 768x1024@2, 834x1112@2, 1024x1366@2, 800x1280@2
+- Desktops: 1280x800@1, 1366x768@1, 1440x900@1, 1920x1080@1, 2560x1440@1
+
+Checks (perform for each viewport, both portrait and landscape):
+1. Emulate deviceScaleFactor (DPR) and touch capability for phones/tablets.
+2. No horizontal scroll is introduced.
+3. Buttons & CTAs are visible and have a minimum touch target of 44x44 CSS px.
+4. No clipped hint text, truncated critical copy, or hidden elements due to overflow.
+5. Modals/backdrops fully cover header & bottom nav (ensure modal z-index > bottom nav).
+6. Icon/thumbnail spacing and layout preserved.
+7. Safe-area support: verify CSS uses env(safe-area-inset-*) where relevant (iOS notch devices).
+8. Orientation support: test both portrait and landscape rotations.
+9. Accessibility basics: alt text for images and label associations for inputs; basic color contrast checks.
+10. Auto-scroll lists/logs: ensure auto-scroll to latest without exposing scrollbars.
+
+Output (structured):
+- Per-viewport pass/fail summary.
+- For each failure: selector, severity (blocker/major/minor), short explanation.
+- Suggested minimal fix (Tailwind class or 1–3 lines of code).
+- Screenshot artifacts for each failing viewport.
+
+Notes:
+- Prefer fluid sizing and responsive utilities; avoid hard-coded absolute widths where they break at narrow viewports.
+- When animating/translating elements (rings, progress circles), separate transform used for centering from rotation/scale animations by nesting elements.
+

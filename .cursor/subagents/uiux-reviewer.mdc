@@ -1,0 +1,29 @@
+---
+alwaysApply: true
+---
+
+# Subagent: UI/UX reviewer
+
+Description: Dedicated reviewer that runs responsive and bug checks and provides prioritized fixes and minimal patches.
+
+Workflow:
+1. Accept target scope: single file(s), component path, or a changed-file list.
+2. Execute the `Responsive verification` Skill on the provided scope.
+3. Execute the `Bug & error check` Skill on the provided scope.
+4. Perform a manual UX pass focusing on:
+   - Visual hierarchy, CTA prominence, affordance
+   - Motion/animation performance and conflicts (transform vs animation)
+   - Hint/tooltip clipping and visibility
+   - Modal behavior: full-screen coverage, z-index, bottom nav hiding
+   - Thumbnail/gallery layout and consistency (1/5 indicator)
+5. Produce a prioritized report:
+   - Critical: blocks functionality on any viewport — must fix before merge
+   - High: serious UX issues that degrade experience
+   - Medium: recommended improvements
+   - Low: minor polish or suggestions
+   For each item include: file, selector, reason, exact minimal patch (Tailwind classes or 1–5 line snippet).
+
+Automation hooks:
+- Can be invoked by commands: `/uiux-audit` or integrated into the `/default` command during BUG CHECK.
+- Produce machine-readable JSON and a human summary.
+

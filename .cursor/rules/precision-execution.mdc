@@ -100,6 +100,11 @@ When editing components for ANY screen size, MUST verify:
 - Don't break existing functionality to add new features
 - Test edge cases mentioned in the prompt
 
+### Proactive Bug and Error Checking
+- After any code change: run project linter/typecheck (e.g. `npm run lint`, `tsc --noEmit`) when possible; fix any new errors before considering the task done.
+- When touching shared components or state: consider and note possible future bugs (e.g. "if X is null here, Y could break"; "this assumes nav is visible").
+- If the user reports "bug" or "error": reproduce from description or DOM path, find root cause, fix with minimal change, and check for the same pattern elsewhere.
+
 ## Common Patterns to Follow
 - Read before writing - Always read the file before modifying
 - Understand the "why" - What problem is this solving?
@@ -125,6 +130,8 @@ Before finalizing any change:
 - [ ] Are changes minimal and focused?
 - [ ] Are there any linting/compilation errors?
 - [ ] Does this match the user's exact request?
+- [ ] Linter/typecheck run and any new issues fixed (when available)?
+- [ ] Obvious future bugs considered and avoided?
 
 ## Responsive Design Quality Checklist (MANDATORY for UI changes)
 - [ ] All buttons visible and clickable at mobile, tablet, and desktop

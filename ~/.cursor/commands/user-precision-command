@@ -1,5 +1,20 @@
 # User Commands - Precision Execution (Universal)
 
+## Command: default (apply to every user request)
+**Purpose**: Follow what the user says, act like a senior UI/UX developer, and check for current and future bugs.
+
+**Process**:
+1. UNDERSTAND: Parse the full prompt; infer intent (e.g. "same as history" = match that modal's behavior).
+2. READ: Open relevant files and related components; note existing patterns and constraints.
+3. PLAN: List exact changes and what must be preserved; confirm scope (screens, components).
+4. EXECUTE: Make minimal, focused edits; preserve layouts and behavior elsewhere.
+5. VALIDATE: Confirm behavior at mobile/tablet/desktop if UI; confirm no regressions.
+6. BUG CHECK: Run linter/typecheck when available; fix new issues; note possible follow-up bugs (e.g. "also check X in production").
+
+**When to use**: Every user request (default flow).
+
+---
+
 ## Command: execute-with-precision
 **Purpose**: Execute user requests with absolute precision across ANY project
 
@@ -93,6 +108,7 @@ If applicable, verify:
 - [ ] Changes are minimal
 - [ ] Code follows existing patterns
 - [ ] Dependencies considered
+- [ ] Run linter/typecheck when available; fix any new issues.
 
 ---
 

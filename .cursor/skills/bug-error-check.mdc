@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+
+# Skill: Bug & error check
+
+Purpose: Run static and quick runtime risk checks after a change and produce minimal fixes.
+
+Steps:
+1. Run static checks when available:
+   - `npm run lint`
+   - `tsc --noEmit` (if TypeScript)
+   Capture and summarize output; flag all errors/warnings.
+2. Inspect changed files (or given file paths) for common risky patterns:
+   - Accessing properties on possibly undefined values (.map, .length, .forEach)
+   - Missing null/undefined guards or optional chaining
+   - Unhandled async calls (missing try/catch or .catch)
+   - Dangerous DOM queries without existence checks
+   - console.* left in production code
+3. Verify API/error handling: ensure network calls have user-friendly error handling and timeouts.
+4. Check persistence mismatches (localStorage vs Supabase) and unsafe assumptions about restored state.
+5. Produce a list of issues with severity and minimal one-line or small patch suggestions.
+
+Output:
+- Lint/TS summary (errors/warnings).
+- Issues list: [severity: blocker/major/minor], file path + approximate line context, short fix snippet.
+- Confidence notes (if static tools unavailable, provide heuristic findings).
+
+Best practices for fixes:
+- Prefer defensive checks (if (!x) return) and optional chaining.
+- Add concise comments where behavior is non-obvious.
+- Keep fixes minimal and focused; avoid refactors unless requested.
+

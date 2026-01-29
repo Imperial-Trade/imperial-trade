@@ -135,7 +135,10 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const { user } = useAuth();
   const { toast } = useToast();
   const deviceInfo = useDeviceDetection();
+  // Consistent device detection across all breakpoints
   const isMobile = deviceInfo.isMobile || deviceInfo.viewportWidth < 768;
+  const isTablet = deviceInfo.isTablet || (deviceInfo.viewportWidth >= 768 && deviceInfo.viewportWidth < 1024);
+  const isDesktop = deviceInfo.isDesktop || deviceInfo.viewportWidth >= 1024;
   
   // #region agent log
   useEffect(() => {
@@ -145,17 +148,39 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   
   // Gallery state
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>(() => {
+    console.log('🔄 DeconstructorPanel: useState initializer called - galleryPhotos initialized to []');
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:138',message:'useState initializer called',data:{initialCount:0},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'K'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:138',message:'useState initializer called',data:{initialCount:0},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
     return [];
   });
   
-  // #region agent log
+  // Effect to log galleryPhotos changes
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:148',message:'galleryPhotos state changed',data:{count:galleryPhotos.length,photoIds:galleryPhotos.map(p=>p.id),photoUrls:galleryPhotos.map(p=>p.url?.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+    console.log('🖼️ galleryPhotos useEffect triggered:', { 
+      count: galleryPhotos.length, 
+      photoIds: galleryPhotos.map(p => p.id),
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join(' | ')
+    });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:148',message:'galleryPhotos useEffect triggered',data:{count:galleryPhotos.length,photoIds:galleryPhotos.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
   }, [galleryPhotos]);
-  // #endregion
+
+  // Effect to log component mount/unmount
+  useEffect(() => {
+    const componentId = Math.random().toString(36).substring(7);
+    console.log('🚀 DeconstructorPanel MOUNTED - Component ID:', componentId);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:158',message:'DeconstructorPanel mounted',data:{componentId},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    return () => {
+      console.log('👋 DeconstructorPanel UNMOUNTED - Component destroyed');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:162',message:'DeconstructorPanel unmounted',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    };
+  }, []);
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
   const [isLinkedToJournal, setIsLinkedToJournal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -168,6 +193,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [insightStream, setInsightStream] = useState<string[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const pendingAnalysisResultRef = useRef<AnalysisResult | null>(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [modalAnimating, setModalAnimating] = useState(false);
   const [showPreloader, setShowPreloader] = useState(false);
@@ -184,8 +210,13 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const realtimeChannelRef = useRef<any>(null);
   const galleryPhotosRef = useRef<GalleryPhoto[]>([]);
   
-  // Keep ref in sync with state
+  // Keep ref in sync with state - CRITICAL for event handlers
   useEffect(() => {
+    console.log('🔄 Updating galleryPhotosRef:', { 
+      oldCount: galleryPhotosRef.current.length, 
+      newCount: galleryPhotos.length,
+      photoIds: galleryPhotos.map(p => p.id)
+    });
     galleryPhotosRef.current = galleryPhotos;
   }, [galleryPhotos]);
 
@@ -410,15 +441,19 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     setGalleryPhotos(prev => {
       const updated = [...prev, ...newPhotos];
       console.log('✅ setGalleryPhotos: prev=', prev.length, 'new=', updated.length, 'photos');
+      console.log('📸 Photo uploaded! Brain button should now be active. Photo IDs:', updated.map(p => p.id));
+      // Update ref immediately with the new value - this ensures event handlers have latest state
+      galleryPhotosRef.current = updated;
+      console.log('🔄 Updated galleryPhotosRef immediately:', galleryPhotosRef.current.length, 'photos');
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:394',message:'setGalleryPhotos: State update',data:{prevCount:prev.length,newCount:updated.length,newPhotoIds:updated.map(p=>p.id),newPhotoUrls:updated.map(p=>p.url?.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run6',hypothesisId:'G'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:394',message:'setGalleryPhotos: State update',data:{prevCount:prev.length,newCount:updated.length,newPhotoIds:updated.map(p=>p.id),newPhotoUrls:updated.map(p=>p.url?.substring(0,50))},timestamp:Date.now(),sessionId:'debug-session',runId:'run10',hypothesisId:'G'})}).catch(()=>{});
       // #endregion
       return updated;
     });
     
     // #region agent log
     setTimeout(() => {
-      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:402',message:'handleFileUpload: After setGalleryPhotos (async check)',data:{expectedCount:galleryPhotos.length + newPhotos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'G'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:402',message:'handleFileUpload: After setGalleryPhotos (async check)',data:{expectedCount:galleryPhotos.length + newPhotos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run10',hypothesisId:'G'})}).catch(()=>{});
     }, 100);
     // #endregion
   }, [user?.id, toast]);
@@ -475,8 +510,19 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
   // Handle deconstruct
   const handleDeconstruct = useCallback(async (photo: GalleryPhoto) => {
-    if (!user?.id || isAnalyzing) return;
+    console.log('🔧 handleDeconstruct called:', { 
+      photoId: photo.id, 
+      photoUrl: photo.url?.substring(0, 50),
+      userId: user?.id,
+      isAnalyzing 
+    });
+    
+    if (!user?.id || isAnalyzing) {
+      console.log('❌ handleDeconstruct blocked:', { hasUser: !!user?.id, isAnalyzing });
+      return;
+    }
 
+    console.log('✅ Starting deconstruction - setting loading states...');
     setShowPhaseLoader(true);
     setIsAnalyzing(true);
     setIsAnalysisReady(false);
@@ -496,12 +542,27 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
         ? localStorage.getItem('gemini_api_key') || null
         : null;
 
+      console.log('📞 Calling AnalyzeSetup edge function (deconstructor-agent):', {
+        userId: user.id,
+        photoUrl: photo.url?.substring(0, 50),
+        hasApiKey: !!userApiKey,
+        apiKeyLength: userApiKey ? userApiKey.length : 0,
+        apiKeyPrefix: userApiKey ? userApiKey.substring(0, 10) + '...' : 'none'
+      });
+      
+      if (!userApiKey) {
+        console.warn('⚠️ No Gemini API key found in localStorage. Edge function will use env var if available.');
+        console.warn('💡 To set API key: Go to Insight XX settings and configure your Gemini API key');
+      }
+
       const result = await AnalyzeSetup({
         user_id: user.id,
         file_urls: [photo.url],
         analysis_context: {},
         api_key: userApiKey
       });
+      
+      console.log('✅ AnalyzeSetup returned:', result ? 'Success' : 'No result');
 
       addInsight("📊 Processing trading patterns and performance metrics...");
 
@@ -564,15 +625,10 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
       setIsAnalysisReady(true);
       
-      // Wait for PhaseLoader to complete
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Store the result so PhaseLoader can access it when it completes
+      pendingAnalysisResultRef.current = validatedResult;
       
-      setShowPhaseLoader(false);
-      setAnalysisResult(validatedResult);
-      setSelectedPhoto(null);
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-      openModal();
+      // PhaseLoader will handle the transition to modal when it reaches 100%
 
       toast({
         title: "🎉 Analysis Complete!",
@@ -582,6 +638,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
       console.error('Analysis failed:', error);
       setShowPhaseLoader(false);
       setIsAnalysisReady(false);
+      pendingAnalysisResultRef.current = null; // Clear pending result on error
       addInsight(`❌ Analysis failed: ${error.message}`);
       toast({
         title: "Analysis Failed",
@@ -594,10 +651,40 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     }
   }, [user?.id, isAnalyzing, addInsight, simulateAnalysisStream, toast]);
 
-  // Handle PhaseLoader completion
+  // Modal handlers (defined before handlePhaseLoaderComplete to avoid initialization error)
+  const openModal = useCallback(() => {
+    setModalAnimating(true);
+    setShowResultsModal(true);
+    setTimeout(() => setModalAnimating(false), 50);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalAnimating(true);
+    setTimeout(() => {
+      setShowResultsModal(false);
+      setModalAnimating(false);
+      setAnalysisResult(null);
+      setDragY(0);
+    }, 300);
+  }, []);
+
+  // Handle PhaseLoader completion - transition to modal when it reaches 100%
   const handlePhaseLoaderComplete = useCallback(() => {
     setShowPhaseLoader(false);
-  }, []);
+    
+    // If we have a pending analysis result, set it and open the modal
+    if (pendingAnalysisResultRef.current) {
+      const result = pendingAnalysisResultRef.current;
+      setAnalysisResult(result);
+      setSelectedPhoto(null);
+      pendingAnalysisResultRef.current = null;
+      
+      // Small delay for smooth transition
+      setTimeout(() => {
+        openModal();
+      }, 300);
+    }
+  }, [openModal]);
 
   // Filtered photos
   const filteredPhotos = useMemo(() => {
@@ -628,22 +715,6 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     });
     return Array.from(groups.values());
   }, [filteredPhotos]);
-
-  // Modal handlers
-  const openModal = () => {
-    setModalAnimating(true);
-    setShowResultsModal(true);
-    setTimeout(() => setModalAnimating(false), 50);
-  };
-
-  const closeModal = () => {
-    setModalAnimating(true);
-    setTimeout(() => {
-      setShowResultsModal(false);
-      setModalAnimating(false);
-      setDragY(0);
-    }, 400);
-  };
 
   const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
     setIsDragging(true);
@@ -732,6 +803,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
     <>
     <div className="h-full flex flex-col min-h-0 overflow-y-auto relative z-10" style={{ 
       padding: 0,
+      overflowX: 'visible', // Allow hint text to show on sides if needed
     }}>
           {/* Animated Deconstructor Symbol - Always visible when not analyzing */}
           {(() => {
@@ -742,32 +814,27 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             return shouldRender;
           })() && (
             <div 
-              className={`relative flex items-center justify-center w-full shrink-0 ${galleryPhotos.length > 0 ? (isMobile ? 'py-4' : 'py-6') : 'flex-1 min-h-0'}`} 
+              className="relative flex flex-col items-center justify-center w-full shrink-0 flex-1 min-h-0" 
               style={{ 
-                padding: galleryPhotos.length > 0 ? (isMobile ? '1rem 1rem 0.5rem' : '1.5rem 1.5rem 0.75rem') : (isMobile ? '1.5rem' : '2rem'),
-                zIndex: galleryPhotos.length > 0 ? 50 : 10,
+                padding: isMobile ? '1.5rem' : '2rem',
+                zIndex: 10,
                 position: 'relative',
                 pointerEvents: 'auto',
+                overflow: 'visible', // Ensure hint text is not clipped
               }}
               onPointerDown={(e) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:730',message:'Container onPointerDown',data:{target:e.target,currentTarget:e.currentTarget},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'N'})}).catch(()=>{});
-                // #endregion
+                // Container onPointerDown - no logging needed to avoid circular reference
               }}
             >
                 {/* Pulsing outer ring */}
                 <div 
                   className="absolute rounded-full border-2"
                   style={{
-                    width: galleryPhotos.length > 0 
-                      ? (isMobile ? '140px' : '180px')
-                      : (isMobile ? '160px' : '200px'),
-                    height: galleryPhotos.length > 0 
-                      ? (isMobile ? '140px' : '180px')
-                      : (isMobile ? '160px' : '200px'),
+                    width: (isMobile ? '160px' : isTablet ? '180px' : '200px'),
+                    height: (isMobile ? '160px' : isTablet ? '180px' : '200px'),
                     borderColor: greenAccent.primary,
                     opacity: 0.3,
-                    animation: galleryPhotos.length > 0 ? 'none' : 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     boxShadow: `0 0 40px ${greenAccent.glow}`,
                   }}
                 />
@@ -775,15 +842,11 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                 <div 
                   className="absolute rounded-full border-2"
                   style={{
-                    width: galleryPhotos.length > 0 
-                      ? (isMobile ? '110px' : '140px')
-                      : (isMobile ? '130px' : '160px'),
-                    height: galleryPhotos.length > 0 
-                      ? (isMobile ? '110px' : '140px')
-                      : (isMobile ? '130px' : '160px'),
+                    width: (isMobile ? '130px' : isTablet ? '145px' : '160px'),
+                    height: (isMobile ? '130px' : isTablet ? '145px' : '160px'),
                     borderColor: greenAccent.primary,
                     opacity: 0.5,
-                    animation: galleryPhotos.length > 0 ? 'none' : 'rotate-slow 4s linear infinite',
+                    animation: 'rotate-slow 4s linear infinite',
                     boxShadow: `0 0 30px ${greenAccent.glow}`,
                   }}
                 />
@@ -799,42 +862,24 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                       // #endregion
                     }
                   }}
-                  className={`relative ${galleryPhotos.length > 0 
-                    ? (isMobile ? 'w-24 h-24' : 'w-28 h-28')
-                    : (isMobile ? 'w-28 h-28' : 'w-32 h-32')} rounded-full flex items-center justify-center cursor-pointer touch-manipulation active:scale-95`}
+                  className={`relative ${isMobile ? 'w-28 h-28' : isTablet ? 'w-30 h-30' : 'w-32 h-32'} rounded-full flex items-center justify-center cursor-pointer touch-manipulation active:scale-95`}
                   style={{
                     zIndex: 9999,
                     position: 'relative',
                     isolation: 'isolate',
-                    background: galleryPhotos.length > 0
-                      ? `linear-gradient(135deg, ${greenAccent.primary}30 0%, ${greenAccent.dark}15 100%)`
-                      : `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`,
-                    border: `${isMobile ? '2.5px' : '3px'} solid ${galleryPhotos.length > 0 ? greenAccent.primary : `${greenAccent.primary}80`}`,
-                    animation: (() => {
-                      const hasPhotos = galleryPhotos.length > 0;
-                      const anim = hasPhotos ? 'none' : 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:794',message:'Animation style calculation',data:{hasPhotos,galleryPhotosCount:galleryPhotos.length,animation:anim},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'I'})}).catch(()=>{});
-                      // #endregion
-                      return anim;
-                    })(),
-                    boxShadow: galleryPhotos.length > 0
-                      ? isButtonPressed
-                        ? `0 0 ${isMobile ? '25px' : '30px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '12px' : '15px'} ${greenAccent.glow}30, 0 ${isMobile ? '3px' : '4px'} ${isMobile ? '6px' : '8px'} rgba(0, 0, 0, 0.3)`
-                        : `0 0 ${isMobile ? '40px' : '50px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '20px' : '25px'} ${greenAccent.glow}50, 0 ${isMobile ? '6px' : '8px'} ${isMobile ? '12px' : '16px'} rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`
-                      : `0 0 40px ${greenAccent.glow}, inset 0 0 20px ${greenAccent.glow}40`,
-                    transform: (() => {
-                      const hasPhotos = galleryPhotos.length > 0;
-                      const transform = hasPhotos
-                        ? isButtonPressed
-                          ? `perspective(1000px) translateZ(${isMobile ? '-6px' : '-8px'}) rotateX(5deg) scale(0.95)`
-                          : `perspective(1000px) translateZ(${isMobile ? '10px' : '12px'}) rotateX(-5deg)`
-                        : undefined;
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:735',message:'Transform style calculation',data:{hasPhotos,isButtonPressed,isMobile,transform},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                      // #endregion
-                      return transform;
-                    })(),
+                    background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`,
+                    border: `${isMobile ? '2.5px' : '3px'} solid ${greenAccent.primary}80`,
+                    animation: galleryPhotos.length > 0 && isButtonPressed ? 'none' : 'pulse-symbol 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    boxShadow: galleryPhotos.length > 0 && isButtonPressed
+                      ? `0 0 ${isMobile ? '25px' : '30px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '12px' : '15px'} ${greenAccent.glow}30, 0 ${isMobile ? '3px' : '4px'} ${isMobile ? '6px' : '8px'} rgba(0, 0, 0, 0.3)`
+                      : galleryPhotos.length > 0
+                        ? `0 0 ${isMobile ? '40px' : '50px'} ${greenAccent.glow}, inset 0 0 ${isMobile ? '20px' : '25px'} ${greenAccent.glow}50, 0 ${isMobile ? '6px' : '8px'} ${isMobile ? '12px' : '16px'} rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`
+                        : `0 0 40px ${greenAccent.glow}, inset 0 0 20px ${greenAccent.glow}40`,
+                    transform: galleryPhotos.length > 0 && isButtonPressed
+                      ? `perspective(1000px) translateZ(${isMobile ? '-6px' : '-8px'}) rotateX(5deg) scale(0.95)`
+                      : galleryPhotos.length > 0
+                        ? `perspective(1000px) translateZ(${isMobile ? '10px' : '12px'}) rotateX(-5deg)`
+                        : undefined,
                     transition: galleryPhotos.length > 0 
                       ? 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' 
                       : undefined,
@@ -848,7 +893,15 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                   }}
                   // Unified handler for all input types (mouse, touch, pointer)
                   onPointerDown={(e) => {
+                    // Use ref to get latest value - ref is always up to date
                     const currentPhotos = galleryPhotosRef.current;
+                    console.log('🧠 Brain button onPointerDown:', { 
+                      refPhotos: currentPhotos.length,
+                      statePhotos: galleryPhotos.length,
+                      photoIds: currentPhotos.map(p => p.id),
+                      isAnalyzing,
+                      timestamp: Date.now()
+                    });
                     if (currentPhotos.length > 0 && !isAnalyzing) {
                       setIsButtonPressed(true);
                     }
@@ -856,18 +909,44 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                   onPointerUp={(e) => {
                     setIsButtonPressed(false);
                     
-                    // Trigger deconstruction on pointer up (works for both mouse and touch)
+                    // Use ref to get latest value - ref is always up to date, avoids closure issues
                     const currentPhotos = galleryPhotosRef.current;
+                    console.log('🧠 Brain button onPointerUp:', { 
+                      refPhotos: currentPhotos.length,
+                      statePhotos: galleryPhotos.length,
+                      photoIds: currentPhotos.map(p => p.id),
+                      isAnalyzing,
+                      canProceed: currentPhotos.length > 0 && !isAnalyzing,
+                      timestamp: Date.now()
+                    });
+                    
                     if (currentPhotos.length > 0 && !isAnalyzing) {
                       e.preventDefault();
                       e.stopPropagation();
                       const firstPhoto = currentPhotos[0];
+                      console.log('✅ Brain button: Starting deconstruction for photo:', {
+                        photoId: firstPhoto.id,
+                        photoUrl: firstPhoto.url?.substring(0, 50),
+                        isAnalyzed: firstPhoto.isAnalyzed
+                      });
+                      
                       if (firstPhoto.isAnalyzed && firstPhoto.analysisResult) {
+                        console.log('📋 Photo already analyzed, showing results');
                         setAnalysisResult(firstPhoto.analysisResult);
                         openModal();
                       } else {
+                        console.log('🚀 Calling handleDeconstruct with photo:', firstPhoto.id);
                         handleDeconstruct(firstPhoto);
                       }
+                    } else {
+                      console.error('❌ Brain button: Cannot deconstruct -', {
+                        refPhotos: currentPhotos.length,
+                        statePhotos: galleryPhotos.length,
+                        hasPhotos: currentPhotos.length > 0,
+                        photoCount: currentPhotos.length,
+                        isAnalyzing,
+                        photoIds: currentPhotos.map(p => p.id)
+                      });
                     }
                   }}
                   onPointerLeave={() => {
@@ -907,12 +986,10 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                   
                   {/* Animated Brain/Deconstructor Symbol */}
                   <Brain 
-                    className={`${galleryPhotos.length > 0 
-                      ? (isMobile ? 'w-12 h-12' : 'w-14 h-14')
-                      : (isMobile ? 'w-14 h-14' : 'w-16 h-16')} relative z-10`}
+                    className={`${isMobile ? 'w-14 h-14' : isTablet ? 'w-15 h-15' : 'w-16 h-16'} relative z-10`}
                     style={{ 
                       color: greenAccent.primary,
-                      animation: galleryPhotos.length > 0 ? 'none' : 'brain-think 1.5s ease-in-out infinite',
+                      animation: galleryPhotos.length > 0 && isButtonPressed ? 'none' : 'brain-think 1.5s ease-in-out infinite',
                       filter: `drop-shadow(0 0 ${isMobile ? '6px' : '8px'} ${greenAccent.glow})`,
                       transform: galleryPhotos.length > 0 && isButtonPressed
                         ? `translateZ(4px) scale(0.9)`
@@ -924,30 +1001,37 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                     }} 
                   />
                 </div>
-                {/* Hint text when photo is available */}
-                {galleryPhotos.length > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 text-center" style={{ marginTop: isMobile ? '0.5rem' : '0.75rem' }}>
-                    <p className={`${isMobile ? 'text-[10px]' : 'text-xs sm:text-sm'} font-medium animate-fade-in`} style={{ color: greenAccent.primary }}>
-                      {isMobile ? 'Tap to Analyze' : 'Click to Analyze'}
-                    </p>
-                  </div>
-                )}
-                {/* Hint text when no photos */}
-                {galleryPhotos.length === 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 text-center" style={{ marginTop: isMobile ? '0.5rem' : '0.75rem' }}>
-                    <p className={`${isMobile ? 'text-[10px]' : 'text-xs sm:text-sm'} font-medium`} style={{ color: `${greenAccent.primary}80` }}>
-                      {isMobile ? 'Add photos to analyze' : 'Add photos to analyze'}
-                    </p>
-                  </div>
-                )}
             </div>
           )}
 
-          {/* Photo Gallery Grid - Only shows when photos exist */}
-          {galleryPhotos.length > 0 && (
+          {/* Hint text - Keep "Add photos to analyze" text even when photos exist (maintain empty state design) */}
+          {!isAnalyzing && !showPhaseLoader && (
+            <div 
+              className="w-full text-center shrink-0 px-4" 
+              style={{ 
+                marginTop: isMobile ? '0.75rem' : '1rem',
+                marginBottom: isMobile ? '0.5rem' : '0.75rem',
+                zIndex: 1000,
+                pointerEvents: 'none',
+              }}
+            >
+              <p 
+                className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`} 
+                style={{ 
+                  color: `${greenAccent.primary}80`,
+                  textShadow: `0 0 6px ${greenAccent.glow}40`,
+                }}
+              >
+                Add photos to analyze
+              </p>
+            </div>
+          )}
+
+          {/* Photo Gallery Grid - HIDDEN: Keep empty state design even with photos */}
+          {false && galleryPhotos.length > 0 && (
             <>
               {/* Header - NEW GALLERY UI v2.0 */}
-              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 w-full">
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6 w-full px-4 sm:px-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <div 
                 className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1022,7 +1106,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
 
           {/* Filters Panel */}
           {showFilters && (
-            <div className="mb-4 sm:mb-5 p-3 sm:p-4 rounded-xl border" style={{ 
+            <div className="mb-4 sm:mb-5 p-3 sm:p-4 rounded-xl border mx-4 sm:mx-6" style={{ 
               background: neonColors.bgGlass, 
               borderColor: neonColors.borderDefault 
             }}>
@@ -1108,30 +1192,30 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             </div>
           )}
 
-        {/* Upload Zone */}
-        {!isAnalyzing && (
-          <div
+        {/* Upload Zone - Always visible when not analyzing */}
+          {!isAnalyzing && (
+            <div
             onDrop={(e) => {
               // #region agent log
               fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1005',message:'onDrop triggered',data:{fileCount:e.dataTransfer.files.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'L'})}).catch(()=>{});
               // #endregion
               handleDrop(e);
             }}
-            onDragOver={handleDragOver}
+              onDragOver={handleDragOver}
             onClick={() => {
               // #region agent log
               fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:1012',message:'Upload zone clicked',data:{fileInputExists:!!fileInputRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'L'})}).catch(()=>{});
               // #endregion
               fileInputRef.current?.click();
             }}
-            className="border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 text-center cursor-pointer transition-all mb-4 sm:mb-5 md:mb-6 touch-manipulation"
-            style={{
-              borderColor: neonColors.borderDefault,
-              background: neonColors.bgGlass,
-              minHeight: '120px',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
+            className={`border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 text-center cursor-pointer transition-all mb-4 sm:mb-5 md:mb-6 touch-manipulation ${galleryPhotos.length > 0 ? 'mx-4 sm:mx-6' : ''}`}
+              style={{
+                borderColor: neonColors.borderDefault,
+                background: neonColors.bgGlass,
+              minHeight: galleryPhotos.length > 0 ? '100px' : '120px',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
               <div className="flex flex-col items-center gap-2 sm:gap-3">
                 <div 
                   className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-1 sm:mb-2"
@@ -1167,9 +1251,9 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             }}
           />
 
-          {/* Photo Gallery Grid */}
-          {filteredPhotos.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+          {/* Photo Gallery Grid - HIDDEN: Keep empty state design even with photos */}
+          {false && filteredPhotos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 px-4 sm:px-6 mb-4 sm:mb-5 md:mb-6">
               {groupedPhotos.map((group, groupIndex) => {
                 const firstPhoto = group[0];
                 const remainingCount = group.length - 1;
@@ -1268,17 +1352,13 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
             <div 
               className="fixed inset-0 z-[9998] flex items-center justify-center"
               style={{
-                background: 'rgba(10, 10, 10, 0.95)',
+                background: 'rgba(5, 5, 5, 0.98)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
                 padding: 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)',
               }}
             >
-              <div className="flex flex-col items-center gap-4 sm:gap-6 px-4">
-                <div className="scale-125">
-                  <DeconstructorPhaseLoader isReady={isAnalysisReady} onComplete={handlePhaseLoaderComplete} />
-                </div>
-              </div>
+              <DeconstructorPhaseLoader isReady={isAnalysisReady} onComplete={handlePhaseLoaderComplete} />
             </div>
           )}
 
@@ -1563,20 +1643,7 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
                   </p>
                 </div>
               </div>
-              <button
-                onClick={closeModal}
-                className="p-2 rounded-full transition-colors flex-shrink-0 touch-manipulation"
-                style={{ 
-                  background: neonColors.bgGlass,
-                  color: neonColors.textMuted,
-                  minWidth: '44px',
-                  minHeight: '44px',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              {/* X button hidden - modal can be closed by dragging down or clicking backdrop */}
             </div>
 
             <div 
@@ -1970,7 +2037,14 @@ export const DeconstructorPanelContent: React.FC<{ isDarkMode?: boolean }> = ({ 
   
   if (!context) {
     console.error('DeconstructorPanelContent must be used within DeconstructorPanel');
-    return null;
+    // Return a fallback UI instead of null to prevent errors
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-sm" style={{ color: neonColors.textMuted }}>
+          Loading deconstructor...
+        </p>
+      </div>
+    );
   }
 
   // Render the panelContent from context
@@ -1982,10 +2056,11 @@ export const DeconstructorButtons: React.FC<{ isDarkMode?: boolean }> = ({ isDar
   const context = useContext(DeconstructorContext);
   if (!context) {
     console.warn('DeconstructorButtons: Context not available');
-    return null;
+    // Return empty div instead of null to prevent layout issues
+    return <div />;
   }
   
-  const { fileInputRef, galleryPhotos, isAnalyzing, handleDeconstruct } = context;
+  const { fileInputRef, galleryPhotos, isAnalyzing, removePhoto } = context;
   
   const greenAccent = {
     primary: neonColors.emerald,
@@ -1993,7 +2068,8 @@ export const DeconstructorButtons: React.FC<{ isDarkMode?: boolean }> = ({ isDar
     glow: neonColors.emeraldGlow,
   };
 
-  if (galleryPhotos.length > 0 || isAnalyzing) return null;
+  const maxPhotos = 5;
+  const hasPhotos = galleryPhotos.length > 0;
 
   const handleAddImage = () => {
     if (fileInputRef.current) {
@@ -2003,46 +2079,94 @@ export const DeconstructorButtons: React.FC<{ isDarkMode?: boolean }> = ({ isDar
     }
   };
 
-  const handleDeconstructClick = () => {
-    if (galleryPhotos.length > 0) {
-      handleDeconstruct(galleryPhotos[0]);
-    }
-  };
-
   return (
-    <div className="w-full px-4 sm:px-5 md:px-6 space-y-3 shrink-0" style={{
+    <div className="w-full px-4 sm:px-5 md:px-6 shrink-0" style={{
       paddingTop: '0.75rem',
     }}>
-      {/* ADD IMAGE Button */}
+      {/* ADD IMAGE Button - Shows photos when uploaded */}
       <button
         onClick={handleAddImage}
-        className="w-full py-3 rounded-xl font-medium text-sm transition-all touch-manipulation"
+        disabled={isAnalyzing || galleryPhotos.length >= maxPhotos}
+        className={`w-full py-3 rounded-xl font-medium text-sm transition-all touch-manipulation ${hasPhotos ? 'justify-between px-4' : 'justify-center'}`}
         style={{
-          background: 'transparent',
-          border: `2px solid ${greenAccent.primary}`,
+          background: hasPhotos 
+            ? `linear-gradient(135deg, ${greenAccent.primary}15 0%, ${greenAccent.dark}08 100%)`
+            : 'transparent',
+          border: `2px solid ${hasPhotos ? greenAccent.primary : greenAccent.primary}`,
           color: greenAccent.primary,
-          boxShadow: `0 0 15px ${greenAccent.glow}40`,
+          boxShadow: hasPhotos 
+            ? `0 0 15px ${greenAccent.glow}40, inset 0 0 10px ${greenAccent.glow}20`
+            : `0 0 15px ${greenAccent.glow}40`,
           minHeight: '48px',
           WebkitTapHighlightColor: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          opacity: (isAnalyzing || galleryPhotos.length >= maxPhotos) ? 0.5 : 1,
         }}
       >
-        ADD IMAGE
-      </button>
-      
-      {/* DECONSTRUCT Button */}
+        {hasPhotos ? (
+          <>
+            {/* Photo thumbnails */}
+            <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide">
+              {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
+                <div key={photo.id} className="relative shrink-0 group/image">
+                  <div 
+                    className="h-8 w-12 rounded-lg overflow-hidden border-2 transition-colors shadow-sm"
+                    style={{
+                      borderColor: neonColors.borderDefault,
+                    }}
+                  >
+                    <img 
+                      src={photo.thumbnailUrl || photo.url} 
+                      alt={`Photo ${index + 1}`} 
+                      className="w-full h-full object-cover pointer-events-none" 
+                    />
+                  </div>
+                  {/* X button - only show when not analyzing and photos are present */}
+                  {!isAnalyzing && (
       <button
-        onClick={handleDeconstructClick}
-        disabled={galleryPhotos.length === 0}
-        className="w-full py-4 rounded-xl font-bold text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        removePhoto(photo.id);
+                      }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
+                      title="Remove photo"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Photo count indicator */}
+            {galleryPhotos.length < maxPhotos && (
+              <span 
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 py-1 rounded whitespace-nowrap shrink-0"
         style={{
-          background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`,
-          color: '#000',
-          boxShadow: `0 0 25px ${greenAccent.glow}`,
-          minHeight: '56px',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        DECONSTRUCT
+                  color: greenAccent.primary,
+                  background: `${greenAccent.primary}20`,
+                  border: `1px solid ${greenAccent.primary}40`,
+                }}
+              >
+                {galleryPhotos.length}/{maxPhotos}
+              </span>
+            )}
+            {galleryPhotos.length >= maxPhotos && (
+              <span 
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-red-400 bg-red-950/30 px-2 py-1 rounded whitespace-nowrap shrink-0"
+                style={{
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                }}
+              >
+                MAX {maxPhotos}
+              </span>
+            )}
+          </>
+        ) : (
+          <span>ADD IMAGE</span>
+        )}
       </button>
     </div>
   );

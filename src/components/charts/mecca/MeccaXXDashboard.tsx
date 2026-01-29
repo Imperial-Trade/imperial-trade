@@ -452,6 +452,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
   const [isViewingSavedAnalysis, setIsViewingSavedAnalysis] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [internalMobileTab, setInternalMobileTab] = useState<'chart' | 'economic' | 'analyze'>('chart');
+  const [isBrainButtonPressed, setIsBrainButtonPressed] = useState(false);
   
   // Use external tab if provided, otherwise use internal state
   const mobileActiveTab = externalMobileTab ?? internalMobileTab;
@@ -693,6 +694,19 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
     }
   }, [apiKey]);
 
+  const handleRemoveApiKey = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('gemini_api_key');
+    }
+    setApiKey('');
+    setIsApiKeySet(false);
+    setApiKeyStatus('idle');
+    setError(null);
+    setShowApiKeyModal(false);
+    setShowApiKeySetup(false);
+    console.log('[MeccaXXDashboard] API key removed');
+  }, []);
+
   const handleClearApiKey = useCallback(() => {
     setApiKey('');
     setIsApiKeySet(false);
@@ -736,9 +750,20 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
     apiKeyModalTouchStartY.current = null;
   };
 
-  // Debug: Log when showApiKeyModal changes
+  // Load API key from localStorage when modal opens
   useEffect(() => {
-    console.log('[MeccaXXDashboard] showApiKeyModal changed:', showApiKeyModal);
+    if (showApiKeyModal && typeof window !== 'undefined') {
+      const savedApiKey = localStorage.getItem('gemini_api_key');
+      if (savedApiKey && savedApiKey.trim().length > 0) {
+        setApiKey(savedApiKey);
+        setIsApiKeySet(true);
+        setApiKeyStatus('valid');
+      } else {
+        setApiKey('');
+        setIsApiKeySet(false);
+        setApiKeyStatus('idle');
+      }
+    }
   }, [showApiKeyModal]);
 
   // Expose API key setup method via ref
@@ -746,15 +771,20 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
   useImperativeHandle(ref, () => ({
     showApiKeySetup: () => {
       console.log('[MeccaXXDashboard] showApiKeySetup called, isApiKeySet:', isApiKeySet, 'current showApiKeyModal:', showApiKeyModal);
-      // Only show modal if API key is already set (for changing it)
-      // If no key is set, user should use the setup form that's already visible in the panel
-      if (!isApiKeySet) {
-        console.log('[MeccaXXDashboard] API key not set, use the setup form in the panel to set it first');
-        return;
-      }
-      // Clear the input field when opening to change API key
+      // Always show modal - allow setting or changing API key
+      // Load existing API key from localStorage if available
+      if (typeof window !== 'undefined') {
+        const savedApiKey = localStorage.getItem('gemini_api_key');
+        if (savedApiKey && savedApiKey.trim().length > 0) {
+          setApiKey(savedApiKey);
+          setIsApiKeySet(true);
+          setApiKeyStatus('valid');
+        } else {
       setApiKey('');
+          setIsApiKeySet(false);
       setApiKeyStatus('idle');
+        }
+      }
       setError(null);
       setShowApiKeyModal(true);
       setShowApiKeySetup(true);
@@ -1125,9 +1155,25 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             <button onClick={() => setShowApiKey(!showApiKey)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}</button>
           </div>
           {apiKeyStatus === 'invalid' && error && <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2" style={{ background: 'rgba(239,68,68,0.1)' }}><AlertCircle className="w-3 h-3" style={{ color: neonColors.negative }} /><span className="text-[10px]" style={{ color: neonColors.negative }}>{error}</span></div>}
+          <div className="flex flex-col gap-2">
           <button onClick={handleSetApiKey} disabled={isValidatingKey || !apiKey.trim()} className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5" style={{ background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, color: isValidatingKey ? neonColors.textMuted : '#000', opacity: !apiKey.trim() ? 0.5 : 1 }}>
             {isValidatingKey ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Validating...</span></> : <><CheckCircle2 className="w-3.5 h-3.5" /><span>{showApiKeySetup && isApiKeySet ? 'Update API Key' : 'Set API Key'}</span></>}
           </button>
+            {isApiKeySet && (
+              <button 
+                onClick={handleRemoveApiKey}
+                className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all"
+                style={{ 
+                  background: 'transparent',
+                  borderColor: '#ef4444',
+                  color: '#ef4444',
+                }}
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Remove API Key</span>
+              </button>
+            )}
+          </div>
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block text-center text-[10px] mt-2 underline" style={{ color: greenAccent.primary }}>Get your free API key →</a>
         </div>
       )}
@@ -1235,6 +1281,24 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                 opacity: 1;
               }
             }
+            @keyframes brain-think {
+              0%, 100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+              }
+              25% {
+                transform: scale(1.05) rotate(-2deg);
+                opacity: 0.9;
+              }
+              50% {
+                transform: scale(1.1) rotate(0deg);
+                opacity: 1;
+              }
+              75% {
+                transform: scale(1.05) rotate(2deg);
+                opacity: 0.9;
+              }
+            }
             .shimmer-animation {
               animation: shimmer 2s infinite;
             }
@@ -1307,9 +1371,9 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
               }}
               data-mecca-ai-scroll
             >
-              {/* Preloading State - Centered pulsing brain when API key is set but no analysis yet */}
+              {/* Preloading State - Centered clickable brain button when API key is set but no analysis yet */}
               {isApiKeySet && !analysis && !isAnalyzing && !isFetchingCandles && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
+                <div className="absolute inset-0 flex items-center justify-center z-10" style={{ width: '100%', height: '100%' }}>
                   <div className="flex flex-col items-center justify-center gap-6">
                     <div className="relative">
                       <div 
@@ -1320,20 +1384,69 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                           margin: '-20px', 
                           width: 'calc(100% + 40px)', 
                           height: 'calc(100% + 40px)',
-                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                          animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                         }} 
                       />
-                      <div 
-                        className="w-20 h-20 rounded-full flex items-center justify-center" 
+                      <button
+                        onClick={analyzeSetup}
+                        disabled={isAnalyzing || isFetchingCandles || !livePrice}
+                        className="w-20 h-20 rounded-full flex items-center justify-center cursor-pointer touch-manipulation relative"
                         style={{ 
                           background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
-                          border: `2px solid ${greenAccent.primary}40`,
-                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                          boxShadow: `0 0 30px ${greenAccent.primary}30`
+                          border: `3px solid ${greenAccent.primary}80`,
+                          animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                          boxShadow: isBrainButtonPressed
+                            ? `0 0 30px ${greenAccent.glow}, inset 0 0 15px ${greenAccent.glow}30, 0 4px 8px rgba(0, 0, 0, 0.3)`
+                            : `0 0 50px ${greenAccent.glow}, inset 0 0 25px ${greenAccent.glow}50, 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`,
+                          transform: isBrainButtonPressed
+                            ? 'perspective(1000px) translateZ(-8px) rotateX(5deg) scale(0.95)'
+                            : 'perspective(1000px) translateZ(12px) rotateX(-5deg)',
+                          transformStyle: 'preserve-3d',
+                          transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                          WebkitTapHighlightColor: 'transparent',
+                          opacity: !livePrice ? 0.5 : 1,
+                          zIndex: 9999,
+                          isolation: 'isolate',
+                        }}
+                        onPointerDown={() => {
+                          if (!isAnalyzing && !isFetchingCandles && livePrice) {
+                            setIsBrainButtonPressed(true);
+                          }
+                        }}
+                        onPointerUp={() => {
+                          setIsBrainButtonPressed(false);
+                        }}
+                        onPointerLeave={() => {
+                          setIsBrainButtonPressed(false);
+                        }}
+                        onPointerCancel={() => {
+                          setIsBrainButtonPressed(false);
                         }}
                       >
-                        <Brain className="w-10 h-10" style={{ color: greenAccent.primary }} />
-                      </div>
+                        {/* 3D Inner glow effect when button is active */}
+                        <div
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            background: `radial-gradient(circle at 30% 30%, ${greenAccent.primary}40, transparent 70%)`,
+                            opacity: isBrainButtonPressed ? 0.6 : 0.8,
+                            transition: 'opacity 0.15s ease',
+                            transform: 'translateZ(4px)',
+                        }}
+                        />
+                        <Brain 
+                          className="w-10 h-10 relative z-10" 
+                          style={{ 
+                            color: greenAccent.primary,
+                            animation: isBrainButtonPressed ? 'none' : 'brain-think 1.5s ease-in-out infinite',
+                            filter: `drop-shadow(0 0 8px ${greenAccent.glow})`,
+                            transform: isBrainButtonPressed
+                              ? 'translateZ(4px) scale(0.9)'
+                              : 'translateZ(8px)',
+                            transition: 'transform 0.15s ease',
+                            pointerEvents: 'none',
+                          }} 
+                        />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1361,55 +1474,6 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
           </MeccaSpotlightCard>
         </div>
         
-        {/* Analyze button below SpotlightCard container - Edge-to-edge, no black background */}
-            {isApiKeySet && (
-          <div 
-            className="w-full shrink-0" 
-            style={{ 
-              padding: 0,
-              margin: 0,
-              paddingTop: '0.75rem',
-              paddingLeft: '1rem',
-              paddingRight: '1rem',
-              paddingBottom: isMobileState 
-                ? `max(0.5rem, calc(0.5rem + env(safe-area-inset-bottom, 0px)))` 
-                : '1rem',
-              background: 'transparent',
-              border: 'none',
-            }}
-          >
-                <button 
-                  onClick={analyzeSetup} 
-                  disabled={isAnalyzing || isFetchingCandles || !livePrice} 
-              className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden" 
-                  style={{ 
-                    background: isAnalyzing || isFetchingCandles 
-                      ? neonColors.bgSecondary 
-                      : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, 
-                    color: isAnalyzing || isFetchingCandles ? neonColors.textMuted : '#000', 
-                    opacity: !livePrice ? 0.5 : 1, 
-                    boxShadow: isAnalyzing || isFetchingCandles ? 'none' : `0 4px 20px ${greenAccent.primary}40`,
-                transform: isAnalyzing || isFetchingCandles ? 'scale(0.98)' : 'scale(1)',
-                border: 'none',
-                  }}
-                >
-                  {!isAnalyzing && !isFetchingCandles && livePrice && (
-                    <div className="absolute inset-0 shimmer-animation bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                  )}
-                  {isAnalyzing || isFetchingCandles ? (
-                    <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Preparing Analysis...</span>
-                    </>
-                  ) : (
-                    <>
-                  <Brain className="w-4 h-4" />
-                      <span>Analyze {getInsightDisplayName(symbol)}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
         {/* Loading Modal - Slides up from bottom with smooth transition */}
         {isAnalyzing || isFetchingCandles ? (
           <div 
@@ -1568,6 +1632,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                       <span className="text-[10px]" style={{ color: neonColors.negative }}>{error}</span>
                     </div>
                   )}
+                  <div className="flex flex-col gap-2">
                   <button 
                     onClick={handleSetApiKey} 
                     disabled={isValidatingKey || !apiKey.trim()} 
@@ -1590,6 +1655,21 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                       </>
                     )}
                   </button>
+                    {isApiKeySet && (
+                      <button 
+                        onClick={handleRemoveApiKey}
+                        className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all"
+                        style={{ 
+                          background: 'transparent',
+                          borderColor: '#ef4444',
+                          color: '#ef4444',
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Remove API Key</span>
+                      </button>
+                    )}
+                  </div>
                   <a 
                     href="https://aistudio.google.com/app/apikey" 
                     target="_blank" 

@@ -102,7 +102,8 @@ export default function ToolsCarousel() {
                 const blur = absOffset === 0 ? "blur(0)" : "blur(2px)";
 
                 // Different card sizes for center vs side items
-                const cardWidth = absOffset === 0 ? "w-[480px]" : "w-80";
+                // Center card uses responsive max width to avoid overflow on narrow viewports
+                const cardWidth = absOffset === 0 ? "w-full max-w-[480px] md:w-[480px]" : "w-80";
                 const cardHeight = absOffset === 0 ? "h-72" : "h-52";
                 const iconSize = absOffset === 0 ? "w-16 h-16" : "w-10 h-10";
                 const titleSize = absOffset === 0 ? "text-2xl" : "text-lg";

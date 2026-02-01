@@ -1473,93 +1473,94 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             </div>
           </MeccaSpotlightCard>
         </div>
-        
-        {/* Loading Modal - Slides up from bottom with smooth transition */}
-        {isAnalyzing || isFetchingCandles ? (
-          <div 
-            className="fixed inset-0 z-[9999] transition-opacity duration-300"
-            style={{ 
-              background: 'rgba(0, 0, 0, 0.85)',
-              backdropFilter: 'blur(8px)'
-            }}
-          >
-            <div 
-              className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
-              style={{
-                transform: 'translateY(0)',
-                paddingTop: '2rem',
-                paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)))',
-                animation: 'slideUp 0.5s cubic-bezier(0.32, 0.72, 0, 1)'
-              }}
-            >
-              <div className="flex flex-col items-center justify-center gap-8 p-8 w-full max-w-md">
-                {/* Animated Brain Icon with pulsing circles */}
-                <div className="relative">
-                  {/* Outer pulsing circle - animated ping */}
-                  <div 
-                    className="absolute inset-0 rounded-full" 
-                    style={{ 
-                      border: `3px solid ${greenAccent.primary}`, 
-                      opacity: 0.2, 
-                      margin: '-32px', 
-                      width: 'calc(100% + 64px)', 
-                      height: 'calc(100% + 64px)',
-                      animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
-                    }} 
-                  />
-                  {/* Middle pulsing circle */}
-                  <div 
-                    className="absolute inset-0 rounded-full" 
-                    style={{ 
-                      border: `2px solid ${greenAccent.primary}`, 
-                      opacity: 0.4, 
-                      margin: '-20px', 
-                      width: 'calc(100% + 40px)', 
-                      height: 'calc(100% + 40px)',
-                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                    }} 
-                  />
-                  {/* Brain icon container */}
-                  <div 
-                    className="w-28 h-28 rounded-full flex items-center justify-center" 
-                    style={{ 
-                      background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
-                      border: `3px solid ${greenAccent.primary}60`,
-                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                      boxShadow: `0 0 40px ${greenAccent.primary}40`
-                    }}
-                  >
-                    <Brain className="w-14 h-14" style={{ color: greenAccent.primary }} />
+        {/* Modals - portaled to journal-xx-modal-root when in Journal XX (History page) so they show inside the page */}
+        {createPortal(
+          <>
+            {/* Loading Modal - Slides up from bottom with smooth transition */}
+            {isAnalyzing || isFetchingCandles ? (
+              <div 
+                className="fixed inset-0 z-[9999] transition-opacity duration-300"
+                style={{ 
+                  background: 'rgba(0, 0, 0, 0.85)',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <div 
+                  className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
+                  style={{
+                    transform: 'translateY(0)',
+                    paddingTop: '2rem',
+                    paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)))',
+                    animation: 'slideUp 0.5s cubic-bezier(0.32, 0.72, 0, 1)'
+                  }}
+                >
+                  <div className="flex flex-col items-center justify-center gap-8 p-8 w-full max-w-md">
+                    {/* Animated Brain Icon with pulsing circles */}
+                    <div className="relative">
+                      {/* Outer pulsing circle - animated ping */}
+                      <div 
+                        className="absolute inset-0 rounded-full" 
+                        style={{ 
+                          border: `3px solid ${greenAccent.primary}`, 
+                          opacity: 0.2, 
+                          margin: '-32px', 
+                          width: 'calc(100% + 64px)', 
+                          height: 'calc(100% + 64px)',
+                          animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+                        }} 
+                      />
+                      {/* Middle pulsing circle */}
+                      <div 
+                        className="absolute inset-0 rounded-full" 
+                        style={{ 
+                          border: `2px solid ${greenAccent.primary}`, 
+                          opacity: 0.4, 
+                          margin: '-20px', 
+                          width: 'calc(100% + 40px)', 
+                          height: 'calc(100% + 40px)',
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                        }} 
+                      />
+                      {/* Brain icon container */}
+                      <div 
+                        className="w-28 h-28 rounded-full flex items-center justify-center" 
+                        style={{ 
+                          background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
+                          border: `3px solid ${greenAccent.primary}60`,
+                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                          boxShadow: `0 0 40px ${greenAccent.primary}40`
+                        }}
+                      >
+                        <Brain className="w-14 h-14" style={{ color: greenAccent.primary }} />
+                      </div>
+                    </div>
+                    {/* Text content */}
+                    <div className="text-center space-y-3">
+                      <p className="font-semibold text-xl text-white">
+                        Analyzing {getInsightDisplayName(symbol)}...
+                      </p>
+                      <p className="text-sm text-gray-400 max-w-xs">
+                        Processing market data and generating insights
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {/* Text content */}
-                <div className="text-center space-y-3">
-                  <p className="font-semibold text-xl text-white">
-                    Analyzing {getInsightDisplayName(symbol)}...
-                  </p>
-                  <p className="text-sm text-gray-400 max-w-xs">
-                    Processing market data and generating insights
-                  </p>
-                </div>
               </div>
-            </div>
-          </div>
-        ) : null}
-        
-        {/* Results Modal - Non-portal version for main page (when NOT viewing from history) */}
-        {/* Only render non-portal version when NOT viewing from history (history uses portal) */}
-        {!isViewingSavedAnalysis && (
-          <ProAnalysisModal 
-            isOpen={showProModal} 
-            onClose={() => {
-              setShowProModal(false);
-              setIsViewingSavedAnalysis(false);
-            }} 
-            analysis={proAnalysis} 
-            isLoading={isAnalyzing || isFetchingCandles} 
-            error={error} 
-            displaySymbol={getInsightDisplayName(symbol)} 
-          />
+            ) : null}
+            {/* Results Modal - portaled to journal-xx-modal-root when in Journal XX */}
+            <ProAnalysisModal 
+              isOpen={showProModal && !isAnalyzing && !isFetchingCandles} 
+              onClose={() => {
+                setShowProModal(false);
+                setIsViewingSavedAnalysis(false);
+              }} 
+              analysis={proAnalysis} 
+              isLoading={false} 
+              error={error} 
+              displaySymbol={getInsightDisplayName(symbol)} 
+            />
+          </>,
+          (typeof document !== 'undefined' && document.getElementById('journal-xx-modal-root')) || document.body
         )}
 
         {/* API Key Setup Modal - Slides up from bottom to 1/3 of screen */}
@@ -1884,6 +1885,19 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
               </div>
           </>,
           document.body
+      )}
+      
+      {/* Pro Analysis Modal - portaled to journal-xx-modal-root when in Journal XX (History page) */}
+      {createPortal(
+        <ProAnalysisModal
+          isOpen={showProModal}
+          onClose={() => setShowProModal(false)}
+          analysis={proAnalysis}
+          isLoading={isAnalyzing || isFetchingCandles}
+          error={error}
+          displaySymbol={getInsightDisplayName(symbol)}
+        />,
+        (typeof document !== 'undefined' && document.getElementById('journal-xx-modal-root')) || document.body
       )}
     </div>
   );
